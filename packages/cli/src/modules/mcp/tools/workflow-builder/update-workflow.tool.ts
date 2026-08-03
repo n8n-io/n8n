@@ -3,7 +3,6 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -13,6 +12,7 @@ import { validateCredentialReferences } from './credential-validation';
 import {
 	autoPopulateNodeCredentials,
 	trackAutoassignOutcomes,
+	type CredentialAssignment,
 	type SlotOutcome,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
@@ -33,10 +33,13 @@ import {
 	type PartialUpdateOperation,
 	type SkippedOperation,
 } from './workflow-operations';
+import {
+	assertPublishAllowedForSettingsChange,
+	assertWorkflowSettingsValid,
+} from './workflow-settings-guards';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
@@ -151,163 +154,209 @@ const countOperationsWithNoEffect = (
 	return count;
 };
 
+const isTagOperation = (op: PartialUpdateOperation) =>
+	op.type === 'addTags' || op.type === 'removeTags';
+
 /**
- * Validates a freshly-set `errorWorkflow` reference. Throws a teaching-oriented
- * error when the target does not exist / is inaccessible, has no active Error
- * Trigger node, or cannot be called by this workflow due to its sub-workflow
- * caller policy — each of which would otherwise silently prevent the error
- * workflow from running on failure. A 'DEFAULT' / cleared value skips the check.
+ * Rejects operations this instance cannot serve, before anything is loaded or
+ * applied. Throw order is part of the contract: gated group ops first, then
+ * tag ops.
  */
-async function assertErrorWorkflowIsUsable({
-	errorWorkflowId,
-	parentWorkflowId,
-	user,
-	workflowFinderService,
-	workflowPublishedDataService,
-	useWorkflowPublicationService,
-	nodeTypes,
-	subworkflowPolicyChecker,
-	errorTriggerType,
+function assertOperationsSupported({
+	strictOperations,
+	canvasGroupsEnabled,
+	tagsDisabled,
 }: {
-	errorWorkflowId: string | undefined;
-	parentWorkflowId: string;
-	user: User;
-	workflowFinderService: WorkflowFinderService;
-	workflowPublishedDataService: WorkflowPublishedDataService;
-	useWorkflowPublicationService: boolean;
+	strictOperations: PartialUpdateOperation[];
+	canvasGroupsEnabled: boolean;
+	tagsDisabled: boolean;
+}): void {
+	// Defense in depth: with the flag off, the published schema already
+	// rejects these op types at the enum level; this guards against the
+	// loose and strict schemas drifting apart.
+	const hasGatedGroupOperations = strictOperations.some((op) => GATED_GROUP_OP_TYPES.has(op.type));
+
+	if (hasGatedGroupOperations && !canvasGroupsEnabled) {
+		throw new Error(
+			'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
+		);
+	}
+
+	if (strictOperations.some(isTagOperation) && tagsDisabled) {
+		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
+	}
+}
+
+/**
+ * Group rules depend on how the workflow looks after the whole batch, so they
+ * are checked once here rather than per operation. A broken group is dropped
+ * and reported; the update still goes through.
+ *
+ * NOT PURE: `dropInvalidNodeGroups` removes the offending groups from
+ * `result.workflow.nodeGroups` **in place**, and that mutation is what
+ * `buildWorkflowUpdateEntity` later persists. `result` must be passed by
+ * reference — cloning it makes the dropped groups silently come back.
+ */
+function resolveNodeGroupViolations({
+	result,
+	nodeTypes,
+	canvasGroupsEnabled,
+}: {
+	result: ApplyOperationsSuccess;
 	nodeTypes: NodeTypes;
-	subworkflowPolicyChecker: SubworkflowPolicyChecker;
-	errorTriggerType: string;
-}): Promise<void> {
-	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') {
-		return;
+	canvasGroupsEnabled: boolean | undefined;
+}): {
+	skippedOperations: SkippedOperation[];
+	removedGroups: Array<{ groupName: string; reason: string }>;
+	nodeGroupsNeedPersisting: boolean;
+} {
+	const skippedOperations: SkippedOperation[] = [...result.skippedOperations];
+	// Groups the batch never asked for, removed because these operations made
+	// them invalid. Reported apart from skippedOperations: no submitted
+	// operation failed here, an existing group was destroyed as a side effect.
+	const removedGroups: Array<{ groupName: string; reason: string }> = [];
+
+	if (!canvasGroupsEnabled) {
+		return {
+			skippedOperations,
+			removedGroups,
+			nodeGroupsNeedPersisting: result.nodeGroupsChanged,
+		};
 	}
 
-	// Read access is required intentionally, mirroring the editor UI (the error
-	// workflow picker only lists workflows the user can read). Resolving the
-	// target without an access check would let callers probe arbitrary workflow
-	// IDs and learn their name / published / trigger / policy state from the
-	// validation errors below. Runtime not requiring read access is separate: it
-	// runs the error workflow under the owner project's context, gated by caller
-	// policy, which is about execution — not about who may configure the link.
-	const errorWorkflow = await workflowFinderService.findWorkflowForUser(
-		errorWorkflowId,
-		user,
-		['workflow:read'],
-		// activeVersion is only the published source of truth when the publication
-		// service is off; otherwise we read it from the service below.
-		{ includeActiveVersion: !useWorkflowPublicationService },
+	const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
+
+	// Two passes, ordered by blame: an overlap between a new and an existing
+	// group makes the validator flag both, so the batch's own groups go first
+	// and the innocent existing one survives the re-check. `groupOperations`
+	// records which groups this batch touched, not which one caused a given
+	// violation — two group ops that collide take each other down.
+	const ownGroups = dropInvalidNodeGroups(
+		result.workflow,
+		getNodeType,
+		(violation) => result.groupOperations[violation.groupId] !== undefined,
 	);
 
-	if (!errorWorkflow) {
-		throw new Error(
-			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
-		);
+	const violations = [...ownGroups, ...dropInvalidNodeGroups(result.workflow, getNodeType)];
+
+	if (violations.length === 0) {
+		return {
+			skippedOperations,
+			removedGroups,
+			nodeGroupsNeedPersisting: result.nodeGroupsChanged,
+		};
 	}
 
-	// Runtime runs the PUBLISHED version of the error workflow, not its draft, and
-	// resolves it differently depending on the publication service flag — mirror
-	// WorkflowExecutionService.loadErrorWorkflowData exactly so we neither reject a
-	// workflow runtime would run nor accept a version runtime will not use.
-	let publishedNodes: INode[] | undefined;
+	for (const violation of violations) {
+		const requestedBy = result.groupOperations[violation.groupId];
 
-	if (useWorkflowPublicationService) {
-		const published = await workflowPublishedDataService.getPublishedWorkflowData(errorWorkflowId);
-		publishedNodes = published?.publishedVersion.nodes;
-	} else if (errorWorkflow.activeVersionId && errorWorkflow.activeVersion) {
-		publishedNodes = errorWorkflow.activeVersion.nodes ?? [];
+		if (requestedBy) {
+			skippedOperations.push({ ...requestedBy, reason: violation.message });
+		} else {
+			removedGroups.push({
+				groupName: violation.groupName,
+				reason: violation.message,
+			});
+		}
 	}
 
-	if (!publishedNodes) {
-		throw new Error(
-			`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
-		);
-	}
+	return {
+		skippedOperations,
+		removedGroups,
+		// A violation found here always changes what must be persisted, even if
+		// no group op ran this batch — otherwise the omitted `nodeGroups` key
+		// falls back to preserve-on-omit and the still-invalid stored groups get
+		// re-validated (and rejected) by WorkflowService.update right after.
+		nodeGroupsNeedPersisting: true,
+	};
+}
 
-	const hasErrorTrigger = publishedNodes.some(
-		(node) => node.type === errorTriggerType && node.disabled !== true,
-	);
-
-	if (!hasErrorTrigger) {
-		throw new Error(
-			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
-		);
-	}
-
-	// Runtime blocks the error workflow if this workflow may not call it as a
-	// sub-workflow (see WorkflowExecutionService.executeErrorWorkflow). The
-	// policy checker only reads the target's id + settings, so an empty-node
-	// Workflow instance is sufficient.
-	const errorWorkflowInstance = new Workflow({
-		id: errorWorkflow.id,
-		name: errorWorkflow.name,
-		nodeTypes,
-		nodes: [],
-		connections: {},
-		active: false,
-		settings: errorWorkflow.settings ?? {},
+/**
+ * Assembles the entity handed to `WorkflowService.update`. Every conditional
+ * spread below is load-bearing: an omitted key means "leave what is stored
+ * alone", while writing `undefined` would create an own property and change
+ * what TypeORM sees.
+ */
+function buildWorkflowUpdateEntity({
+	workflow,
+	existingMeta,
+	hasSettingsOperations,
+	hasNonTagOperations,
+	nodeGroupsNeedPersisting,
+}: {
+	workflow: ApplyOperationsSuccess['workflow'];
+	existingMeta: WorkflowEntity['meta'];
+	hasSettingsOperations: boolean;
+	hasNonTagOperations: boolean;
+	nodeGroupsNeedPersisting: boolean;
+}): WorkflowEntity {
+	const workflowUpdateData = new WorkflowEntity();
+	Object.assign(workflowUpdateData, {
+		name: workflow.name,
+		...(workflow.description !== undefined ? { description: workflow.description } : {}),
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+		// Only attach settings when a settings op ran, so node-only edits
+		// don't re-save (and re-clean) the existing settings object.
+		...(hasSettingsOperations ? { settings: workflow.settings } : {}),
+		// Only persist nodeGroups when they actually need to change (a group op
+		// ran, removing a node pruned a group, or the structural check above
+		// dropped a group some other op invalidated); otherwise omit the key so
+		// WorkflowService preserves the existing groups (preserve-on-omit).
+		...(nodeGroupsNeedPersisting ? { nodeGroups: workflow.nodeGroups } : {}),
+		meta: hasNonTagOperations
+			? {
+					...(existingMeta ?? {}),
+					aiBuilderAssisted: true,
+					builderVariant: 'mcp',
+				}
+			: (existingMeta ?? {}),
 	});
 
-	try {
-		await subworkflowPolicyChecker.check(
-			errorWorkflowInstance,
-			parentWorkflowId,
-			undefined,
-			user.id,
-		);
-	} catch (error) {
-		if (error instanceof SubworkflowPolicyDenialError) {
-			throw new Error(
-				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
-			);
-		}
-		throw error;
-	}
+	return workflowUpdateData;
 }
 
-/**
- * When callerPolicy is 'workflowsFromAList', callerIds must list at least one
- * workflow ID — otherwise no workflow can call this one as a sub-workflow.
- * Operates on the effective (merged) settings, so a partial update that sets
- * only one of the two fields is validated against the final state.
- */
-function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): void {
-	if (settings?.callerPolicy !== 'workflowsFromAList') {
-		return;
-	}
+/** Builds the tool's success payload. `structuredContent` reuses this object. */
+function buildUpdateOutput({
+	updatedWorkflow,
+	workflowUrl,
+	operationCount,
+	skippedOperations,
+	groupOperations,
+	removedGroups,
+	credentialAssignments,
+	validationWarnings,
+	skippedHttpNodes,
+	hasSettingsOperations,
+}: {
+	updatedWorkflow: Pick<WorkflowEntity, 'id' | 'name' | 'nodes' | 'settings'>;
+	workflowUrl: string;
+	operationCount: number;
+	skippedOperations: SkippedOperation[];
+	groupOperations: ApplyOperationsSuccess['groupOperations'];
+	removedGroups: Array<{ groupName: string; reason: string }>;
+	credentialAssignments: CredentialAssignment[];
+	validationWarnings: Array<ValidationWarning & { preExisting?: boolean }>;
+	skippedHttpNodes: string[];
+	hasSettingsOperations: boolean;
+}) {
+	const notAppliedCount = countOperationsWithNoEffect(skippedOperations, groupOperations);
 
-	const callerIds = (settings.callerIds ?? '')
-		.split(',')
-		.map((id) => id.trim())
-		.filter((id) => id.length > 0);
-
-	if (callerIds.length === 0) {
-		throw new Error(
-			'callerPolicy "workflowsFromAList" requires callerIds — a comma-separated list of workflow IDs allowed to call this workflow. Without it, no workflow can call this one. Provide callerIds, or choose a different callerPolicy.',
-		);
-	}
-}
-
-/**
- * Reject an executionTimeout that exceeds the instance maximum. The schema
- * already enforces a positive integer; this adds the instance-specific upper
- * bound, which isn't knowable statically. A non-positive `maxTimeout` means the
- * instance sets no cap, so nothing is enforced.
- */
-function assertExecutionTimeoutWithinMax(
-	executionTimeout: number | undefined,
-	maxTimeout: number,
-): void {
-	// `executionTimeout <= 0` is the "unlimited" sentinel (-1) and is never capped.
-	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) {
-		return;
-	}
-
-	if (executionTimeout > maxTimeout) {
-		throw new Error(
-			`executionTimeout (${executionTimeout}s) exceeds this instance's maximum of ${maxTimeout}s. Set executionTimeout to ${maxTimeout} or less.`,
-		);
-	}
+	return {
+		workflowId: updatedWorkflow.id,
+		name: updatedWorkflow.name,
+		nodeCount: updatedWorkflow.nodes.length,
+		url: workflowUrl,
+		appliedOperations: operationCount - notAppliedCount,
+		autoAssignedCredentials: credentialAssignments,
+		validationWarnings,
+		note: skippedHttpNodes.length
+			? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
+			: undefined,
+		skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
+		removedGroups: removedGroups.length > 0 ? removedGroups : undefined,
+		settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
+	};
 }
 
 /**
@@ -388,29 +437,17 @@ export const createUpdateWorkflowTool = (
 
 		try {
 			const strictOperations = parseStrictOperations(operations);
-
-			// Defense in depth: with the flag off, the published schema already
-			// rejects these op types at the enum level; this guards against the
-			// loose and strict schemas drifting apart.
-			const hasGatedGroupOperations = strictOperations.some((op) =>
-				GATED_GROUP_OP_TYPES.has(op.type),
+			const hasTagOperations = strictOperations.some(isTagOperation);
+			const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
+			const hasSettingsOperations = strictOperations.some(
+				(op) => op.type === 'setWorkflowSettings',
 			);
 
-			if (hasGatedGroupOperations && options.canvasGroupsEnabled !== true) {
-				throw new Error(
-					'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
-				);
-			}
-
-			const hasTagOperations = strictOperations.some(
-				(op) => op.type === 'addTags' || op.type === 'removeTags',
-			);
-
-			if (hasTagOperations && globalConfig.tags.disabled) {
-				throw new Error(
-					'Tag operations are not supported on this instance because tags are disabled.',
-				);
-			}
+			assertOperationsSupported({
+				strictOperations,
+				canvasGroupsEnabled: options.canvasGroupsEnabled === true,
+				tagsDisabled: globalConfig.tags.disabled,
+			});
 
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,
@@ -432,52 +469,12 @@ export const createUpdateWorkflowTool = (
 				throw new Error(result.error);
 			}
 
-			// Group rules depend on how the workflow looks after the whole batch,
-			// so we check them here once rather than per operation. A broken group
-			// is dropped and reported; the update still goes through.
-			const skippedOperations: SkippedOperation[] = [...result.skippedOperations];
-			// Groups the batch never asked for, removed because these operations made
-			// them invalid. Reported apart from skippedOperations: no submitted
-			// operation failed here, an existing group was destroyed as a side effect.
-			const removedGroups: Array<{ groupName: string; reason: string }> = [];
-			let nodeGroupsNeedPersisting = result.nodeGroupsChanged;
-
-			if (options.canvasGroupsEnabled) {
-				const getNodeType = makeGetNodeTypeForGrouping(nodeTypes);
-
-				// Two passes, ordered by blame: an overlap between a new and an existing
-				// group makes the validator flag both, so the batch's own groups go first
-				// and the innocent existing one survives the re-check. `groupOperations`
-				// records which groups this batch touched, not which one caused a given
-				// violation — two group ops that collide take each other down.
-				const ownGroups = dropInvalidNodeGroups(
-					result.workflow,
-					getNodeType,
-					(violation) => result.groupOperations[violation.groupId] !== undefined,
-				);
-				const violations = [...ownGroups, ...dropInvalidNodeGroups(result.workflow, getNodeType)];
-
-				if (violations.length > 0) {
-					// A violation found here always changes what must be persisted, even if
-					// no group op ran this batch — otherwise the omitted `nodeGroups` key
-					// falls back to preserve-on-omit and the still-invalid stored groups get
-					// re-validated (and rejected) by WorkflowService.update right after.
-					nodeGroupsNeedPersisting = true;
-
-					for (const violation of violations) {
-						const requestedBy = result.groupOperations[violation.groupId];
-
-						if (requestedBy) {
-							skippedOperations.push({ ...requestedBy, reason: violation.message });
-						} else {
-							removedGroups.push({
-								groupName: violation.groupName,
-								reason: violation.message,
-							});
-						}
-					}
-				}
-			}
+			const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
+				resolveNodeGroupViolations({
+					result,
+					nodeTypes,
+					canvasGroupsEnabled: options.canvasGroupsEnabled,
+				});
 
 			const credentialCheck = await validateCredentialReferences(
 				strictOperations,
@@ -520,107 +517,34 @@ export const createUpdateWorkflowTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
-			// Validate a freshly-set error workflow so the agent can self-correct in
-			// context: the target must exist, be accessible, and contain an Error
-			// Trigger node — otherwise it would silently never run on failure.
-			const setsErrorWorkflow = strictOperations.some(
-				(op) => op.type === 'setWorkflowSettings' && op.settings.errorWorkflow !== undefined,
-			);
+			await assertWorkflowSettingsValid({
+				strictOperations,
+				settings: result.workflow.settings,
+				parentWorkflowId: workflowId,
+				user,
+				workflowFinderService,
+				workflowPublishedDataService,
+				subworkflowPolicyChecker,
+				nodeTypes,
+				useWorkflowPublicationService: globalConfig.workflows.useWorkflowPublicationService,
+				errorTriggerType: globalConfig.nodes.errorTriggerType,
+				maxExecutionTimeout: globalConfig.executions.maxTimeout,
+			});
 
-			if (setsErrorWorkflow) {
-				await assertErrorWorkflowIsUsable({
-					errorWorkflowId: result.workflow.settings?.errorWorkflow,
-					parentWorkflowId: workflowId,
-					user,
-					workflowFinderService,
-					workflowPublishedDataService,
-					useWorkflowPublicationService: globalConfig.workflows.useWorkflowPublicationService,
-					nodeTypes,
-					subworkflowPolicyChecker,
-					errorTriggerType: globalConfig.nodes.errorTriggerType,
-				});
-			}
+			await assertPublishAllowedForSettingsChange({
+				hasSettingsOperations,
+				activeVersionId: existingWorkflow.activeVersionId,
+				workflowId,
+				user,
+				workflowFinderService,
+			});
 
-			// Validate the effective (merged) caller policy, but only when this batch
-			// touched it — so a partial edit isn't rejected for pre-existing state, and
-			// `callerPolicy` set in one op can be satisfied by `callerIds` already on
-			// the workflow (or set in another op of the same batch).
-			const setsCallerConfig = strictOperations.some(
-				(op) =>
-					op.type === 'setWorkflowSettings' &&
-					(op.settings.callerPolicy !== undefined || op.settings.callerIds !== undefined),
-			);
-
-			if (setsCallerConfig) {
-				assertCallerPolicyConsistent(result.workflow.settings);
-			}
-
-			const setsExecutionTimeout = strictOperations.some(
-				(op) => op.type === 'setWorkflowSettings' && op.settings.executionTimeout !== undefined,
-			);
-
-			if (setsExecutionTimeout) {
-				assertExecutionTimeoutWithinMax(
-					result.workflow.settings?.executionTimeout,
-					globalConfig.executions.maxTimeout,
-				);
-			}
-
-			const hasNonTagOperations = strictOperations.some(
-				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
-			);
-
-			const hasSettingsOperations = strictOperations.some(
-				(op) => op.type === 'setWorkflowSettings',
-			);
-
-			// A settings change on a published workflow makes WorkflowService.update
-			// reactivate it *after* persisting (activateWorkflow → requires
-			// workflow:publish). Without this preflight, a user with edit-but-not-
-			// publish access would persist the settings and only then fail activation,
-			// breaking this tool's atomicity and leaving the running version stale.
-			// A global publish scope already guarantees access, so skip the DB lookup
-			// for instance owners/admins (the common MCP case) and only probe when the
-			// permission could come from a project/resource role.
-			if (
-				hasSettingsOperations &&
-				existingWorkflow.activeVersionId &&
-				!hasGlobalScope(user, 'workflow:publish')
-			) {
-				const canPublish = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
-					'workflow:publish',
-				]);
-
-				if (!canPublish) {
-					throw new Error(
-						'Changing settings on a published workflow reactivates it, which requires publish permission. Your account can edit but not publish this workflow. Ask the owner for publish access, or unpublish the workflow first.',
-					);
-				}
-			}
-
-			const workflowUpdateData = new WorkflowEntity();
-			Object.assign(workflowUpdateData, {
-				name: result.workflow.name,
-				...(result.workflow.description !== undefined
-					? { description: result.workflow.description }
-					: {}),
-				nodes: result.workflow.nodes,
-				connections: result.workflow.connections,
-				// Only attach settings when a settings op ran, so node-only edits
-				// don't re-save (and re-clean) the existing settings object.
-				...(hasSettingsOperations ? { settings: result.workflow.settings } : {}),
-				// Only persist nodeGroups when they actually need to change (a group op
-				// ran, removing a node pruned a group, or the structural check above
-				// dropped a group some other op invalidated); otherwise omit the key so
-				// WorkflowService preserves the existing groups (preserve-on-omit).
-				...(nodeGroupsNeedPersisting ? { nodeGroups: result.workflow.nodeGroups } : {}),
-				meta: hasNonTagOperations
-					? {
-							...(existingWorkflow.meta ?? {}),
-							aiBuilderAssisted: true,
-							builderVariant: 'mcp',
-						}
-					: (existingWorkflow.meta ?? {}),
+			const workflowUpdateData = buildWorkflowUpdateEntity({
+				workflow: result.workflow,
+				existingMeta: existingWorkflow.meta,
+				hasSettingsOperations,
+				hasNonTagOperations,
+				nodeGroupsNeedPersisting,
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
@@ -685,7 +609,9 @@ export const createUpdateWorkflowTool = (
 						connections: existingWorkflow.connections,
 					} as unknown as WorkflowJSON);
 				} catch {}
+
 				const preUpdateKeys = new Set(preUpdateWarnings.map(getWarningKey));
+
 				validationWarnings = postUpdateWarnings.map((warning) =>
 					preUpdateKeys.has(getWarningKey(warning))
 						? { ...warning, message: `[pre-existing] ${warning.message}`, preExisting: true }
@@ -759,26 +685,18 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const notAppliedCount = countOperationsWithNoEffect(
+			const output = buildUpdateOutput({
+				updatedWorkflow,
+				workflowUrl,
+				operationCount: strictOperations.length,
 				skippedOperations,
-				result.groupOperations,
-			);
-
-			const output = {
-				workflowId: updatedWorkflow.id,
-				name: updatedWorkflow.name,
-				nodeCount: updatedWorkflow.nodes.length,
-				url: workflowUrl,
-				appliedOperations: strictOperations.length - notAppliedCount,
-				autoAssignedCredentials: credentialAssignments,
+				groupOperations: result.groupOperations,
+				removedGroups,
+				credentialAssignments,
 				validationWarnings,
-				note: skippedHttpNodes.length
-					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
-					: undefined,
-				skippedOperations: skippedOperations.length > 0 ? skippedOperations : undefined,
-				removedGroups: removedGroups.length > 0 ? removedGroups : undefined,
-				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
-			};
+				skippedHttpNodes,
+				hasSettingsOperations,
+			});
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
