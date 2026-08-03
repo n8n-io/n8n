@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_235986cec46e94::t_d372d19d94672f 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00780f7f5ddc4d2b31c230fd6e9fbe3b690fa497",
+  "prompts": {},
+  "sessions": {
+    "s_235986cec46e94": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "87042923-02ce-4e97-8379-068b9e16f4ca",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

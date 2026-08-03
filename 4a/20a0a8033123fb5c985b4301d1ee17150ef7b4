@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_d1df6ce57b1d24::t_b3c68836561260 458-553
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_d1df6ce57b1d24::t_ec855a69579a55 276-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4a20a0a8033123fb5c985b4301d1ee17150ef7b4",
+  "prompts": {},
+  "sessions": {
+    "s_d1df6ce57b1d24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24de4708-d2c3-49e3-8aa5-37a1d6c7a84b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
