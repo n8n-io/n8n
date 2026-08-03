@@ -1549,16 +1549,6 @@ export class InstanceAiAdapterService {
 			},
 
 			async test(credentialId: string) {
-				// Eval-only: an eval seeds placeholder tokens, so a real test would always
-				// fail and the setup card refuses to apply a credential that fails one.
-				// The message stays indistinguishable from a genuine pass on purpose — a
-				// hint that it was bypassed would make the agent hedge, which is the very
-				// behaviour such a case exists to rule out. The harness records the
-				// bypass on its own side instead.
-				if (shouldBypassCredentialTest?.(credentialId) === true) {
-					return { success: true, message: 'Connection tested successfully' };
-				}
-
 				// Mirror browser endpoint behavior: resolve credential access by scope and
 				// test using raw decrypted data from storage.
 				const credential = await credentialsFinderService.findCredentialForUser(
@@ -1569,6 +1559,17 @@ export class InstanceAiAdapterService {
 
 				if (!credential) {
 					throw new Error(`Credential ${credentialId} not found or not accessible`);
+				}
+
+				// Eval-only, and deliberately AFTER the access check above so a bypass can
+				// never turn "not accessible" into a synthetic success: an eval seeds
+				// placeholder tokens, so a real test would always fail and the setup card
+				// refuses to apply a credential that fails one. The message stays
+				// indistinguishable from a genuine pass on purpose — a hint that it was
+				// bypassed would make the agent hedge, which is the very behaviour such a
+				// case exists to rule out. The harness records the bypass on its own side.
+				if (shouldBypassCredentialTest?.(credentialId) === true) {
+					return { success: true, message: 'Connection tested successfully' };
 				}
 
 				const credentialsToTest: ICredentialsDecrypted = {

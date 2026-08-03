@@ -358,11 +358,21 @@ async function encodeCredentialSetupDecision(
 	const request = resolveCredentialRequest(decision.credentialType, credentialSetupContext);
 
 	if (decision.option === 'auto') {
-		const credentialType = request?.credentialType ?? decision.credentialType;
+		// When the card told us which credentials it wants, only one of those is a
+		// valid target: falling back to the model's free-form string would launch
+		// automatic setup for a type the card never asked about. Without context
+		// the model's answer is the only source we have.
+		const credentialType = credentialSetupContext
+			? request?.credentialType
+			: decision.credentialType;
 		if (!credentialType) {
 			onParseFailure?.(
 				decision.action,
-				new Error('auto setup chosen with no resolvable credentialType'),
+				new Error(
+					`auto setup chosen with no resolvable credentialType${
+						decision.credentialType ? ` (card does not list "${decision.credentialType}")` : ''
+					}`,
+				),
 			);
 			return { kind: 'approval', approved: false };
 		}
