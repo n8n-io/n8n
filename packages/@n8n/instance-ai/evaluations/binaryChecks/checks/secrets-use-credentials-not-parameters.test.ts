@@ -371,6 +371,157 @@ describe('secretsUseCredentialsNotParameters', () => {
 		expect(result.pass).toBe(true);
 	});
 
+	// A hardcoded literal is a secret sitting in the JSON no matter how the node is
+	// authenticated, so the literal signal runs even when a credential is attached —
+	// otherwise removing HTTP coverage from `no_hardcoded_credentials` loses this case.
+	it('fails on a hardcoded literal secret even when a credential is attached', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'Call API',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					sendQuery: true,
+					queryParameters: { parameters: [{ name: 'api_key', value: 'sk-live-1' }] },
+				},
+				credentials: { httpQueryAuth: { id: '1', name: 'Some key' } },
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('api_key');
+	});
+
+	it('fails when auth mode is set but no credential is attached and a secret placeholder remains', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'web_search',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpQueryAuth',
+					sendQuery: true,
+					queryParameters: {
+						parameters: [{ name: 'key', value: '<__PLACEHOLDER_VALUE__Google API Key__>' }],
+					},
+				},
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(false);
+	});
+
+	// Bare `key`/`apikey` only read as secret in a query string (Google's `?key=`).
+	// In a body they are overwhelmingly the key half of a key/value pair.
+	it('passes for a body parameter named key holding an ordinary value', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'Post Lead',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					sendBody: true,
+					bodyParameters: {
+						parameters: [
+							{ name: 'key', value: 'user_id' },
+							{ name: 'value', value: '123' },
+						],
+					},
+				},
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(true);
+	});
+
+	it('still fails for a query parameter named key holding a hardcoded value', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'Search',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					sendQuery: true,
+					queryParameters: { parameters: [{ name: 'key', value: 'AIzaSyD-hardcoded' }] },
+				},
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(false);
+	});
+
+	it('passes for a parameter named credentialId, which references a credential rather than holding one', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'Post Lead',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					sendBody: true,
+					bodyParameters: { parameters: [{ name: 'credentialId', value: 'abc123' }] },
+				},
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes for a Page Token placeholder, which is pagination state rather than a secret', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'List Files',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					sendQuery: true,
+					queryParameters: {
+						parameters: [{ name: 'pageToken', value: '<__PLACEHOLDER_VALUE__Page Token__>' }],
+					},
+				},
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(true);
+	});
+
+	it('still fails for an Access Token placeholder', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'List Files',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					sendQuery: true,
+					queryParameters: {
+						parameters: [{ name: 'auth', value: '<__PLACEHOLDER_VALUE__Your Access Token__>' }],
+					},
+				},
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(false);
+	});
+
+	it('finds a secret placeholder in raw JSON even when a non-secret placeholder comes first', async () => {
+		const result = await secretsUseCredentialsNotParameters.run(
+			workflow({
+				name: 'Post Lead',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody:
+						'{"sheet": <__PLACEHOLDER_VALUE__Spreadsheet ID__>, "auth": <__PLACEHOLDER_VALUE__Your API Key__>}',
+				},
+			}),
+			ctx,
+		);
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Your API Key');
+	});
+
 	it('is not applicable when the workflow has no HTTP Request nodes', async () => {
 		const result = await secretsUseCredentialsNotParameters.run(
 			workflow({ name: 'Set', type: 'n8n-nodes-base.set', parameters: {} }),
