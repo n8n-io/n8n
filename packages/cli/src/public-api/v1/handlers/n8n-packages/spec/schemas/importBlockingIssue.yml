@@ -270,8 +270,10 @@ oneOf:
     description: >
       A variable that resolved in the target project or the global scope, but
       whose value differs from the one the package bundles for it, under
-      `variableConflictPolicy=fail`. Values are never reported — only the name
-      and the scope the variable was found in.
+      `variableConflictPolicy=fail`. Also reported under `overwrite`, once per
+      scope, when the projects of a package resolve one row and disagree about
+      the value it should hold. Values are never reported — only the name and
+      the scope the variable was found in.
     required:
       - type
       - name
