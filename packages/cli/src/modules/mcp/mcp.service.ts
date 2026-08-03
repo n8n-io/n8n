@@ -418,9 +418,14 @@ export class McpService {
 		const registerTool = this.createToolRegistrar(server, user, clientInfo);
 		const registerResource = this.createResourceRegistrar(server);
 
+		// Tools are buffered and flushed once at the end (see before `return
+		// server`), in authoring order so they stay grouped by section. The order is
+		// stable per grant + feature flags, so client and LLM prompt caches hit
+		// (SEP-2549).
+		const pendingTools: ToolDefinition[] = [];
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			registerTool(tool);
+			pendingTools.push(tool);
 		};
 
 		// Existing tools
@@ -604,6 +609,11 @@ export class McpService {
 				user,
 				allowedToolNames,
 			);
+		}
+
+		// Flush in authoring order so sections stay grouped in tools/list.
+		for (const tool of pendingTools) {
+			registerTool(tool);
 		}
 
 		return server;

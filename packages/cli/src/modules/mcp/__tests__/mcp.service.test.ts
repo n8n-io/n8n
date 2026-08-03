@@ -594,6 +594,49 @@ describe('McpService', () => {
 				});
 			});
 
+			it('returns tools grouped by section, not alphabetized', async () => {
+				const handler = await buildHandler();
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': 'tools/list',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'tools/list',
+							params: {
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+
+				expect(res.status).toBe(200);
+				const body = (await res.json()) as {
+					result: { tools: Array<{ name: string }>; ttlMs: number; cacheScope: string };
+				};
+
+				const toolNames = body.result.tools.map((tool) => tool.name);
+				expect(toolNames.length).toBeGreaterThan(1);
+				// Tools flush in authoring order, so sections stay grouped: the workflow
+				// tools come before the data-table tools. Alphabetical would invert this
+				// (search_data_tables < search_workflows), so this also guards the order.
+				expect(toolNames).toContain('search_workflows');
+				expect(toolNames).toContain('search_data_tables');
+				expect(toolNames.indexOf('search_workflows')).toBeLessThan(
+					toolNames.indexOf('search_data_tables'),
+				);
+			});
+
 			it('serves a 2025-era client through the stateless legacy fallback', async () => {
 				const handler = await buildHandler();
 
