@@ -8,18 +8,23 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import type { AgentJsonConfig, AgentResource } from '../types';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 
-const props = defineProps<{
-	sessionTitle: string;
-	initialized: boolean;
-	projectId: string;
-	agentId: string;
-	agent: AgentResource | null;
-	localConfig: AgentJsonConfig | null;
-	connectedTriggers: string[];
-	effectiveSessionId?: string;
-	initialPrompt?: string;
-	canSendToAssistant?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		sessionTitle: string;
+		hasSession: boolean;
+		initialized: boolean;
+		projectId: string;
+		agentId: string;
+		agent: AgentResource | null;
+		localConfig: AgentJsonConfig | null;
+		connectedTriggers: string[];
+		effectiveSessionId?: string;
+		initialPrompt?: string;
+		canSendToAssistant?: boolean;
+		closeShortcutDisabled?: boolean;
+	}>(),
+	{ closeShortcutDisabled: false },
+);
 
 const emit = defineEmits<{
 	'view-trace': [];
@@ -33,7 +38,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 function viewTrace() {
-	if (!props.effectiveSessionId) return;
+	if (!props.hasSession || !props.effectiveSessionId) return;
 	emit('view-trace');
 }
 
@@ -47,7 +52,10 @@ function close() {
 
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
-	Escape: close,
+	Escape: {
+		disabled: () => props.closeShortcutDisabled,
+		run: close,
+	},
 });
 </script>
 
@@ -72,7 +80,7 @@ useKeybindings({
 					variant="ghost"
 					size="small"
 					:label="i18n.baseText('agents.builder.preview.viewSession')"
-					:disabled="!props.effectiveSessionId"
+					:disabled="!props.hasSession || !props.effectiveSessionId"
 					data-testid="agent-preview-view-session-btn"
 					@click="viewTrace"
 				/>
@@ -95,7 +103,7 @@ useKeybindings({
 				<KeyboardShortcutTooltip
 					placement="bottom"
 					:label="i18n.baseText('generic.close')"
-					:shortcut="{ keys: ['Esc'] }"
+					:shortcut="props.closeShortcutDisabled ? undefined : { keys: ['Esc'] }"
 				>
 					<N8nIconButton
 						variant="ghost"

@@ -31,7 +31,8 @@ const inputDraft = ref('');
 </script>
 
 <template>
-	<main
+	<component
+		:is="layout === 'dock' ? 'div' : 'main'"
 		:class="[$style.previewPage, { [$style.dockLayout]: layout === 'dock' }]"
 		data-testid="agent-preview-chat-page"
 	>
@@ -53,7 +54,7 @@ const inputDraft = ref('');
 				@send-to-assistant="emit('send-to-assistant', $event)"
 			/>
 		</div>
-	</main>
+	</component>
 </template>
 
 <style lang="scss" module>

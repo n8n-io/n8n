@@ -1,8 +1,9 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, shallowMount } from '@vue/test-utils';
 
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
 const { useKeybindingsMock } = vi.hoisted(() => ({
 	useKeybindingsMock: vi.fn(),
@@ -60,10 +61,13 @@ const AgentPreviewChatPageStub = {
 	template: '<div data-testid="agent-preview-chat-page-stub" />',
 };
 
-function mountDock() {
+function mountDock(
+	overrides: Partial<{ hasSession: boolean; closeShortcutDisabled: boolean }> = {},
+) {
 	return mount(AgentPreviewDock, {
 		props: {
 			sessionTitle: 'Order help',
+			hasSession: true,
 			initialized: true,
 			projectId: 'project-1',
 			agentId: 'agent-1',
@@ -71,6 +75,7 @@ function mountDock() {
 			localConfig: null,
 			connectedTriggers: [],
 			effectiveSessionId: 'thread-1',
+			...overrides,
 		},
 		global: {
 			stubs: { AgentPreviewChatPage: AgentPreviewChatPageStub },
@@ -112,7 +117,7 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.get('[data-testid="agent-preview-close-btn"]').attributes('data-variant')).toBe(
 			'ghost',
 		);
-		expect(wrapper.get('[data-testid="agent-preview-close-btn"] [data-icon="x"]').exists()).toBe(
+		expect(wrapper.find('[data-testid="agent-preview-close-btn"] [data-icon="x"]').exists()).toBe(
 			true,
 		);
 	});
@@ -127,6 +132,15 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 		expect(wrapper.emitted('new-session')).toEqual([[]]);
 		expect(wrapper.emitted('close')).toEqual([[]]);
+	});
+
+	it('does not open a trace for an effective id that has not persisted yet', async () => {
+		const wrapper = mountDock({ hasSession: false });
+		const traceButton = wrapper.get('[data-testid="agent-preview-view-session-btn"]');
+
+		expect(traceButton.attributes('disabled')).toBeDefined();
+		await traceButton.trigger('click');
+		expect(wrapper.emitted('view-trace')).toBeUndefined();
 	});
 
 	it('forwards chat events and opts the chat page into dock layout', () => {
@@ -150,12 +164,60 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.find('[data-testid="agent-preview-session-picker"]').exists()).toBe(false);
 	});
 
-	it('registers the existing new-session and close shortcuts', () => {
-		mountDock();
+	it('registers the existing new-session shortcut and a guardable close shortcut', () => {
+		const wrapper = mountDock();
 
 		expect(useKeybindingsMock).toHaveBeenCalledExactlyOnceWith({
 			'ctrl+shift+;': expect.any(Function),
-			Escape: expect.any(Function),
+			Escape: {
+				disabled: expect.any(Function),
+				run: expect.any(Function),
+			},
 		});
+
+		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
+			disabled: () => boolean;
+		};
+		expect(escapeBinding.disabled()).toBe(false);
+		expect(
+			wrapper.findAllComponents({ name: 'KeyboardShortcutTooltip' }).at(-1)?.props('shortcut'),
+		).toEqual({ keys: ['Esc'] });
+	});
+
+	it('can yield the Escape shortcut to an open session trace', () => {
+		const wrapper = mountDock({ closeShortcutDisabled: true });
+
+		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
+			disabled: () => boolean;
+		};
+		expect(escapeBinding.disabled()).toBe(true);
+		expect(
+			wrapper.findAllComponents({ name: 'KeyboardShortcutTooltip' }).at(-1)?.props('shortcut'),
+		).toBeUndefined();
+	});
+});
+
+describe('AgentPreviewChatPage', () => {
+	function mountChatPage(layout?: 'page' | 'dock') {
+		return shallowMount(AgentPreviewChatPage, {
+			props: {
+				initialized: true,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agent: null,
+				localConfig: null,
+				connectedTriggers: [],
+				effectiveSessionId: 'thread-1',
+				layout,
+			},
+		});
+	}
+
+	it('keeps the main landmark for the standalone page layout', () => {
+		expect(mountChatPage().element.tagName).toBe('MAIN');
+	});
+
+	it('uses a neutral root inside the complementary dock landmark', () => {
+		expect(mountChatPage('dock').element.tagName).toBe('DIV');
 	});
 });
