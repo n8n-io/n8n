@@ -145,7 +145,7 @@ export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
 	'100_n8n_credits_credential_selection',
 );
 
-export const INLINE_AGENTS_EXPERIMENT = createExperiment('101_inline_agents');
+export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
