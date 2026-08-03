@@ -6,10 +6,80 @@
     "dist"
   ],
   "exports": {
-    "./*": {
-      "types": "./dist/*.d.mts",
-      "import": "./dist/*.mjs",
-      "require": "./dist/*.cjs"
+    "./injectionKeys": {
+      "types": "./dist/injectionKeys.d.mts",
+      "import": "./dist/injectionKeys.mjs",
+      "require": "./dist/injectionKeys.cjs"
+    },
+    "./registries/telemetryRegistry": {
+      "types": "./dist/registries/telemetryRegistry.d.mts",
+      "import": "./dist/registries/telemetryRegistry.mjs",
+      "require": "./dist/registries/telemetryRegistry.cjs"
+    },
+    "./structuralComputed": {
+      "types": "./dist/structuralComputed.d.mts",
+      "import": "./dist/structuralComputed.mjs",
+      "require": "./dist/structuralComputed.cjs"
+    },
+    "./types/notification": {
+      "types": "./dist/types/notification.d.mts",
+      "import": "./dist/types/notification.mjs",
+      "require": "./dist/types/notification.cjs"
+    },
+    "./useClipboard": {
+      "types": "./dist/useClipboard.d.mts",
+      "import": "./dist/useClipboard.mjs",
+      "require": "./dist/useClipboard.cjs"
+    },
+    "./useDebounce": {
+      "types": "./dist/useDebounce.d.mts",
+      "import": "./dist/useDebounce.mjs",
+      "require": "./dist/useDebounce.cjs"
+    },
+    "./useDeviceSupport": {
+      "types": "./dist/useDeviceSupport.d.mts",
+      "import": "./dist/useDeviceSupport.mjs",
+      "require": "./dist/useDeviceSupport.cjs"
+    },
+    "./useDocumentTitle": {
+      "types": "./dist/useDocumentTitle.d.mts",
+      "import": "./dist/useDocumentTitle.mjs",
+      "require": "./dist/useDocumentTitle.cjs"
+    },
+    "./useExternalHooks": {
+      "types": "./dist/useExternalHooks.d.mts",
+      "import": "./dist/useExternalHooks.mjs",
+      "require": "./dist/useExternalHooks.cjs"
+    },
+    "./useShortKeyPress": {
+      "types": "./dist/useShortKeyPress.d.mts",
+      "import": "./dist/useShortKeyPress.mjs",
+      "require": "./dist/useShortKeyPress.cjs"
+    },
+    "./useStorage": {
+      "types": "./dist/useStorage.d.mts",
+      "import": "./dist/useStorage.mjs",
+      "require": "./dist/useStorage.cjs"
+    },
+    "./useStyles": {
+      "types": "./dist/useStyles.d.mts",
+      "import": "./dist/useStyles.mjs",
+      "require": "./dist/useStyles.cjs"
+    },
+    "./useTelemetry": {
+      "types": "./dist/useTelemetry.d.mts",
+      "import": "./dist/useTelemetry.mjs",
+      "require": "./dist/useTelemetry.cjs"
+    },
+    "./useThrottleWithReactiveDelay": {
+      "types": "./dist/useThrottleWithReactiveDelay.d.mts",
+      "import": "./dist/useThrottleWithReactiveDelay.mjs",
+      "require": "./dist/useThrottleWithReactiveDelay.cjs"
+    },
+    "./useToast": {
+      "types": "./dist/useToast.d.mts",
+      "import": "./dist/useToast.mjs",
+      "require": "./dist/useToast.cjs"
     }
   },
   "scripts": {
