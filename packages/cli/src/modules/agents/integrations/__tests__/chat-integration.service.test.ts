@@ -525,11 +525,13 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		const first = service.getChatInstanceForTools('agent-1', slackIntegration);
 		const second = service.getChatInstanceForTools('agent-1', slackIntegration);
 		const [firstChat, secondChat] = await Promise.all([first, second]);
+		const reusedChat = await service.getChatInstanceForTools('agent-1', slackIntegration);
 
 		expect(logger.warn).not.toHaveBeenCalled();
 		expect(firstChat).toBe(chatInstance);
 		expect(secondChat).toBe(chatInstance);
-		expect(agentRepository.findOne).toHaveBeenCalledTimes(1);
+		expect(reusedChat).toBe(chatInstance);
+		expect(agentRepository.findOne).toHaveBeenCalledTimes(3);
 		expect(Chat).toHaveBeenCalledTimes(1);
 		expect(Chat).toHaveBeenCalledWith(expect.objectContaining({ state: memoryState }));
 		expect(createAdapter).toHaveBeenCalledWith(expect.objectContaining({ ingressEnabled: false }));
@@ -539,7 +541,7 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		expect(onBeforeConnect).not.toHaveBeenCalled();
 		expect(onAfterConnect).not.toHaveBeenCalled();
 		expect(service.getWebhookHandler('agent-1', 'slack')).toBeUndefined();
-		expect(service.getChatInstance('agent-1', slackIntegration)).toBe(chatInstance);
+		expect(service.getChatInstance('agent-1', slackIntegration)).toBeUndefined();
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
@@ -555,6 +557,55 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		).resolves.toBeUndefined();
 
 		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
+
+	it('disposes a stale outbound connection when the agent is published', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [slackIntegration], activeVersionId: 'version-1' }),
+		);
+		const { service } = buildServiceWith({ agentRepository });
+		const shutdown = vi.fn().mockResolvedValue(undefined);
+		const internal = service as unknown as {
+			outboundConnections: Map<string, unknown>;
+		};
+		internal.outboundConnections.set('agent-1:slack:cred-1', {
+			chat: { shutdown },
+		});
+
+		await expect(
+			service.getChatInstanceForTools('agent-1', slackIntegration),
+		).resolves.toBeUndefined();
+
+		expect(shutdown).toHaveBeenCalledTimes(1);
+		expect(internal.outboundConnections.size).toBe(0);
+	});
+
+	it('waits for stale outbound initialization before rejecting a published fallback', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [slackIntegration], activeVersionId: 'version-1' }),
+		);
+		const { service } = buildServiceWith({ agentRepository });
+		const shutdown = vi.fn().mockResolvedValue(undefined);
+		const outboundChat = { shutdown };
+		let resolveInitialization: (chat: unknown) => void = () => {};
+		const initialization = new Promise<unknown>((resolve) => {
+			resolveInitialization = resolve;
+		});
+		const internal = service as unknown as {
+			outboundConnections: Map<string, unknown>;
+			outboundConnectionInitializations: Map<string, Promise<unknown>>;
+		};
+		internal.outboundConnectionInitializations.set('agent-1:slack:cred-1', initialization);
+
+		const result = service.getChatInstanceForTools('agent-1', slackIntegration);
+		internal.outboundConnections.set('agent-1:slack:cred-1', { chat: outboundChat });
+		resolveInitialization(outboundChat);
+
+		await expect(result).resolves.toBeUndefined();
+		expect(shutdown).toHaveBeenCalledTimes(1);
+		expect(internal.outboundConnections.size).toBe(0);
 	});
 
 	it('disposes a matching outbound connection before replacing it with a live connection', async () => {

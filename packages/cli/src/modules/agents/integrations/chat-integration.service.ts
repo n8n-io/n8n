@@ -467,20 +467,18 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Return the first Chat instance for an agent, or undefined if not connected.
+	 * Return the first live Chat instance for an agent, or undefined if not connected.
 	 */
 	getChatInstance(
 		agentId: string,
 		integration?: { type: string; credentialId: string },
 	): ChatInstance | undefined {
 		if (integration) {
-			const key = this.connectionKey(agentId, integration.type, integration.credentialId);
-			return this.connections.get(key)?.chat ?? this.outboundConnections.get(key)?.chat;
+			return this.connections.get(
+				this.connectionKey(agentId, integration.type, integration.credentialId),
+			)?.chat;
 		}
 		for (const [k, conn] of this.connections) {
-			if (k.startsWith(`${agentId}:`)) return conn.chat;
-		}
-		for (const [k, conn] of this.outboundConnections) {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}
 		return undefined;
@@ -494,27 +492,48 @@ export class ChatIntegrationService {
 		agentId: string,
 		integration: { type: string; credentialId: string },
 	): Promise<ChatInstance | undefined> {
-		const existing = this.getChatInstance(agentId, integration);
-		if (existing) return existing;
+		const live = this.getChatInstance(agentId, integration);
+		if (live) return live;
 
 		const key = this.connectionKey(agentId, integration.type, integration.credentialId);
+		const handleInitializationError = (error: unknown) => {
+			this.logger.warn(
+				'[ChatIntegrationService] Could not initialize outbound integration for Preview',
+				{
+					agentId,
+					type: integration.type,
+					credentialId: integration.credentialId,
+					error,
+				},
+			);
+			return undefined;
+		};
+		const agent = await this.agentRepository
+			.findOne({ where: { id: agentId } })
+			.catch(handleInitializationError);
+		const persistedIntegration = agent?.integrations?.find(
+			(candidate) =>
+				candidate.type === integration.type && candidate.credentialId === integration.credentialId,
+		);
+		if (!agent || agent.activeVersionId !== null || !persistedIntegration) {
+			await this.disconnectOutboundOne(key);
+			return undefined;
+		}
+
+		const currentLive = this.getChatInstance(agentId, integration);
+		if (currentLive) return currentLive;
+
+		const outbound = this.outboundConnections.get(key)?.chat;
+		if (outbound) return outbound;
+
 		const pending = this.outboundConnectionInitializations.get(key);
 		if (pending) return await pending;
 
-		const initialization = this.initializeOutboundConnectionForTools(agentId, integration).catch(
-			(error: unknown) => {
-				this.logger.warn(
-					'[ChatIntegrationService] Could not initialize outbound integration for Preview',
-					{
-						agentId,
-						type: integration.type,
-						credentialId: integration.credentialId,
-						error,
-					},
-				);
-				return undefined;
-			},
-		);
+		const initialization = this.connect(agentId, persistedIntegration, agent.projectId, {
+			ingressEnabled: false,
+		})
+			.then(() => this.outboundConnections.get(key)?.chat)
+			.catch(handleInitializationError);
 		this.outboundConnectionInitializations.set(key, initialization);
 
 		try {
@@ -661,31 +680,12 @@ export class ChatIntegrationService {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
-	private async initializeOutboundConnectionForTools(
-		agentId: string,
-		integration: { type: string; credentialId: string },
-	): Promise<ChatInstance | undefined> {
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent || agent.activeVersionId !== null) return undefined;
-
-		const persistedIntegration = agent.integrations?.find(
-			(candidate) =>
-				candidate.type === integration.type && candidate.credentialId === integration.credentialId,
-		);
-		if (!persistedIntegration) return undefined;
-
-		const existing = this.getChatInstance(agentId, integration);
-		if (existing) return existing;
-
-		await this.connect(agentId, persistedIntegration, agent.projectId, { ingressEnabled: false });
-		return this.outboundConnections.get(
-			this.connectionKey(agentId, integration.type, integration.credentialId),
-		)?.chat;
-	}
-
 	private async disconnectOutboundOne(key: string): Promise<void> {
 		await this.outboundConnectionInitializations.get(key);
+		await this.disposeOutboundConnection(key);
+	}
 
+	private async disposeOutboundConnection(key: string): Promise<void> {
 		const conn = this.outboundConnections.get(key);
 		if (!conn) return;
 
