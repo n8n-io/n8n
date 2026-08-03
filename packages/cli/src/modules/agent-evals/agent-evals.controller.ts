@@ -1,9 +1,11 @@
 import {
+	CreateAgentEvalRatingDto,
 	CreateAgentEvalRunDto,
 	GenerateDraftCasesOptionsDto,
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
+	type AgentEvalRatingRecord,
 	type AgentEvalRunDetail,
 	type AgentEvalRunRecord,
 	type AgentEvalRunSummary,
@@ -14,26 +16,33 @@ import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { AgentEvalRatingService } from './agent-eval-rating.service';
 import { AgentEvalService } from './agent-eval.service';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 
 type AgentParam = { projectId: string; agentId: string };
 type DatasetParam = AgentParam & { datasetId: string };
 type RunParam = AgentParam & { runId: string };
+type ResultParam = AgentParam & { resultId: string };
 
 /**
- * REST surface for agent evals: generation, datasets, runs and per-case results.
- * Nested under the agent so `@ProjectScope` rejects before the handler runs.
+ * REST surface for agent evals: generation, datasets, runs, per-case results and
+ * the human ratings of them. Nested under the agent so `@ProjectScope` rejects
+ * before the handler runs.
+ *
+ * **This is the single enforcement point** for both the project scope and the
+ * `101_agent_evals` rollout — the services behind it check neither, so a route
+ * added here without a scope decorator and a `flagGate` call is an open one.
  *
  * `agent:read` for reads, `agent:execute` for running a run, `agent:update` for
  * eval-config writes — including generation, which spends the builder's model
  * credits and so must stay closed to viewers (they hold `agent:execute`).
- * Ratings ship with the service that persists them.
  */
 @RestController('/projects/:projectId/agents/v2')
 export class AgentEvalsController {
 	constructor(
 		private readonly service: AgentEvalService,
+		private readonly ratingService: AgentEvalRatingService,
 		private readonly flagGate: AgentEvalsFlagGate,
 	) {}
 
@@ -152,5 +161,44 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
 		return await this.service.cancelRun(agentId, projectId, runId);
+	}
+
+	// ---- ratings ----
+
+	/**
+	 * `agent:update`, not `agent:execute`: the chat-user role holds execute and
+	 * nothing else, and a rating — especially a correction, which seeds later judge
+	 * calibration — is eval config a chat-only member has no business writing.
+	 */
+	@Post('/:agentId/evals/results/:resultId/ratings')
+	@ProjectScope('agent:update')
+	async rateResult(
+		req: AuthenticatedRequest<ResultParam>,
+		_res: unknown,
+		@Body payload: CreateAgentEvalRatingDto,
+	): Promise<AgentEvalRatingRecord> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.ratingService.rateResult(req.user, agentId, projectId, resultId, payload);
+	}
+
+	/** Ratings are append-only, so this is the case's full history, newest first. */
+	@Get('/:agentId/evals/results/:resultId/ratings')
+	@ProjectScope('agent:read')
+	async listRatingsForResult(
+		req: AuthenticatedRequest<ResultParam>,
+	): Promise<AgentEvalRatingRecord[]> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.ratingService.listRatingsForResult(agentId, projectId, resultId);
+	}
+
+	/** Newest rating per rated case — what reopening a run renders. */
+	@Get('/:agentId/evals/runs/:runId/ratings')
+	@ProjectScope('agent:read')
+	async listRatingsForRun(req: AuthenticatedRequest<RunParam>): Promise<AgentEvalRatingRecord[]> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, runId } = req.params;
+		return await this.ratingService.listLatestRatingsForRun(agentId, projectId, runId);
 	}
 }

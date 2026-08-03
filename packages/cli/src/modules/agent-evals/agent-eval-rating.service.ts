@@ -1,21 +1,19 @@
-import { AGENT_EVALS_FLAG, type CreateAgentEvalRatingPayload } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
-import type { AgentEvalRating, AgentEvalResult, User } from '@n8n/db';
+import type { AgentEvalRatingRecord, CreateAgentEvalRatingPayload } from '@n8n/api-types';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { AgentEvalResult, User } from '@n8n/db';
 import {
-	AgentEvalDatasetRepository,
 	AgentEvalRatingRepository,
 	AgentEvalResultRepository,
 	AgentEvalRunRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { PostHogClient } from '@/posthog';
+
+import { toRatingRecord } from './agent-eval-record-mappers';
+import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
 // The body arrives straight from a request, so bound it before it hits the column.
 const MAX_COMMENT_CHARS = 2_000;
@@ -25,33 +23,38 @@ const MAX_CORRECTION_CHARS = 32_000;
 /**
  * A human's 👍/👎 on an eval result, with an optional comment and correction.
  * Corrections stay on the rating row (never the dataset); ratings are append-only.
+ *
+ * **Every method is agent-scoped, and none of them authorizes.** As in the
+ * sibling `AgentEvalService`, the project scope and the rollout flag are the
+ * controller's to enforce — reach this service any other way and it checks
+ * neither. What it does own is ownership: `@ProjectScope` proves the caller may
+ * act on `:projectId`, not that the addressed agent lives there nor that a
+ * result/run id belongs to it, so each entry point resolves `(agentId,
+ * projectId)` and then reads through agent-filtered queries. A result on a
+ * sibling agent 404s like a missing one.
  */
 @Service()
 export class AgentEvalRatingService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly moduleRegistry: ModuleRegistry,
 		private readonly ratingRepository: AgentEvalRatingRepository,
 		private readonly resultRepository: AgentEvalResultRepository,
 		private readonly runRepository: AgentEvalRunRepository,
-		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly postHogClient: PostHogClient,
 	) {}
 
-	/** Authorization is enforced here too, so no caller can skip it. */
 	async rateResult(
 		user: User,
+		agentId: string,
 		projectId: string,
 		resultId: string,
 		payload: CreateAgentEvalRatingPayload,
-	): Promise<AgentEvalRating> {
-		await this.assertFeatureEnabled(user);
-		// Execute, not update: a project viewer holds execute and can run the eval, and
-		// the reviewer of a result is often not its builder.
-		await this.assertProjectScopes(user, projectId, ['agent:execute']);
+	): Promise<AgentEvalRatingRecord> {
+		await this.assertAgentInProject(agentId, projectId);
 		assertPayloadWithinBounds(payload);
 
-		const result = await this.resolveResultInProject(projectId, resultId);
+		const result = await this.resolveResult(agentId, resultId);
 		// A pending case has no output, so the vote would judge nothing. Errored and
 		// cancelled stay rateable — "it failed" is a judgment.
 		if (result.status === 'new' || result.status === 'running') {
@@ -72,85 +75,77 @@ export class AgentEvalRatingService {
 			hasCorrection: rating.correction !== null,
 		});
 
-		return rating;
+		return toRatingRecord(rating);
 	}
 
 	/** The per-case history, newest first. */
 	async listRatingsForResult(
-		user: User,
+		agentId: string,
 		projectId: string,
 		resultId: string,
-	): Promise<AgentEvalRating[]> {
-		await this.assertFeatureEnabled(user);
-		await this.assertProjectScopes(user, projectId, ['agent:read']);
+	): Promise<AgentEvalRatingRecord[]> {
+		await this.assertAgentInProject(agentId, projectId);
 
-		const result = await this.resolveResultInProject(projectId, resultId);
+		const result = await this.resolveResult(agentId, resultId);
+		const ratings = await this.ratingRepository.findByResultId(result.id);
 
-		return await this.ratingRepository.findByResultId(result.id);
+		return ratings.map(toRatingRecord);
 	}
 
 	/** What a reopened run renders, and the corrections calibration reads. */
 	async listLatestRatingsForRun(
-		user: User,
+		agentId: string,
 		projectId: string,
 		runId: string,
-	): Promise<AgentEvalRating[]> {
-		await this.assertFeatureEnabled(user);
-		await this.assertProjectScopes(user, projectId, ['agent:read']);
+	): Promise<AgentEvalRatingRecord[]> {
+		await this.assertAgentInProject(agentId, projectId);
 
-		await this.resolveRunInProject(projectId, runId);
+		await this.resolveRun(agentId, runId);
+		const ratings = await this.ratingRepository.findLatestByRunId(runId);
 
-		return await this.ratingRepository.findLatestByRunId(runId);
+		return ratings.map(toRatingRecord);
 	}
 
 	// ---- internals ----
 
 	/**
-	 * Not-found rather than forbidden, so a flag-off instance leaks no flag state
-	 * (matching the case-generation gate).
+	 * Stops a caller with access to one project from addressing an agent in another,
+	 * which `@ProjectScope` alone cannot. Existence only: `findByIdAndProjectId`
+	 * would load `activeVersion` on every rating call.
+	 *
+	 * Every public method starts here, which makes it the one place to assert the
+	 * modules this one depends on — before the agent lookup that would otherwise
+	 * fail as a TypeORM missing-metadata error.
 	 */
-	private async assertFeatureEnabled(user: User): Promise<void> {
-		const flags = await this.postHogClient.getFeatureFlags(user);
-		if (flags?.[AGENT_EVALS_FLAG] !== true) {
-			throw new NotFoundError('Not found');
-		}
+	private async assertAgentInProject(agentId: string, projectId: string): Promise<void> {
+		assertRequiredModulesActive(this.moduleRegistry);
+		const inProject = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+		if (!inProject) throw new NotFoundError(`Agent ${agentId} not found.`);
 	}
 
-	/** Runs before any lookup, so unauthorized callers can't probe for ids. */
-	private async assertProjectScopes(user: User, projectId: string, scopes: Scope[]): Promise<void> {
-		if (!(await userHasScopes(user, scopes, false, { projectId }))) {
-			throw new ForbiddenError('You do not have permission to review agent evals in this project.');
-		}
-	}
+	/**
+	 * A result is owned through its run, so this resolves the run agent-filtered
+	 * rather than trusting a bare result id. A result on a sibling agent reads as
+	 * missing, not forbidden, so its existence doesn't leak.
+	 */
+	private async resolveResult(agentId: string, resultId: string): Promise<AgentEvalResult> {
+		const notFound = () => new NotFoundError(`Agent eval result ${resultId} not found.`);
 
-	private async resolveResultInProject(
-		projectId: string,
-		resultId: string,
-	): Promise<AgentEvalResult> {
 		const result = await this.resultRepository.findById(resultId);
-		if (!result) throw new NotFoundError(`Agent eval result ${resultId} not found.`);
+		if (!result) throw notFound();
 
-		await this.resolveRunInProject(projectId, result.runId);
+		// Reported against the result, not the run: the run id is an internal detail
+		// the caller never named, so surfacing it would leak more than it explains.
+		const run = await this.runRepository.findByIdAndAgentId(result.runId, agentId);
+		if (!run) throw notFound();
 
 		return result;
 	}
 
-	/**
-	 * Walks run → dataset → agent to confirm project ownership. A run elsewhere reads
-	 * as missing, not forbidden, so its existence doesn't leak.
-	 */
-	private async resolveRunInProject(projectId: string, runId: string): Promise<void> {
-		const notFound = () => new NotFoundError(`Agent eval run ${runId} not found.`);
-
-		const run = await this.runRepository.findById(runId);
-		if (!run) throw notFound();
-
-		const dataset = await this.datasetRepository.findById(run.datasetId);
-		if (!dataset) throw notFound();
-
-		// Existence only: `findByIdAndProjectId` would load `activeVersion` per rating.
-		const inProject = await this.agentRepository.existsByIdAndProjectId(dataset.agentId, projectId);
-		if (!inProject) throw notFound();
+	/** The run's own agent scoping — `findByIdAndAgentId` walks run → dataset → agent. */
+	private async resolveRun(agentId: string, runId: string): Promise<void> {
+		const run = await this.runRepository.findByIdAndAgentId(runId, agentId);
+		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);
 	}
 }
 
