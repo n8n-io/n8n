@@ -7056,6 +7056,7 @@
 	"instanceAi.tools.list-nodes": "Listing available nodes",
 	"instanceAi.tools.get-workflow-as-code": "Reading workflow code",
 	"instanceAi.tools.build-workflow": "Generating workflow",
+	"instanceAi.tools.build-workflow.imperative": "edit workflow",
 	"instanceAi.tools.read_config": "Reading agent config",
 	"instanceAi.tools.write_config": "Writing agent config",
 	"instanceAi.tools.patch_config": "Updating agent config",

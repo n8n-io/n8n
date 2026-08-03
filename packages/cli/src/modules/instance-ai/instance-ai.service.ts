@@ -131,7 +131,10 @@ import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
-import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
+import {
+	getAgentErrorSeverity,
+	InstanceAiErrorReporterService,
+} from './instance-ai-error-reporter.service';
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -916,16 +919,18 @@ export class InstanceAiService {
 	 * Surface the agent's background/best-effort failures to Sentry. The SDK emits
 	 * `AgentEvent.Error` for these but nothing consumed it, so they were lost: memory
 	 * observer/reflector/episodic indexing and the eager input / turn-on-suspend
-	 * persists all fail silently while the run itself succeeds. We report only the
-	 * `source`-tagged events — the main agentic-loop errors (no source) already reach
-	 * Sentry via the errored run/stream result, so reporting them here would only
-	 * re-tag the same (deduped) error.
+	 * persists all fail silently. Optional memory processing is warning-level;
+	 * persistence stays error-level because it can lose turn data. We report only
+	 * the `source`-tagged events — the main agentic-loop errors (no source) already
+	 * reach Sentry via the errored run/stream result.
 	 */
 	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error || !event.source) return;
+			const severity = getAgentErrorSeverity(event.source);
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
+				...(severity ? { severity } : {}),
 				threadId,
 				runId,
 			});
