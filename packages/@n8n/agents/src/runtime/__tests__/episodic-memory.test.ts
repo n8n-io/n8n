@@ -1,5 +1,6 @@
 import { embed, embedMany } from 'ai';
 
+import type { BuiltTelemetry } from '../../types';
 import type {
 	EpisodicMemoryEntry,
 	EpisodicMemoryExtractFn,
@@ -237,6 +238,76 @@ describe('createRecallMemoryTool', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(7);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
+	it('opens a query_memory span with resolved entry ids when ctx.parentTelemetry is provided', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const saved = await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'User chose Postgres for the memory store.',
+			embedding: [1, 0],
+		});
+		const span = {
+			end: vi.fn(),
+			recordException: vi.fn(),
+			setStatus: vi.fn(),
+			setAttributes: vi.fn(),
+		};
+		const tracer = {
+			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
+			}),
+		};
+		const parentTelemetry: BuiltTelemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			tracer,
+		};
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+			agentName: 'my-agent',
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await tool.handler({ query: 'what did we decide?' }, { parentTelemetry });
+
+		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
+		const [name, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('query_memory');
+		expect((options as { attributes: Record<string, unknown> }).attributes).toMatchObject({
+			'gen_ai.operation.name': 'query_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.types': ['agent'],
+			'gen_ai.memory.owners': ['user-1'],
+			'gen_ai.memory.store.types': ['in_memory'],
+		});
+		expect(span.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'gen_ai.memory.ids': [saved.id],
+				'gen_ai.memory.operations': ['query_memory'],
+			}),
+		);
+	});
+
+	it('does not open a span when ctx.parentTelemetry is absent', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
+		const memory = new InMemoryMemory();
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await expect(tool.handler({ query: 'what did we decide?' }, {})).resolves.toEqual({
+			entries: [],
+		});
 	});
 });
 

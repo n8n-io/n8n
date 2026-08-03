@@ -25,6 +25,7 @@ import type {
 import type { AgentExecutionCounter, AgentPersistenceOptions } from '../../types/sdk/agent';
 import type { ObservationLogEntry, ObservationLogScope } from '../../types/sdk/observation-log';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
+import { inferMemoryStoreAttributes, withMemorySpan } from '../telemetry/runtime-telemetry';
 
 export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
 
@@ -179,6 +180,7 @@ export function createRecallMemoryTool(opts: {
 	config: EpisodicMemoryConfig;
 	scope: EpisodicMemoryScope;
 	executionCounter?: AgentExecutionCounter;
+	agentName?: string;
 }) {
 	const normalized = withEpisodicMemoryDefaults(opts.config);
 
@@ -197,11 +199,29 @@ export function createRecallMemoryTool(opts: {
 				abortSignal: ctx.abortSignal,
 			});
 			incrementTokenCountFromUsage(opts.executionCounter, usage);
-			const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
-				topK: normalized.topK,
-				queryEmbedding,
-			});
-			return { entries: entries.map(toRecallToolEntry) };
+			return await withMemorySpan(
+				'query_memory',
+				opts.agentName ?? 'agent',
+				ctx.parentTelemetry,
+				{
+					types: ['agent'],
+					owners: [opts.scope.resourceId],
+					...inferMemoryStoreAttributes(opts.memory),
+				},
+				async () => {
+					const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
+						topK: normalized.topK,
+						queryEmbedding,
+					});
+					return {
+						result: { entries: entries.map(toRecallToolEntry) },
+						attributes: {
+							ids: entries.map((entry) => entry.id),
+							operations: entries.map(() => 'query_memory' as const),
+						},
+					};
+				},
+			);
 		})
 		.toModelOutput((output) => ({
 			entries: output.entries.map((entry) => ({
