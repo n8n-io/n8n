@@ -822,7 +822,8 @@ async function resolveTargetForCall(
 			// cancel, and never runs when the config panel created the row), so also
 			// require the row to still be absent before adopting the reservation.
 			const reserved =
-				boundTarget?.pending === true && !(await delegate.agentExists(boundTarget.agentId))
+				boundTarget?.pending === true &&
+				(await delegate.resolveAgentName(boundTarget.agentId)) === undefined
 					? boundTarget
 					: undefined;
 			const created = reserved ?? (await delegate.createAgent(input.name));

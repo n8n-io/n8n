@@ -696,16 +696,14 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
-	// First save of a draft: the create carries the config, so there is no
-	// separate update to make afterwards.
-	if (isPendingAgent.value) {
-		const outcome = await ensurePersisted();
-		// The create carried this snapshot; nothing left to write.
-		if (outcome === 'created') return undefined;
-		// The row already existed with content newer than this draft snapshot —
-		// writing it would clobber what the builder just produced.
-		if (outcome === 'conflict') return 'skipped';
-	}
+	// No-op unless this is a draft's first save.
+	const outcome = await ensurePersisted();
+	// The create carried this snapshot; nothing left to write.
+	if (outcome === 'created') return undefined;
+	// The row already existed with content newer than this draft snapshot —
+	// writing it would clobber what the builder just produced.
+	if (outcome === 'conflict') return 'skipped';
+
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).

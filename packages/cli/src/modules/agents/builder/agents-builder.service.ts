@@ -26,7 +26,10 @@ import { AgentsService } from '../agents.service';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import {
+	AgentsBuilderToolsService,
+	type PendingBuilderAgent,
+} from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
 import {
 	BUILDER_PLANNER_TODOS_DESCRIPTION,
@@ -81,7 +84,7 @@ export interface InstanceAiBuilderSessionOptions {
 	 * the orchestrator created itself; an adopted `agentId` must keep 404-ing, or
 	 * a hallucinated id would silently conjure an agent.
 	 */
-	pendingAgent?: { name: string };
+	pendingAgent?: PendingBuilderAgent;
 }
 
 @Service()

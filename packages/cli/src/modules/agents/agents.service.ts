@@ -65,10 +65,6 @@ export class AgentsService {
 			user,
 		}: { availableInMCP?: boolean; id?: string; user?: User } = {},
 	): Promise<Agent> {
-		if (id && (await this.agentRepository.existsBy({ id }))) {
-			throw new ConflictError(`Agent with id ${id} exists already.`);
-		}
-
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
@@ -81,9 +77,11 @@ export class AgentsService {
 		try {
 			await this.agentRepository.insert(agent as QueryDeepPartialEntity<Agent>);
 		} catch (error) {
-			// The pre-check above and this insert are not atomic, and two writers
-			// sharing one minted id is the normal case here — not a rare race. Both
-			// callers branch on 409, so a lost race must not surface as a 500.
+			// Two writers sharing one minted id is the normal case here, not a rare
+			// race: the config panel and the builder both hold it. `insert` rather
+			// than `save` so the loser hits the unique constraint instead of
+			// overwriting the winner, and both callers branch on 409, so it must not
+			// surface as a 500.
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError(`Agent with id ${agent.id} exists already.`);
 			}

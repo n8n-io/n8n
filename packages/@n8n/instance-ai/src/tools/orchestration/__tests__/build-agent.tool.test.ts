@@ -638,7 +638,8 @@ describe('build-agent tool', () => {
 		it('names the reserved draft instead of creating a second agent behind the open panel', async () => {
 			const { context, delegate } = makeContext();
 			context.domainContext!.agentBuilderTarget = reservedTarget();
-			vi.mocked(delegate.agentExists).mockResolvedValue(false);
+			// No name resolves for the reserved id: its row does not exist yet.
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue(undefined);
 			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Built it.'));
 
 			await runTool(context, { message: 'Build an agent that does XY', name: 'XY Bot' });
@@ -658,7 +659,8 @@ describe('build-agent tool', () => {
 		it('does not adopt a reservation whose agent already exists', async () => {
 			const { context, delegate } = makeContext();
 			context.domainContext!.agentBuilderTarget = reservedTarget();
-			vi.mocked(delegate.agentExists).mockResolvedValue(true);
+			// A name resolves for the reserved id, so its row already exists.
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Reserved Agent');
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-2',
 				projectId: 'proj-1',

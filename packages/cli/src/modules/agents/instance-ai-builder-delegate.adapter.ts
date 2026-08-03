@@ -183,11 +183,6 @@ export class InstanceAiBuilderDelegateAdapterService {
 				await assertProjectScope('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
 			},
-
-			agentExists: async (agentId) => {
-				await assertProjectScope('agent:read');
-				return (await this.agentsService.findById(agentId, projectId)) !== null;
-			},
 		};
 	}
 

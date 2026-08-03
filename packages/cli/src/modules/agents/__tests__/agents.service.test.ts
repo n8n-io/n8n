@@ -139,7 +139,6 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent({ id: 'minted-id' });
 
-		agentRepository.existsBy.mockResolvedValue(false);
 		agentRepository.create.mockReturnValue(saved);
 
 		await service.create(projectId, 'Support Agent', { id: 'minted-id' });
@@ -152,18 +151,7 @@ describe('AgentsService', () => {
 
 	it('rejects a minted id that is already taken instead of overwriting the agent', async () => {
 		const { service, agentRepository } = makeService();
-		agentRepository.existsBy.mockResolvedValue(true);
-
-		await expect(
-			service.create(projectId, 'Support Agent', { id: 'taken' }),
-		).rejects.toBeInstanceOf(ConflictError);
-		expect(agentRepository.insert).not.toHaveBeenCalled();
-	});
-
-	it('maps a lost insert race on a minted id to ConflictError instead of a 500', async () => {
-		const { service, agentRepository } = makeService();
 		const saved = makeAgent({ id: 'minted-id' });
-		agentRepository.existsBy.mockResolvedValue(false);
 		agentRepository.create.mockReturnValue(saved);
 		const driverError = Object.assign(new Error('duplicate'), { code: '23505' });
 		agentRepository.insert.mockRejectedValue(new QueryFailedError('insert', [], driverError));
