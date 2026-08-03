@@ -41,7 +41,7 @@ export const nodeSchema = z
 export const sanitizeNodeCredentials = ({ credentials, ...node }: INode) => {
 	const referenceable: Array<[string, { id: string; name: string }]> = [];
 	for (const [type, cred] of Object.entries(credentials ?? {})) {
-		if (!cred || cred.id == null) continue;
+		if (!cred?.id) continue;
 		referenceable.push([type, { id: cred.id, name: cred.name }]);
 	}
 	if (referenceable.length === 0) return node;
