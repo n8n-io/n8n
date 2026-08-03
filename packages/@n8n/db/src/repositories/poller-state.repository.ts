@@ -2,8 +2,8 @@ import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
 import { PollerState } from '../entities';
-import type { PollerCursor } from '../entities/poller-state';
 import { BaseRepository } from './base-repository';
+import type { PollerCursor } from '../entities/poller-state';
 import type { OperationContext } from '../services/transaction';
 
 export type { PollerCursor } from '../entities/poller-state';
