@@ -102,21 +102,14 @@ describe('agent-eval scoped repository reads (integration)', () => {
 			await expect(runRepository.findByIdAndAgentId(run.id, foreign.id)).resolves.toBeNull();
 		});
 
-		// Paging a relation-filtered query is where TypeORM stops being obvious: it
-		// pages a join with a distinct sub-query, so only a real database says
-		// whether the window and the count actually came out right.
-		//
-		// Every run here is forced to the same `createdAt`, which is the case the
-		// `id` tiebreak exists for: with the tiebreak dropped, equal-timestamp rows
-		// come back in insertion order, and ids are random nanoids, so the walk
-		// would not be sorted by id and the assertion below fails.
+		// TypeORM pages a relation-filtered query with a distinct sub-query, so only
+		// a real database proves it. Runs share one `createdAt` deliberately: drop
+		// the `id` tiebreak and insertion order breaks the sorted-walk assertion.
 		it('walks a dataset’s runs page by page without repeating or dropping one', async () => {
 			const { own, dataset } = await seedTwoAgents();
-			// One run already exists from the seed; five more make two pages of four
-			// leave a partial second page.
+			// One run exists from the seed; five more leave a partial second page.
 			for (let i = 0; i < 5; i++) await runRepository.createRun({ datasetId: dataset.id });
-			// `@CreateDateColumn` only auto-fills on insert, so an explicit update is
-			// what pins them all to one timestamp.
+			// `@CreateDateColumn` only auto-fills on insert, so pin them explicitly.
 			const sharedCreatedAt = new Date('2026-01-01T00:00:00.000Z');
 			await runRepository.update({ datasetId: dataset.id }, { createdAt: sharedCreatedAt });
 
@@ -131,7 +124,7 @@ describe('agent-eval scoped repository reads (integration)', () => {
 				{ take: 4, skip: 4 },
 			);
 
-			// The count is the whole set, not the page it came back with.
+			// The count is the whole set, not the page.
 			expect(total).toBe(6);
 			expect(firstPage).toHaveLength(4);
 			expect(secondPage).toHaveLength(2);
@@ -160,8 +153,8 @@ describe('agent-eval scoped repository reads (integration)', () => {
 				skip: 2,
 			});
 
-			// `seedTwoAgents` already put a case under a different run, so a count of
-			// 5 rather than 6 is what shows the count is scoped to this run.
+			// `seedTwoAgents` seeded a case under another run, so 5 rather than 6
+			// is what shows the count is scoped to this one.
 			expect(total).toBe(5);
 			expect(page.map((r) => r.sourceRowId)).toEqual(['row-2', 'row-3']);
 		});
@@ -173,8 +166,8 @@ describe('agent-eval scoped repository reads (integration)', () => {
 				runRepository.findAndCountByDatasetIdAndAgentId(dataset.id, own.id),
 			).resolves.toMatchObject([[{ id: run.id }], 1]);
 			// Right dataset id, wrong agent: the pairing has to be checked, or a foreign
-			// caller reads another agent's run history. The count must be scoped too —
-			// a bare total would leak how many runs the other agent has.
+			// caller reads another agent's run history — and a bare count would leak
+			// how many runs that agent has.
 			await expect(
 				runRepository.findAndCountByDatasetIdAndAgentId(dataset.id, foreign.id),
 			).resolves.toEqual([[], 0]);

@@ -154,8 +154,7 @@ describe('PaginationDto', () => {
 			expect(createTakeValidator(MAX_ITEMS_PER_PAGE, false, 50).parse(undefined)).toBe(50);
 		});
 
-		// The default is a fallback, not a floor or a ceiling — an explicit take
-		// still wins, and is still clamped to maxItems.
+		// The default is a fallback, not a floor or ceiling.
 		test('should let an explicit take override a custom default', () => {
 			const validator = createTakeValidator(MAX_ITEMS_PER_PAGE, false, 50);
 

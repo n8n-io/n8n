@@ -196,9 +196,8 @@ describe('AgentEvalRunRepository', () => {
 			});
 		});
 
-		// A `createdAt`-only sort is not a total order, and two runs of one dataset
-		// can share a timestamp — without the tiebreak a run could show up on two
-		// pages, or on none.
+		// `createdAt` alone is not a total order, so without the tiebreak a run
+		// sharing a timestamp could show up on two pages, or on none.
 		it('breaks createdAt ties deterministically so paging cannot skip a run', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
@@ -209,8 +208,7 @@ describe('AgentEvalRunRepository', () => {
 			});
 		});
 
-		// The point of the method: the window reaches the query, so the database
-		// returns one page rather than every run the dataset has ever had.
+		// The point of the method: one page from the database, not every run.
 		it('pushes the page window into the query', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 

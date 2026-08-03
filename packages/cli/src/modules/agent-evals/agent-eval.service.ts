@@ -32,14 +32,8 @@ import { assertRequiredModulesActive } from './agent-evals-required-modules';
 const CANCELLABLE_STATUSES = new Set(['new', 'running']);
 
 /**
- * The window a paged read is limited to. Required rather than optional: the
- * routes always bind a pagination DTO, which defaults it, so making it mandatory
- * costs a caller nothing and stops a future one from forgetting to pass a window.
- *
- * A `take` of 0 is the platform-wide "no limit" idiom, not a request for zero
- * rows — TypeORM emits no `LIMIT` for a falsy take, which n8n leans on
- * deliberately (see the folder repository's "zero take returns all results").
- * So this bounds the default path, not every possible request.
+ * Required, not optional, so a caller can't forget to pass a window. Note a
+ * `take` of 0 is n8n's "no limit" idiom, so this bounds the default path only.
  */
 type PageParams = { take: number; skip: number };
 

@@ -39,13 +39,10 @@ type RunParam = AgentParam & { runId: string };
  *
  * `agent:read` for reads, `agent:execute` for starting a run, `agent:update` for
  * eval-config writes — including generation, which spends the builder's model
- * credits and so must stay closed to viewers (they hold `agent:execute`), and
- * cancellation, which acts on a run someone else started.
- * Ratings ship with the service that persists them.
+ * credits, and cancellation, which acts on a run someone else started. Both must
+ * stay closed to viewers, who hold `agent:execute`.
  *
- * The paged reads — the run list, and a run's cases within its detail — take a
- * `take`/`skip` window and answer with a `{ count, data }` page, where the count
- * is the unpaginated total so a client can size its pager.
+ * Paged reads answer with `{ count, data }`, where `count` is the total.
  */
 @RestController('/projects/:projectId/agents/v2')
 export class AgentEvalsController {
@@ -173,9 +170,8 @@ export class AgentEvalsController {
 		return await this.service.getRunSummary(agentId, projectId, runId);
 	}
 
-	// Cancelling stops work someone else started, so it is a write on the run
-	// rather than an execution: `agent:update`, not the `agent:execute` that
-	// starting one takes. Chat-only users hold `agent:execute` and nothing else.
+	// Cancelling stops work someone else started, so it's a write, not an
+	// execution — and `agent:execute` is all a chat-only user holds.
 	@Post('/:agentId/evals/runs/:runId/cancel')
 	@ProjectScope('agent:update')
 	async cancelRun(req: AuthenticatedRequest<RunParam>): Promise<AgentEvalRunRecord> {

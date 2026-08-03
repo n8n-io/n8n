@@ -21,9 +21,8 @@ vi.mock('../agent-evals-flag-gate', () => ({ AgentEvalsFlagGate: class AgentEval
 
 const PROJECT_ID = 'proj-1';
 const AGENT_ID = 'agent-1';
-// What each route binds when the client sends no window. Both DTOs parse query
-// strings, so go through them rather than hand-rolling the defaults — and the
-// two differ: run detail pages cases, so it defaults to a larger window.
+// What each route binds when the client sends no window. The two DTOs differ:
+// run detail pages cases, so it defaults wider.
 const PAGE = PaginationDto.parse({});
 const RUN_PAGE = AgentEvalRunDetailQueryDto.parse({});
 
@@ -77,10 +76,8 @@ describe('AgentEvalsController', () => {
 		});
 
 		it.each([
-			// Reads stay on agent:read; anything that writes eval config — including
-			// generation, which spends the builder's model credits, and cancellation,
-			// which stops a run someone else started — needs agent:update. Only
-			// starting a run is agent:execute.
+			// Reads on agent:read; eval-config writes — including generation and
+			// cancellation — on agent:update. Only starting a run is agent:execute.
 			['listDatasets', 'agent:read'],
 			['getDataset', 'agent:read'],
 			['listRuns', 'agent:read'],
@@ -97,8 +94,7 @@ describe('AgentEvalsController', () => {
 		});
 
 		// `PROJECT_CHAT_USER_SCOPES` is only `agent:execute` + `workflow:execute-chat`,
-		// so leaving cancel on `agent:execute` lets a chat-only user stop any eval run
-		// in the project. Starting one is genuinely executing the agent and stays put.
+		// so cancel on `agent:execute` would let a chat-only user stop any run.
 		it('keeps cancel off the scope a chat-only user holds', () => {
 			expect(metadata.routes.get('cancelRun')?.accessScope?.scope).not.toBe('agent:execute');
 			expect(metadata.routes.get('startRun')?.accessScope?.scope).toBe('agent:execute');
@@ -234,8 +230,7 @@ describe('AgentEvalsController', () => {
 		});
 	});
 
-	// The window is only useful if it survives the route: a controller that
-	// dropped `query` would silently serve the default page for every request.
+	// A controller that dropped `query` would silently serve the default page.
 	describe('pagination', () => {
 		it('forwards the run-list window to the service', async () => {
 			const query = PaginationDto.parse({ take: '25', skip: '50' });
@@ -259,8 +254,7 @@ describe('AgentEvalsController', () => {
 			});
 		});
 
-		// Without an explicit window the DTO still supplies one, so neither list
-		// route can fall back to reading the whole table.
+		// The DTO always supplies a window, so neither route defaults to unbounded.
 		it('bounds both list reads even when the client sends no window', async () => {
 			await controller.listRuns(datasetReq(), undefined, PaginationDto.parse({}));
 			await controller.getRun(runReq(), undefined, AgentEvalRunDetailQueryDto.parse({}));
@@ -272,8 +266,7 @@ describe('AgentEvalsController', () => {
 			}
 		});
 
-		// Opening a run reads its cases, of which there can be many, so this route
-		// deliberately defaults to a wider window than the shared `PaginationDto`.
+		// Opening a run reads its cases, so this route defaults wider.
 		it('defaults the run-detail window wider than the shared list default', async () => {
 			await controller.getRun(runReq(), undefined, AgentEvalRunDetailQueryDto.parse({}));
 
@@ -284,7 +277,7 @@ describe('AgentEvalsController', () => {
 			expect(AGENT_EVAL_RESULTS_DEFAULT_TAKE).toBeGreaterThan(PaginationDto.parse({}).take);
 		});
 
-		// A client that does ask for a bigger page is still held to the shared cap.
+		// A bigger ask is still held to the shared cap.
 		it('clamps an oversized run-detail window to the shared maximum', async () => {
 			const query = AgentEvalRunDetailQueryDto.parse({ take: '9999' });
 

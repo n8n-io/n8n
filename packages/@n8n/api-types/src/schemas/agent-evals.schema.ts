@@ -112,10 +112,8 @@ export const createAgentEvalRunSchema = z.object(createAgentEvalRunShape);
 export type CreateAgentEvalRunPayload = z.infer<typeof createAgentEvalRunSchema>;
 export class CreateAgentEvalRunDto extends Z.class(createAgentEvalRunShape) {}
 
-// Query window for the run-detail route. Same ceiling as every other list route,
-// but a larger default than the shared `PaginationDto`: opening a run means
-// reading its cases, and a run holds up to the runner's per-run limit of them,
-// so defaulting to 10 would make the common case page immediately for no reason.
+// Wider default than the shared `PaginationDto`: opening a run reads its cases,
+// of which there are many, so 10 would page immediately for no reason.
 export const AGENT_EVAL_RESULTS_DEFAULT_TAKE = 50;
 export class AgentEvalRunDetailQueryDto extends Z.class({
 	...paginationSchema,
@@ -150,16 +148,11 @@ export class CreateAgentEvalRatingDto extends Z.class(createAgentEvalRatingShape
 // coordination columns (`runningInstanceId`, `cancelRequested`) are omitted
 // from the contract.
 //
-// JSON blobs mirror the type their entity column stores — `JsonObject` for the
-// payloads the runner writes, `IDataObject` for the metric/error bags — rather
-// than `Record<string, unknown>`, which would force every consumer to re-narrow
-// `unknown` on each read.
+// JSON blobs mirror the type their entity column stores, so consumers needn't
+// re-narrow `unknown` on every read.
 // ---------------------------------------------------------------------------
 
-/**
- * One page of a list route. `count` is the total matching rows, not the page
- * length, so the UI can size its pager without walking every page.
- */
+/** One page of a list route. `count` is the total matching rows, not the page length. */
 export type AgentEvalPage<T> = {
 	count: number;
 	data: T[];
@@ -220,13 +213,12 @@ export type AgentEvalRatingRecord = {
 	updatedAt: string;
 };
 
-// Runs of a dataset, newest first. Paginated because nothing caps how many runs
-// a dataset accumulates — every "Run all" adds one, for the dataset's whole life.
+// Runs of a dataset, newest first. Paginated because nothing caps how many a
+// dataset accumulates — every "Run all" adds one.
 export type AgentEvalRunList = AgentEvalPage<AgentEvalRunRecord>;
 
-// A run with a page of its per-case results — the "open a run" view. Bounded by
-// the runner's per-run case limit, but each row carries its full input/output
-// JSON, so the page is what keeps the response small.
+// A run with a page of its per-case results — the "open a run" view. Paginated
+// because each row carries its full input/output JSON.
 export type AgentEvalRunDetail = AgentEvalRunRecord & {
 	results: AgentEvalPage<AgentEvalResultRecord>;
 };

@@ -97,14 +97,9 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 	}
 
 	/**
-	 * One page of a dataset's runs, newest first, scoped to the agent that
-	 * dataset must belong to, plus the unpaginated total. Paged in SQL: nothing
-	 * caps how many runs a dataset accumulates over its life, so an unbounded
-	 * read grows without limit.
-	 *
-	 * `createdAt` alone is not a total order — ids are random nanoids, so the
-	 * tiebreak only makes the order deterministic, which is what stops a row
-	 * from appearing on two pages (or neither) when runs share a timestamp.
+	 * One page of a dataset's runs, newest first, scoped to its agent. The `id`
+	 * tiebreak is what keeps equal-`createdAt` rows from landing on two pages or
+	 * none — ids are random nanoids, so it orders nothing, it just stays stable.
 	 */
 	async findAndCountByDatasetIdAndAgentId(
 		datasetId: string,

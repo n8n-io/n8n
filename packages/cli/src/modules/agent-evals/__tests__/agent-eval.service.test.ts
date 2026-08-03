@@ -409,9 +409,8 @@ describe('AgentEvalService', () => {
 		});
 	});
 
-	// The window has to reach the repositories: a `listRuns` that read every run
-	// and sliced in memory would still grow without bound as a dataset ages, which
-	// is the thing pagination is here to stop.
+	// The window has to reach the repositories: slicing in memory would still
+	// grow without bound as a dataset ages.
 	describe('pagination', () => {
 		it('passes the run-list window to the repository and reports the total', async () => {
 			runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[makeRun()], 342]);
@@ -442,8 +441,7 @@ describe('AgentEvalService', () => {
 			expect(detail.results).toEqual({ count: 500, data: [] });
 		});
 
-		// The count is the whole result set, not the page — a client sizing its
-		// pager off `data.length` would think a 342-run dataset had 25.
+		// A client sizing its pager off `data.length` would misread the total.
 		it('reports a total larger than the page it returned', async () => {
 			runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[makeRun()], 342]);
 

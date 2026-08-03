@@ -104,14 +104,9 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	}
 
 	/**
-	 * One page of a run's cases, plus how many it has in total. Paged in SQL
-	 * rather than by slicing a full read: every row carries its `input`,
-	 * `output` and `toolCalls` JSON, so loading them all to return a handful is
-	 * what the caller is trying to avoid.
-	 *
-	 * `seedResults` gives every case of a run a distinct `runIndex`, so that is
-	 * already a total order and needs no tiebreak — a seeder that repeated an
-	 * index would let a row land on two pages, or on none.
+	 * Paged in SQL, not by slicing a full read: every row carries its `input`,
+	 * `output` and `toolCalls` JSON. `runIndex` is distinct per run, so it is
+	 * already a total order and needs no tiebreak.
 	 */
 	async findAndCountByRunId(
 		runId: string,

@@ -127,9 +127,8 @@ describe('AgentEvalResultRepository', () => {
 			});
 		});
 
-		// The window has to reach the query: every result row carries its full
-		// input/output/toolCalls JSON, so slicing a full read in memory would load
-		// exactly what pagination exists to avoid loading.
+		// Must reach the query: slicing in memory would load the full
+		// input/output/toolCalls JSON that pagination exists to avoid.
 		it('pushes the page window into the query rather than slicing in memory', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
