@@ -1,5 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -16,20 +15,12 @@ import {
 	User,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import {
-	registerMcpAppTool,
-	registerWorkflowPreviewApp,
-	WORKFLOW_PREVIEW_APP_URI,
-	type McpAppTelemetryConfig,
-} from '@n8n/mcp-apps/server';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { InstanceSettings } from 'n8n-core';
 import { ManualExecutionCancelledError, type FeatureFlags, type IRun } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
@@ -52,10 +43,16 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import { MCP_CREATE_AGENT_TOOL_NAME } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
-import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
+import type {
+	McpAppsTelemetryVariant,
+	McpClientInfo,
+	RegisterToolFn,
+	ToolDefinition,
+} from './mcp.types';
+import { shapeToStandardSchema } from './tool-schema.util';
 import {
 	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
@@ -117,11 +114,6 @@ export type McpFeatureFlags = {
 	canvasGroupsEnabled: boolean;
 };
 
-type McpAppTelemetryResolution = {
-	telemetry: McpAppTelemetryConfig;
-	instanceOrigin?: string;
-};
-
 /**
  * There is no standard failure contract across MCP tools: most set MCP's
  * `isError` flag, but several catch their own errors and return a normal
@@ -138,7 +130,12 @@ function getToolCallOutcome(result: CallToolResult | undefined): {
 } {
 	if (!result) return { status: 'success' };
 
-	const structured = result.structuredContent;
+	// v2 types structuredContent as an arbitrary JSON value; narrow to an
+	// object before reading the failure markers off it.
+	const structured =
+		typeof result.structuredContent === 'object' && result.structuredContent !== null
+			? (result.structuredContent as Record<string, unknown>)
+			: undefined;
 	const errorMessage = typeof structured?.error === 'string' ? structured.error : undefined;
 	if (result.isError !== true && structured?.status !== 'error' && errorMessage === undefined) {
 		return { status: 'success' };
@@ -176,7 +173,6 @@ export class McpService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionsConfig: ExecutionsConfig,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
@@ -242,61 +238,19 @@ export class McpService {
 	}
 
 	/**
-	 * Builds the instance-level telemetry config injected into MCP app UIs.
-	 * Mirrors the front-end telemetry settings: RudderStack data plane and source
-	 * config requests go through the instance telemetry proxy.
+	 * Builds the single registration chokepoint for MCP tools. It bridges the
+	 * classic-zod raw shapes in each ToolDefinition to the Standard Schema
+	 * interface the v2 SDK expects (see tool-schema.util.ts), and wraps every
+	 * handler so each invocation emits an `mcp-tool-called` event (forwarded to
+	 * log streaming). All registration paths, including builder, data-table and
+	 * agent tools, go through the function this returns. Returns the SDK's
+	 * RegisteredTool so callers (and tests) can reach the stored handler.
 	 */
-	private buildMcpAppTelemetryConfig(): McpAppTelemetryResolution {
-		const { enabled, frontendConfig } = this.globalConfig.diagnostics;
-		const disabledTelemetry: McpAppTelemetryConfig = {
-			enabled: false,
-			writeKey: '',
-			dataPlaneUrl: '',
-			configUrl: '',
-			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
-		};
-
-		if (!enabled) return { telemetry: disabledTelemetry };
-
-		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
-		const restEndpoint = this.globalConfig.endpoints.rest;
-		const [writeKey] = frontendConfig.split(';');
-
-		const telemetry: McpAppTelemetryConfig = {
-			enabled,
-			writeKey: writeKey ?? '',
-			dataPlaneUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`,
-			configUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`,
-			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
-		};
-
-		try {
-			return { telemetry, instanceOrigin: new URL(telemetry.dataPlaneUrl).origin };
-		} catch {
-			this.logger.warn('Disabling MCP app telemetry because telemetry proxy URL is invalid', {
-				dataPlaneUrl: telemetry.dataPlaneUrl,
-			});
-
-			return {
-				telemetry: disabledTelemetry,
-			};
-		}
-	}
-
-	/**
-	 * Wraps `server.registerTool` so each tool invocation emits an `mcp-tool-called`
-	 * event (forwarded to log streaming). Applied once, before any tool is
-	 * registered, so it covers every tool including builder and data-table tools.
-	 */
-	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
-		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
-
-		server.registerTool = (name, config, handler) => {
-			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
+	createToolRegistrar(server: McpServer, user: User, clientInfo?: McpClientInfo) {
+		return (tool: ToolDefinition) => {
+			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
-			const invoke = handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
+			const invoke = tool.handler as (...handlerArgs: unknown[]) => Promise<CallToolResult>;
 
 			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
 				const workflowId = getWorkflowId(handlerArgs[0]);
@@ -306,7 +260,7 @@ export class McpService {
 					const { status, errorMessage } = getToolCallOutcome(result);
 					this.eventService.emit('mcp-tool-called', {
 						user,
-						toolName: name,
+						toolName: tool.name,
 						workflowId: workflowId ?? getWorkflowId(result?.structuredContent),
 						status,
 						errorMessage,
@@ -316,7 +270,7 @@ export class McpService {
 				} catch (error) {
 					this.eventService.emit('mcp-tool-called', {
 						user,
-						toolName: name,
+						toolName: tool.name,
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
@@ -326,7 +280,16 @@ export class McpService {
 				}
 			};
 
-			return originalRegisterTool(name, config, instrumentedHandler as typeof handler);
+			const { inputSchema, outputSchema, ...config } = tool.config;
+			return server.registerTool(
+				tool.name,
+				{
+					...config,
+					...(inputSchema ? { inputSchema: shapeToStandardSchema(inputSchema) } : {}),
+					...(outputSchema ? { outputSchema: shapeToStandardSchema(outputSchema) } : {}),
+				},
+				instrumentedHandler,
+			);
 		};
 	}
 
@@ -346,9 +309,9 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		grantedScopes?: string[],
 	) {
-		const { McpServer } = await lazyImport<
-			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
-		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
+		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
+			async () => await import('@modelcontextprotocol/server'),
+		);
 
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const n8nConnectAvailable = builderEnabled
@@ -381,13 +344,11 @@ export class McpService {
 			},
 		);
 
-		// Instrument every registered tool so MCP usage flows to log streaming:
-		// which tool was called, against which workflow, and whether it succeeded.
-		this.instrumentToolUsage(server, user, clientInfo);
+		const registerTool = this.createToolRegistrar(server, user, clientInfo);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			server.registerTool(tool.name, tool.config, tool.handler);
+			registerTool(tool);
 		};
 
 		// Existing tools
@@ -551,33 +512,28 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
-			await this.registerBuilderTools(
-				server,
-				user,
-				dataTableOps,
-				featureFlags,
-				registerIfAllowed,
-				allowedToolNames,
-				clientInfo,
-			);
+			await this.registerBuilderTools(server, user, dataTableOps, featureFlags, registerIfAllowed);
 		}
 
 		if (agentsEnabled) {
 			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
-			Container.get(McpAgentToolsService).registerTools(server, user, allowedToolNames);
+			Container.get(McpAgentToolsService).registerTools(
+				server,
+				registerIfAllowed,
+				user,
+				allowedToolNames,
+			);
 		}
 
 		return server;
 	}
 
 	private async registerBuilderTools(
-		server: InstanceType<typeof McpServer>,
+		server: McpServer,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
 		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
-		allowedToolNames: Set<string> | undefined,
-		clientInfo?: McpClientInfo,
 	) {
 		await this.nodeCatalogService.initialize();
 
@@ -631,38 +587,12 @@ export class McpService {
 			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
 
-		// The preview app only accompanies the create tool, so both are gated
-		// together by the granted scopes.
-		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
-		if (featureFlags.mcpApps.enabled && createToolAllowed) {
-			const appTelemetry = this.buildMcpAppTelemetryConfig();
-			registerWorkflowPreviewApp(server, {
-				instanceOrigin: appTelemetry.instanceOrigin,
-				telemetry: appTelemetry.telemetry,
-				onResourceRead: () => {
-					this.telemetry.track(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
-						user_id: user.id,
-						client_name: clientInfo?.name,
-						client_version: clientInfo?.version,
-					});
-				},
-			});
-			registerMcpAppTool(
-				server,
-				createTool.name,
-				{
-					...createTool.config,
-					_meta: {
-						ui: {
-							resourceUri: WORKFLOW_PREVIEW_APP_URI,
-						},
-					},
-				},
-				createTool.handler,
-			);
-		} else {
-			registerIfAllowed(createTool);
-		}
+		// The workflow-preview MCP App is not registered on this server:
+		// @n8n/mcp-apps is typed against SDK 1.x (held there by its ext-apps peer
+		// dependency), and its helpers cannot register on the v2 server. The
+		// create tool works without the preview UI. Restore the app registration
+		// once @n8n/mcp-apps supports the v2 server.
+		registerIfAllowed(createTool);
 
 		const searchProjectsTool = createSearchProjectsTool(
 			user,

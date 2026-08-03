@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
@@ -46,6 +46,7 @@ import type { AgentRepository } from '@/modules/agents/repositories/agent.reposi
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -157,12 +158,15 @@ describe('McpAgentToolsService', () => {
 		tools = new Map();
 		registerResource = vi.fn();
 		const server = {
-			registerTool: (name: string, config: RegisteredTool['config'], handler: unknown) => {
-				tools.set(name, { config, handler: handler as RegisteredTool['handler'] });
-			},
-			resource: registerResource,
+			registerResource,
 		} as unknown as McpServer;
-		service.registerTools(server, user);
+		const registerTool: RegisterToolFn = (tool) => {
+			tools.set(tool.name, {
+				config: tool.config,
+				handler: tool.handler as unknown as RegisteredTool['handler'],
+			});
+		};
+		service.registerTools(server, registerTool, user);
 	});
 
 	const callTool = async (name: string, input: Record<string, unknown>): Promise<ToolResult> => {
@@ -261,12 +265,15 @@ describe('McpAgentToolsService', () => {
 			const filteredTools = new Map<string, RegisteredTool>();
 			const resource = vi.fn();
 			const server = {
-				registerTool: (name: string, config: RegisteredTool['config'], handler: unknown) => {
-					filteredTools.set(name, { config, handler: handler as RegisteredTool['handler'] });
-				},
-				resource,
+				registerResource: resource,
 			} as unknown as McpServer;
-			service.registerTools(server, user, allowedToolNames);
+			const registerTool: RegisterToolFn = (tool) => {
+				filteredTools.set(tool.name, {
+					config: tool.config,
+					handler: tool.handler as unknown as RegisteredTool['handler'],
+				});
+			};
+			service.registerTools(server, registerTool, user, allowedToolNames);
 			return { tools: filteredTools, resource };
 		};
 

@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -9,25 +9,10 @@ import {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
-import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
-vi.mock('@n8n/mcp-apps/server', () => ({
-	WORKFLOW_PREVIEW_APP_URI: 'ui://workflow-preview/workflow-preview.html',
-	registerWorkflowPreviewApp: vi.fn(),
-	registerMcpAppTool: vi.fn(
-		(server: { registerTool: (...args: unknown[]) => unknown }, name, config, handler) =>
-			server.registerTool(name, config, handler),
-	),
-}));
-
-import {
-	registerMcpAppTool,
-	registerWorkflowPreviewApp,
-	WORKFLOW_PREVIEW_APP_URI,
-} from '@n8n/mcp-apps/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -35,7 +20,6 @@ import {
 	MCP_CANVAS_GROUPS_FLAG,
 } from '@n8n/api-types';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -77,7 +61,6 @@ describe('McpService', () => {
 	let mcpService: McpService;
 	let activeExecutions: ActiveExecutions;
 	let executionsConfig: ExecutionsConfig;
-	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
 
@@ -87,16 +70,11 @@ describe('McpService', () => {
 		executionsConfig = mockInstance(ExecutionsConfig, {
 			mode: 'regular',
 		});
-		instanceSettings = mockInstance(InstanceSettings, {
-			hostId: 'test-host-id',
-			instanceId: 'test-instance-id',
-		});
 		logger = mockLogger();
 
 		mcpService = new McpService(
 			logger,
 			executionsConfig,
-			instanceSettings,
 			mockInstance(WorkflowFinderService),
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
@@ -147,7 +125,6 @@ describe('McpService', () => {
 			const queueMcpService = new McpService(
 				mockLogger(),
 				queueExecutionsConfig,
-				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -348,7 +325,6 @@ describe('McpService', () => {
 			new McpService(
 				mockLogger(),
 				executionsConfig,
-				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -538,6 +514,104 @@ describe('McpService', () => {
 			expect(typeof server.registerTool).toBe('function');
 		});
 
+		describe('protocol serving through createMcpHandler', () => {
+			const sseData = (text: string): Array<Record<string, unknown>> =>
+				text
+					.split('\n')
+					.filter((line) => line.startsWith('data: '))
+					.map((line) => JSON.parse(line.slice(6)) as Record<string, unknown>);
+
+			const buildHandler = async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				return createMcpHandler(async () => await mcpService.getServer(user, mcpFeatureFlags()), {
+					legacy: 'stateless',
+				});
+			};
+
+			it('serves tools/list to a 2026-07-28 client with bridged JSON schemas', async () => {
+				const handler = await buildHandler();
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': 'tools/list',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'tools/list',
+							params: {
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+
+				expect(res.status).toBe(200);
+				const body = (await res.json()) as {
+					result: {
+						resultType: string;
+						tools: Array<{ name: string; inputSchema?: Record<string, unknown> }>;
+					};
+				};
+				expect(body.result.resultType).toBe('complete');
+
+				const toolNames = body.result.tools.map((tool) => tool.name);
+				expect(toolNames).toContain('search_workflows');
+
+				const searchTool = body.result.tools.find((tool) => tool.name === 'search_workflows');
+				expect(searchTool?.inputSchema).toMatchObject({
+					type: 'object',
+					properties: expect.objectContaining({
+						query: expect.objectContaining({ type: 'string' }),
+					}),
+				});
+			});
+
+			it('serves a 2025-era client through the stateless legacy fallback', async () => {
+				const handler = await buildHandler();
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'initialize',
+							params: {
+								protocolVersion: '2025-06-18',
+								capabilities: {},
+								clientInfo: { name: 'old-client', version: '1.0.0' },
+							},
+						}),
+					}),
+				);
+
+				expect(res.status).toBe(200);
+				// Framing change against the 1.x stateless transport: the v2 handler
+				// answers legacy requests with spec-standard SSE framing instead of a
+				// plain JSON body. Spec-conforming clients accept both (they send
+				// `Accept: application/json, text/event-stream`).
+				expect(res.headers.get('content-type')).toContain('text/event-stream');
+
+				const [message] = sseData(await res.text());
+				const result = (message as { result: Record<string, unknown> }).result;
+				expect(result.protocolVersion).toBe('2025-06-18');
+				expect(result.serverInfo).toMatchObject({ name: 'n8n MCP Server' });
+			});
+		});
+
 		const mcpUser = () =>
 			Object.assign(new User(), {
 				id: 'user-1',
@@ -547,13 +621,21 @@ describe('McpService', () => {
 				role: { slug: 'global:member' },
 			});
 
+		// Registration goes through the service's registrar (the production
+		// chokepoint), which bridges schemas and wraps handlers with the
+		// mcp-tool-called instrumentation under test here.
 		const registerAndInvoke = async (
 			server: McpServer,
 			name: string,
 			impl: () => Promise<unknown>,
 			args: Record<string, unknown> = {},
 		) => {
-			const registered = server.registerTool(name, { description: 'test' }, impl as never);
+			const registerTool = mcpService.createToolRegistrar(server, mcpUser());
+			const registered = registerTool({
+				name,
+				config: { description: 'test' },
+				handler: impl as never,
+			});
 			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
 			return await invokeTool(args, {});
 		};
@@ -732,7 +814,6 @@ describe('McpService', () => {
 			const service = new McpService(
 				mockLogger(),
 				executionsConfig,
-				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -785,7 +866,6 @@ describe('McpService', () => {
 			const service = new McpService(
 				mockLogger(),
 				executionsConfig,
-				instanceSettings,
 				mockInstance(WorkflowFinderService),
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
@@ -858,7 +938,6 @@ describe('McpService', () => {
 				return new McpService(
 					mockLogger(),
 					executionsConfig,
-					instanceSettings,
 					mockInstance(WorkflowFinderService),
 					mockInstance(WorkflowService),
 					urlService,
@@ -904,158 +983,27 @@ describe('McpService', () => {
 				);
 			};
 
-			beforeEach(() => {
-				(registerWorkflowPreviewApp as Mock).mockClear();
-				(registerMcpAppTool as Mock).mockClear();
-			});
-
-			it('registers the workflow preview app and wires it to the create-workflow tool when MCP Apps is enabled', async () => {
+			// The workflow-preview MCP App does not register on this server while
+			// @n8n/mcp-apps stays typed against SDK 1.x (pinned by its ext-apps
+			// peer range). The create tool must still register as a plain tool
+			// even when the caller resolved the MCP Apps flag as enabled.
+			it('registers the create tool as a plain tool when MCP Apps is enabled', async () => {
 				const user = Object.assign(new User(), { id: 'user-1' });
 				const postHogClient = mockInstance(PostHogClient);
 
 				const service = buildService({ postHogClient });
+				const server = await service.getServer(user, appsEnabled);
 
-				await service.getServer(user, appsEnabled);
-
-				expect(registerWorkflowPreviewApp).toHaveBeenCalledTimes(1);
-				expect(registerMcpAppTool).toHaveBeenCalledTimes(1);
-
-				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
-					unknown,
-					{
-						instanceOrigin: string;
-						telemetry: {
-							enabled: boolean;
-							writeKey: string;
-							dataPlaneUrl: string;
-							configUrl: string;
-							instanceId: string;
-							versionCli: string;
-						};
-					},
-				];
-				expect(appOptions.instanceOrigin).toBe('https://n8n.test');
-				expect(appOptions.telemetry).toEqual(
-					expect.objectContaining({
-						enabled: true,
-						writeKey: 'test-key',
-						dataPlaneUrl: 'https://n8n.test/rest/telemetry/proxy',
-						configUrl: 'https://n8n.test/rest/telemetry/rudderstack',
-						instanceId: 'test-instance-id',
-						versionCli: expect.any(String),
-					}),
-				);
-
-				const [, toolName, toolConfig] = (registerMcpAppTool as Mock).mock.calls[0];
-				expect(typeof toolName).toBe('string');
-				const meta = (toolConfig as { _meta: { ui: { resourceUri: string } } })._meta;
-				expect(meta.ui.resourceUri).toBe(WORKFLOW_PREVIEW_APP_URI);
+				const registeredTools = (
+					server as unknown as { _registeredTools: Map<string, unknown> | Record<string, unknown> }
+				)._registeredTools;
+				const hasCreateTool =
+					registeredTools instanceof Map
+						? registeredTools.has('create_workflow_from_code')
+						: 'create_workflow_from_code' in registeredTools;
+				expect(hasCreateTool).toBe(true);
 
 				// The service trusts the caller's resolution and never falls back to PostHog.
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
-			});
-
-			it('does not inject write key or telemetry URLs when diagnostics are disabled', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const service = buildService({ diagnosticsEnabled: false });
-
-				await service.getServer(user, appsEnabled);
-
-				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
-					unknown,
-					{
-						instanceOrigin?: string;
-						telemetry: {
-							enabled: boolean;
-							writeKey: string;
-							dataPlaneUrl: string;
-							configUrl: string;
-						};
-					},
-				];
-				expect(appOptions.instanceOrigin).toBeUndefined();
-				expect(appOptions.telemetry).toEqual(
-					expect.objectContaining({
-						enabled: false,
-						writeKey: '',
-						dataPlaneUrl: '',
-						configUrl: '',
-					}),
-				);
-			});
-
-			it('disables app telemetry when the telemetry proxy URL is invalid', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const service = buildService({ instanceBaseUrl: 'not-a-url' });
-
-				await expect(service.getServer(user, appsEnabled)).resolves.toBeDefined();
-
-				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
-					unknown,
-					{
-						instanceOrigin?: string;
-						telemetry: {
-							enabled: boolean;
-							writeKey: string;
-							dataPlaneUrl: string;
-							configUrl: string;
-						};
-					},
-				];
-				expect(appOptions.instanceOrigin).toBeUndefined();
-				expect(appOptions.telemetry).toEqual(
-					expect.objectContaining({
-						enabled: false,
-						writeKey: '',
-						dataPlaneUrl: '',
-						configUrl: '',
-					}),
-				);
-			});
-
-			it('tracks render requested when the preview resource is read', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const telemetry = mockInstance(Telemetry);
-
-				const service = buildService({ telemetry });
-				await service.getServer(user, appsEnabled, { name: 'Claude Desktop', version: '1.2.3' });
-
-				const [, appOptions] = (registerWorkflowPreviewApp as Mock).mock.calls[0] as [
-					unknown,
-					{ onResourceRead: () => void },
-				];
-				appOptions.onResourceRead();
-
-				expect(telemetry.track).toHaveBeenCalledWith(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
-					user_id: 'user-1',
-					client_name: 'Claude Desktop',
-					client_version: '1.2.3',
-				});
-			});
-
-			it('does not register MCP apps when MCP Apps is disabled', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-
-				const service = buildService({ postHogClient });
-
-				await service.getServer(user, mcpFeatureFlags());
-
-				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
-				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
-			});
-
-			it('does not register MCP apps when builder is disabled, even if MCP Apps is enabled', async () => {
-				const user = Object.assign(new User(), { id: 'user-1' });
-				const postHogClient = mockInstance(PostHogClient);
-
-				const service = buildService({ builderEnabled: false, postHogClient });
-
-				await service.getServer(user, appsEnabled);
-
-				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
-				expect(registerMcpAppTool).not.toHaveBeenCalled();
 				expect(postHogClient.getFeatureFlags).not.toHaveBeenCalled();
 			});
 		});

@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	rejectIfDynamicSelectorUsesFromAi,
@@ -67,7 +67,11 @@ import {
 	AGENT_CONFIG_JSON_SCHEMA,
 } from './agent-reference';
 import { MCP_CREATE_AGENT_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import type {
+	RegisterToolFn,
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+} from '../../mcp.types';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 
@@ -369,11 +373,19 @@ export class McpAgentToolsService {
 	/**
 	 * `allowedToolNames` carries the OAuth grant's scope-derived allow-list
 	 * (undefined means a non-scope-bearing credential with full access).
+	 * `registerTool` is the caller's scope-checking registrar (see
+	 * McpService.createToolRegistrar), which also bridges the raw-shape zod
+	 * schemas to what the v2 SDK expects.
 	 */
-	registerTools(server: McpServer, user: User, allowedToolNames?: Set<string>): void {
+	registerTools(
+		server: McpServer,
+		registerTool: RegisterToolFn,
+		user: User,
+		allowedToolNames?: Set<string>,
+	): void {
 		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			this.register(server, tool);
+			registerTool(tool);
 		};
 
 		registerIfAllowed(this.searchAgentsTool(user));
@@ -395,7 +407,7 @@ export class McpAgentToolsService {
 		// follows that tool's scope gate.
 		if (allowedToolNames && !allowedToolNames.has('get_agent_builder_reference')) return;
 
-		server.resource(
+		server.registerResource(
 			'agent-builder-reference',
 			AGENT_BUILDER_REFERENCE_URI,
 			{ description: 'Reference for creating and managing n8n Agents through MCP.' },
@@ -409,13 +421,6 @@ export class McpAgentToolsService {
 				],
 			}),
 		);
-	}
-
-	private register<Input extends z.ZodRawShape>(
-		server: McpServer,
-		tool: ToolDefinition<Input>,
-	): void {
-		server.registerTool(tool.name, tool.config, tool.handler);
 	}
 
 	private searchAgentsTool(user: User): ToolDefinition<typeof searchAgentsInput> {

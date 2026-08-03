@@ -1,4 +1,4 @@
-import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
@@ -7,6 +7,17 @@ import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
+
+/**
+ * Handler signature for MCP tools defined with classic-zod raw shapes. Tools
+ * declare schemas as raw shapes; the registration layer bridges them to the
+ * Standard Schema interface the v2 SDK expects (see tool-schema.util.ts), so
+ * handlers keep receiving the zod-parsed args object.
+ */
+export type ToolHandler<InputArgs extends z.ZodRawShape = z.ZodRawShape> = (
+	args: z.objectOutputType<InputArgs, z.ZodTypeAny>,
+	extra?: unknown,
+) => CallToolResult | Promise<CallToolResult>;
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	name: string;
@@ -22,7 +33,7 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 			openWorldHint?: boolean;
 		};
 	};
-	handler: ToolCallback<InputArgs>;
+	handler: ToolHandler<InputArgs>;
 };
 
 /** Registers a tool on the per-request server if the granted scopes cover it. */

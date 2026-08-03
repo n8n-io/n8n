@@ -55,7 +55,9 @@ catalog:
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
   '@modelcontextprotocol/ext-apps': 1.3.2
+  '@modelcontextprotocol/node': 2.0.0
   '@modelcontextprotocol/sdk': 1.26.0
+  '@modelcontextprotocol/server': 2.0.0
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.25.0
   '@openrouter/ai-sdk-provider': ^3.0.0
