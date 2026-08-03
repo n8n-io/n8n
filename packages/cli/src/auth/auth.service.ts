@@ -354,18 +354,7 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-<<<<<<< HEAD
-<<<<<<< HEAD
 		if (method === 'GET' && this.endpointSkipsBrowserIdCheck(endpoint)) {
-=======
-		if (
-			method === 'GET' &&
-			this.skipBrowserIdCheckEndpoints.some((skipEndpoint) => endpoint.includes(skipEndpoint))
-		) {
->>>>>>> 2a9e444d3a (feat(path-resolving): Introduce PathResolvingService for consistent endpoint path resolution across the application)
-=======
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
->>>>>>> fb830e9f91 (fix(chat-trigger): Normalize instanceBaseUrl handling in createPage function)
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
