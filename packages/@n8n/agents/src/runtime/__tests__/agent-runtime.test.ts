@@ -4734,6 +4734,45 @@ describe('provider-specific thinking', () => {
 			anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
 		});
 	});
+
+	// Adaptive models return empty thinking blocks unless display is summarized,
+	// and the SDK's mapping of the reasoning level doesn't set it.
+	it('asks an adaptive Anthropic model for summarized thinking when reasoning is set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-5',
+			instructions: 'You are a test assistant.',
+			reasoning: 'medium',
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		// The level still goes through as the SDK's own option, which maps it to effort.
+		expect(callArgs.reasoning).toBe('medium');
+		expect(callArgs.providerOptions).toEqual({
+			anthropic: { thinking: { type: 'adaptive', display: 'summarized' } },
+		});
+	});
+
+	it('leaves a budget-thinking Anthropic model to the SDK when reasoning is set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			reasoning: 'medium',
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBe('medium');
+		expect(callArgs.providerOptions).toBeUndefined();
+	});
 });
 
 // ---------------------------------------------------------------------------

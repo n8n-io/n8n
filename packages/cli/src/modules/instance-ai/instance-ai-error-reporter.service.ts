@@ -15,9 +15,6 @@ export type InstanceAiErrorReportContext = {
 	severity?: 'warning';
 } & InstanceAiObservabilityContext;
 
-/** Quota rejections the proxy returns as message-only 403s, without a machine-readable code. */
-const QUOTA_MESSAGES = ['Have reached end of quota', 'No instance AI credits quota allotted'];
-
 type AgentErrorSource = NonNullable<Extract<AgentEventData, { error: unknown }>['source']>;
 
 export function getAgentErrorSeverity(source: AgentErrorSource): 'warning' | undefined {
@@ -25,18 +22,6 @@ export function getAgentErrorSeverity(source: AgentErrorSource): 'warning' | und
 		return 'warning';
 	}
 	return undefined;
-}
-
-function hasQuotaExhaustedMessage(error: unknown): boolean {
-	let current: unknown = error;
-	const visited = new WeakSet<Error>();
-	while (current instanceof Error && !visited.has(current)) {
-		visited.add(current);
-		const { message } = current;
-		if (QUOTA_MESSAGES.some((quotaMessage) => message.includes(quotaMessage))) return true;
-		current = current.cause;
-	}
-	return false;
 }
 
 /**
@@ -79,7 +64,7 @@ export class InstanceAiErrorReporterService {
 
 		const observability = buildInstanceAiObservabilityContext(context);
 
-		if (isQuotaExhaustedError(error) || hasQuotaExhaustedMessage(error)) {
+		if (isQuotaExhaustedError(error)) {
 			// Expected condition: the user ran out of AI credits and the run already
 			// surfaces it as `quota_exhausted`. Not worth a Sentry event.
 			this.logger.info(`Instance AI quota exhausted in ${context.component}`, {

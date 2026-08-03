@@ -21,6 +21,13 @@ import N8nTooltip from '../N8nTooltip';
 
 const MAX_SELECTED_NAME_CHARS = 30;
 
+/**
+ * Model lists are long, so the provider sub-menus get twice the shared cap.
+ * Applies to every consumer of this dropdown, which is why it is set here
+ * rather than passed in per call site.
+ */
+const SUB_MENU_MAX_HEIGHT = 'calc(var(--spacing--5xl) * 2)';
+
 const {
 	items,
 	selectedLabel,
@@ -107,7 +114,7 @@ defineExpose({
 		teleported
 		searchable
 		width="var(--reka-dropdown-menu-trigger-width)"
-		:sub-menu-max-height="`calc(var(--spacing--5xl) * 2)`"
+		:sub-menu-max-height="SUB_MENU_MAX_HEIGHT"
 		@select="handleSelect"
 	>
 		<template #trigger>

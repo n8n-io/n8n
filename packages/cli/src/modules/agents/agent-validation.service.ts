@@ -362,8 +362,10 @@ export class AgentValidationService {
 			// Only flag a definitive "gateway does not serve this provider". When
 			// support can't be determined (no cached gateway config), don't fail
 			// closed — a transient/cold config must not make a working managed agent
-			// look broken and block Publish / chat runs.
-			if (!model || this.isAiGatewayModelSupported(model) === false) {
+			// look broken and block Publish / chat runs. A missing model is already
+			// reported against `model` by `collectCoreIssues`, so it is not the
+			// credential's problem.
+			if (model && this.isAiGatewayModelSupported(model) === false) {
 				issues.push(agentIssue('incompatible_credential', 'credential'));
 			}
 			return;

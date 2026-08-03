@@ -17,6 +17,12 @@ describe('model-string utils', () => {
 				name: 'models/gemini-1.5-pro',
 			});
 		});
+		it('keeps colons in the model name', () => {
+			expect(parseModelString('aws-bedrock/anthropic.claude-sonnet-4-5-v1:0')).toEqual({
+				provider: 'aws-bedrock',
+				name: 'anthropic.claude-sonnet-4-5-v1:0',
+			});
+		});
 		it('returns null when no slash', () => {
 			expect(parseModelString('gpt-4o')).toBeNull();
 		});
@@ -34,6 +40,9 @@ describe('model-string utils', () => {
 	describe('parseProvider', () => {
 		it('extracts from string form', () => {
 			expect(parseProvider('anthropic/claude-sonnet-4-6')).toBe('anthropic');
+		});
+		it('extracts from a model name containing a colon', () => {
+			expect(parseProvider('aws-bedrock/anthropic.claude-sonnet-4-5-v1:0')).toBe('aws-bedrock');
 		});
 		it('reads object form', () => {
 			expect(parseProvider({ provider: 'openai', name: 'gpt-4o' })).toBe('openai');

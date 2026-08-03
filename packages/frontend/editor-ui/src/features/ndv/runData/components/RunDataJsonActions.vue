@@ -7,7 +7,7 @@ import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { nonExistingJsonPath } from '@/app/constants';
 import { PopOutWindowKey } from '@n8n/composables/injectionKeys';

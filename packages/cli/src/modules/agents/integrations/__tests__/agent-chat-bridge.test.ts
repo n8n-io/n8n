@@ -246,6 +246,94 @@ describe('AgentChatBridge — consumeStream', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('silent outcome from the integration action tool', () => {
+		const silentToolResult: StreamChunk = {
+			type: 'tool-result',
+			toolCallId: 'tool-1',
+			toolName: 'test-streaming_action',
+			output: { ok: true, silent: true, note: 'No reply will be sent.' },
+			isError: false,
+		};
+
+		it('drops text streamed after a silent do_not_respond result', async () => {
+			const thread = await runMention(streamingIntegration, [
+				silentToolResult,
+				{ type: 'text-delta', id: 't1', delta: 'Staying silent now.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('drops text when the silent result is nested in a batched action call', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'test-streaming_action',
+					output: {
+						ok: true,
+						results: [
+							{ action: 'add_reaction', result: { ok: true } },
+							{ action: 'do_not_respond', result: { ok: true, silent: true } },
+						],
+					},
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Staying silent now.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('ignores a nested silent field on batch entries for other actions', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'test-streaming_action',
+					output: {
+						ok: true,
+						results: [{ action: 'add_reaction', result: { ok: true, silent: true } }],
+					},
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Regular reply.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('ignores a silent field returned by tools other than the integration action tool', async () => {
+			const thread = await runMention(streamingIntegration, [
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'my_custom_tool',
+					output: { ok: true, silent: true },
+					isError: false,
+				},
+				{ type: 'text-delta', id: 't1', delta: 'Regular reply.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('discards buffered text when the silent result arrives before the flush', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Draft I should not send. ' },
+				{ ...silentToolResult, toolName: 'test-buffered_action' },
+				{ type: 'text-delta', id: 't2', delta: 'More text.' },
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('when integration disables streaming', () => {
 		it('posts a single collected string for a run that only has text deltas', async () => {
 			const { bot, handlers } = makeBot();
@@ -1016,6 +1104,79 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
 		});
 
+		it('does not set a thinking status for subscribed channel messages where the reply is optional', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus, botUserId: 'U_BOT' });
+			const thread = makeThread();
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.subscribed!(thread, {
+				text: 'chatter between colleagues',
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalled();
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(setAssistantStatus).not.toHaveBeenCalled();
+		});
+
+		it('clears the thread typing status when the turn ends without a response', async () => {
+			const { bot, handlers } = makeBot();
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			// A silent turn: the agent finishes without any text or post, so
+			// Slack's post-triggered auto-clear never happens.
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
+			expect(setAssistantStatus).toHaveBeenCalledWith('C123', '1779466577.518139', '');
+		});
+
 		it('clears assistant status before responding to top-level Slack channel mentions', async () => {
 			const { bot, handlers } = makeBot();
 			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
@@ -1387,6 +1548,73 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 
+		it('stores the platform reply expectation for subscribed Slack channel messages', async () => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: 'message-2',
+				text: 'chatter between colleagues',
+				author: { userId: 'u1', userName: 'user1' },
+				raw: { channel: 'C123', channel_type: 'channel' },
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u1',
+				expect.objectContaining({ replyExpectation: 'optional' }),
+			);
+		});
+
+		it('defaults the reply expectation to required for platforms without a reply policy', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: 'message-2',
+				text: 'follow-up',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+				'agent-1:thread-1',
+				'u1',
+				expect.objectContaining({ replyExpectation: 'required' }),
+			);
+		});
+
 		it('stores a sanitized message subject from the inbound message', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -1502,6 +1730,7 @@ describe('AgentChatBridge — consumeStream', () => {
 						id: 'ENG-123',
 						title: 'Fix signup',
 					},
+					replyExpectation: 'required',
 				}),
 			);
 		});

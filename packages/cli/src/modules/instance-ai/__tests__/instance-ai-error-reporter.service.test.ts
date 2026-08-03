@@ -120,42 +120,6 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
-	it('suppresses message-only quota errors that carry no machine-readable code', () => {
-		const { service, errorReporter, logger } = createService();
-		const error = new Error(
-			'Failed to write runtime skill file "/skills/x/SKILL.md": Have reached end of quota; status: 403',
-		);
-
-		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
-
-		expect(errorReporter.error).not.toHaveBeenCalled();
-		expect(logger.info).toHaveBeenCalledWith(
-			'Instance AI quota exhausted in instance-ai-run',
-			expect.objectContaining({ runId: 'r' }),
-		);
-	});
-
-	it('suppresses a message-only quota error in the cause chain', () => {
-		const { service, errorReporter } = createService();
-		const quotaError = new Error('No instance AI credits quota allotted');
-		const error = new Error('Workspace setup failed', { cause: quotaError });
-
-		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
-
-		expect(errorReporter.error).not.toHaveBeenCalled();
-	});
-
-	it('stops walking a cyclic cause chain', () => {
-		const { service, errorReporter } = createService();
-		const outer = new Error('Workspace setup failed');
-		const inner = new Error('Command fallback failed', { cause: outer });
-		outer.cause = inner;
-
-		service.report(outer, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
-
-		expect(errorReporter.error).toHaveBeenCalledTimes(1);
-	});
-
 	it('reports at warning level when the context declares warning severity', () => {
 		const { service, errorReporter, logger } = createService();
 		const error = new Error('Observer failed');
