@@ -187,7 +187,13 @@ describe('WebhookContext', () => {
 		});
 	});
 
-	describe('getNodeWebhookUrl', () => {
+	describe('webhook URLs', () => {
+		const WEBHOOK_KINDS = [
+			['a generic webhook', undefined],
+			['a form webhook', 'form'],
+			['an MCP webhook', 'mcp'],
+		] as const;
+
 		const buildUrlContext = (webhookNodeType: 'form' | 'mcp' | undefined, isTest: boolean) => {
 			const urlNodeType = mock<INodeType>({
 				description: {
@@ -202,6 +208,8 @@ describe('WebhookContext', () => {
 			const urlAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				formBaseUrl: 'http://localhost/prod-webhook',
 				formTestBaseUrl: 'http://localhost/test-webhook',
+				mcpBaseUrl: 'http://localhost/prod-webhook',
+				mcpTestBaseUrl: 'http://localhost/test-webhook',
 				webhookBaseUrl: 'http://localhost/prod-webhook',
 				webhookTestBaseUrl: 'http://localhost/test-webhook',
 			});
@@ -221,19 +229,32 @@ describe('WebhookContext', () => {
 			);
 		};
 
-		it('should use the test base URL for a form webhook running as a test', () => {
-			const context = buildUrlContext('form', true);
-			expect(context.getNodeWebhookUrl('default')).toContain('test-webhook');
+		describe('getNodeWebhookUrl', () => {
+			it.each(WEBHOOK_KINDS)(
+				'should use the production base URL for %s running as a test',
+				(_label, nodeType) => {
+					const context = buildUrlContext(nodeType, true);
+					expect(context.getNodeWebhookUrl('default')).toContain('prod-webhook');
+				},
+			);
 		});
 
-		it('should use the production base URL for a form webhook running in production', () => {
-			const context = buildUrlContext('form', false);
-			expect(context.getNodeWebhookUrl('default')).toContain('prod-webhook');
-		});
+		describe('getWebhookResourceUrl', () => {
+			it.each(WEBHOOK_KINDS)(
+				'should use the test base URL for %s running as a test',
+				(_label, nodeType) => {
+					const context = buildUrlContext(nodeType, true);
+					expect(context.getWebhookResourceUrl('default')).toContain('test-webhook');
+				},
+			);
 
-		it('should ignore isTest for non-form/non-mcp webhooks (production base)', () => {
-			const context = buildUrlContext(undefined, true);
-			expect(context.getNodeWebhookUrl('default')).toContain('prod-webhook');
+			it.each(WEBHOOK_KINDS)(
+				'should use the production base URL for %s running in production',
+				(_label, nodeType) => {
+					const context = buildUrlContext(nodeType, false);
+					expect(context.getWebhookResourceUrl('default')).toContain('prod-webhook');
+				},
+			);
 		});
 	});
 
