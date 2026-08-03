@@ -701,4 +701,13 @@ describe('inferMemoryStoreAttributes()', () => {
 
 		expect(inferMemoryStoreAttributes(customMemory)).toEqual({ storeNames: ['n8n'] });
 	});
+
+	it('omits storeNames when describe() returns an empty name, but still identifies InMemoryMemory', async () => {
+		const { inferMemoryStoreAttributes } = await import('../telemetry/runtime-telemetry.js');
+		const unnamedMemory = {
+			describe: () => ({ name: '', constructorName: 'InMemoryMemory', connectionParams: null }),
+		} as unknown as import('../../types').BuiltMemory;
+
+		expect(inferMemoryStoreAttributes(unnamedMemory)).toEqual({ storeTypes: ['in_memory'] });
+	});
 });

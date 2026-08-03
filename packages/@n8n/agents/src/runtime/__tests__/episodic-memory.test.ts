@@ -1267,4 +1267,70 @@ describe('runEpisodicMemoryIndexer', () => {
 		expect(result).toEqual({ status: 'ran', entriesWritten: 0, observationsIndexed: 1 });
 		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
 	});
+
+	it('skips a candidate whose save resolves to null, without losing the others', async () => {
+		const memory = new InMemoryMemory();
+		const [dropped, kept] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User investigated a rare cache eviction bug.',
+			},
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User chose Redis for the session cache.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User investigated a rare cache eviction bug.',
+						sources: [
+							{
+								observationId: dropped.id,
+								evidence: 'User investigated a rare cache eviction bug',
+							},
+						],
+					},
+					{
+						content: 'User chose Redis for the session cache.',
+						sources: [
+							{ observationId: kept.id, evidence: 'User chose Redis for the session cache' },
+						],
+					},
+				],
+			});
+		mockedEmbedMany.mockResolvedValue({
+			embeddings: [
+				[1, 0],
+				[0, 1],
+			],
+			usage: { tokens: 2 },
+		} as never);
+		// Simulate a save that the backend legitimately declines (returns null)
+		// for the first candidate only, while the second candidate saves normally.
+		vi.spyOn(memory.episodic, 'saveEntryWithSources').mockResolvedValueOnce(null);
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 2 });
+		const stored = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'Redis session cache',
+			{
+				queryEmbedding: [0, 1],
+			},
+		);
+		expect(stored.map((entry) => entry.content)).toEqual([
+			'User chose Redis for the session cache.',
+		]);
+	});
 });

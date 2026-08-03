@@ -160,13 +160,12 @@ export class MemoryOrchestrator {
 	}
 
 	private async saveMessagesWithSpan(
+		memory: BuiltMemory,
 		threadId: string,
 		resourceId: string,
 		messages: AgentDbMessage[],
 		telemetry: BuiltTelemetry | undefined,
 	): Promise<void> {
-		const memory = this.config.memory;
-		if (!memory) return;
 		await withMemorySpan(
 			'save_memory',
 			this.config.name,
@@ -221,12 +220,14 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		if (!this.config.memory || !options?.persistence) return;
+		const memory = this.config.memory;
+		if (!memory || !options?.persistence) return;
 		const input = list.inputDelta();
 		if (input.length === 0) return;
 		try {
 			const telemetry = this.runtimeTelemetry.resolve(options);
 			await this.saveMessagesWithSpan(
+				memory,
 				options.persistence.threadId,
 				options.persistence.resourceId,
 				input,
@@ -265,12 +266,14 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		if (!this.config.memory || !options?.persistence) return;
+		const memory = this.config.memory;
+		if (!memory || !options?.persistence) return;
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
 		try {
 			const telemetry = this.runtimeTelemetry.resolve(options);
 			await this.saveMessagesWithSpan(
+				memory,
 				options.persistence.threadId,
 				options.persistence.resourceId,
 				delta,
@@ -298,11 +301,13 @@ export class MemoryOrchestrator {
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
-		if (!this.config.memory || !options?.persistence) return;
+		const memory = this.config.memory;
+		if (!memory || !options?.persistence) return;
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
 		const telemetry = this.runtimeTelemetry.resolve(options);
 		await this.saveMessagesWithSpan(
+			memory,
 			options.persistence.threadId,
 			options.persistence.resourceId,
 			delta,
