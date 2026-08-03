@@ -2,6 +2,7 @@ import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { RunOptions } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
+import type { BuiltTelemetry } from '../../types/telemetry';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
@@ -9,7 +10,6 @@ import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
-import type { BuiltTelemetry } from '../../types/telemetry';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';

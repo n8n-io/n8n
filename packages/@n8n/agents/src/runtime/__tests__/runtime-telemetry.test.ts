@@ -543,22 +543,43 @@ describe('withMemorySpan()', () => {
 	it('falls through to fn() without starting a span when telemetry is disabled, undefined, or the tracer is not active-span-capable', async () => {
 		const disabled = builtTelemetry({ enabled: false, tracer: fakeTracer(fakeSpan()) });
 		await expect(
-			withMemorySpan('query_memory', 'my-agent', disabled, {}, async () => ({
-				result: 'ok',
-			})),
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				disabled,
+				{},
+				async () =>
+					await Promise.resolve({
+						result: 'ok',
+					}),
+			),
 		).resolves.toBe('ok');
 
 		const noTracer = builtTelemetry();
 		await expect(
-			withMemorySpan('query_memory', 'my-agent', noTracer, {}, async () => ({
-				result: 'ok',
-			})),
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				noTracer,
+				{},
+				async () =>
+					await Promise.resolve({
+						result: 'ok',
+					}),
+			),
 		).resolves.toBe('ok');
 
 		await expect(
-			withMemorySpan('query_memory', 'my-agent', undefined, {}, async () => ({
-				result: 'ok',
-			})),
+			withMemorySpan(
+				'query_memory',
+				'my-agent',
+				undefined,
+				{},
+				async () =>
+					await Promise.resolve({
+						result: 'ok',
+					}),
+			),
 		).resolves.toBe('ok');
 	});
 
@@ -577,7 +598,7 @@ describe('withMemorySpan()', () => {
 				storeTypes: ['in_memory'],
 				storeNames: ['memory'],
 			},
-			async () => ({ result: { entries: 3 } }),
+			async () => await Promise.resolve({ result: { entries: 3 } }),
 		);
 
 		expect(result).toEqual({ entries: 3 });
@@ -606,10 +627,11 @@ describe('withMemorySpan()', () => {
 			'my-agent',
 			telemetry,
 			{ owners: ['resource-1'] },
-			async () => ({
-				result: undefined,
-				attributes: { ids: ['m1', 'm2'], operations: ['created', 'created'] },
-			}),
+			async () =>
+				await Promise.resolve({
+					result: undefined,
+					attributes: { ids: ['m1', 'm2'], operations: ['created', 'created'] },
+				}),
 		);
 
 		const [name] = tracer.startActiveSpan.mock.calls[0];
@@ -627,9 +649,16 @@ describe('withMemorySpan()', () => {
 		const tracer = fakeTracer(span);
 		const telemetry = builtTelemetry({ tracer });
 
-		await withMemorySpan('query_memory', 'my-agent', telemetry, {}, async () => ({
-			result: 'ok',
-		}));
+		await withMemorySpan(
+			'query_memory',
+			'my-agent',
+			telemetry,
+			{},
+			async () =>
+				await Promise.resolve({
+					result: 'ok',
+				}),
+		);
 
 		expect(span.setAttributes).not.toHaveBeenCalled();
 	});
