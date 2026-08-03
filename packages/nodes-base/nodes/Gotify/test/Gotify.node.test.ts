@@ -2,24 +2,28 @@ import type { INodeExecutionData } from 'n8n-workflow';
 import { Gotify } from '../Gotify.node';
 import * as transport from '../GenericFunctions';
 import { createMockExecuteFunction } from './helpers';
+import type { Mock } from 'vitest';
 
-jest.mock('../GenericFunctions', () => ({
-	gotifyApiRequest: jest.fn().mockResolvedValue({}),
-	gotifyApiRequestAllItems: jest.fn().mockResolvedValue([]),
+vi.mock('../GenericFunctions', () => ({
+	gotifyApiRequest: vi.fn().mockResolvedValue({}),
+	gotifyApiRequestAllItems: vi.fn().mockResolvedValue([]),
 }));
+
+const gotifyApiRequestMock = transport.gotifyApiRequest as Mock;
+const gotifyApiRequestAllItemsMock = transport.gotifyApiRequestAllItems as Mock;
 
 describe('Test Gotify Node', () => {
 	let gotifyNode: Gotify;
 
 	beforeEach(() => {
 		gotifyNode = new Gotify();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('create operation', () => {
 		it('should create message with basic fields', async () => {
 			const mockResponse = { id: 123, message: 'Test message', priority: 5 };
-			(transport.gotifyApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			gotifyApiRequestMock.mockResolvedValue(mockResponse);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -47,7 +51,7 @@ describe('Test Gotify Node', () => {
 
 		it('should create message with title and priority', async () => {
 			const mockResponse = { id: 124, message: 'Important message', priority: 10, title: 'Alert' };
-			(transport.gotifyApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			gotifyApiRequestMock.mockResolvedValue(mockResponse);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -72,7 +76,7 @@ describe('Test Gotify Node', () => {
 
 		it('should create message with markdown content type', async () => {
 			const mockResponse = { id: 125, message: '# Markdown Title' };
-			(transport.gotifyApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			gotifyApiRequestMock.mockResolvedValue(mockResponse);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -99,7 +103,7 @@ describe('Test Gotify Node', () => {
 
 		it('should create message with URL click action', async () => {
 			const mockResponse = { id: 126, message: 'Click me' };
-			(transport.gotifyApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			gotifyApiRequestMock.mockResolvedValue(mockResponse);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -126,7 +130,7 @@ describe('Test Gotify Node', () => {
 
 		it('should create message with all options', async () => {
 			const mockResponse = { id: 127, message: '# Full featured message' };
-			(transport.gotifyApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			gotifyApiRequestMock.mockResolvedValue(mockResponse);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -163,7 +167,7 @@ describe('Test Gotify Node', () => {
 
 	describe('delete operation', () => {
 		it('should delete message by ID', async () => {
-			(transport.gotifyApiRequest as jest.Mock).mockResolvedValue({});
+			gotifyApiRequestMock.mockResolvedValue({});
 
 			const nodeParameters = {
 				resource: 'message',
@@ -193,7 +197,7 @@ describe('Test Gotify Node', () => {
 				{ id: 2, message: 'Message 2' },
 				{ id: 3, message: 'Message 3' },
 			];
-			(transport.gotifyApiRequestAllItems as jest.Mock).mockResolvedValue(mockMessages);
+			gotifyApiRequestAllItemsMock.mockResolvedValue(mockMessages);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -219,7 +223,7 @@ describe('Test Gotify Node', () => {
 			const mockResponse = {
 				messages: [{ id: 1, message: 'Message 1' }],
 			};
-			(transport.gotifyApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			gotifyApiRequestMock.mockResolvedValue(mockResponse);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -238,7 +242,7 @@ describe('Test Gotify Node', () => {
 	describe('error handling', () => {
 		it('should handle errors when continueOnFail is true', async () => {
 			const error = new Error('API Error');
-			(transport.gotifyApiRequest as jest.Mock).mockRejectedValue(error);
+			gotifyApiRequestMock.mockRejectedValue(error);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -264,7 +268,7 @@ describe('Test Gotify Node', () => {
 
 		it('should throw error when continueOnFail is false', async () => {
 			const error = new Error('API Error');
-			(transport.gotifyApiRequest as jest.Mock).mockRejectedValue(error);
+			gotifyApiRequestMock.mockRejectedValue(error);
 
 			const nodeParameters = {
 				resource: 'message',
@@ -285,7 +289,7 @@ describe('Test Gotify Node', () => {
 			const mockResponse1 = { id: 200, message: 'First message' };
 			const mockResponse2 = { id: 201, message: 'Second message' };
 
-			(transport.gotifyApiRequest as jest.Mock)
+			gotifyApiRequestMock
 				.mockResolvedValueOnce(mockResponse1)
 				.mockResolvedValueOnce(mockResponse2);
 
