@@ -317,15 +317,6 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 	height: 100%;
 }
 
-.tabs {
-	display: flex;
-	width: 100%;
-
-	:global(.n8n-segment-control-item) {
-		flex: 1;
-	}
-}
-
 .popper {
 	box-shadow: var(--shadow--light);
 	:global(.el-popper__arrow) {
