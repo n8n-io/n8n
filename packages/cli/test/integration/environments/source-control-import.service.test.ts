@@ -126,6 +126,7 @@ describe('SourceControlImportService', () => {
 			mock(), // dataTableSizeValidator
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence
+			mock(), // workflowPublishGuard
 		);
 	});
 

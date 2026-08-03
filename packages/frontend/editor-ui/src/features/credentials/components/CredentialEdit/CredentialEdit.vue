@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
 
 import type {
@@ -22,21 +22,26 @@ import Modal from '@/app/components/Modal.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
-import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from '../../composables/oauthCallback';
+import {
+	getTrustedOAuthOrigins,
+	hasOAuthTokenData,
+	isOAuthTokenDataSet,
+	waitForOAuthCallback,
+} from '../../composables/oauthCallback';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -70,6 +75,9 @@ type Props = {
 	activeId?: string;
 	mode?: 'new' | 'edit';
 };
+
+/** All a new credential needs of its owning project: where to save it, and what to call it in the toast. */
+type CredentialHomeProject = { id: string; name?: string | null };
 
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
 
@@ -161,6 +169,12 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const pendingAuthType = ref<string | null>(null);
+// Pending OAuth connect flow; aborted on re-click and on unmount so its
+// listeners and backend polling don't outlive the modal.
+const oauthFlowAbortController = ref<AbortController | null>(null);
+onBeforeUnmount(() => {
+	oauthFlowAbortController.value?.abort();
+});
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
 // The credential editor can open outside the workflow editor (e.g. the
@@ -230,6 +244,7 @@ const {
 	isCredentialTestable,
 	credentialPermissions,
 	usesExternalSecrets,
+	homeProject,
 	setCredentialPropertyDefaults,
 	resetCredentialData,
 	testCredential,
@@ -255,10 +270,20 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
+const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
+	if (props.mode !== 'new') return undefined;
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.usageScope : undefined;
+});
+
 const appendToBody = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
+
+const isInstanceCredential = computed(
+	() => presetUsageScope.value === 'instance' || currentCredential.value?.usageScope === 'instance',
+);
 
 const sidebarItems = computed(() => {
 	const menuItems: IMenuItem[] = [
@@ -267,11 +292,15 @@ const sidebarItems = computed(() => {
 			label: i18n.baseText('credentialEdit.credentialEdit.connection'),
 			position: 'top',
 		},
-		{
-			id: 'sharing',
-			label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
-			position: 'top',
-		},
+		...(isInstanceCredential.value
+			? []
+			: [
+					{
+						id: 'sharing',
+						label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
+						position: 'top',
+					} satisfies IMenuItem,
+				]),
 		{
 			id: 'details',
 			label: i18n.baseText('credentialEdit.credentialEdit.details'),
@@ -550,11 +579,14 @@ async function onResolvableChange(value: boolean) {
 	}
 
 	isResolvable.value = value;
-	// Switching sharing mode invalidates any carried-over connection state: a
-	// freshly-private credential has no per-user connection for the current
-	// user yet, so reset it to avoid rendering a stale "connected" state with a
-	// Disconnect button that has nothing to disconnect.
+	// Switching sharing mode invalidates any carried-over connection state: `connectedByMe`
+	// doesn't apply to the new mode, and `oauthTokenData` (mirrored true for a connected
+	// end-user credential) would otherwise be read as "connected" once static.
 	connectedByMe.value = false;
+	credentialData.value = {
+		...credentialData.value,
+		oauthTokenData: null as unknown as CredentialInformation,
+	};
 	hasUnsavedChanges.value = true;
 }
 
@@ -647,7 +679,10 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
-		credential = await createCredential(credentialDetails, projectsStore.currentProject);
+		if (presetUsageScope.value) {
+			credentialDetails.usageScope = presetUsageScope.value;
+		}
+		credential = await createCredential(credentialDetails, homeProject.value);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -674,6 +709,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (credential) {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
+		// Resync in case the save cleared this user's connection server-side.
+		connectedByMe.value = credential.connectedByMe === true;
 
 		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
 		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
@@ -775,14 +812,11 @@ async function handleDynamicNotification(isValid: boolean) {
 	}
 }
 
-const createToastMessagingForNewCredentials = (project?: Project | null) => {
+const createToastMessagingForNewCredentials = (project?: CredentialHomeProject | null) => {
 	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
 	let toastText = '';
 
-	if (
-		projectsStore.currentProject &&
-		projectsStore.currentProject.id !== projectsStore.personalProject?.id
-	) {
+	if (project && project.id !== projectsStore.personalProject?.id) {
 		toastTitle = i18n.baseText('credentials.create.project.toast.title', {
 			interpolate: { projectName: project?.name ?? '' },
 		});
@@ -800,7 +834,7 @@ const createToastMessagingForNewCredentials = (project?: Project | null) => {
 
 async function createCredential(
 	credentialDetails: ICredentialsDecrypted,
-	project?: Project | null,
+	project?: CredentialHomeProject | null,
 ): Promise<ICredentialsResponse | null> {
 	let credential;
 
@@ -1050,38 +1084,18 @@ async function oAuthCredentialAuthorize() {
 		'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 	const oauthPopup = window.open(url, 'OAuth Authorization', params);
 
+	// Token presence in credential data can only confirm the flow when there was
+	// no token yet (a reconnect's old token would read as an immediate false
+	// success) and only for fixed credentials — end-user (resolvable)
+	// credentials store tokens per user outside the credential data.
+	const canVerifyConnected = !credential.isResolvable && !isOAuthTokenDataSet(credentialData.value);
+
 	credentialData.value = {
 		...credentialData.value,
 		oauthTokenData: null as unknown as CredentialInformation,
 	};
 
-	const oauthChannel = new BroadcastChannel('oauth-callback');
-	const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
-	let oauthResultHandled = false;
-
-	// Fallback: if the popup is closed (or blocked) without ever delivering a
-	// callback message, no handler fires and the listeners below would leak —
-	// and stack up across attempts, so a later callback triggers duplicate side
-	// effects. Poll for the closed popup so the result is handled and cleaned up.
-	const popupClosedPoll = setInterval(() => {
-		if (!oauthPopup || oauthPopup.closed) {
-			handleOAuthResult(false);
-		}
-	}, 500);
-
-	const cleanupOAuthListeners = () => {
-		oauthChannel.removeEventListener('message', onChannelMessage);
-		window.removeEventListener('message', onWindowMessage);
-		oauthChannel.close();
-		clearInterval(popupClosedPoll);
-	};
-
 	const handleOAuthResult = (successfullyConnected: boolean) => {
-		if (oauthResultHandled) return;
-
-		oauthResultHandled = true;
-		cleanupOAuthListeners();
-
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
 			workflow_id: workflowDocumentStore.value.workflowId || null,
@@ -1124,19 +1138,35 @@ async function oAuthCredentialAuthorize() {
 		}
 	};
 
-	function onChannelMessage(event: MessageEvent) {
-		handleOAuthResult(event.data === 'success');
+	if (!oauthPopup) {
+		handleOAuthResult(false);
+		return;
 	}
 
-	// Cross-origin embed fallback: the callback page also posts to the opener.
-	function onWindowMessage(event: MessageEvent) {
-		const result = parseOAuthCallbackMessage(event, trustedOrigins);
-		if (result === null) return;
-		handleOAuthResult(result === 'success');
-	}
+	// Supersede any previous pending flow so a re-click doesn't leave a second
+	// set of listeners alive; unmounting the modal aborts too (onBeforeUnmount).
+	oauthFlowAbortController.value?.abort();
+	const abortController = new AbortController();
+	// Close the popup on teardown/supersession so it isn't left orphaned.
+	// No-op when the provider's COOP policy severed the opener relationship.
+	abortController.signal.addEventListener('abort', () => oauthPopup.close(), { once: true });
+	oauthFlowAbortController.value = abortController;
 
-	oauthChannel.addEventListener('message', onChannelMessage);
-	window.addEventListener('message', onWindowMessage);
+	const outcome = await waitForOAuthCallback({
+		popup: oauthPopup,
+		trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+		signal: abortController.signal,
+		verifyConnected: canVerifyConnected
+			? async () =>
+					hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credential.id }))
+			: undefined,
+	});
+
+	// A superseded or unmounted flow must not report a result: its telemetry
+	// and UI side effects would describe a flow the user is no longer running.
+	if (outcome === 'aborted') return;
+
+	handleOAuthResult(outcome === 'success');
 }
 
 async function onDisconnectMyConnection(): Promise<void> {
@@ -1157,8 +1187,14 @@ async function onDisconnectMyConnection(): Promise<void> {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await credentialsStore.disconnectMyConnection({ id: credentialId.value });
-		connectedByMe.value = false;
+		// End-user creds clear the caller's own per-user connection; fixed creds
+		// clear the shared OAuth token stored on the credential itself.
+		if (isResolvable.value) {
+			await credentialsStore.disconnectMyConnection({ id: credentialId.value });
+			connectedByMe.value = false;
+		} else {
+			await credentialsStore.disconnectOauthToken({ id: credentialId.value });
+		}
 		credentialData.value = {
 			...credentialData.value,
 			oauthTokenData: null as unknown as CredentialInformation,
@@ -1355,7 +1391,7 @@ const { width } = useElementSize(credNameRef);
 							:credential-permissions="credentialPermissions"
 							:mode="mode"
 							:selected-credential="selectedCredential"
-							:is-private-credentials-enabled="isPrivateCredentialsEnabled"
+							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
 							:is-new-credential="isNewCredential"

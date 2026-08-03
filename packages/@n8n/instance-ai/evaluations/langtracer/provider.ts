@@ -1,6 +1,8 @@
 // lang-tracer test-case provider; `casesFromExportedFiles` is split from the network
 // call so the normalize + validate contract is unit-testable without a server.
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import { LangTracerClient, type ExportedSuite } from './client';
 import { resolveLangTracerConfig } from './config';
 import { normalizeExportedCase } from './normalize';
@@ -30,6 +32,14 @@ export function casesFromExportedFiles(
 
 	for (const [filename, raw] of Object.entries(files)) {
 		const fileSlug = filename.replace(/\.json$/i, '');
+		// Checked on the RAW body: the normalizer whitelists to the schema's keys, so a
+		// leftover `seedFile` would be stripped and the case would run unseeded.
+		if (isRecord(raw) && raw.seedFile !== undefined) {
+			errors.push(
+				`${filename}:\n  - seedFile: no longer supported — carry the seed in the case body as \`conversationSeed\``,
+			);
+			continue;
+		}
 		const parsed = EvalTestCaseSchema.safeParse(normalizeExportedCase(raw));
 		if (!parsed.success) {
 			const issues = parsed.error.issues

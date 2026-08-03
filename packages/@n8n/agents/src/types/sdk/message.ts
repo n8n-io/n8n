@@ -9,8 +9,10 @@ export type MessageContent =
 	| ContentToolCall
 	| ContentInvalidToolCall
 	| ContentReasoning
+	| ContentReasoningFile
 	| ContentFile
 	| ContentCitation
+	| ContentCustom
 	| ContentProvider;
 
 export interface ContentMetadata {
@@ -62,6 +64,17 @@ export type ContentReasoning = ContentMetadata & {
 	text: string;
 };
 
+/**
+ * Reference to file bytes held in a host-provided store (see `BuiltFileStore`).
+ * Only the reference is persisted.
+ */
+export interface ContentFileRef {
+	/** Stable identifier resolvable by the injected file store. */
+	id: string;
+	fileName?: string;
+	sizeBytes?: number;
+}
+
 export type ContentFile = ContentMetadata & {
 	type: 'file';
 
@@ -79,8 +92,25 @@ export type ContentFile = ContentMetadata & {
 	 * If the API returns base64 encoded strings, the file data should be returned
 	 * as base64 encoded strings. If the API returns binary data, the file data should
 	 * be returned as binary data.
+	 *
+	 * Absent on reference-only parts (`fileRef` set); hydrated by the runtime
+	 * before LLM calls.
 	 */
-	data: Uint8Array | ArrayBuffer | Buffer | string;
+	data?: Uint8Array | ArrayBuffer | Buffer | string;
+
+	/** External-store reference for the file bytes. At least one of `data` / `fileRef` must be set. */
+	fileRef?: ContentFileRef;
+};
+
+export type ContentReasoningFile = ContentMetadata & {
+	type: 'reasoning-file';
+	data: ContentFile['data'];
+	mediaType: string;
+};
+
+export type ContentCustom = ContentMetadata & {
+	type: 'custom';
+	kind: `${string}.${string}`;
 };
 
 export type ContentToolCall = ContentMetadata & {
@@ -189,3 +219,26 @@ export type AgentMessage = Message | CustomAgentMessage;
  * cursors; both fields are populated on read by every backend.
  */
 export type AgentDbMessage = { id: string; createdAt: Date } & AgentMessage;
+
+/**
+ * Return a copy of the message with hydrated bytes removed from file parts
+ * that carry a `fileRef`. Persistence backends must apply this before
+ * serializing message content, so stored messages hold only references.
+ * Parts without a `fileRef` keep their inline `data`. Non-content messages
+ * and messages without hydrated file parts are returned as-is.
+ */
+export function stripHydratedFileData<T extends AgentMessage>(message: T): T {
+	if (!('content' in message) || !Array.isArray(message.content)) return message;
+
+	let changed = false;
+	const content = message.content.map((block) => {
+		if (block.type === 'file' && block.fileRef && block.data !== undefined) {
+			changed = true;
+			const { data: _data, ...rest } = block;
+			return rest;
+		}
+		return block;
+	});
+
+	return changed ? { ...message, content } : message;
+}

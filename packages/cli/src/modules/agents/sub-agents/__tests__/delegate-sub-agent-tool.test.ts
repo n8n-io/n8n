@@ -73,6 +73,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			resolveInlineSubAgentProviderTools,
 		});
 
@@ -93,6 +94,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			inlineSubAgentModelsByDifficulty,
 		});
 
@@ -107,6 +109,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 			policy: { maxChildren: 2 },
 		});
 
@@ -155,6 +158,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -174,6 +178,50 @@ describe('createN8nDelegateSubAgentTool', () => {
 		);
 	});
 
+	it('forwards the parent telemetry from the tool context to the foreground runner', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		const parentTelemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			functionId: 'parent-agent',
+		};
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1', parentTelemetry },
+		);
+
+		expect(runner.runForeground).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ telemetry: parentTelemetry }),
+		);
+	});
+
+	it('omits telemetry from the runner context when the parent run has none', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1' },
+		);
+
+		expect(runner.runForeground.mock.calls[0]?.[1]).not.toHaveProperty('telemetry');
+	});
+
 	it('selects a configured n8n agent source by subAgentId', async () => {
 		const selectedSource: SubAgentSource = { agentId: 'agent-2' };
 		const tool = createN8nDelegateSubAgentTool({
@@ -190,6 +238,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			],
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -212,6 +261,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(
@@ -239,6 +289,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
 		expect(runSubAgent).toBeDefined();
@@ -252,7 +303,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 					taskPath: '/root/research_api_0',
 					childCount: 0,
 				},
-				{ runInlineSubAgent },
+				{ runInlineSubAgent, emitChunk: () => undefined },
 			),
 		).resolves.toMatchObject({
 			status: 'completed',
@@ -275,6 +326,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			sourcesById: { 'agent-2': source },
 			projectId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(

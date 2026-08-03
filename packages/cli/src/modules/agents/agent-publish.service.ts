@@ -1,5 +1,6 @@
 import {
 	type AgentConfigValidationResponse,
+	isDraftIntegration,
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentVersionListItemDto,
@@ -7,6 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
 import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -15,6 +17,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
+import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
@@ -22,6 +25,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -30,8 +34,17 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 
+export type AgentPublishSource = 'editor' | 'builder' | 'channel_connect' | 'slack_setup';
+
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
+	/**
+	 * Validate as if not-yet-connected draft integrations (`credentialId: ''`)
+	 * didn't exist. Connect-time publishes (connecting one of several
+	 * drafted channels) pass this so another channel's still-unresolved
+	 * draft doesn't block publishing the one currently being connected.
+	 */
+	ignoreDraftIntegrations?: boolean;
 }
 
 export type ValidAgentConfigValidationResponse = AgentConfigValidationResponse & {
@@ -73,12 +86,14 @@ export class AgentPublishService {
 		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	async publishAgent(
 		agentId: string,
 		projectId: string,
 		user: User,
+		source: AgentPublishSource,
 		versionId?: string,
 		options: PublishAgentOptions = {},
 	): Promise<PublishAgentResult> {
@@ -110,7 +125,14 @@ export class AgentPublishService {
 					(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
 				);
 
-		const validation = await this.assertPublishable(agent, projectId, user, tasks, targetHistory);
+		const validation = await this.assertPublishable(
+			agent,
+			projectId,
+			user,
+			tasks,
+			targetHistory,
+			options.ignoreDraftIntegrations,
+		);
 
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (targetHistory) {
@@ -139,6 +161,16 @@ export class AgentPublishService {
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		// activeVersionId was just set above (either to targetHistory.versionId or
+		// agent.versionId), so it is never null on this success path.
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_PUBLISHED, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			source,
+			version_id: agent.activeVersionId!,
+		});
 
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
@@ -178,6 +210,7 @@ export class AgentPublishService {
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
 		targetHistory?: AgentHistory,
+		ignoreDraftIntegrations?: boolean,
 	): Promise<ValidAgentConfigValidationResponse> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -185,26 +218,45 @@ export class AgentPublishService {
 			user,
 		);
 
+		const baseIntegrations = agent.integrations ?? [];
+		const integrations = ignoreDraftIntegrations
+			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
+			: baseIntegrations;
+
 		const validation = targetHistory
 			? await this.agentValidationService.validateAgentHistoryConfiguration(
 					agent.id,
 					projectId,
 					targetHistory,
-					agent.integrations ?? [],
+					integrations,
 					credentialProvider,
 				)
-			: await this.agentValidationService.validateAgentEntityConfiguration(
-					agent,
-					projectId,
-					tasks,
-					credentialProvider,
-				);
+			: ignoreDraftIntegrations
+				? await this.agentValidationService.validateAgentEntityConfiguration(
+						agent,
+						projectId,
+						tasks,
+						credentialProvider,
+						'publish',
+						integrations,
+					)
+				: await this.agentValidationService.validateAgentEntityConfiguration(
+						agent,
+						projectId,
+						tasks,
+						credentialProvider,
+					);
 
 		requireValidValidation(validation);
 		return validation;
 	}
 
-	async unpublishAgent(agentId: string, projectId: string): Promise<Agent> {
+	async unpublishAgent(
+		agentId: string,
+		projectId: string,
+		user: User,
+		source: 'editor' | 'builder',
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -219,6 +271,13 @@ export class AgentPublishService {
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+
+		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_UNPUBLISHED, {
+			agent_id: agentId,
+			project_id: projectId,
+			user_id: user.id,
+			source,
+		});
 
 		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
@@ -316,6 +375,29 @@ export class AgentPublishService {
 	 */
 	async hasPublishHistory(agentId: string): Promise<boolean> {
 		return await this.agentHistoryRepository.existsForAgent(agentId);
+	}
+
+	/**
+	 * Load one published version snapshot (schema, tools, skills) plus its
+	 * frozen task rows, for read-only inspection.
+	 */
+	async getVersion(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+	): Promise<{ agent: Agent; version: AgentHistory; tasks: AgentTaskSnapshot[] }> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		if (!version) {
+			throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
+		}
+
+		const tasks = await this.agentTaskSnapshotRepository.findByVersionId(versionId);
+		return { agent, version, tasks };
 	}
 
 	async listPublishHistory(

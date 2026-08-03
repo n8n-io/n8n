@@ -15,7 +15,7 @@ import {
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
 } from './mcp.constants';
-import { McpService } from './mcp.service';
+import { McpService, type McpFeatureFlags } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
@@ -74,8 +74,12 @@ export class McpController {
 	}
 
 	/**
-	 * GET endpoint for SSE stream (MCP Streamable HTTP spec)
-	 * Allows clients like Gemini CLI to establish an SSE stream for server-to-client notifications.
+	 * GET endpoint (MCP Streamable HTTP spec). The server runs in stateless mode
+	 * (a fresh transport per request), so it can never deliver server-initiated
+	 * messages on a GET listen stream: routing the request into the transport
+	 * leaves the SSE stream open and silent forever, stalling clients during
+	 * connection setup. The spec requires servers that don't offer the stream
+	 * to respond with 405.
 	 */
 	@Get('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
@@ -83,7 +87,7 @@ export class McpController {
 		skipAuth: true,
 		usesTemplates: true,
 	})
-	async handleGet(req: AuthenticatedRequest, res: FlushableResponse) {
+	async handleGet(_req: AuthenticatedRequest, res: Response) {
 		this.setCorsHeaders(res);
 
 		const enabled = await this.mcpSettingsService.getEnabled();
@@ -92,22 +96,15 @@ export class McpController {
 			return;
 		}
 
-		try {
-			const { enabled: mcpAppsEnabled } = await this.mcpService.resolveMcpAppsVariant(req.user);
-			await this.handleTransportRequest(req, res, mcpAppsEnabled);
-		} catch (error) {
-			this.errorReporter.error(error);
-			if (!res.headersSent) {
-				res.status(500).json({
-					jsonrpc: '2.0',
-					error: {
-						code: -32603,
-						message: INTERNAL_SERVER_ERROR_MESSAGE,
-					},
-					id: null,
-				});
-			}
-		}
+		res.header('Allow', 'POST');
+		res.status(405).json({
+			jsonrpc: '2.0',
+			error: {
+				code: -32000,
+				message: 'Method not allowed.',
+			},
+			id: null,
+		});
 	}
 
 	@Post('/http', {
@@ -150,19 +147,20 @@ export class McpController {
 			return;
 		}
 
-		const mcpAppsResolution = await this.mcpService.resolveMcpAppsVariant(req.user);
+		const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
 
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			...baseTelemetryPayload,
-			mcp_apps_enabled: mcpAppsResolution.enabled,
-			mcp_apps_variant: mcpAppsResolution.variant,
+			mcp_apps_enabled: featureFlags.mcpApps.enabled,
+			mcp_apps_variant: featureFlags.mcpApps.variant,
+			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
 		};
 
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, mcpAppsResolution.enabled, req.body);
+			await this.handleTransportRequest(req, res, featureFlags, req.body);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
@@ -197,8 +195,8 @@ export class McpController {
 	private async handleTransportRequest(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
-		mcpAppsEnabled: boolean,
-		body?: unknown,
+		featureFlags: McpFeatureFlags,
+		body: unknown,
 	) {
 		const { StreamableHTTPServerTransport } = await import(
 			'@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -206,7 +204,7 @@ export class McpController {
 		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
 		const server = await this.mcpService.getServer(
 			req.user,
-			mcpAppsEnabled,
+			featureFlags,
 			getClientInfo(req),
 			grantedScopes,
 		);

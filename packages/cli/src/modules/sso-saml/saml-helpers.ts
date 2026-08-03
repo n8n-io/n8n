@@ -7,12 +7,10 @@ import { randomString } from 'n8n-workflow';
 import type { FlowResult } from 'samlify/types/src/flow';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { PasswordUtility } from '@/services/password.utility';
 import {
+	assertAuthenticationMethodCanBeEnabled,
 	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 
@@ -22,10 +20,8 @@ import type { SamlAttributeMapping, SamlUserAttributes } from './types';
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
 	const currentAuthenticationMethod = getCurrentAuthenticationMethod();
-	if (enabled && !isEmailCurrentAuthenticationMethod() && !isSamlCurrentAuthenticationMethod()) {
-		throw new InternalServerError(
-			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${currentAuthenticationMethod})`,
-		);
+	if (enabled) {
+		assertAuthenticationMethodCanBeEnabled('saml');
 	}
 
 	const targetAuthenticationMethod =

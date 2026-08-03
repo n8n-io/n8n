@@ -9,7 +9,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			'errorCode' in error &&
 			error.errorCode === 'quota_exhausted',
 		McpClientManager: class {
-			getRegularTools = vi.fn().mockResolvedValue({});
+			getRegularTools = vi.fn().mockResolvedValue({ tools: new Map(), connectionFailures: [] });
 			disconnect = vi.fn();
 		},
 		createDomainAccessTracker: vi.fn(),
@@ -24,10 +24,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		createScopedWorkspace: vi.fn((workspace: unknown) => workspace),
 		getPromptWorkspaceRoot: vi.fn(() => '/home/daytona/workspace'),
-		getPromptSandboxInstructions: vi.fn(() => 'Cloud sandbox with isolated execution.'),
-		getPromptFilesystemInstructions: vi.fn(
-			() => 'Filesystem access is scoped to /home/daytona/workspace.',
-		),
 		getWorkspaceRoot: vi.fn(async () => '/home/daytona/workspace'),
 		setupSandboxWorkspace: vi.fn(),
 		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
@@ -657,11 +653,14 @@ type TerminalGuardOrderServiceInternals = {
 	};
 	threadPushRef: Map<string, string>;
 	saveAgentTreeSnapshot: Mock;
-	backgroundTasks: { getRunningTasks: Mock };
+	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
 	creditService: { claimRunUsage: Mock };
+	failedInternalFollowUpStreaks: Map<string, number>;
 	schedulePlannedTasks: Mock;
 	drainPendingCheckpointReentries: Mock;
+	createPlannedTaskState: Mock;
+	syncPlannedTasksToUi: Mock;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
 	finalizeRun: Mock;
@@ -679,6 +678,7 @@ type TerminalGuardOrderServiceInternals = {
 			abortController: AbortController;
 			snapshotStorage: unknown;
 			tracing?: InstanceAiTraceContext;
+			checkpoint?: { isCheckpointFollowUp: boolean; checkpointTaskId: string };
 		},
 	) => Promise<void>;
 };
@@ -756,6 +756,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
 	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
+	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.drainPendingCheckpointReentries = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
@@ -2392,6 +2393,45 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
+	it('rebinds the suspended orchestration context tracing to the resume trace', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const staleTracing = { id: 'stale-trace' };
+		const resumeTracing = { id: 'resume-trace' };
+		const orchestrationContext = { tracing: staleTracing };
+		service.runState.findSuspendedByRequestId.mockReturnValue({
+			agent: {},
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			toolName: 'workflows',
+			suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
+			abortController: new AbortController(),
+			tracing: staleTracing,
+			modelId: undefined,
+			messageGroupId: 'group-1',
+			checkpoint: undefined,
+			runHandoff: undefined,
+			orchestrationContext,
+		});
+		service.tracing.createOrchestratorResumeTraceContext.mockResolvedValue(resumeTracing);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(orchestrationContext.tracing).toBe(resumeTracing);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ approved: true }),
+			expect.objectContaining({
+				orchestrationContext,
+				tracing: resumeTracing,
+			}),
+		);
+	});
+
 	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
@@ -2530,6 +2570,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 		expect(result).toEqual({
 			agent: rebuiltAgent,
 			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
 		});
 		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, runHandoff);
 	});
@@ -3251,6 +3292,70 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			'endRun',
 		]);
 	});
+
+	it('skips post-run scheduling when the resumed run was cancelled', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+		abortController.abort();
+
+		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(service.drainPendingCheckpointReentries).not.toHaveBeenCalled();
+		// The UI projection still runs, so a stopped run's task states reach the client.
+		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-a', 'run-1');
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith('run-1');
+	});
+
+	it('still marks an abandoned checkpoint terminal when the run was cancelled', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		service.syncPlannedTasksToUi = vi.fn(async () => {});
+		service.backgroundTasks.getRunningTasksByParentCheckpoint = vi.fn(() => []);
+		const markCheckpointFailed = vi.fn(async () => {});
+		service.createPlannedTaskState = vi.fn(async () => ({
+			plannedTaskService: {
+				getGraph: vi.fn(async () => ({ tasks: [{ id: 'cp-1', status: 'running' }] })),
+				markCheckpointFailed,
+			},
+		}));
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+		abortController.abort();
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				...resumedStreamOpts(abortController),
+				checkpoint: { isCheckpointFollowUp: true, checkpointTaskId: 'cp-1' },
+			},
+		);
+
+		// Without this the checkpoint task stays `running` forever and the plan
+		// graph can never advance, because the cancelled run's context is the only
+		// thing that knows it was a checkpoint follow-up.
+		expect(markCheckpointFailed).toHaveBeenCalledWith('thread-a', 'cp-1', {
+			error: 'Checkpoint run ended without reporting completion',
+		});
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+	});
 });
 
 describe('InstanceAiService — user message persistence on cancel', () => {
@@ -3271,6 +3376,8 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		runState: { clearActiveRun: Mock; hasSuspendedRun: Mock };
 		domainAccessTrackersByThread: Map<string, unknown>;
 		instanceAiErrorReporter: { beginRun: Mock; endRun: Mock };
+		schedulePlannedTasks: Mock;
+		taskProjector: { syncFromWorkflowLoop: Mock };
 	};
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
@@ -3317,6 +3424,121 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		await service.executeRun(fakeUser, 'thread-1', 'run-1', '', abortController);
 
 		expect(service.agentMemory.saveMessages).not.toHaveBeenCalled();
+	});
+
+	it('does not re-arm planned-task scheduling after a cancelled run, but still projects', async () => {
+		const service = createCancelPersistenceService();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.schedulePlannedTasks = vi.fn(async () => {});
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(service.taskProjector.syncFromWorkflowLoop).toHaveBeenCalledWith('thread-1', 'run-1');
+	});
+});
+
+describe('InstanceAiService — planned task settlement', () => {
+	type SettlementService = {
+		cancelRun: (threadId: string, reason?: string) => void;
+		cancelBackgroundTask: (threadId: string, taskId: string) => void;
+		schedulePlannedTasks: Mock;
+		syncPlannedTasksToUi: Mock;
+		eventBus: { publish: Mock };
+		createPlannedTaskState: Mock;
+		saveAgentTreeSnapshot: Mock;
+		cancelAwaitingApprovalPlan: Mock;
+		backgroundTasks: {
+			cancelThread: Mock;
+			cancelTask: Mock;
+		};
+		runState: {
+			getThreadUser: Mock;
+			cancelThread: Mock;
+		};
+		tracing: { finalizeBackgroundTaskTracing: Mock };
+		terminalOutcome: { recordBackgroundTerminalOutcome: Mock };
+		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+	};
+
+	const task = {
+		plannedTaskId: 'task-1',
+		threadId: 'thread-a',
+		runId: 'task-run-1',
+		agentId: 'agent-1',
+		role: 'builder',
+	};
+
+	function createSettlementService() {
+		const service = Object.create(InstanceAiService.prototype) as unknown as SettlementService;
+		const graph = { planRunId: 'plan-run-1', tasks: [] };
+		const plannedTaskService = {
+			markCancelled: vi.fn(async () => graph),
+			markFailed: vi.fn(async () => graph),
+		};
+		Object.assign(service, {
+			createPlannedTaskState: vi.fn(async () => ({ plannedTaskService })),
+			syncPlannedTasksToUi: vi.fn(async () => {}),
+			schedulePlannedTasks: vi.fn(async () => {}),
+			saveAgentTreeSnapshot: vi.fn(async () => {}),
+			cancelAwaitingApprovalPlan: vi.fn(async () => {}),
+			backgroundTasks: {
+				cancelThread: vi.fn(() => [task]),
+				cancelTask: vi.fn(() => task),
+			},
+			runState: {
+				getThreadUser: vi.fn(() => fakeUser),
+				cancelThread: vi.fn(() => ({ active: undefined, suspended: undefined })),
+			},
+			tracing: { finalizeBackgroundTaskTracing: vi.fn(async () => {}) },
+			eventBus: { publish: vi.fn() },
+			terminalOutcome: { recordBackgroundTerminalOutcome: vi.fn(async () => {}) },
+			suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
+		});
+		return { service, plannedTaskService, graph };
+	}
+
+	/** cancelRun/cancelBackgroundTask fire settlement with `void`, so let it settle. */
+	const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+
+	it('marks the planned task cancelled but does not re-tick when the whole thread is cancelled', async () => {
+		const { service, plannedTaskService, graph } = createSettlementService();
+
+		service.cancelRun('thread-a');
+		await flush();
+
+		expect(plannedTaskService.markCancelled).toHaveBeenCalledWith('thread-a', 'task-1', {
+			error: undefined,
+		});
+		expect(service.syncPlannedTasksToUi).toHaveBeenCalledWith('thread-a', graph);
+		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'agent-completed',
+				payload: { role: 'builder', result: '', status: 'cancelled' },
+			}),
+		);
+	});
+
+	it('re-ticks the scheduler when a single background task is cancelled', async () => {
+		const { service, plannedTaskService } = createSettlementService();
+
+		service.cancelBackgroundTask('thread-a', 'task-1');
+		await flush();
+
+		expect(plannedTaskService.markCancelled).toHaveBeenCalled();
+		expect(service.schedulePlannedTasks).toHaveBeenCalledWith(fakeUser, 'thread-a');
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'agent-completed',
+				payload: { role: 'builder', result: '', status: 'cancelled' },
+			}),
+		);
 	});
 });
 
@@ -4009,6 +4231,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		runState: { clearThread: Mock };
 		backgroundTasks: { cancelThread: Mock };
 		schedulerLocks: Map<string, unknown>;
+		failedInternalFollowUpStreaks: Map<string, number>;
 		liveness: { clearThreadState: Mock };
 		domainAccessTrackersByThread: Map<string, unknown>;
 		evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -4037,6 +4260,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
 		service.schedulerLocks = new Map();
+		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
@@ -4207,5 +4431,128 @@ describe('InstanceAiService — routeCancelRun zombie fallback', () => {
 		expect(service.routeTaskControl).toHaveBeenCalled();
 		expect(service.eventLog.flush).not.toHaveBeenCalled();
 		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).not.toHaveBeenCalled();
+	});
+});
+
+type FollowUpStreakServiceInternals = {
+	failedInternalFollowUpStreaks: Map<string, number>;
+	updateInternalFollowUpFailureStreak: (
+		threadId: string,
+		status: 'completed' | 'cancelled' | 'error' | 'suspended' | undefined,
+		isInternalFollowUp: boolean,
+	) => void;
+	startInternalFollowUpRun: (user: User, threadId: string, message: string) => Promise<string>;
+	startExecuteRun: Mock;
+	defaultTimeZone: string;
+	runState: {
+		hasLiveRun: Mock;
+		startRun: Mock;
+		getTimeZone: Mock;
+	};
+	logger: { warn: Mock; debug: Mock; error: Mock };
+};
+
+function createFollowUpStreakService(): FollowUpStreakServiceInternals {
+	// Bypass the constructor — we only exercise the follow-up circuit breaker
+	// and the run-start path it gates.
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as FollowUpStreakServiceInternals;
+
+	service.failedInternalFollowUpStreaks = new Map();
+	service.startExecuteRun = vi.fn();
+	service.defaultTimeZone = 'UTC';
+	service.runState = {
+		hasLiveRun: vi.fn(() => false),
+		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
+		getTimeZone: vi.fn(() => undefined),
+	};
+	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
+
+	return service;
+}
+
+describe('InstanceAiService — internal follow-up failure streak', () => {
+	describe('updateInternalFollowUpFailureStreak', () => {
+		it('counts consecutive errored internal follow-up runs per thread', () => {
+			const service = createFollowUpStreakService();
+
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBe(2);
+			expect(service.failedInternalFollowUpStreaks.get('thread-b')).toBeUndefined();
+		});
+
+		it('does not count errored runs that were not internal follow-ups', () => {
+			const service = createFollowUpStreakService();
+
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', false);
+
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBeUndefined();
+		});
+
+		it('resets the streak when a run completes or suspends', () => {
+			const service = createFollowUpStreakService();
+
+			service.failedInternalFollowUpStreaks.set('thread-a', 3);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'completed', false);
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBeUndefined();
+
+			service.failedInternalFollowUpStreaks.set('thread-a', 3);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'suspended', true);
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBeUndefined();
+		});
+
+		it('keeps the streak unchanged on cancelled runs and missing terminal status', () => {
+			const service = createFollowUpStreakService();
+			service.failedInternalFollowUpStreaks.set('thread-a', 2);
+
+			service.updateInternalFollowUpFailureStreak('thread-a', 'cancelled', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', undefined, true);
+
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBe(2);
+		});
+	});
+
+	describe('startInternalFollowUpRun circuit breaker', () => {
+		it('starts the follow-up while the streak is below the cap', async () => {
+			const service = createFollowUpStreakService();
+			service.failedInternalFollowUpStreaks.set('thread-a', 2);
+
+			const runId = await service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify');
+
+			expect(runId).toBe('follow-up-run');
+			expect(service.startExecuteRun).toHaveBeenCalled();
+		});
+
+		it('skips the follow-up once the streak reaches the cap', async () => {
+			const service = createFollowUpStreakService();
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+
+			const runId = await service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify');
+
+			expect(runId).toBe('');
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+			expect(service.logger.warn).toHaveBeenCalledWith(
+				'Skipping internal follow-up: consecutive follow-up runs keep failing',
+				expect.objectContaining({ threadId: 'thread-a', failedStreak: 3 }),
+			);
+		});
+
+		it('allows follow-ups again after a healthy run resets the streak', async () => {
+			const service = createFollowUpStreakService();
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'completed', false);
+
+			const runId = await service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify');
+
+			expect(runId).toBe('follow-up-run');
+			expect(service.startExecuteRun).toHaveBeenCalled();
+		});
 	});
 });

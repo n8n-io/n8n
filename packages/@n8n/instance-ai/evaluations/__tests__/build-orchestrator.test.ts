@@ -1,7 +1,10 @@
+import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import type { N8nClient } from '../clients/n8n-client';
+import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
+import type { BuildResult } from '../harness/build-workflow';
+import { runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { runWorkflowChecks, type BuildResult } from '../harness/runner';
 import {
 	createBuildOrchestrator,
 	type BuildOrchestratorDeps,
@@ -16,13 +19,28 @@ import type { WorkflowTestCase } from '../types';
 // against the behavior runWithLangSmith relied on while getOrBuild was a
 // closure — keep them green through the decomposition.
 
-vi.mock('../harness/runner', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../harness/runner')>();
-	return { ...actual, runWorkflowChecks: vi.fn().mockResolvedValue([]) };
+vi.mock('../harness/agent-execution', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/agent-execution')>();
+	return {
+		...actual,
+		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
+	};
+});
+
+vi.mock('../harness/cleanup', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/cleanup')>();
+	return {
+		...actual,
+		runWorkflowChecks: vi.fn().mockResolvedValue([]),
+	};
 });
 
 vi.mock('../harness/capture-run-debug', () => ({
 	captureThreadRunDebug: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../harness/artifacts/artifact-context', () => ({
+	resolveArtifactContext: vi.fn().mockResolvedValue('RESOLVED ARTIFACTS'),
 }));
 
 vi.mock('../build-expectations/verifier', async (importOriginal) => {
@@ -271,5 +289,61 @@ describe('createBuildOrchestrator', () => {
 		await expect(deps.buildExpectationsByKey.get('0:case-a')).resolves.toEqual([
 			{ expectation: 'sends a digest', pass: true, reason: 'ok' },
 		]);
+	});
+});
+
+describe('expectation judging context', () => {
+	it('threads the rendered agent artifact into the expectation judge', async () => {
+		const tracedBuild = vi.fn().mockResolvedValue(
+			okBuild({
+				threadId: 'thread-9',
+				transcript: [] as never,
+				artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+			}),
+		);
+		const deps = makeDeps([makeLane(1, tracedBuild)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ outcomeExpectations: ['the agent has a Slack tool'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+		await deps.buildExpectationsByKey.get('0:case-a');
+
+		expect(vi.mocked(resolveArtifactContext)).toHaveBeenCalledWith(
+			expect.objectContaining({ artifactRefs: [{ type: 'agent', id: 'agent-1' }] }),
+		);
+		expect(vi.mocked(verifyBuildExpectations)).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ artifactContext: 'RESOLVED ARTIFACTS' }),
+		);
+	});
+
+	it('resolves non-agent artifacts (config-eval) for the judge too — not just agent refs', async () => {
+		const tracedBuild = vi.fn().mockResolvedValue(
+			okBuild({
+				threadId: 'thread-9',
+				transcript: [] as never,
+				artifactRefs: [{ type: 'config-eval', id: 'ce-1' }] as never,
+			}),
+		);
+		const deps = makeDeps([makeLane(1, tracedBuild)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ outcomeExpectations: ['a config eval exists'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+		await deps.buildExpectationsByKey.get('0:case-a');
+
+		expect(vi.mocked(resolveArtifactContext)).toHaveBeenCalledWith(
+			expect.objectContaining({ artifactRefs: [{ type: 'config-eval', id: 'ce-1' }] }),
+		);
+		expect(vi.mocked(verifyBuildExpectations)).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ artifactContext: 'RESOLVED ARTIFACTS' }),
+		);
 	});
 });

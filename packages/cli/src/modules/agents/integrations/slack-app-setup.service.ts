@@ -60,6 +60,7 @@ const REQUIRED_BOT_SCOPES = [
 	'mpim:history',
 	'mpim:read',
 	'mpim:write',
+	'reactions:write',
 	'search:read.public',
 	'users:read',
 	'users:read.email',
@@ -263,9 +264,11 @@ export class SlackAppSetupService {
 			session.agentId,
 			session.projectId,
 			user,
+			'slack_setup',
 			undefined,
 			{
 				syncIntegrations: false,
+				ignoreDraftIntegrations: true,
 			},
 		);
 		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);

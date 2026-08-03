@@ -15,4 +15,6 @@ export interface ActionDropdownItem<T extends string> {
 	shortcut?: KeyboardShortcut;
 	customClass?: string;
 	checked?: boolean;
+	/** Destructive items (delete, revoke, ...) turn danger-red on hover. */
+	variant?: 'default' | 'destructive';
 }

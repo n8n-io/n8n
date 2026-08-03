@@ -8,7 +8,7 @@ import { useAgentModelCredentials } from '../../composables/useAgentModelCredent
 import { useAgentProjectId } from '../../composables/useAgentProjectId';
 import AgentModelSelector from '../AgentModelSelector.vue';
 import { computed, watch } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentBuilderSettingsStore } from '../../agentBuilderSettings.store';
 import { sanitizeModelId } from '../../utils/model-string';
 import { useModelCatalog } from '../../composables/useModelCatalog';
@@ -60,6 +60,11 @@ const showCustomPicker = computed(() => store.mode === 'custom' || !isProxyAvail
 const filteredAgents = computed<AgentModelsByProvider>(() =>
 	getModelsForPicker(credentialsByProvider.value),
 );
+
+const boundCredentialId = computed(() => {
+	const settings = store.effectiveSettings;
+	return settings.mode === 'custom' ? settings.credentialId : null;
+});
 
 const selectedAgent = computed<AgentModelOption | null>(() => {
 	const settings = store.effectiveSettings;
@@ -206,6 +211,7 @@ function onCancel() {
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
+				:bound-credential-id="boundCredentialId"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
 			/>
