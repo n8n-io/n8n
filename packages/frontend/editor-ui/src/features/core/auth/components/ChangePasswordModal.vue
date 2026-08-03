@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/app/constants';
 import Modal from '@/app/components/Modal.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
