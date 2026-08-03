@@ -397,9 +397,7 @@ export async function autoAssignCredentialsForAddedNodes(
  * warnings count as new.
  *
  * Note the deliberate asymmetry: only the pre-update pass is wrapped in a
- * try/catch. A pre-update state too broken to validate (which this batch may be
- * fixing) must not fail the update, while a failure validating the *result* has
- * to surface to the caller.
+ * try/catch.
  */
 export async function collectValidationWarnings(
 	{
@@ -437,7 +435,11 @@ export async function collectValidationWarnings(
 			connections: existing.connections,
 		} as unknown as WorkflowJSON);
 	} catch {
-		// do nothing
+		/*
+		 * deliberate: A pre-update state too broken to validate (which this batch may be
+		 * fixing) must not fail the update, while a failure validating the *result* has
+		 * to surface to the caller.
+		 */
 	}
 
 	const preUpdateKeys = new Set(preUpdateWarnings.map(getWarningKey));
