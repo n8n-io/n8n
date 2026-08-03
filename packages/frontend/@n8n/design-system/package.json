@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.config.styles.mts",
     "build:unchecked": "pnpm run build",
     "typecheck": "vue-tsc --noEmit",
     "typecheck:watch": "vue-tsc --watch --noEmit",
