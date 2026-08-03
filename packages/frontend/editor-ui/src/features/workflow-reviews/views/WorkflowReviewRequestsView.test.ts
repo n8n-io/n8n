@@ -350,15 +350,16 @@ describe('WorkflowReviewRequestsView', () => {
 			expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
 		});
 
-		it('keeps the buttons enabled and the tooltip off when the viewer can decide', async () => {
-			const { getByTestId } = renderComponent();
+		// Each button carries its own tooltip, so both must agree.
+		it('keeps the buttons enabled and the tooltips off when the viewer can decide', async () => {
+			const { getByTestId, getAllByTestId } = renderComponent();
 			await waitAllPromises();
 
 			expect(getByTestId('workflow-review-approve-button')).not.toBeDisabled();
-			expect(getByTestId('workflow-review-decision-tooltip')).toHaveAttribute(
-				'data-disabled',
-				'true',
-			);
+			expect(getByTestId('workflow-review-request-changes-button')).not.toBeDisabled();
+			for (const tooltip of getAllByTestId('workflow-review-decision-tooltip')) {
+				expect(tooltip).toHaveAttribute('data-disabled', 'true');
+			}
 		});
 
 		it('disables the buttons and says why when the viewer contributed a version', async () => {
@@ -367,17 +368,20 @@ describe('WorkflowReviewRequestsView', () => {
 				viewerDecisionIneligibilityReason: 'author',
 			});
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId, getAllByTestId } = renderComponent();
 			await waitAllPromises();
 
 			expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
 			expect(getByTestId('workflow-review-request-changes-button')).toBeDisabled();
-			const tooltip = getByTestId('workflow-review-decision-tooltip');
-			expect(tooltip).toHaveAttribute('data-disabled', 'false');
-			expect(tooltip).toHaveAttribute(
-				'data-content',
-				"You can't approve or request changes on a review you contributed to.",
-			);
+			const tooltips = getAllByTestId('workflow-review-decision-tooltip');
+			expect(tooltips).toHaveLength(2);
+			for (const tooltip of tooltips) {
+				expect(tooltip).toHaveAttribute('data-disabled', 'false');
+				expect(tooltip).toHaveAttribute(
+					'data-content',
+					'You contributed a version to this review.',
+				);
+			}
 		});
 
 		it('falls back to the generic permission hint for any other reason', async () => {
@@ -386,14 +390,16 @@ describe('WorkflowReviewRequestsView', () => {
 				viewerDecisionIneligibilityReason: 'missing_publish_permission',
 			});
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId, getAllByTestId } = renderComponent();
 			await waitAllPromises();
 
 			expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
-			expect(getByTestId('workflow-review-decision-tooltip')).toHaveAttribute(
-				'data-content',
-				'You need publish permission to approve or request changes.',
-			);
+			for (const tooltip of getAllByTestId('workflow-review-decision-tooltip')) {
+				expect(tooltip).toHaveAttribute(
+					'data-content',
+					'Missing permissions to perform this action',
+				);
+			}
 		});
 
 		it('does not submit a decision for an ineligible viewer', async () => {

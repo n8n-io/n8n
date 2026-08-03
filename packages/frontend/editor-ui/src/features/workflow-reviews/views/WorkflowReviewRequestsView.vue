@@ -111,14 +111,13 @@ const deciding = ref(false);
 
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
 
-/** Says why the decision buttons are disabled; empty when the viewer can decide. */
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
 	// Any reason other than 'author' gets the generic permission hint, so new
 	// backend reasons degrade gracefully instead of breaking the UI.
 	return detail.value.viewerDecisionIneligibilityReason === 'author'
 		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
-		: i18n.baseText('workflowReviews.detail.decision.ineligible.missingPublishPermission');
+		: i18n.baseText('generic.missing.permissions');
 });
 
 async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
@@ -224,15 +223,12 @@ onUnmounted(() => {
 						>
 							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
 						</N8nText>
-						<!-- Gated on the loaded detail (not the list-item fallback): only the
-							detail carries the viewer's decision eligibility. -->
-						<N8nTooltip
-							v-if="detail && detail.state === 'open'"
-							:disabled="!ineligibilityHint"
-							:content="ineligibilityHint"
-							:show-after="300"
-						>
-							<div :class="$style.decisionActions">
+						<div v-if="detail && detail.state === 'open'" :class="$style.decisionActions">
+							<N8nTooltip
+								:disabled="!ineligibilityHint"
+								:content="ineligibilityHint"
+								:show-after="300"
+							>
 								<N8nButton
 									:disabled="deciding || !viewerCanDecide"
 									data-test-id="workflow-review-approve-button"
@@ -240,16 +236,21 @@ onUnmounted(() => {
 								>
 									{{ i18n.baseText('workflowReviews.detail.decision.approve') }}
 								</N8nButton>
+							</N8nTooltip>
+							<N8nTooltip
+								:disabled="!ineligibilityHint"
+								:content="ineligibilityHint"
+								:show-after="300"
+							>
 								<N8nButton
-									type="secondary"
 									:disabled="deciding || !viewerCanDecide"
 									data-test-id="workflow-review-request-changes-button"
 									@click="onDecide(detail.id, 'changes_requested')"
 								>
 									{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
 								</N8nButton>
-							</div>
-						</N8nTooltip>
+							</N8nTooltip>
+						</div>
 					</div>
 					<N8nText
 						v-else-if="!showSidebar"
