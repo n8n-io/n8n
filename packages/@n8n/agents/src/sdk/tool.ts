@@ -19,6 +19,16 @@ const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
 });
 
+const APPROVAL_GATE_CONTINUATION_SCHEMA = z
+	.object({
+		__n8nApprovalGate: z.literal(true),
+	})
+	.strict();
+
+const APPROVAL_GATE_CONTINUATION = {
+	__n8nApprovalGate: true,
+} satisfies z.infer<typeof APPROVAL_GATE_CONTINUATION_SCHEMA>;
+
 type ZodOrJsonSchema = z.ZodType | JSONSchema7;
 
 type OutputType<TOutput> = TOutput extends z.ZodType ? z.infer<TOutput> : unknown;
@@ -59,9 +69,8 @@ function combineInterruptSchemas(
 	return approvalJsonSchema ? { anyOf: [approvalJsonSchema, innerSchema] } : innerSchema;
 }
 
-function isApprovalGatePayload(payload: unknown, toolName: string): boolean {
-	const parsed = APPROVAL_SUSPEND_SCHEMA.safeParse(payload);
-	return parsed.success && parsed.data.toolName === toolName;
+function isApprovalGateContinuation(value: unknown): boolean {
+	return APPROVAL_GATE_CONTINUATION_SCHEMA.safeParse(value).success;
 }
 
 /**
@@ -76,10 +85,19 @@ function isApprovalGatePayload(payload: unknown, toolName: string): boolean {
 
 export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): BuiltTool {
 	const originalHandler = tool.handler!;
+	const originalOnCancellation = tool.onCancellation;
 	const hasConditionalApproval = config.needsApprovalFn !== undefined;
+	const onCancellation: BuiltTool['onCancellation'] =
+		originalOnCancellation === undefined
+			? undefined
+			: async (input, ctx) => {
+					if (isApprovalGateContinuation(ctx.continuation)) return;
+					await originalOnCancellation(input, ctx);
+				};
 
 	return {
 		...tool,
+		onCancellation,
 		approval: {
 			required: config.requireApproval === true,
 			...(hasConditionalApproval ? { conditional: true } : {}),
@@ -94,7 +112,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			const resumingInnerTool =
 				tool.suspendSchema !== undefined &&
 				interruptCtx.suspendPayload !== undefined &&
-				!isApprovalGatePayload(interruptCtx.suspendPayload, currentTool.name);
+				!isApprovalGateContinuation(interruptCtx.continuation);
 			if (resumingInnerTool) {
 				return await originalHandler(input, interruptCtx);
 			}
@@ -112,7 +130,10 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 							...(displayName ? { displayName } : {}),
 							args: input,
 						},
-						{ resumeSchema: APPROVAL_RESUME_SCHEMA },
+						{
+							resumeSchema: APPROVAL_RESUME_SCHEMA,
+							continuation: APPROVAL_GATE_CONTINUATION,
+						},
 					);
 				}
 				if (hasConditionalApproval) {
@@ -133,6 +154,7 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 				suspend: async (payload, options) =>
 					await interruptCtx.suspend(payload, {
 						...options,
+						continuation: options?.continuation,
 						resumeSchema: options?.resumeSchema ?? tool.resumeSchema,
 					}),
 				resumeData: undefined,

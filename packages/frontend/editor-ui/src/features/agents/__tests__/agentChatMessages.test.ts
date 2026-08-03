@@ -67,6 +67,23 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.resolvedAt).toBeDefined();
 		expect(result?.resolvedValue).toEqual({ approved: false });
 	});
+
+	it('does not show a declined nested approval as approved from the delegate result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delegate_subagent',
+			toolCallId: 'call-delegate-1',
+			input: { subAgentId: 'inline', taskName: 'Research API' },
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			output: { status: 'completed', answer: 'The request was declined.' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedValue).toBeUndefined();
+	});
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {

@@ -215,6 +215,66 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 
 		expect(result).toEqual({ declined: true, message: 'Tool "testTool" was not approved' });
 	});
+
+	it("resumes an inner suspension when its approval payload matches the wrapper's payload", async () => {
+		const approvalPayload = {
+			type: 'approval',
+			toolName: 'testTool',
+			args: { id: 'parent-call' },
+		};
+		const continuation = { childRunId: 'child-run-1' };
+		const originalHandler = vi.fn(async (_input, ctx) => {
+			const interruptCtx = ctx as InterruptibleToolContext;
+			if (interruptCtx.continuation === undefined) {
+				return await interruptCtx.suspend(approvalPayload, { continuation });
+			}
+			return { resumedWith: interruptCtx.resumeData };
+		});
+		const wrapped = wrapToolForApproval(
+			makeBuiltTool({
+				suspendSchema: z.unknown(),
+				resumeSchema: z.unknown(),
+				handler: originalHandler,
+			}),
+			{ requireApproval: true },
+		);
+		const initialCall = makeCtx();
+		await wrapped.handler!({ id: 'parent-call' }, initialCall.ctx);
+		const [, outerSuspendOptions] = initialCall.suspendMock.mock.calls[0] ?? [];
+		const outerApproval = makeCtx({ approved: true });
+		outerApproval.ctx.suspendPayload = approvalPayload;
+		outerApproval.ctx.continuation = outerSuspendOptions?.continuation;
+		await wrapped.handler!({ id: 'parent-call' }, outerApproval.ctx);
+
+		const innerApproval = makeCtx({ approved: true });
+		innerApproval.ctx.suspendPayload = approvalPayload;
+		innerApproval.ctx.continuation = continuation;
+		const result = await wrapped.handler!({ id: 'parent-call' }, innerApproval.ctx);
+
+		expect(innerApproval.suspendMock).not.toHaveBeenCalled();
+		expect(result).toEqual({ resumedWith: { approved: true } });
+	});
+
+	it('does not run inner cancellation cleanup when the outer approval is cancelled', async () => {
+		const onCancellation = vi.fn<NonNullable<BuiltTool['onCancellation']>>();
+		const wrapped = wrapToolForApproval(makeBuiltTool({ onCancellation }), {
+			requireApproval: true,
+		});
+		const { ctx, suspendMock } = makeCtx();
+
+		await wrapped.handler!({ id: 'parent-call' }, ctx);
+		const [suspendPayload, suspendOptions] = suspendMock.mock.calls[0] ?? [];
+		await wrapped.onCancellation?.(
+			{ id: 'parent-call' },
+			{
+				cancellation: { message: 'cancelled' },
+				suspendPayload,
+				continuation: suspendOptions?.continuation,
+			},
+		);
+
+		expect(onCancellation).not.toHaveBeenCalled();
+	});
 });
 
 // ---------------------------------------------------------------------------

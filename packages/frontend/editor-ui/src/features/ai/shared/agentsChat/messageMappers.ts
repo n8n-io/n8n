@@ -13,7 +13,7 @@ import {
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
-import { isFailedDelegateOutput } from './delegateTool';
+import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
@@ -135,7 +135,8 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			toolName: APPROVAL_TOOL_NAME,
 			input: approvalInput,
 			...(resolved &&
-				tc.canceled !== true && {
+				tc.canceled !== true &&
+				!isDelegateSubAgentTool(tc.tool) && {
 					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 				}),
 		};
