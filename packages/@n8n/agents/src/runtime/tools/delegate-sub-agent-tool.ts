@@ -134,7 +134,6 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	parentAbortSignal?: AbortSignal;
 	/** Parent aggregate execution counter (`ctx.executionCounter`) for inline child accounting. */
 	parentExecutionCounter?: AgentExecutionCounter;
-	/** Opaque host context inherited from the parent run. */
 	parentRuntimeContext?: unknown;
 	/**
 	 * Parent's live, resolved telemetry (`ctx.parentTelemetry`). Hosts derive the

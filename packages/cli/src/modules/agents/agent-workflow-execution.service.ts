@@ -74,9 +74,8 @@ export class AgentWorkflowExecutionService {
 		workflowContext?: ExecuteAgentWorkflowContext,
 	): Promise<AgentExpressionContext> {
 		const resolver = workflowContext?.expressionResolver;
-		return resolver
-			? this.agentExpressionContextService.createForWorkflow(resolver)
-			: await this.agentExpressionContextService.createForProject(projectId);
+		if (resolver) return this.agentExpressionContextService.createForWorkflow(resolver);
+		return await this.agentExpressionContextService.createForProject(projectId);
 	}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {

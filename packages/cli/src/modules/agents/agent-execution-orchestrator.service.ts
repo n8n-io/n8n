@@ -49,7 +49,6 @@ export interface ExecuteForChatConfig {
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
-	/** Reuses a caller-owned expression snapshot when the surrounding operation already created one. */
 	expressionContext?: AgentExpressionContext;
 }
 
@@ -61,7 +60,6 @@ export interface ExecuteForChatPublishedConfig {
 	memory: AgentMemoryScope;
 	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
-	/** Reuses a caller-owned expression snapshot when the surrounding operation already created one. */
 	expressionContext?: AgentExpressionContext;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
@@ -96,7 +94,6 @@ export interface ResumeForChatConfig {
 	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
-	/** Reuses a caller-owned expression snapshot when the surrounding operation already created one. */
 	expressionContext?: AgentExpressionContext;
 }
 

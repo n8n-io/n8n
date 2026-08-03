@@ -1487,13 +1487,12 @@ function cloneRuntimeTools(
 ): BuiltTool[] | undefined {
 	if (!overrides?.size) return tools;
 	return tools?.map((tool) => {
-		const override = overrides?.get(tool.name);
-		const overlaidTool: BuiltTool = {
+		const override = overrides.get(tool.name);
+		return {
 			...tool,
 			...(override?.description !== undefined ? { description: override.description } : {}),
 			...(override?.inputSchema !== undefined ? { inputSchema: override.inputSchema } : {}),
 		};
-		return overlaidTool;
 	});
 }
 

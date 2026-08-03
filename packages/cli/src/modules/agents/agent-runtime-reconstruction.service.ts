@@ -100,7 +100,6 @@ export interface SubAgentDelegationConfig {
 export interface ReconstructedAgentRuntime {
 	agent: RuntimeAgent;
 	toolRegistry: ToolRegistry;
-	/** Present on production reconstructions; optional for legacy host/test adapters until wired. */
 	createRunOverlay?: AgentRunOverlayFactory;
 }
 

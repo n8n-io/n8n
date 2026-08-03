@@ -160,7 +160,6 @@ async function resolveInputSchema(
 	return { type: 'object', properties: {} };
 }
 
-/** Re-introspect dynamic native-node schemas against the current run's variable snapshot. */
 export async function resolveNodeToolInputSchemaForRun(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,

@@ -65,7 +65,6 @@ export interface SubAgentForegroundRunContext {
 	instrumentation?: AgentRuntimeInstrumentation;
 	/** Optional callback to forward child stream chunks to the parent chat. */
 	onChunk?: (chunk: StreamChunk) => void;
-	/** Parent run expression snapshot shared with this saved child run. */
 	runtimeContext?: AgentExpressionContext;
 }
 

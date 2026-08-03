@@ -64,7 +64,6 @@ interface ExpressionContextFactory {
 	createForProject(projectId: string): Promise<AgentExpressionContext>;
 }
 
-// Direct construction is retained for isolated bridge tests; production uses `create()`.
 const passthroughExpressionContextFactory: ExpressionContextFactory = {
 	createForProject: async () =>
 		await Promise.resolve(
@@ -105,7 +104,6 @@ export class AgentChatBridge {
 
 	private readonly hitlResumeHandler: AgentChatHitlResumeHandler;
 
-	/** @internal Production callers must use `create()`, which injects the project context service. */
 	constructor(
 		private readonly chat: Chat,
 		private readonly agentId: string,
