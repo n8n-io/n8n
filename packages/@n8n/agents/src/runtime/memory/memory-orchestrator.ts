@@ -159,6 +159,32 @@ export class MemoryOrchestrator {
 		await this.setListObservationLogMemory(list, options?.persistence);
 	}
 
+	private async saveMessagesWithSpan(
+		threadId: string,
+		resourceId: string,
+		messages: AgentDbMessage[],
+		telemetry: BuiltTelemetry | undefined,
+	): Promise<void> {
+		const memory = this.config.memory;
+		if (!memory) return;
+		await withMemorySpan(
+			'save_memory',
+			this.config.name,
+			telemetry,
+			{ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) },
+			async () => {
+				await saveMessagesToThread(memory, threadId, resourceId, messages);
+				return {
+					result: undefined,
+					attributes: {
+						ids: messages.map((m) => m.id),
+						operations: messages.map(() => 'created' as const),
+					},
+				};
+			},
+		);
+	}
+
 	async setListObservationLogMemory(
 		list: AgentMessageList,
 		options: AgentPersistenceOptions | undefined,
@@ -199,11 +225,12 @@ export class MemoryOrchestrator {
 		const input = list.inputDelta();
 		if (input.length === 0) return;
 		try {
-			await saveMessagesToThread(
-				this.config.memory,
+			const telemetry = this.runtimeTelemetry.resolve(options);
+			await this.saveMessagesWithSpan(
 				options.persistence.threadId,
 				options.persistence.resourceId,
 				input,
+				telemetry,
 			);
 		} catch (error) {
 			// Best-effort: the end-of-turn save still persists the input on a
@@ -242,11 +269,12 @@ export class MemoryOrchestrator {
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
 		try {
-			await saveMessagesToThread(
-				this.config.memory,
+			const telemetry = this.runtimeTelemetry.resolve(options);
+			await this.saveMessagesWithSpan(
 				options.persistence.threadId,
 				options.persistence.resourceId,
 				delta,
+				telemetry,
 			);
 		} catch (error) {
 			// Best-effort: a completed turn's end-of-turn save still persists this delta,
@@ -273,23 +301,28 @@ export class MemoryOrchestrator {
 		if (!this.config.memory || !options?.persistence) return;
 		const delta = list.turnDelta();
 		if (delta.length === 0) return;
-		await saveMessagesToThread(
-			this.config.memory,
+		const telemetry = this.runtimeTelemetry.resolve(options);
+		await this.saveMessagesWithSpan(
 			options.persistence.threadId,
 			options.persistence.resourceId,
 			delta,
+			telemetry,
 		);
 
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
 
-		const telemetry = this.runtimeTelemetry.resolve(options);
 		const observationTasks = this.scheduleObservationLogJobs(
 			options.persistence,
 			options.executionCounter,
 			telemetry,
 		);
-		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks, options.executionCounter);
+		this.scheduleEpisodicMemoryJob(
+			options.persistence,
+			observationTasks,
+			options.executionCounter,
+			telemetry,
+		);
 	}
 
 	private scheduleObservationLogJobs(
@@ -358,6 +391,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		observationTasks: Array<Promise<unknown>>,
 		executionCounter?: AgentExecutionCounter,
+		telemetry?: BuiltTelemetry,
 	): void {
 		const { memory, episodicMemory } = this.config;
 		if (
