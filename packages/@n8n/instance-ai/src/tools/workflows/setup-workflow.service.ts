@@ -434,8 +434,6 @@ async function resolveCredentialState(
 	const sortedCreds = await listPromise;
 	let existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 	if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
-		// ponytail: per-node lookup, no cache — templated candidates are few;
-		// add a per-id cache if a workflow ever carries dozens of them.
 		existingCredentials = await filterTemplatedCredentialsByServiceHost(
 			context,
 			node,
@@ -472,9 +470,8 @@ async function resolveCredentialState(
 	// Fall back to auto-applying the sole stored credential when n8n credits
 	// is not available. With multiple candidates, picking the first is a
 	// silent guess — surface the list so the setup wizard can prompt.
-	// Templated Custom Auth never auto-applies: candidates are host-filtered
-	// to the node's service above, but silently wiring the shared type stays
-	// off — the card must ask (a sole match arrives preselected, one click).
+	// Templated Custom Auth never auto-applies: even host-filtered candidates
+	// of the shared type need the user's click (a sole match arrives preselected).
 	if (!isAutoApplied && credentialType !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
 		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 	}

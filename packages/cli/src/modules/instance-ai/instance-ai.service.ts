@@ -5785,9 +5785,8 @@ export class InstanceAiService {
 			contains_templated_cred: containsTemplatedCred,
 		});
 
-		// Recipe content at spec time — production visibility into template and
-		// link quality (the offline eval suite grades the same fields). One event
-		// per recipe; secret-free by construction: recipes are agent-authored
+		// Recipe content at spec time — production visibility into the fields the
+		// offline eval suite grades. Secret-free: recipes are agent-authored
 		// before any user input.
 		for (const request of credentialRequests) {
 			if (typeof request !== 'object' || request === null || !('setupHint' in request)) continue;

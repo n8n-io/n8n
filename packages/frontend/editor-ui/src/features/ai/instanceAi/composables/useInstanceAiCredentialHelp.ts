@@ -11,13 +11,11 @@ import {
 } from './useInstanceAiHandoff';
 
 /**
- * Credential setup-help handler for surfaces with no workflow-editor context —
- * the credentials list, its new-credential dialog, and the credential modal the
- * Instance AI setup cards open (a thread's suspended run is no place to append
- * a help question). Opens Instance AI in a new tab asking about the credential
- * alone and keeps the credential modal open. Returns a factory so the active
- * project is resolved at click time; the factory returns undefined when Instance
- * AI isn't available, which keeps the help button hidden.
+ * Credential setup-help handler for surfaces with no workflow-editor context
+ * (credentials list, its new-credential dialog, the setup cards' modal): opens
+ * Instance AI in a new tab and keeps the credential modal open. Returns a
+ * factory so the project resolves at click time; undefined when Instance AI
+ * is unavailable, which keeps the help button hidden.
  */
 export function useInstanceAiCredentialHelp(
 	options: {

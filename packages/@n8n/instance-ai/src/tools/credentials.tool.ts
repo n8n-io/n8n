@@ -94,11 +94,9 @@ export const setupHintField = z
 			.describe(
 				"Side-effect-free endpoint that answers an authenticated GET, used to verify the credential on save and on later retests. Prefer a documented account/profile/me-style endpoint; when the provider has none, use another documented read-only GET that rejects invalid keys (usage, quota, list/discovery). Never a resource or action URL, never anything that can trigger billable work, never one of the workflow's own endpoints. Omit only when the provider documents no such endpoint.",
 			),
-		// acceptedStatusCodes is deliberately NOT model-facing: models pad the field
-		// regardless of instructions ([200] junk at best, [401] — which blinds the
-		// probe to real rejections — at worst). The credential's own field remains
-		// for the rare service that answers 401/403 to a valid GET; users can set it
-		// in the credential's raw view.
+		// acceptedStatusCodes is deliberately NOT model-facing: models pad it
+		// regardless of instructions, and a padded [401] blinds the probe to real
+		// rejections. The credential's own field stays user-editable.
 	})
 	.describe(
 		`Recipe for creating a "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" credential so the user only has to paste their secret(s) — the rest is pre-filled. Provide it whenever the service has no dedicated credential type and its auth is expressible as header/query/body values; ground it in the provider's documentation, never guess the format.`,
@@ -119,12 +117,9 @@ export const TEMPLATABLE_PLAIN_AUTH_TYPES = new Set([
 
 const TEMPLATE_MARKER_REGEX = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
-// Recipes carry no links: the user asks the AI Assistant where to get the
-// value, so an info that names a URL or domain smuggles unverified navigation
-// into the form. Schemeless domains ("app.tavily.com/home") are the common
-// leak past a scheme-only check, so also catch domain-shaped tokens on the
-// TLDs API providers actually use. A heuristic, but a false positive only
-// costs the model one retriable correction.
+// Navigation belongs in docsUrl, so info must not carry URLs — including
+// schemeless domains ("app.tavily.com/home"), which slip past a scheme-only
+// check. TLD heuristic; a false positive costs one retriable correction.
 const INFO_LINK_REGEX =
 	/https?:\/\/|www\.|\b[\w-]+(?:\.[\w-]+)*\.(?:com|io|ai|dev|app|net|org|co|run|sh|cloud)\b/i;
 
@@ -146,12 +141,10 @@ function normalizeUrlForComparison(raw: unknown): string | undefined {
 }
 
 /**
- * A recipe whose template and placeholders disagree can't render a usable
- * setup form — collect the problems so the model corrects the recipe instead
- * of the card silently degrading. `nodeUrls` (URLs of the nodes being set up)
- * additionally rejects a testUrl that points at one of the workflow's own
- * endpoints: the probe GETs it, so an action URL yields a meaningless verdict
- * at best and a billable request at worst.
+ * Collect recipe problems so the model corrects them instead of the card
+ * silently degrading. `nodeUrls` additionally rejects a testUrl pointing at
+ * one of the workflow's own endpoints — the probe GETs it, so that yields a
+ * meaningless verdict at best and a billable request at worst.
  */
 export function findSetupHintProblems(
 	hint: InstanceAiCredentialSetupHint,
@@ -631,10 +624,8 @@ async function handleSetup(
 					suggestedName?: string;
 					setupHint?: InstanceAiCredentialSetupHint;
 				}) => {
-					// Templated Custom Auth is shared by every service, and this card
-					// has no node context to assert a candidate targets the same
-					// service — offer none (fail closed) instead of another service's
-					// key. The workflow setup path offers same-service matches.
+					// This card has no node context to match candidates by service, so
+					// offer none (fail closed) rather than another service's key.
 					const existing =
 						req.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
 							? []
@@ -642,10 +633,8 @@ async function handleSetup(
 									type: req.credentialType,
 									...(context.projectId ? { projectId: context.projectId } : {}),
 								});
-					// This card has no node context, so the service identity stamped
-					// into the created credential comes from the recipe's own test
-					// endpoint (the API host). Absent both, the credential stays
-					// untagged and is never offered automatically later.
+					// Service identity comes from the recipe's test endpoint here; an
+					// untagged credential is never offered automatically later.
 					const serviceHost = req.setupHint ? extractServiceHost(req.setupHint.testUrl) : undefined;
 					return {
 						credentialType: req.credentialType,

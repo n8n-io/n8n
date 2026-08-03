@@ -69,9 +69,8 @@ const isTemplatedType = computed(
 	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 );
 
-// Ask-AI in the credential modal opens a NEW help thread in a new tab — this
-// thread's run is suspended on the setup card, so appending here would derail
-// it. When the recipe names the service, the help thread asks about that.
+// Ask-AI opens a NEW help thread in a new tab: this thread's run is suspended
+// on the setup card, so appending here would derail it.
 const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
 	source: 'credential_edit',
 	projectId: () => ctx.projectId.value,

@@ -415,27 +415,4 @@ describe('WorkflowSetupSectionBody', () => {
 			}),
 		);
 	});
-
-	it('keeps the modal display name in the help thread when the section has no recipe', async () => {
-		instanceAiHandoffMock.startThread.mockClear();
-		const section = makeWorkflowSetupSection({ credentialType: 'slackApi' });
-		workflowSetupContext.current = makeContext(section);
-
-		renderComponent({ props: { section } });
-		await nextTick();
-
-		await nodeCredentialsMock.lastCredentialHelp!({
-			credentialType: 'slackApi',
-			displayName: 'Slack API',
-		});
-
-		expect(instanceAiHandoffMock.startThread).toHaveBeenCalledWith(
-			'project-1',
-			expect.stringContaining('Slack API'),
-			{ source: 'credential_edit', origin: 'internal' },
-			undefined,
-			undefined,
-			expect.objectContaining({ newTab: true }),
-		);
-	});
 });

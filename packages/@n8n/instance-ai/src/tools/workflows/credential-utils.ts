@@ -120,9 +120,8 @@ export function extractServiceHost(raw: unknown): string | undefined {
 /**
  * Whether two hosts belong to the same service: equal, or one is a subdomain
  * of the other (dot-boundary suffix — `queue.fal.run` matches `fal.run`, but
- * `api.pexels.com` never matches `api.apify.com`).
- * ponytail: PSL-free heuristic — a proper registrable-domain check needs a
- * public-suffix list; upgrade if a real service pair ever defeats this.
+ * `api.pexels.com` never matches `api.apify.com`). Heuristic without a
+ * public-suffix list; good enough until a real service pair defeats it.
  */
 export function serviceHostsMatch(a: string, b: string): boolean {
 	return a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);

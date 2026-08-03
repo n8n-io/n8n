@@ -249,10 +249,8 @@ function getDisplayName(request: InstanceAiCredentialRequest): string {
 const hasExistingCredentials = computed(() => {
 	if (!currentRequest.value) return false;
 	const credType = currentRequest.value.credentialType;
-	// Gate on the same source NodeCredentials builds its dropdown from. If the
-	// store has no usable credential of this type, NodeCredentials would render
-	// its empty-state "set up" button instead of a selector — render this card's
-	// own fallback (guided form for a recipe, setup button otherwise) instead.
+	// Gate on the same source NodeCredentials builds its dropdown from, so the
+	// card renders its own setup button instead of NodeCredentials' empty state.
 	return (credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0;
 });
 
@@ -301,9 +299,8 @@ const credentialsFieldLabel = computed(() => {
 		: undefined;
 });
 
-// Ask-AI in the credential modal opens a NEW help thread in a new tab — this
-// thread's run is suspended on the setup card, so appending here would derail
-// it. When the recipe names the service, the help thread asks about that.
+// Ask-AI opens a NEW help thread in a new tab: this thread's run is suspended
+// on the setup card, so appending here would derail it.
 const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
 	source: 'credential_edit',
 	projectId: () => props.projectId,

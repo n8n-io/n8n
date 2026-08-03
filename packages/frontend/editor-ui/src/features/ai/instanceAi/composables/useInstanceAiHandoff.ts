@@ -26,11 +26,9 @@ function existingCredentialNote(credential: InstanceAiCredentialContext): string
 }
 
 /**
- * A recipe-created (Simplified Custom Auth) credential arrives pre-filled —
- * the user only pastes the guided-form values, so the visible question just
- * asks where to find them. The paste-only framing and don't-touch-the-template
- * steering travel invisibly in the credential handoff context instead: this
- * text renders as the user's own message.
+ * A recipe-created credential arrives pre-filled, so the visible question only
+ * asks where to find the values — this text renders as the user's own message;
+ * the paste-only steering travels invisibly in the handoff context.
  */
 function templatedValuesQuestion(credential: InstanceAiCredentialContext): string {
 	const titles = (credential.placeholderTitles ?? []).map((title) => `"${title}"`);

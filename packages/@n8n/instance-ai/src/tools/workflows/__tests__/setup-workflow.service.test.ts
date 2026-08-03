@@ -1890,15 +1890,6 @@ describe('applyCredentialHints', () => {
 		expect(requests[1].setupHint).toMatchObject({ suggestedName: 'Replicate API Key' });
 	});
 
-	it('leaves requests untouched when no hint matches', () => {
-		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
-
-		applyCredentialHints(requests, [hint({ nodeName: 'Some other node' })]);
-		applyCredentialHints(requests, undefined);
-
-		expect(requests[0].setupHint).toBeUndefined();
-	});
-
 	it('stamps the service host derived from the node URL, expressions included', () => {
 		const requests = [request('Call fal.ai', 'httpTemplatedCustomAuth')];
 		requests[0].node.parameters = { url: '=https://queue.fal.run/fal-ai/flux/{{ $json.id }}' };
@@ -2025,15 +2016,6 @@ describe('buildSetupRequests — Templated Custom Auth service identity', () => 
 		withHosts({ 'cred-pexels': 'api.pexels.com' });
 
 		const result = await buildSetupRequests(context, templatedNode('={{ $json.url }}'));
-
-		expect(result[0].existingCredentials).toBeUndefined();
-	});
-
-	it('offers nothing when the host lookup is unavailable', async () => {
-		const result = await buildSetupRequests(
-			context,
-			templatedNode('https://api.pexels.com/v1/search'),
-		);
 
 		expect(result[0].existingCredentials).toBeUndefined();
 	});

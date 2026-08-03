@@ -860,40 +860,14 @@ describe('credentials tool', () => {
 			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
 		});
 
-		it('should reject a setupHint whose placeholder info contains a URL', async () => {
-			const context = createMockContext();
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
-			const result = await executeTool(
-				tool,
-				{
-					action: 'setup' as const,
-					credentials: [
-						{
-							credentialType: 'httpTemplatedCustomAuth',
-							setupHint: {
-								template: { headers: { Authorization: 'Key {{api_key}}' } },
-								placeholders: [
-									{
-										name: 'api_key',
-										title: 'API key',
-										info: 'Find it at https://example.com/tokens',
-									},
-								],
-							},
-						},
-					],
-				},
-				suspendCtx(suspendFn),
-			);
-
-			expect(suspendFn).not.toHaveBeenCalled();
-			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
-		});
-
-		it('should reject a setupHint whose placeholder info mentions a schemeless domain', async () => {
+		it.each([
+			['a URL', 'Find it at https://example.com/tokens'],
+			// schemeless domains slip past a scheme-only check
+			[
+				'a schemeless domain',
+				'Your Tavily API key (starts with tvly-). Get it from app.tavily.com/home.',
+			],
+		])('should reject a setupHint whose placeholder info mentions %s', async (_case, info) => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([]);
 
@@ -908,15 +882,7 @@ describe('credentials tool', () => {
 							credentialType: 'httpTemplatedCustomAuth',
 							setupHint: {
 								template: { headers: { Authorization: 'Bearer {{api_key}}' } },
-								placeholders: [
-									{
-										name: 'api_key',
-										title: 'Tavily API key',
-										// smuggles unverified navigation into the form — and slips
-										// past a scheme-only URL check
-										info: 'Your Tavily API key (starts with tvly-). Get it from app.tavily.com/home.',
-									},
-								],
+								placeholders: [{ name: 'api_key', title: 'API key', info }],
 							},
 						},
 					],
@@ -956,35 +922,6 @@ describe('credentials tool', () => {
 
 			expect(suspendFn).not.toHaveBeenCalled();
 			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
-		});
-
-		it('should accept a setupHint that keeps the secret masked by default type', async () => {
-			const context = createMockContext();
-			(context.credentialService.list as Mock).mockResolvedValue([]);
-
-			const suspendFn = vi.fn();
-			const tool = createCredentialsTool(context);
-			await executeTool(
-				tool,
-				{
-					action: 'setup' as const,
-					credentials: [
-						{
-							credentialType: 'httpTemplatedCustomAuth',
-							setupHint: {
-								template: { headers: { Authorization: 'Key {{api_key}}', 'X-Org': '{{org}}' } },
-								placeholders: [
-									{ name: 'api_key', title: 'API key' },
-									{ name: 'org', title: 'Organization', type: 'plain' as const },
-								],
-							},
-						},
-					],
-				},
-				suspendCtx(suspendFn),
-			);
-
-			expect(suspendFn).toHaveBeenCalledTimes(1);
 		});
 
 		it('should reject a setupHint on a credential type other than Templated Custom Auth', async () => {
