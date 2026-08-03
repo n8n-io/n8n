@@ -1,8 +1,8 @@
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
@@ -23,12 +23,9 @@ import type {
 } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { isFormOAuth2Enabled, isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import {
-	isFormOAuth2Enabled,
-	isWebhookOAuth2Enabled,
-} from '@/modules/oauth-server/protected-resource-resolvers/utils';
 import type { NodeTypes } from '@/node-types';
 
 export interface WorkflowValidationResult {
