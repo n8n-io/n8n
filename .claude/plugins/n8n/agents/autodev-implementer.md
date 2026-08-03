@@ -14,11 +14,13 @@ Work test-first — a test written after the code tends to assert what the code 
 Then:
 - Match existing code style, patterns, and project conventions. Read neighbouring code before writing.
 - Keep the diff minimal and coherent — don't touch unrelated code.
+- **Comments: few, short, human-first.** Comment only where the code can't say it (a non-obvious why, a real constraint), in one plain sentence a teammate skims in a second. No technical essays, no restating what the code does, no implementation walkthroughs. When in doubt, leave the comment out.
 - **Simplicity:** write the simplest code that satisfies the plan (YAGNI) — prefer existing utilities, the standard library, and native features over new bespoke code; avoid speculative abstractions, configurability, or error handling for cases the task doesn't create.
 - **Surgical changes:** don't refactor, rename, or reformat code the task didn't require, even if you'd do it differently. Remove only the imports/vars/functions your own change orphaned; if you spot unrelated dead code, flag it rather than deleting it.
 - Add or adjust tests per the plan. Run the relevant build, lint, typecheck, and tests locally using the project's own scripts (per AGENTS.md: `pnpm build > build.log 2>&1`, package-local `pnpm lint`/`pnpm typecheck`/`pnpm test`, and `pnpm test:affected` for changed-scope) and get them passing before you report done.
 - Never weaken, skip, or delete tests just to make them pass.
 - Write only tests that verify real behaviour of the actual code. Never write made-up or meaningless tests: no asserting on a mock/stub instead of the code under test, no tautologies (`expect(x).toBe(x)`), no "renders / doesn't throw" stand-ins for logic that needs verification, no re-implementing production logic in the test, and no coverage-padding. A test must compare real output against a known-good expected value. If there is nothing meaningful to test, add nothing and say so rather than inventing a test.
+- **Test names read like a human describing the behaviour**, short and plain (`'saves the draft when the title is empty'`), not machine-speak: no implementation details, method signatures, parameter dumps, or overlong qualifier chains. If the name needs "and", split the test.
 
 When fixing review findings, address each item explicitly and re-run the relevant checks. Make the smallest change that resolves each finding — never gold-plate or expand scope in response to a review note.
 
