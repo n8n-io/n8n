@@ -1,4 +1,4 @@
-import type { JsonValue } from 'n8n-workflow';
+import type { IDataObject, JsonObject, JsonValue } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { datasetRefSchema, type DatasetRef } from '../dto/evaluations/evaluation-config.dto';
@@ -134,7 +134,21 @@ export class CreateAgentEvalRatingDto extends Z.class(createAgentEvalRatingShape
 // own output through validation. Dates are serialized as ISO strings; internal
 // coordination columns (`runningInstanceId`, `cancelRequested`) are omitted
 // from the contract.
+//
+// JSON blobs mirror the type their entity column stores — `JsonObject` for the
+// payloads the runner writes, `IDataObject` for the metric/error bags — rather
+// than `Record<string, unknown>`, which would force every consumer to re-narrow
+// `unknown` on each read.
 // ---------------------------------------------------------------------------
+
+/**
+ * One page of a list route. `count` is the total matching rows, not the page
+ * length, so the UI can size its pager without walking every page.
+ */
+export type AgentEvalPage<T> = {
+	count: number;
+	data: T[];
+};
 
 export type AgentEvalDatasetRecord = {
 	id: string;
@@ -154,9 +168,9 @@ export type AgentEvalRunRecord = {
 	status: AgentEvalRunStatus;
 	runAt: string | null;
 	completedAt: string | null;
-	metrics: Record<string, unknown> | null;
+	metrics: IDataObject | null;
 	errorCode: string | null;
-	errorDetails: Record<string, unknown> | null;
+	errorDetails: IDataObject | null;
 	createdById: string | null;
 	createdAt: string;
 	updatedAt: string;
@@ -168,14 +182,14 @@ export type AgentEvalResultRecord = {
 	sourceRowId: string | null;
 	runIndex: number | null;
 	status: AgentEvalResultStatus;
-	input: Record<string, unknown> | null;
-	output: Record<string, unknown> | null;
-	toolCalls: Record<string, unknown> | null;
-	metrics: Record<string, unknown> | null;
+	input: JsonObject | null;
+	output: JsonObject | null;
+	toolCalls: JsonObject | null;
+	metrics: IDataObject | null;
 	runAt: string | null;
 	completedAt: string | null;
 	errorCode: string | null;
-	errorDetails: Record<string, unknown> | null;
+	errorDetails: IDataObject | null;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -185,15 +199,21 @@ export type AgentEvalRatingRecord = {
 	resultId: string;
 	vote: AgentEvalVote;
 	comment: string | null;
-	correction: Record<string, unknown> | null;
+	correction: JsonObject | null;
 	ratedById: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
 
-// A run with its per-case results — the "open a run" view.
+// Runs of a dataset, newest first. Paginated because nothing caps how many runs
+// a dataset accumulates — every "Run all" adds one, for the dataset's whole life.
+export type AgentEvalRunList = AgentEvalPage<AgentEvalRunRecord>;
+
+// A run with a page of its per-case results — the "open a run" view. Bounded by
+// the runner's per-run case limit, but each row carries its full input/output
+// JSON, so the page is what keeps the response small.
 export type AgentEvalRunDetail = AgentEvalRunRecord & {
-	results: AgentEvalResultRecord[];
+	results: AgentEvalPage<AgentEvalResultRecord>;
 };
 
 // The progress-polling shape: status plus tallies, no per-case rows, so polling

@@ -96,11 +96,26 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		return await this.findOne({ where: { id, dataset: { agentId } } });
 	}
 
-	/** Runs of a dataset, scoped to the agent that dataset must belong to. */
-	async findByDatasetIdAndAgentId(datasetId: string, agentId: string): Promise<AgentEvalRun[]> {
-		return await this.find({
+	/**
+	 * One page of a dataset's runs, newest first, scoped to the agent that
+	 * dataset must belong to, plus the unpaginated total. Paged in SQL: nothing
+	 * caps how many runs a dataset accumulates over its life, so an unbounded
+	 * read grows without limit.
+	 *
+	 * `createdAt` alone is not a total order — ids are random nanoids, so the
+	 * tiebreak only makes the order deterministic, which is what stops a row
+	 * from appearing on two pages (or neither) when runs share a timestamp.
+	 */
+	async findAndCountByDatasetIdAndAgentId(
+		datasetId: string,
+		agentId: string,
+		options: { skip?: number; take?: number } = {},
+	): Promise<[AgentEvalRun[], number]> {
+		return await this.findAndCount({
 			where: { datasetId, dataset: { agentId } },
-			order: { createdAt: 'DESC' },
+			order: { createdAt: 'DESC', id: 'DESC' },
+			skip: options.skip,
+			take: options.take,
 		});
 	}
 

@@ -1,16 +1,27 @@
 import {
 	CreateAgentEvalRunDto,
 	GenerateDraftCasesOptionsDto,
+	PaginationDto,
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
 	type AgentEvalRunDetail,
+	type AgentEvalRunList,
 	type AgentEvalRunRecord,
 	type AgentEvalRunSummary,
 	type GenerateDraftCasesResult,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Patch,
+	Post,
+	ProjectScope,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -25,10 +36,14 @@ type RunParam = AgentParam & { runId: string };
  * REST surface for agent evals: generation, datasets, runs and per-case results.
  * Nested under the agent so `@ProjectScope` rejects before the handler runs.
  *
- * `agent:read` for reads, `agent:execute` for running a run, `agent:update` for
+ * `agent:read` for reads, `agent:execute` for starting a run, `agent:update` for
  * eval-config writes — including generation, which spends the builder's model
- * credits and so must stay closed to viewers (they hold `agent:execute`).
+ * credits and so must stay closed to viewers (they hold `agent:execute`), and
+ * cancellation, which acts on a run someone else started.
  * Ratings ship with the service that persists them.
+ *
+ * The list reads take a `take`/`skip` window and answer with a `{ count, data }`
+ * page; the count is the unpaginated total so a client can size its pager.
  */
 @RestController('/projects/:projectId/agents/v2')
 export class AgentEvalsController {
@@ -121,20 +136,30 @@ export class AgentEvalsController {
 		return await this.service.startRun(req.user, agentId, projectId, datasetId, payload);
 	}
 
+	/** Newest first. Unbounded over a dataset's life, so the window is required. */
 	@Get('/:agentId/evals/datasets/:datasetId/runs')
 	@ProjectScope('agent:read')
-	async listRuns(req: AuthenticatedRequest<DatasetParam>): Promise<AgentEvalRunRecord[]> {
+	async listRuns(
+		req: AuthenticatedRequest<DatasetParam>,
+		_res: unknown,
+		@Query query: PaginationDto,
+	): Promise<AgentEvalRunList> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, datasetId } = req.params;
-		return await this.service.listRuns(agentId, projectId, datasetId);
+		return await this.service.listRuns(agentId, projectId, datasetId, query);
 	}
 
+	/** `take`/`skip` page the run's cases, not the run itself. */
 	@Get('/:agentId/evals/runs/:runId')
 	@ProjectScope('agent:read')
-	async getRun(req: AuthenticatedRequest<RunParam>): Promise<AgentEvalRunDetail> {
+	async getRun(
+		req: AuthenticatedRequest<RunParam>,
+		_res: unknown,
+		@Query query: PaginationDto,
+	): Promise<AgentEvalRunDetail> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
-		return await this.service.getRunDetail(agentId, projectId, runId);
+		return await this.service.getRunDetail(agentId, projectId, runId, query);
 	}
 
 	/** Counts only — cheap enough for the UI to poll while a run is in flight. */
@@ -146,8 +171,11 @@ export class AgentEvalsController {
 		return await this.service.getRunSummary(agentId, projectId, runId);
 	}
 
+	// Cancelling stops work someone else started, so it is a write on the run
+	// rather than an execution: `agent:update`, not the `agent:execute` that
+	// starting one takes. Chat-only users hold `agent:execute` and nothing else.
 	@Post('/:agentId/evals/runs/:runId/cancel')
-	@ProjectScope('agent:execute')
+	@ProjectScope('agent:update')
 	async cancelRun(req: AuthenticatedRequest<RunParam>): Promise<AgentEvalRunRecord> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;

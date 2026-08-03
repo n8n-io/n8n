@@ -158,7 +158,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		const inputsSent = evalAgentExecutionService.executeWithLlmMock.mock.calls.map((c) => c[3]);
 		expect(inputsSent).toEqual(expect.arrayContaining(['What is 2+2?', 'Capital of France?']));
 
-		const results = await Container.get(AgentEvalResultRepository).findByRunId(runId);
+		const [results] = await Container.get(AgentEvalResultRepository).findAndCountByRunId(runId);
 		expect(results).toHaveLength(2);
 		for (const result of results) {
 			expect(result.status).toBe('success');
@@ -217,7 +217,7 @@ describe('AgentEvalRunnerService (integration)', () => {
 		expect(summary.status).toBe('completed');
 		expect(summary.counts).toMatchObject({ total: 1, success: 0, error: 1 });
 
-		const [result] = await Container.get(AgentEvalResultRepository).findByRunId(runId);
+		const [[result]] = await Container.get(AgentEvalResultRepository).findAndCountByRunId(runId);
 		expect(result.status).toBe('error');
 		expect(result.errorCode).toBe('execution_failed');
 	});
