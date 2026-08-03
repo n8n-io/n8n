@@ -521,6 +521,14 @@ track nothing. Only the opening turn may carry `attach` (an attachment is a hand
 not something a user re-sends), and it must name a workflow the inline seed declares —
 both are refused at load rather than ignored.
 
+**The opening often has no text at all** — the user opens the assistant on a workflow
+and waits for it to speak first. Keep `"text": ""` when that's what happened; it's the
+faithful shape, and openings with no user text jumped from 1% to 31% of the corpus when
+the editor hand-off shipped, so it is not an edge case. Note that an empty text is
+valid *only* alongside `attach`: the chat API rejects a message that is empty with
+nothing attached ("Either message or attachments must be provided"), so the two stand
+or fall together.
+
 **Has to find it.** The user refers to the workflow in words: by name ("the Wait node
 in *Generate leads* failed") or loosely ("the batch image workflow"). No `attach` —
 finding it *is* part of what the case tests. This also works when the seeded history

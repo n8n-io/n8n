@@ -392,6 +392,33 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/must be the id of a workflow the inline seed declares/);
 	});
 
+	it('rejects an empty opening turn that carries no attach', () => {
+		// Loads fine but dies mid-run: the chat API refuses a message that is empty
+		// with nothing attached, which reads like an infrastructure fault.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: '' }],
+			}),
+		).toThrow(/opening turn with empty text must carry .attach./);
+	});
+
+	it('accepts an empty opening turn when a seeded workflow is attached', () => {
+		// The faithful hand-off shape: the user opened the assistant on a workflow
+		// and typed nothing.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: '', attach: { workflow: 'wf12345678' } }],
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [{ id: 'wf12345678', name: 'Batch loop', nodes: [], connections: {} }],
+				},
+			}),
+		).not.toThrow();
+	});
+
 	it('rejects an attach on a case with no inline seed at all', () => {
 		expect(() =>
 			EvalTestCaseSchema.parse({

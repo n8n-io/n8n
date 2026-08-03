@@ -234,6 +234,20 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
 		},
 	)
+	// An empty opening is the faithful hand-off shape, but the chat API refuses a
+	// message that is empty with nothing attached. Caught here so the case fails at
+	// load instead of dying mid-run on a 400 that reads like an infrastructure fault.
+	.refine(
+		(c) => {
+			const opening = c.conversation?.[0];
+			if (opening === undefined) return true;
+			return opening.text.trim().length > 0 || opening.attach !== undefined;
+		},
+		{
+			message:
+				'an opening turn with empty text must carry `attach` — the chat API rejects a message that is empty with nothing attached',
+		},
+	)
 	.superRefine((c, ctx) => {
 		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of
 		// the issue list, which would otherwise backslash-escape them and break substring/regex
