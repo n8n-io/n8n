@@ -46,6 +46,8 @@ export interface TaskOffer {
 
 const MAX_REQUEST_TIMEOUT_REFRESHES = 3;
 
+const MAX_CONSECUTIVE_ACCEPT_TIMEOUTS = 3;
+
 export interface TaskRequest {
 	requestId: string;
 	requesterId: string;
@@ -97,6 +99,8 @@ export class TaskBroker {
 		Task['id'],
 		{ accept: RequesterAcceptCallback; reject: TaskRejectCallback }
 	> = new Map();
+
+	private consecutiveAcceptTimeouts: Map<TaskRunner['id'], number> = new Map();
 
 	private pendingTaskOffers: TaskOffer[] = [];
 
@@ -207,6 +211,7 @@ export class TaskBroker {
 
 	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
+		this.consecutiveAcceptTimeouts.delete(runnerId);
 
 		this.discardOffersFrom(runnerId);
 
@@ -320,6 +325,7 @@ export class TaskBroker {
 	handleRunnerAccept(taskId: Task['id']) {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
+			this.consecutiveAcceptTimeouts.delete(acceptReject.runnerId);
 			acceptReject.accept();
 			this.runnerAcceptRejects.delete(taskId);
 		}
@@ -328,6 +334,7 @@ export class TaskBroker {
 	handleRunnerReject(taskId: Task['id'], reason: string) {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
+			this.consecutiveAcceptTimeouts.delete(acceptReject.runnerId);
 			acceptReject.reject(new TaskRejectError(reason));
 			this.runnerAcceptRejects.delete(taskId);
 		}
@@ -336,6 +343,7 @@ export class TaskBroker {
 	handleRunnerDeferred(taskId: Task['id']) {
 		const acceptReject = this.runnerAcceptRejects.get(taskId);
 		if (acceptReject) {
+			this.consecutiveAcceptTimeouts.delete(acceptReject.runnerId);
 			acceptReject.reject(new TaskDeferredError());
 			this.runnerAcceptRejects.delete(taskId);
 		}
@@ -673,6 +681,7 @@ export class TaskBroker {
 				// A runner missing the acknowledgement window may be gone without its transport
 				// having reported it yet, so its remaining offers cannot be trusted either.
 				this.discardOffersFrom(offer.runnerId);
+				this.flagRunnerIfUnresponsive(offer.runnerId);
 				this.settleTasks();
 				return;
 			}
@@ -749,6 +758,26 @@ export class TaskBroker {
 			throw e;
 		} finally {
 			clearTimeout(requesterAcceptTimer);
+		}
+	}
+
+	/**
+	 * Counts consecutive acknowledgement timeouts per runner.
+	 * Any application-level reply (accept, reject, defer) proves the channel is alive and resets the count.
+	 * At the threshold, the runner is reported unresponsive exactly once,
+	 * so its transport can be torn down and the runner restarted.
+	 */
+	private flagRunnerIfUnresponsive(runnerId: TaskRunner['id']) {
+		const failures = (this.consecutiveAcceptTimeouts.get(runnerId) ?? 0) + 1;
+
+		if (failures < MAX_CONSECUTIVE_ACCEPT_TIMEOUTS) {
+			this.consecutiveAcceptTimeouts.set(runnerId, failures);
+		} else {
+			this.consecutiveAcceptTimeouts.delete(runnerId);
+			this.logger.warn(
+				`Runner (${runnerId}) failed to acknowledge ${MAX_CONSECUTIVE_ACCEPT_TIMEOUTS} consecutive task acceptances, reporting it as unresponsive`,
+			);
+			this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
 		}
 	}
 

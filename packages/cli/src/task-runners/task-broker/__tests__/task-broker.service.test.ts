@@ -3,7 +3,7 @@ import type { TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { BrokerMessage, RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { type INodeTypeBaseDescription } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -1486,6 +1486,133 @@ describe('TaskBroker', () => {
 			expect(request.timeoutRefreshes).toBeUndefined();
 			expect(request.timeout).toBeUndefined();
 			expect(vi.getTimerCount()).toBe(0);
+		});
+	});
+
+	describe('unresponsive runner detection', () => {
+		const ACCEPT_TIMEOUT_MS = 2100;
+
+		let lifecycleEvents: MockProxy<TaskRunnerLifecycleEvents>;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			lifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+			taskBroker = new TaskBroker(
+				mock(),
+				mock<TaskRunnersConfig>({ taskRequestTimeout: 60, taskTimeout: 60, taskAcceptTimeout: 2 }),
+				lifecycleEvents,
+				mock(),
+			);
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+		});
+
+		// a failing assertion must not leak fake timers into later tests
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const offerFrom = (runnerId: string): TaskOffer => ({
+			offerId: 'offer1',
+			runnerId,
+			taskType: 'taskType1',
+			validFor: 10_000,
+			validUntil: createValidUntil(10_000),
+		});
+
+		const requestFor = (): TaskRequest => ({
+			requestId: 'request1',
+			requesterId: 'requester1',
+			taskType: 'taskType1',
+		});
+
+		const timeOutAcceptance = async (runnerId = 'runner1') => {
+			const acceptPromise = taskBroker.acceptOffer(offerFrom(runnerId), requestFor());
+			vi.advanceTimersByTime(ACCEPT_TIMEOUT_MS);
+			await acceptPromise;
+		};
+
+		const answerAcceptance = async (respond: (taskId: string) => void) => {
+			const acceptPromise = taskBroker.acceptOffer(offerFrom('runner1'), requestFor());
+			const [taskId] = taskBroker.getRunnerAcceptRejects().keys();
+			respond(taskId);
+			await acceptPromise;
+		};
+
+		it('should report a runner unresponsive exactly once at the timeout threshold', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+
+			await timeOutAcceptance();
+			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+
+			await timeOutAcceptance();
+			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
+		});
+
+		it('should reset the count when the runner acknowledges an acceptance', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			await answerAcceptance((taskId) => taskBroker.handleRunnerAccept(taskId));
+
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should reset the count when the runner rejects a task', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			await answerAcceptance((taskId) => taskBroker.handleRunnerReject(taskId, 'at capacity'));
+
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should reset the count when the runner defers a task', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+			await answerAcceptance((taskId) => taskBroker.handleRunnerDeferred(taskId));
+
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should clear the count when the runner deregisters', async () => {
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			taskBroker.deregisterRunner('runner1', new Error('connection lost'));
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+
+			await timeOutAcceptance();
+			await timeOutAcceptance();
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+		});
+
+		it('should count acknowledgment timeouts per runner', async () => {
+			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner2' }), vi.fn());
+
+			await timeOutAcceptance('runner1');
+			await timeOutAcceptance('runner1');
+			await timeOutAcceptance('runner2');
+			await timeOutAcceptance('runner2');
+			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
+
+			await timeOutAcceptance('runner2');
+			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner2',
+			});
 		});
 	});
 

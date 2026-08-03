@@ -7,6 +7,7 @@ import { WsStatusCodes } from '@/constants';
 import type { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import type { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 const globalConfig = mock<GlobalConfig>({ generic: { gracefulShutdownTimeout: 30 } });
 
@@ -28,17 +29,19 @@ const createServer = ({
 	taskBroker = mock<TaskBroker>(),
 	disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>(),
 	heartbeatInterval = 30,
+	runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>(),
 }: {
 	taskBroker?: TaskBroker;
 	disconnectAnalyzer?: DefaultTaskRunnerDisconnectAnalyzer;
 	heartbeatInterval?: number;
+	runnerLifecycleEvents?: TaskRunnerLifecycleEvents;
 } = {}) =>
 	new TaskBrokerWsServer(
 		mock(),
 		taskBroker,
 		disconnectAnalyzer,
 		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval }),
-		mock(),
+		runnerLifecycleEvents,
 		globalConfig,
 	);
 
@@ -287,6 +290,39 @@ describe('TaskBrokerWsServer', () => {
 			expect(liveWs.ping).toHaveBeenCalled();
 			expect(liveWs.isAlive).toBe(false);
 			expect(liveWs.close).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('unresponsive runners', () => {
+		it('should disconnect a runner reported unresponsive', async () => {
+			const runnerLifecycleEvents = new TaskRunnerLifecycleEvents();
+			const disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>();
+			const server = createServer({ disconnectAnalyzer, runnerLifecycleEvents });
+			const ws = mockWs();
+			server.runnerConnections.set('test-runner', ws);
+			server.start();
+
+			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
+
+			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+			expect(disconnectAnalyzer.toDisconnectError).toHaveBeenCalledWith(
+				expect.objectContaining({ runnerId: 'test-runner', reason: 'runner-unresponsive' }),
+			);
+
+			await server.stop();
+		});
+
+		it('should stop listening for unresponsive runners on stop', async () => {
+			const runnerLifecycleEvents = new TaskRunnerLifecycleEvents();
+			const server = createServer({ runnerLifecycleEvents });
+			server.start();
+			await server.stop();
+
+			const ws = mockWs();
+			server.runnerConnections.set('test-runner', ws);
+			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
+
+			expect(ws.close).not.toHaveBeenCalled();
 		});
 	});
 
