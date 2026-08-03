@@ -11,6 +11,7 @@ import {
 	hasSubMenu,
 	isInputCursorAtEnd,
 	isInputCursorAtStart,
+	isNavigableItem,
 } from './DropdownMenu.utils';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
 
@@ -58,6 +59,27 @@ describe('DropdownMenu utils', () => {
 
 		it('should return -1 when all items above are disabled', () => {
 			expect(getNextValidIndex(createItems(3, [0]), 1, -1)).toBe(-1);
+		});
+
+		it('should skip header items when navigating down', () => {
+			const items: DropdownMenuItemProps[] = [
+				{ id: 'a', label: 'A' },
+				{ id: 'h', label: 'Section', header: true },
+				{ id: 'b', label: 'B' },
+			];
+			expect(getNextValidIndex(items, 0, 1)).toBe(2);
+		});
+	});
+
+	describe('isNavigableItem', () => {
+		it('returns true for a plain enabled item', () => {
+			expect(isNavigableItem({ id: 'a', label: 'A' })).toBe(true);
+		});
+
+		it('returns false for disabled, header, or missing items', () => {
+			expect(isNavigableItem({ id: 'a', label: 'A', disabled: true })).toBe(false);
+			expect(isNavigableItem({ id: 'h', label: 'Section', header: true })).toBe(false);
+			expect(isNavigableItem(undefined)).toBe(false);
 		});
 	});
 

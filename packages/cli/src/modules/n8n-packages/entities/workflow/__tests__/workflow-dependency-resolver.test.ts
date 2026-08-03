@@ -126,4 +126,44 @@ describe('WorkflowDependencyResolver', () => {
 			['workflow:export'],
 		);
 	});
+
+	describe('direct traversal', () => {
+		it('extracts only the references of the requested workflows without fetching the referenced ones', async () => {
+			const { resolver, workflowFinder } = makeResolver([
+				makeWorkflow('workflow-a', 'workflow-b'),
+				makeWorkflow('workflow-b', 'workflow-c'),
+				makeWorkflow('workflow-c'),
+			]);
+
+			const requirements = await resolver.resolve({
+				user,
+				workflowIds: ['workflow-a'],
+				traversal: 'direct',
+			});
+
+			expect(requirements).toEqual([
+				{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
+			]);
+			expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
+		});
+
+		it('extracts the references of every requested workflow, including ones between them', async () => {
+			const { resolver, workflowFinder } = makeResolver([
+				makeWorkflow('workflow-a', 'workflow-b'),
+				makeWorkflow('workflow-b', 'workflow-c'),
+			]);
+
+			const requirements = await resolver.resolve({
+				user,
+				workflowIds: ['workflow-a', 'workflow-b'],
+				traversal: 'direct',
+			});
+
+			expect(requirements).toEqual([
+				{ workflowId: 'workflow-a', referencedWorkflowId: 'workflow-b' },
+				{ workflowId: 'workflow-b', referencedWorkflowId: 'workflow-c' },
+			]);
+			expect(workflowFinder.findWorkflowsByIdsForUser).toHaveBeenCalledTimes(1);
+		});
+	});
 });

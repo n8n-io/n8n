@@ -549,15 +549,19 @@ function buildScenarioContextBlock(
 			);
 		}
 		for (const req of nr.interceptedRequests) {
-			if (
-				typeof req.mockResponse === 'object' &&
-				req.mockResponse !== null &&
-				'_evalMockError' in (req.mockResponse as Record<string, unknown>)
-			) {
-				const msg = (req.mockResponse as Record<string, unknown>).message;
+			if (typeof req.mockResponse !== 'object' || req.mockResponse === null) continue;
+			const mockResponse = req.mockResponse as Record<string, unknown>;
+			// `_evalMockError` = HTTP-mock generation failure; `evalMockGenerationError`
+			// = LLM wire-server generation/translation failure. Flag both.
+			if ('_evalMockError' in mockResponse) {
+				const msg = mockResponse.message;
 				const msgStr = typeof msg === 'string' ? msg : 'unknown';
 				preAnalysis.push(
 					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${msgStr}`,
+				);
+			} else if (typeof mockResponse.evalMockGenerationError === 'string') {
+				preAnalysis.push(
+					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${mockResponse.evalMockGenerationError}`,
 				);
 			}
 		}

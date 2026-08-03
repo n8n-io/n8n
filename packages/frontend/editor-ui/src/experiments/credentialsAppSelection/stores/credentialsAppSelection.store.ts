@@ -1,6 +1,6 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CREDENTIALS_APP_SELECTION_EXPERIMENT } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useStorage } from '@/app/composables/useStorage';

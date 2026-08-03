@@ -78,6 +78,8 @@ describe('LogStreamingEventRelay', () => {
 					dataTableSchemaConflictPolicy: 'keep-existing',
 					variableMissingMode: 'create-stub',
 					variableParentPolicy: 'project',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'skip',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -109,6 +111,13 @@ describe('LogStreamingEventRelay', () => {
 						created: 0,
 						requirements: 1,
 					},
+					tags: {
+						matched: 1,
+						created: 0,
+						renamed: 0,
+						skipped: 0,
+						requirements: 1,
+					},
 				},
 			};
 
@@ -137,6 +146,8 @@ describe('LogStreamingEventRelay', () => {
 						dataTableSchemaConflictPolicy: 'keep-existing',
 						variableMissingMode: 'create-stub',
 						variableParentPolicy: 'project',
+						tagMissingMode: 'create',
+						tagConflictPolicy: 'skip',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',

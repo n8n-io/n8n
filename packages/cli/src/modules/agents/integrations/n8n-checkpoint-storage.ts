@@ -1,4 +1,8 @@
-import type { CheckpointStore, SerializableAgentState } from '@n8n/agents';
+import {
+	stripHydratedFileData,
+	type CheckpointStore,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -9,6 +13,18 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+
+/** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
+function stripStateFileData(state: SerializableAgentState): SerializableAgentState {
+	if (!state.messageList) return state;
+	return {
+		...state,
+		messageList: {
+			...state.messageList,
+			messages: state.messageList.messages.map(stripHydratedFileData),
+		},
+	};
+}
 
 type CheckpointStatus =
 	| {
@@ -57,9 +73,10 @@ export class N8NCheckpointStorage {
 
 	async save(
 		key: string,
-		state: SerializableAgentState,
+		checkpointState: SerializableAgentState,
 		agentId: string | null = null,
 	): Promise<void> {
+		const state = stripStateFileData(checkpointState);
 		const existing = await this.agentCheckpointRepository.findOneBy({ runId: key });
 
 		if (existing) {
@@ -94,7 +111,8 @@ export class N8NCheckpointStorage {
 		return state;
 	}
 
-	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+	async claimForResume(key: string, checkpointState: SerializableAgentState): Promise<boolean> {
+		const state = stripStateFileData(checkpointState);
 		return await this.agentCheckpointRepository.claimForResume(
 			key,
 			JSON.stringify(state),

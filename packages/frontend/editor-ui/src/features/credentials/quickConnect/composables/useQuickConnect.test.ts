@@ -32,7 +32,7 @@ vi.mock('../../composables/useCredentialOAuth', () => ({
 const { mockToastShowError } = vi.hoisted(() => ({
 	mockToastShowError: vi.fn(),
 }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockToastShowError,
 	}),
@@ -96,7 +96,7 @@ const mockUsersState = vi.hoisted(() => ({
 		lastName?: string | null;
 	} | null,
 }));
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => mockUsersState,
 }));
 

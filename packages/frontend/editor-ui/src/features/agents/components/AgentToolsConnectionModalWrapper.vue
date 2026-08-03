@@ -9,12 +9,12 @@ import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow'
 
 import { getWorkflow } from '@/app/api/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
 	isNodePreviewKey,
