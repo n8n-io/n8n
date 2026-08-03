@@ -1,5 +1,7 @@
 import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
+	DEFAULT_AGENT_PERSONALISATION,
+	getRandomAgentPersonalisationGradient,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
 	type AgentJsonConfig,
@@ -14,7 +16,7 @@ import { v4 as uuid } from 'uuid';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentKnowledgeService, isUniqueConstraintError } from './agent-knowledge.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
@@ -45,10 +47,16 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
+	/**
+	 * `id` lets the caller mint the agent id before deciding to persist it, so a
+	 * surface can reference the agent (an artifact tab, a thread binding) while
+	 * it is still unsaved. Both the REST and the builder path may then race to
+	 * create the same id; the loser adopts the winner's row rather than failing.
+	 */
 	async create(
 		projectId: string,
 		name: string,
-		{ availableInMCP = false }: { availableInMCP?: boolean } = {},
+		{ availableInMCP = false, id }: { availableInMCP?: boolean; id?: string } = {},
 	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
@@ -56,9 +64,17 @@ export class AgentsService {
 			instructions: '',
 			tools: [],
 			skills: [],
+			// Seeded at birth so every agent has a distinct tile, and so the builder
+			// sees an existing icon name when it reads the config — without one it
+			// invents its own, which the icon tile cannot render.
+			personalisation: {
+				icon: DEFAULT_AGENT_PERSONALISATION.icon,
+				gradient: getRandomAgentPersonalisationGradient(),
+			},
 		};
 
 		const agent = this.agentRepository.create({
+			...(id ? { id } : {}),
 			name,
 			projectId,
 			schema: defaultConfig,
@@ -66,7 +82,18 @@ export class AgentsService {
 			availableInMCP,
 		});
 
-		const saved = await this.agentRepository.save(agent);
+		let saved: Agent;
+		try {
+			saved = await this.agentRepository.save(agent);
+		} catch (error) {
+			if (!id || !isUniqueConstraintError(error)) throw error;
+			// Only adopt the existing row when it is the agent this caller asked
+			// for. An id taken in another project is a genuine collision.
+			const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
+			if (!existing) throw error;
+			this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
+			return existing;
+		}
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 

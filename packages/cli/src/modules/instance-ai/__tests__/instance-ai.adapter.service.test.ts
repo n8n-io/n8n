@@ -3964,6 +3964,18 @@ describe('createContext — builder delegate telemetry', () => {
 		});
 	});
 
+	it('forwards the client-minted agent id through the telemetry wrapper', async () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		delegate.createAgent.mockResolvedValue({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'proj-1' });
+		mockBuilderModuleActive(delegate);
+
+		const context = service.createContext(mockUser, { threadId: 'thread-1', projectId: 'proj-1' });
+		await context.builderDelegate?.createAgent('New agent', 'aBcDeFgHiJkLmNoP');
+
+		expect(delegate.createAgent).toHaveBeenCalledWith('New agent', 'aBcDeFgHiJkLmNoP');
+	});
+
 	it('does not track when the context has no threadId', async () => {
 		const mockTelemetry = { track: vi.fn() };
 		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: mockTelemetry });

@@ -27,7 +27,7 @@ import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
 
-function isUniqueConstraintError(error: unknown): boolean {
+export function isUniqueConstraintError(error: unknown): boolean {
 	if (!(error instanceof QueryFailedError)) return false;
 
 	const driverError = error.driverError;

@@ -1027,6 +1027,7 @@ async function dismissComposerContextChip() {
 								:class="$style.previewSlot"
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
+								:pending="preview.activeAgentPending.value"
 							/>
 						</div>
 					</TabsRoot>
