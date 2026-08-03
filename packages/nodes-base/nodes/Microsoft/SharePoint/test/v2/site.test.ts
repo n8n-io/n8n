@@ -120,23 +120,53 @@ describe('Microsoft SharePoint v2 — site selection', () => {
 		expect(thrown?.description).toContain('Sites.Read.All application permission');
 	});
 
-	it('keeps the permission-naming message for delegated refusals', async () => {
+	it('points delegated sign-ins without search rights at URL or ID mode', async () => {
 		ctx.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
-		// Mirrors the transport's delegated 403 shape: the permission-naming
-		// message is set as the error option, as delegatedApiError does
+		// The old permission-naming message must be replaced, not merely unread —
+		// mock it present so a leak would show up in the assertions below
 		apiRequest.mockRejectedValue(
 			new NodeApiError(
 				mock<INode>(),
-				{ message: 'refused' },
-				{
-					httpCode: '403',
-					message: 'the credential may be missing the Sites.Read.All permission',
-				},
+				{},
+				{ httpCode: '403', message: 'the credential may be missing the Sites.Read.All permission' },
 			),
 		);
 
-		// URL paste would hit the same refusal — the accurate message must survive
-		await expect(getSites.call(ctx)).rejects.toThrow(/Sites\.Read\.All/);
+		let thrown: NodeApiError | undefined;
+		try {
+			await getSites.call(ctx);
+		} catch (error) {
+			thrown = error as NodeApiError;
+		}
+
+		expect(thrown).toBeInstanceOf(NodeApiError);
+		expect(thrown?.httpCode).toBe('403');
+		expect(thrown?.message).toBe('This credential cannot search sites');
+		const description = thrown?.description ?? '';
+		expect(description).toContain('URL or ID mode');
+		expect(description).toContain('Sites.Selected');
+		// Sites.Read.All is the optional, secondary path — not the primary instruction
+		expect(description.indexOf('URL or ID mode')).toBeLessThan(
+			description.indexOf('Sites.Read.All'),
+		);
+		// The transport's original wording must not survive into the new message
+		expect(thrown?.message).not.toContain('missing');
+		expect(description).not.toContain('missing');
+	});
+
+	it('passes through a non-403 delegated error unchanged', async () => {
+		ctx.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+		const original = new NodeApiError(mock<INode>(), { message: 'boom' }, { httpCode: '500' });
+		apiRequest.mockRejectedValue(original);
+
+		await expect(getSites.call(ctx)).rejects.toBe(original);
+	});
+
+	it('passes through a non-NodeApiError delegated rejection unchanged', async () => {
+		ctx.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+		apiRequest.mockRejectedValue(new Error('boom'));
+
+		await expect(getSites.call(ctx)).rejects.toThrow('boom');
 	});
 
 	it('offers search first, with URL and ID modes alongside', () => {
