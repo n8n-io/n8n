@@ -51,8 +51,7 @@ Object.defineProperty(globalThis, 'localStorage', {
 	},
 });
 
-vi.mock('@n8n/composables/useTelemetry', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/composables/useTelemetry')>()),
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
 }));
 

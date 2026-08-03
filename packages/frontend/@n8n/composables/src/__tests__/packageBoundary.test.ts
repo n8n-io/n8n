@@ -51,3 +51,33 @@ describe('package boundary', () => {
 		expect(offenders).toEqual([]);
 	});
 });
+
+/**
+ * `useTelemetry` is `vi.mock`ed in ~100 editor-ui test files, and a mock factory
+ * replaces the whole module. Re-exporting the registration surface from there
+ * puts it back behind those partial factories and starves the telemetry plugin's
+ * own bootstrap import of it — the failure this split fixed. Registration stays
+ * in `./registries/telemetryRegistry`, which nothing mocks.
+ */
+describe('telemetry registration surface', () => {
+	it('is not re-exported from the useTelemetry module', async () => {
+		const [useTelemetryModule, registry] = await Promise.all([
+			import('../useTelemetry'),
+			import('../registries/telemetryRegistry'),
+		]);
+
+		// Guards against a vacuous pass: were these renamed or moved, the
+		// intersection below would come back empty for the wrong reason.
+		expect(Object.keys(registry)).toEqual(
+			expect.arrayContaining(['setTelemetry', 'TelemetryKey', 'getRegisteredTelemetry']),
+		);
+
+		// Compared as runtime export names, so every re-export shape is caught —
+		// named, aliased, or `export *`. An intersection rather than a fixed
+		// denylist, so a registration symbol added later needs no edit here.
+		// Type-only re-exports are erased and harmless: the plugin needs values.
+		const reExported = Object.keys(useTelemetryModule).filter((name) => name in registry);
+
+		expect(reExported).toEqual([]);
+	});
+});
