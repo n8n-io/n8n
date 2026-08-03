@@ -1349,7 +1349,11 @@ async function initialize() {
 	}
 }
 
-watch(agentId, initialize, { immediate: true });
+// Also re-initialize when the artifact stops being pending: the chat path
+// creates the agent under this same id, so the id never changes, but the view
+// must leave draft mode — otherwise it keeps skipping the agent-scoped fetches
+// and hiding the tabs for an agent that now exists.
+watch([agentId, () => props.artifactAgentPending], initialize, { immediate: true });
 
 onBeforeUnmount(() => {
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);

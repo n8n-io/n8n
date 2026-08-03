@@ -839,10 +839,13 @@ async function resolveTargetForCall(
 			// explicitly. `name` is not applied here: the builder names the agent as
 			// part of the build, and overwriting would clobber a name the user chose.
 			if (boundTarget && !input.createNew) {
+				// Persisted after the turn so the key we hand back resolves on later
+				// calls — the tool reports this `agentRef`, and without registering it
+				// the model could not address the agent by it again.
 				return {
 					ok: true,
 					target: { ...boundTarget, ref: key },
-					bindAfterTurn: false,
+					bindAfterTurn: true,
 					mode: 'continued',
 				};
 			}

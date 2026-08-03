@@ -1081,6 +1081,11 @@ describe('build-agent tool', () => {
 				'Build a support triage agent',
 				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-1' }),
 			);
+			// The reported agentRef has to resolve on later calls.
+			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(
+				context.domainContext,
+				expect.objectContaining({ agentId: 'agent-1', ref: 'support-triage' }),
+			);
 		});
 
 		it('switches back via registry ref instead of creating a duplicate', async () => {
