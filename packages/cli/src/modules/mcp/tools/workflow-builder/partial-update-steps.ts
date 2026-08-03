@@ -123,6 +123,9 @@ const countOperationsWithNoEffect = (
 export const isTagOperation = (op: PartialUpdateOperation) =>
 	op.type === 'addTags' || op.type === 'removeTags';
 
+export const isSettingsOperation = (op: PartialUpdateOperation) =>
+	op.type === 'setWorkflowSettings';
+
 /**
  * Rejects operations this instance cannot serve, before anything is loaded or
  * applied. Throw order is part of the contract: gated group ops first, then
@@ -163,15 +166,16 @@ export function assertOperationsSupported({
  * `buildWorkflowUpdateEntity` later persists. `result` must be passed by
  * reference — cloning it makes the dropped groups silently come back.
  */
-export function resolveNodeGroupViolations({
-	result,
-	nodeTypes,
-	canvasGroupsEnabled,
-}: {
-	result: ApplyOperationsSuccess;
-	nodeTypes: NodeTypes;
-	canvasGroupsEnabled: boolean | undefined;
-}): {
+export function resolveNodeGroupViolations(
+	{
+		result,
+		canvasGroupsEnabled,
+	}: {
+		result: ApplyOperationsSuccess;
+		canvasGroupsEnabled: boolean | undefined;
+	},
+	{ nodeTypes }: { nodeTypes: NodeTypes },
+): {
 	skippedOperations: SkippedOperation[];
 	removedGroups: Array<{ groupName: string; reason: string }>;
 	nodeGroupsNeedPersisting: boolean;
@@ -246,16 +250,17 @@ export function resolveNodeGroupViolations({
 export function buildWorkflowUpdateEntity({
 	workflow,
 	existingMeta,
-	hasSettingsOperations,
-	hasNonTagOperations,
+	strictOperations,
 	nodeGroupsNeedPersisting,
 }: {
 	workflow: ApplyOperationsSuccess['workflow'];
 	existingMeta: WorkflowEntity['meta'];
-	hasSettingsOperations: boolean;
-	hasNonTagOperations: boolean;
+	strictOperations: PartialUpdateOperation[];
 	nodeGroupsNeedPersisting: boolean;
 }): WorkflowEntity {
+	const hasSettingsOperations = strictOperations.some(isSettingsOperation);
+	const hasNonTagOperations = strictOperations.some((op) => !isTagOperation(op));
+
 	const workflowUpdateData = new WorkflowEntity();
 	Object.assign(workflowUpdateData, {
 		name: workflow.name,
@@ -330,23 +335,28 @@ export function buildUpdateTelemetryPayload({
  * the very same references held by `workflowUpdateData.nodes`. Copying them makes
  * auto-assignment silently never persist while still reporting assignments.
  */
-export async function autoAssignCredentialsForAddedNodes({
-	workflowUpdateData,
-	addedNodeNames,
-	user,
-	nodeTypes,
-	credentialsService,
-	projectId,
-	aiGatewayService,
-}: {
-	workflowUpdateData: WorkflowEntity;
-	addedNodeNames: string[];
-	user: User;
-	nodeTypes: NodeTypes;
-	credentialsService: CredentialsService;
-	projectId: string;
-	aiGatewayService: AiGatewayService;
-}): Promise<{
+export async function autoAssignCredentialsForAddedNodes(
+	{
+		workflowUpdateData,
+		addedNodeNames,
+		projectId,
+	}: {
+		workflowUpdateData: WorkflowEntity;
+		addedNodeNames: string[];
+		projectId: string;
+	},
+	{
+		user,
+		nodeTypes,
+		credentialsService,
+		aiGatewayService,
+	}: {
+		user: User;
+		nodeTypes: NodeTypes;
+		credentialsService: CredentialsService;
+		aiGatewayService: AiGatewayService;
+	},
+): Promise<{
 	assignments: CredentialAssignment[];
 	skippedHttpNodes: string[];
 	outcomes: SlotOutcome[];
@@ -391,15 +401,16 @@ export async function autoAssignCredentialsForAddedNodes({
  * fixing) must not fail the update, while a failure validating the *result* has
  * to surface to the caller.
  */
-export async function collectValidationWarnings({
-	nodeTypes,
-	updated,
-	existing,
-}: {
-	nodeTypes: NodeTypes;
-	updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
-	existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
-}): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
+export async function collectValidationWarnings(
+	{
+		updated,
+		existing,
+	}: {
+		updated: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
+		existing: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>;
+	},
+	{ nodeTypes }: { nodeTypes: NodeTypes },
+): Promise<Array<ValidationWarning & { preExisting?: boolean }>> {
 	const { ParseValidateHandler, getWarningKey } = await import('@n8n/ai-workflow-builder');
 
 	const validator = new ParseValidateHandler({
@@ -425,7 +436,9 @@ export async function collectValidationWarnings({
 			nodes: existing.nodes,
 			connections: existing.connections,
 		} as unknown as WorkflowJSON);
-	} catch {}
+	} catch {
+		// do nothing
+	}
 
 	const preUpdateKeys = new Set(preUpdateWarnings.map(getWarningKey));
 
@@ -444,15 +457,10 @@ export async function collectValidationWarnings({
  * never return `[]` for that case: an empty array is a valid instruction to clear
  * every tag on the workflow.
  */
-export async function resolveTagIds({
-	tagNames,
-	user,
-	tagService,
-}: {
-	tagNames: string[] | undefined;
-	user: User;
-	tagService: TagService;
-}): Promise<string[] | undefined> {
+export async function resolveTagIds(
+	{ tagNames }: { tagNames: string[] | undefined },
+	{ user, tagService }: { user: User; tagService: TagService },
+): Promise<string[] | undefined> {
 	if (tagNames === undefined) {
 		return undefined;
 	}

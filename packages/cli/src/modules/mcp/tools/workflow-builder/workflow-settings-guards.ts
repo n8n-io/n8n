@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
@@ -171,6 +172,22 @@ function assertExecutionTimeoutWithinMax(
 }
 
 /**
+ * The dependencies these guards need. Separated from the per-call data so a call site
+ * shows what is being validated, not the plumbing it takes to validate it. Note
+ * the leaf guards above still take primitives rather than `globalConfig` — this
+ * type is the boundary where that unpacking happens, not a licence to pass config
+ * around.
+ */
+export type WorkflowSettingsGuardDependencies = {
+	user: User;
+	nodeTypes: NodeTypes;
+	globalConfig: GlobalConfig;
+	workflowFinderService: WorkflowFinderService;
+	workflowPublishedDataService: WorkflowPublishedDataService;
+	subworkflowPolicyChecker: SubworkflowPolicyChecker;
+};
+
+/**
  * Runs the workflow-level settings validations that only apply when this batch
  * actually touched the setting in question — so a partial edit isn't rejected
  * for pre-existing state, and a value set in one operation can be satisfied by
@@ -180,31 +197,25 @@ function assertExecutionTimeoutWithinMax(
  * Check order is part of the contract: error workflow, then caller policy, then
  * execution timeout.
  */
-export async function assertWorkflowSettingsValid({
-	strictOperations,
-	settings,
-	parentWorkflowId,
-	user,
-	workflowFinderService,
-	workflowPublishedDataService,
-	subworkflowPolicyChecker,
-	nodeTypes,
-	useWorkflowPublicationService,
-	errorTriggerType,
-	maxExecutionTimeout,
-}: {
-	strictOperations: PartialUpdateOperation[];
-	settings: IWorkflowSettings | undefined;
-	parentWorkflowId: string;
-	user: User;
-	workflowFinderService: WorkflowFinderService;
-	workflowPublishedDataService: WorkflowPublishedDataService;
-	subworkflowPolicyChecker: SubworkflowPolicyChecker;
-	nodeTypes: NodeTypes;
-	useWorkflowPublicationService: boolean;
-	errorTriggerType: string;
-	maxExecutionTimeout: number;
-}): Promise<void> {
+export async function assertWorkflowSettingsValid(
+	{
+		strictOperations,
+		settings,
+		workflowId,
+	}: {
+		strictOperations: PartialUpdateOperation[];
+		settings: IWorkflowSettings | undefined;
+		workflowId: string;
+	},
+	{
+		user,
+		nodeTypes,
+		globalConfig,
+		workflowFinderService,
+		workflowPublishedDataService,
+		subworkflowPolicyChecker,
+	}: WorkflowSettingsGuardDependencies,
+): Promise<void> {
 	// Validate a freshly-set error workflow so the agent can self-correct in
 	// context: the target must exist, be accessible, and contain an Error
 	// Trigger node — otherwise it would silently never run on failure.
@@ -215,14 +226,14 @@ export async function assertWorkflowSettingsValid({
 	if (setsErrorWorkflow) {
 		await assertErrorWorkflowIsUsable({
 			errorWorkflowId: settings?.errorWorkflow,
-			parentWorkflowId,
+			parentWorkflowId: workflowId,
 			user,
 			workflowFinderService,
 			workflowPublishedDataService,
-			useWorkflowPublicationService,
+			useWorkflowPublicationService: globalConfig.workflows.useWorkflowPublicationService,
 			nodeTypes,
 			subworkflowPolicyChecker,
-			errorTriggerType,
+			errorTriggerType: globalConfig.nodes.errorTriggerType,
 		});
 	}
 
@@ -245,7 +256,7 @@ export async function assertWorkflowSettingsValid({
 	);
 
 	if (setsExecutionTimeout) {
-		assertExecutionTimeoutWithinMax(settings?.executionTimeout, maxExecutionTimeout);
+		assertExecutionTimeoutWithinMax(settings?.executionTimeout, globalConfig.executions.maxTimeout);
 	}
 }
 
@@ -261,19 +272,21 @@ export async function assertWorkflowSettingsValid({
  * and every node-only edit skip the DB lookup entirely, and we only probe when
  * the permission could come from a project/resource role.
  */
-export async function assertPublishAllowedForSettingsChange({
-	hasSettingsOperations,
-	activeVersionId,
-	workflowId,
-	user,
-	workflowFinderService,
-}: {
-	hasSettingsOperations: boolean;
-	activeVersionId: string | null | undefined;
-	workflowId: string;
-	user: User;
-	workflowFinderService: WorkflowFinderService;
-}): Promise<void> {
+export async function assertPublishAllowedForSettingsChange(
+	{
+		hasSettingsOperations,
+		activeVersionId,
+		workflowId,
+	}: {
+		hasSettingsOperations: boolean;
+		activeVersionId: string | null | undefined;
+		workflowId: string;
+	},
+	{
+		user,
+		workflowFinderService,
+	}: Pick<WorkflowSettingsGuardDependencies, 'user' | 'workflowFinderService'>,
+): Promise<void> {
 	if (!hasSettingsOperations) {
 		return;
 	}
