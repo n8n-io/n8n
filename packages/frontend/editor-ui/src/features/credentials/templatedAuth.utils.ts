@@ -44,6 +44,22 @@ export function parseTemplatedAuthField<T>(raw: unknown, fallback: T): T {
 	return jsonParse<T>(raw, { fallbackValue: fallback });
 }
 
+/**
+ * Same shape rule as the server resolver (assertTemplatedAuthParts in
+ * packages/nodes-base/utils/templated-auth.ts): the template must be an
+ * object whose headers/body/qs parts, when present, are objects too — a
+ * parseable but wrong-shaped template would only fail at resolve time.
+ */
+export function isValidTemplateShape(template: unknown): boolean {
+	if (typeof template !== 'object' || template === null || Array.isArray(template)) return false;
+	return ['headers', 'body', 'qs'].every((part) => {
+		const value = (template as Record<string, unknown>)[part];
+		return (
+			value === undefined || (typeof value === 'object' && value !== null && !Array.isArray(value))
+		);
+	});
+}
+
 /** All string leaves of a parsed template, in depth-first encounter order. */
 function stringLeaves(value: unknown): string[] {
 	if (typeof value === 'string') return [value];

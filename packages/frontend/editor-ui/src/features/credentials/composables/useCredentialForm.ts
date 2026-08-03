@@ -35,6 +35,7 @@ import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
 import {
 	extractTemplateMarkers,
+	isValidTemplateShape,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
@@ -246,9 +247,11 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		// not the type's raw JSON fields — a required marker without a stored
 		// value gates save/test exactly like an empty required field would.
 		if (credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
-			const markers = extractTemplateMarkers(
-				parseTemplatedAuthField<unknown>(credentialData.value.template, {}),
-			);
+			const template = parseTemplatedAuthField<unknown>(credentialData.value.template, {});
+			// A parseable but wrong-shaped template (e.g. an array, or a string
+			// headers part) passes the JSON check below yet can never resolve.
+			if (!isValidTemplateShape(template)) return false;
+			const markers = extractTemplateMarkers(template);
 			const values = parsePlaceholderValues(credentialData.value.placeholderValues);
 			const optionalMarkers = new Set(
 				parsePlaceholderDefs(credentialData.value.placeholderDefs)

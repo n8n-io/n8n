@@ -285,6 +285,33 @@ describe('useCredentialForm', () => {
 			};
 			expect(form.requiredPropertiesFilled.value).toBe(true);
 		});
+
+		it('blocks save while the template parses but has the wrong shape', async () => {
+			// the server resolver only accepts an object with object-valued
+			// headers/body/qs parts; anything else saves fine syntactically but
+			// can never resolve
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify([1, 2, 3]),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: 'Bearer x' }),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'abc' }),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+		});
 	});
 
 	describe('getChangedSharedFields', () => {
