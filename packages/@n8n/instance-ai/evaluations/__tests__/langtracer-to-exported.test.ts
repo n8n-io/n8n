@@ -110,34 +110,34 @@ describe('unsupportedPushReason', () => {
 		expect(unsupportedPushReason(diskCase())).toBeNull();
 	});
 
-	it('flags seedThread and priorConversation as unsupported', () => {
-		expect(unsupportedPushReason(diskCase({ seedThread: { threadId: 't' } }))).toMatch(
-			/seedThread/,
-		);
-		expect(
-			unsupportedPushReason(diskCase({ priorConversation: [{ role: 'user', text: 'earlier' }] })),
-		).toMatch(/priorConversation/);
+	// Keyed off the discriminant, so a new mode is flagged without editing the
+	// mapper — the point of the one-slot union.
+	it('flags a replay seed as unsupported, naming the mode', () => {
+		const reason = unsupportedPushReason(diskCase({ seed: { mode: 'replay', threadId: 't' } }));
+		expect(reason).toMatch(/seed/);
+		expect(reason).toMatch(/replay/);
 	});
 
-	it('flags an inline conversationSeed as unsupported', () => {
-		expect(
-			unsupportedPushReason(
-				diskCase({
-					conversationSeed: {
-						messages: [
-							{
-								id: 'm1',
-								type: 'llm',
-								role: 'user',
-								createdAt: '2026-06-29T09:00:00.000Z',
-								content: [{ type: 'text', text: 'build it' }],
-							},
-						],
-						workflows: [],
-						dataTables: [],
-					},
-				}),
-			),
-		).toMatch(/conversationSeed/);
+	it('flags an inline seed as unsupported, naming the mode', () => {
+		const reason = unsupportedPushReason(
+			diskCase({
+				seed: {
+					mode: 'inline',
+					messages: [
+						{
+							id: 'm1',
+							type: 'llm',
+							role: 'user',
+							createdAt: '2026-06-29T09:00:00.000Z',
+							content: [{ type: 'text', text: 'build it' }],
+						},
+					],
+					workflows: [],
+					dataTables: [],
+				},
+			}),
+		);
+		expect(reason).toMatch(/seed/);
+		expect(reason).toMatch(/inline/);
 	});
 });

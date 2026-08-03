@@ -9,6 +9,7 @@ import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
@@ -37,6 +38,7 @@ let service: OAuthServerService;
 let userConsentRepository: Mocked<UserConsentRepository>;
 let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
+let eventService: Mocked<EventService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
 const urlServiceMock = mock<UrlService>();
@@ -53,6 +55,7 @@ describe('OAuthServerService', () => {
 		urlServiceMock.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		urlServiceMock.getTestWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
+		eventService = mock<EventService>();
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
@@ -76,6 +79,7 @@ describe('OAuthServerService', () => {
 			resourceRegistry,
 			mailer,
 			urlServiceMock,
+			eventService,
 		);
 	});
 
@@ -180,6 +184,7 @@ describe('OAuthServerService', () => {
 					registry,
 					mailer,
 					urlServiceMock,
+					mock<EventService>(),
 				);
 			});
 
@@ -248,6 +253,7 @@ describe('OAuthServerService', () => {
 					registry,
 					mailer,
 					urlServiceMock,
+					mock<EventService>(),
 				);
 
 				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
@@ -803,6 +809,82 @@ describe('OAuthServerService', () => {
 				refresh_token: 'refresh-token-456',
 				scope: 'workflow:read',
 			});
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-oauth-completed', {
+				userId: 'user-456',
+				clientId: 'client-123',
+				clientName: 'Test Client',
+			});
+		});
+
+		it('should not emit `mcp-oauth-completed` when the grant targets a non-MCP resource', async () => {
+			// The authorization server is shared by all protected resources; a
+			// grant for e.g. an n8n Form must not be reported as MCP usage.
+			const formResourceUrl = 'https://n8n.example.com/form/abc';
+			const registry = new ProtectedResourceRegistry(mock<Logger>());
+			registry.register({
+				id: 'instance-mcp',
+				getResourceUrl: () => TEST_RESOURCE_URL,
+				getAudiences: () => [TEST_RESOURCE_URL],
+				scopes: SUPPORTED_SCOPES,
+				isDefault: true,
+				authorize: async () => true,
+			});
+			registry.register({
+				id: 'form-abc',
+				getResourceUrl: () => formResourceUrl,
+				getAudiences: () => [formResourceUrl],
+				scopes: [],
+				isFirstParty: true,
+				authorize: async () => true,
+			});
+			const formService = new OAuthServerService(
+				logger,
+				mockInstance(GlobalConfig),
+				oauthSessionService,
+				oauthClientRepository,
+				tokenService,
+				authorizationCodeService,
+				userConsentRepository,
+				registry,
+				mailer,
+				urlServiceMock,
+				eventService,
+			);
+
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+			const authRecord = {
+				userId: 'user-456',
+				clientId: 'client-123',
+				resource: formResourceUrl,
+				scope: [] as string[],
+			} as AuthorizationCode;
+
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
+			tokenService.generateTokenPair.mockReturnValue({
+				accessToken: 'access-token-123',
+				refreshToken: 'refresh-token-456',
+			});
+			tokenService.saveTokenPair.mockResolvedValue();
+			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+
+			await formService.exchangeAuthorizationCode(
+				client,
+				'auth-code-123',
+				'verifier-123',
+				'https://example.com/callback',
+			);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should handle authorization code exchange without redirect URI', async () => {
@@ -1319,6 +1401,7 @@ describe('OAuthServerService', () => {
 				multiRegistry,
 				mailer,
 				urlServiceMock,
+				mock<EventService>(),
 			);
 
 			expect(
@@ -1366,6 +1449,7 @@ describe('OAuthServerService', () => {
 				configuredRegistry,
 				mailer,
 				urlService,
+				mock<EventService>(),
 			);
 		};
 

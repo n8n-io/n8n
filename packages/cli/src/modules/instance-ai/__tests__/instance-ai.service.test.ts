@@ -985,7 +985,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			},
 			backgroundTasks: { getRunningTasks: vi.fn(() => []) },
 			settingsService: {
-				resolveDaytonaConfig: vi.fn(async () => ({})),
+				resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
 				resolveN8nSandboxConfig: vi.fn(async () => ({})),
 			},
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },

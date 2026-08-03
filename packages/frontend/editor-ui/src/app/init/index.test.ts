@@ -7,7 +7,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
@@ -28,13 +28,19 @@ const showToast = vi.fn();
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
+	// The factory replaces the whole module, so it has to name every export the
+	// real one has. Nothing here asserts on `setNotify` — its only caller,
+	// `toastNotifier`, is kept out of this graph by the mock below — so dropping
+	// this line looks safe and stays green. Loosen that mock and it is not:
+	// vitest fails every test with `No "setNotify" export is defined`.
+	setNotify: vi.fn(),
 }));
 
 vi.mock('@/app/init/toastNotifier', () => ({
 	registerToastNotifier: vi.fn(),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn().mockReturnValue({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),

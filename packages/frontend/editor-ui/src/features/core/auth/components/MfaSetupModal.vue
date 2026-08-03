@@ -7,7 +7,7 @@ import {
 	VIEWS,
 } from '@/app/constants';
 import { ref, onMounted } from 'vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { mfaEventBus } from '../auth.eventBus';
 import { useToast } from '@n8n/composables/useToast';
 import QrcodeVue from 'qrcode.vue';

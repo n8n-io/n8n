@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import { useUsersStore } from '../users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';

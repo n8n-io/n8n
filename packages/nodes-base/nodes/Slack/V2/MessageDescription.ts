@@ -222,8 +222,9 @@ export const captureResponderField: INodeProperties = {
 			responseType: ['approval'],
 		},
 	},
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 	description:
-		"Whether to use Slack interactive buttons so the responder's identity (ID, name, email) is captured and returned with the response. Requires the Slack app to have Interactivity enabled (Request URL pointed at this n8n instance), a signing secret on the credential, and the users:read and users:read.email scopes.",
+		'Whether to return the responder\'s identity with the Slack response. Requires additional setup on the Slack app — <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/approvals#id-1.-create-a-slack-app-and-credential" target="_blank">see docs</a>.',
 };
 
 export const approversField: INodeProperties = {

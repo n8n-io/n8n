@@ -75,9 +75,7 @@ export type BuildArgs = Pick<
 	| 'conversation'
 	| 'messageBudget'
 	| 'credentials'
-	| 'conversationSeed'
-	| 'priorConversation'
-	| 'seedThread'
+	| 'seed'
 	| 'executionScenarios'
 	| 'outcomeExpectations'
 > & { timeoutMs: number };
@@ -450,9 +448,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
-						conversationSeed: entry.conversationSeed,
-						priorConversation: entry.priorConversation,
-						seedThread: entry.seedThread,
+						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
 						outcomeExpectations: entry.outcomeExpectations,
 						timeoutMs,

@@ -1,7 +1,7 @@
 import {
 	ConversationSeedSchema,
+	expandSeedMessageShorthand,
 	remapSeedWorkflowIds,
-	seedFromProse,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from '../harness/conversation-seed';
@@ -137,12 +137,14 @@ describe('ConversationSeedSchema message envelope', () => {
 		});
 	});
 
-	it('accepts what seedFromProse produces', () => {
-		const seed = seedFromProse([
+	it('accepts what the shorthand expansion produces', () => {
+		// The case schema expands shorthand BEFORE this schema validates it, so an
+		// expansion that stopped satisfying the envelope would fail every seed.
+		const messages = expandSeedMessageShorthand([
 			{ role: 'user', text: 'hi' },
 			{ role: 'assistant', text: 'hello' },
 		]);
-		expect(ConversationSeedSchema.safeParse(seed).success).toBe(true);
+		expect(ConversationSeedSchema.safeParse({ messages }).success).toBe(true);
 	});
 
 	it('still requires at least one message', () => {
@@ -150,16 +152,15 @@ describe('ConversationSeedSchema message envelope', () => {
 	});
 });
 
-describe('seedFromProse', () => {
-	it('converts turns to llm text messages with ascending past timestamps', () => {
-		const seed = seedFromProse([
+describe('expandSeedMessageShorthand', () => {
+	it('converts shorthand turns to llm text messages with ascending past timestamps', () => {
+		const messages = expandSeedMessageShorthand([
 			{ role: 'user', text: 'Digest to #cosmic-otter-alerts please' },
 			{ role: 'assistant', text: 'Done — daily at 9am.' },
 		]);
 
-		expect(seed.workflows).toEqual([]);
-		expect(seed.messages).toHaveLength(2);
-		const [first, second] = seed.messages;
+		expect(messages).toHaveLength(2);
+		const [first, second] = messages as Array<Record<string, unknown>>;
 		expect(first).toMatchObject({
 			type: 'llm',
 			role: 'user',
@@ -171,6 +172,29 @@ describe('seedFromProse', () => {
 		const t1 = new Date(String(second.createdAt)).getTime();
 		expect(t1).toBeGreaterThan(t0);
 		expect(t1).toBeLessThan(Date.now());
+	});
+
+	it('passes a full envelope through untouched', () => {
+		const envelope = {
+			id: 'm1',
+			type: 'llm',
+			role: 'assistant' as const,
+			createdAt: '2026-06-29T09:00:00.000Z',
+			content: [{ type: 'text', text: 'authored' }],
+		};
+		expect(expandSeedMessageShorthand([envelope])[0]).toBe(envelope);
+	});
+
+	it('leaves a near-miss shorthand alone so the envelope schema reports it', () => {
+		// Expanding these would produce a message the transcript builder silently
+		// drops; passing them through means the envelope schema rejects them loudly.
+		const nearMisses = [
+			{ role: 'user', text: 42 },
+			{ role: 'system', text: 'hi' },
+			{ role: 'user', text: 'hi', extra: true },
+			{ role: 'user' },
+		];
+		expect(expandSeedMessageShorthand(nearMisses)).toEqual(nearMisses);
 	});
 });
 
@@ -189,7 +213,19 @@ describe('remapSeedWorkflowIds', () => {
 	});
 
 	it('returns the seed untouched when there are no workflows', () => {
-		const seed = seedFromProse([{ role: 'user', text: 'hi' }]);
+		const seed: ConversationSeed = {
+			messages: [
+				{
+					id: 'm1',
+					type: 'llm',
+					role: 'user',
+					createdAt: '2026-06-29T09:00:00.000Z',
+					content: [{ type: 'text', text: 'hi' }],
+				},
+			],
+			workflows: [],
+			dataTables: [],
+		};
 		expect(remapSeedWorkflowIds(seed)).toBe(seed);
 	});
 

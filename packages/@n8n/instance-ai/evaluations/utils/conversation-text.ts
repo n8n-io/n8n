@@ -1,21 +1,23 @@
 import { isRecord } from '@n8n/utils/is-record';
 
+import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
 /**
  * Human-readable prompt label for a test case. Authored cases use their first
- * turn; seedThread cases carry no authored conversation, so fall back to the
+ * turn; a `replay` seed carries no authored conversation, so fall back to the
  * live (non-seeded) user turn captured in the transcript, then to the thread id.
  */
 export function caseDisplayPrompt(
-	testCase: { conversation?: ConversationTurn[]; seedThread?: { threadId: string } },
+	testCase: { conversation?: ConversationTurn[]; seed?: CaseSeed },
 	transcript?: TranscriptTurn[],
 ): string {
 	const authored = testCase.conversation?.[0]?.text;
 	if (authored) return authored;
 	const liveTurn = transcript?.find((t) => !t.seeded && t.userMessage)?.userMessage;
 	if (liveTurn) return liveTurn;
-	return testCase.seedThread ? `[seeded] thread ${testCase.seedThread.threadId.slice(0, 8)}` : '';
+	const { seed } = testCase;
+	return seed?.mode === 'replay' ? `[seeded] thread ${seed.threadId.slice(0, 8)}` : '';
 }
 
 /**
@@ -38,8 +40,8 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
  * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
  * text from the authored conversation instead of receiving an empty prompt.
  *
- * Accepts `undefined` because `testCase.conversation` is optional (seedThread-only
- * cases carry none) and callers pass it straight through — no conversation → ''.
+ * Accepts `undefined` because `testCase.conversation` is optional (a `replay`-seeded
+ * case carries none) and callers pass it straight through — no conversation → ''.
  */
 export function conversationUserTurnsAsText(conversation: ConversationTurn[] | undefined): string {
 	if (!conversation) return '';
