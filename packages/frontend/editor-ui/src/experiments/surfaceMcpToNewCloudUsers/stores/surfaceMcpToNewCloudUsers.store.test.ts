@@ -15,7 +15,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 const firstOpenSeenStorage = ref<string | null>(null);
 const firstOpenDismissedStorage = ref<string | null>(null);
 
-vi.mock('@/app/composables/useStorage', () => ({
+vi.mock('@n8n/composables/useStorage', () => ({
 	useStorage: (key: string) => {
 		if (key === 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_SEEN') {
 			return firstOpenSeenStorage;

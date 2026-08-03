@@ -74,7 +74,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useStorage', () => ({
+vi.mock('@n8n/composables/useStorage', () => ({
 	useStorage: vi.fn().mockReturnValue({ value: undefined }),
 }));
 
