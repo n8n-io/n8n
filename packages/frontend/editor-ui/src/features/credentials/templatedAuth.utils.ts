@@ -1,4 +1,4 @@
-import { isExpression, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 /**
  * Helpers for Templated Custom Auth (`httpTemplatedCustomAuth`) credentials:
@@ -81,7 +81,9 @@ function markerPrefix(template: unknown, name: string): string {
 /** Trim a pasted value and strip a duplicated template prefix. Expressions
  *  (external-secrets references) pass through untouched. */
 export function cleanPlaceholderValue(template: unknown, name: string, value: string): string {
-	if (isExpression(value)) return value;
+	// Same check as n8n-workflow's isExpression, whose `expr is string` predicate
+	// would narrow the string argument to never on the non-expression path.
+	if (value.startsWith('=')) return value;
 	let cleaned = value.trim();
 	const prefix = markerPrefix(template, name);
 	if (prefix && cleaned.startsWith(prefix)) cleaned = cleaned.slice(prefix.length).trim();
