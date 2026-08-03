@@ -62,14 +62,22 @@ import { getMcpWorkflow } from '../workflow-validation.utils';
 function dedupeNamesPreservingCase(names: string[]): string[] {
 	const seen = new Set<string>();
 	const result: string[] = [];
+
 	for (const raw of names) {
 		const trimmed = raw.trim();
-		if (trimmed.length === 0) continue;
+
+		if (trimmed.length === 0) {
+			continue;
+		}
 		const key = trimmed.toLowerCase();
-		if (seen.has(key)) continue;
+
+		if (seen.has(key)) {
+			continue;
+		}
 		seen.add(key);
 		result.push(trimmed);
 	}
+
 	return result;
 }
 
@@ -78,17 +86,21 @@ function dedupeNamesPreservingCase(names: string[]): string[] {
 function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, number> {
 	const touched = new Map<string, number>();
 	const recordTouch = (name: string, opIndex: number) => {
-		if (!touched.has(name)) touched.set(name, opIndex);
+		if (!touched.has(name)) {
+			touched.set(name, opIndex);
+		}
 	};
 
 	for (let i = 0; i < operations.length; i++) {
 		const op = operations[i];
+
 		if (op.type === 'addNode') {
 			recordTouch(op.node.name, i);
 		} else if (op.type === 'updateNodeParameters' || op.type === 'setNodeParameter') {
 			recordTouch(op.nodeName, i);
 		} else if (op.type === 'renameNode') {
 			const idx = touched.get(op.oldName);
+
 			if (idx !== undefined) {
 				touched.delete(op.oldName);
 				touched.set(op.newName, idx);
@@ -117,21 +129,25 @@ const countOperationsWithNoEffect = (
 	groupOperations: ApplyOperationsSuccess['groupOperations'],
 ): number => {
 	const producedPerOp = new Map<number, number>();
+
 	for (const { opIndex } of Object.values(groupOperations)) {
 		producedPerOp.set(opIndex, (producedPerOp.get(opIndex) ?? 0) + 1);
 	}
 
 	const skippedPerOp = new Map<number, number>();
+
 	for (const { opIndex } of skippedOperations) {
 		skippedPerOp.set(opIndex, (skippedPerOp.get(opIndex) ?? 0) + 1);
 	}
 
 	let count = 0;
+
 	for (const [opIndex, skipped] of skippedPerOp) {
 		if (skipped >= (producedPerOp.get(opIndex) ?? 0)) {
 			count++;
 		}
 	}
+
 	return count;
 };
 
@@ -163,7 +179,9 @@ async function assertErrorWorkflowIsUsable({
 	subworkflowPolicyChecker: SubworkflowPolicyChecker;
 	errorTriggerType: string;
 }): Promise<void> {
-	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') return;
+	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') {
+		return;
+	}
 
 	// Read access is required intentionally, mirroring the editor UI (the error
 	// workflow picker only lists workflows the user can read). Resolving the
@@ -180,6 +198,7 @@ async function assertErrorWorkflowIsUsable({
 		// service is off; otherwise we read it from the service below.
 		{ includeActiveVersion: !useWorkflowPublicationService },
 	);
+
 	if (!errorWorkflow) {
 		throw new Error(
 			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
@@ -191,6 +210,7 @@ async function assertErrorWorkflowIsUsable({
 	// WorkflowExecutionService.loadErrorWorkflowData exactly so we neither reject a
 	// workflow runtime would run nor accept a version runtime will not use.
 	let publishedNodes: INode[] | undefined;
+
 	if (useWorkflowPublicationService) {
 		const published = await workflowPublishedDataService.getPublishedWorkflowData(errorWorkflowId);
 		publishedNodes = published?.publishedVersion.nodes;
@@ -207,6 +227,7 @@ async function assertErrorWorkflowIsUsable({
 	const hasErrorTrigger = publishedNodes.some(
 		(node) => node.type === errorTriggerType && node.disabled !== true,
 	);
+
 	if (!hasErrorTrigger) {
 		throw new Error(
 			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
@@ -226,6 +247,7 @@ async function assertErrorWorkflowIsUsable({
 		active: false,
 		settings: errorWorkflow.settings ?? {},
 	});
+
 	try {
 		await subworkflowPolicyChecker.check(
 			errorWorkflowInstance,
@@ -250,7 +272,9 @@ async function assertErrorWorkflowIsUsable({
  * only one of the two fields is validated against the final state.
  */
 function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): void {
-	if (settings?.callerPolicy !== 'workflowsFromAList') return;
+	if (settings?.callerPolicy !== 'workflowsFromAList') {
+		return;
+	}
 
 	const callerIds = (settings.callerIds ?? '')
 		.split(',')
@@ -275,7 +299,9 @@ function assertExecutionTimeoutWithinMax(
 	maxTimeout: number,
 ): void {
 	// `executionTimeout <= 0` is the "unlimited" sentinel (-1) and is never capped.
-	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) return;
+	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) {
+		return;
+	}
 
 	if (executionTimeout > maxTimeout) {
 		throw new Error(
@@ -369,6 +395,7 @@ export const createUpdateWorkflowTool = (
 			const hasGatedGroupOperations = strictOperations.some((op) =>
 				GATED_GROUP_OP_TYPES.has(op.type),
 			);
+
 			if (hasGatedGroupOperations && options.canvasGroupsEnabled !== true) {
 				throw new Error(
 					'Node group operations (addNodeGroup, removeNodeGroup, updateNodeGroup) are not available on this instance.',
@@ -439,6 +466,7 @@ export const createUpdateWorkflowTool = (
 
 					for (const violation of violations) {
 						const requestedBy = result.groupOperations[violation.groupId];
+
 						if (requestedBy) {
 							skippedOperations.push({ ...requestedBy, reason: violation.message });
 						} else {
@@ -644,10 +672,12 @@ export const createUpdateWorkflowTool = (
 			// it, so its warnings count as new.
 			let validationWarnings: Array<ValidationWarning & { preExisting?: boolean }> =
 				postUpdateWarnings;
+
 			if (postUpdateWarnings.length > 0) {
 				// A pre-update state broken enough to not even validate (which this
 				// batch may be fixing) must not fail the update — skip the annotation.
 				let preUpdateWarnings: ValidationWarning[] = [];
+
 				try {
 					preUpdateWarnings = validator.validateJSON({
 						name: existingWorkflow.name,
@@ -664,8 +694,10 @@ export const createUpdateWorkflowTool = (
 			}
 
 			let tagIds: string[] | undefined;
+
 			if (result.tagNames !== undefined) {
 				const uniqueTagNames = dedupeNamesPreservingCase(result.tagNames);
+
 				if (hasGlobalScope(user, 'tag:create')) {
 					const resolvedTags = await tagService.findOrCreateByNames(uniqueTagNames);
 					tagIds = resolvedTags.map((t) => t.id);
@@ -673,6 +705,7 @@ export const createUpdateWorkflowTool = (
 					const resolvedTags = await tagService.getByNames(uniqueTagNames);
 					const resolvedNames = new Set(resolvedTags.map((t) => t.name));
 					const missing = uniqueTagNames.filter((name) => !resolvedNames.has(name));
+
 					if (missing.length > 0) {
 						throw new Error(
 							`Cannot apply the following tags because they don't exist and your account does not have permission to create them: ${missing.join(', ')}`,

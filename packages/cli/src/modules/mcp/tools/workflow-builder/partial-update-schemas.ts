@@ -181,14 +181,19 @@ const strictOperationsSchema = z.array(partialUpdateOperationSchema);
 
 export function parseStrictOperations(operations: OperationInput[]): PartialUpdateOperation[] {
 	const parsed = strictOperationsSchema.safeParse(operations);
-	if (parsed.success) return parsed.data;
+
+	if (parsed.success) {
+		return parsed.data;
+	}
 
 	const details = parsed.error.issues
 		.map(({ path, message }) => {
 			const [index, ...rest] = path;
+
 			if (typeof index === 'number') {
 				return `operation ${index}${rest.length ? `.${rest.join('.')}` : ''}: ${message}`;
 			}
+
 			return `${path.length ? path.join('.') : 'operations'}: ${message}`;
 		})
 		.join('; ');
@@ -201,6 +206,7 @@ const NON_FATAL_OPERATION_TYPES_LIST = [...NON_FATAL_OPERATION_TYPES].join(', ')
 export const buildToolDescription = (canvasGroupsEnabled: boolean) => {
 	const base =
 		'Atomically update an existing workflow with operation objects. Edits nodes/connections and also workflow-level settings via setWorkflowSettings — including the error workflow that runs automatically on failure to send alerts (e.g. when a user asks to "add error handling" or "notify me if this breaks"). Pass skillsUsed if n8n skills were used.';
+
 	return canvasGroupsEnabled
 		? `${base} Node-group operations (${NON_FATAL_OPERATION_TYPES_LIST}) are the one exception to "atomically": an invalid one is skipped and reported in skippedOperations instead of aborting the whole update. Separately, if other edits in the batch make an existing group invalid, that group is removed and reported in removedGroups.`
 		: base;
