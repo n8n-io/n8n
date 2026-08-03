@@ -305,5 +305,7 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		// So a soft-redirect re-login (no page reload) re-fetches per-user data.
+		authenticatedFeaturesInitialized = false;
 	});
 }

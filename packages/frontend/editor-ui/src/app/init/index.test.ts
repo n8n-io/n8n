@@ -285,6 +285,26 @@ describe('Init', () => {
 			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('re-initializes authenticated features for the next login after the registered logout hook runs', async () => {
+			// Force registerAuthenticationHooks() (only runs once) to run again.
+			state.initialized = false;
+			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
+			await initializeCore();
+			const registeredLogoutHook = registerLogoutHookSpy.mock.calls[0][0];
+
+			const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValue();
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await initializeAuthenticatedFeatures(false);
+			expect(cloudStoreSpy).toHaveBeenCalledTimes(1);
+
+			// Simulates a session-expiry logout resetting the module-level flag.
+			await registeredLogoutHook();
+
+			await initializeAuthenticatedFeatures();
+			expect(cloudStoreSpy).toHaveBeenCalledTimes(2);
+		});
+
 		it('should handle cloud plan initialization error', async () => {
 			const cloudStoreSpy = vi
 				.spyOn(cloudPlanStore, 'initialize')
