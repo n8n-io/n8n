@@ -1,5 +1,6 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	DecideWorkflowReviewRequestResponse,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxResponse,
@@ -75,8 +76,8 @@ export async function decideWorkflowReviewRequest(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,
 	payload: { decision: WorkflowReviewDecisionInput },
-): Promise<WorkflowReviewRequestSummary> {
-	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
+): Promise<DecideWorkflowReviewRequestResponse> {
+	return await makeRestApiRequest<DecideWorkflowReviewRequestResponse>(
 		context,
 		'POST',
 		`/workflow-review-requests/${workflowReviewRequestId}/decision`,

@@ -38,14 +38,12 @@ export function trimSlashes(path: string): string {
  * same for sub-path deployments as for root deployments, and matches the path the
  * unauthenticated well-known route already receives (relative to the mount point).
  *
- * The query string is dropped unless `preserveQuery` is set: only webhook triggers
- * carry one (the `?method=` selector), and the other resolvers match on exact paths,
- * so keeping a query for them would turn a tolerated extra parameter into a miss.
+ * The query string is dropped — it reaches resolvers as a separate argument, so it
+ * never belongs in a path used for matching.
  */
 export function resourceUrlToWebhookPath(
 	resourceUrl: string,
 	webhookBaseUrl: string,
-	{ preserveQuery = false }: { preserveQuery?: boolean } = {},
 ): string | undefined {
 	let url: URL;
 	try {
@@ -64,7 +62,17 @@ export function resourceUrlToWebhookPath(
 		return undefined;
 	}
 
-	return url.pathname.slice(basePath.length) + (preserveQuery ? url.search : '');
+	return url.pathname.slice(basePath.length);
+}
+
+/**
+ * The canonical per-trigger path of a webhook row, relative to `/{endpoint}/`: the
+ * templated path for dynamic webhooks (`<webhookId>/user/:id`), the path itself for
+ * static ones. Keyed off `webhookId` — set exactly when a segment starts with `:` —
+ * since a static path may contain a colon that is not a route parameter.
+ */
+export function webhookResourcePath(webhookPath: string, webhookId?: string): string {
+	return webhookId ? `${webhookId}/${webhookPath}` : webhookPath;
 }
 
 /**

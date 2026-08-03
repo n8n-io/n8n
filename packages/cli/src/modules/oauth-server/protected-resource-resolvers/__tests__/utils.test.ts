@@ -4,7 +4,24 @@ import {
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookResourcePath,
 } from '../utils';
+
+describe('webhookResourcePath', () => {
+	test('should return the path itself for a static webhook', () => {
+		expect(webhookResourcePath('user/defined/path')).toBe('user/defined/path');
+	});
+
+	test('should prefix the webhookId for a dynamic webhook', () => {
+		expect(webhookResourcePath('user/:id/posts', 'wh-1')).toBe('wh-1/user/:id/posts');
+	});
+
+	test('should not prefix a static path that merely contains a colon', () => {
+		// a row only carries a webhookId when a segment *starts* with `:`
+		expect(webhookResourcePath('orders:2024')).toBe('orders:2024');
+		expect(webhookResourcePath('at/time:12')).toBe('at/time:12');
+	});
+});
 
 describe('resourceUrlToWebhookPath', () => {
 	test('should return the path for a URL under a root-mounted base URL', () => {
@@ -45,22 +62,17 @@ describe('resourceUrlToWebhookPath', () => {
 		expect(resourceUrlToWebhookPath('not-a-url', 'https://host.example/')).toBeUndefined();
 	});
 
-	test('should drop the query string by default', () => {
-		// only the webhook resolver reads a query; the others match exact paths, so a
-		// stray parameter must not turn into a lookup miss
+	test('should drop the query string', () => {
+		// the query reaches resolvers separately, so it must never end up in the path
 		expect(
 			resourceUrlToWebhookPath('https://host.example/mcp/abc?foo=bar', 'https://host.example/'),
 		).toBe('/mcp/abc');
-	});
-
-	test('should preserve the query string when asked (carries the method selector)', () => {
 		expect(
 			resourceUrlToWebhookPath(
 				'https://host.example/webhook/abc?method=GET',
 				'https://host.example/',
-				{ preserveQuery: true },
 			),
-		).toBe('/webhook/abc?method=GET');
+		).toBe('/webhook/abc');
 	});
 });
 
