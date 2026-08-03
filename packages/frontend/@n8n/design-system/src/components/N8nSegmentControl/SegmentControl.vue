@@ -1,8 +1,7 @@
 <script lang="ts" setup>
-import type { AcceptableValue } from 'reka-ui';
-import { RadioGroupRoot } from 'reka-ui';
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, ref, useAttrs } from 'vue';
+import { RadioGroupRoot, type AcceptableValue } from 'reka-ui';
+import { computed, nextTick, ref, useAttrs } from 'vue';
 
 import type { SegmentControlProps, SegmentOption } from './SegmentControl.types';
 import SegmentControlItem from './SegmentControlItem.vue';
@@ -33,9 +32,11 @@ const rootProps = reactivePick(props, 'name', 'required', 'loop', 'dir');
 const lastPointerEvent = ref<MouseEvent>();
 
 /**
- * reka-ui selects on arrow keys via a window keydown listener. Ancestors (and
- * our own stopPropagation below) block that, so RovingFocus still moves focus
- * but selection never updates. After keydown, click the focused radio.
+ * reka-ui selects on arrow keys via a window keydown listener. That is blocked
+ * when keydown doesn't reach window — e.g. our stopPropagation below (so canvas
+ * node-nav / editor shortcuts don't also fire), or an ancestor @keydown.stop
+ * (modals, keybinding wrappers). RovingFocus still moves focus; we click the
+ * focused radio after nextTick to complete selection.
  */
 const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
@@ -67,8 +68,8 @@ function onKeyDown(event: KeyboardEvent) {
 	const group = event.currentTarget;
 	if (!(group instanceof HTMLElement)) return;
 
-	// RovingFocus has already moved focus by the time this timeout runs
-	setTimeout(() => {
+	// RovingFocus moves focus in nextTick; wait for that before selecting
+	void nextTick(() => {
 		const active = document.activeElement;
 		if (!(active instanceof HTMLElement) || !group.contains(active)) {
 			return;
@@ -80,7 +81,7 @@ function onKeyDown(event: KeyboardEvent) {
 			return;
 		}
 		active.click();
-	}, 0);
+	});
 }
 
 function onItemClickCapture(event: MouseEvent) {
@@ -206,6 +207,6 @@ function onUpdate(raw: AcceptableValue) {
 
 .isDisabled {
 	cursor: not-allowed;
-	opacity: 0.7;
+	background-color: var(--background--disabled);
 }
 </style>
