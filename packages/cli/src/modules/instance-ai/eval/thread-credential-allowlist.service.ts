@@ -16,9 +16,21 @@ export class EvalThreadCredentialAllowlistService {
 
 	set(threadId: string, credentialIds: string[], bypassCredentialTest?: string[]): void {
 		this.byThread.set(threadId, [...credentialIds]);
+		// Bound to the allowlist, which is the property that makes this endpoint
+		// safe for an `instanceAi:eval` caller: the allowlist only ever NARROWS
+		// what a thread can see, so a bypass outside it would be the one part that
+		// widens — synthesizing a passing connection test for a credential the
+		// thread cannot even reach, including one owned by somebody else. An id
+		// that isn't allowlisted is dropped rather than rejected: the harness
+		// re-sends the whole list as it appends mid-run credentials, and ordering
+		// there shouldn't fail a run.
+		const allowed = new Set(credentialIds);
 		// Always overwrite rather than merge: the harness re-sends the whole list
 		// when it appends a mid-run credential, so a stale bypass must not survive.
-		this.testBypassByThread.set(threadId, [...(bypassCredentialTest ?? [])]);
+		this.testBypassByThread.set(
+			threadId,
+			(bypassCredentialTest ?? []).filter((id) => allowed.has(id)),
+		);
 	}
 
 	get(threadId: string): string[] | undefined {
