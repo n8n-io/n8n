@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { ref } from 'vue';
 
 import SegmentControl from './SegmentControl.vue';
 
@@ -177,8 +178,7 @@ describe('components.N8nSegmentControl', () => {
 			await userEvent.click(getByRole('radio', { name: 'Ask' }));
 
 			await waitFor(() => {
-				const emissions = emitted('update:modelValue');
-				expect(emissions.at(-1)?.[0]).toBe(false);
+				expect(emitted('update:modelValue').at(-1)).toEqual(expect.arrayContaining([false]));
 			});
 		});
 
@@ -300,20 +300,21 @@ describe('components.N8nSegmentControl', () => {
 			const user = userEvent.setup();
 			const { getByRole } = render({
 				components: { SegmentControl },
+				setup() {
+					const modelValue = ref('one');
+					return {
+						modelValue,
+						options,
+						onUpdate(value: string) {
+							modelValue.value = value;
+						},
+					};
+				},
 				template: `
 					<div @keydown.stop>
 						<SegmentControl :model-value="modelValue" :options="options" @update:model-value="onUpdate" />
 					</div>
 				`,
-				data: () => ({
-					modelValue: 'one' as string,
-					options,
-				}),
-				methods: {
-					onUpdate(value: string) {
-						this.modelValue = value;
-					},
-				},
 			});
 
 			getByRole('radio', { name: 'One' }).focus();
@@ -348,18 +349,19 @@ describe('components.N8nSegmentControl', () => {
 			const user = userEvent.setup();
 			const { getByRole } = render({
 				components: { SegmentControl },
+				setup() {
+					const modelValue = ref('three');
+					return {
+						modelValue,
+						options,
+						onUpdate(value: string) {
+							modelValue.value = value;
+						},
+					};
+				},
 				template: `
 					<SegmentControl :model-value="modelValue" :options="options" @update:model-value="onUpdate" />
 				`,
-				data: () => ({
-					modelValue: 'three' as string,
-					options,
-				}),
-				methods: {
-					onUpdate(value: string) {
-						this.modelValue = value;
-					},
-				},
 			});
 
 			getByRole('radio', { name: 'Three' }).focus();
@@ -374,6 +376,16 @@ describe('components.N8nSegmentControl', () => {
 			const user = userEvent.setup();
 			const { getByRole, emitted } = render({
 				components: { SegmentControl },
+				setup() {
+					const modelValue = ref('three');
+					return {
+						modelValue,
+						options,
+						onUpdate(value: string) {
+							modelValue.value = value;
+						},
+					};
+				},
 				template: `
 					<SegmentControl
 						:model-value="modelValue"
@@ -382,15 +394,6 @@ describe('components.N8nSegmentControl', () => {
 						@update:model-value="onUpdate"
 					/>
 				`,
-				data: () => ({
-					modelValue: 'three' as string,
-					options,
-				}),
-				methods: {
-					onUpdate(value: string) {
-						this.modelValue = value;
-					},
-				},
 			});
 
 			getByRole('radio', { name: 'Three' }).focus();
@@ -404,18 +407,19 @@ describe('components.N8nSegmentControl', () => {
 			const user = userEvent.setup();
 			const { getByRole } = render({
 				components: { SegmentControl },
+				setup() {
+					const modelValue = ref('two');
+					return {
+						modelValue,
+						options,
+						onUpdate(value: string) {
+							modelValue.value = value;
+						},
+					};
+				},
 				template: `
 					<SegmentControl :model-value="modelValue" :options="options" @update:model-value="onUpdate" />
 				`,
-				data: () => ({
-					modelValue: 'two' as string,
-					options,
-				}),
-				methods: {
-					onUpdate(value: string) {
-						this.modelValue = value;
-					},
-				},
 			});
 
 			getByRole('radio', { name: 'Two' }).focus();
