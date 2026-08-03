@@ -1,0 +1,27 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 1061-1063
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 76-78,147-149
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 8,103-110
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_ce38e707b3774d::t_ea7ecee42449ba 2236-2238,2296-2298
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ce38e707b3774d::t_26844c7c32be5a 287-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "edd1bdc5a8c53a71541576635a47555b9c088c44",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
