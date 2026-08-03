@@ -18,7 +18,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
-	type AgentModifiedBy,
+	isUnconfiguredAgent,
+	type AgentActor,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
@@ -120,7 +121,7 @@ export class AgentConfigService {
 		projectId: string,
 		config: unknown,
 		user: User,
-		options: { clearOmittedOptionalFields?: boolean; modifiedBy: AgentModifiedBy },
+		options: { clearOmittedOptionalFields?: boolean; modifiedBy: AgentActor },
 	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
@@ -272,6 +273,7 @@ export class AgentConfigService {
 			user,
 			by: options.modifiedBy,
 			changedParts,
+			wasUnconfigured: isUnconfiguredAgent(previousSchema, previousIntegrations),
 		});
 
 		if (tasksProvided) {

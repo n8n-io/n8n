@@ -4,8 +4,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { publishAgent, revertAgentToPublished, unpublishAgent } from './useAgentApi';
-import { useAgentTelemetry } from './useAgentTelemetry';
-import { buildAgentConfigFingerprint } from './agentTelemetry.utils';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
@@ -19,7 +17,6 @@ export function useAgentPublish() {
 	const rootStore = useRootStore();
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
-	const agentTelemetry = useAgentTelemetry();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 	const publishing = ref(false);
@@ -30,19 +27,6 @@ export function useAgentPublish() {
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
 			upsertProjectAgentsListCache(projectId, updated);
-			// Derive the fingerprint from the server's response so `config_version`
-			// reflects what was actually published regardless of the caller —
-			// list-card publishes don't have access to the live draft. Triggers
-			// are intentionally omitted: they live outside AgentJsonConfig and
-			// aren't part of the published schema. `crypto.subtle.digest` can
-			// throw in insecure contexts — swallow so telemetry never surfaces
-			// as a publish failure. `trackPublishedAgent` itself is already safe.
-			try {
-				const fp = await buildAgentConfigFingerprint(updated.activeVersion?.schema ?? null, []);
-				agentTelemetry.trackPublishedAgent({ agentId, configVersion: fp.config_version });
-			} catch {
-				// Swallow fingerprint failures.
-			}
 			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
 			return updated;
 		} catch (error) {
@@ -73,7 +57,6 @@ export function useAgentPublish() {
 		try {
 			const updated = await unpublishAgent(rootStore.restApiContext, projectId, agentId);
 			upsertProjectAgentsListCache(projectId, updated);
-			agentTelemetry.trackUnpublishedAgent({ agentId });
 			showMessage({ title: locale.baseText('agents.publish.toast.unpublished'), type: 'success' });
 			return updated;
 		} catch (error) {

@@ -264,7 +264,7 @@ export class SlackAppSetupService {
 			session.agentId,
 			session.projectId,
 			user,
-			'slack_setup',
+			{ by: 'user', trigger: 'slack_setup' },
 			undefined,
 			{
 				syncIntegrations: false,

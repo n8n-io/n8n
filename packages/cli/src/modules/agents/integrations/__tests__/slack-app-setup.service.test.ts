@@ -367,7 +367,7 @@ describe('SlackAppSetupService', () => {
 			'agent-1',
 			'project-1',
 			user,
-			'slack_setup',
+			{ by: 'user', trigger: 'slack_setup' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -429,7 +429,7 @@ describe('SlackAppSetupService', () => {
 			'agent-1',
 			'project-1',
 			user,
-			'slack_setup',
+			{ by: 'user', trigger: 'slack_setup' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);

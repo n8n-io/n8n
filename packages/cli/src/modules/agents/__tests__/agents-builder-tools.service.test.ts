@@ -1791,7 +1791,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				user,
-				'builder',
+				{ by: 'builder', trigger: 'explicit' },
 				undefined,
 			);
 			expect(result).toEqual({
@@ -1819,7 +1819,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				user,
-				'builder',
+				{ by: 'builder', trigger: 'explicit' },
 				'v-history',
 			);
 			expect(result).toEqual({

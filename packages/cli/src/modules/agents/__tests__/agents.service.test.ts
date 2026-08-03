@@ -4,7 +4,6 @@ import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -24,13 +23,9 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { EventService } from '@/events/event.service';
-import type { Telemetry } from '@/telemetry';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
-const user = mock<User>({ id: 'user-1' });
-/** The two required options every `create` call now carries. */
-const createdByUser = { createdBy: 'user', user } as const;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -70,8 +65,6 @@ function makeService() {
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
 
-	const telemetry = mock<Telemetry>();
-
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
@@ -84,7 +77,6 @@ function makeService() {
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,
-		telemetry,
 	);
 
 	return {
@@ -100,7 +92,6 @@ function makeService() {
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,
-		telemetry,
 	};
 }
 
@@ -121,7 +112,7 @@ describe('AgentsService', () => {
 		agentRepository.create.mockReturnValue(saved);
 		agentRepository.save.mockResolvedValue(saved);
 
-		await expect(service.create(projectId, 'Support Agent', createdByUser)).resolves.toBe(saved);
+		await expect(service.create(projectId, 'Support Agent')).resolves.toBe(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
 			name: 'Support Agent',
 			projectId,
@@ -143,29 +134,6 @@ describe('AgentsService', () => {
 		});
 	});
 
-	describe('creation telemetry', () => {
-		it.each([
-			['user', 'USER_CREATED_AGENT', '2'],
-			['builder', 'BUILDER_CREATED_AGENT', '2'],
-			['mcp', 'MCP_CREATED_AGENT', '1'],
-		] as const)('reports a %s creation as its own event', async (createdBy, event, version) => {
-			const { service, agentRepository, telemetry } = makeService();
-			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
-			agentRepository.save.mockResolvedValue(saved);
-
-			await service.create(projectId, 'Support Agent', { createdBy, user });
-
-			expect(telemetry.track).toHaveBeenCalledTimes(1);
-			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS[event], {
-				agent_id: agentId,
-				project_id: projectId,
-				user_id: 'user-1',
-				event_version: version,
-			});
-		});
-	});
-
 	describe('create with a client-minted id', () => {
 		const mintedId = 'aBcDeFgHiJkLmNoP';
 		const uniqueViolation = () =>
@@ -181,7 +149,7 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(saved);
 			agentRepository.save.mockResolvedValue(saved);
 
-			await service.create(projectId, 'Support Agent', { id: mintedId, ...createdByUser });
+			await service.create(projectId, 'Support Agent', { id: mintedId });
 
 			expect(agentRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ id: mintedId }),
@@ -189,18 +157,15 @@ describe('AgentsService', () => {
 		});
 
 		it('adopts the existing agent when the other creation path won the race', async () => {
-			const { service, agentRepository, telemetry } = makeService();
+			const { service, agentRepository } = makeService();
 			const raced = makeAgent({ id: mintedId });
 			agentRepository.create.mockReturnValue(raced);
 			agentRepository.save.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(raced);
 
-			await expect(
-				service.create(projectId, 'Support Agent', { id: mintedId, ...createdByUser }),
-			).resolves.toBe(raced);
-			// The path that inserted the row already reported it; counting it here
-			// would double-count a single agent.
-			expect(telemetry.track).not.toHaveBeenCalled();
+			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).resolves.toBe(
+				raced,
+			);
 		});
 
 		it('rethrows when the id collides with an agent outside this project', async () => {
@@ -210,9 +175,9 @@ describe('AgentsService', () => {
 			agentRepository.save.mockRejectedValue(error);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-			await expect(
-				service.create(projectId, 'Support Agent', { id: mintedId, ...createdByUser }),
-			).rejects.toBe(error);
+			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toBe(
+				error,
+			);
 		});
 
 		it('rethrows a non-unique-violation failure instead of treating it as a race', async () => {
@@ -221,9 +186,9 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
 			agentRepository.save.mockRejectedValue(error);
 
-			await expect(
-				service.create(projectId, 'Support Agent', { id: mintedId, ...createdByUser }),
-			).rejects.toBe(error);
+			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toBe(
+				error,
+			);
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 	});

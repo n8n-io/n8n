@@ -572,7 +572,7 @@ export class AgentsBuilderToolsService {
 						agentId,
 						projectId,
 						user,
-						'builder',
+						{ by: 'builder', trigger: 'explicit' },
 						versionId,
 					);
 					return {

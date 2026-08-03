@@ -704,8 +704,6 @@ describe('McpAgentToolsService', () => {
 			});
 			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'My Agent', {
 				availableInMCP: true,
-				createdBy: 'mcp',
-				user,
 			});
 			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
 				'agent-1',
@@ -865,7 +863,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
-				'builder',
+				{ by: 'mcp', trigger: 'explicit' },
 				undefined,
 			);
 			expect(result.structuredContent).toEqual({
@@ -890,7 +888,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
-				'builder',
+				{ by: 'mcp', trigger: 'explicit' },
 				'v1',
 			);
 			expect(result.structuredContent).toMatchObject({
@@ -958,7 +956,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
-				'builder',
+				'mcp',
 			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
@@ -1369,7 +1367,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				'project-1',
 				user,
-				'channel_connect',
+				{ by: 'mcp', trigger: 'channel_connect' },
 				undefined,
 				{ syncIntegrations: false, ignoreDraftIntegrations: true },
 			);

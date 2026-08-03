@@ -753,6 +753,73 @@ describe('AgentConfigService', () => {
 			return telemetry.track.mock.calls.find(([called]) => called === entry)?.[1];
 		}
 
+		/** What `AgentsService.create` leaves behind: a row with nothing configured. */
+		const blankConfig: AgentJsonConfig = {
+			name: 'Support Agent',
+			model: '',
+			instructions: '',
+		};
+
+		it('reports the write that first configures an agent as a creation, not a modification', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: blankConfig }));
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, byUser);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT)).toMatchObject({
+				agent_id: agentId,
+				project_id: projectId,
+				user_id: user.id,
+				event_version: '2',
+				model: baseConfig.model,
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('reports a save to an already-configured agent as a modification, not a second creation', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Escalate billing questions' },
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toBeDefined();
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('stays silent when a write leaves the agent unconfigured, so a creation is always its first event', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: blankConfig }));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...blankConfig, name: 'Renamed' },
+				user,
+				byUser,
+			);
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				expect.anything(),
+			);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
+		});
+
 		it('reports only the parts the save actually changed', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());

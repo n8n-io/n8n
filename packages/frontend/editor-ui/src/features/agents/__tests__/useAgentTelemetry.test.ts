@@ -79,25 +79,6 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
-	it('trackPublishedAgent fires with config_version and status=production', () => {
-		useAgentTelemetry().trackPublishedAgent({ agentId: 'ag-1', configVersion: 'v3' });
-		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT, {
-			agent_id: 'ag-1',
-			config_version: 'v3',
-			status: 'production',
-			session_id: 'session-xyz',
-		});
-	});
-
-	it('trackUnpublishedAgent fires with status=draft', () => {
-		useAgentTelemetry().trackUnpublishedAgent({ agentId: 'ag-1' });
-		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_UNPUBLISHED_AGENT, {
-			agent_id: 'ag-1',
-			status: 'draft',
-			session_id: 'session-xyz',
-		});
-	});
-
 	it('trackOpenedToolFromList fires with agent_id and tool_type', () => {
 		useAgentTelemetry().trackOpenedToolFromList({ agentId: 'ag-1', toolType: 'node' });
 		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {

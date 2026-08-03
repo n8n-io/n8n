@@ -62,23 +62,6 @@ export function useAgentTelemetry() {
 		});
 	}
 
-	function trackPublishedAgent(params: { agentId: string; configVersion: string }) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT, {
-			agent_id: params.agentId,
-			config_version: params.configVersion,
-			status: 'production' as const,
-			...common(),
-		});
-	}
-
-	function trackUnpublishedAgent(params: { agentId: string }) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_UNPUBLISHED_AGENT, {
-			agent_id: params.agentId,
-			status: 'draft' as const,
-			...common(),
-		});
-	}
-
 	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_TOOL, {
 			agent_id: params.agentId,
@@ -123,8 +106,6 @@ export function useAgentTelemetry() {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
 		trackAddedTrigger,
-		trackPublishedAgent,
-		trackUnpublishedAgent,
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,

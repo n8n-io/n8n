@@ -21,10 +21,11 @@ import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
-	type AgentModifiedBy,
+	type AgentActor,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
@@ -39,8 +40,24 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+import {
+	configuredCapabilityKinds,
+	countAgentCapabilities,
+	totalAgentCapabilities,
+} from './utils/agent-capabilities';
 
-export type AgentPublishSource = 'editor' | 'builder' | 'channel_connect' | 'slack_setup';
+export type AgentPublishTrigger = 'explicit' | 'republish' | 'channel_connect' | 'slack_setup';
+
+/**
+ * Who published and why. `republish` is absent because the caller cannot know
+ * it: `publishAgent` derives it from a `versionId` activating an older
+ * snapshot, so a caller can't claim an explicit publish that is really a
+ * rollback.
+ */
+export interface AgentPublishEmitter {
+	by: AgentActor;
+	trigger: Exclude<AgentPublishTrigger, 'republish'>;
+}
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
@@ -101,7 +118,7 @@ export class AgentPublishService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		source: AgentPublishSource,
+		emitter: AgentPublishEmitter,
 		versionId?: string,
 		options: PublishAgentOptions = {},
 	): Promise<PublishAgentResult> {
@@ -180,15 +197,7 @@ export class AgentPublishService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		// activeVersionId was just set above (either to targetHistory.versionId or
-		// agent.versionId), so it is never null on this success path.
-		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_PUBLISHED, {
-			agent_id: agentId,
-			project_id: projectId,
-			user_id: user.id,
-			source,
-			version_id: agent.activeVersionId!,
-		});
+		this.trackPublished(agent, projectId, user, emitter, targetHistory);
 		await emitSetupCompleted?.();
 
 		const credentialIntegrations = agent.integrations ?? [];
@@ -274,7 +283,7 @@ export class AgentPublishService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		source: 'editor' | 'builder',
+		by: AgentActor,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -291,12 +300,7 @@ export class AgentPublishService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_UNPUBLISHED, {
-			agent_id: agentId,
-			project_id: projectId,
-			user_id: user.id,
-			source,
-		});
+		this.trackUnpublished(agentId, projectId, user, by);
 
 		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
@@ -318,11 +322,104 @@ export class AgentPublishService {
 		return agent;
 	}
 
+	/**
+	 * One event per surface rather than one event with a `by` property, matching
+	 * the creation and modification events. Written as a switch because
+	 * `Telemetry.track` types its payload against the specific event passed, so
+	 * a lookup map would widen the event to a union its payload cannot satisfy.
+	 */
+	private trackPublished(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		emitter: AgentPublishEmitter,
+		targetHistory: AgentHistory | undefined,
+	): void {
+		// The snapshot that actually went live, which for a republish is the
+		// version's schema rather than the draft.
+		const published = targetHistory ? targetHistory.schema : agent.schema;
+		const counts = countAgentCapabilities(published, agent.integrations);
+		// Only model and tool_types: this helper's own tool_count folds in MCP
+		// servers, provider tools, web search and sub-agents, which would
+		// disagree with the per-kind counts above.
+		const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(
+			published,
+			agent.integrations,
+		);
+
+		const properties = {
+			agent_id: agent.id,
+			project_id: projectId,
+			user_id: user.id,
+			// Activating an older snapshot is a rollback, whatever the caller
+			// asked for — and only this method knows which branch ran.
+			trigger: targetHistory ? ('republish' as const) : emitter.trigger,
+			// Set by the transaction above to either targetHistory.versionId or
+			// agent.versionId, so it is never null on this path.
+			version_id: agent.activeVersionId!,
+			capability_kinds: configuredCapabilityKinds(counts),
+			capability_count: totalAgentCapabilities(counts),
+			tool_count: counts.tool,
+			skill_count: counts.skill,
+			sub_agent_count: counts.subAgent,
+			mcp_server_count: counts.mcpServer,
+			vector_store_count: counts.vectorStore,
+			task_count: counts.task,
+			trigger_count: counts.channel,
+			model,
+			tool_types,
+		} as const;
+
+		switch (emitter.by) {
+			case 'user':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT, {
+					...properties,
+					event_version: '2',
+				});
+				return;
+			case 'builder':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+				return;
+			case 'mcp':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_PUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+		}
+	}
+
+	private trackUnpublished(agentId: string, projectId: string, user: User, by: AgentActor): void {
+		const properties = { agent_id: agentId, project_id: projectId, user_id: user.id } as const;
+
+		switch (by) {
+			case 'user':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_UNPUBLISHED_AGENT, {
+					...properties,
+					event_version: '2',
+				});
+				return;
+			case 'builder':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_UNPUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+				return;
+			case 'mcp':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_UNPUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+		}
+	}
+
 	async revertToPublishedAgent(
 		agentId: string,
 		projectId: string,
 		user: User,
-		modifiedBy: AgentModifiedBy,
+		modifiedBy: AgentActor,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -362,7 +459,7 @@ export class AgentPublishService {
 		projectId: string,
 		versionId: string,
 		user: User,
-		modifiedBy: AgentModifiedBy,
+		modifiedBy: AgentActor,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -414,7 +511,7 @@ export class AgentPublishService {
 		agent: Agent,
 		projectId: string,
 		user: User,
-		modifiedBy: AgentModifiedBy,
+		modifiedBy: AgentActor,
 		previousSchema: AgentJsonConfig | null,
 	): void {
 		const integrations = agent.integrations ?? [];
@@ -424,6 +521,9 @@ export class AgentPublishService {
 			user,
 			by: modifiedBy,
 			changedParts: diffAgentConfigParts(previousSchema, agent.schema, integrations, integrations),
+			// A revert needs a published version to revert to, so the agent was
+			// configured long before this.
+			wasUnconfigured: false,
 		});
 	}
 

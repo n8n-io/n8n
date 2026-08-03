@@ -11,7 +11,6 @@ import { Logger } from '@n8n/backend-common';
 import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { v4 as uuid } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -31,10 +30,6 @@ import {
 } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { EventService } from '@/events/event.service';
-import { Telemetry } from '@/telemetry';
-
-/** Which surface created an agent. Selects the creation event to emit. */
-export type AgentCreatedBy = 'user' | 'builder' | 'mcp';
 
 @Service()
 export class AgentsService {
@@ -50,7 +45,6 @@ export class AgentsService {
 		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly eventService: EventService,
 		private readonly agentExecutionService: AgentExecutionService,
-		private readonly telemetry: Telemetry,
 	) {}
 
 	/**
@@ -58,6 +52,10 @@ export class AgentsService {
 	 * surface can reference the agent (an artifact tab, a thread binding) while
 	 * it is still unsaved. Both the REST and the builder path may then race to
 	 * create the same id; the loser adopts the winner's row rather than failing.
+	 *
+	 * Emits no telemetry: a row on its own is not a created agent, so the
+	 * creation events fire from the first configuring write instead (see
+	 * `AgentModificationTelemetryService`).
 	 */
 	async create(
 		projectId: string,
@@ -65,15 +63,10 @@ export class AgentsService {
 		{
 			availableInMCP = false,
 			id,
-			createdBy,
-			user,
 		}: {
 			availableInMCP?: boolean;
 			id?: string;
-			/** Selects the creation event. Required so a new creation path cannot silently emit nothing. */
-			createdBy: AgentCreatedBy;
-			user: User;
-		},
+		} = {},
 	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
@@ -108,51 +101,13 @@ export class AgentsService {
 			// for. An id taken in another project is a genuine collision.
 			const existing = await this.agentRepository.findByIdAndProjectId(id, projectId);
 			if (!existing) throw error;
-			// No creation event: the caller that inserted the row already emitted
-			// one, and this agent must not be counted twice.
 			this.logger.debug('Adopted concurrently created SDK agent', { agentId: id, projectId });
 			return existing;
 		}
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
-		this.trackCreated(saved, projectId, user, createdBy);
 
 		return saved;
-	}
-
-	/**
-	 * One event per surface rather than one event with a `by` property, matching
-	 * how the rest of n8n names its events. Written as a switch because
-	 * `Telemetry.track` types its payload against the specific event passed, so
-	 * a lookup map would widen the event to a union its payload cannot satisfy.
-	 */
-	private trackCreated(
-		agent: Agent,
-		projectId: string,
-		user: User,
-		createdBy: AgentCreatedBy,
-	): void {
-		const identity = { agent_id: agent.id, project_id: projectId, user_id: user.id };
-
-		switch (createdBy) {
-			case 'user':
-				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT, {
-					...identity,
-					event_version: '2',
-				});
-				return;
-			case 'builder':
-				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
-					...identity,
-					event_version: '2',
-				});
-				return;
-			case 'mcp':
-				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_CREATED_AGENT, {
-					...identity,
-					event_version: '1',
-				});
-		}
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {

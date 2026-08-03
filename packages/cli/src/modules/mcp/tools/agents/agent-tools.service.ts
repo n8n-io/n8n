@@ -523,8 +523,6 @@ export class McpAgentToolsService {
 					// Agents created over MCP stay operable over MCP.
 					const agent = await this.agentsService.create(projectId, name, {
 						availableInMCP: true,
-						createdBy: 'mcp',
-						user,
 					});
 					let configHash: string | null;
 					let versionId = agent.versionId;
@@ -686,7 +684,7 @@ export class McpAgentToolsService {
 							agentId,
 							projectId,
 							user,
-							'builder',
+							{ by: 'mcp', trigger: 'explicit' },
 							versionId,
 						);
 						return {
@@ -804,7 +802,7 @@ export class McpAgentToolsService {
 						agentId,
 						projectId,
 						user,
-						'builder',
+						'mcp',
 					);
 					return {
 						ok: true,
@@ -1485,7 +1483,7 @@ export class McpAgentToolsService {
 			input.agentId,
 			projectId,
 			user,
-			'channel_connect',
+			{ by: 'mcp', trigger: 'channel_connect' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);

@@ -30,7 +30,7 @@ export class AgentPublishController {
 			agentId,
 			req.params.projectId,
 			req.user,
-			'editor',
+			{ by: 'user', trigger: 'explicit' },
 			payload?.versionId,
 		);
 		return await this.agentRunnableStateService.addRunnableState(
@@ -52,7 +52,7 @@ export class AgentPublishController {
 			agentId,
 			req.params.projectId,
 			req.user,
-			'editor',
+			'user',
 		);
 		return await this.agentRunnableStateService.addRunnableState(
 			agent,
