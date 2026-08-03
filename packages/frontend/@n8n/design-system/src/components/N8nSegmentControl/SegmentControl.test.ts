@@ -371,5 +371,49 @@ describe('components.N8nSegmentControl', () => {
 				expect(getByRole('radio', { name: 'One' })).toBeChecked();
 			});
 		});
+
+		it('does not select on later focusin if focus left before arrow keyup', async () => {
+			const { getByRole, getByTestId, emitted } = render({
+				components: { SegmentControl },
+				template: `
+					<div>
+						<SegmentControl
+							:model-value="modelValue"
+							:options="options"
+							@update:model-value="onUpdate"
+						/>
+						<button data-test-id="outside" type="button">Outside</button>
+					</div>
+				`,
+				data: () => ({
+					modelValue: 'one' as string,
+					options,
+				}),
+				methods: {
+					onUpdate(value: string) {
+						this.modelValue = value;
+					},
+				},
+			});
+
+			const one = getByRole('radio', { name: 'One' });
+			one.focus();
+			await fireEvent.keyDown(one, { key: 'ArrowRight' });
+
+			getByTestId('outside').focus();
+			await new Promise<void>((resolve) => {
+				requestAnimationFrame(() => resolve());
+			});
+
+			const emitCount = emitted('update:modelValue')?.length ?? 0;
+
+			getByRole('radio', { name: 'Three' }).focus();
+			await new Promise<void>((resolve) => {
+				requestAnimationFrame(() => resolve());
+			});
+
+			expect(emitted('update:modelValue')?.length ?? 0).toBe(emitCount);
+			expect(getByRole('radio', { name: 'Three' })).not.toBeChecked();
+		});
 	});
 });

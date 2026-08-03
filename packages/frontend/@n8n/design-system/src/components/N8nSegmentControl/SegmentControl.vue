@@ -2,7 +2,7 @@
 import type { AcceptableValue } from 'reka-ui';
 import { RadioGroupRoot } from 'reka-ui';
 import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, ref, useAttrs } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useAttrs } from 'vue';
 
 import type { SegmentControlProps, SegmentOption } from './SegmentControl.types';
 import SegmentControlItem from './SegmentControlItem.vue';
@@ -37,9 +37,16 @@ const lastPointerEvent = ref<MouseEvent>();
  * stopPropagation on keydown (editor keybindings, modals, etc.) block that, so
  * RovingFocus still moves focus but selection never updates. Track arrows in
  * capture phase and complete selection on focusin.
+ *
+ * Clear via window keyup (not group keyup) so the flag cannot stick when focus
+ * leaves before keyup; also clear on focus leave and tab hide.
  */
 const arrowKeyPressed = ref(false);
 const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+function clearArrowKeyPressed() {
+	arrowKeyPressed.value = false;
+}
 
 function optionKey(value: SegmentValue): string {
 	return `${typeof value}:${String(value)}`;
@@ -72,12 +79,31 @@ function onKeyDown(event: KeyboardEvent) {
 	}
 }
 
-function onKeyUpCapture(event: KeyboardEvent) {
+function onWindowKeyUpCapture(event: KeyboardEvent) {
 	if (!ARROW_KEYS.includes(event.key)) return;
 	// Match Reka's setTimeout(0) in RadioGroupItem.handleFocus so selection can finish first
-	setTimeout(() => {
-		arrowKeyPressed.value = false;
-	}, 0);
+	setTimeout(clearArrowKeyPressed, 0);
+}
+
+function onVisibilityChange() {
+	if (document.visibilityState !== 'visible') {
+		clearArrowKeyPressed();
+	}
+}
+
+function onGroupFocusOut(event: FocusEvent) {
+	const group = event.currentTarget;
+	if (!(group instanceof HTMLElement)) return;
+
+	const next = event.relatedTarget;
+	if (next instanceof Node && group.contains(next)) return;
+
+	// Defer so intra-group moves with a null relatedTarget can settle first
+	requestAnimationFrame(() => {
+		if (!group.contains(document.activeElement)) {
+			clearArrowKeyPressed();
+		}
+	});
 }
 
 function onItemFocusIn(event: FocusEvent) {
@@ -93,6 +119,17 @@ function onItemFocusIn(event: FocusEvent) {
 	}
 	target.click();
 }
+
+onMounted(() => {
+	window.addEventListener('keyup', onWindowKeyUpCapture, true);
+	document.addEventListener('visibilitychange', onVisibilityChange);
+});
+
+onUnmounted(() => {
+	window.removeEventListener('keyup', onWindowKeyUpCapture, true);
+	document.removeEventListener('visibilitychange', onVisibilityChange);
+	clearArrowKeyPressed();
+});
 
 function onItemClickCapture(event: MouseEvent) {
 	const target = event.target;
@@ -134,7 +171,7 @@ function onUpdate(raw: AcceptableValue) {
 			@update:model-value="onUpdate"
 			@keydown.capture="onKeyDownCapture"
 			@keydown="onKeyDown"
-			@keyup.capture="onKeyUpCapture"
+			@focusout="onGroupFocusOut"
 			@click.capture="onItemClickCapture"
 		>
 			<SegmentControlItem
