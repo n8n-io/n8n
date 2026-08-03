@@ -302,8 +302,10 @@ const sidebarItems = computed(() => {
 						position: 'top',
 					} satisfies IMenuItem,
 				]),
-		// Templated Custom Auth keeps its machinery in the Connection pane's
-		// "Edit setup" state, so the Details tab has nothing left to show.
+		// Deliberately hidden for Templated Custom Auth to keep the modal to the
+		// guided essentials; the type's machinery lives in the Connection pane's
+		// "Edit setup" state. Trade-off: the id and created/updated timestamps
+		// (CredentialInfo) have no other surface for this type.
 		...(credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
 			? []
 			: [

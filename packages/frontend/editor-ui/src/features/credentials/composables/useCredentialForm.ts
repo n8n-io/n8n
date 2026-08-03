@@ -9,6 +9,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -32,7 +33,13 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { probeCredential } from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../templatedAuth.utils';
+import {
+	extractTemplateMarkers,
+	parsePlaceholderDefs,
+	parsePlaceholderValues,
+	parseTemplatedAuthField,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '../templatedAuth.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -235,6 +242,22 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	});
 
 	const requiredPropertiesFilled = computed(() => {
+		// Templated Custom Auth: the real inputs are the template's {{markers}},
+		// not the type's raw JSON fields — a required marker without a stored
+		// value gates save/test exactly like an empty required field would.
+		if (credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+			const markers = extractTemplateMarkers(
+				parseTemplatedAuthField<unknown>(credentialData.value.template, {}),
+			);
+			const values = parsePlaceholderValues(credentialData.value.placeholderValues);
+			const optionalMarkers = new Set(
+				parsePlaceholderDefs(credentialData.value.placeholderDefs)
+					.filter((def) => def.optional === true)
+					.map((def) => def.name),
+			);
+			if (markers.some((marker) => !optionalMarkers.has(marker) && !values[marker])) return false;
+		}
+
 		for (const property of credentialProperties.value) {
 			if (property.required !== true) continue;
 			const value = credentialData.value[property.name];
@@ -519,10 +542,21 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		// The probe runs against the SAVED credential (the server reads its
 		// persisted test URL), so it only applies once an id exists — which the
 		// modal guarantees by testing after save.
-		const result =
-			isTemplatedAuthProbeable.value && details.id
-				? await probeCredential(rootStore.restApiContext, details.id)
-				: await credentialsStore.testCredential(details);
+		let result: INodeCredentialTestResult;
+		try {
+			result =
+				isTemplatedAuthProbeable.value && details.id
+					? await probeCredential(rootStore.restApiContext, details.id)
+					: await credentialsStore.testCredential(details);
+		} catch (error) {
+			// A transport failure or non-2xx (e.g. the persisted credential lost
+			// its test URL) lands in the banner instead of wedging the testing
+			// flags of the callers into a stuck spinner.
+			result = {
+				status: 'Error',
+				message: error instanceof Error ? error.message : String(error),
+			};
+		}
 		if (result.status === 'Error') {
 			authError.value = result.message;
 			testedSuccessfully.value = false;

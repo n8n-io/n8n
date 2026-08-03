@@ -230,6 +230,61 @@ describe('useCredentialForm', () => {
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
 			expect(form.authError.value).toBe('Received 401');
 		});
+
+		it('surfaces a thrown probe as a test failure instead of wedging the flags', async () => {
+			vi.mocked(probeCredential).mockRejectedValue(
+				new Error('Request failed with status code 400'),
+			);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'abc' }),
+				testUrl: 'https://fal.run/v1/models',
+			};
+
+			await form.testCredential({
+				id: 'cred-9',
+				name: 'fal.ai API Key',
+				type: 'httpTemplatedCustomAuth',
+				data: form.credentialData.value as never,
+			});
+
+			expect(form.authError.value).toBe('Request failed with status code 400');
+			expect(form.testedSuccessfully.value).toBe(false);
+		});
+	});
+
+	describe('requiredPropertiesFilled', () => {
+		it('blocks save and test while a required placeholder has no value', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({}),
+				testUrl: 'https://fal.run/v1/models',
+			};
+
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+			expect(form.isCredentialTestable.value).toBe(false);
+
+			// an optional marker without a value doesn't block
+			form.credentialData.value = {
+				...form.credentialData.value,
+				placeholderDefs: JSON.stringify([{ name: 'api_key', title: 'Key', optional: true }]),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+
+			// the untouched redacted sentinel counts as filled
+			form.credentialData.value = {
+				...form.credentialData.value,
+				placeholderDefs: '',
+				placeholderValues: JSON.stringify({ api_key: '***' }),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+		});
 	});
 
 	describe('getChangedSharedFields', () => {
