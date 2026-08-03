@@ -6,7 +6,9 @@ import { itemFields, itemOperations } from './item/ItemDescription';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Monday.com',
 	name: 'mondayCom',
-	icon: { light: 'file:mondayCom.svg', dark: 'file:mondayCom.dark.svg' },
+	// Icon paths resolve relative to the versioned wrapper (MondayCom.node.ts),
+	// so point into V2/ to use the refreshed brand icon without touching V1's.
+	icon: { light: 'file:V2/mondayCom.svg', dark: 'file:V2/mondayCom.dark.svg' },
 	group: ['output'],
 	version: 2,
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
