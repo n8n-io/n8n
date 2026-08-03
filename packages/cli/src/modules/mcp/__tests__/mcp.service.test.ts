@@ -47,7 +47,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
+import { MCP_LIST_CACHE_TTL_MS, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
@@ -592,6 +592,48 @@ describe('McpService', () => {
 						query: expect.objectContaining({ type: 'string' }),
 					}),
 				});
+			});
+
+			it('returns tools in deterministic name order with private cache metadata', async () => {
+				const handler = await buildHandler();
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': 'tools/list',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'tools/list',
+							params: {
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+
+				expect(res.status).toBe(200);
+				const body = (await res.json()) as {
+					result: { tools: Array<{ name: string }>; ttlMs: number; cacheScope: string };
+				};
+
+				const toolNames = body.result.tools.map((tool) => tool.name);
+				expect(toolNames.length).toBeGreaterThan(1);
+				// Registration order is buffered and sorted, so tools/list is always
+				// in stable, locale-independent name order regardless of which gates fired.
+				expect(toolNames).toEqual([...toolNames].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
+
+				// Cacheable, but per-grant, so never shared.
+				expect(body.result.cacheScope).toBe('private');
+				expect(body.result.ttlMs).toBe(MCP_LIST_CACHE_TTL_MS);
 			});
 
 			it('serves a 2025-era client through the stateless legacy fallback', async () => {

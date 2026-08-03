@@ -51,7 +51,12 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import {
+	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_LIST_CACHE_TTL_MS,
+	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	MCP_SDK_REFERENCE_CACHE_TTL_MS,
+} from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type {
@@ -387,6 +392,12 @@ export class McpService {
 		// the agent tools gets no agent build walkthrough.
 		const agentInstructionsEnabled =
 			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
+		// Cache hints (SEP-2549): the list results and server/discover are safe to
+		// cache client-side for a few minutes, but always `private` — they are
+		// filtered per grant and feature flag, so a shared cache must not serve one
+		// client's view to another. The SDK reference resource sets its own longer
+		// hint at registration. Hints only affect 2026-era responses.
+		const listCacheHint = { ttlMs: MCP_LIST_CACHE_TTL_MS, cacheScope: 'private' as const };
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -399,14 +410,25 @@ export class McpService {
 					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 					isAgentsEnabled: agentInstructionsEnabled,
 				}),
+				cacheHints: {
+					'tools/list': listCacheHint,
+					'resources/list': listCacheHint,
+					'resources/templates/list': listCacheHint,
+					'server/discover': listCacheHint,
+				},
 			},
 		);
 
 		const registerTool = this.createToolRegistrar(server, user, clientInfo);
 
+		// Tools are buffered and registered in name order at the end (see the flush
+		// before `return server`). tools/list echoes registration order, so sorting
+		// keeps the advertised order stable regardless of which feature gates fired,
+		// which lets client-side and LLM prompt caches hit (SEP-2549).
+		const pendingTools: ToolDefinition[] = [];
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			registerTool(tool);
+			pendingTools.push(tool);
 		};
 
 		// Existing tools
@@ -591,6 +613,13 @@ export class McpService {
 			);
 		}
 
+		// Register the buffered tools in a stable, locale-independent name order.
+		for (const tool of [...pendingTools].sort((a, b) =>
+			a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+		)) {
+			registerTool(tool);
+		}
+
 		return server;
 	}
 
@@ -746,6 +775,8 @@ export class McpService {
 			{
 				description:
 					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
+				// Static for a given release; cache it far longer than the lists.
+				cacheHint: { ttlMs: MCP_SDK_REFERENCE_CACHE_TTL_MS, cacheScope: 'private' },
 			},
 			() => ({
 				contents: [
