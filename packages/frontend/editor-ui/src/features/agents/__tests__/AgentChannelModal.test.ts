@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import type { SlackManagedSetupState } from '@n8n/api-types';
 import { ref } from 'vue';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
@@ -24,6 +25,10 @@ const integrationSettings = ref({
 const connectedCredentials = ref<Record<string, string>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
+const managedSlackSetup = ref<SlackManagedSetupState>({
+	managedSetupAvailable: false,
+	managerCredentials: [],
+});
 const fetchStatusMock = vi.fn().mockResolvedValue(undefined);
 const connectMock = vi.fn(
 	async (channelType: string, credentialId: string): Promise<{ status: string }> => {
@@ -66,6 +71,8 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 vi.mock('../composables/useAgentChannelSetup', () => ({
 	useAgentChannelSetup: () => ({
 		channelSetupRef: ref(),
+		managedSlackSetup,
+		managedSlackSetupLoading: ref(false),
 		selectedCredentials,
 		credentialsLoading: ref(false),
 		credentialPermissions: ref({}),
@@ -88,6 +95,8 @@ vi.mock('../composables/useAgentChannelSetup', () => ({
 		createCredential: createCredentialMock,
 		editCredential: editCredentialMock,
 		setupSlackApp: vi.fn(),
+		connectSlackManagerCredential: vi.fn(),
+		installManagedSlack: vi.fn(),
 	}),
 }));
 
@@ -139,7 +148,15 @@ function mountModal(props: Record<string, unknown>) {
 				},
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
-				AgentChannelListItem: { template: '<li data-testid="channel-list-item" />' },
+				AgentChannelListItem: {
+					props: ['integration', 'managedSlackSetup'],
+					emits: ['setup'],
+					template:
+						'<li data-testid="channel-list-item" :data-managed="managedSlackSetup"><button data-testid="setup-channel" @click="$emit(\'setup\', integration.type)" /></li>',
+				},
+				AgentChannelSlackManagedSetup: {
+					template: '<div data-testid="slack-managed-setup" />',
+				},
 				AgentChannelSlackSetup: channelSetupStub('slack-setup'),
 				AgentChannelLinearSetup: channelSetupStub('linear-setup'),
 				AgentChannelTelegramSetup: channelSetupStub('telegram-setup'),
@@ -167,6 +184,10 @@ describe('AgentChannelModal', () => {
 		connectedCredentials.value = {};
 		selectedCredentials.value = {};
 		loadingMap.value = {};
+		managedSlackSetup.value = {
+			managedSetupAvailable: false,
+			managerCredentials: [],
+		};
 		vi.clearAllMocks();
 	});
 
@@ -181,6 +202,29 @@ describe('AgentChannelModal', () => {
 
 		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
 		expect(linearSetup.attributes('data-mode')).toBe('setup');
+	});
+
+	it('keeps the manual Slack setup when managed setup is unavailable', () => {
+		const wrapper = mountModal({ view: 'slack_setup' });
+
+		expect(wrapper.find('[data-testid="slack-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="slack-managed-setup"]').exists()).toBe(false);
+	});
+
+	it('opens the managed two-step setup directly from the Slack list item', async () => {
+		managedSlackSetup.value = {
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		};
+		const wrapper = mountModal({ view: 'list' });
+
+		const slackItem = wrapper
+			.findAll('[data-testid="channel-list-item"]')
+			.find((item) => item.attributes('data-managed') === 'true');
+		await slackItem?.get('[data-testid="setup-channel"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="slack-setup"]').exists()).toBe(false);
 	});
 
 	it('renders the per-channel edit view for an edit view', () => {

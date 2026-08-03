@@ -1,18 +1,31 @@
-import type { AgentIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
+import type {
+	AgentIntegrationSettings,
+	ChatIntegrationDescriptor,
+	SlackManagedSetupState,
+} from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	getTrustedOAuthOrigins,
+	waitForOAuthCallback,
+} from '@/features/credentials/composables/oauthCallback';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
-import { createSlackAgentApp } from './useAgentApi';
+import {
+	createSlackAgentApp,
+	createSlackManagerCredential,
+	getSlackManagedSetup,
+	installSlackManagedApp,
+} from './useAgentApi';
 
-const SLACK_APP_SETUP_POLL_INTERVAL_MS = 2000;
 const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
 
 type ChannelSetupComponent = {
@@ -35,6 +48,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
+	const credentialOAuth = useCredentialOAuth();
 
 	const selectedCredentials = ref<Record<string, string>>({});
 	const credentialsByType = ref<Record<string, AgentCredentialOption[]>>({});
@@ -44,6 +58,11 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	const channelSetupRef = ref<ChannelSetupComponent>();
 	const loadedIntegrations = ref<ChatIntegrationDescriptor[]>([]);
 	const fetchedProjectForPermissions = ref<Project | null>(null);
+	const managedSlackSetup = ref<SlackManagedSetupState>({
+		managedSetupAvailable: false,
+		managerCredentials: [],
+	});
+	const managedSlackSetupLoading = ref(false);
 
 	const projectId = computed(() => toValue(options.projectId));
 	const agentId = computed(() => toValue(options.agentId));
@@ -135,8 +154,24 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			ensureProjectPermissions(),
 			options.fetchStatus(integrations.map((integration) => integration.type)),
 			fetchCredentials(integrations),
+			loadManagedSlackSetup(),
 		]);
 		syncSelectedConnectedCredentials();
+	}
+
+	async function loadManagedSlackSetup() {
+		managedSlackSetupLoading.value = true;
+		try {
+			managedSlackSetup.value = await getSlackManagedSetup(
+				rootStore.restApiContext,
+				projectId.value,
+				agentId.value,
+			);
+		} catch {
+			managedSlackSetup.value = { managedSetupAvailable: false, managerCredentials: [] };
+		} finally {
+			managedSlackSetupLoading.value = false;
+		}
 	}
 
 	function createCredential() {
@@ -187,61 +222,18 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	}
 
 	async function waitForSlackAppSetupCompletion(popup: Window): Promise<boolean> {
-		return await new Promise((resolve) => {
-			const oauthChannel = new BroadcastChannel('oauth-callback');
-			let activePoll: Promise<void> | null = null;
-			let settled = false;
-
-			const closePopup = () => {
-				try {
-					popup.close();
-				} catch {}
-			};
-
-			const settle = (success: boolean) => {
-				if (settled) return;
-				settled = true;
-				window.clearInterval(pollInterval);
-				window.clearTimeout(timeout);
-				oauthChannel.close();
-				if (success) closePopup();
-				resolve(success);
-			};
-
-			const pollStatus = async () => {
-				if (activePoll || settled) return;
-				activePoll = (async () => {
-					try {
-						await options.fetchStatus(['slack']);
-						if (options.isIntegrationConnected('slack')) settle(true);
-					} finally {
-						activePoll = null;
-					}
-				})();
-				await activePoll;
-			};
-
-			const pollInterval = window.setInterval(() => {
-				// User closed the popup — the OAuth flow can't complete anymore. Let any
-				// in-flight poll finish (it may confirm success), check status once more,
-				// then give up instead of blocking the UI until the full timeout.
-				if (popup.closed) {
-					void (activePoll ?? Promise.resolve())
-						.catch(() => {})
-						.then(pollStatus)
-						.finally(() => settle(false));
-					return;
-				}
-				void pollStatus();
-			}, SLACK_APP_SETUP_POLL_INTERVAL_MS);
-			const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
-
-			oauthChannel.addEventListener('message', (event: MessageEvent) => {
-				settle(event.data === 'success');
-			});
-
-			void pollStatus();
+		const outcome = await waitForOAuthCallback({
+			popup,
+			trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+			verifyConnected: async () => {
+				await options.fetchStatus(['slack']);
+				return options.isIntegrationConnected('slack');
+			},
+			timeoutMs: SLACK_APP_SETUP_TIMEOUT_MS,
 		});
+
+		popup.close();
+		return outcome === 'success';
 	}
 
 	async function setupSlackApp(
@@ -261,6 +253,53 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		}
 
 		await options.fetchStatus(['slack']);
+		await onConnected();
+		return true;
+	}
+
+	async function connectSlackManagerCredential(credentialId?: string): Promise<boolean> {
+		let id = credentialId;
+		if (!id) {
+			const created = await createSlackManagerCredential(
+				rootStore.restApiContext,
+				projectId.value,
+				agentId.value,
+			);
+			id = created.id;
+		}
+
+		credentialsStore.setCredentials([]);
+		const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			projectId: projectId.value,
+		});
+		const credential = credentials.find((item) => item.id === id && item.type === 'slackOAuth2Api');
+		if (!credential) throw new Error('Slack manager credential could not be loaded');
+
+		const connected = await credentialOAuth.authorize(credential);
+		if (connected) await loadManagedSlackSetup();
+		return connected;
+	}
+
+	async function installManagedSlack(
+		managerCredentialId: string,
+		workspaceId: string,
+		onConnected: () => void | Promise<void>,
+	): Promise<boolean> {
+		const result = await installSlackManagedApp(
+			rootStore.restApiContext,
+			projectId.value,
+			agentId.value,
+			managerCredentialId,
+			workspaceId,
+		);
+		if (result.status === 'manual_install_required') {
+			const popup = openSlackAppAuthorizationPopup(result.installUrl);
+			const connected = await waitForSlackAppSetupCompletion(popup);
+			if (!connected) throw new Error('Slack app installation was not completed');
+		}
+
+		await options.fetchStatus(['slack']);
+		await loadManagedSlackSetup();
 		await onConnected();
 		return true;
 	}
@@ -291,6 +330,8 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 
 	return {
 		channelSetupRef,
+		managedSlackSetup,
+		managedSlackSetupLoading,
 		selectedCredentials,
 		credentialsLoading,
 		credentialPermissions,
@@ -301,5 +342,8 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		createCredential,
 		editCredential,
 		setupSlackApp,
+		loadManagedSlackSetup,
+		connectSlackManagerCredential,
+		installManagedSlack,
 	};
 }

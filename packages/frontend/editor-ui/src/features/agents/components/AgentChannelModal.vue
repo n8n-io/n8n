@@ -17,6 +17,7 @@ import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import AgentChannelListItem from './AgentChannelListItem.vue';
+import AgentChannelSlackManagedSetup from './AgentChannelSlackManagedSetup.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 import AgentChannelLinearSetup from './AgentChannelLinearSetup.vue';
 import AgentChannelTelegramSetup from './AgentChannelTelegramSetup.vue';
@@ -38,6 +39,7 @@ interface Props {
 	view: ChannelView;
 	connectedChannels: string[];
 	isPublished: boolean;
+	simpleSetup?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -99,6 +101,8 @@ const currentIntegration = computed(() => {
 
 const {
 	channelSetupRef,
+	managedSlackSetup,
+	managedSlackSetupLoading,
 	selectedCredentials,
 	credentialsLoading,
 	credentialPermissions,
@@ -109,6 +113,8 @@ const {
 	createCredential,
 	editCredential,
 	setupSlackApp: runSlackAppSetup,
+	connectSlackManagerCredential,
+	installManagedSlack,
 } = useAgentChannelSetup({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
@@ -303,6 +309,17 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 	});
 }
 
+async function installManagedSlackApp(
+	managerCredentialId: string,
+	workspaceId: string,
+): Promise<boolean> {
+	return await installManagedSlack(managerCredentialId, workspaceId, () => {
+		emit('channel-connected', 'slack');
+		emit('agent-changed');
+		closeModal();
+	});
+}
+
 async function handleDisconnected(channelType: string, credentialId?: string) {
 	// Draft channels (configured but missing a credential) have no connected
 	// credential — send '' so the backend removes the draft entry by type.
@@ -415,6 +432,9 @@ watch(
 							:key="integration.type"
 							:integration="integration"
 							:connected="isConnected(integration.type)"
+							:managed-slack-setup="
+								integration.type === 'slack' && managedSlackSetup.managedSetupAvailable
+							"
 							@setup="goToSetup"
 							@edit="goToEdit"
 							@disconnect="handleListDisconnect"
@@ -423,8 +443,16 @@ watch(
 				</div>
 
 				<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
+					<AgentChannelSlackManagedSetup
+						v-if="selectedChannelType === 'slack' && managedSlackSetup.managedSetupAvailable"
+						:setup="managedSlackSetup"
+						:loading="managedSlackSetupLoading"
+						:credential-permissions="credentialPermissions"
+						:connect-manager="connectSlackManagerCredential"
+						:install-app="installManagedSlackApp"
+					/>
 					<AgentChannelSlackSetup
-						v-if="selectedChannelType === 'slack'"
+						v-else-if="selectedChannelType === 'slack'"
 						ref="channelSetupRef"
 						v-model="selectedCredentials.slack"
 						:connected="isConnected('slack')"
@@ -439,6 +467,7 @@ watch(
 						:loading="isLoading('slack')"
 						:error-message="hasError('slack') ? errorMessages.slack : ''"
 						:error-is-conflict="errorIsConflict.slack"
+						:setup-mode="simpleSetup ? 'simple' : 'advanced'"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"

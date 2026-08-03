@@ -88,6 +88,9 @@ describe('AgentIntegrationsController route access scopes', () => {
 		['connectIntegration', 'agent:update'],
 		['createSlackApp', 'agent:update'],
 		['getSlackAppManifest', 'agent:read'],
+		['getManagedSlackSetup', 'agent:read'],
+		['createManagedSlackCredential', 'agent:update'],
+		['installManagedSlackApp', 'agent:update'],
 		['disconnectIntegration', 'agent:update'],
 		['integrationStatus', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -603,10 +606,12 @@ describe('AgentIntegrationsController integration credentials', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const slackAppSetupService = mock<SlackAppSetupService>();
 		const { controller } = makeController({
 			agentRepository,
 			chatIntegrationService,
 			agentIntegrationPersistenceService,
+			slackAppSetupService,
 		});
 
 		await expect(
@@ -622,6 +627,12 @@ describe('AgentIntegrationsController integration credentials', () => {
 			),
 		).resolves.toEqual({ status: 'disconnected' });
 
+		expect(slackAppSetupService.deleteManagedAppForCredential).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			credentialId: 'cred-slack',
+			user: { id: 'user-1' },
+		});
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
 			type: 'slack',
 			credentialId: 'cred-slack',
@@ -632,6 +643,9 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'cred-slack',
 			{ broadcast: false },
 		);
+		expect(
+			slackAppSetupService.deleteManagedAppForCredential.mock.invocationCallOrder[0],
+		).toBeLessThan(chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0]);
 		expect(chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0]).toBeLessThan(
 			agentIntegrationPersistenceService.removeCredentialIntegration.mock.invocationCallOrder[0],
 		);
@@ -766,6 +780,58 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(slackAppSetupService.getManualManifest).toHaveBeenCalledWith({
 			projectId: 'project-1',
 			agentId: 'agent-1',
+		});
+	});
+
+	it('returns managed Slack capability and project-scoped setup state', async () => {
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		slackAppSetupService.getManagedSetupState.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		});
+		const { controller } = makeController({ slackAppSetupService });
+
+		await expect(
+			controller.getManagedSlackSetup(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toEqual({ managedSetupAvailable: true, managerCredentials: [] });
+
+		expect(slackAppSetupService.getManagedSetupState).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			user: { id: 'user-1' },
+		});
+	});
+
+	it('delegates the composite managed Slack install operation', async () => {
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		slackAppSetupService.installManagedApp.mockResolvedValue({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'bot-credential',
+		});
+		const { controller } = makeController({ slackAppSetupService });
+
+		await expect(
+			controller.installManagedSlackApp(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ managerCredentialId: 'manager', workspaceId: 'T123' },
+			),
+		).resolves.toEqual({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'bot-credential',
 		});
 	});
 

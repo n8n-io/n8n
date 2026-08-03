@@ -14,7 +14,10 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
+	CreateSlackManagerCredentialResponse,
 	CreateSlackAgentAppResponse,
+	InstallSlackManagedAppResponse,
+	SlackManagedSetupState,
 	SlackAgentAppManifestResponse,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
@@ -322,6 +325,45 @@ export const getSlackAgentAppManifest = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
+	);
+};
+
+export const getSlackManagedSetup = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<SlackManagedSetupState> => {
+	return await makeRestApiRequest<SlackManagedSetupState>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/managed/setup`,
+	);
+};
+
+export const createSlackManagerCredential = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<CreateSlackManagerCredentialResponse> => {
+	return await makeRestApiRequest<CreateSlackManagerCredentialResponse>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/managed/credentials`,
+	);
+};
+
+export const installSlackManagedApp = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	managerCredentialId: string,
+	workspaceId: string,
+): Promise<InstallSlackManagedAppResponse> => {
+	return await makeRestApiRequest<InstallSlackManagedAppResponse>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/managed/install`,
+		{ managerCredentialId, workspaceId },
 	);
 };
 

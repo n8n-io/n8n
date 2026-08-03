@@ -226,6 +226,11 @@ export class CreateSlackAgentAppDto extends Z.class({
 	appConfigurationToken: z.string().min(1),
 }) {}
 
+export class InstallSlackManagedAppDto extends Z.class({
+	managerCredentialId: z.string().min(1),
+	workspaceId: z.string().min(1),
+}) {}
+
 export class TestAgentVectorStoreDto extends Z.class({
 	vectorStore: AgentVectorStoreConfigSchema,
 }) {}

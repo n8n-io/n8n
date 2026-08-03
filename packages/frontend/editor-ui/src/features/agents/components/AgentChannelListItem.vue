@@ -11,6 +11,7 @@ type ChannelAction = 'edit' | 'disconnect';
 interface Props {
 	integration: ChatIntegrationDescriptor;
 	connected: boolean;
+	managedSlackSetup?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -85,8 +86,18 @@ function handleConnectedAction(action: ChannelAction) {
 					</N8nButton>
 				</template>
 			</N8nDropdownMenu>
-			<N8nButton v-else variant="subtle" size="medium" @click="emit('setup', integration.type)">
-				{{ i18n.baseText('generic.connect') }}
+			<N8nButton
+				v-else
+				variant="subtle"
+				size="medium"
+				:icon="managedSlackSetup ? 'slack' : undefined"
+				@click="emit('setup', integration.type)"
+			>
+				{{
+					i18n.baseText(
+						managedSlackSetup ? 'agents.channels.slack.managed.addToSlack' : 'generic.connect',
+					)
+				}}
 			</N8nButton>
 		</div>
 	</li>

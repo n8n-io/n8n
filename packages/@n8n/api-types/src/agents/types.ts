@@ -51,9 +51,51 @@ export interface CreateSlackAgentAppResponse {
 	installUrl: string;
 }
 
+export interface SlackManagerCredentialSummary {
+	id: string;
+	name: string;
+	connected: boolean;
+	reconnectRequired: boolean;
+	workspaces: SlackManagedWorkspaceSummary[];
+}
+
+export interface SlackManagedWorkspaceSummary {
+	id: string;
+	name: string;
+	enterpriseId?: string;
+	managedAppId?: string;
+	botCredentialId?: string;
+	connected: boolean;
+}
+
+export interface SlackManagedSetupState {
+	managedSetupAvailable: boolean;
+	managerCredentials: SlackManagerCredentialSummary[];
+}
+
+export interface CreateSlackManagerCredentialResponse {
+	id: string;
+	name: string;
+	type: 'slackOAuth2Api';
+	isResolvable: false;
+}
+
+export type InstallSlackManagedAppResponse =
+	| {
+			status: 'connected';
+			appId: string;
+			credentialId: string;
+	  }
+	| {
+			status: 'manual_install_required';
+			appId: string;
+			installUrl: string;
+	  };
+
 export interface SlackAgentAppManifest {
 	display_information: {
 		name: string;
+		description?: string;
 	};
 	features: {
 		app_home: {
@@ -84,6 +126,10 @@ export interface SlackAgentAppManifest {
 		org_deploy_enabled: boolean;
 		socket_mode_enabled: boolean;
 		token_rotation_enabled: boolean;
+		managed_app_settings?: {
+			is_install_from_slack_disabled: boolean;
+			external_app_management_url: string;
+		};
 	};
 }
 

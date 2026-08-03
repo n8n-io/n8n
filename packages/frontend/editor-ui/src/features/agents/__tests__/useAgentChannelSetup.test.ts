@@ -5,11 +5,15 @@ import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 const {
 	fetchAllCredentialsForWorkflowMock,
 	fetchProjectMock,
+	getSlackManagedSetupMock,
+	installSlackManagedAppMock,
 	projectsStoreMock,
 	setCredentialsMock,
 } = vi.hoisted(() => ({
 	fetchAllCredentialsForWorkflowMock: vi.fn(),
 	fetchProjectMock: vi.fn(),
+	getSlackManagedSetupMock: vi.fn(),
+	installSlackManagedAppMock: vi.fn(),
 	projectsStoreMock: {
 		currentProject: null as { id: string; scopes?: string[] } | null,
 		personalProject: null as { id: string; scopes?: string[] } | null,
@@ -21,6 +25,9 @@ const {
 
 vi.mock('../composables/useAgentApi', () => ({
 	createSlackAgentApp: vi.fn().mockResolvedValue({ installUrl: 'https://slack.test/install' }),
+	createSlackManagerCredential: vi.fn().mockResolvedValue({ id: 'manager' }),
+	getSlackManagedSetup: getSlackManagedSetupMock,
+	installSlackManagedApp: installSlackManagedAppMock,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -41,6 +48,10 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 		fetchAllCredentialsForWorkflow: fetchAllCredentialsForWorkflowMock,
 		getCredentialTypeByName: vi.fn(),
 	}),
+}));
+
+vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({ authorize: vi.fn().mockResolvedValue(true) }),
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -66,6 +77,15 @@ describe('useAgentChannelSetup', () => {
 		projectsStoreMock.myProjects = [];
 		projectsStoreMock.fetchProject = fetchProjectMock;
 		fetchAllCredentialsForWorkflowMock.mockResolvedValue([]);
+		getSlackManagedSetupMock.mockResolvedValue({
+			managedSetupAvailable: false,
+			managerCredentials: [],
+		});
+		installSlackManagedAppMock.mockResolvedValue({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'bot',
+		});
 		fetchProjectMock.mockResolvedValue({
 			id: 'artifact-project',
 			name: 'Artifact project',
@@ -107,6 +127,7 @@ describe('useAgentChannelSetup', () => {
 
 		class FakeBroadcastChannel {
 			addEventListener() {}
+			removeEventListener() {}
 			close() {}
 			postMessage() {}
 		}
@@ -149,6 +170,69 @@ describe('useAgentChannelSetup', () => {
 		expect(onConnected).toHaveBeenCalled();
 
 		vi.useRealTimers();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('loads managed Slack capability with the channel state', async () => {
+		getSlackManagedSetupMock.mockResolvedValue({
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		});
+		const { loadChannelState, managedSlackSetup } = createChannelSetup();
+
+		await loadChannelState([]);
+
+		expect(managedSlackSetup.value.managedSetupAvailable).toBe(true);
+		expect(getSlackManagedSetupMock).toHaveBeenCalledWith({}, 'artifact-project', 'agent-1');
+	});
+
+	it('completes the managed auto-install branch without opening a popup', async () => {
+		const onConnected = vi.fn();
+		const openSpy = vi.spyOn(window, 'open');
+		const { installManagedSlack } = createChannelSetup();
+
+		await expect(installManagedSlack('manager', 'T123', onConnected)).resolves.toBe(true);
+
+		expect(installSlackManagedAppMock).toHaveBeenCalledWith(
+			{},
+			'artifact-project',
+			'agent-1',
+			'manager',
+			'T123',
+		);
+		expect(openSpy).not.toHaveBeenCalled();
+		expect(onConnected).toHaveBeenCalledOnce();
+	});
+
+	it('opens the returned OAuth URL for the managed manual-install branch', async () => {
+		installSlackManagedAppMock.mockResolvedValue({
+			status: 'manual_install_required',
+			appId: 'A123',
+			installUrl: 'https://slack.test/install-managed',
+		});
+		class FakeBroadcastChannel {
+			addEventListener(_event: string, listener: (event: MessageEvent) => void) {
+				queueMicrotask(() => listener({ data: 'success' } as MessageEvent));
+			}
+			removeEventListener() {}
+			close() {}
+		}
+		vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+		const popup = { closed: false, close: vi.fn() };
+		const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+		const onConnected = vi.fn();
+		const { installManagedSlack } = createChannelSetup();
+
+		await expect(installManagedSlack('manager', 'T123', onConnected)).resolves.toBe(true);
+
+		expect(openSpy).toHaveBeenCalledWith(
+			'https://slack.test/install-managed',
+			'Slack App Authorization',
+			expect.any(String),
+		);
+		expect(popup.close).toHaveBeenCalled();
+		expect(onConnected).toHaveBeenCalledOnce();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
