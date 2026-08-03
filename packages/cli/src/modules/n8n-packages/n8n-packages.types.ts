@@ -284,6 +284,8 @@ export interface ImportContext {
 
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
+	ImportProjectProperties &
+	ResolvedImportFolderProperties &
 	ImportDataTableProperties &
 	ImportVariableProperties &
 	ImportTagProperties;
