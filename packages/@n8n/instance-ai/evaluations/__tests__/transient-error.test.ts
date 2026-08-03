@@ -151,4 +151,29 @@ describe('transient-error', () => {
 		expect(providerRetryBackoffMs(1)).toBeGreaterThanOrEqual(30_000);
 		expect(providerRetryBackoffMs(2)).toBeGreaterThan(providerRetryBackoffMs(1));
 	});
+
+	// TRUST-374: the MCP path composes its error as
+	// `MCP build produced no workflow (<subtype>: <session result>)`. The provider
+	// evidence is inside that string, so classification must survive the wrapper.
+	describe('MCP build failures', () => {
+		const mcpBuild = (reason: string) => ({
+			success: false,
+			error: `MCP build produced no workflow (${reason})`,
+		});
+
+		it('classifies a provider outage reported through the MCP wrapper', () => {
+			expect(
+				findProviderOutage(
+					mcpBuild('error_during_execution: AI_APICallError: Overloaded (HTTP 529)'),
+				),
+			).toBeDefined();
+		});
+
+		it('leaves an ordinary MCP build failure attributed to the builder', () => {
+			expect(
+				findProviderOutage(mcpBuild('no-stdout: built something, forgot the id')),
+			).toBeUndefined();
+			expect(findProviderOutage(mcpBuild('timeout'))).toBeUndefined();
+		});
+	});
 });

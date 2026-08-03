@@ -38,12 +38,19 @@ describe('attributionFromVerifierCategory', () => {
 	});
 
 	it('stays in step with the enum the verifier prompt actually defines', () => {
-		// The prompt is the verifier's only spec. If someone adds a category there
-		// without adding it here it silently falls through to builder_issue —
-		// exactly the drift this contract exists to stop.
-		for (const category of VERIFIER_CATEGORIES) {
-			expect(MOCK_EXECUTION_VERIFY_PROMPT).toContain(`**${category}**`);
-		}
+		// BOTH directions. Code-missing-from-prompt means the verifier can never
+		// pick a bucket we handle; prompt-missing-from-code is worse and was the
+		// untested half — the verifier picks it, `attributionFromVerifierCategory`
+		// doesn't recognise it, and it silently lands on builder_issue, which is
+		// exactly the misattribution this contract exists to stop.
+		const declared = [...MOCK_EXECUTION_VERIFY_PROMPT.matchAll(/^- \*\*([a-z_]+)\*\*:/gm)].map(
+			(m) => m[1],
+		);
+
+		// Guard the parser itself: a prompt reformat that stops matching would
+		// otherwise turn this contract into an empty-set tautology.
+		expect(declared.length).toBeGreaterThan(0);
+		expect([...declared].sort()).toEqual([...VERIFIER_CATEGORIES].sort());
 	});
 });
 
