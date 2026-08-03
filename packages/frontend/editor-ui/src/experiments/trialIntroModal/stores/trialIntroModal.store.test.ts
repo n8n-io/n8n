@@ -53,7 +53,7 @@ let mockTrialExpired = false;
 let mockTrialDaysLeft = -1;
 let mockCurrentPlanData: Cloud.PlanData | null = null;
 
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: () => ({
 		get userIsTrialing() {
 			return mockUserIsTrialing;

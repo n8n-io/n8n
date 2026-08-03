@@ -1,4 +1,4 @@
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useNow } from '@vueuse/core';
 import type { ComputedRef } from 'vue';
 import { computed } from 'vue';

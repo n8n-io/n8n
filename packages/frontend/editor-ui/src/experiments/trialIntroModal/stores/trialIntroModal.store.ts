@@ -1,6 +1,6 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TRIAL_INTRO_MODAL_EXPERIMENT } from '@/app/constants/experiments';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';

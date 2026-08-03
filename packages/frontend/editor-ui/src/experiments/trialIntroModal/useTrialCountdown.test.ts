@@ -2,7 +2,7 @@ import { effectScope } from 'vue';
 
 let mockExpirationDate: string | undefined;
 
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: () => ({
 		get currentPlanData() {
 			return mockExpirationDate ? { expirationDate: mockExpirationDate } : null;

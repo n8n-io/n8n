@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@/app/composables/useToast';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useToast } from '@n8n/composables/useToast';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { TRIAL_INTRO_MODAL_KEY } from '@/experiments/trialIntroModal/constants';
 import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
