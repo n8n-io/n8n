@@ -7,7 +7,6 @@ export type AgentRunOverlay = AgentRuntimeOverlay;
 
 export type AgentRunOverlayFactory = (context: AgentExpressionContext) => Promise<AgentRunOverlay>;
 
-/** Capture raw persisted sources once, then materialize a fresh isolated overlay for every run. */
 export function createAgentRunOverlayFactory(
 	sources: AgentRunFieldSources,
 ): AgentRunOverlayFactory {

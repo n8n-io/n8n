@@ -179,15 +179,12 @@ export interface AgentExecutionCounter {
 
 export interface AgentRuntimeOverlay {
 	instructions?: string;
-	/** Skill catalog and loaders used together for this run. */
 	skillSource?: RuntimeSkillSource;
 	toolOverrides?: ReadonlyMap<string, AgentToolRuntimeOverride>;
 }
 
 export interface ExecutionOptions {
-	/** Opaque host-owned context forwarded to tool handlers for this run. */
 	runtimeContext?: unknown;
-	/** Per-run runtime configuration that never mutates the cached Agent. */
 	runtimeOverlay?: AgentRuntimeOverlay;
 	maxIterations?: number;
 	abortSignal?: AbortSignal;
@@ -317,6 +314,8 @@ export interface StreamResult {
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */
+	onResumeClaimed?: () => void | Promise<void>;
 }
 
 export interface BuiltAgent {

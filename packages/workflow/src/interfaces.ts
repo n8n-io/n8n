@@ -2293,7 +2293,6 @@ export interface ExecuteAgentWorkflowContext {
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
 	runExecutionData: IRunExecutionData;
-	/** Resolves expressions against the calling workflow item. */
 	expressionResolver?: ExecuteAgentExpressionResolver;
 }
 

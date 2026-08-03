@@ -43,7 +43,6 @@ export interface AgentRuntime {
 	toolRegistry: ToolRegistry;
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
-	/** Present on production reconstructions; optional until execution entry points consume it. */
 	createRunOverlay?: AgentRunOverlayFactory;
 }
 
@@ -238,6 +237,7 @@ export class AgentRuntimeCacheService {
 		} = await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 			agentData,
 			credentialProvider,
+			usePublishedVersion ? 'production' : 'test',
 			integrationType,
 			user,
 		);

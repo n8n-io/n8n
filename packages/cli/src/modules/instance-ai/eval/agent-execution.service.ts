@@ -354,6 +354,7 @@ export class EvalAgentExecutionService {
 			const reconstructed = await reconstruction.reconstructFromAgentEntity(
 				agentEntity,
 				credentialProvider,
+				'test',
 				undefined,
 				user,
 				{

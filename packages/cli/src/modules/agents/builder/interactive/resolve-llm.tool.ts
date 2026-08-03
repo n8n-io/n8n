@@ -262,8 +262,12 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 						};
 					}
 
-					let credential = matchingCredentials.length === 1 ? matchingCredentials[0] : undefined;
-					if (!credential && provider) {
+					// A real credential id is unique, but the managed tag is shared by every
+					// gateway-served provider. So a named provider has to narrow the match
+					// rather than only break a tie — otherwise a lone managed entry is accepted
+					// for a provider the gateway does not serve, and the wrong one is persisted.
+					let candidates = matchingCredentials;
+					if (provider) {
 						const providerEntry = findProviderDefault(provider);
 						if (!providerEntry) {
 							return {
@@ -277,11 +281,10 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 						}
 
 						const [credentialType] = providerEntry;
-						const providerMatches = matchingCredentials.filter((c) => c.type === credentialType);
-						if (providerMatches.length === 1) {
-							credential = providerMatches[0];
-						}
+						candidates = matchingCredentials.filter((c) => c.type === credentialType);
 					}
+
+					const credential = candidates.length === 1 ? candidates[0] : undefined;
 
 					if (!credential) {
 						return {

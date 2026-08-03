@@ -59,7 +59,6 @@ async function resolveSkillInstructions(
 	return resolved;
 }
 
-/** Resolve the approved persisted fields against one immutable run snapshot. */
 export async function resolveAgentRunFields(
 	sources: AgentRunFieldSources,
 	context: AgentExpressionContext,

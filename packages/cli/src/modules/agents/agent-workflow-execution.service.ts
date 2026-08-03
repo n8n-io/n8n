@@ -74,9 +74,8 @@ export class AgentWorkflowExecutionService {
 		workflowContext?: ExecuteAgentWorkflowContext,
 	): Promise<AgentExpressionContext> {
 		const resolver = workflowContext?.expressionResolver;
-		return resolver
-			? this.agentExpressionContextService.createForWorkflow(resolver)
-			: await this.agentExpressionContextService.createForProject(projectId);
+		if (resolver) return this.agentExpressionContextService.createForWorkflow(resolver);
+		return await this.agentExpressionContextService.createForProject(projectId);
 	}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -133,6 +132,7 @@ export class AgentWorkflowExecutionService {
 	async compileIsolated(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
+		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 	): Promise<CompiledWorkflowAgent> {
@@ -152,6 +152,7 @@ export class AgentWorkflowExecutionService {
 				await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 					agentEntity,
 					credentialProvider,
+					runType,
 				);
 			return this.applyPerCallAgentExtras(
 				reconstructed,
@@ -181,6 +182,7 @@ export class AgentWorkflowExecutionService {
 		syntheticAgentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 	): Promise<CompiledWorkflowAgent> {
@@ -195,6 +197,7 @@ export class AgentWorkflowExecutionService {
 					toolCodeByName: {},
 					skills,
 					runtimeProfile: 'inline',
+					runType,
 				});
 			return this.applyPerCallAgentExtras(
 				reconstructed,
@@ -230,6 +233,7 @@ export class AgentWorkflowExecutionService {
 		threadId: string;
 		telemetryAgentId: string;
 		telemetryUserId?: string;
+		runType: AgentRunTelemetryType;
 		outputSchema?: JSONSchema7;
 		expressionContext: AgentExpressionContext;
 		runtimeOverlay?: AgentRuntimeOverlay;
@@ -246,6 +250,7 @@ export class AgentWorkflowExecutionService {
 			threadId,
 			telemetryAgentId,
 			telemetryUserId,
+			runType,
 			outputSchema,
 			expressionContext,
 			runtimeOverlay,
@@ -287,6 +292,7 @@ export class AgentWorkflowExecutionService {
 				executionCounter: createAgentExecutionCounter(this.telemetry, {
 					agentId: telemetryAgentId,
 					userId: telemetryUserId,
+					runType,
 				}),
 				...(telemetry ? { telemetry } : {}),
 				runtimeContext: expressionContext,
@@ -408,12 +414,14 @@ export class AgentWorkflowExecutionService {
 			agentData = getPublishedAgentSnapshot(agentEntity);
 		}
 		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
+		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 		const expressionContext = await this.createExpressionContext(projectId, workflowContext);
 
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolated(
 			agentData,
 			credentialProvider,
+			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
 		);
@@ -429,6 +437,7 @@ export class AgentWorkflowExecutionService {
 			threadId,
 			telemetryAgentId: agentId,
 			telemetryUserId,
+			runType,
 			outputSchema,
 			expressionContext,
 			runtimeOverlay,
@@ -450,7 +459,7 @@ export class AgentWorkflowExecutionService {
 				record: run.messageRecord,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				telemetry: {
-					runType: useDraftVersion ? 'test' : 'production',
+					runType,
 					configuration: telemetryConfiguration,
 				},
 			})
@@ -530,6 +539,7 @@ export class AgentWorkflowExecutionService {
 			syntheticAgentId,
 			projectId,
 			credentialProvider,
+			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
 		);
@@ -544,6 +554,7 @@ export class AgentWorkflowExecutionService {
 			threadId,
 			telemetryAgentId: syntheticAgentId,
 			telemetryUserId,
+			runType,
 			outputSchema,
 			expressionContext,
 			runtimeOverlay,
@@ -570,6 +581,7 @@ export class AgentWorkflowExecutionService {
 				configuration: buildAgentConfigurationTelemetryFromConfig(runtimeConfig),
 				latency_ms: run.messageRecord.duration,
 				cost: run.messageRecord.totalCost ?? 0,
+				token_count: run.messageRecord.usage?.totalTokens ?? 0,
 				tool_call_count: run.messageRecord.timeline.filter((t) => t.type === 'tool-call').length,
 			});
 		} catch (error) {

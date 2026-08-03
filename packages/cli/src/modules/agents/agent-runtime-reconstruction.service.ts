@@ -36,6 +36,7 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -99,7 +100,6 @@ export interface SubAgentDelegationConfig {
 export interface ReconstructedAgentRuntime {
 	agent: RuntimeAgent;
 	toolRegistry: ToolRegistry;
-	/** Present on production reconstructions; optional for legacy host/test adapters until wired. */
 	createRunOverlay?: AgentRunOverlayFactory;
 }
 
@@ -112,6 +112,15 @@ export interface ReconstructAgentRuntimeParams {
 	toolCodeByName: Record<string, string>;
 	skills: Record<string, AgentSkill>;
 	runtimeProfile: AgentRuntimeProfile;
+	/**
+	 * Telemetry classification of the run this runtime serves. Baked in at build
+	 * time because it is a property of the runtime itself — a draft runtime is
+	 * always a test run, a published one always production — and the runtime
+	 * cache keys on exactly that split. Delegated children inherit it, so a
+	 * sub-agent invoked from a preview chat reports `test` even though it runs
+	 * its own published snapshot.
+	 */
+	runType: AgentRunTelemetryType;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
 	parentAgentIdForDelegation?: string;
 	/** Top-level chat/integration runtimes only. */
@@ -211,6 +220,7 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromAgentEntity(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
+		runType: AgentRunTelemetryType,
 		integrationType?: string,
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
@@ -247,6 +257,7 @@ export class AgentRuntimeReconstructionService {
 			toolCodeByName: toolsByName,
 			skills: agentEntity.skills ?? {},
 			runtimeProfile: 'top-level',
+			runType,
 			parentAgentIdForDelegation: agentEntity.id,
 			integrationType,
 			credentialIntegrations: agentEntity.integrations ?? [],
@@ -358,6 +369,7 @@ export class AgentRuntimeReconstructionService {
 		toolCodeByName: Record<string, string>;
 		skills: Record<string, AgentSkill>;
 		runtimeProfile: AgentRuntimeProfile;
+		runType: AgentRunTelemetryType;
 		parentAgentIdForDelegation?: string;
 		integrationType?: string;
 		credentialIntegrations: AgentIntegrationConfig[];
@@ -374,6 +386,7 @@ export class AgentRuntimeReconstructionService {
 			toolCodeByName,
 			skills,
 			runtimeProfile,
+			runType,
 			parentAgentIdForDelegation,
 			integrationType,
 			credentialIntegrations,
@@ -439,6 +452,7 @@ export class AgentRuntimeReconstructionService {
 			projectId,
 			credentialProvider,
 			runtimeProfile,
+			runType,
 			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
@@ -574,6 +588,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		runtimeProfile: AgentRuntimeProfile;
+		runType: AgentRunTelemetryType;
 		config: AgentJsonConfig;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
@@ -588,6 +603,7 @@ export class AgentRuntimeReconstructionService {
 			projectId,
 			credentialProvider,
 			runtimeProfile,
+			runType,
 			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
@@ -681,6 +697,7 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId: parentAgentIdForDelegation,
 				projectId,
 				credentialProvider,
+				runType,
 				delegation: subAgentDelegation,
 				user,
 				instrumentation,
@@ -711,6 +728,7 @@ export class AgentRuntimeReconstructionService {
 		parentAgentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
+		runType: AgentRunTelemetryType;
 		delegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
@@ -721,6 +739,7 @@ export class AgentRuntimeReconstructionService {
 			parentAgentId,
 			projectId,
 			credentialProvider,
+			runType,
 			delegation,
 			user,
 			instrumentation,
@@ -736,6 +755,7 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				parentAgentId,
 				credentialProvider,
+				runType,
 				user,
 				instrumentation,
 				policy: this.buildSubAgentPolicy(config),

@@ -18,9 +18,6 @@ export function deepFreeze(value: unknown, seen = new WeakSet<object>()): void {
 	Object.freeze(value);
 }
 
-/**
- * Runs expression work while preserving ownership of an existing workflow isolate.
- */
 export async function withExpressionIsolate<T>(
 	workflow: Workflow,
 	fn: () => Promise<T>,

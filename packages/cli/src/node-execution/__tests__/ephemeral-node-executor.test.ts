@@ -405,7 +405,23 @@ describe('EphemeralNodeExecutor', () => {
 
 	describe('executeInline routing', () => {
 		it('invokes the LangChain tool when the node implements supplyData', async () => {
-			const invoke = vi.fn().mockResolvedValue('wiki-result');
+			let isolateOwned = false;
+			const acquireIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
+				.mockImplementation(async () => {
+					isolateOwned = true;
+					return await Promise.resolve(true);
+				});
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockImplementation(async () => {
+					isolateOwned = false;
+					await Promise.resolve();
+				});
+			const invoke = vi.fn().mockImplementation(async () => {
+				expect(isolateOwned).toBe(true);
+				return await Promise.resolve('wiki-result');
+			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mockNodeType({
 					description: toolDescription,
@@ -413,19 +429,27 @@ describe('EphemeralNodeExecutor', () => {
 				}),
 			);
 
-			const result = await executor.executeInline({
-				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
-				nodeTypeVersion: 1,
-				nodeParameters: {},
-				inputData: [{ json: { query: 'n8n' } }],
-				projectId: 'p-1',
-			});
+			try {
+				const result = await executor.executeInline({
+					nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [{ json: { query: 'n8n' } }],
+					projectId: 'p-1',
+				});
 
-			expect(invoke).toHaveBeenCalledWith({ query: 'n8n' });
-			expect(result).toEqual({
-				status: 'success',
-				data: [{ json: { response: 'wiki-result' } }],
-			});
+				expect(invoke).toHaveBeenCalledWith({ query: 'n8n' });
+				expect(result).toEqual({
+					status: 'success',
+					data: [{ json: { response: 'wiki-result' } }],
+				});
+				expect(acquireIsolate).toHaveBeenCalledOnce();
+				expect(releaseIsolate).toHaveBeenCalledOnce();
+				expect(isolateOwned).toBe(false);
+			} finally {
+				acquireIsolate.mockRestore();
+				releaseIsolate.mockRestore();
+			}
 		});
 
 		it('returns an error result when the supplyData tool invocation throws', async () => {

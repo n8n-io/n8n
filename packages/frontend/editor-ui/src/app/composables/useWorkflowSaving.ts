@@ -21,7 +21,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { isExpression, type IDataObject } from 'n8n-workflow';
-import { useToast } from './useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';

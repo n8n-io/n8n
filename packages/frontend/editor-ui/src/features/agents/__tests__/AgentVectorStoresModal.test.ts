@@ -27,7 +27,7 @@ vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({ credential: { create: true } }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: showMessageMock, showError: showErrorMock }),
 }));
 
