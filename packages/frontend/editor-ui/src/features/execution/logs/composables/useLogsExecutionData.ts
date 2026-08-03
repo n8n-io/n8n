@@ -77,13 +77,23 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	const subExecutionLinks = computed(() => workflowExecutionStateStore.value.subExecutionLinks);
 
-	/** Bumps when any live sub-execution's data changes, driving the snapshot. */
-	const subExecutionDataStamps = computed(() =>
-		subExecutionLinks.value.map(
-			(link) =>
-				useExecutionDataStore(createExecutionDataId(link.executionId))
-					.executionResultDataLastUpdate ?? 0,
-		),
+	/**
+	 * Which live sub-executions there are and how fresh each one's data is, as a
+	 * single string so it can drive the throttled watcher below. Deliberately not
+	 * an array: the watcher compares sources by reference, and a computed handing
+	 * back a fresh array would report a change every time it re-evaluated, firing
+	 * the throttled update and pushing the real one into the next window.
+	 */
+	const subExecutionSignature = computed(() =>
+		subExecutionLinks.value
+			.map(
+				(link) =>
+					`${link.executionId}@${
+						useExecutionDataStore(createExecutionDataId(link.executionId))
+							.executionResultDataLastUpdate ?? 0
+					}`,
+			)
+			.join(','),
 	);
 
 	/**
@@ -121,6 +131,14 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		// Resolving a sub-workflow's graph can cost a request, so skip it while
 		// nothing renders the tree.
 		if (isEnabled !== undefined && !isEnabled.value) {
+			return;
+		}
+
+		// Nothing live: leave the refs as they are. Swapping in fresh empty objects
+		// would change their identity on every tick and rebuild the whole tree, so a
+		// run with no sub-workflow at all would pay for this feature.
+		if (subExecutionLinks.value.length === 0) {
+			if (Object.keys(liveSubExecutionData.value).length > 0) resetLiveSubExecutions();
 			return;
 		}
 
@@ -255,8 +273,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			() => currentExecution.value?.status,
 			() => workflowExecutionStateStore.value.activeExecutionResultDataLastUpdate,
 			() => workflowExecutionStateStore.value.activeExecutionStartedData,
-			subExecutionLinks,
-			subExecutionDataStamps,
+			subExecutionSignature,
 			// Opening the view snapshots what it skipped while closed.
 			() => isEnabled?.value,
 		],
