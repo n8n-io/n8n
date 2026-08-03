@@ -17,6 +17,8 @@ import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { PROMOTIONS_VIEW } from '@/features/promotions/constants';
+import { usePromotionsFeature } from '@/features/promotions/composables/usePromotionsFeature';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -134,6 +136,16 @@ const workflowReviews = computed<IMenuItem>(() => ({
 	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
 	preview: true,
 }));
+
+const { isPromotionsEnabled: isPromotionsNavVisible } = usePromotionsFeature();
+
+const promotions = computed<IMenuItem>(() => ({
+	id: 'promotions',
+	icon: 'send',
+	label: locale.baseText('promotions.menu.title'),
+	route: { to: { name: PROMOTIONS_VIEW } },
+	preview: true,
+}));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -197,6 +209,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'workflow-reviews'"
 				data-test-id="project-workflow-reviews-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="isPromotionsNavVisible"
+				:item="promotions"
+				:compact="props.collapsed"
+				:active="activeTabId === 'promotions'"
+				data-test-id="project-promotions-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

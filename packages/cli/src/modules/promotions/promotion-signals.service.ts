@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
+import { Push } from '@/push';
+
 import type { PromotionSignal } from './promotion-model';
 import { PromotionModelRegistry } from './promotion-model-registry';
 import { PromotionRepository } from './promotion.repository';
@@ -17,6 +19,7 @@ export class PromotionSignalsService {
 		private readonly logger: Logger,
 		private readonly registry: PromotionModelRegistry,
 		private readonly repository: PromotionRepository,
+		private readonly push: Push,
 	) {}
 
 	async dispatch(promotionId: string, signal: PromotionSignal): Promise<void> {
@@ -37,5 +40,8 @@ export class PromotionSignalsService {
 		this.logger.debug(
 			`Promotion "${promotionId}" handled signal "${signal.name}" (state: ${result.state})`,
 		);
+		// Signal-driven transitions have no user in the loop, so open UIs only
+		// learn about them through this invalidation.
+		this.push.broadcast({ type: 'promotionsUpdated', data: { promotionId } });
 	}
 }

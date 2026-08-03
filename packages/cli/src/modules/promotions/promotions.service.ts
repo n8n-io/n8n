@@ -2,6 +2,8 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
+import { Push } from '@/push';
+
 import type { SubmitPromotionRequest } from './promotion-model';
 import { PromotionModelRegistry } from './promotion-model-registry';
 import type { Promotion } from './promotion.entity';
@@ -12,10 +14,12 @@ export class PromotionsService {
 	constructor(
 		private readonly registry: PromotionModelRegistry,
 		private readonly repository: PromotionRepository,
+		private readonly push: Push,
 	) {}
 
 	async submit(request: SubmitPromotionRequest, user: User) {
 		const promotion = await this.registry.get(request.model).submit(request, { user });
+		this.broadcastUpdated(promotion.id);
 		return this.describe(promotion);
 	}
 
@@ -44,7 +48,9 @@ export class PromotionsService {
 			);
 		}
 
-		return this.describe(await model.execute(action, promotion, payload, { user }));
+		const executed = await model.execute(action, promotion, payload, { user });
+		this.broadcastUpdated(executed.id);
+		return this.describe(executed);
 	}
 
 	async sync(id: string, user: User) {
@@ -53,7 +59,17 @@ export class PromotionsService {
 
 		// Models without external state are always in sync
 		const synced = model.sync ? await model.sync(promotion, { user }) : promotion;
+		this.broadcastUpdated(synced.id);
 		return this.describe(synced);
+	}
+
+	/**
+	 * Invalidation-only push so open UIs refetch. Promotion state also moves
+	 * without user action (signal dispatch, PR poller) — those paths emit via
+	 * `PromotionSignalsService`.
+	 */
+	private broadcastUpdated(promotionId: string) {
+		this.push.broadcast({ type: 'promotionsUpdated', data: { promotionId } });
 	}
 
 	private async getEntity(id: string) {

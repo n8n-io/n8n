@@ -5,6 +5,8 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'promotions' })
 export class PromotionsModule implements ModuleInterface {
 	async init() {
+		await import('./promotions.controller.js');
+
 		const { PromotionModelRegistry } = await import('./promotion-model-registry.js');
 		const { DirectPushModel } = await import('./models/direct-push.model.js');
 		const { ApiCollabModel } = await import('./models/api-collab.model.js');

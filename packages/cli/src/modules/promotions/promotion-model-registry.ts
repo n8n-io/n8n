@@ -11,6 +11,10 @@ export class PromotionModelRegistry {
 		this.models.set(model.name, model);
 	}
 
+	list(): PromotionModel[] {
+		return [...this.models.values()];
+	}
+
 	get(name: string): PromotionModel {
 		const model = this.models.get(name);
 		if (!model) {
