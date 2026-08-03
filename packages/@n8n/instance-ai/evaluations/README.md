@@ -849,7 +849,7 @@ The seed lives **in the case body** rather than in a sibling file, so it travels
 
 #### How restore works (all paths)
 
-At build time the seed is restored right after the credential pin: seeded workflows are recreated under **fresh ids** (every reference in the history is remapped, so parallel iterations never share a workflow row) with node credentials stripped, and the message log is written verbatim. Restore failures fail the build — a seeded case cannot meaningfully run unseeded. Seeded turns join the transcript marked as *seeded prior context*, visible to the expectations judge and prompt-aware checks but distinguishable from live behaviour.
+At build time the seed is restored right after the credential pin: seeded workflows are recreated under **fresh ids and a per-restore unique name** (`… [seed <8 hex>]`) with node credentials stripped, and the message log is written verbatim. Both are remapped through the history, so parallel iterations never share a workflow row *or* a name — a seeded case's live turn names its workflow the way a user would, so a same-named copy is one the agent can ground on instead, and the judge would then grade a different workflow than the agent edited. Any leftover carrying the seed suffix with the same base name is deleted before the restore; workflows without the suffix (real ones, and anything the agent built) are never touched. Restore failures fail the build — a seeded case cannot meaningfully run unseeded. Seeded turns join the transcript marked as *seeded prior context*, visible to the expectations judge and prompt-aware checks but distinguishable from live behaviour.
 
 Rules of thumb:
 
