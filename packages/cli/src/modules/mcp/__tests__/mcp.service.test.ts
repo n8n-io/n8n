@@ -671,6 +671,44 @@ describe('McpService', () => {
 				expect(result.protocolVersion).toBe('2025-06-18');
 				expect(result.serverInfo).toMatchObject({ name: 'n8n MCP Server' });
 			});
+
+			// Logging is deprecated in 2026-07-28, and a server must not emit
+			// notifications/message unless the client opted in via _meta logLevel. We
+			// never register the capability or emit those notifications; this locks
+			// server/discover to keep advertising no logging capability.
+			it('never advertises the deprecated logging capability', async () => {
+				const handler = await buildHandler();
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': 'server/discover',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'server/discover',
+							params: {
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+
+				expect(res.status).toBe(200);
+				const body = (await res.json()) as {
+					result: { capabilities: Record<string, unknown> };
+				};
+				expect(body.result.capabilities).toHaveProperty('tools');
+				expect(body.result.capabilities).not.toHaveProperty('logging');
+			});
 		});
 
 		const mcpUser = () =>
@@ -1170,6 +1208,48 @@ describe('McpService', () => {
 				await buildService({ builderEnabled: false }).getServer(user, appsEnabled);
 
 				expect(registerWorkflowPreviewApp).not.toHaveBeenCalled();
+			});
+
+			// 2026-07-28 renumbered resource-not-found from -32002 to -32602 (Invalid
+			// Params). We never build the code by hand; this confirms a client reading
+			// an unknown resource sees the renumbered code, not the retired -32002.
+			// Builder is on so the server advertises the resources capability (it
+			// registers the SDK reference resource); the read targets a different URI.
+			it('returns -32602 for an unknown resource, not the retired -32002', async () => {
+				const user = Object.assign(new User(), { id: 'user-1' });
+				const handler = createMcpHandler(
+					async () => await buildService().getServer(user, mcpFeatureFlags()),
+					{ legacy: 'stateless' },
+				);
+
+				const res = await handler.fetch(
+					new Request('http://n8n.local/mcp-server/http', {
+						method: 'POST',
+						headers: {
+							'content-type': 'application/json',
+							accept: 'application/json, text/event-stream',
+							'mcp-method': 'resources/read',
+							// SEP-2243: for resources/read the Mcp-Name header carries the URI.
+							'mcp-name': 'n8n://does-not-exist',
+						},
+						body: JSON.stringify({
+							jsonrpc: '2.0',
+							id: 1,
+							method: 'resources/read',
+							params: {
+								uri: 'n8n://does-not-exist',
+								_meta: {
+									'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+									'io.modelcontextprotocol/clientCapabilities': {},
+									'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+								},
+							},
+						}),
+					}),
+				);
+
+				const body = (await res.json()) as { error?: { code: number } };
+				expect(body.error?.code).toBe(-32602);
 			});
 		});
 	});
