@@ -223,7 +223,7 @@ const {
 	clearContinueSessionParam,
 	onSessionPick,
 	onNewChat,
-} = useAgentBuilderSession();
+} = useAgentBuilderSession({ routeBacked: computed(() => !isArtifactMode.value) });
 
 const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	sessionMenu.value.map((item) => ({

@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
 import { useRoute, useRouter } from 'vue-router';
@@ -30,18 +30,22 @@ interface SessionMenuItem {
 	when?: string;
 }
 
+interface AgentBuilderSessionOptions {
+	routeBacked: Readonly<Ref<boolean>>;
+}
+
 /**
  * Owns the preview chat-session state:
  *
  * - `continueSessionId` — set via the URL query string for shareable deep-links
- *   into a specific session. Takes precedence when present.
- * - `activeChatSessionId` — the in-tab ephemeral session. Set when the user
- *   starts a new chat from the home input; cleared on the back button.
+ *   into a specific session. Takes precedence when route backing is enabled.
+ * - `activeChatSessionId` — the in-tab session selection. Used exclusively
+ *   when route backing is disabled and as a fallback otherwise.
  *
  * Plus the session-picker dropdown menu and titles, all driven off the
  * `agentSessionsStore` thread list.
  */
-export function useAgentBuilderSession() {
+export function useAgentBuilderSession({ routeBacked }: AgentBuilderSessionOptions) {
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
@@ -59,7 +63,10 @@ export function useAgentBuilderSession() {
 		return typeof value === 'string' && value.length > 0 ? value : undefined;
 	});
 	const effectiveSessionId = computed<string | undefined>(
-		() => continueSessionId.value ?? activeChatSessionId.value ?? undefined,
+		() =>
+			(routeBacked.value ? continueSessionId.value : undefined) ??
+			activeChatSessionId.value ??
+			undefined,
 	);
 
 	/**
@@ -100,25 +107,29 @@ export function useAgentBuilderSession() {
 		}));
 	});
 
-	function setSessionInUrl(id: string) {
+	function selectSession(id: string) {
 		activeChatSessionId.value = id;
+		if (!routeBacked.value) return;
 		void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
 	}
 
+	function setSessionInUrl(id: string) {
+		selectSession(id);
+	}
+
 	function clearContinueSessionParam() {
+		if (!routeBacked.value) return;
 		const { [CONTINUE_SESSION_ID_PARAM]: _dropped, ...rest } = route.query as LocationQueryRaw;
 		void router.replace({ query: rest });
 	}
 
 	function onSessionPick(id: string) {
 		if (id === '__empty__') return;
-		activeChatSessionId.value = null;
-		void router.replace({ query: { ...route.query, [CONTINUE_SESSION_ID_PARAM]: id } });
+		selectSession(id);
 	}
 
 	function onNewChat() {
-		activeChatSessionId.value = null;
-		setSessionInUrl(crypto.randomUUID());
+		selectSession(crypto.randomUUID());
 	}
 
 	return {
