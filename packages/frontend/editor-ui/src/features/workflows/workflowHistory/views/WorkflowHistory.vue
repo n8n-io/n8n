@@ -78,7 +78,8 @@ const workflowActivate = useWorkflowActivate();
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
 );
-const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
+// TEMP: force-enable for local QA of Nodes | Connectors | Settings dropdown
+const isWorkflowDiffsEnabled = computed(() => true);
 
 const canRender = ref(true);
 const isListLoading = ref(true);
