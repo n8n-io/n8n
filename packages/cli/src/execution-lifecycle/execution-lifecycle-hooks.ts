@@ -63,6 +63,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'workflowExecuteAfter' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							runData,
 							newStaticData,
 							executionId: this.executionId,
@@ -78,6 +79,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'nodeExecuteBefore' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							nodeName,
 							taskData,
 							executionId: this.executionId,
@@ -92,6 +94,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'nodeExecuteAfter' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							nodeName,
 							taskData,
 							executionData,
@@ -107,6 +110,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'workflowExecuteBefore' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,
@@ -121,6 +125,7 @@ class ModulesHooksRegistry {
 						const context = {
 							type: 'workflowExecuteResume' as const,
 							workflow: this.workflowData,
+							mode: this.mode,
 							workflowInstance,
 							executionData,
 							executionId: this.executionId,

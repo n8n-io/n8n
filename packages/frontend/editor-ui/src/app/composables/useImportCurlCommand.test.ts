@@ -6,7 +6,7 @@ import {
 
 const showToast = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast }),
 }));
 

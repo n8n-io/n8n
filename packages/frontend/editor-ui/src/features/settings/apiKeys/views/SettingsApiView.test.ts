@@ -1,12 +1,12 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SettingsApiView from './SettingsApiView.vue';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useApiKeysStore } from '../apiKeys.store';
@@ -26,7 +26,7 @@ vi.mock('@n8n/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
 	const showToast = vi.fn();

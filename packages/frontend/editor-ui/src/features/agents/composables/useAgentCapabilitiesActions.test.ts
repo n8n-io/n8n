@@ -23,7 +23,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 		getNodeType: () => ({ name: 'n8n-nodes-base.mcpClientTool', version: 1 }),
 	}),
 }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
