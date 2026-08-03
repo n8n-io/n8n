@@ -61,6 +61,8 @@ type SegmentControlProps<Value extends string | boolean = string | boolean> = {
 };
 ```
 
+`N8nSegmentControl` is generic over `Value extends string | boolean`. Vue infers `Value` from `modelValue` / `options`, so `update:modelValue` emits that narrowed type (e.g. `boolean` for Ask/Build, or a string union for view modes).
+
 
 **Notes**
 

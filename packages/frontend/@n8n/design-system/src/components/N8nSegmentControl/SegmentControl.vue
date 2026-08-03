@@ -1,5 +1,5 @@
-<script lang="ts" setup>
-import { reactiveOmit, reactivePick } from '@vueuse/core';
+<script lang="ts" setup generic="Value extends string | boolean = string | boolean">
+import { reactiveOmit } from '@vueuse/core';
 import { RadioGroupRoot, type AcceptableValue } from 'reka-ui';
 import { computed, nextTick, ref, useAttrs } from 'vue';
 
@@ -8,9 +8,7 @@ import SegmentControlItem from './SegmentControlItem.vue';
 
 defineOptions({ inheritAttrs: false });
 
-type SegmentValue = string | boolean;
-
-const props = withDefaults(defineProps<SegmentControlProps<SegmentValue>>(), {
+const props = withDefaults(defineProps<SegmentControlProps<Value>>(), {
 	disabled: false,
 	size: 'default',
 	squareButtons: false,
@@ -18,15 +16,14 @@ const props = withDefaults(defineProps<SegmentControlProps<SegmentValue>>(), {
 });
 
 const emit = defineEmits<{
-	'update:modelValue': [value: SegmentValue, e: MouseEvent];
+	'update:modelValue': [value: Value, e: MouseEvent];
 }>();
 
-defineSlots<{ option?: (props: SegmentOption<SegmentValue>) => unknown }>();
+defineSlots<{ option?: (props: SegmentOption<Value>) => unknown }>();
 
 const attrs = useAttrs();
 const rootClass = computed(() => attrs.class);
 const rootAttrs = computed(() => reactiveOmit(attrs, 'class'));
-const rootProps = reactivePick(props, 'name', 'required', 'loop', 'dir');
 
 /** Last pointer event, so consumers can read ctrl/meta (e.g. open-in-new-tab). */
 const lastPointerEvent = ref<MouseEvent>();
@@ -40,18 +37,18 @@ const lastPointerEvent = ref<MouseEvent>();
  */
 const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
-function optionKey(value: SegmentValue): string {
+function optionKey(value: Value): string {
 	return `${typeof value}:${String(value)}`;
 }
 
-function toRadioValue(value: SegmentValue | undefined): string | undefined {
+function toRadioValue(value: Value | undefined): string | undefined {
 	if (value === undefined || !props.options?.some((option) => option.value === value)) {
 		return undefined;
 	}
 	return optionKey(value);
 }
 
-function findOptionByRadioValue(raw: AcceptableValue): SegmentOption<SegmentValue> | undefined {
+function findOptionByRadioValue(raw: AcceptableValue): SegmentOption<Value> | undefined {
 	if (typeof raw !== 'string') {
 		return undefined;
 	}
@@ -115,7 +112,11 @@ function onUpdate(raw: AcceptableValue) {
 		]"
 	>
 		<RadioGroupRoot
-			v-bind="{ ...rootProps, ...rootAttrs }"
+			v-bind="rootAttrs"
+			:name="name"
+			:required="required"
+			:loop="loop"
+			:dir="dir"
 			:model-value="toRadioValue(modelValue)"
 			:default-value="toRadioValue(defaultValue)"
 			:disabled="disabled"
