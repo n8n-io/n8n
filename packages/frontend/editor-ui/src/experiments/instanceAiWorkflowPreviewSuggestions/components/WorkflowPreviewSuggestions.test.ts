@@ -60,4 +60,16 @@ describe('WorkflowPreviewSuggestions', () => {
 		const link = container.querySelector('a');
 		expect(link).toHaveAttribute('href', websiteTemplateRepositoryURL);
 	});
+
+	it('tracks a telemetry event when "see all" is clicked', async () => {
+		const { container } = renderComponent();
+
+		const link = container.querySelector('a');
+		expect(link).not.toBeNull();
+		if (!link) throw new Error('Missing see-all link');
+
+		await fireEvent.click(link);
+
+		expect(telemetryTrack).toHaveBeenCalledWith('AI Assistant examples see all button clicked');
+	});
 });
