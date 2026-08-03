@@ -1,19 +1,20 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
-import {
-	isAgentCredentialIntegration,
-	isAgentScheduleIntegration,
-	type AgentIntegrationStatusEntry,
-} from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentIntegrationStatusEntry } from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
 	skillIdentifiersFromConfig,
+	taskIdentifiersFromConfig,
 	toolIdentifiersFromConfig,
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
 import { syncAgentIntegrationStatusCache } from './useAgentIntegrationStatus';
-import { useAgentTelemetry, type AgentConfigPart } from './useAgentTelemetry';
+import {
+	useAgentTelemetry,
+	type AgentConfigPart,
+	type AgentCredentialKind,
+} from './useAgentTelemetry';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
 /**
@@ -49,8 +50,9 @@ const TRACKED_CONFIG_KEYS = [
 	'memory',
 	'tools',
 	'skills',
+	'subAgents',
 	'name',
-	'description',
+	'vectorStores',
 ] as const satisfies ReadonlyArray<keyof AgentJsonConfig & AgentConfigPart>;
 
 /**
@@ -84,17 +86,7 @@ function integrationStatusEntriesFromConfig(
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
-
-		if (isAgentScheduleIntegration(integration)) {
-			if (integration.cronExpression.trim() !== '') {
-				entries.push({ type: integration.type });
-			}
-			continue;
-		}
-
-		if (isAgentCredentialIntegration(integration)) {
-			entries.push({ type: integration.type, credentialId: integration.credentialId });
-		}
+		entries.push({ type: integration.type, credentialId: integration.credentialId });
 	}
 
 	return entries;
@@ -121,6 +113,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 
 	// Same idea, parallel for skills.
 	let previousSkills: string[] = [];
+
+	// Same idea, parallel for tasks.
+	let previousTasks: string[] = [];
 
 	function snapshot(): EditSnapshot {
 		return {
@@ -155,6 +150,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 
 	function emitEditedEvents(parts: AgentConfigPart[], s: EditSnapshot) {
 		if (parts.length === 0) return;
+		// Only meaningful for the model part, which is the one a credential change maps to.
+		const credentialKind: AgentCredentialKind =
+			s.config?.credential === AI_GATEWAY_MANAGED_TAG ? 'n8n_credits' : 'own';
 		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
 			for (const part of parts) {
 				agentTelemetry.trackEditedConfig({
@@ -162,6 +160,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 					part,
 					configVersion,
 					status: s.status,
+					...(part === 'model' ? { credentialKind } : {}),
 				});
 			}
 		});
@@ -261,6 +260,42 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		});
 	}
 
+	function captureTasksBaseline() {
+		previousTasks = taskIdentifiersFromConfig(deps.savedConfig.value);
+	}
+
+	function trackTasksChanged() {
+		const current = taskIdentifiersFromConfig(deps.savedConfig.value);
+		const added = current.filter((taskId) => !previousTasks.includes(taskId));
+		const removed = previousTasks.filter((taskId) => !current.includes(taskId));
+		previousTasks = current;
+		if (added.length === 0 && removed.length === 0) return;
+		const s = snapshot();
+		// Task diffs are computed from saved config after save/refetch, so the
+		// config_version must match the persisted task list. `s.config` reads
+		// localConfig, which can still be the pre-save snapshot when onSaved runs.
+		withFingerprint(deps.savedConfig.value, s.connectedTriggers, (configVersion) => {
+			for (const taskAdded of added) {
+				agentTelemetry.trackAddedTasks({
+					agentId: s.agentId,
+					taskAdded,
+					tasks: current,
+					configVersion,
+					status: s.status,
+				});
+			}
+			for (const taskRemoved of removed) {
+				agentTelemetry.trackRemovedTasks({
+					agentId: s.agentId,
+					taskRemoved,
+					tasks: current,
+					configVersion,
+					status: s.status,
+				});
+			}
+		});
+	}
+
 	/**
 	 * Eagerly derive connected trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
@@ -291,6 +326,19 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		triggersBaseline.value = [];
 		previousTools = [];
 		previousSkills = [];
+		previousTasks = [];
+	}
+
+	function trackOpenedToolFromList(toolType: string) {
+		agentTelemetry.trackOpenedToolFromList({ agentId: deps.agentId.value, toolType });
+	}
+
+	function trackOpenedSkillFromList(skillId: string) {
+		agentTelemetry.trackOpenedSkillFromList({ agentId: deps.agentId.value, skillId });
+	}
+
+	function trackOpenedAddSkillModal() {
+		agentTelemetry.trackOpenedAddSkillModal({ agentId: deps.agentId.value });
 	}
 
 	return {
@@ -300,9 +348,14 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		trackTriggerAdded,
 		trackToolsAdded,
 		trackSkillsAdded,
+		trackTasksChanged,
 		captureToolsBaseline,
 		captureSkillsBaseline,
+		captureTasksBaseline,
 		fetchInitialTriggersBaseline,
 		resetForAgentSwitch,
+		trackOpenedToolFromList,
+		trackOpenedSkillFromList,
+		trackOpenedAddSkillModal,
 	};
 }

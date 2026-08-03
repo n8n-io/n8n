@@ -16,6 +16,7 @@ test.use({ capability: benchConfig('output-size-impact', { kafka: true, workers:
 test.describe(
 	'What is the impact of node output size on throughput?',
 	{
+		tag: '@bench:kafka',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'output-size-impact' },

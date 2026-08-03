@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
@@ -7,7 +8,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -16,11 +17,11 @@ import { returnJsonArray } from './utils/return-json-array';
 import { getSchedulingFunctions } from './utils/scheduling-helper-functions';
 
 const throwOnEmit = () => {
-	throw new ApplicationError('Overwrite PollContext.__emit function');
+	throw new UnexpectedError('Overwrite PollContext.__emit function');
 };
 
 const throwOnEmitError = () => {
-	throw new ApplicationError('Overwrite PollContext.__emitError function');
+	throw new UnexpectedError('Overwrite PollContext.__emitError function');
 };
 
 export class PollContext extends NodeExecutionContext implements IPollFunctions {

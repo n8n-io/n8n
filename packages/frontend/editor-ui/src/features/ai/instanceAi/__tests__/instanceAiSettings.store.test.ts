@@ -8,7 +8,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -34,8 +34,8 @@ const mockFetchSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
 const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
-const mockFetchModelCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
+const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
 
@@ -44,8 +44,8 @@ vi.mock('../instanceAi.settings.api', () => ({
 	updateSettings: (...args: unknown[]) => mockUpdateSettings(...args),
 	fetchPreferences: (...args: unknown[]) => mockFetchPreferences(...args),
 	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
-	fetchModelCredentials: (...args: unknown[]) => mockFetchModelCredentials(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
+	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
 }));
 
 const mockGetGatewayStatus = vi.fn();
@@ -57,12 +57,32 @@ vi.mock('../instanceAi.api', () => ({
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+
+type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
+
+function makeModuleSettings(
+	overrides: Partial<InstanceAiModuleSettings> = {},
+): InstanceAiModuleSettings {
+	return {
+		enabled: true,
+		localGatewayDisabled: false,
+		browserUseEnabled: true,
+		proxyEnabled: false,
+		cloudManaged: false,
+		sandboxEnabled: true,
+		workflowBuilderAvailable: true,
+		sandboxUnavailableReason: null,
+		runDebugEnabled: false,
+		...overrides,
+	};
+}
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
-	instanceAi: FrontendModuleSettings['instance-ai'],
+	instanceAi: Partial<InstanceAiModuleSettings>,
 ) {
-	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
+	settingsStore.moduleSettings = { 'instance-ai': makeModuleSettings(instanceAi) };
 }
 
 function setUserPreference(
@@ -78,9 +98,32 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
 		settingsStore = useSettingsStore();
+	});
+
+	describe('permissions', () => {
+		it('checks related admin scopes independently', () => {
+			vi.mocked(hasPermission)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce(false)
+				.mockReturnValueOnce(false);
+
+			expect(store.canManage).toBe(true);
+			expect(store.canManageAiUsage).toBe(false);
+			expect(store.canManageInstanceCredentials).toBe(false);
+			expect(hasPermission).toHaveBeenNthCalledWith(1, ['rbac'], {
+				rbac: { scope: 'instanceAi:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(2, ['rbac'], {
+				rbac: { scope: 'aiAssistant:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(3, ['rbac'], {
+				rbac: { scope: 'credential:manageInstance' },
+			});
+		});
 	});
 
 	describe('isInstanceAiDisabled', () => {
@@ -227,6 +270,75 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('workflow builder availability', () => {
+		it('returns false when the module settings mark the builder unavailable', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: null,
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(false);
+		});
+
+		it('keeps the builder unavailable while the sandbox is enabled', () => {
+			setModuleSettings(settingsStore, {
+				sandboxEnabled: true,
+				workflowBuilderAvailable: false,
+				sandboxUnavailableReason: 'N8N_SANDBOX_SERVICE_URL is required.',
+			});
+
+			expect(store.isWorkflowBuilderAvailable).toBe(false);
+			expect(store.isSandboxEnabled).toBe(true);
+		});
+	});
+
+	describe('settings persistence', () => {
+		const response = {
+			enabled: true,
+			permissions: {},
+			mcpServers: '',
+			mcpAccessEnabled: true,
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			sandboxImage: '',
+			sandboxTimeout: 60,
+			daytonaCredentialId: null,
+			n8nSandboxCredentialId: null,
+			searchCredentialId: null,
+			modelCredentialId: null,
+			modelName: null,
+			modelEnvConfigured: false,
+			sandboxEnvConfigured: false,
+			searchEnvConfigured: false,
+			localGatewayDisabled: false,
+		};
+
+		beforeEach(() => {
+			setModuleSettings(settingsStore, { enabled: false });
+			mockUpdateSettings.mockResolvedValue(response);
+			settingsStore.getModuleSettings = vi.fn().mockRejectedValue(new Error('refresh failed'));
+		});
+
+		it('keeps a settings save successful when the module refresh fails', async () => {
+			store.setField('mcpAccessEnabled', true);
+
+			await expect(store.save()).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(store.draft).toEqual({});
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+
+		it('keeps an enablement save successful when the module refresh fails', async () => {
+			await expect(store.persistEnabled(true)).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+	});
+
 	describe('refreshModuleSettings', () => {
 		it('fetches preferences when they are not loaded yet', async () => {
 			const prefsResponse = {
@@ -263,6 +375,22 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('provider credentials', () => {
+		it('refreshes n8n Sandbox credentials when the assistant proxy is enabled', async () => {
+			setModuleSettings(settingsStore, { proxyEnabled: true, cloudManaged: false });
+			mockFetchServiceCredentials.mockResolvedValue([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
+
+			await store.refreshCredentials();
+
+			expect(mockFetchServiceCredentials).toHaveBeenCalledOnce();
+			expect(store.serviceCredentials).toEqual([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
+		});
+	});
+
 	describe('syncInstanceAiFlagIntoGlobalModuleSettings', () => {
 		it('preserves cloudManaged when syncing admin settings', async () => {
 			setModuleSettings(settingsStore, {
@@ -274,15 +402,10 @@ describe('useInstanceAiSettingsStore', () => {
 
 			const adminResponse = {
 				enabled: true,
-				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
-				subAgentMaxSteps: 10,
-				browserMcp: false,
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,
@@ -301,11 +424,14 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.cloudManaged).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
+			expect(ms?.sandboxEnabled).toBe(false);
+			expect(ms?.workflowBuilderAvailable).toBe(false);
+			expect(ms?.sandboxUnavailableReason).toBeNull();
 		});
 	});
 
 	describe('connections', () => {
-		it('is empty when the gateway is disabled for the user', () => {
+		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: true,
@@ -313,10 +439,14 @@ describe('useInstanceAiSettingsStore', () => {
 				cloudManaged: false,
 			});
 
-			expect(store.connections).toEqual([]);
+			expect(store.connections).toHaveLength(1);
+			expect(store.connections[0]).toMatchObject({
+				type: 'browser-use',
+				status: 'disconnected',
+			});
 		});
 
-		it('shows a disconnected Computer Use row when enabled but not paired', () => {
+		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -325,9 +455,13 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 			setUserPreference(store, { localGatewayDisabled: false });
 
-			expect(store.connections).toHaveLength(1);
+			expect(store.connections).toHaveLength(2);
 			expect(store.connections[0]).toMatchObject({
 				type: 'computer-use',
+				status: 'disconnected',
+			});
+			expect(store.connections[1]).toMatchObject({
+				type: 'browser-use',
 				status: 'disconnected',
 			});
 		});
@@ -360,7 +494,7 @@ describe('useInstanceAiSettingsStore', () => {
 			});
 		});
 
-		it('omits the Browser Use row when connected without a browser tool category', async () => {
+		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -376,8 +510,9 @@ describe('useInstanceAiSettingsStore', () => {
 			setUserPreference(store, { localGatewayDisabled: false });
 			await store.fetchGatewayStatus();
 
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0].type).toBe('computer-use');
+			expect(store.connections).toHaveLength(2);
+			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
+			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
 		});
 	});
 

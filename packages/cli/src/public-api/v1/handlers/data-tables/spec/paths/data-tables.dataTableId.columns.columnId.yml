@@ -1,5 +1,6 @@
 delete:
   x-eov-operation-id: deleteDataTableColumn
+  x-required-scope: dataTableColumn:delete
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.columns.handler
   tags:
     - DataTable
@@ -21,6 +22,7 @@ delete:
 
 patch:
   x-eov-operation-id: updateDataTableColumn
+  x-required-scope: dataTableColumn:update
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.columns.handler
   tags:
     - DataTable

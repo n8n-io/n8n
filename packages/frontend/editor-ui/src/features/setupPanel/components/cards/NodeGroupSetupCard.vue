@@ -14,7 +14,6 @@ import type {
 } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import {
@@ -34,7 +33,6 @@ const emit = defineEmits<{
 }>();
 
 const nodeHelpers = useNodeHelpers();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const setupPanelStore = useSetupPanelStore();
 
@@ -98,8 +96,8 @@ const hasParameters = computed(() => allSections.value.some(sectionHasParameters
 
 const telemetryPayload = computed(() => ({
 	type: ['node-group'],
-	template_id: workflowDocumentStore?.value?.meta?.templateId,
-	workflow_id: workflowsStore.workflowId,
+	template_id: workflowDocumentStore.value.meta?.templateId,
+	workflow_id: workflowDocumentStore.value.workflowId,
 	node_types: allSections.value.map((s) => s.node.type),
 	has_parameters: hasParameters.value,
 }));

@@ -17,7 +17,7 @@ describe('getCredentialCheckHelperFunctions', () => {
 	it('should return checkCredentialStatus when credentialCheckProxy is available', async () => {
 		const mockResult = { readyToExecute: true, credentials: [] };
 		const mockProxy: DynamicCredentialCheckProxyProvider = {
-			checkCredentialStatus: jest.fn().mockResolvedValue(mockResult),
+			checkCredentialStatus: vi.fn().mockResolvedValue(mockResult),
 		};
 
 		const additionalData = {
@@ -29,9 +29,7 @@ describe('getCredentialCheckHelperFunctions', () => {
 		expect(result.checkCredentialStatus).toBeDefined();
 
 		const status = await result.checkCredentialStatus!('wf-1', {
-			version: 1,
-			establishedAt: Date.now(),
-			source: 'webhook',
+			credentials: 'encrypted-credentials',
 		});
 
 		expect(status).toEqual(mockResult);

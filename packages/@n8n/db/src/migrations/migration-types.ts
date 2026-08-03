@@ -21,6 +21,8 @@ export interface MigrationContext {
 		columnName(name: string): string;
 		tableName(name: string): string;
 		indexName(name: string): string;
+		triggerName(name: string): string;
+		functionName(name: string): string;
 	};
 	runQuery<T>(sql: string, namedParameters?: ObjectLiteral): Promise<T>;
 	runInBatches<T>(

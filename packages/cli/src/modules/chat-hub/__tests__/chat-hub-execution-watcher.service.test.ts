@@ -1,16 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionRepository, IExecutionResponse } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
-import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	ChatHubExecutionStore,
 	ChatHubExecutionContext,
 } from '@/modules/chat-hub/chat-hub-execution-store.service';
+import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
+import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
 import type { ChatHubMessageRepository } from '@/modules/chat-hub/chat-message.repository';
 import type { ChatStreamService } from '@/modules/chat-hub/chat-stream.service';
 
@@ -23,8 +24,8 @@ const WORKFLOW_ID = '3qXqnkHzVukVR9Jq';
 const WAITING_MESSAGE_ID = '11111111-1111-4000-8000-000000000007';
 const MOCK_NEW_MESSAGE_ID = 'aaaaaaaa-1111-4000-8000-000000000001';
 
-jest.mock('uuid', () => ({
-	v4: jest.fn(() => MOCK_NEW_MESSAGE_ID),
+vi.mock('uuid', () => ({
+	v4: vi.fn(() => MOCK_NEW_MESSAGE_ID),
 }));
 
 describe('ChatHubExecutionWatcherService', () => {
@@ -34,7 +35,7 @@ describe('ChatHubExecutionWatcherService', () => {
 	const executionStore = mock<ChatHubExecutionStore>();
 	const messageRepository = mock<ChatHubMessageRepository>();
 	const chatHubExecutionService = mock<ChatHubExecutionService>();
-	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const chatStreamService = mock<ChatStreamService>();
 	const executionManager = mock<ChatExecutionManager>();
 
@@ -55,14 +56,14 @@ describe('ChatHubExecutionWatcherService', () => {
 		}) as ChatHubExecutionContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		service = new ChatHubExecutionWatcherService(
 			logger,
 			executionStore,
 			messageRepository,
 			chatHubExecutionService,
-			executionRepository,
+			executionPersistence,
 			chatStreamService,
 			executionManager,
 		);
@@ -367,7 +368,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					chatHubExecutionService.extractMessage.mockReturnValue('Webhook response');
 
 					const execution = createExecution('n8n-nodes-base.respondToWebhook');
-					executionRepository.findSingleExecution.mockResolvedValue(execution);
+					executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),
@@ -411,7 +412,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					const execution = createExecution('@n8n/n8n-nodes-langchain.chat', {
 						waitUserReply: false,
 					});
-					executionRepository.findSingleExecution.mockResolvedValue(execution);
+					executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),
@@ -428,7 +429,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					const execution = createExecution('@n8n/n8n-nodes-langchain.chat', {
 						operation: 'sendAndWait',
 					});
-					executionRepository.findSingleExecution.mockResolvedValue(execution);
+					executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),
@@ -445,7 +446,7 @@ describe('ChatHubExecutionWatcherService', () => {
 					const context = createContext({ responseMode: 'responseNodes' });
 					executionStore.get.mockResolvedValue(context);
 					chatHubExecutionService.extractMessage.mockReturnValue(undefined);
-					executionRepository.findSingleExecution.mockResolvedValue(undefined);
+					executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
 					await service.handleWorkflowExecuteAfter(
 						createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' })),

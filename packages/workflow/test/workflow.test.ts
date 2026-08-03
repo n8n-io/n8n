@@ -2345,6 +2345,19 @@ describe('Workflow', () => {
 			const result = workflow.getHighestNode(targetNode.name);
 			expect(result).toEqual([node1.name]);
 		});
+
+		test('returns [] when called with a node name not present in workflow.nodes', () => {
+			const node = createNode('Node1');
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			expect(workflow.getHighestNode('NodeNotInWorkflow')).toEqual([]);
+		});
 	});
 
 	describe('getParentMainInputNode', () => {

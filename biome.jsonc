@@ -8,6 +8,7 @@
 	"files": {
 		"ignore": [
 			"**/.turbo",
+			"**/bin/.cache",
 			"**/components.d.ts",
 			"**/coverage",
 			"**/dist",
@@ -17,7 +18,8 @@
 			"**/cl100k_base.json",
 			"**/o200k_base.json",
 			"**/*.generated.ts",
-			"**/expectations/**"
+			"**/expectations/**",
+			"**/instance-ai-examples.data.json"
 		]
 	},
 	"formatter": {
@@ -30,7 +32,13 @@
 		"attributePosition": "auto",
 		"ignore": [
 			// Handled by prettier
-			"**/*.vue"
+			"**/*.vue",
+			// Generated DB schema docs
+			"docs/generated/**",
+			// Generated / vendored test-impact data
+			".github/test-metrics/**",
+			// Vendored SPDX license data and overrides
+			"scripts/licenses/**"
 		]
 	},
 	"organizeImports": { "enabled": false },

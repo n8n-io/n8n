@@ -10,14 +10,14 @@ import config from '@/config';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
+import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
+import { CacheService } from '@/services/cache/cache.service';
 
 import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
 import * as utils from '../shared/utils';
-import { CacheService } from '@/services/cache/cache.service';
-import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
 
-jest.mock('@/telemetry');
+vi.mock('@/telemetry');
 
 let owner: User;
 

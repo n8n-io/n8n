@@ -2,7 +2,7 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { createPasswordRules } from '@n8n/design-system';
 
@@ -96,7 +96,8 @@ const onSubmit = async (values: { [key: string]: string | boolean }) => {
 			} catch {}
 		}
 		if (forceRedirectedHere) {
-			await router.push({ name: VIEWS.HOMEPAGE });
+			// Route through root so the guard can land the new owner on Instance AI when enabled.
+			await router.push('/');
 		} else {
 			await router.push({ name: VIEWS.USERS_SETTINGS });
 		}

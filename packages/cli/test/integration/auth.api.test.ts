@@ -6,6 +6,8 @@ import validator from 'validator';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 
@@ -13,8 +15,6 @@ import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -402,7 +402,7 @@ describe('GET /resolve-signup-token', () => {
 		);
 
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent.get('/resolve-signup-token').query({ token }).expect(200);
 

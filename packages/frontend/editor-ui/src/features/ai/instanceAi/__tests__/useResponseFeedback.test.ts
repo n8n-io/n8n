@@ -61,12 +61,11 @@ function setup(
 	options: { postFeedback?: PostFeedback } = {},
 ) {
 	const messages = ref<InstanceAiMessage[]>(initialMessages);
-	const currentThreadId = ref('thread-1');
 	const mockTrack = vi.fn();
 	const telemetry = { track: mockTrack };
 	const postFeedback = options.postFeedback;
-	const result = useResponseFeedback({ messages, currentThreadId, telemetry, postFeedback });
-	return { messages, currentThreadId, mockTrack, postFeedback, ...result };
+	const result = useResponseFeedback({ messages, threadId: 'thread-1', telemetry, postFeedback });
+	return { messages, mockTrack, postFeedback, ...result };
 }
 
 // ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
@@ -51,11 +51,21 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(),
 }));
 
 vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({}));
+
+const mockEvaluationSetOutputsNodeExist = ref(false);
+vi.mock('@/features/ai/evaluation.ee/composables/useWorkflowEvaluationState', () => ({
+	useWorkflowEvaluationState: () => ({
+		evaluationTriggerExists: ref(false),
+		evaluationSetMetricsNodeExist: ref(false),
+		evaluationSetOutputsNodeExist: mockEvaluationSetOutputsNodeExist,
+		metricSourceByKey: ref({}),
+	}),
+}));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/i18n')>();
@@ -193,6 +203,7 @@ describe('WorkflowProductionChecklist', () => {
 		vi.clearAllMocks();
 		mockN8nSuggestedActionsProps = {};
 		mockN8nSuggestedActionsEmits = {};
+		mockEvaluationSetOutputsNodeExist.value = false;
 	});
 
 	describe('Action visibility', () => {
@@ -225,7 +236,7 @@ describe('WorkflowProductionChecklist', () => {
 			nodeTypesStore = useNodeTypesStore(pinia);
 
 			vi.spyOn(evaluationStore, 'isEvaluationEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(evaluationStore, 'evaluationSetOutputsNodeExist', 'get').mockReturnValue(false);
+			mockEvaluationSetOutputsNodeExist.value = false;
 			// @ts-expect-error - mocking readonly property
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockAINodeType as INodeTypeDescription);
 
@@ -655,7 +666,7 @@ describe('WorkflowProductionChecklist', () => {
 			nodeTypesStore = useNodeTypesStore(pinia);
 
 			vi.spyOn(evaluationStore, 'isEvaluationEnabled', 'get').mockReturnValue(true);
-			vi.spyOn(evaluationStore, 'evaluationSetOutputsNodeExist', 'get').mockReturnValue(true);
+			mockEvaluationSetOutputsNodeExist.value = true;
 			// @ts-expect-error - mocking readonly property
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockAINodeType as INodeTypeDescription);
 

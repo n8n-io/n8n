@@ -20,7 +20,7 @@ import {
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { useEncryptionKeysStore } from '../encryption-keys.store';
 import type { EncryptionKey, EncryptionKeySortField } from '../encryption-keys.types';

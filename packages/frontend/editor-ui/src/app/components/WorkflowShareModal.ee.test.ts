@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 const mockWorkflowDocumentState = reactive({
@@ -30,6 +30,7 @@ const mockWorkflowDocumentState = reactive({
 });
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockWorkflowDocumentState,
+	injectWorkflowDocumentStore: () => shallowRef(mockWorkflowDocumentState),
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
@@ -42,7 +43,7 @@ vi.mock('vue-router', async (importOriginal) => {
 		}),
 	};
 });
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

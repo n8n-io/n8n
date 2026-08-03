@@ -77,6 +77,31 @@ describe('ProjectSharing', () => {
 		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 	});
 
+	it('should hide the dropdown chevron by default (remote + filterable select)', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn([]),
+				modelValue: null,
+			},
+		});
+
+		expect(getByTestId('project-sharing-select').querySelector('.el-select__caret')).toBeNull();
+	});
+
+	it('should show the dropdown chevron when showSuffix is set', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				searchFn: createTestSearchFn([]),
+				modelValue: null,
+				showSuffix: true,
+			},
+		});
+
+		expect(
+			getByTestId('project-sharing-select').querySelector('.el-select__caret'),
+		).toBeInTheDocument();
+	});
+
 	it('should filter, add and remove projects', async () => {
 		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
 			props: {
@@ -248,6 +273,45 @@ describe('ProjectSharing', () => {
 			item.classList.contains('is-disabled'),
 		);
 		expect(disabledItems).toHaveLength(0);
+	});
+
+	describe('ordering', () => {
+		const unorderedProjects: ProjectListItem[] = [
+			{ ...createProjectListItem('team'), name: 'Charlie' },
+			{ ...createProjectListItem('team'), name: 'Alpha' },
+			{ ...createProjectListItem('team'), name: 'Bravo' },
+		];
+
+		it('should list projects alphabetically by name regardless of input order', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(unorderedProjects),
+					modelValue: [],
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+			const names = Array.from(dropdownItems).map((item) => item.textContent?.trim());
+
+			expect(names).toEqual(['Alpha', 'Bravo', 'Charlie']);
+		});
+
+		it('should keep "All Users" first and sort the remaining projects alphabetically', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(unorderedProjects),
+					modelValue: [],
+					canShareGlobally: true,
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+			const names = Array.from(dropdownItems).map((item) => item.textContent?.trim());
+
+			expect(names).toEqual(['All users and projects', 'Alpha', 'Bravo', 'Charlie']);
+		});
 	});
 
 	describe('global sharing', () => {

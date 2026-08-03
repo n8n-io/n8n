@@ -13,13 +13,16 @@ import {
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nDropdownMenu,
+	N8nDropdownMenuItem,
 	N8nIcon,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
-import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/app/constants';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { AGENT_PREVIEW_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -33,28 +36,41 @@ const props = defineProps<{
 	headerActions: Array<ActionDropdownItem<string>>;
 	saveStatus?: 'idle' | 'saving' | 'saved';
 	beforeRevertToPublished?: () => Promise<void> | void;
+	isVersionHistoryOpen?: boolean;
+	artifactMode?: boolean;
+	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
+	editingLocked?: boolean;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	beforePublish?: () => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
 	'header-action': [item: string];
+	'open-preview': [];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
+	'toggle-version-history': [];
 }>();
 
 const i18n = useI18n();
 const router = useRouter();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
-
 onMounted(() => {
+	if (props.artifactMode) return;
 	void ensureLoaded();
 });
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
-	name: VIEWS.PROJECTS_WORKFLOWS,
+	name: PROJECT_AGENTS,
 	params: { projectId: props.projectId },
+}));
+
+const previewRoute = computed<RouteLocationRaw>(() => ({
+	name: AGENT_PREVIEW_VIEW,
+	params: { projectId: props.projectId, agentId: props.agentId },
 }));
 
 const breadcrumbItems = computed<PathItem[]>(() => [
@@ -68,6 +84,17 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
+const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
+// Standalone keeps href for Cmd/Ctrl-click new-tab. Artifact mode is embedded
+// in Instance AI — plain button so a left-click cannot fall through to a link.
+const previewHref = computed(() =>
+	props.artifactMode || isPreviewDisabled.value
+		? undefined
+		: router.resolve(previewRoute.value).href,
+);
+const previewDisabledTooltip = computed(() =>
+	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
+);
 const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	const list = agentsList.value ?? [];
 	const others = list.filter((a) => a.id !== props.agentId);
@@ -91,33 +118,79 @@ function onSwitcherSelect(id: string) {
 	emit('switch-agent', id);
 }
 
+function onCreateAgent() {
+	void router.push(instanceAiCreateAgentRoute(props.projectId));
+}
+
 function onBreadcrumbSelect(item: PathItem) {
 	if (item.id !== props.projectId) return;
 	void router.push(projectRoute.value);
 }
+
+function onPreviewClick(event: MouseEvent) {
+	if (isPreviewDisabled.value) {
+		event.preventDefault();
+		return;
+	}
+	if (
+		event.defaultPrevented ||
+		event.button !== 0 ||
+		event.metaKey ||
+		event.ctrlKey ||
+		event.shiftKey
+	) {
+		return;
+	}
+	event.preventDefault();
+	emit('open-preview');
+}
+
+// Disabled until the agent has at least one publish history row. The flag
+// is set by the backend (see AgentsService.hasPublishHistory) so it stays
+// true after an unpublish, when activeVersionId is null but rows persist.
+const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory);
 </script>
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
 		<div :class="$style.left">
-			<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
+			<N8nBreadcrumbs
+				v-if="!props.artifactMode"
+				:items="breadcrumbItems"
+				theme="medium"
+				@item-selected="onBreadcrumbSelect"
+			>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
 						:items="switcherOptions"
+						placement="bottom-start"
 						data-testid="agent-header-switcher"
 						@select="onSwitcherSelect"
 					>
 						<template #trigger>
 							<N8nButton
 								variant="ghost"
-								size="xsmall"
+								size="small"
 								:class="$style.switcherButton"
 								:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
 							>
-								<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
+								<span :class="[$style.switcherLabel, $style.agentSwitcherLabel]">{{
+									agentDisplayName
+								}}</span>
 								<N8nIcon icon="chevron-down" :size="12" />
 							</N8nButton>
+						</template>
+						<template #footer>
+							<div :class="$style.switcherFooter">
+								<N8nDropdownMenuItem
+									id="__new_agent__"
+									:label="i18n.baseText('agents.builder.header.switcher.newAgent')"
+									:icon="{ type: 'icon', value: 'plus' }"
+									test-id="agent-header-new-agent"
+									@select="onCreateAgent"
+								/>
+							</div>
 						</template>
 					</N8nDropdownMenu>
 				</template>
@@ -135,20 +208,56 @@ function onBreadcrumbSelect(item: PathItem) {
 						: i18n.baseText('agents.builder.header.saved')
 				}}
 			</span>
+			<N8nTooltip :disabled="!isPreviewDisabled" :content="previewDisabledTooltip">
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					icon="play"
+					:href="previewHref"
+					:disabled="isPreviewDisabled"
+					data-testid="agent-header-preview-btn"
+					@click="onPreviewClick"
+				>
+					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
+				</N8nButton>
+			</N8nTooltip>
 			<AgentPublishButton
 				:agent="agent"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:is-saving="saveStatus === 'saving'"
+				:is-saving="saveStatus === 'saving' || editingLocked"
 				:before-revert-to-published="beforeRevertToPublished"
+				:config-validation-status="configValidationStatus"
+				:before-publish="beforePublish"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"
 			/>
+			<N8nTooltip v-if="!props.artifactMode" placement="bottom">
+				<template #content>
+					<span v-if="isVersionHistoryDisabled">{{
+						i18n.baseText('agents.versionHistory.button.tooltip.empty')
+					}}</span>
+					<span v-else>{{ i18n.baseText('agents.versionHistory.title') }}</span>
+				</template>
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					icon="history"
+					icon-only
+					:class="{ [$style.activeButton]: isVersionHistoryOpen }"
+					:disabled="isVersionHistoryDisabled"
+					:aria-label="i18n.baseText('agents.versionHistory.button.ariaLabel')"
+					data-testid="agent-header-version-history-btn"
+					@click="emit('toggle-version-history')"
+				/>
+			</N8nTooltip>
 			<N8nActionDropdown
+				v-if="!props.artifactMode && headerActions.length > 0"
 				:items="headerActions"
 				activator-icon="ellipsis"
 				activator-size="medium"
+				:extra-popper-class="$style.headerActionsMenu"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"
 			/>
@@ -166,30 +275,62 @@ function onBreadcrumbSelect(item: PathItem) {
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .left {
 	display: flex;
 	align-items: center;
+	flex: 0 0 auto;
+	min-width: max-content;
+}
+
+.left :global(.n8n-breadcrumbs) {
+	min-width: max-content;
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
+	display: flex;
+	align-items: center;
+	min-height: var(--height--md);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
+	line-height: var(--line-height--sm);
 }
 
 .crumbSeparator {
 	color: var(--border-color);
-	margin: 0 var(--spacing--4xs);
+	margin-inline: var(--spacing--4xs);
 	user-select: none;
+	font-size: var(--font-size--xl);
 }
 
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--5xs);
+	flex-shrink: 0;
 }
 
 .switcherLabel {
-	max-width: 200px;
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: var(--line-height--sm);
+}
+
+.agentSwitcherLabel {
+	max-width: 240px;
+}
+
+.switcherFooter {
+	border-top: var(--border);
+	padding: var(--spacing--3xs);
 }
 
 .right {
@@ -197,11 +338,21 @@ function onBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .saveStatus {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	user-select: none;
+}
+
+.activeButton {
+	background-color: var(--background--active);
+}
+
+.headerActionsMenu {
+	--n8n--dropdown-menu-width: var(--spacing--5xl);
 }
 </style>

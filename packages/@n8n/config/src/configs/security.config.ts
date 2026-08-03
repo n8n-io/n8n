@@ -4,6 +4,31 @@ import { Config, Env } from '../decorators';
 
 const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
 
+// Mirrors the `Resolvers` union in nodes-base (`system-credentials-utils.ts`);
+// kept in sync manually since @n8n/config cannot import from nodes-base.
+const awsSystemCredentialSources = [
+	'environment',
+	'roleForServiceAccount',
+	'podIdentity',
+	'containerMetadata',
+	'instanceMetadata',
+] as const;
+
+const awsSystemCredentialsSdkSourcesSchema = z.string().refine(
+	(value) => {
+		const raw = value.trim();
+		if (raw === '' || raw === 'all' || raw === 'none') return true;
+		return raw
+			.split(',')
+			.map((source) => source.trim())
+			.filter((source) => source !== '')
+			.every((source) => (awsSystemCredentialSources as readonly string[]).includes(source));
+	},
+	{
+		message: `Must be 'all', 'none', or a comma-separated list of: ${awsSystemCredentialSources.join(', ')}`,
+	},
+);
+
 @Config
 export class SecurityConfig {
 	/**
@@ -55,7 +80,8 @@ export class SecurityConfig {
 	 * Configuration for the `Cross-Origin-Opener-Policy` header.
 	 */
 	@Env('N8N_CROSS_ORIGIN_OPENER_POLICY', crossOriginOpenerPolicySchema)
-	crossOriginOpenerPolicy: z.infer<typeof crossOriginOpenerPolicySchema> = 'same-origin';
+	crossOriginOpenerPolicy: z.infer<typeof crossOriginOpenerPolicySchema> =
+		'same-origin-allow-popups';
 
 	/**
 	 * Whether to disable HTML sandboxing for webhooks. The sandboxing mechanism uses CSP headers now,
@@ -86,6 +112,17 @@ export class SecurityConfig {
 	awsSystemCredentialsAccess: boolean = false;
 
 	/**
+	 * Which AWS system-credential sources resolve via the AWS SDK instead of the legacy
+	 * hand-rolled HTTP resolver. Accepts `all`, `none`, or a comma-separated subset of:
+	 * `environment`, `roleForServiceAccount`, `podIdentity`, `containerMetadata`, `instanceMetadata`.
+	 * Transitional switch-back flag; removed one release after the SDK migration is complete.
+	 *
+	 * @example N8N_AWS_SYSTEM_CREDENTIALS_SDK_SOURCES=environment,instanceMetadata
+	 */
+	@Env('N8N_AWS_SYSTEM_CREDENTIALS_SDK_SOURCES', awsSystemCredentialsSdkSourcesSchema)
+	awsSystemCredentialsSdkSources: string = 'all';
+
+	/**
 	 * Whether to enable hooks (like pre-commit hooks) for the Git node.
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_HOOKS')
@@ -96,4 +133,16 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_ALL_CONFIG_KEYS')
 	enableGitNodeAllConfigKeys: boolean = false;
+
+	/**
+	 * Origins that are allowed to exchange `postMessage` commands with the editor iframe
+	 * (used by the workflow preview / demo embed). Separate multiple origins with a comma.
+	 * When empty (the default), messages from any origin are accepted, preserving the
+	 * existing embedding behavior. Set this to restrict which parent pages may drive the
+	 * embedded editor.
+	 *
+	 * @example N8N_POSTMESSAGE_ALLOWED_ORIGINS=https://n8n.io,https://app.example.com
+	 */
+	@Env('N8N_POSTMESSAGE_ALLOWED_ORIGINS')
+	postMessageAllowedOrigins: string = '';
 }

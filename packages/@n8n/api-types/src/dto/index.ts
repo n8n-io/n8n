@@ -14,7 +14,7 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
-export type {
+export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
@@ -33,9 +33,13 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
+export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';
+
+export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
@@ -44,6 +48,7 @@ export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
+export { ListCredentialResolversQueryDto } from './credential-resolver/list-credential-resolvers-query.dto';
 
 export { OptionsRequestDto } from './dynamic-node-parameters/options-request.dto';
 export { ResourceLocatorRequestDto } from './dynamic-node-parameters/resource-locator-request.dto';
@@ -70,7 +75,13 @@ export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
 export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
+export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
+export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
+
+export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
+export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
+export { LdapSyncDto } from './ldap/ldap-sync.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
@@ -97,6 +108,7 @@ export { UpdateVariableRequestDto } from './variables/update-variable-request.dt
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
 export { GenerateCredentialNameRequestQuery } from './credentials/generate-credential-name.dto';
+export type { CredentialConnectionStatus } from './credentials/credential-connection-status';
 
 export {
 	MAX_PINNED_DATA_SIZE,
@@ -105,6 +117,13 @@ export {
 } from './workflows/base-workflow.dto';
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
+export {
+	ManualRunDto,
+	type ManualRunPayload,
+	type FullManualExecutionFromKnownTriggerPayload,
+	type FullManualExecutionFromUnknownTriggerPayload,
+	type PartialManualExecutionToDestinationPayload,
+} from './workflows/manual-run.dto';
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
@@ -115,9 +134,16 @@ export { GetResourceDependenciesDto } from './workflows/get-resource-dependencie
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
+export { ListTagsQueryDto } from './tag/list-tags-query.dto';
+export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
+export {
+	ListApiKeysQueryDto,
+	LIST_API_KEYS_SORT_OPTIONS,
+	type ListApiKeysSortOption,
+} from './api-keys/list-api-keys-query.dto';
 
 export { CreateFolderDto } from './folders/create-folder.dto';
 export { UpdateFolderDto } from './folders/update-folder.dto';
@@ -137,8 +163,14 @@ export {
 } from './log-streaming/create-destination.dto';
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
+export {
+	PublicCreateDestinationDto,
+	PublicDestinationResponseDto,
+	type PublicCreateDestination,
+	type PublicDestinationType,
+} from './log-streaming/public-destination.dto';
 
-export { PaginationDto } from './pagination/pagination.dto';
+export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 export {
 	UsersListFilterDto,
 	type UsersListSortOptions,
@@ -159,6 +191,7 @@ export {
 } from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
+export { RoleDeleteQueryDto } from './roles/role-delete-query.dto';
 export {
 	RoleAssignmentsResponseDto,
 	type RoleProjectAssignment,
@@ -169,8 +202,13 @@ export {
 	type RoleProjectMember,
 	type RoleProjectMembersResponse,
 } from './roles/role-project-members-response.dto';
+export {
+	RoleMembersResponseDto,
+	type RoleMember,
+	type RoleMembersResponse,
+} from './roles/role-members-response.dto';
 
-export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
+export { OidcConfigDto, UpdateOidcConfigurationDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
@@ -199,11 +237,19 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
+export {
+	ImportPackageRequestDto,
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+} from './packages/import-package-request.dto';
+export { ExportPackageRequestDto } from './packages/export-package-request.dto';
+
 export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
+	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
+	DeleteOAuthClientQueryDto,
 	DeleteOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
@@ -218,9 +264,22 @@ export {
 	SecuritySettingsDto,
 	UpdateSecuritySettingsDto,
 } from './security-settings/security-settings.dto';
+export {
+	UpdateSecurityPolicyDto,
+	type SecurityPolicyResponse,
+} from './security-settings/security-policy.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
 export { UpdateWorkflowHistoryVersionDto } from './workflow-history/update-workflow-history-version.dto';
+export {
+	WorkflowHistoryListItemDto,
+	workflowHistoryListItemSchema,
+} from './workflow-history/workflow-history-list-item.dto';
+export { ListWorkflowHistoryQueryDto } from './workflow-history/list-workflow-history-query.dto';
+export {
+	WorkflowVersionHistoryListPublicDto,
+	workflowVersionListItemPublicSchema,
+} from './workflow-history/workflow-version-history-public.dto';
 
 export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
@@ -238,20 +297,6 @@ export {
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
-export { CreateAgentDto } from './agents/create-agent.dto';
-export { UpdateAgentDto } from './agents/update-agent.dto';
-export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
-export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
-export {
-	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
-	CreateAgentSkillDto,
-	agentSkillSchema,
-} from './agents/create-agent-skill.dto';
-export { UpdateAgentSkillDto } from './agents/update-agent-skill.dto';
-export { AgentIntegrationDto } from './agents/agent-integration.dto';
-export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
-export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
-
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
 export {
 	ListEncryptionKeysQueryDto,
@@ -259,3 +304,21 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
+export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
+export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
+export {
+	ListWorkflowReviewRequestsQueryDto,
+	type WorkflowReviewApprovedPublicationState,
+	type WorkflowReviewRequestForWorkflow,
+	type WorkflowReviewRequestList,
+} from './workflow-reviews/list-workflow-review-requests-query.dto';
+export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
+export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
+
+export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
+export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
+
+export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';

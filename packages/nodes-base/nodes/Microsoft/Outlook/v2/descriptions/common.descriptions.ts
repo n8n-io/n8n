@@ -1,4 +1,65 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyCollection } from 'n8n-workflow';
+
+const attendeeValues: INodePropertyCollection = {
+	displayName: 'Attendee',
+	name: 'values',
+	values: [
+		{
+			displayName: 'Email',
+			name: 'email',
+			type: 'string',
+			placeholder: 'name@email.com',
+			required: true,
+			default: '',
+		},
+		{
+			displayName: 'Name',
+			name: 'name',
+			type: 'string',
+			default: '',
+		},
+		{
+			displayName: 'Type',
+			name: 'type',
+			type: 'options',
+			default: 'required',
+			options: [
+				{
+					name: 'Optional',
+					value: 'optional',
+				},
+				{
+					name: 'Required',
+					value: 'required',
+				},
+				{
+					name: 'Resource',
+					value: 'resource',
+				},
+			],
+		},
+	],
+};
+
+export const eventAttendeesField: INodeProperties = {
+	displayName: 'Attendees',
+	name: 'attendees',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	default: {},
+	placeholder: 'Add Attendee',
+	options: [attendeeValues],
+};
+
+export const eventLocationField: INodeProperties = {
+	displayName: 'Location',
+	name: 'location',
+	type: 'string',
+	default: '',
+	description: 'The location of the event (e.g. a meeting room name, address, or meeting link)',
+};
 
 export const returnAllOrLimit: INodeProperties[] = [
 	{

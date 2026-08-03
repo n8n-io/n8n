@@ -26,7 +26,7 @@ test.describe(
 			await n8n.canvas.addNode(SWITCH_NODE_NAME);
 
 			for (let i = 0; i < desiredOutputs; i++) {
-				await n8n.page.getByText('Add Routing Rule').click();
+				await n8n.ndv.clickNodeParameterButton('Add Routing Rule');
 			}
 
 			await n8n.ndv.close();

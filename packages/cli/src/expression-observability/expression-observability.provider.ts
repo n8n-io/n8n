@@ -42,6 +42,10 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private tracer?: Tracer;
 
+	private readonly metricDefs = new Map<string, MetricDef>(
+		(Object.values(EXPRESSION_METRICS) as MetricDef[]).map((def) => [def.name, def]),
+	);
+
 	constructor(
 		private readonly config: ExpressionEngineConfig,
 		private readonly logger: Logger,
@@ -58,7 +62,9 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 		this.prefix = globalConfig.endpoints.metrics.prefix;
 
-		this.registerMetrics();
+		for (const metric of this.metricDefs.values()) {
+			this.getOrRegisterMetric(metric);
+		}
 
 		this.metrics = {
 			counter: (name, value, tags) => this.counter(name, value, tags),
@@ -78,71 +84,65 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		};
 	}
 
-	private registerMetrics(): void {
-		for (const def of Object.values(EXPRESSION_METRICS) as MetricDef[]) {
-			const promName = toPromName(def.name, def.kind, this.prefix);
-			switch (def.kind) {
-				case 'counter':
-					new promClient.Counter({
-						name: promName,
-						help: def.help,
-						labelNames: def.labels,
-					});
-					break;
-				case 'gauge':
-					new promClient.Gauge({
-						name: promName,
-						help: def.help,
-						labelNames: def.labels,
-					});
-					break;
-				case 'histogram':
-					new promClient.Histogram({
-						name: promName,
-						help: def.help,
-						labelNames: def.labels,
-						buckets: DURATION_BUCKETS_SECONDS,
-					});
-					break;
-				default: {
-					const _exhaustive: never = def.kind;
-					throw new UnexpectedError(`Unknown metric kind: ${String(_exhaustive)}`);
-				}
+	private getOrRegisterMetric(def: MetricDef) {
+		const promName = toPromName(def.name, def.kind, this.prefix);
+		const existing = promClient.register.getSingleMetric(promName);
+		if (existing) return existing;
+
+		switch (def.kind) {
+			case 'counter':
+				return new promClient.Counter({
+					name: promName,
+					help: def.help,
+					labelNames: def.labels,
+				});
+			case 'gauge':
+				return new promClient.Gauge({
+					name: promName,
+					help: def.help,
+					labelNames: def.labels,
+				});
+			case 'histogram':
+				return new promClient.Histogram({
+					name: promName,
+					help: def.help,
+					labelNames: def.labels,
+					buckets: DURATION_BUCKETS_SECONDS,
+				});
+			default: {
+				const _exhaustive: never = def.kind;
+				throw new UnexpectedError(`Unknown metric kind: ${String(_exhaustive)}`);
 			}
 		}
 	}
 
+	private getMetricDef(name: string, kind: MetricDef['kind']) {
+		const def = this.metricDefs.get(name);
+		if (def?.kind === kind) return def;
+		this.scopedLogger.warn('Emitted unknown expression metric', { name });
+		return undefined;
+	}
+
 	private counter(name: string, value: number, tags?: Record<string, string>): void {
-		const promName = toPromName(name, 'counter', this.prefix);
-		const counter = promClient.register.getSingleMetric(promName) as Counter<string> | undefined;
-		if (!counter) {
-			this.scopedLogger.warn('Emitted unknown expression metric', { name });
-			return;
-		}
+		const def = this.getMetricDef(name, 'counter');
+		if (!def) return;
+		const counter = this.getOrRegisterMetric(def) as Counter<string>;
 		if (tags) counter.inc(tags, value);
 		else counter.inc(value);
 	}
 
 	private gauge(name: string, value: number, tags?: Record<string, string>): void {
-		const promName = toPromName(name, 'gauge', this.prefix);
-		const gauge = promClient.register.getSingleMetric(promName) as Gauge<string> | undefined;
-		if (!gauge) {
-			this.scopedLogger.warn('Emitted unknown expression metric', { name });
-			return;
-		}
+		const def = this.getMetricDef(name, 'gauge');
+		if (!def) return;
+		const gauge = this.getOrRegisterMetric(def) as Gauge<string>;
 		if (tags) gauge.set(tags, value);
 		else gauge.set(value);
 	}
 
 	private histogram(name: string, value: number, tags?: Record<string, string>): void {
-		const promName = toPromName(name, 'histogram', this.prefix);
-		const histogram = promClient.register.getSingleMetric(promName) as
-			| Histogram<string>
-			| undefined;
-		if (!histogram) {
-			this.scopedLogger.warn('Emitted unknown expression metric', { name });
-			return;
-		}
+		const def = this.getMetricDef(name, 'histogram');
+		if (!def) return;
+		const histogram = this.getOrRegisterMetric(def) as Histogram<string>;
 		if (tags) histogram.observe(tags, value);
 		else histogram.observe(value);
 

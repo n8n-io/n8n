@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import {
 	linkUserToProject,
 	createTeamProject,
@@ -13,7 +14,6 @@ import { ProjectService } from '@/services/project.service.ee';
 import { LicenseMocker } from '@test-integration/license';
 
 import { createUser } from './shared/db/users';
-import { LicenseState } from '@n8n/backend-common';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;

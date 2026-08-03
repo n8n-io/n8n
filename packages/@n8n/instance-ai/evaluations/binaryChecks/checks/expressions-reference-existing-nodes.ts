@@ -46,12 +46,13 @@ export const expressionsReferenceExistingNodes: BinaryCheck = {
 	name: 'expressions_reference_existing_nodes',
 	description: 'Expressions only reference nodes that exist in the workflow',
 	kind: 'deterministic',
+	dimension: 'parameter_correctness',
 	run(workflow) {
 		const nodes = workflow.nodes ?? [];
-		if (nodes.length === 0) return { pass: true };
 
 		const existingNodeNames = new Set(nodes.map((n) => n.name));
 		const invalid: string[] = [];
+		let sawAnyNodeRef = false;
 
 		for (const node of nodes) {
 			if (!node.parameters) continue;
@@ -59,6 +60,7 @@ export const expressionsReferenceExistingNodes: BinaryCheck = {
 			const expressions = extractExpressionsFromParams(node.parameters);
 			for (const expr of expressions) {
 				const referencedNames = extractNodeNamesFromExpression(expr);
+				if (referencedNames.length > 0) sawAnyNodeRef = true;
 				for (const refName of referencedNames) {
 					if (!existingNodeNames.has(refName)) {
 						invalid.push(`"${refName}" (in node "${node.name}")`);
@@ -66,6 +68,8 @@ export const expressionsReferenceExistingNodes: BinaryCheck = {
 				}
 			}
 		}
+
+		if (!sawAnyNodeRef) return { pass: true, applicable: false };
 
 		const unique = [...new Set(invalid)];
 

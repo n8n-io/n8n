@@ -1,7 +1,14 @@
 import type { Locator } from '@playwright/test';
 
+import { dialogCloseIconIn } from './dialogLocators';
+import { NodeCredentials } from './NodeCredentials';
+
 export class ChatHubToolsModal {
-	constructor(private root: Locator) {}
+	private readonly credentials: NodeCredentials;
+
+	constructor(private root: Locator) {
+		this.credentials = new NodeCredentials(root);
+	}
 
 	getRoot(): Locator {
 		return this.root;
@@ -17,7 +24,7 @@ export class ChatHubToolsModal {
 
 	/** Credential selector rendered by NodeCredentials inside settings view */
 	getCredentialSelect(): Locator {
-		return this.root.getByTestId('node-credentials-select');
+		return this.credentials.getSelect();
 	}
 
 	/** Save button in the settings view header */
@@ -37,6 +44,6 @@ export class ChatHubToolsModal {
 
 	/** Close button (X) shown in list view */
 	getCloseButton(): Locator {
-		return this.root.locator('.el-dialog__close').first();
+		return dialogCloseIconIn(this.root);
 	}
 }

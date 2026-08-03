@@ -38,6 +38,10 @@ export const ExternalTokenClaimsSchema = z.object({
 	given_name: z.string().optional(),
 	family_name: z.string().optional(),
 	role: z.string().optional(),
+	email_verified: z
+		.union([z.boolean(), z.enum(['true', 'false'])])
+		.transform((v) => v === true || v === 'true')
+		.optional(),
 });
 
 export type ExternalTokenClaims = z.infer<typeof ExternalTokenClaimsSchema>;
@@ -55,6 +59,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		algorithms: z.array(JwtAlgorithmSchema).min(1),
 		key: z.string().min(1),
 		issuer: z.string().min(1),
+		requireVerifiedEmail: z.boolean().optional(),
 		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
 	}),
@@ -62,6 +67,7 @@ export const TrustedKeySourceSchema = z.discriminatedUnion('type', [
 		type: z.literal('jwks'),
 		url: z.string().url(),
 		issuer: z.string().min(1),
+		requireVerifiedEmail: z.boolean().optional(),
 		expectedAudience: z.string().optional(),
 		allowedRoles: z.array(z.string()).optional(),
 		cacheTtlSeconds: z.number().int().positive().optional(),
@@ -88,6 +94,7 @@ export const TrustedKeyDataSchema = z.object({
 	expectedAudience: z.string().optional(),
 	allowedRoles: z.array(z.string()).optional(),
 	expiresAt: z.string().optional(),
+	requireVerifiedEmail: z.boolean().optional(),
 });
 
 export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
@@ -116,6 +123,9 @@ export interface ResolvedTrustedKey {
 
 	/** Roles allowed for tokens signed with this key, if restricted. */
 	allowedRoles?: string[];
+
+	/** Flag indicating that the token's `email_verified` claim must be true, for email linking. */
+	requireVerifiedEmail: boolean;
 }
 
 /**

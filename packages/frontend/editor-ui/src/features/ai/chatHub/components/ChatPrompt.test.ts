@@ -168,22 +168,22 @@ describe('ChatPrompt', () => {
 		});
 
 		it('shows stop button when receiving', () => {
-			const { getByTitle } = renderComponent({
+			const { getByRole } = renderComponent({
 				pinia,
 				props: { ...defaultProps, messagingState: 'receiving' as const },
 			});
 
-			expect(getByTitle(/stop generating/i)).toBeInTheDocument();
+			expect(getByRole('button', { name: /stop/i })).toBeInTheDocument();
 		});
 
 		it('emits stop when stop button is clicked', async () => {
 			const user = userEvent.setup();
-			const { getByTitle, emitted } = renderComponent({
+			const { getByRole, emitted } = renderComponent({
 				pinia,
 				props: { ...defaultProps, messagingState: 'receiving' as const },
 			});
 
-			await user.click(getByTitle(/stop generating/i));
+			await user.click(getByRole('button', { name: /stop/i }));
 			expect(emitted().stop).toBeDefined();
 		});
 

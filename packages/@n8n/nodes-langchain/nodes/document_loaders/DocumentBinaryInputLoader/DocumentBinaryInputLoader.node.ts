@@ -19,7 +19,6 @@ import {
 // import 'd3-dsv'; // for csv
 import 'mammoth'; // for docx
 import 'epub2'; // for epub
-import 'pdf-parse'; // for pdf
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {

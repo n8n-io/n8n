@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Config, Env } from '../decorators';
 
 function isStringArray(input: unknown): input is string[] {
@@ -42,4 +44,8 @@ export class NodesConfig {
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/** Memory limit in MB for the Merge node's SQL sandbox. */
+	@Env('NODES_MERGE_SQL_SANDBOX_MEMORY_LIMIT_MB', z.coerce.number().int().positive())
+	mergeSqlSandboxMemoryLimitMb: number = 64;
 }

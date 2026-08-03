@@ -1,5 +1,5 @@
-import type { IExecutionResponse } from '@n8n/db';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import type { IExecutionResponse } from '@n8n/db';
 import type { IDataObject, IExecuteData, INode, Workflow } from 'n8n-workflow';
 import {
 	CHAT_NODE_TYPE,
@@ -541,7 +541,7 @@ describe('redirectIfToolExecutor', () => {
 	it('returns null when lastNodeExecuted is not TOOL_EXECUTOR_NODE_NAME', () => {
 		const execution = makeExecution('SomeOtherNode');
 		const executionData = makeExecutionData('My Tool');
-		const workflow = { getNode: jest.fn().mockReturnValue(toolNode) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		const result = redirectIfToolExecutor(execution, executionData, workflow);
 
@@ -552,7 +552,7 @@ describe('redirectIfToolExecutor', () => {
 	it('returns null when the referenced tool node is not found in the workflow', () => {
 		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
 		const executionData = makeExecutionData('My Tool');
-		const workflow = { getNode: jest.fn().mockReturnValue(null) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(null) } as unknown as Workflow;
 
 		const result = redirectIfToolExecutor(execution, executionData, workflow);
 
@@ -566,7 +566,7 @@ describe('redirectIfToolExecutor', () => {
 			data: { main: [[]] },
 			source: null,
 		} as unknown as IExecuteData;
-		const workflow = { getNode: jest.fn().mockReturnValue(null) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(null) } as unknown as Workflow;
 
 		const result = redirectIfToolExecutor(execution, executionData, workflow);
 
@@ -576,7 +576,7 @@ describe('redirectIfToolExecutor', () => {
 	it('redirects executionData.node to the actual tool node', () => {
 		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
 		const executionData = makeExecutionData('My Tool');
-		const workflow = { getNode: jest.fn().mockReturnValue(toolNode) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		redirectIfToolExecutor(execution, executionData, workflow);
 
@@ -586,7 +586,7 @@ describe('redirectIfToolExecutor', () => {
 	it('updates lastNodeExecuted to the tool node name', () => {
 		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
 		const executionData = makeExecutionData('My Tool');
-		const workflow = { getNode: jest.fn().mockReturnValue(toolNode) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		redirectIfToolExecutor(execution, executionData, workflow);
 
@@ -597,7 +597,7 @@ describe('redirectIfToolExecutor', () => {
 		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
 		const executionData = makeExecutionData('My Tool');
 		(executionData as any).runIndex = 5;
-		const workflow = { getNode: jest.fn().mockReturnValue(toolNode) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		redirectIfToolExecutor(execution, executionData, workflow);
 
@@ -610,7 +610,7 @@ describe('redirectIfToolExecutor', () => {
 			destinationNode: 'SomeNode',
 		});
 		const executionData = makeExecutionData('My Tool');
-		const workflow = { getNode: jest.fn().mockReturnValue(toolNode) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		redirectIfToolExecutor(execution, executionData, workflow);
 
@@ -621,7 +621,7 @@ describe('redirectIfToolExecutor', () => {
 	it('returns the tool node', () => {
 		const execution = makeExecution(TOOL_EXECUTOR_NODE_NAME);
 		const executionData = makeExecutionData('My Tool');
-		const workflow = { getNode: jest.fn().mockReturnValue(toolNode) } as unknown as Workflow;
+		const workflow = { getNode: vi.fn().mockReturnValue(toolNode) } as unknown as Workflow;
 
 		const result = redirectIfToolExecutor(execution, executionData, workflow);
 

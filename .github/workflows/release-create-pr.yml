@@ -80,6 +80,7 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Setup corepack and pnpm
         run: |
@@ -127,7 +128,7 @@ jobs:
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
-          labels: release,release:${{ inputs.release-type }}
+          labels: release,release:${{ inputs.release-type }},automation:release
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body: ${{ steps.generate-body.outputs.content }}
 

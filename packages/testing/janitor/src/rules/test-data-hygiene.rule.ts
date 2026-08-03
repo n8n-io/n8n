@@ -1,12 +1,11 @@
-import * as fs from 'node:fs';
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import * as path from 'node:path';
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
-import { isEditFix } from '../types.js';
-import type { Violation, FixResult } from '../types.js';
-import { getRootDir, getRelativePath, getTestDataFiles } from '../utils/paths.js';
+import type { Violation } from '../types.js';
+import { getRootDir, getTestDataFiles } from '../utils/paths.js';
 
 /**
  * Test Data Hygiene Rule
@@ -24,12 +23,11 @@ import { getRootDir, getRelativePath, getTestDataFiles } from '../utils/paths.js
  * - Workflows: filename must be referenced in test files
  * - Expectations: folder must be referenced via loadExpectations()
  */
-export class TestDataHygieneRule extends BaseRule {
+export class TestDataHygieneRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'test-data-hygiene';
 	readonly name = 'Test Data Hygiene';
 	readonly description = 'Ensure test data files are well-named and actually used';
 	readonly severity = 'warning' as const;
-	readonly fixable = true;
 
 	// Patterns that indicate poor naming
 	private readonly badNamePatterns = [
@@ -58,7 +56,15 @@ export class TestDataHygieneRule extends BaseRule {
 		];
 	}
 
-	analyze(project: Project, _files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project, _files?: SourceFile[]): Violation[] {
 		const violations: Violation[] = [];
 		const config = getConfig();
 		const root = getRootDir();
@@ -99,8 +105,6 @@ export class TestDataHygieneRule extends BaseRule {
 						root,
 						`Orphaned test data: ${fileName} is not referenced in any test`,
 						'Remove the file or add a test that uses it',
-						true, // fixable
-						{ filePath: dataFile },
 					),
 				);
 			}
@@ -207,8 +211,6 @@ export class TestDataHygieneRule extends BaseRule {
 		root: string,
 		message: string,
 		suggestion: string,
-		fixable?: boolean,
-		fixData?: { filePath: string },
 	): Violation {
 		return {
 			file: path.join(root, relativePath),
@@ -218,39 +220,6 @@ export class TestDataHygieneRule extends BaseRule {
 			message,
 			severity: this.severity,
 			suggestion,
-			fixable,
-			fixData: fixData ? { type: 'edit', replacement: JSON.stringify(fixData) } : undefined,
 		};
-	}
-
-	fix(_project: Project, violations: Violation[], write: boolean): FixResult[] {
-		const results: FixResult[] = [];
-
-		for (const violation of violations) {
-			if (!violation.fixable || !violation.fixData) continue;
-
-			if (!isEditFix(violation.fixData)) continue;
-
-			try {
-				const data = JSON.parse(violation.fixData.replacement) as { filePath: string };
-				const filePath = data.filePath;
-				const relativePath = getRelativePath(filePath);
-
-				results.push({
-					file: relativePath,
-					action: 'remove-file',
-					target: path.basename(filePath),
-					applied: write,
-				});
-
-				if (write && fs.existsSync(filePath)) {
-					fs.unlinkSync(filePath);
-				}
-			} catch {
-				// Skip invalid fix data
-			}
-		}
-
-		return results;
 	}
 }

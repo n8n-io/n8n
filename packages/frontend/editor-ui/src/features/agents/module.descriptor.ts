@@ -1,19 +1,23 @@
 import { i18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
-	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_TASK_MODAL_KEY,
+	AGENT_SUB_AGENTS_MODAL_KEY,
+	AGENT_VECTOR_STORES_MODAL_KEY,
+	AGENT_JSON_IMPORT_MODAL_KEY,
+	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
-	NEW_AGENT_VIEW,
 	PROJECT_AGENTS,
 } from '@/features/agents/constants';
 
@@ -23,12 +27,12 @@ const AgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentView.vue');
 const AgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentBuilderView.vue');
+const NewAgentView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/NewAgentView.vue');
 const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
-const NewAgentView = async (): Promise<unknown> =>
-	await import('@/features/agents/views/NewAgentView.vue');
 const SettingsAgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/SettingsAgentBuilderView.vue');
 
@@ -40,11 +44,12 @@ export const AgentsModule: FrontendModuleDescription = {
 	modals: [
 		{
 			key: AGENT_TOOLS_MODAL_KEY,
-			component: async () => await import('./components/AgentToolsModal.vue'),
+			component: async () => await import('./components/AgentToolsConnectionModalWrapper.vue'),
 			initialState: {
 				open: false,
 				data: {
 					tools: [],
+					mcpServers: [],
 					onConfirm: () => {},
 				},
 			},
@@ -55,8 +60,8 @@ export const AgentsModule: FrontendModuleDescription = {
 			initialState: {
 				open: false,
 				data: {
+					kind: 'node',
 					toolRef: null,
-					existingToolNames: [],
 					onConfirm: () => {},
 				},
 			},
@@ -74,16 +79,49 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		},
 		{
-			key: AGENT_ADD_TRIGGER_MODAL_KEY,
-			component: async () => await import('./components/AgentAddTriggerModal.vue'),
+			key: AGENT_TASK_MODAL_KEY,
+			component: async () => await import('./components/AgentTaskModal.vue'),
 			initialState: {
 				open: false,
 				data: {
 					projectId: '',
 					agentId: '',
-					connectedTriggers: [],
-					onConnectedTriggersChange: () => {},
-					onTriggerAdded: () => {},
+					isPublished: false,
+					onSaved: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_SUB_AGENTS_MODAL_KEY,
+			component: async () => await import('./components/AgentSubAgentsModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					agents: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_VECTOR_STORES_MODAL_KEY,
+			component: async () => await import('./components/AgentVectorStoresModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					projectId: '',
+					agentId: '',
+					existingNames: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_JSON_IMPORT_MODAL_KEY,
+			component: async () => await import('./components/AgentJsonImportModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					onConfirm: () => {},
 				},
 			},
 		},
@@ -126,6 +164,12 @@ export const AgentsModule: FrontendModuleDescription = {
 				{
 					name: AGENT_BUILDER_VIEW,
 					path: '',
+					props: true,
+					component: AgentBuilderView,
+				},
+				{
+					name: AGENT_PREVIEW_VIEW,
+					path: 'preview',
 					props: true,
 					component: AgentBuilderView,
 				},

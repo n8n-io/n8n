@@ -1,10 +1,14 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
+import { ref, computed, inject, provide, shallowReactive, type InjectionKey } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
-import { ensureThread, getInstanceAiCredits } from './instanceAi.api';
+import {
+	ensureThread,
+	getInstanceAiCredits,
+	type InstanceAiThreadLaunchInput,
+} from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
@@ -14,41 +18,60 @@ import {
 	updateThreadMetadata as updateThreadMetadataApi,
 } from './instanceAi.memory.api';
 import { NEW_CONVERSATION_TITLE } from './constants';
-import { createThreadRuntime } from './instanceAi.threadRuntime';
+import { createThreadRuntime, type ThreadRuntime } from './instanceAi.threadRuntime';
 
-export type { PendingConfirmationItem } from './instanceAi.threadRuntime';
+export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
+	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
 	const debugMode = ref(false);
-	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
 	// and updated in real-time via the 'updateInstanceAiCredits' push event.
 	// No reset needed on thread switch — login/logout reloads the page.
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
 
-	// --- Active thread runtime ---
-	// Per-thread state (messages, SSE, reducer state, hydration) lives here.
-	// The runtime is mutable via `switchTo(threadId)`; refs keep their identity
-	// so external watchers (and re-exports below) continue working across switches.
-	const runtime = createThreadRuntime(uuidv4(), {
-		getResearchMode: () => researchMode.value,
+	// --- Thread runtimes ---
+	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
+	const runtimeHooks = {
 		onTitleUpdated: (threadId, title) => {
 			const thread = threads.value.find((t) => t.id === threadId);
 			if (thread) thread.title = title;
 		},
-		// Refresh thread list to pick up Mastra-generated titles
+		// Refresh thread list to pick up auto-generated titles
 		onRunFinish: () => {
 			void loadThreads();
 		},
-	});
+		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+
+	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
+		const existingRuntime = runtimes.get(threadId);
+		if (existingRuntime) return existingRuntime;
+
+		const runtime = createThreadRuntime(threadId, runtimeHooks, projectId);
+		runtimes.set(threadId, runtime);
+		return runtime;
+	}
+
+	function getRuntime(threadId: string): ThreadRuntime | undefined {
+		return runtimes.get(threadId);
+	}
+
+	function disposeRuntime(threadId: string): void {
+		const runtime = runtimes.get(threadId);
+		if (!runtime) return;
+
+		runtime.dispose();
+		runtimes.delete(threadId);
+	}
 
 	// --- Settings delegation ---
 	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
@@ -94,6 +117,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (message.type !== 'updateInstanceAiCredits') return;
 			creditsQuota.value = message.data.creditsQuota;
 			creditsClaimed.value = message.data.creditsClaimed;
+			// Per-message claims also carry the thread's running total — write it onto the
+			// matching thread so the credits dropdown updates live for the acting user.
+			const { creditsPerThread } = message.data;
+			if (creditsPerThread !== undefined) {
+				const thread = threads.value.find((t) => t.id === creditsPerThread.threadId);
+				if (thread) {
+					thread.metadata = { ...thread.metadata, creditsUsed: creditsPerThread.totalCreditsUsed };
+				}
+			}
 		});
 	}
 
@@ -141,17 +173,33 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function syncThread(threadId: string): Promise<void> {
+	async function syncThread(
+		threadId: string,
+		projectId: string,
+		launch: InstanceAiThreadLaunchInput,
+	): Promise<void> {
 		if (persistedThreadIds.has(threadId)) return;
 
-		const result = await ensureThread(rootStore.restApiContext, threadId);
+		const result = await ensureThread(rootStore.restApiContext, threadId, projectId, launch);
 		persistedThreadIds.add(result.thread.id);
+
+		const templateId = launch.sourceContext?.templateId;
+		telemetry.track('User launched Instance AI thread', {
+			thread_id: result.thread.id,
+			instance_id: rootStore.instanceId,
+			source: launch.source,
+			origin: launch.origin ?? 'internal',
+			...(typeof templateId === 'string' || typeof templateId === 'number'
+				? { template_id: templateId }
+				: {}),
+		});
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
 		if (existingThread) {
 			existingThread.createdAt = result.thread.createdAt;
 			existingThread.updatedAt = result.thread.updatedAt;
 			existingThread.title = result.thread.title || existingThread.title;
+			existingThread.metadata = result.thread.metadata ?? existingThread.metadata;
 			return;
 		}
 
@@ -160,51 +208,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			title: result.thread.title || NEW_CONVERSATION_TITLE,
 			createdAt: result.thread.createdAt,
 			updatedAt: result.thread.updatedAt,
+			metadata: result.thread.metadata ?? undefined,
 		});
 	}
 
-	function switchThread(threadId: string): void {
-		runtime.switchTo(threadId);
-		// Load rich historical messages first, then connect SSE after.
-		// loadHistoricalMessages sets the SSE cursor (nextEventId) so SSE
-		// only receives events that arrived AFTER the historical snapshot.
-		void runtime.loadHistoricalMessages(threadId).then((hydrationStatus) => {
-			if (hydrationStatus !== 'applied') return;
-			void runtime.loadThreadStatus(threadId);
-			runtime.connectSSE(threadId);
-		});
-	}
-
-	/**
-	 * Reset the store to a blank "no active thread" state — used when the user
-	 * lands on the base `/instance-ai` route (fresh page, back button, or the
-	 * AI Assistant nav link). Without this, `currentThreadId` keeps pointing
-	 * at the last thread and the sidebar highlights it alongside the empty
-	 * main view.
-	 */
-	function clearCurrentThread(): void {
-		runtime.closeSSE();
-		runtime.resetState(null);
-		// Mirror the initial store state: a fresh UUID that doesn't match any
-		// real thread, so the sidebar highlights nothing. EmptyView's
-		// `handleSubmit` later promotes this id to a real thread via `syncThread`.
-		runtime.currentThreadId.value = uuidv4();
-	}
-
-	function newThread(): string {
-		const newThreadId = uuidv4();
-		runtime.closeSSE();
-		runtime.resetState(null);
-		runtime.currentThreadId.value = newThreadId;
-		runtime.connectSSE(newThreadId);
-		return newThreadId;
-	}
-
-	async function deleteThread(
-		threadId: string,
-	): Promise<{ currentThreadId: string; wasActive: boolean }> {
-		const wasActive = threadId === runtime.currentThreadId.value;
-
+	async function deleteThread(threadId: string): Promise<boolean> {
 		// Only call API for threads that have been persisted to the backend
 		if (persistedThreadIds.has(threadId)) {
 			try {
@@ -212,31 +220,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				persistedThreadIds.delete(threadId);
 			} catch {
 				toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
-				return { currentThreadId: runtime.currentThreadId.value, wasActive };
+				return false;
 			}
 		}
 
 		// Remove thread from list
 		threads.value = threads.value.filter((t) => t.id !== threadId);
+		disposeRuntime(threadId);
 
-		// Clean up event cursor for the deleted thread
-		delete runtime.lastEventIdByThread.value[threadId];
-
-		if (wasActive) {
-			if (threads.value.length > 0) {
-				// Switch to first remaining thread
-				switchThread(threads.value[0].id);
-			} else {
-				// No threads left — prepare a fresh thread (added to sidebar on first message)
-				const freshId = uuidv4();
-				runtime.closeSSE();
-				runtime.resetState(null);
-				runtime.currentThreadId.value = freshId;
-				runtime.connectSSE(freshId);
-			}
-		}
-
-		return { currentThreadId: runtime.currentThreadId.value, wasActive };
+		return true;
 	}
 
 	async function renameThread(threadId: string, title: string): Promise<void> {
@@ -255,6 +247,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return threads.value.find((t) => t.id === threadId)?.metadata;
 	}
 
+	/** Reactive per-thread credit total (decimal), or undefined if none recorded yet. */
+	function threadCreditsUsed(threadId: string): number | undefined {
+		const used = threads.value.find((t) => t.id === threadId)?.metadata?.creditsUsed;
+		return typeof used === 'number' ? used : undefined;
+	}
+
 	async function updateThreadMetadata(
 		threadId: string,
 		metadata: Record<string, unknown>,
@@ -270,78 +268,58 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	function toggleResearchMode(): void {
-		researchMode.value = !researchMode.value;
-		localStorage.setItem('instanceAi.researchMode', String(researchMode.value));
-	}
-
 	return {
 		// Instance-level state
 		threads,
 		debugMode,
-		researchMode,
 		creditsQuota,
 		creditsClaimed,
 
-		// Per-thread state (re-exported from runtime — refs)
-		currentThreadId: runtime.currentThreadId,
-		sseState: runtime.sseState,
-		lastEventIdByThread: runtime.lastEventIdByThread,
-		activeRunId: runtime.activeRunId,
-		messages: runtime.messages,
-		debugEvents: runtime.debugEvents,
-		amendContext: runtime.amendContext,
-		resolvedConfirmationIds: runtime.resolvedConfirmationIds,
-		feedbackByResponseId: runtime.feedbackByResponseId,
-
-		// Computed (re-exported)
-		isStreaming: runtime.isStreaming,
-		isSendingMessage: runtime.isSendingMessage,
-		hasMessages: runtime.hasMessages,
-		isHydratingThread: runtime.isHydratingThread,
+		// Computed
 		isGatewayConnected,
 		gatewayDirectory,
 		activeDirectory,
-		contextualSuggestion: runtime.contextualSuggestion,
-		currentTasks: runtime.currentTasks,
-		producedArtifacts: runtime.producedArtifacts,
-		resourceNameIndex: runtime.resourceNameIndex,
-		rateableResponseId: runtime.rateableResponseId,
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
-		pendingConfirmations: runtime.pendingConfirmations,
-		isAwaitingConfirmation: runtime.isAwaitingConfirmation,
 
-		// Thread-list actions (instance-level)
-		newThread,
-		clearCurrentThread,
+		// Thread-list actions
 		deleteThread,
 		renameThread,
 		getThreadMetadata,
+		threadCreditsUsed,
 		updateThreadMetadata,
-		switchThread,
 		loadThreads,
-		toggleResearchMode,
 		fetchCredits,
 		startCreditsPushListener,
 		stopCreditsPushListener,
-
-		// Per-thread actions (re-exported from runtime)
-		loadHistoricalMessages: runtime.loadHistoricalMessages,
-		loadThreadStatus: runtime.loadThreadStatus,
+		getOrCreateRuntime,
+		getRuntime,
+		disposeRuntime,
 		syncThread,
-		sendMessage: runtime.sendMessage,
-		cancelRun: runtime.cancelRun,
-		cancelBackgroundTask: runtime.cancelBackgroundTask,
-		amendAgent: runtime.amendAgent,
-		confirmAction: runtime.confirmAction,
-		confirmResourceDecision: runtime.confirmResourceDecision,
-		resolveConfirmation: runtime.resolveConfirmation,
-		findToolCallByRequestId: runtime.findToolCallByRequestId,
-		copyFullTrace: runtime.copyFullTrace,
-		submitFeedback: runtime.submitFeedback,
-		connectSSE: runtime.connectSSE,
-		closeSSE: runtime.closeSSE,
 	};
 });
+
+const ThreadKey: InjectionKey<ThreadRuntime> = Symbol('instanceAiThread');
+
+export function provideThread(thread: ThreadRuntime | string): ThreadRuntime {
+	if (typeof thread === 'string') {
+		const runtime = useInstanceAiStore().getOrCreateRuntime(thread);
+		provide(ThreadKey, runtime);
+		return runtime;
+	}
+	provide(ThreadKey, thread);
+	return thread;
+}
+
+export function useThread(threadId?: string): ThreadRuntime {
+	if (threadId) {
+		return useInstanceAiStore().getOrCreateRuntime(threadId);
+	}
+
+	const thread = inject(ThreadKey, null);
+	if (!thread) {
+		throw new Error('useThread() requires a provideThread() ancestor.');
+	}
+	return thread;
+}

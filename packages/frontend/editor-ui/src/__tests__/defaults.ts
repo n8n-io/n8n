@@ -55,6 +55,8 @@ export const defaultSettings: FrontendSettings = {
 		customRoles: false,
 		personalSpacePolicy: false,
 		dataRedaction: false,
+		otelCustomSpanAttributes: false,
+		workflowReviews: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -105,6 +107,7 @@ export const defaultSettings: FrontendSettings = {
 	timezone: '',
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
+	urlBaseWebhookTest: '',
 	authCookie: {
 		secure: false,
 	},
@@ -161,6 +164,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	security: {
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: [],
 	},
 	aiAssistant: {
 		enabled: false,
@@ -175,8 +179,14 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	collaboration: {
+		crdt: 'off',
+	},
 	evaluation: {
 		quota: 0,
+		collectionsEnabled: false,
+		configEvalsEnabled: false,
+		agentEvalsEnabled: false,
 	},
 	activeModules: [],
 	canvasOnly: false,
@@ -184,5 +194,9 @@ export const defaultSettings: FrontendSettings = {
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,
+		filters: {
+			publishedWorkflowCount: 0,
+		},
 	},
+	useWorkflowPublicationService: false,
 };

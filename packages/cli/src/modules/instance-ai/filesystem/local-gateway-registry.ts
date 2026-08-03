@@ -1,10 +1,9 @@
-import { nanoid } from 'nanoid';
-
 import type {
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
 	ToolCategory,
 } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
 
 import { LocalGateway } from './local-gateway';
 

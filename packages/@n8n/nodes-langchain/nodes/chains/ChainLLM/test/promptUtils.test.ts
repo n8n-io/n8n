@@ -1,5 +1,5 @@
 import type { AgentAction, AgentFinish } from '@langchain/core/agents';
-import { HumanMessage } from '@langchain/core/messages';
+import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -321,6 +321,28 @@ describe('promptUtils', () => {
 			const result = await parser(message);
 
 			expect(mockOutputParser.parse).toHaveBeenCalledWith('Simple text content');
+			expect(result).toEqual(parsedResult);
+		});
+
+		it('should parse BaseMessage from a different module instance', async () => {
+			const parser = getAgentStepsParser(mockOutputParser);
+			const message = {
+				[Symbol.for('langchain.message')]: true,
+				type: 'human',
+				content: 'Cross-module text content',
+				get text() {
+					return (this as { content: string }).content;
+				},
+			} as unknown as BaseMessage;
+
+			const parsedResult = { content: 'Cross-module text content' };
+			mockOutputParser.parse.mockResolvedValue(parsedResult);
+
+			const result = await parser(message);
+
+			expect(message).not.toBeInstanceOf(BaseMessage);
+			expect(BaseMessage.isInstance(message)).toBe(true);
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('Cross-module text content');
 			expect(result).toEqual(parsedResult);
 		});
 

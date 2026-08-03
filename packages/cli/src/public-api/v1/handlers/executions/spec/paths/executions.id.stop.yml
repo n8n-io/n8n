@@ -1,5 +1,6 @@
 post:
   x-eov-operation-id: stopExecution
+  x-required-scope: execution:stop
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution

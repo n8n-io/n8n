@@ -64,13 +64,14 @@ export const noUnreachableNodes: BinaryCheck = {
 	name: 'no_unreachable_nodes',
 	description: 'All nodes are reachable from at least one trigger',
 	kind: 'deterministic',
+	dimension: 'connection_topology',
 	run(workflow: WorkflowResponse) {
 		const activeNodes = getActiveNodes(workflow.nodes ?? []);
 		if (activeNodes.length === 0) return { pass: true };
 
 		const triggers = activeNodes.filter((n) => isTriggerNode(n.type));
 		if (triggers.length === 0) {
-			return { pass: true, comment: 'Skipped: no triggers found' };
+			return { pass: true, applicable: false, comment: 'No triggers found' };
 		}
 
 		const connections = workflow.connections ?? {};

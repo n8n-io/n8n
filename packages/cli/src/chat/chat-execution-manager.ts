@@ -13,9 +13,11 @@ import {
 	UnexpectedError,
 	CHAT_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
+	isHitlToolType,
 } from 'n8n-workflow';
 
 import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { ExecutionPersistence } from '../executions/execution-persistence';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { preserveInputOverride } from '../workflow-helpers';
 import { WorkflowRunner } from '../workflow-runner';
@@ -28,22 +30,21 @@ import { OwnershipService } from '../services/ownership.service';
 export class ChatExecutionManager {
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	async runWorkflow(execution: IExecutionResponse, message: ChatMessage) {
-		await this.workflowRunner.run(
-			await this.getRunData(execution, message),
-			true,
-			true,
-			execution.id,
-		);
+		await this.workflowRunner.run(await this.getRunData(execution, message), true, true, {
+			executionId: execution.id,
+			expectedStatus: 'waiting',
+		});
 	}
 
 	async cancelExecution(executionId: string) {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -56,7 +57,7 @@ export class ChatExecutionManager {
 	}
 
 	async findExecution(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId, {
+		return await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -156,11 +157,16 @@ export class ChatExecutionManager {
 			[{ json: message }],
 		];
 
-		if (runExecutionData.executionData!.nodeExecutionStack[0].node.type === CHAT_TOOL_NODE_TYPE) {
+		// The chat-based HITL tool resumes here too, but carries the generated
+		// `chatHitlTool` type rather than `chatTool`. Without this its output stays on
+		// the `main` channel instead of `ai_tool`, so the agent never sees the approval
+		// and the gated tool is never executed. The webhook resume path keys off the
+		// same `HitlTool` suffix.
+		const resumingNode = runExecutionData.executionData!.nodeExecutionStack[0].node;
+		if (resumingNode.type === CHAT_TOOL_NODE_TYPE || isHitlToolType(resumingNode.type)) {
 			runExecutionData.waitTill = undefined;
-			runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
-			runExecutionData.executionData!.nodeExecutionStack[0].node.rewireOutputLogTo =
-				NodeConnectionTypes.AiTool;
+			resumingNode.disabled = true;
+			resumingNode.rewireOutputLogTo = NodeConnectionTypes.AiTool;
 
 			const lastNodeExecuted = runExecutionData.resultData.lastNodeExecuted as string;
 			const runDataArray = runExecutionData.resultData.runData[lastNodeExecuted];

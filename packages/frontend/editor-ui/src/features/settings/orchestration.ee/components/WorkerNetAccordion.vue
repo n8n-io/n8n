@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { WorkerStatus } from '@n8n/api-types';
 import WorkerAccordion from './WorkerAccordion.vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 const props = defineProps<{
 	items: WorkerStatus['interfaces'];

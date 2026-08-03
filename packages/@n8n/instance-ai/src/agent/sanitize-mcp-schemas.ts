@@ -1,10 +1,9 @@
 /**
  * Sanitizes MCP tool Zod schemas for Anthropic compatibility.
  *
- * Problem: Chrome DevTools MCP (and potentially other MCP servers) return JSON
- * schemas with `type: ["string", "null"]`. Mastra converts these to
- * `z.union([z.string(), z.null()])`. Anthropic's API rejects `ZodNull` —
- * `@mastra/schema-compat` throws "does not support zod type: ZodNull".
+ * Problem: Some MCP servers return JSON schemas with `type: ["string", "null"]`.
+ * Some tool adapters convert these to `z.union([z.string(), z.null()])`, and
+ * Anthropic's API rejects `ZodNull`.
  *
  * Solution: Walk the Zod schema tree and replace ZodNull unions with optional
  * non-null alternatives. For example:
@@ -12,8 +11,11 @@
  *   z.nullable(z.string())           →  z.string().optional()
  */
 
-import type { ToolsInput } from '@mastra/core/agent';
+import type { BuiltTool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
+
+import type { InstanceAiToolRegistry } from '../types';
 
 export const MCP_SCHEMA_MAX_DEPTH = 32;
 export const MCP_SCHEMA_MAX_NODES = 1_000;
@@ -78,6 +80,7 @@ interface ValidateJsonSchemaOptions {
 	maxObjectProperties?: number;
 	maxUnionOptions?: number;
 	toolName?: string;
+	path?: string;
 }
 
 interface JsonSchemaValidationContext {
@@ -87,10 +90,6 @@ interface JsonSchemaValidationContext {
 	maxObjectProperties: number;
 	maxUnionOptions: number;
 	budget: SanitizeBudget;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function throwJsonSchemaLimitError(
@@ -193,7 +192,7 @@ export function assertMcpJsonSchemaWithinLimits(
 	schema: unknown,
 	options: ValidateJsonSchemaOptions = {},
 ): void {
-	validateJsonSchemaNode(schema, '$.inputSchema', 0, {
+	validateJsonSchemaNode(schema, options.path ?? '$.inputSchema', 0, {
 		toolName: options.toolName,
 		maxDepth: options.maxDepth ?? MCP_SCHEMA_MAX_DEPTH,
 		maxNodes: options.maxNodes ?? MCP_SCHEMA_MAX_NODES,
@@ -264,6 +263,23 @@ function createUnsupportedTypeError(
 	});
 }
 
+function isUnsupportedZodType(schema: z.ZodTypeAny): boolean {
+	return (
+		schema instanceof z.ZodMap ||
+		schema instanceof z.ZodSet ||
+		schema instanceof z.ZodPromise ||
+		schema instanceof z.ZodFunction ||
+		schema instanceof z.ZodIntersection ||
+		schema instanceof z.ZodTuple ||
+		schema instanceof z.ZodNaN ||
+		schema instanceof z.ZodBigInt ||
+		schema instanceof z.ZodUndefined ||
+		schema instanceof z.ZodNever ||
+		schema instanceof z.ZodVoid ||
+		schema instanceof z.ZodSymbol
+	);
+}
+
 function isSupportedLeafSchema(schema: z.ZodTypeAny): boolean {
 	return (
 		schema instanceof z.ZodString ||
@@ -276,6 +292,212 @@ function isSupportedLeafSchema(schema: z.ZodTypeAny): boolean {
 		schema instanceof z.ZodEnum ||
 		schema instanceof z.ZodNativeEnum
 	);
+}
+
+type SanitizeChild = (child: z.ZodTypeAny, path: string) => z.ZodTypeAny;
+
+type DiscriminatedFieldEntry = { action: string; description?: string; type: z.ZodTypeAny };
+
+/** Collect per-action and per-field metadata from a discriminated union's variants. */
+function collectDiscriminatedUnionMeta(
+	variants: Array<z.ZodObject<z.ZodRawShape>>,
+	discriminator: string,
+): {
+	actionMeta: Array<{ value: string; description?: string }>;
+	fieldMeta: Map<string, DiscriminatedFieldEntry[]>;
+} {
+	const actionMeta: Array<{ value: string; description?: string }> = [];
+	const fieldMeta = new Map<string, DiscriminatedFieldEntry[]>();
+
+	for (const variant of variants) {
+		let actionValue = '';
+
+		for (const [key, value] of Object.entries(variant.shape)) {
+			if (key === discriminator && value instanceof z.ZodLiteral) {
+				actionValue = String(value.value);
+				actionMeta.push({ value: actionValue, description: value.description });
+			}
+		}
+
+		for (const [key, value] of Object.entries(variant.shape)) {
+			if (key === discriminator) continue;
+			if (!fieldMeta.has(key)) fieldMeta.set(key, []);
+			fieldMeta
+				.get(key)!
+				.push({ action: actionValue, description: value.description, type: value });
+		}
+	}
+
+	return { actionMeta, fieldMeta };
+}
+
+/**
+ * Detect enum value conflicts across variants sharing a field. Only the first
+ * variant's type is kept, so differing enum values elsewhere would be silently lost.
+ */
+function assertNoEnumConflict(fieldName: string, entries: DiscriminatedFieldEntry[]): void {
+	const unwrapOptional = (t: z.ZodTypeAny): z.ZodTypeAny =>
+		t instanceof z.ZodOptional ? unwrapOptional(t.unwrap() as z.ZodTypeAny) : t;
+
+	const enumEntries = entries.filter((e) => unwrapOptional(e.type) instanceof z.ZodEnum);
+	if (enumEntries.length <= 1) return;
+
+	const valueSets = enumEntries.map((e) => {
+		const raw = unwrapOptional(e.type);
+		return (raw as z.ZodEnum<[string, ...string[]]>).options.slice().sort().join(',');
+	});
+	if (new Set(valueSets).size <= 1) return;
+
+	const conflictDetails = enumEntries
+		.map((e) => {
+			const raw = unwrapOptional(e.type);
+			const vals = (raw as z.ZodEnum<[string, ...string[]]>).options;
+			return `  Action "${e.action}": [${vals.join(', ')}]`;
+		})
+		.join('\n');
+	throw new Error(
+		`Enum conflict for field "${fieldName}" in discriminated union:\n` +
+			`${conflictDetails}\n` +
+			'Harmonize enum values across all actions that share this field.',
+	);
+}
+
+/** Build a single flattened, optional field for a merged discriminated union, merging descriptions. */
+function buildMergedDiscriminatedField(
+	fieldName: string,
+	entries: DiscriminatedFieldEntry[],
+	actionCount: number,
+	context: SanitizeContext,
+	sanitizeChild: SanitizeChild,
+): z.ZodTypeAny {
+	const sanitizedField = sanitizeChild(entries[0].type, `${context.path}.${fieldName}`).optional();
+
+	if (context.strict && entries.length > 1) {
+		assertNoEnumConflict(fieldName, entries);
+	}
+
+	const withDesc = entries.filter((e): e is typeof e & { description: string } => !!e.description);
+	const uniqueDescs = new Set(withDesc.map((d) => d.description));
+
+	if (uniqueDescs.size > 1) {
+		if (context.strict) {
+			const conflictDetails = withDesc
+				.map((d) => `  Action "${d.action}": "${d.description}"`)
+				.join('\n');
+			throw new Error(
+				`Description conflict for field "${fieldName}" in discriminated union:\n` +
+					`${conflictDetails}\n` +
+					'Harmonize to a single description across all actions that share this field.',
+			);
+		}
+		// Non-strict: combine with action context for external MCP tools
+		const combined = withDesc.map((d) => `For "${d.action}": ${d.description}`).join('. ');
+		return sanitizedField.describe(combined);
+	}
+
+	if (entries.length < actionCount) {
+		// Field appears in a subset of variants. Annotate with an action hint so
+		// the model binds the (now-flattened-optional) field to the right actions
+		// and stops cross-mixing fields between sibling actions.
+		const actionList = entries.map((e) => `"${e.action}"`).join(', ');
+		const baseDesc = withDesc[0]?.description;
+		const merged = baseDesc ? `For ${actionList}: ${baseDesc}` : `Only for ${actionList}`;
+		return sanitizedField.describe(merged);
+	}
+
+	return sanitizedField;
+}
+
+/**
+ * Flatten a ZodDiscriminatedUnion to a single z.object: the discriminator becomes
+ * an enum with per-action descriptions, and variant-specific fields become optional
+ * with merged descriptions. Anthropic rejects top-level unions (no type=object).
+ */
+function sanitizeDiscriminatedUnion(
+	schema: z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>,
+	context: SanitizeContext,
+	sanitizeChild: SanitizeChild,
+): z.ZodTypeAny {
+	const discriminator = schema.discriminator;
+	const variants = [...schema.options.values()] as Array<z.ZodObject<z.ZodRawShape>>;
+	if (variants.length > context.maxUnionOptions) {
+		throw createLimitError(
+			context,
+			`MCP schema discriminated union exceeds maximum option count of ${context.maxUnionOptions}`,
+			'unionOptions',
+			context.maxUnionOptions,
+			variants.length,
+		);
+	}
+
+	const { actionMeta, fieldMeta } = collectDiscriminatedUnionMeta(variants, discriminator);
+
+	const mergedPropertyCount = fieldMeta.size + (actionMeta.length > 0 ? 1 : 0);
+	if (mergedPropertyCount > context.maxObjectProperties) {
+		throw createLimitError(
+			context,
+			`MCP schema object exceeds maximum property count of ${context.maxObjectProperties}`,
+			'objectProperties',
+			context.maxObjectProperties,
+			mergedPropertyCount,
+		);
+	}
+
+	const mergedShape: z.ZodRawShape = {};
+
+	// Build discriminator enum with per-action descriptions
+	if (actionMeta.length > 0) {
+		const enumValues = actionMeta.map((a) => a.value);
+		const actionDescParts = actionMeta.map((a) =>
+			a.description ? `"${a.value}": ${a.description}` : `"${a.value}"`,
+		);
+		mergedShape[discriminator] = z
+			.enum(enumValues as [string, ...string[]])
+			.describe(actionDescParts.join(' | '));
+	}
+
+	for (const [fieldName, entries] of fieldMeta) {
+		mergedShape[fieldName] = buildMergedDiscriminatedField(
+			fieldName,
+			entries,
+			actionMeta.length,
+			context,
+			sanitizeChild,
+		);
+	}
+
+	return z.object(mergedShape);
+}
+
+/** Strip ZodNull members from a union, making the result optional if null was present. */
+function sanitizeUnion(
+	schema: z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]>,
+	context: SanitizeContext,
+	sanitizeChild: SanitizeChild,
+): z.ZodTypeAny {
+	const options = schema.options as z.ZodTypeAny[];
+	if (options.length > context.maxUnionOptions) {
+		throw createLimitError(
+			context,
+			`MCP schema union exceeds maximum option count of ${context.maxUnionOptions}`,
+			'unionOptions',
+			context.maxUnionOptions,
+			options.length,
+		);
+	}
+	const nonNull = options.filter((o) => !(o instanceof z.ZodNull));
+	const hadNull = nonNull.length < options.length;
+	const sanitized = nonNull.map((o, index) => sanitizeChild(o, `${context.path}.union[${index}]`));
+
+	if (sanitized.length === 0) {
+		// All options were null — degenerate case
+		return z.string().optional();
+	}
+	if (sanitized.length === 1) {
+		return hadNull ? sanitized[0].optional() : sanitized[0];
+	}
+	const union = z.union(sanitized as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
+	return hadNull ? union.optional() : union;
 }
 
 function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z.ZodTypeAny {
@@ -319,179 +541,22 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		).optional();
 	}
 
-	// ZodDiscriminatedUnion — flatten to a single z.object
-	// (discriminator becomes an enum with per-action descriptions,
-	//  variant-specific fields become optional with merged descriptions).
-	// Anthropic rejects top-level unions because they produce schemas without type=object.
+	// ZodDiscriminatedUnion — flatten to a single z.object (see helper).
 	if (schema instanceof z.ZodDiscriminatedUnion) {
-		const disc = schema as z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>;
-		const discriminator = disc.discriminator;
-		const variants = [...disc.options.values()] as Array<z.ZodObject<z.ZodRawShape>>;
-		if (variants.length > context.maxUnionOptions) {
-			throw createLimitError(
-				context,
-				`MCP schema discriminated union exceeds maximum option count of ${context.maxUnionOptions}`,
-				'unionOptions',
-				context.maxUnionOptions,
-				variants.length,
-			);
-		}
-
-		// Phase 1: Collect metadata from all variants
-		const actionMeta: Array<{ value: string; description?: string }> = [];
-		const fieldMeta = new Map<
-			string,
-			Array<{ action: string; description?: string; type: z.ZodTypeAny }>
-		>();
-
-		for (const variant of variants) {
-			let actionValue = '';
-
-			for (const [key, value] of Object.entries(variant.shape)) {
-				if (key === discriminator && value instanceof z.ZodLiteral) {
-					actionValue = String(value.value);
-					actionMeta.push({ value: actionValue, description: value.description });
-				}
-			}
-
-			for (const [key, value] of Object.entries(variant.shape)) {
-				if (key === discriminator) continue;
-				if (!fieldMeta.has(key)) fieldMeta.set(key, []);
-				fieldMeta.get(key)!.push({
-					action: actionValue,
-					description: value.description,
-					type: value,
-				});
-			}
-		}
-		const mergedPropertyCount = fieldMeta.size + (actionMeta.length > 0 ? 1 : 0);
-		if (mergedPropertyCount > context.maxObjectProperties) {
-			throw createLimitError(
-				context,
-				`MCP schema object exceeds maximum property count of ${context.maxObjectProperties}`,
-				'objectProperties',
-				context.maxObjectProperties,
-				mergedPropertyCount,
-			);
-		}
-
-		// Phase 2: Build the merged shape
-		const mergedShape: z.ZodRawShape = {};
-
-		// Build discriminator enum with per-action descriptions
-		if (actionMeta.length > 0) {
-			const enumValues = actionMeta.map((a) => a.value);
-			const actionDescParts = actionMeta.map((a) =>
-				a.description ? `"${a.value}": ${a.description}` : `"${a.value}"`,
-			);
-			mergedShape[discriminator] = z
-				.enum(enumValues as [string, ...string[]])
-				.describe(actionDescParts.join(' | '));
-		}
-
-		// Build each field with properly merged descriptions
-		for (const [fieldName, entries] of fieldMeta) {
-			const sanitizedField = sanitizeChild(
-				entries[0].type,
-				`${context.path}.${fieldName}`,
-			).optional();
-
-			// Detect enum value conflicts across variants.
-			// Only the first variant's type is used (entries[0].type), so differing
-			// enum values in other variants would be silently lost.
-			if (context.strict && entries.length > 1) {
-				const unwrapOptional = (t: z.ZodTypeAny): z.ZodTypeAny =>
-					t instanceof z.ZodOptional ? unwrapOptional(t.unwrap() as z.ZodTypeAny) : t;
-
-				const enumEntries = entries.filter((e) => {
-					return unwrapOptional(e.type) instanceof z.ZodEnum;
-				});
-				if (enumEntries.length > 1) {
-					const valueSets = enumEntries.map((e) => {
-						const raw = unwrapOptional(e.type);
-						return (raw as z.ZodEnum<[string, ...string[]]>).options.slice().sort().join(',');
-					});
-					const uniqueValues = new Set(valueSets);
-					if (uniqueValues.size > 1) {
-						const conflictDetails = enumEntries
-							.map((e) => {
-								const raw = unwrapOptional(e.type);
-								const vals = (raw as z.ZodEnum<[string, ...string[]]>).options;
-								return `  Action "${e.action}": [${vals.join(', ')}]`;
-							})
-							.join('\n');
-						throw new Error(
-							`Enum conflict for field "${fieldName}" in discriminated union:\n` +
-								`${conflictDetails}\n` +
-								'Harmonize enum values across all actions that share this field.',
-						);
-					}
-				}
-			}
-
-			const withDesc = entries.filter(
-				(e): e is typeof e & { description: string } => !!e.description,
-			);
-			const uniqueDescs = new Set(withDesc.map((d) => d.description));
-
-			if (uniqueDescs.size > 1) {
-				if (context.strict) {
-					const conflictDetails = withDesc
-						.map((d) => `  Action "${d.action}": "${d.description}"`)
-						.join('\n');
-					throw new Error(
-						`Description conflict for field "${fieldName}" in discriminated union:\n` +
-							`${conflictDetails}\n` +
-							'Harmonize to a single description across all actions that share this field.',
-					);
-				}
-				// Non-strict: combine with action context for external MCP tools
-				const combined = withDesc.map((d) => `For "${d.action}": ${d.description}`).join('. ');
-				mergedShape[fieldName] = sanitizedField.describe(combined);
-			} else if (entries.length < actionMeta.length) {
-				// Field appears in a subset of variants. Annotate with an action hint so
-				// the model binds the (now-flattened-optional) field to the right actions
-				// and stops cross-mixing fields between sibling actions.
-				const actionList = entries.map((e) => `"${e.action}"`).join(', ');
-				const baseDesc = withDesc[0]?.description;
-				const merged = baseDesc ? `For ${actionList}: ${baseDesc}` : `Only for ${actionList}`;
-				mergedShape[fieldName] = sanitizedField.describe(merged);
-			} else {
-				mergedShape[fieldName] = sanitizedField;
-			}
-		}
-
-		return z.object(mergedShape);
+		return sanitizeDiscriminatedUnion(
+			schema as z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>,
+			context,
+			sanitizeChild,
+		);
 	}
 
 	// ZodUnion — strip ZodNull members, make result optional if null was present
 	if (schema instanceof z.ZodUnion) {
-		const options = (schema as z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]>)
-			.options as z.ZodTypeAny[];
-		if (options.length > context.maxUnionOptions) {
-			throw createLimitError(
-				context,
-				`MCP schema union exceeds maximum option count of ${context.maxUnionOptions}`,
-				'unionOptions',
-				context.maxUnionOptions,
-				options.length,
-			);
-		}
-		const nonNull = options.filter((o) => !(o instanceof z.ZodNull));
-		const hadNull = nonNull.length < options.length;
-		const sanitized = nonNull.map((o, index) =>
-			sanitizeChild(o, `${context.path}.union[${index}]`),
+		return sanitizeUnion(
+			schema as z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]>,
+			context,
+			sanitizeChild,
 		);
-
-		if (sanitized.length === 0) {
-			// All options were null — degenerate case
-			return z.string().optional();
-		}
-		if (sanitized.length === 1) {
-			return hadNull ? sanitized[0].optional() : sanitized[0];
-		}
-		const union = z.union(sanitized as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
-		return hadNull ? union.optional() : union;
 	}
 
 	// ZodObject — recurse into shape
@@ -592,20 +657,7 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		);
 	}
 
-	if (
-		schema instanceof z.ZodMap ||
-		schema instanceof z.ZodSet ||
-		schema instanceof z.ZodPromise ||
-		schema instanceof z.ZodFunction ||
-		schema instanceof z.ZodIntersection ||
-		schema instanceof z.ZodTuple ||
-		schema instanceof z.ZodNaN ||
-		schema instanceof z.ZodBigInt ||
-		schema instanceof z.ZodUndefined ||
-		schema instanceof z.ZodNever ||
-		schema instanceof z.ZodVoid ||
-		schema instanceof z.ZodSymbol
-	) {
+	if (isUnsupportedZodType(schema)) {
 		throw createUnsupportedTypeError(context, schema);
 	}
 
@@ -632,9 +684,8 @@ export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
 
 /**
  * Sanitize a single Zod input schema for Anthropic compatibility.
- * Must be called BEFORE passing to `createTool()`, because Mastra captures
- * the schema in a closure at construction time — post-creation mutation
- * does not affect the JSON Schema sent to the API.
+ * Must be called before registering a tool with the agent runtime, because
+ * tool builders/adapters can capture the schema during construction.
  *
  * Uses strict mode: throws on description conflicts in discriminated unions
  * to prevent silently degraded schemas. Harmonize field descriptions at the
@@ -648,8 +699,8 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
 }
 
 /**
- * Sanitize all MCP tool schemas in-place for Anthropic compatibility.
- * Mutates the tool objects' inputSchema and outputSchema properties.
+ * Sanitize all MCP tool schemas for Anthropic compatibility.
+ * Keeps the registry instance and replaces updated tool entries.
  *
  * Uses non-strict mode (no build-time errors on conflicts) because external
  * MCP tools are third-party and we can't enforce description harmonization.
@@ -660,7 +711,7 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * throwing.
  */
 export function sanitizeMcpToolSchemas(
-	tools: ToolsInput,
+	tools: InstanceAiToolRegistry,
 	options: {
 		maxDepth?: number;
 		maxNodes?: number;
@@ -668,43 +719,71 @@ export function sanitizeMcpToolSchemas(
 		maxUnionOptions?: number;
 		onError?: (error: McpSchemaSanitizationError) => void;
 	} = {},
-): ToolsInput {
-	for (const [name, tool] of Object.entries(tools)) {
-		const t = tool as { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny };
+): InstanceAiToolRegistry {
+	for (const [name, tool] of tools) {
+		let inputSchema: BuiltTool['inputSchema'] = tool.inputSchema;
+		let outputSchema: BuiltTool['outputSchema'] = tool.outputSchema;
 		const budget = { nodes: 0 };
 		try {
-			if (t.inputSchema) {
-				t.inputSchema = ensureTopLevelObject(
-					sanitizeZodType(t.inputSchema, false, {
+			if (inputSchema) {
+				if (inputSchema instanceof z.ZodType) {
+					inputSchema = ensureTopLevelObject(
+						sanitizeZodType(inputSchema, false, {
+							maxDepth: options.maxDepth,
+							maxNodes: options.maxNodes,
+							maxObjectProperties: options.maxObjectProperties,
+							maxUnionOptions: options.maxUnionOptions,
+							toolName: name,
+							path: '$.inputSchema',
+							budget,
+						}),
+					);
+				} else {
+					assertMcpJsonSchemaWithinLimits(inputSchema, {
 						maxDepth: options.maxDepth,
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
 						maxUnionOptions: options.maxUnionOptions,
 						toolName: name,
-						path: '$.inputSchema',
-						budget,
-					}),
-				);
+					});
+				}
 			}
-			if (t.outputSchema) {
-				t.outputSchema = sanitizeZodType(t.outputSchema, false, {
-					maxDepth: options.maxDepth,
-					maxNodes: options.maxNodes,
-					maxObjectProperties: options.maxObjectProperties,
-					maxUnionOptions: options.maxUnionOptions,
-					toolName: name,
-					path: '$.outputSchema',
-					budget,
-				});
+			if (outputSchema) {
+				if (outputSchema instanceof z.ZodType) {
+					outputSchema = sanitizeZodType(outputSchema, false, {
+						maxDepth: options.maxDepth,
+						maxNodes: options.maxNodes,
+						maxObjectProperties: options.maxObjectProperties,
+						maxUnionOptions: options.maxUnionOptions,
+						toolName: name,
+						path: '$.outputSchema',
+						budget,
+					});
+				} else {
+					assertMcpJsonSchemaWithinLimits(outputSchema, {
+						maxDepth: options.maxDepth,
+						maxNodes: options.maxNodes,
+						maxObjectProperties: options.maxObjectProperties,
+						maxUnionOptions: options.maxUnionOptions,
+						toolName: name,
+						path: '$.outputSchema',
+					});
+				}
 			}
 		} catch (error) {
 			if (error instanceof McpSchemaSanitizationError) {
-				delete (tools as Record<string, unknown>)[name];
+				tools.delete(name);
 				options.onError?.(error);
 				continue;
 			}
 			throw error;
 		}
+
+		tools.set(name, {
+			...tool,
+			...(inputSchema ? { inputSchema } : {}),
+			...(outputSchema ? { outputSchema } : {}),
+		});
 	}
 
 	return tools;

@@ -3,9 +3,10 @@ import { N8nCommandBar } from '@n8n/design-system';
 import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
 
 const route = useRoute();
 const { APP_Z_INDEXES } = useStyles();
@@ -29,6 +30,12 @@ watch(showCommandBar, (newVal) => {
 		void initializeCommandBar();
 	}
 });
+
+function onCommandBarOpenChange(open: boolean) {
+	if (open) {
+		commandBarEventBus.emit('open');
+	}
+}
 </script>
 
 <template>
@@ -41,5 +48,6 @@ watch(showCommandBar, (newVal) => {
 		:z-index="APP_Z_INDEXES.COMMAND_BAR"
 		@input-change="onCommandBarChange"
 		@navigate-to="onCommandBarNavigateTo"
+		@update:open="onCommandBarOpenChange"
 	/>
 </template>

@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// LangSmith integration helpers for sub-agent evaluation
+// LangSmith integration helpers for workflow-build evaluation
 // ---------------------------------------------------------------------------
 
 import type { Example, Run } from 'langsmith/schemas';
 
-import type { Feedback, SubAgentTestCase } from './types';
+import type { Feedback, WorkflowBuildEvalCase } from './types';
 
 // ---------------------------------------------------------------------------
 // Feedback conversion
@@ -72,62 +72,29 @@ export function createFeedbackExtractor(): (args: {
 // ---------------------------------------------------------------------------
 
 /**
- * Join a multi-part object ({ part_01: "...", part_02: "...", ... }) into a
- * single string. Parts are sorted by key to ensure correct ordering.
- */
-function joinParts(value: unknown): string | undefined {
-	if (typeof value === 'string') return value;
-	if (typeof value !== 'object' || value === null) return undefined;
-
-	const parts = Object.entries(value as Record<string, unknown>)
-		.filter(([k, v]) => k.startsWith('part_') && typeof v === 'string')
-		.sort(([a], [b]) => a.localeCompare(b))
-		.map(([, v]) => v as string);
-
-	return parts.length > 0 ? parts.join('') : undefined;
-}
-
-/**
- * Map a LangSmith dataset example's inputs to a SubAgentTestCase.
+ * Map a LangSmith dataset example's inputs to a WorkflowBuildEvalCase.
  *
  * Supports two input formats:
  *
  * Simple format:
- * { prompt: string, subagent?, system_prompt?: string, tools?: string[], maxSteps? }
+ * { prompt: string, model?, annotations? }
  *
  * Realistic trace format (from production orchestrator):
  * {
- *   task: string,                                    // the user request
- *   system_prompt: { part_01: "...", part_02: "..." }, // multi-part system prompt
- *   model?: string,                                   // model ID override
- *   loaded_tools?: Array<{ name: string, description: string }>,
- *   loaded_tool_catalog?: { part_01: "...", ... },    // extended tool descriptions
- *   maxSteps?: number,
+ *   task: string,     // the user request
+ *   model?: string,   // model ID override
  * }
  */
 export function mapExampleToTestCase(
 	inputs: Record<string, unknown>,
 	exampleId?: string,
-): SubAgentTestCase {
+): WorkflowBuildEvalCase {
 	// Accept either "task" (realistic traces) or "prompt" (simple format)
 	const prompt = typeof inputs.task === 'string' ? inputs.task : inputs.prompt;
 	if (typeof prompt !== 'string' || prompt.length === 0) {
 		throw new Error(
 			`Dataset example${exampleId ? ` (${exampleId})` : ''} missing required "task" or "prompt" field`,
 		);
-	}
-
-	// System prompt: multi-part object or plain string
-	const systemPrompt = joinParts(inputs.system_prompt);
-
-	// Tools: array of { name, description } objects or plain string array
-	let tools: string[] | undefined;
-	if (Array.isArray(inputs.loaded_tools)) {
-		tools = (inputs.loaded_tools as unknown[])
-			.filter((t): t is { name: string } => typeof t === 'object' && t !== null && 'name' in t)
-			.map((t) => t.name);
-	} else if (Array.isArray(inputs.tools)) {
-		tools = (inputs.tools as unknown[]).filter((t): t is string => typeof t === 'string');
 	}
 
 	const annotations =
@@ -138,11 +105,7 @@ export function mapExampleToTestCase(
 	return {
 		id: exampleId ?? `ls-${Date.now()}`,
 		prompt,
-		subagent: typeof inputs.subagent === 'string' ? inputs.subagent : undefined,
-		systemPrompt,
-		tools,
 		modelId: typeof inputs.model === 'string' ? inputs.model : undefined,
-		maxSteps: typeof inputs.maxSteps === 'number' ? inputs.maxSteps : undefined,
 		annotations,
 	};
 }

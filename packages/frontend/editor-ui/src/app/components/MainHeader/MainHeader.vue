@@ -11,7 +11,7 @@ import {
 	N8N_MAIN_GITHUB_REPO_URL,
 } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -26,13 +26,15 @@ import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 
 import { N8nIcon } from '@n8n/design-system';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 const pushConnection = usePushConnection({ router });
 const toast = useToast();
-const ndvStore = injectNDVStore();
+// The editor header renders before a workflow document is loaded (e.g. the
+// blank-canvas boot window), so use the non-throwing accessor and guard reads.
+const ndvStore = injectNDVStoreIfProvided();
 const uiStore = useUIStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
@@ -65,7 +67,7 @@ const tabBarItems = computed(() => {
 	];
 });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value?.activeNode ?? null);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );

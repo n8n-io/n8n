@@ -4,8 +4,10 @@ import { useWorkflowHistoryStore } from './workflowHistory.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
+import * as instanceVersionHistoryApi from '@n8n/rest-api-client/api/instance-version-history';
 
 vi.mock('@n8n/rest-api-client/api/workflowHistory');
+vi.mock('@n8n/rest-api-client/api/instance-version-history');
 
 describe('Workflow history store', () => {
 	beforeEach(() => {
@@ -128,6 +130,75 @@ describe('Workflow history store', () => {
 			await expect(
 				workflowHistoryStore.updateWorkflowHistoryVersion(workflowId, versionId, updateData),
 			).rejects.toThrow('API Error');
+		});
+	});
+
+	describe('getPublishTimeline', () => {
+		it('should call the API with the rest context and workflow id and return its result', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			const rootStore = useRootStore();
+			const workflowId = 'workflow-123';
+			const events = [
+				{
+					id: 1,
+					workflowId,
+					versionId: 'v1',
+					event: 'activated' as const,
+					createdAt: '2026-01-01T00:00:00Z',
+					userId: null,
+					user: null,
+					versionName: 'Release 1',
+				},
+			];
+
+			vi.mocked(whApi.getPublishTimeline).mockResolvedValue(events);
+
+			const result = await workflowHistoryStore.getPublishTimeline(workflowId);
+
+			expect(whApi.getPublishTimeline).toHaveBeenCalledWith(rootStore.restApiContext, workflowId);
+			expect(result).toBe(events);
+		});
+
+		it('should propagate API errors', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			vi.mocked(whApi.getPublishTimeline).mockRejectedValue(new Error('API Error'));
+
+			await expect(workflowHistoryStore.getPublishTimeline('workflow-123')).rejects.toThrow(
+				'API Error',
+			);
+		});
+	});
+
+	describe('getVersionFirstAdoptionDate', () => {
+		it('should forward the rest context and version and return the date', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			const rootStore = useRootStore();
+			const version = { major: 2, minor: 17, patch: 0 };
+
+			vi.mocked(instanceVersionHistoryApi.getFirstAdoptionDate).mockResolvedValue(
+				'2026-01-01T00:00:00Z',
+			);
+
+			const result = await workflowHistoryStore.getVersionFirstAdoptionDate(version);
+
+			expect(instanceVersionHistoryApi.getFirstAdoptionDate).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				version,
+			);
+			expect(result).toBe('2026-01-01T00:00:00Z');
+		});
+
+		it('should return null when the API responds with null', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			vi.mocked(instanceVersionHistoryApi.getFirstAdoptionDate).mockResolvedValue(null);
+
+			const result = await workflowHistoryStore.getVersionFirstAdoptionDate({
+				major: 2,
+				minor: 17,
+				patch: 0,
+			});
+
+			expect(result).toBeNull();
 		});
 	});
 });

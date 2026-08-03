@@ -47,15 +47,17 @@ test.describe(
 			await createBasicWorkflow(n8n, URLS.FAILING);
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.PROBLEM_IN_NODE,
+				{ timeout: 10_000 },
 			);
 			await importExecutionForDebugging(n8n);
-			expect(n8n.page.url()).toContain('/debug');
+			await expect(n8n.page).toHaveURL(/\/debug/);
 		});
 
 		test('should exit debug mode after successful execution', async ({ n8n }) => {
 			await createBasicWorkflow(n8n, URLS.FAILING);
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				NOTIFICATIONS.PROBLEM_IN_NODE,
+				{ timeout: 10_000 },
 			);
 			await importExecutionForDebugging(n8n);
 
@@ -64,8 +66,10 @@ test.describe(
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 			await n8n.ndv.close();
 
-			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL);
-			expect(n8n.page.url()).not.toContain('/debug');
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL, {
+				timeout: 10_000,
+			});
+			await expect(n8n.page).not.toHaveURL(/\/debug/);
 		});
 
 		test('should handle pinned data conflicts during execution import', async ({ n8n }) => {

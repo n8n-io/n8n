@@ -10,7 +10,7 @@ import type { SecretsProvider } from './types';
 export class ExternalSecretsProviderRegistry {
 	private providers = new Map<string, SecretsProvider>();
 
-	add(name: string, provider: SecretsProvider): void {
+	set(name: string, provider: SecretsProvider): void {
 		this.providers.set(name, provider);
 	}
 

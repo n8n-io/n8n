@@ -9,20 +9,20 @@ describe('Google Sheet - Delete', () => {
 
 	beforeEach(() => {
 		mockExecuteFunctions = {
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			getNodeParameter: jest.fn(),
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				constructExecutionMetaData: jest.fn((data) => ({ json: data })),
+				constructExecutionMetaData: vi.fn((data) => ({ json: data })),
 			},
 		} as unknown as Partial<IExecuteFunctions>;
 
 		mockSheet = {
-			spreadsheetBatchUpdate: jest.fn(),
+			spreadsheetBatchUpdate: vi.fn(),
 		} as Partial<GoogleSheet>;
 	});
 
 	test('should delete a single row', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'toDelete') return 'rows';
 			if (param === 'startIndex') return 2;
 			if (param === 'numberToDelete') return 1;
@@ -50,7 +50,7 @@ describe('Google Sheet - Delete', () => {
 	});
 
 	test('should delete multiple rows', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'toDelete') return 'rows';
 			if (param === 'startIndex') return 3;
 			if (param === 'numberToDelete') return 2;
@@ -78,7 +78,7 @@ describe('Google Sheet - Delete', () => {
 	});
 
 	test('should delete a single column', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'toDelete') return 'columns';
 			if (param === 'startIndex') return 'B';
 			if (param === 'numberToDelete') return 1;
@@ -106,7 +106,7 @@ describe('Google Sheet - Delete', () => {
 	});
 
 	test('should delete multiple columns', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'toDelete') return 'columns';
 			if (param === 'startIndex') return 'C';
 			if (param === 'numberToDelete') return 3;
@@ -134,14 +134,14 @@ describe('Google Sheet - Delete', () => {
 	});
 
 	test('should return wrapped success response', async () => {
-		mockExecuteFunctions.getNodeParameter = jest.fn((param: string) => {
+		mockExecuteFunctions.getNodeParameter = vi.fn((param: string) => {
 			if (param === 'toDelete') return 'rows';
 			if (param === 'startIndex') return 2;
 			if (param === 'numberToDelete') return 1;
 			return null;
 		}) as unknown as IExecuteFunctions['getNodeParameter'];
 		mockExecuteFunctions.helpers = {
-			constructExecutionMetaData: jest.fn((data) => data),
+			constructExecutionMetaData: vi.fn((data) => data),
 		} as unknown as IExecuteFunctions['helpers'];
 
 		const result = await execute.call(

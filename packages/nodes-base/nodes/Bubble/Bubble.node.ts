@@ -80,7 +80,7 @@ export class Bubble implements INodeType {
 						property: [{ key: string; value: string }];
 					};
 
-					const body = {} as IDataObject;
+					const body = Object.create(null) as IDataObject;
 
 					property.forEach((data) => (body[data.key] = data.value));
 
@@ -164,7 +164,7 @@ export class Bubble implements INodeType {
 						property: [{ key: string; value: string }];
 					};
 
-					const body = {} as IDataObject;
+					const body = Object.create(null) as IDataObject;
 
 					property.forEach((data) => (body[data.key] = data.value));
 					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, body, {});

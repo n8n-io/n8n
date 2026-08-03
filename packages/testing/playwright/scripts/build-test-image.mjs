@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync, existsSync, mkdirSync, copyFileSync, rmSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync, copyFileSync, rmSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -13,21 +13,17 @@ function execCommand(command, options = {}) {
 	return execSync(command, { cwd: repoRoot, stdio: 'inherit', ...options });
 }
 
-function cleanup(files = []) {
-	files.forEach((file) => {
+function cleanup(paths = []) {
+	paths.forEach((p) => {
 		try {
-			if (file.endsWith('/')) {
-				rmSync(file, { recursive: true, force: true });
-			} else {
-				unlinkSync(file);
-			}
+			rmSync(p, { recursive: true, force: true });
 		} catch {}
 	});
 }
 
 function buildTestImage(targetImage) {
 	const tempBuildDir = path.join(repoRoot, 'temp-build-e2e');
-	const dockerfilePath = path.join(repoRoot, 'Dockerfile.test');
+	const dockerfilePath = path.join(tempBuildDir, 'Dockerfile');
 	const tempTag = `${targetImage}-temp-${Date.now()}`;
 
 	try {
@@ -47,27 +43,27 @@ function buildTestImage(targetImage) {
 			throw new Error(`E2E controller not found. Build may have failed.`);
 		}
 
-		// Setup temp files
-		cleanup([tempBuildDir, dockerfilePath]);
+		// Setup temp build context (self-contained, decoupled from repo .dockerignore)
+		cleanup([tempBuildDir]);
 		mkdirSync(tempBuildDir, { recursive: true });
 		copyFileSync(controllerPath, path.join(tempBuildDir, 'e2e.controller.js'));
 
-		// Create Dockerfile
 		writeFileSync(
 			dockerfilePath,
 			`FROM ${targetImage}
-COPY temp-build-e2e/e2e.controller.js /usr/local/lib/node_modules/n8n/dist/controllers/e2e.controller.js`,
+COPY e2e.controller.js /usr/local/lib/node_modules/n8n/dist/controllers/e2e.controller.js
+`,
 		);
 
-		// Build and replace image
-		execCommand(`docker build -f Dockerfile.test -t ${tempTag} .`);
+		// Build with the temp dir as the build context — avoids repo-root .dockerignore whitelist
+		execCommand(`docker build -f ${dockerfilePath} -t ${tempTag} ${tempBuildDir}`);
 		execCommand(`docker rmi ${targetImage}`);
 		execCommand(`docker tag ${tempTag} ${targetImage}`);
 		execCommand(`docker rmi ${tempTag}`);
 
 		console.log(`✅ Modified ${targetImage} with e2e controller`);
 	} finally {
-		cleanup([tempBuildDir, dockerfilePath]);
+		cleanup([tempBuildDir]);
 	}
 }
 

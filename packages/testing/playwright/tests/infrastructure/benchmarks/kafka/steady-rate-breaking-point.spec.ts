@@ -21,6 +21,7 @@ test.use({ capability: benchConfig('steady-rate-breaking-point', { kafka: true }
 test.describe(
 	'At what input rate does the system fall behind?',
 	{
+		tag: '@bench:kafka',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'steady-rate-breaking-point' },

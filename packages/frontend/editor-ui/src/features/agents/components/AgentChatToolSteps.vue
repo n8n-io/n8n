@@ -1,146 +1,420 @@
-<script setup lang="ts">
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { ToolCall } from '../composables/agentChatMessages';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+<script lang="ts">
+import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { defineComponent, h } from 'vue';
 
-defineProps<{
+/** Shared Fix CTA used in both grouped and ungrouped tool-step layouts. */
+const FixWithAssistantCallout = defineComponent({
+	name: 'FixWithAssistantCallout',
+	props: {
+		errorText: { type: String, required: true },
+	},
+	emits: ['fix'],
+	setup(calloutProps, { emit: calloutEmit }) {
+		const calloutI18n = useI18n();
+		return () =>
+			h(
+				N8nCallout,
+				{
+					theme: 'danger',
+					'data-test-id': 'agent-chat-tool-fix-with-assistant-callout',
+				},
+				{
+					default: () => calloutProps.errorText,
+					trailingContent: () =>
+						h(
+							N8nButton,
+							{
+								size: 'small',
+								variant: 'subtle',
+								'data-test-id': 'agent-chat-tool-fix-with-assistant',
+								onClick: () => calloutEmit('fix'),
+							},
+							{
+								icon: () => h(N8nIcon, { icon: 'sparkles', size: 'small' }),
+								default: () => calloutI18n.baseText('agents.builder.preview.fixWithAssistant'),
+							},
+						),
+				},
+			);
+	},
+});
+
+export default {
+	components: { FixWithAssistantCallout },
+};
+</script>
+
+<script setup lang="ts">
+import { N8nAiActivityStep, N8nAiActivityStepGroup, N8nMarkdownEditor } from '@n8n/design-system';
+import { computed, toRef } from 'vue';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import { useSubAgentNames } from '../composables/useSubAgentNames';
+import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
+import {
+	getDelegateDifficultySummary,
+	isDelegateSubAgentTool,
+	resolveSubAgentName,
+} from '../utils/delegate-tool';
+import { getToolCallDetails } from '../utils/tool-call-details';
+import {
+	countIncompleteTodos,
+	isWriteTodosTool,
+	parseWriteTodosOutput,
+	writeTodosLabel,
+	writeTodosSummaryLabel,
+} from '../utils/write-todos-tool';
+import { TOOL_CALL_STATE } from '../constants';
+
+const props = defineProps<{
 	toolCalls: ToolCall[];
+	projectId?: string;
+	canFixWithAssistant?: boolean;
+	executionId?: string;
 }>();
+
+const emit = defineEmits<{
+	fixWithAssistant: [];
+}>();
+
+const i18n = useI18n();
+
+const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
+
+const fixableErroredTools = computed(() =>
+	showFix.value ? props.toolCalls.filter((tc) => tc.state === TOOL_CALL_STATE.ERROR) : [],
+);
+
+function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
+	return toolCalls.some((tc) => {
+		if (isDelegateSubAgentTool(tc.tool)) return true;
+		if (!isWriteTodosTool(tc.tool)) return false;
+		const parsed = parseWriteTodosOutput(tc.output);
+		return parsed?.todos.some((todo) => Boolean(todo.delegateHint?.subAgentId)) ?? false;
+	});
+}
+
+const projectIdRef = toRef(() => props.projectId ?? '');
+const { subAgentNameById } = useSubAgentNames(projectIdRef, () =>
+	toolCallsNeedSubAgentNames(props.toolCalls),
+);
+
+interface ToolStepDisplay {
+	label: string;
+	details: string;
+	hasRawData: boolean;
+	expandable: boolean;
+}
+
+function getToolDisplayName(toolName: string): string {
+	return resolveToolNameForDisplay(toolName, i18n);
+}
+
+function toolStepLabel(tc: ToolCall): string {
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return i18n.baseText('agents.chat.delegate.labelFallback');
+	}
+	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
+	return getToolDisplayName(tc.tool);
+}
+
+function toolStepMetadata(tc: ToolCall): string[] {
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return [
+			resolveSubAgentName(tc.input, subAgentNameById.value),
+			getDelegateDifficultySummary(tc.input, i18n),
+		].filter((part): part is string => Boolean(part));
+	}
+	if (isWriteTodosTool(tc.tool)) {
+		const parsed = parseWriteTodosOutput(tc.output);
+		if (parsed) return [writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos))];
+	}
+	if (tc.displaySummary) return [tc.displaySummary];
+	return [];
+}
+
+function hasToolData(tc: ToolCall): boolean {
+	return tc.input !== undefined || tc.output !== undefined;
+}
+
+/** Render a delegated child's live steps through this same component, so they look
+ *  identical to the parent's own tool steps. */
+function childToolCalls(steps: NonNullable<ToolCall['childProgress']>['steps']): ToolCall[] {
+	return steps.map((step) => ({
+		tool: step.toolName,
+		toolCallId: step.toolCallId,
+		state: step.running ? TOOL_CALL_STATE.RUNNING : TOOL_CALL_STATE.DONE,
+	}));
+}
+
+/** Traces recorded before empty segments were dropped can still carry reasoning
+ *  the provider never revealed, which would render as blank rows. */
+function childReasoningSegments(childProgress: NonNullable<ToolCall['childProgress']>) {
+	return childProgress.reasoningSegments.filter((segment) => segment.content.length > 0);
+}
+
+function formatToolData(value: unknown): string {
+	if (typeof value === 'string') return value;
+	return JSON.stringify(value, null, 2) ?? String(value);
+}
+
+function isEmptyToolErrorPayload(value: unknown): boolean {
+	if (value === undefined || value === null) return true;
+	if (typeof value === 'string') return value.trim().length === 0;
+	if (typeof value === 'object' && !Array.isArray(value)) {
+		return Object.keys(value).length === 0;
+	}
+	return false;
+}
+
+function toolStepView(tc: ToolCall): ToolStepDisplay {
+	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	const metadata = toolStepMetadata(tc);
+	const hasChildProgress = Boolean(tc.childProgress);
+	return {
+		label: [toolStepLabel(tc), ...metadata].join(' · '),
+		details,
+		hasRawData: details.length === 0 && hasToolData(tc) && !hasChildProgress,
+		expandable: details.length > 0 || hasToolData(tc) || hasChildProgress,
+	};
+}
+
+function toolStepError(tc: ToolCall): string | undefined {
+	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	if (isEmptyToolErrorPayload(tc.output)) {
+		return i18n.baseText('agents.chat.toolError.generic');
+	}
+	return formatToolData(tc.output);
+}
+
+function isToolStepLoading(tc: ToolCall): boolean {
+	return (
+		tc.state === TOOL_CALL_STATE.PENDING ||
+		tc.state === TOOL_CALL_STATE.RUNNING ||
+		tc.state === TOOL_CALL_STATE.SUSPENDED
+	);
+}
+
+function groupLabel(): string {
+	return i18n.baseText('instanceAi.activitySummary.toolCalls', {
+		adjustToNumber: props.toolCalls.length,
+		interpolate: { count: String(props.toolCalls.length) },
+	});
+}
+
+function hasActiveToolCall(): boolean {
+	return props.toolCalls.some(
+		(tc) => tc.state === TOOL_CALL_STATE.PENDING || tc.state === TOOL_CALL_STATE.RUNNING,
+	);
+}
 </script>
 
 <template>
-	<ol :class="$style.toolSteps">
-		<li v-for="(tc, i) in toolCalls" :key="i" :class="$style.toolStep">
-			<div :class="$style.toolStepIndicator">
-				<N8nIcon
-					v-if="tc.state === 'done'"
-					icon="circle-check"
-					size="large"
-					:class="$style.toolStepDone"
-				/>
-				<N8nIcon
-					v-else-if="tc.state === 'error'"
-					icon="circle-x"
-					size="large"
-					:class="$style.toolStepError"
-				/>
-				<N8nTooltip
-					v-else-if="tc.state === 'suspended'"
-					placement="top"
-					content="Waiting for your input"
+	<div :class="$style.toolSteps">
+		<template v-if="toolCalls.length > 1">
+			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasActiveToolCall()">
+				<template v-for="tc in toolCalls" :key="tc.toolCallId">
+					<N8nAiActivityStep
+						v-for="view in [toolStepView(tc)]"
+						:key="`${tc.toolCallId}-${view.label}`"
+						:label="view.label"
+						:loading="isToolStepLoading(tc)"
+						:error="toolStepError(tc)"
+						:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+						:has-content="view.expandable"
+					>
+						<div
+							v-if="tc.childProgress"
+							:class="$style.childProgress"
+							data-test-id="agent-chat-delegate-child-progress"
+						>
+							<AgentChatToolSteps
+								v-if="tc.childProgress.steps.length > 0"
+								:tool-calls="childToolCalls(tc.childProgress.steps)"
+								:project-id="projectId"
+							/>
+							<AiReasoningBlock
+								v-for="segment in childReasoningSegments(tc.childProgress)"
+								:key="segment.id"
+								:entry="segment"
+								:streaming="segment.endTime === undefined"
+							/>
+							<N8nMarkdownEditor
+								v-if="tc.childProgress.text && !view.details"
+								:model-value="tc.childProgress.text"
+								readonly
+								variant="ghost"
+								show-toolbar="never"
+								max-height="240px"
+								:class="$style.answer"
+							/>
+						</div>
+						<N8nMarkdownEditor
+							v-if="view.details"
+							:model-value="view.details"
+							readonly
+							variant="ghost"
+							show-toolbar="never"
+							max-height="240px"
+							:class="$style.answer"
+						/>
+						<div v-if="view.hasRawData" :class="$style.toolDataList">
+							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
+								<span :class="$style.toolDataLabel">
+									{{ i18n.baseText('agentSessions.timeline.input') }}
+								</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+							</div>
+							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+								<span :class="$style.toolDataLabel">
+									{{ i18n.baseText('agentSessions.timeline.output') }}
+								</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+							</div>
+						</div>
+					</N8nAiActivityStep>
+				</template>
+			</N8nAiActivityStepGroup>
+			<FixWithAssistantCallout
+				v-for="tc in fixableErroredTools"
+				:key="`fix-${tc.toolCallId}`"
+				:error-text="toolStepError(tc) ?? ''"
+				@fix="emit('fixWithAssistant')"
+			/>
+		</template>
+
+		<template v-else>
+			<template v-for="tc in toolCalls" :key="tc.toolCallId">
+				<N8nAiActivityStep
+					:label="toolStepView(tc).label"
+					:loading="isToolStepLoading(tc)"
+					:error="toolStepError(tc)"
+					:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+					:has-content="toolStepView(tc).expandable"
 				>
-					<N8nIcon icon="clock" size="large" :class="$style.toolStepSuspended" />
-				</N8nTooltip>
-				<N8nIcon v-else icon="spinner" size="large" :spin="true" :class="$style.toolStepLoading" />
-			</div>
-			<span :class="[$style.toolStepLabel, { [$style.shimmer]: tc.state === 'running' }]">
-				{{ formatToolNameForDisplay(tc.tool) }}
-			</span>
-			<span
-				v-if="tc.displaySummary"
-				:class="$style.toolStepSummary"
-				data-testid="tool-step-summary"
-			>
-				· {{ tc.displaySummary }}
-			</span>
-		</li>
-	</ol>
+					<template v-for="view in [toolStepView(tc)]" :key="view.label">
+						<div
+							v-if="tc.childProgress"
+							:class="$style.childProgress"
+							data-test-id="agent-chat-delegate-child-progress"
+						>
+							<AgentChatToolSteps
+								v-if="tc.childProgress.steps.length > 0"
+								:tool-calls="childToolCalls(tc.childProgress.steps)"
+								:project-id="projectId"
+							/>
+							<AiReasoningBlock
+								v-for="segment in childReasoningSegments(tc.childProgress)"
+								:key="segment.id"
+								:entry="segment"
+								:streaming="segment.endTime === undefined"
+							/>
+							<N8nMarkdownEditor
+								v-if="tc.childProgress.text && !view.details"
+								:model-value="tc.childProgress.text"
+								readonly
+								variant="ghost"
+								show-toolbar="never"
+								max-height="240px"
+								:class="$style.answer"
+							/>
+						</div>
+						<N8nMarkdownEditor
+							v-if="view.details"
+							:model-value="view.details"
+							readonly
+							variant="ghost"
+							show-toolbar="never"
+							max-height="240px"
+							:class="$style.answer"
+						/>
+						<div v-if="view.hasRawData" :class="$style.toolDataList">
+							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
+								<span :class="$style.toolDataLabel">
+									{{ i18n.baseText('agentSessions.timeline.input') }}
+								</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+							</div>
+							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+								<span :class="$style.toolDataLabel">
+									{{ i18n.baseText('agentSessions.timeline.output') }}
+								</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+							</div>
+						</div>
+					</template>
+				</N8nAiActivityStep>
+				<FixWithAssistantCallout
+					v-if="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+					:error-text="toolStepError(tc) ?? ''"
+					@fix="emit('fixWithAssistant')"
+				/>
+			</template>
+		</template>
+	</div>
 </template>
 
 <style module>
 .toolSteps {
-	list-style: none;
 	margin: 0 0 var(--spacing--sm);
-	padding: 0;
+}
+
+.childProgress {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.toolStep {
-	display: flex;
-	align-items: center;
 	gap: var(--spacing--2xs);
-	position: relative;
-	user-select: none;
+	margin-bottom: var(--spacing--xs);
 }
 
-.toolStepIndicator {
-	position: relative;
+/* Nested in a delegate row the flex gap already spaces the child's steps, so
+   the standalone bottom margin would double up. */
+.childProgress .toolSteps {
+	margin-bottom: 0;
+}
+
+.answer {
+	margin-bottom: var(--spacing--xs);
+	border-radius: var(--radius--sm);
+	background-color: var(--background--subtle);
+	overflow: hidden;
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	--input--font-size: var(--font-size--2xs);
+}
+
+.toolDataList {
 	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 14px;
-	height: 14px;
-	flex-shrink: 0;
-	color: var(--text-color--subtler);
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	margin-bottom: var(--spacing--xs);
+	max-width: min(520px, calc(100vw - var(--spacing--4xl)));
 }
 
-.toolStep:not(:last-child) .toolStepIndicator::after {
-	content: '';
-	position: absolute;
-	top: calc(100% + 1px);
-	left: 50%;
-	width: 1px;
-	height: var(--spacing--2xs);
-	transform: translateX(-50%);
-	background-color: var(--border-color);
+.toolDataSection {
+	border: var(--border-width) var(--border-style) var(--border-color);
+	border-radius: var(--radius--xs);
+	background-color: var(--background--base);
+	padding: var(--spacing--2xs);
+	user-select: text;
 }
 
-.toolStepDone {
-	color: var(--text-color--success);
-}
-
-.toolStepError {
-	color: var(--text-color--danger);
-}
-
-.toolStepLoading {
-	color: var(--text-color);
-}
-
-.toolStepSuspended {
-	color: var(--text-color--warning);
-}
-
-.toolStepLabel {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	color: var(--text-color--subtler);
+.toolDataLabel {
+	display: block;
+	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--sm);
+	color: var(--text-color--subtle);
+	margin-bottom: var(--spacing--5xs);
 }
 
-.toolStepSummary {
-	color: var(--text-color--subtler);
+.toolDataContent {
+	margin: 0;
+	font-family: monospace;
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--sm);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
-}
-
-.shimmer {
-	background: linear-gradient(
-		90deg,
-		var(--text-color--subtle) 25%,
-		var(--text-color--subtler) 50%,
-		var(--text-color--subtle) 75%
-	);
-	background-size: 200% 100%;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-	0% {
-		background-position: 200% 0;
-	}
-
-	100% {
-		background-position: -200% 0;
-	}
+	color: var(--text-color);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
 }
 </style>

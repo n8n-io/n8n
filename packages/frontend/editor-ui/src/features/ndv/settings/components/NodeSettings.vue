@@ -12,7 +12,7 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
@@ -22,6 +22,10 @@ import NodeSettingsHeader from './NodeSettingsHeader.vue';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import AgentNdvInlineControls from '@/features/ndv/agents/components/AgentNdvInlineControls.vue';
+import AgentNdvReferencedSummary from '@/features/ndv/agents/components/AgentNdvReferencedSummary.vue';
+import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
@@ -33,7 +37,7 @@ import { useInstalledCommunityPackage } from '@/features/settings/communityNodes
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
@@ -44,7 +48,6 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import {
@@ -69,6 +72,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const props = withDefaults(
 	defineProps<{
@@ -123,11 +127,16 @@ const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const { aiAssistant, instanceAi } = useEditorContext();
+// Credential setup help has two backends: the legacy assistant (gated by
+// `aiAssistant`) and Instance AI (gated by the `instanceAi` editor feature, so a
+// host can turn it off per editor). Hide the help entry only when neither is
+// available.
+const hideCredentialHelp = computed(() => !aiAssistant.value && !instanceAi.value);
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -158,10 +167,11 @@ const hiddenIssuesInputs = ref<string[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
-const { isPreviewMode } = useSettingsStore();
+const settingsStore = useSettingsStore();
+const { isPreviewMode } = settingsStore;
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(() =>
-	workflowsListStore.getWorkflowById(workflowsStore.workflowId),
+	workflowsListStore.getWorkflowById(workflowDocumentStore.value.workflowId),
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
@@ -170,7 +180,7 @@ const isHomeProjectTeam = computed(
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
 );
-const node = computed(() => props.activeNode ?? ndvStore.activeNode);
+const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -277,7 +287,7 @@ const showNoParametersNotice = computed(
 		(parametersByTab.value.params ?? []).filter((item) => item.type !== 'notice').length === 0,
 );
 
-const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
+const outputPanelEditMode = computed(() => ndvStore.value.outputPanelEditMode);
 
 const isCommunityNode = computed(() => !!node.value && isCommunityPackageName(node.value.type));
 const packageName = computed(() => node.value?.type.split('.')[0] ?? '');
@@ -434,6 +444,19 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 			_node,
 			isToolNode.value,
 		);
+	} else if (parameterData.name.includes('.') || parameterData.name.includes('[')) {
+		// A nested property on the node itself changed (e.g. a fixedCollection setting
+		// like `customTelemetryTags.tag`). Update the nested path in `nodeValues`,
+		// then persist the whole top-level field back to the node.
+		const topLevelKey = parameterData.name.split(/[.[]/)[0];
+		const valueForSetter = newValue === undefined ? null : newValue;
+		nodeSettingsParameters.setValue(nodeValues, parameterData.name, valueForSetter);
+
+		workflowDocumentStore?.value?.setNodeValue({
+			name: _node.name,
+			key: topLevelKey,
+			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+		});
 	} else {
 		// A property on the node itself changed
 
@@ -488,8 +511,23 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(
+		isToolNode.value || isModelNode.value,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelCustomSpanAttributesEnabled,
+	),
 );
+
+// The AI Agent node renders extra Parameters-tab surfaces (referenced-agent
+// summary OR inline-agent controls, by `agentSource` mode) —
+// all driven by the NDV container's provided facade. Guarded on the facade
+// being provided so NodeSettings still works if ever mounted outside the NDV
+// container.
+const ndvAgentConfig = inject(NdvAgentConfigKey, null);
+// v2-gated to match the canvas card: v1 nodes keep the raw NDV layout.
+const isAgentNode = computed(() => isAgentNodeV2(node.value));
+const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
+const agentNdvMode = computed(() => ndvAgentConfig?.mode?.value ?? 'referenced');
 
 const iconSource = useNodeIconSource(nodeType, node);
 
@@ -566,7 +604,7 @@ const onFeatureRequestClick = () => {
 	if (node.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: node.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			push_ref: props.pushRef,
 			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',
@@ -741,6 +779,7 @@ function handleSelectAction(params: INodeParameters) {
 				:readonly="isReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
+				:hide-ask-assistant="hideCredentialHelp"
 				@credential-selected="credentialSelected"
 				@value-changed="valueChanged"
 				@blur="onParameterBlur"
@@ -773,11 +812,20 @@ function handleSelectAction(params: INodeParameters) {
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						:hide-ask-assistant="hideCredentialHelp"
 						@credential-selected="credentialSelected"
 						@value-changed="valueChanged"
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
+				<AgentNdvReferencedSummary
+					v-if="showAgentNdvControls && agentNdvMode === 'referenced'"
+					:is-read-only="isReadOnly"
+				/>
+				<AgentNdvInlineControls
+					v-if="showAgentNdvControls && agentNdvMode === 'inline'"
+					:is-read-only="isReadOnly"
+				/>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}

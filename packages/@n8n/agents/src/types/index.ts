@@ -7,7 +7,10 @@ export type {
 	ContentCitation,
 	ContentText,
 	ContentReasoning,
+	ContentReasoningFile,
 	ContentFile,
+	ContentFileRef,
+	ContentCustom,
 	ContentToolCall,
 	ContentInvalidToolCall,
 	ContentProvider,
@@ -18,6 +21,10 @@ export type {
 	AgentDbMessage,
 } from './sdk/message';
 
+export { stripHydratedFileData } from './sdk/message';
+
+export type { BuiltFileStore } from './sdk/file-store';
+
 export type {
 	Provider,
 	AnthropicThinkingConfig,
@@ -27,6 +34,7 @@ export type {
 	ThinkingConfigFor,
 	ThinkingConfig,
 } from './sdk/provider';
+export type { ReasoningLevel } from './sdk/reasoning';
 
 export type {
 	AgentResult,
@@ -36,22 +44,27 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	SmoothStreamOptions,
+	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	ResumeOptions,
 	GenerateResult,
 	StreamResult,
-	SubAgentUsage,
 	BuiltAgent,
 	AgentRunState,
 	AgentResumeData,
 	PendingToolCall,
 	SerializableAgentState,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 } from './sdk/agent';
 
 export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolExecutionContext,
 	InterruptibleToolContext,
 	BuiltTool,
 	BuiltProviderTool,
@@ -60,12 +73,83 @@ export type {
 export type {
 	Thread,
 	BuiltMemory,
+	BuiltEpisodicMemoryStore,
+	EpisodicMemoryConfig,
+	EpisodicMemoryCursor,
+	EpisodicMemoryEmbeddingProviderOptions,
+	EpisodicMemoryEntry,
+	EpisodicMemoryEntrySource,
+	EpisodicMemoryExtractFn,
+	EpisodicMemoryExtraction,
+	EpisodicMemoryExtractionCandidate,
+	EpisodicMemoryExtractorInput,
+	EpisodicMemoryMethods,
+	EpisodicMemoryPrompts,
+	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflection,
+	EpisodicMemoryReflectionApply,
+	EpisodicMemoryReflectionApplyMerge,
+	EpisodicMemoryReflectionMerge,
+	EpisodicMemoryReflectionResult,
+	EpisodicMemoryReflectorInput,
+	EpisodicMemoryScope,
+	EpisodicMemorySearchOptions,
+	EpisodicMemoryStatus,
+	EpisodicMemoryTaskLockHandle,
+	EpisodicMemoryTaskLockMethods,
+	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryEntry,
+	NewEpisodicMemoryEntrySource,
+	NewEpisodicMemoryEntrySourceForEntry,
+	RetrievedEpisodicMemoryEntry,
+	ObservationCapableMemory,
 	MemoryDescriptor,
-	SemanticRecallConfig,
 	MemoryConfig,
+	ObservationLogMemoryConfig,
+	ObservationalMemoryConfig,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
+
+export type {
+	VectorDocument,
+	VectorRecord,
+	VectorQueryResult,
+	BuiltVectorStoreBackend,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
+} from './sdk/vector-store';
+
+export type { ObservationCursor } from './sdk/observation';
+
+export type {
+	BuiltObservationLogStore,
+	BuiltObservationLogTaskLockStore,
+	NewObservationLogEntry,
+	ObservationLogEntry,
+	ObservationLogMarker,
+	ObservationLogMerge,
+	MemoryTaskUsageReport,
+	ObservationLogObserveFn,
+	ObservationLogObserverInput,
+	ObservationLogReadOptions,
+	ObservationLogReflectFn,
+	ObservationLogReflectorInput,
+	ObservationLogReflection,
+	ObservationLogReflectionResult,
+	ObservationLogScope,
+	ObservationLogStatus,
+	ObservationLogTaskKind,
+	ObservationLogTaskLockHandle,
+	TokenCounter,
+} from './sdk/observation-log';
+export {
+	estimateObservationTokens,
+	OBSERVATION_LOG_MARKERS,
+	OBSERVATION_LOG_STATUSES,
+} from './sdk/observation-log';
 
 export type {
 	EvalInput,
@@ -98,9 +182,16 @@ export type {
 	AgentEventData,
 	AgentEventHandler,
 	AgentMiddleware,
+	ForwardedChildChunk,
+	SubAgentChunkPayload,
 } from './runtime/event';
 
-export type { McpServerConfig, McpVerifyResult } from './sdk/mcp';
+export type {
+	McpConnectionFailedEvent,
+	McpServerConfig,
+	McpToolCallSettledEvent,
+	McpVerifyResult,
+} from './sdk/mcp';
 
 export type { AgentBuilder } from './sdk/agent-builder';
 

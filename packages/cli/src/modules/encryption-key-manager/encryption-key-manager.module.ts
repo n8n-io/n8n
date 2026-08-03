@@ -11,11 +11,11 @@ function isKeyRotationApiEnabled(): boolean {
 export class EncryptionKeyManagerModule implements ModuleInterface {
 	async init() {
 		if (isKeyRotationApiEnabled()) {
-			await import('./key-manager.service');
+			await import('./key-manager.service.js');
 			if (Container.get(InstanceSettings).instanceType === 'main') {
-				await import('./encryption-key.controller');
+				await import('./encryption-key.controller.js');
 			}
-			const { EncryptionBootstrapService } = await import('./encryption-bootstrap.service');
+			const { EncryptionBootstrapService } = await import('./encryption-bootstrap.service.js');
 			await Container.get(EncryptionBootstrapService).run();
 		}
 	}

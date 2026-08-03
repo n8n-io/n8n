@@ -5,15 +5,15 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'instance-version-history', instanceTypes: ['main'] })
 export class InstanceVersionHistoryModule implements ModuleInterface {
 	async init() {
-		await import('./instance-version-history.controller');
+		await import('./instance-version-history.controller.js');
 
-		const { InstanceVersionHistoryService } = await import('./instance-version-history.service');
+		const { InstanceVersionHistoryService } = await import('./instance-version-history.service.js');
 		await Container.get(InstanceVersionHistoryService).init();
 	}
 
 	async entities() {
 		const { InstanceVersionHistory } = await import(
-			'./database/entities/instance-version-history.entity'
+			'./database/entities/instance-version-history.entity.js'
 		);
 		return [InstanceVersionHistory];
 	}

@@ -3,6 +3,7 @@ import { unwrapExpression } from '@/app/utils/expressions';
 import { syntaxTree } from '@codemirror/language';
 import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
+import { WORKFLOW_DOCUMENT_FACET } from './completions/constants';
 
 const setDropCursorPos = StateEffect.define<number | null>({
 	map(pos, mapping) {
@@ -31,91 +32,93 @@ interface MeasureRequest<T> {
 //
 // We can't use CodeMirror's dropCursor because it depends on HTML drag events while our drag-and-drop uses mouse events
 // We could switch to drag events later but some features of the current drag-n-drop might not be possible with drag events
-const drawDropCursor = ViewPlugin.fromClass(
-	class {
-		cursor: HTMLElement | null = null;
+function createDrawDropCursor() {
+	return ViewPlugin.fromClass(
+		class {
+			cursor: HTMLElement | null = null;
 
-		measureReq: MeasureRequest<{ left: number; top: number; height: number } | null>;
+			measureReq: MeasureRequest<{ left: number; top: number; height: number } | null>;
 
-		ndvStore: ReturnType<typeof useNDVStore>;
-
-		constructor(readonly view: EditorView) {
-			this.measureReq = { read: this.readPos.bind(this), write: this.drawCursor.bind(this) };
-			this.ndvStore = useNDVStore();
-		}
-
-		update(update: ViewUpdate) {
-			const cursorPos = update.state.field(dropCursorPos);
-			if (cursorPos === null) {
-				if (this.cursor !== null) {
-					this.cursor?.remove();
-					this.cursor = null;
-				}
-			} else {
-				if (!this.cursor) {
-					this.cursor = this.view.scrollDOM.appendChild(document.createElement('div'));
-					this.cursor.className = 'cm-dropCursor';
-				}
-				if (
-					update.startState.field(dropCursorPos) !== cursorPos ||
-					update.docChanged ||
-					update.geometryChanged
-				)
-					this.view.requestMeasure(this.measureReq);
+			constructor(readonly view: EditorView) {
+				this.measureReq = { read: this.readPos.bind(this), write: this.drawCursor.bind(this) };
 			}
-		}
 
-		readPos(): { left: number; top: number; height: number } | null {
-			const { view } = this;
-			const pos = view.state.field(dropCursorPos);
-			const rect = pos !== null && view.coordsAtPos(pos);
-			if (!rect) return null;
-			const outer = view.scrollDOM.getBoundingClientRect();
-			return {
-				left: rect.left - outer.left + view.scrollDOM.scrollLeft * view.scaleX,
-				top: rect.top - outer.top + view.scrollDOM.scrollTop * view.scaleY,
-				height: rect.bottom - rect.top,
-			};
-		}
-
-		drawCursor(pos: { left: number; top: number; height: number } | null) {
-			if (this.cursor) {
-				const { scaleX, scaleY } = this.view;
-				if (pos) {
-					this.cursor.style.left = pos.left / scaleX + 'px';
-					this.cursor.style.top = pos.top / scaleY + 'px';
-					this.cursor.style.height = pos.height / scaleY + 'px';
+			update(update: ViewUpdate) {
+				const cursorPos = update.state.field(dropCursorPos);
+				if (cursorPos === null) {
+					if (this.cursor !== null) {
+						this.cursor?.remove();
+						this.cursor = null;
+					}
 				} else {
-					this.cursor.style.left = '-100000px';
+					if (!this.cursor) {
+						this.cursor = this.view.scrollDOM.appendChild(document.createElement('div'));
+						this.cursor.className = 'cm-dropCursor';
+					}
+					if (
+						update.startState.field(dropCursorPos) !== cursorPos ||
+						update.docChanged ||
+						update.geometryChanged
+					)
+						this.view.requestMeasure(this.measureReq);
 				}
 			}
-		}
 
-		destroy() {
-			if (this.cursor) this.cursor.remove();
-		}
+			readPos(): { left: number; top: number; height: number } | null {
+				const { view } = this;
+				const pos = view.state.field(dropCursorPos);
+				const rect = pos !== null && view.coordsAtPos(pos);
+				if (!rect) return null;
+				const outer = view.scrollDOM.getBoundingClientRect();
+				return {
+					left: rect.left - outer.left + view.scrollDOM.scrollLeft * view.scaleX,
+					top: rect.top - outer.top + view.scrollDOM.scrollTop * view.scaleY,
+					height: rect.bottom - rect.top,
+				};
+			}
 
-		setDropPos(pos: number | null) {
-			if (this.view.state.field(dropCursorPos) !== pos)
-				this.view.dispatch({ effects: setDropCursorPos.of(pos) });
-		}
-	},
-	{
-		eventObservers: {
-			mousemove(event) {
-				if (!this.ndvStore.isDraggableDragging || this.ndvStore.draggableType !== 'mapping') return;
-				const pos = this.view.posAtCoords(eventToCoord(event), false);
-				this.setDropPos(pos);
-			},
-			mouseleave() {
-				this.setDropPos(null);
-			},
-			mouseup() {
-				this.setDropPos(null);
+			drawCursor(pos: { left: number; top: number; height: number } | null) {
+				if (this.cursor) {
+					const { scaleX, scaleY } = this.view;
+					if (pos) {
+						this.cursor.style.left = pos.left / scaleX + 'px';
+						this.cursor.style.top = pos.top / scaleY + 'px';
+						this.cursor.style.height = pos.height / scaleY + 'px';
+					} else {
+						this.cursor.style.left = '-100000px';
+					}
+				}
+			}
+
+			destroy() {
+				if (this.cursor) this.cursor.remove();
+			}
+
+			setDropPos(pos: number | null) {
+				if (this.view.state.field(dropCursorPos) !== pos)
+					this.view.dispatch({ effects: setDropCursorPos.of(pos) });
+			}
+		},
+		{
+			eventObservers: {
+				mousemove(event) {
+					const workflowDocumentId = this.view.state.facet(WORKFLOW_DOCUMENT_FACET);
+					if (!workflowDocumentId) return;
+					const ndvStore = useNDVStore(workflowDocumentId);
+					if (!ndvStore.isDraggableDragging || ndvStore.draggableType !== 'mapping') return;
+					const pos = this.view.posAtCoords(eventToCoord(event), false);
+					this.setDropPos(pos);
+				},
+				mouseleave() {
+					this.setDropPos(null);
+				},
+				mouseup() {
+					this.setDropPos(null);
+				},
 			},
 		},
-	},
-);
+	);
+}
 
 function eventToCoord(event: MouseEvent): { x: number; y: number } {
 	return { x: event.clientX, y: event.clientY };
@@ -158,5 +161,5 @@ export async function dropInCodeEditor(view: EditorView, event: MouseEvent, valu
 }
 
 export function mappingDropCursor(): Extension {
-	return [dropCursorPos, drawDropCursor];
+	return [dropCursorPos, createDrawDropCursor()];
 }

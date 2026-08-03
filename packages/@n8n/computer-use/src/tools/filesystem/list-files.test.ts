@@ -1,10 +1,11 @@
 import type { Dirent, Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
 import { textOf } from '../test-utils';
 import { listFilesTool } from './list-files';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const CONTEXT = { dir: '/base' };
 
@@ -24,17 +25,17 @@ function dirent(name: string, isDir: boolean): Dirent {
 }
 
 function mockReaddir(entries: Dirent[]): void {
-	(fs.readdir as jest.Mock).mockResolvedValue(entries);
+	(fs.readdir as Mock).mockResolvedValue(entries);
 }
 
 function mockStat(size = 100): void {
-	jest.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
+	vi.mocked(fs.stat).mockResolvedValue({ size } as unknown as Stats);
 }
 
 describe('listFilesTool', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
-		(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+		vi.resetAllMocks();
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
 			if (p === '/base') return await Promise.resolve('/base');
 			throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 		});
@@ -172,7 +173,7 @@ describe('listFilesTool', () => {
 
 		it('includes sizeBytes for files', async () => {
 			mockReaddir([dirent('hello.txt', false)]);
-			jest.mocked(fs.stat).mockResolvedValue({ size: 5 } as unknown as Stats);
+			vi.mocked(fs.stat).mockResolvedValue({ size: 5 } as unknown as Stats);
 
 			const result = await listFilesTool.execute({ dirPath: '.' }, CONTEXT);
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse

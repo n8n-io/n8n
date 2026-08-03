@@ -4,7 +4,7 @@ import type { IResourceLocatorResultExpanded, IUpdateInformation } from '@/Inter
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ParameterIssues from '../ParameterIssues.vue';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -13,7 +13,6 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	getAppNameFromNodeName,
 	getMainAuthField,
@@ -45,7 +44,7 @@ import {
 	watch,
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computedAsync, onClickOutside, type VueInstance } from '@vueuse/core';
 import {
 	buildValueFromOverride,
@@ -55,8 +54,13 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
 import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { DATA_TABLE_NODES } from '@/app/constants/nodeTypes';
+import { useRouter } from 'vue-router';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
@@ -160,8 +164,9 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const dataTableStore = useDataTableStore();
+const router = useRouter();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -188,6 +193,8 @@ const selectedMode = computed(() => {
 });
 
 const isListMode = computed(() => selectedMode.value === 'list');
+
+const isDataTableNode = computed(() => !!props.node && DATA_TABLE_NODES.includes(props.node.type));
 
 /**
  * Check if the current response contains an error that indicates a credential issue.
@@ -272,6 +279,24 @@ const urlValue = computedAsync(async () => {
 		}
 	}
 
+	// Data table nodes have no url template, so resolve a link from the id by
+	// looking the table up — only link it when it actually exists for the user.
+	if (isDataTableNode.value && selectedMode.value === 'id') {
+		// Use the resolved value for expressions, but only if it's a concrete id —
+		// an unresolved template (still containing `{{ }}`) can't identify a table.
+		const raw = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+		const id = typeof raw === 'string' ? raw.trim() : '';
+		if (!id || id.includes('{{') || id.includes('}}')) return null;
+		const table = await dataTableStore.fetchDataTableById(id);
+		// Resolve via the router so the link honours the configured base path (N8N_PATH).
+		return table
+			? router.resolve({
+					name: DATA_TABLE_DETAILS,
+					params: { projectId: table.projectId, id: table.id },
+				}).href
+			: null;
+	}
+
 	if (currentMode.value.url) {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
 		if (typeof value === 'string') {
@@ -295,7 +320,7 @@ const currentRequestParams = computed(() => {
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
 		projectId: projectsStore.currentProjectId,
-		workflowId: workflowsStore.workflowId,
+		workflowId: workflowDocumentStore.value.workflowId,
 	};
 });
 
@@ -431,6 +456,7 @@ const handleAddResourceClick = async () => {
 	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
+		workflowDocumentStore.value.documentId,
 		expressionLocalResolveCtx?.value ?? {},
 	);
 
@@ -543,23 +569,48 @@ watch(
 
 watch(
 	() => stringify(props.node?.credentials ?? {}),
-	(currentValue, oldValue) => {
+	async (currentValue, oldValue) => {
 		const emptyCredentials = stringify({});
 		const isUpdated =
 			oldValue !== undefined && oldValue !== emptyCredentials && currentValue !== oldValue;
 		if (
-			isUpdated &&
-			props.modelValue &&
-			isResourceLocatorValue(props.modelValue) &&
-			props.modelValue.value !== ''
+			!isUpdated ||
+			!props.modelValue ||
+			!isResourceLocatorValue(props.modelValue) ||
+			props.modelValue.value === '' ||
+			// Manual (id/url) mode: keep the user-entered value.
+			!isListMode.value
 		) {
+			return;
+		}
+
+		// Validate against the full current list: reset any stale search filter and clear the cache
+		// directly (skipping refreshList()'s "user refreshed" telemetry).
+		searchFilter.value = '';
+		cachedResponses.value = {};
+		await loadResources();
+
+		// Credentials changed again while loading — a newer run will validate the fresh results.
+		if (stringify(props.node?.credentials ?? {}) !== currentValue) return;
+
+		const selected = props.modelValue.value;
+		const match = currentQueryResults.value.find((result) => result.value === selected);
+		if (match) {
 			emit('update:modelValue', {
 				...props.modelValue,
-				cachedResultName: '',
-				cachedResultUrl: '',
-				value: '',
+				cachedResultName: match.name ?? '',
+				cachedResultUrl: match.url ?? '',
 			});
+			return;
 		}
+
+		const mayExistElsewhere = currentQueryHasMore.value || requiresSearchFilter.value;
+		emit('update:modelValue', {
+			...props.modelValue,
+			cachedResultName: '',
+			cachedResultUrl: '',
+			...(mayExistElsewhere ? {} : { value: '' }),
+		});
 	},
 );
 
@@ -567,7 +618,7 @@ onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
 
-	ndvStore.$subscribe(() => {
+	ndvStore.value.$subscribe(() => {
 		// Update the width when main panel dimension change
 		setWidth();
 	});
@@ -585,7 +636,12 @@ onBeforeUnmount(() => {
 	}
 });
 
-onClickOutside(dropdownRef as Ref<VueInstance>, hideResourceDropdown);
+onClickOutside(dropdownRef as Ref<VueInstance>, (event) => {
+	if (event.target instanceof HTMLElement && dropdownRef.value?.isWithinDropdown(event.target)) {
+		return;
+	}
+	hideResourceDropdown();
+});
 
 function setWidth() {
 	if (containerRef.value) {
@@ -616,7 +672,7 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function openResource(url: string) {
-	window.open(url, '_blank');
+	openSafeUrl(url);
 	trackEvent('User clicked resource locator link');
 }
 
@@ -628,7 +684,7 @@ function getPropertyArgument<T extends keyof INodePropertyModeTypeOptions>(
 }
 
 function openCredential(): void {
-	const node = ndvStore.activeNode;
+	const node = ndvStore.value.activeNode;
 	if (!node?.credentials) {
 		return;
 	}
@@ -729,7 +785,7 @@ function onModeSelected(value: string): void {
 function trackEvent(event: string, params?: { [key: string]: string }): void {
 	telemetry.track(event, {
 		instance_id: rootStore.instanceId,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		node_type: props.node?.type,
 		resource: props.node?.parameters.resource,
 		operation: props.node?.parameters.operation,
@@ -821,6 +877,7 @@ async function loadResources() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
+			workflowDocumentStore.value.documentId,
 			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
@@ -835,7 +892,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowDocumentStore.value.workflowId,
 		};
 
 		if (params.filter) {
@@ -1206,7 +1263,11 @@ function removeOverride() {
 						:class="$style['parameter-issues']"
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
-						<N8nLink theme="text" @click.stop="openResource(urlValue)">
+						<N8nLink
+							theme="text"
+							data-test-id="rlc-open-resource-link"
+							@click.stop="openResource(urlValue)"
+						>
 							<N8nIcon icon="external-link" :title="getLinkAlt(valueToDisplay)" />
 						</N8nLink>
 					</div>

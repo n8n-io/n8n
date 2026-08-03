@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPromptSuggestions from '../components/InstanceAiPromptSuggestions.vue';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions } from '../emptyStateSuggestions';
@@ -17,6 +17,11 @@ describe('InstanceAiPromptSuggestions', () => {
 		});
 
 		await userEvent.hover(getByTestId('instance-ai-suggestion-build-workflow'));
+		await waitFor(() => {
+			expect(emitted()['preview-change']).toEqual([
+				['instanceAi.emptyState.suggestions.buildWorkflow.prompt'],
+			]);
+		});
 		await userEvent.unhover(getByTestId('instance-ai-suggestion-build-workflow'));
 
 		await userEvent.click(getByTestId('instance-ai-suggestion-quick-examples'));
@@ -32,7 +37,7 @@ describe('InstanceAiPromptSuggestions', () => {
 		]);
 	});
 
-	it('emits semantic suggestion events for quick examples and prompts', async () => {
+	it('emits semantic insert events for quick examples and prompts', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
 				suggestions,
@@ -53,7 +58,7 @@ describe('InstanceAiPromptSuggestions', () => {
 		await userEvent.click(getByTestId('instance-ai-suggestion-quick-examples'));
 		await userEvent.click(getByTestId('instance-ai-quick-example-answer-support-requests'));
 
-		expect(emitted()['submit-suggestion']).toEqual([
+		expect(emitted()['insert-suggestion']).toEqual([
 			[
 				{
 					promptKey: 'instanceAi.emptyState.suggestions.buildAgent.prompt',
@@ -71,6 +76,33 @@ describe('InstanceAiPromptSuggestions', () => {
 				},
 			],
 		]);
+	});
+
+	it('does not emit a delayed preview after clicking a prompt suggestion', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				suggestions,
+				disabled: false,
+			},
+		});
+
+		const suggestion = getByTestId('instance-ai-suggestion-build-workflow');
+		await userEvent.hover(suggestion);
+		await fireEvent.click(suggestion);
+
+		await new Promise((resolve) => setTimeout(resolve, 350));
+
+		expect(emitted()['insert-suggestion']).toEqual([
+			[
+				{
+					promptKey: 'instanceAi.emptyState.suggestions.buildWorkflow.prompt',
+					suggestionId: 'build-workflow',
+					suggestionKind: 'prompt',
+					position: 1,
+				},
+			],
+		]);
+		expect(emitted()['preview-change']).toEqual([[null]]);
 	});
 
 	it('closes quick examples when the menu button is toggled twice', async () => {
@@ -107,7 +139,7 @@ describe('InstanceAiPromptSuggestions', () => {
 		expect(emitted()['preview-change']?.at(-1)).toEqual([null]);
 	});
 
-	it('does not emit preview or submit events while disabled', async () => {
+	it('does not emit preview or insert events while disabled', async () => {
 		const { emitted, getByTestId, queryByTestId } = renderComponent({
 			props: {
 				suggestions,
@@ -122,7 +154,7 @@ describe('InstanceAiPromptSuggestions', () => {
 
 		expect(queryByTestId('instance-ai-quick-examples-panel')).not.toBeInTheDocument();
 		expect(emitted()['preview-change']).toBeUndefined();
-		expect(emitted()['submit-suggestion']).toBeUndefined();
+		expect(emitted()['insert-suggestion']).toBeUndefined();
 		expect(emitted()['quick-examples-opened']).toBeUndefined();
 	});
 
@@ -139,7 +171,7 @@ describe('InstanceAiPromptSuggestions', () => {
 
 		const beforePreviewChanges = emitted()['preview-change']?.length ?? 0;
 		const beforeQuickExamplesOpened = emitted()['quick-examples-opened']?.length ?? 0;
-		const beforeSubmitSuggestion = emitted()['submit-suggestion']?.length ?? 0;
+		const beforeInsertSuggestion = emitted()['insert-suggestion']?.length ?? 0;
 
 		await userEvent.hover(getByTestId('instance-ai-quick-example-monitor-competitors'));
 		await userEvent.unhover(getByTestId('instance-ai-quick-example-monitor-competitors'));
@@ -148,7 +180,7 @@ describe('InstanceAiPromptSuggestions', () => {
 		expect(getByTestId('instance-ai-quick-examples-panel')).toBeVisible();
 		expect(emitted()['preview-change']?.length ?? 0).toBe(beforePreviewChanges);
 		expect(emitted()['quick-examples-opened']?.length ?? 0).toBe(beforeQuickExamplesOpened);
-		expect(emitted()['submit-suggestion']?.length ?? 0).toBe(beforeSubmitSuggestion);
+		expect(emitted()['insert-suggestion']?.length ?? 0).toBe(beforeInsertSuggestion);
 	});
 
 	it('closes quick examples and clears preview when clicking outside', async () => {

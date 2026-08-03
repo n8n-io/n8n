@@ -1,15 +1,13 @@
 import type { StorybookConfig } from '@storybook/vue3-vite';
-
 import { dirname } from 'path';
 import remarkGfm from 'remark-gfm';
-
 import { fileURLToPath } from 'url';
 
 /**
  * This function is used to resolve the absolute path of a package.
  * It is needed in projects that use Yarn PnP or are set up within a monorepo.
  */
-function getAbsolutePath(value: string): any {
+function getAbsolutePath(value: string): string {
 	return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
 }
 const config: StorybookConfig = {
@@ -33,7 +31,6 @@ const config: StorybookConfig = {
 				},
 			},
 		},
-		getAbsolutePath('@storybook/addon-themes'),
 		getAbsolutePath('storybook-addon-vue-mdx'),
 	],
 	framework: getAbsolutePath('@storybook/vue3-vite'),

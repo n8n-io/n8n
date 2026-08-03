@@ -1,10 +1,11 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
+
 import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
 
 describe('WorkflowHistoryCompactionService', () => {
@@ -37,7 +38,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock(),
 				mock<EventService>(),
 			);
-			const startCompacting = jest.spyOn(compactingService, 'startCompacting');
+			const startCompacting = vi.spyOn(compactingService, 'startCompacting');
 
 			compactingService.init();
 
@@ -54,7 +55,7 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock(),
 				mock<EventService>(),
 			);
-			const startCompacting = jest.spyOn(compactingService, 'startCompacting');
+			const startCompacting = vi.spyOn(compactingService, 'startCompacting');
 
 			compactingService.init();
 
@@ -74,15 +75,15 @@ describe('WorkflowHistoryCompactionService', () => {
 				mock<EventService>(),
 			);
 
-			const scheduleOptimizationSpy = jest
+			const scheduleOptimizationSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(compactingService, 'scheduleOptimization')
-				.mockImplementation();
+				.mockImplementation((() => {}) as never);
 
-			const scheduleTrimmingSpy = jest
+			const scheduleTrimmingSpy = vi
 				// @ts-expect-error Private method
 				.spyOn(compactingService, 'scheduleTrimming')
-				.mockImplementation();
+				.mockImplementation((() => {}) as never);
 
 			compactingService.startCompacting();
 
@@ -102,12 +103,12 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		jest
+		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'compactHistories')
-			.mockImplementation();
+			.mockImplementation((() => {}) as never);
 
-		const trimLongRunningHistoriesSpy = jest
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories');
 
@@ -127,14 +128,14 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		jest
+		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation();
-		const trimLongRunningHistoriesSpy = jest
+			.mockImplementation((() => {}) as never);
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation();
+			.mockImplementation((() => {}) as never);
 
 		compactingService.startCompacting();
 
@@ -152,14 +153,14 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		const optimizeHistoriesSpy = jest
+		const optimizeHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation();
-		const trimLongRunningHistoriesSpy = jest
+			.mockImplementation((() => {}) as never);
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation();
+			.mockImplementation((() => {}) as never);
 
 		compactingService.startCompacting();
 
@@ -178,14 +179,14 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		const optimizeHistoriesSpy = jest
+		const optimizeHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation();
-		const trimLongRunningHistoriesSpy = jest
+			.mockImplementation((() => {}) as never);
+		const trimLongRunningHistoriesSpy = vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation();
+			.mockImplementation((() => {}) as never);
 
 		compactingService.startCompacting();
 

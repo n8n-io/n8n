@@ -172,14 +172,10 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		panelWidthPercentage.value.right = newRight;
 	};
 
-	watch(containerWidth, (newWidth, oldWidth) => {
+	watch(containerWidth, (newWidth) => {
 		if (!newWidth) return;
 
-		if (!oldWidth) {
-			loadPanelSize();
-		} else {
-			panelWidthPercentage.value = safePanelWidth(panelWidthPercentage.value);
-		}
+		loadPanelSize();
 	});
 
 	watch(

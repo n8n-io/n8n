@@ -15,6 +15,7 @@
  * dependency, following the NodeTestHarness pattern.
  */
 
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -26,7 +27,7 @@ import type {
 	IVersionedNodeType,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { createDeferredPromise, createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
+import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'path';
 
 import { findRepoRoot } from './environment';
@@ -294,7 +295,8 @@ export async function executeWorkflowWithPinData(
 		// Find start node. getStartNode() only recognises nodes with a trigger()/poll()
 		// method or those in STARTING_NODE_TYPES. Webhook-based triggers like ChatTrigger
 		// are missed, so fall back to any node whose description group includes 'trigger'.
-		const startNode = workflowInstance.getStartNode() ?? findTriggerByGroup(workflow.nodes, imports.nodeTypes);
+		const startNode =
+			workflowInstance.getStartNode() ?? findTriggerByGroup(workflow.nodes, imports.nodeTypes);
 		if (!startNode) {
 			return {
 				success: false,
