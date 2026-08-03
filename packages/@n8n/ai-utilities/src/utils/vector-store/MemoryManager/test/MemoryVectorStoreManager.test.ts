@@ -1,8 +1,8 @@
 import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 import { Document } from '@langchain/core/documents';
 import type { OpenAIEmbeddings } from '@langchain/openai';
-import { mock } from 'jest-mock-extended';
 import type { Logger } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as configModule from '../config';
 import { MemoryVectorStoreManager } from '../MemoryVectorStoreManager';
@@ -11,13 +11,13 @@ function createTestEmbedding(dimensions = 1536, initialValue = 0.1, multiplier =
 	return new Array(dimensions).fill(initialValue).map((value) => value * multiplier);
 }
 
-jest.mock('@langchain/classic/vectorstores/memory', () => {
+vi.mock('@langchain/classic/vectorstores/memory', () => {
 	return {
 		MemoryVectorStore: {
-			fromExistingIndex: jest.fn().mockImplementation(() => {
+			fromExistingIndex: vi.fn().mockImplementation(() => {
 				return {
 					embeddings: null,
-					addDocuments: jest.fn(),
+					addDocuments: vi.fn(),
 					memoryVectors: [],
 				};
 			}),
@@ -29,22 +29,22 @@ describe('MemoryVectorStoreManager', () => {
 	let logger: Logger;
 	// Reset the singleton instance before each test
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		logger = mock<Logger>();
 		MemoryVectorStoreManager['instance'] = null;
 
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 
 		// Mock the config
-		jest.spyOn(configModule, 'getConfig').mockReturnValue({
+		vi.spyOn(configModule, 'getConfig').mockReturnValue({
 			maxMemoryMB: 100,
 			ttlHours: 168,
 		});
 	});
 
 	afterEach(() => {
-		jest.runOnlyPendingTimers();
-		jest.useRealTimers();
+		vi.runOnlyPendingTimers();
+		vi.useRealTimers();
 	});
 
 	it('should create an instance of MemoryVectorStoreManager', () => {
@@ -86,7 +86,7 @@ describe('MemoryVectorStoreManager', () => {
 	});
 
 	it('should set up the TTL cleanup interval', () => {
-		jest.spyOn(global, 'setInterval');
+		vi.spyOn(global, 'setInterval');
 		const embeddings = mock<OpenAIEmbeddings>();
 
 		MemoryVectorStoreManager.getInstance(embeddings, logger);
@@ -95,12 +95,12 @@ describe('MemoryVectorStoreManager', () => {
 	});
 
 	it('should not set up the TTL cleanup interval when TTL is disabled', () => {
-		jest.spyOn(configModule, 'getConfig').mockReturnValue({
+		vi.spyOn(configModule, 'getConfig').mockReturnValue({
 			maxMemoryMB: 100,
 			ttlHours: -1, // TTL disabled
 		});
 
-		jest.spyOn(global, 'setInterval');
+		vi.spyOn(global, 'setInterval');
 		const embeddings = mock<OpenAIEmbeddings>();
 
 		MemoryVectorStoreManager.getInstance(embeddings, logger);
@@ -112,7 +112,7 @@ describe('MemoryVectorStoreManager', () => {
 		const embeddings = mock<OpenAIEmbeddings>();
 		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
-		const calculatorSpy = jest
+		const calculatorSpy = vi
 			.spyOn(instance['memoryCalculator'], 'estimateBatchSize')
 			.mockReturnValue(1024 * 1024); // Mock 1MB size
 
@@ -133,7 +133,7 @@ describe('MemoryVectorStoreManager', () => {
 
 		// Add documents to create a store
 		const docs = [new Document({ pageContent: 'test', metadata: {} })];
-		jest.spyOn(instance['memoryCalculator'], 'estimateBatchSize').mockReturnValue(1000);
+		vi.spyOn(instance['memoryCalculator'], 'estimateBatchSize').mockReturnValue(1000);
 
 		await instance.addDocuments('test-key', docs);
 		expect(instance.getMemoryUsage()).toBe(1000);
@@ -158,11 +158,11 @@ describe('MemoryVectorStoreManager', () => {
 		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		// Spy on the cleanup service
-		const cleanupSpy = jest.spyOn(instance['cleanupService'], 'cleanupOldestStores');
+		const cleanupSpy = vi.spyOn(instance['cleanupService'], 'cleanupOldestStores');
 
 		// Set up a large document batch
 		const documents = [new Document({ pageContent: 'test', metadata: {} })];
-		jest.spyOn(instance['memoryCalculator'], 'estimateBatchSize').mockReturnValue(50 * 1024 * 1024); // 50MB
+		vi.spyOn(instance['memoryCalculator'], 'estimateBatchSize').mockReturnValue(50 * 1024 * 1024); // 50MB
 
 		await instance.addDocuments('test-key', documents);
 
@@ -174,7 +174,7 @@ describe('MemoryVectorStoreManager', () => {
 		const instance = MemoryVectorStoreManager.getInstance(embeddings, logger);
 
 		// Mock methods and spies
-		const recalcSpy = jest.spyOn(instance, 'recalculateMemoryUsage');
+		const recalcSpy = vi.spyOn(instance, 'recalculateMemoryUsage');
 		const mockVectorStore = mock<MemoryVectorStore>();
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		mockVectorStore.memoryVectors = new Array(100).fill({
@@ -184,8 +184,8 @@ describe('MemoryVectorStoreManager', () => {
 		});
 
 		// Mock the getVectorStore to return our mock
-		jest.spyOn(instance, 'getVectorStore').mockResolvedValue(mockVectorStore);
-		jest.spyOn(instance['memoryCalculator'], 'estimateBatchSize').mockReturnValue(1000);
+		vi.spyOn(instance, 'getVectorStore').mockResolvedValue(mockVectorStore);
+		vi.spyOn(instance['memoryCalculator'], 'estimateBatchSize').mockReturnValue(1000);
 
 		// Add a large batch of documents
 		const documents = new Array(21).fill(new Document({ pageContent: 'test', metadata: {} }));

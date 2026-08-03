@@ -224,11 +224,11 @@ defineExpose({
 	}
 
 	&[data-orientation='vertical'] {
-		width: var(--spacing--xs);
+		width: var(--spacing--2xs);
 	}
 
 	&[data-orientation='horizontal'] {
-		height: var(--spacing--xs);
+		height: var(--spacing--2xs);
 		flex-direction: row;
 	}
 }

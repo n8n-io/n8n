@@ -12,6 +12,7 @@ export const SOURCE_CONTROL_OWNERS_EXPORT_FILE = 'workflow_owners.json';
 export const SOURCE_CONTROL_SSH_FOLDER = 'ssh';
 export const SOURCE_CONTROL_SSH_KEY_NAME = 'key';
 export const SOURCE_CONTROL_DEFAULT_BRANCH = 'main';
+export const SOURCE_CONTROL_DEFAULT_BRANCH_COLOR = '#5296D6';
 export const SOURCE_CONTROL_ORIGIN = 'origin';
 export const SOURCE_CONTROL_README = `
 # n8n Source Control
@@ -19,3 +20,4 @@ export const SOURCE_CONTROL_README = `
 export const SOURCE_CONTROL_DEFAULT_NAME = 'n8n user';
 export const SOURCE_CONTROL_DEFAULT_EMAIL = 'n8n@example.com';
 export const SOURCE_CONTROL_WRITE_FILE_BATCH_SIZE = 20;
+export const SOURCE_CONTROL_READ_FILE_BATCH_SIZE = 20;

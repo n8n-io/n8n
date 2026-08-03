@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ChatHubConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
 import type { RedisClientService } from '@/services/redis-client.service';
@@ -17,8 +17,8 @@ describe('ChatStreamStateService', () => {
 	const redisClientService = mock<RedisClientService>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
+		vi.clearAllMocks();
+		vi.useFakeTimers();
 
 		Object.defineProperty(instanceSettings, 'isMultiMain', { value: false, configurable: true });
 		executionsConfig.mode = 'regular';
@@ -28,7 +28,7 @@ describe('ChatStreamStateService', () => {
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('in-memory mode (single-main)', () => {
@@ -270,7 +270,7 @@ describe('ChatStreamStateService', () => {
 				await service.startExecution({ sessionId: 'session-1', userId: 'user-1' });
 
 				// Fast-forward 5 minutes (STREAM_STATE_TTL)
-				jest.advanceTimersByTime(5 * 60 * 1000);
+				vi.advanceTimersByTime(5 * 60 * 1000);
 
 				const state = await service.getStreamState('session-1');
 				expect(state).toBeNull();
@@ -281,7 +281,7 @@ describe('ChatStreamStateService', () => {
 				await service.endExecution('session-1');
 
 				// Fast-forward - should not throw or cause issues
-				jest.advanceTimersByTime(5 * 60 * 1000);
+				vi.advanceTimersByTime(5 * 60 * 1000);
 
 				const state = await service.getStreamState('session-1');
 				expect(state).toBeNull();
@@ -291,20 +291,20 @@ describe('ChatStreamStateService', () => {
 				await service.startExecution({ sessionId: 'session-1', userId: 'user-1' });
 
 				// Fast-forward 3 minutes
-				jest.advanceTimersByTime(3 * 60 * 1000);
+				vi.advanceTimersByTime(3 * 60 * 1000);
 
 				// Start new execution - should reset timer
 				await service.startExecution({ sessionId: 'session-1', userId: 'user-2' });
 
 				// Fast-forward another 3 minutes (total 6 minutes from first start)
-				jest.advanceTimersByTime(3 * 60 * 1000);
+				vi.advanceTimersByTime(3 * 60 * 1000);
 
 				// Should still exist because timer was reset
 				const state = await service.getStreamState('session-1');
 				expect(state).not.toBeNull();
 
 				// Fast-forward another 2 minutes (5 minutes from second start)
-				jest.advanceTimersByTime(2 * 60 * 1000);
+				vi.advanceTimersByTime(2 * 60 * 1000);
 
 				// Now should be cleaned up
 				const stateAfter = await service.getStreamState('session-1');
@@ -336,17 +336,17 @@ describe('ChatStreamStateService', () => {
 
 				// Fast-forward - cleanup should not run (timer was cleared)
 				// This mainly tests that we don't get errors from orphaned timers
-				jest.advanceTimersByTime(10 * 60 * 1000);
+				vi.advanceTimersByTime(10 * 60 * 1000);
 			});
 		});
 	});
 
 	describe('Redis mode (multi-main)', () => {
 		const mockRedisClient = {
-			get: jest.fn(),
-			set: jest.fn(),
-			del: jest.fn(),
-			disconnect: jest.fn(),
+			get: vi.fn(),
+			set: vi.fn(),
+			del: vi.fn(),
+			disconnect: vi.fn(),
 		};
 
 		beforeEach(() => {
@@ -355,7 +355,7 @@ describe('ChatStreamStateService', () => {
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should create Redis client in multi-main mode', () => {

@@ -219,18 +219,15 @@ export const getConnectedTools = async (
 				const tools = toolOrToolkit.tools;
 				// Add metadata to each tool from the toolkit
 				return tools.map((tool) => {
-					const sourceNode = parentNodes[index] ?? tool.name;
-
 					tool.metadata ??= {};
 					tool.metadata.isFromToolkit = true;
-					tool.metadata.sourceNodeName = sourceNode?.name;
+					tool.metadata.sourceNodeName = parentNodes[index]?.name ?? tool.name;
 					return tool;
 				});
 			} else {
-				const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
 				toolOrToolkit.metadata ??= {};
 				toolOrToolkit.metadata.isFromToolkit = false;
-				toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
+				toolOrToolkit.metadata.sourceNodeName = parentNodes[index]?.name ?? toolOrToolkit.name;
 			}
 
 			return toolOrToolkit;
@@ -268,6 +265,24 @@ export const getConnectedTools = async (
 };
 
 /**
+ * Reads the custom header configured on a credential, if present and valid.
+ * Shared by header merging and tracing redaction so the guard lives in one place.
+ */
+export function getCustomCredentialHeader(
+	credentials: ICredentialDataDecryptedObject,
+): { name: string; value: string } | undefined {
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		return { name: credentials.headerName, value: credentials.headerValue };
+	}
+	return undefined;
+}
+
+/**
  * Merges custom credential headers into an existing defaultHeaders object.
  * Used by OpenAI and other LangChain nodes that pass `configuration.defaultHeaders`.
  */
@@ -275,15 +290,11 @@ export function mergeCustomHeaders(
 	credentials: ICredentialDataDecryptedObject,
 	defaultHeaders: Record<string, string>,
 ): Record<string, string> {
-	if (
-		credentials.header &&
-		typeof credentials.headerName === 'string' &&
-		credentials.headerName &&
-		typeof credentials.headerValue === 'string'
-	) {
+	const customHeader = getCustomCredentialHeader(credentials);
+	if (customHeader) {
 		return {
 			...defaultHeaders,
-			[credentials.headerName]: credentials.headerValue,
+			[customHeader.name]: customHeader.value,
 		};
 	}
 	return defaultHeaders;

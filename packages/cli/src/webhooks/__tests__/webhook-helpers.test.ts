@@ -1,30 +1,47 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
-import { mock, type MockProxy } from 'jest-mock-extended';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	getHtmlSandboxCSP,
+	isWebhookHtmlSandboxingDisabled,
+} from 'n8n-core';
+
+vi.mock('n8n-core', async () => ({
+	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
+	isWebhookHtmlSandboxingDisabled: vi.fn(),
+	getHtmlSandboxCSP: vi.fn(),
+}));
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	Workflow,
 	INode,
+	INodeType,
 	IDataObject,
 	IWebhookResponseData,
-	IDeferredPromise,
 	IN8nHttpFullResponse,
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 	NodeOperationError,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
+import { mock, type MockProxy } from 'vitest-mock-extended';
+
+import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 
 import {
 	autoDetectResponseMode,
@@ -32,12 +49,22 @@ import {
 	setupResponseNodePromise,
 	prepareExecutionData,
 	handleHostedChatResponse,
+	executeWebhook,
 	_privateGetWebhookErrorMessage,
 } from '../webhook-helpers';
-import type { IWebhookResponseCallbackData } from '../webhook.types';
+import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
+import type { Project } from '@n8n/db';
+import { ActiveExecutions } from '@/active-executions';
+import { AuthService } from '@/auth/auth.service';
+import { EventService } from '@/events/event.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { WorkflowRunner } from '@/workflow-runner';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WebhookService } from '../webhook.service';
 
-jest.mock('stream/promises', () => ({
-	finished: jest.fn(),
+vi.mock('stream/promises', () => ({
+	finished: vi.fn(),
 }));
 
 describe('autoDetectResponseMode', () => {
@@ -206,17 +233,21 @@ describe('setupResponseNodePromise', () => {
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
 	const res = mock<express.Response>();
-	const responseCallback = jest.fn();
+	const responseCallback = vi.fn();
 	const workflowStartNode = mock<INode>();
 	const workflow = mock<Workflow>({ id: workflowId });
 	const binaryDataService = mockInstance(BinaryDataService);
+	const webhookResponseRelay = mockInstance(WebhookResponseRelay);
 	const errorReporter = mockInstance(ErrorReporter);
 	const logger = mockInstance(Logger);
 
 	let responsePromise: IDeferredPromise<IN8nHttpFullResponse>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+		vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-forms allow-scripts');
 
 		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
 
@@ -271,9 +302,136 @@ describe('setupResponseNodePromise', () => {
 
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
 		expect(finished).toHaveBeenCalledWith(mockStream);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should reclaim an offloaded body once it has been streamed', async () => {
+		binaryDataService.getAsStream.mockResolvedValue(mock<Readable>());
+		const response = {
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 200,
+		} as unknown as IN8nHttpFullResponse;
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve(response);
+		await new Promise(process.nextTick);
+
+		expect(webhookResponseRelay.deleteOffloadedBody).toHaveBeenCalledWith(response, {
+			workflowId,
+			executionId,
+		});
+	});
+
+	test('should destroy the stream when the client goes away, so delivery settles', async () => {
+		const stream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(stream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 200,
+		} as unknown as IN8nHttpFullResponse);
+		await new Promise(process.nextTick);
+
+		const closeHandler = res.once.mock.calls.find(([event]) => event === 'close')?.[1] as
+			| (() => void)
+			| undefined;
+		expect(closeHandler).toBeDefined();
+		expect(stream.destroy).not.toHaveBeenCalled();
+
+		closeHandler!();
+
+		expect(stream.destroy).toHaveBeenCalled();
+	});
+
+	test('should reclaim an offloaded body even when streaming fails', async () => {
+		binaryDataService.getAsStream.mockRejectedValue(new Error('store is down'));
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 200,
+		} as unknown as IN8nHttpFullResponse);
+		await new Promise(process.nextTick);
+
+		expect(webhookResponseRelay.deleteOffloadedBody).toHaveBeenCalled();
+		expect(responseCallback).toHaveBeenCalledWith(expect.any(Error), {});
+	});
+
+	test('should apply the status code to binary data responses', async () => {
+		binaryDataService.getAsStream.mockResolvedValue(mock<Readable>());
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 201,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.status).toHaveBeenCalledWith(201);
+	});
+
+	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle buffer response', async () => {
@@ -295,8 +453,51 @@ describe('setupResponseNodePromise', () => {
 		await new Promise(process.nextTick);
 
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'text/plain']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should apply the status code to buffer responses', async () => {
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('created'),
+			headers: {},
+			statusCode: 201,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.status).toHaveBeenCalledWith(201);
+	});
+
+	test('should not set sandbox CSP header on buffer responses when sandboxing is disabled', async () => {
+		vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('<html></html>'),
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle errors properly', async () => {
@@ -325,11 +526,11 @@ describe('setupResponseNodePromise', () => {
 describe('handleHostedChatResponse', () => {
 	it('should send executionStarted: true, executionId, and resumeToken when responseMode is hostedChat', async () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const responseMode = 'hostedChat';
-		let didSendResponse = false;
+		const didSendResponse = false;
 		const executionId = '123';
 		const resumeToken = 'a'.repeat(64);
 
@@ -349,11 +550,11 @@ describe('handleHostedChatResponse', () => {
 
 	it('should not send response when responseMode is not hostedChat', () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = false;
+		const didSendResponse = false;
 		const responseMode = 'responseNode';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
@@ -365,11 +566,11 @@ describe('handleHostedChatResponse', () => {
 
 	it('should not send response when didSendResponse is true', () => {
 		const res = {
-			send: jest.fn(),
-			end: jest.fn(),
+			send: vi.fn(),
+			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = true;
+		const didSendResponse = true;
 		const responseMode = 'hostedChat';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
@@ -501,6 +702,54 @@ describe('prepareExecutionData', () => {
 
 		expect(pinData).toBeUndefined();
 		expect(runExecutionData.resultData.pinData).toBeUndefined();
+	});
+
+	test('should populate manualData.userId for manual executions when userId is provided', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toEqual({ userId: 'user-abc' });
+	});
+
+	test('should not populate manualData when userId is undefined', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			undefined,
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
+	});
+
+	test('should not populate manualData for non-manual execution modes', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'webhook',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
 	});
 
 	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {
@@ -650,6 +899,111 @@ describe('prepareExecutionData', () => {
 			]);
 		});
 
+		test('should replace the seeded stack (not merge) for a Webhook node using n8nOAuth2 auth, preserving runtimeData', () => {
+			const identityWebhookNode = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: { authentication: 'n8nOAuth2' },
+			});
+
+			// After the node's webhook() call the identity is already established: the
+			// seeder's placeholder item has been consumed by the hook (leaving an empty
+			// item) and the resolved credentials live on executionData.runtimeData.
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: {} }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					runtimeData: { version: 1, credentials: { source: 'n8n-oauth' } } as any,
+				},
+			} as IRunExecutionData;
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				identityWebhookNode,
+				webhookResultData,
+				existingRunExecutionData,
+			);
+
+			expect(runExecutionData.executionData?.nodeExecutionStack).toHaveLength(1);
+			// The seeded placeholder is discarded; only the webhook's real output remains.
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
+				[{ json: { data: 'test' } }],
+			]);
+			// The established identity (runtimeData) is preserved across the replace.
+			expect(runExecutionData.executionData?.runtimeData).toEqual({
+				version: 1,
+				credentials: { source: 'n8n-oauth' },
+			});
+		});
+
+		test('should not leak the seeded placeholder into output slot 0 for a multi-method n8nOAuth2 webhook', () => {
+			const identityWebhookNode = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: { authentication: 'n8nOAuth2' },
+			});
+
+			// Seeded placeholder sits in output slot 0.
+			const existingNodeExecutionStack: IExecuteData[] = [
+				{
+					node: mock<INode>({ name: 'ExistingNode' }),
+					data: {
+						main: [[{ json: {} }]],
+					},
+					source: null,
+				},
+			];
+
+			const existingRunExecutionData: IRunExecutionData = {
+				version: 1,
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					metadata: {},
+					nodeExecutionStack: existingNodeExecutionStack,
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			} as IRunExecutionData;
+
+			// A multi-method webhook routes the request to a non-first output slot; e.g.
+			// a POST on a ['GET','POST'] node puts the item in slot 1, slot 0 stays empty.
+			const multiMethodResult: IWebhookResponseData = {
+				workflowData: [[], [{ json: { method: 'POST' } }]],
+			};
+
+			const { runExecutionData } = prepareExecutionData(
+				'trigger',
+				identityWebhookNode,
+				multiMethodResult,
+				existingRunExecutionData,
+			);
+
+			// Slot 0 must be empty (no phantom placeholder firing the GET branch).
+			expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
+				[],
+				[{ json: { method: 'POST' } }],
+			]);
+		});
+
 		test('should merge existing data with new data for MICROSOFT_AGENT365_TRIGGER_NODE_TYPE', () => {
 			const microsoftAgentNode = mock<INode>({
 				name: 'Microsoft Agent 365',
@@ -718,5 +1072,212 @@ describe('getWebhookErrorMessage', () => {
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
 			'Error: Workflow could not be started',
 		);
+	});
+});
+
+describe('executeWebhook credential-status gate', () => {
+	const ownershipService = mockInstance(OwnershipService);
+	const webhookService = mockInstance(WebhookService);
+	const workflowRunner = mockInstance(WorkflowRunner);
+	const activeExecutions = mockInstance(ActiveExecutions);
+	mockInstance(AuthService);
+	mockInstance(EventService);
+	mockInstance(WorkflowStatisticsService);
+
+	const WORKFLOW_ID = 'wf-1';
+	const EXECUTION_ID = 'exec-1';
+
+	const missingGateResult: CredentialCheckResult = {
+		readyToExecute: false,
+		credentials: [
+			{
+				credentialId: 'cred-1',
+				credentialName: 'My Gmail',
+				credentialType: 'gmailOAuth2',
+				resolverId: 'resolver-1',
+				status: 'missing',
+				authorizationUrl:
+					'https://n8n.test/rest/credentials/cred-1/authorize?token=signed-connect-token',
+			},
+		],
+	};
+
+	const readyGateResult: CredentialCheckResult = {
+		readyToExecute: true,
+		credentials: [
+			{
+				credentialId: 'cred-1',
+				credentialName: 'My Gmail',
+				credentialType: 'gmailOAuth2',
+				resolverId: 'resolver-1',
+				status: 'configured',
+			},
+		],
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		// The gate only runs when the webhook decided the workflow should execute
+		// (workflowData present). Cases that pass the gate continue into WorkflowRunner.
+		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: {} }]] });
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+		activeExecutions.getPostExecutePromise.mockReturnValue(new Promise(() => {}));
+	});
+
+	/**
+	 * Drives `executeWebhook` for a Webhook node with the given authentication mode and
+	 * wires the dynamic-credentials credential-check proxy to return `gateResult`.
+	 * Returns the spied proxy and the captured `responseCallback`.
+	 */
+	const runGate = async (options: {
+		authentication: string;
+		gateResult?: CredentialCheckResult;
+		webhookResult?: IWebhookResponseData;
+	}) => {
+		const checkCredentialStatus = vi.fn().mockResolvedValue(options.gateResult);
+
+		const additionalData = {
+			'dynamic-credentials': { credentialCheckProxy: { checkCredentialStatus } },
+			encryptedRunnerIdentity: 'encrypted-runner-identity',
+			webhookWaitingBaseUrl: 'https://n8n.test/webhook-waiting',
+			formWaitingBaseUrl: 'https://n8n.test/form-waiting',
+		} as unknown as IWorkflowExecuteAdditionalData;
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		if (options.webhookResult !== undefined) {
+			webhookService.runWebhook.mockResolvedValue(options.webhookResult);
+		}
+
+		const workflowStartNode = mock<INode>({
+			name: 'Webhook',
+			type: WEBHOOK_NODE_TYPE,
+			typeVersion: 2,
+			parameters: { authentication: options.authentication },
+		});
+
+		// Force a valid `onReceived` response mode; the deep mock would otherwise return undefined.
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'webhook' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
+				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
+			},
+		});
+
+		const webhookData = {
+			webhookDescription: { name: 'default' },
+			workflowId: WORKFLOW_ID,
+		} as unknown as IWebhookData;
+
+		const workflowData = mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' });
+		const req = mock<WebhookRequest>({ method: 'POST', contentType: undefined });
+		const res = mock<express.Response>({ headersSent: false });
+		const responseCallback = vi.fn();
+
+		await executeWebhook(
+			workflow,
+			webhookData,
+			workflowData,
+			workflowStartNode,
+			'manual',
+			undefined,
+			undefined,
+			undefined,
+			req,
+			res,
+			responseCallback,
+		);
+
+		return { checkCredentialStatus, responseCallback };
+	};
+
+	it('responds 428 with the missing-credential list and signed connect links when the caller has unconnected credentials', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'n8nOAuth2',
+			gateResult: missingGateResult,
+		});
+
+		// Checked using the established identity and the workflow being called.
+		expect(checkCredentialStatus).toHaveBeenCalledWith(WORKFLOW_ID, {
+			credentials: 'encrypted-runner-identity',
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: missingGateResult,
+			responseCode: 428,
+		});
+
+		// The 428 body carries a valid signed connect link for each missing credential.
+		const [, callbackData] = responseCallback.mock.calls[0] as [
+			unknown,
+			IWebhookResponseCallbackData,
+		];
+		expect(callbackData.data).toBe(missingGateResult);
+		expect(missingGateResult.credentials[0].authorizationUrl).toContain(
+			'/credentials/cred-1/authorize?token=',
+		);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('proceeds without a 428 when all resolvable credentials are connected', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'n8nOAuth2',
+			gateResult: readyGateResult,
+		});
+
+		expect(checkCredentialStatus).toHaveBeenCalledTimes(1);
+		expect(responseCallback).not.toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({ responseCode: 428 }),
+		);
+		// Execution continued past the gate into the workflow runner.
+		expect(workflowRunner.run).toHaveBeenCalled();
+	});
+
+	it('does not gate webhooks that do not establish a triggering identity', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'none',
+			gateResult: missingGateResult,
+		});
+
+		expect(checkCredentialStatus).not.toHaveBeenCalled();
+		expect(responseCallback).not.toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({ responseCode: 428 }),
+		);
+		expect(workflowRunner.run).toHaveBeenCalled();
+	});
+
+	it('does not gate when Only Run If prevents the workflow from executing', async () => {
+		const { checkCredentialStatus, responseCallback } = await runGate({
+			authentication: 'n8nOAuth2',
+			gateResult: missingGateResult,
+			// Bare `{}` is what Webhook.node returns when Only Run If evaluates falsy.
+			webhookResult: {},
+		});
+
+		expect(checkCredentialStatus).not.toHaveBeenCalled();
+		expect(responseCallback).not.toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({ responseCode: 428 }),
+		);
+		expect(responseCallback).toHaveBeenCalledWith(
+			null,
+			expect.objectContaining({
+				data: { message: 'Webhook call received' },
+			}),
+		);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 });

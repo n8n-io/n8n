@@ -29,9 +29,12 @@ Key functions exposed on `globalThis` inside the isolate:
 Host-side callbacks registered by `IsolatedVmBridge` as `ivm.Reference` objects
 (synchronous cross-isolate calls):
 
-- `__getValueAtPath(path[])` — returns a primitive, array metadata, or object metadata
+- `__getValueAtPath(path[])` — returns a primitive, array metadata, or object metadata.
+  Function-typed values are returned as `undefined`; callable bindings route through `callHost`.
 - `__getArrayElement(path[], index)` — returns a single array element (or its metadata)
-- `__callFunctionAtPath(path[], ...args)` — invokes a host-side function and returns the result
+- `callHost(envelope)` — typed-RPC dispatcher; the isolate sends a schema-validated
+  envelope (e.g. `{ type: 'getItems', nodeName, ... }`) and the host dispatches
+  to the matching handler
 
 ## Usage
 
@@ -50,7 +53,7 @@ From the expression's perspective it just sees normal objects:
 // Inside an expression (runs in isolate):
 $json.user.email        // triggers getValueAtPath(['$json','user','email'])
 $json.items[150].id     // triggers getArrayElement(['$json','items'], 150)
-$items()                // triggers callFunctionAtPath(['$items'])
+$items()                // triggers callHost({ type: 'getItems' })
 ```
 
 ### Array metadata

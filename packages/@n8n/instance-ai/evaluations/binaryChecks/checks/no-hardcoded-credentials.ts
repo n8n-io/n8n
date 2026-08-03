@@ -98,18 +98,20 @@ export const noHardcodedCredentials: BinaryCheck = {
 	name: 'no_hardcoded_credentials',
 	description: 'No hardcoded credentials in HTTP Request headers or Set node fields',
 	kind: 'deterministic',
+	dimension: 'security',
 	run(workflow) {
-		const nodes = workflow.nodes ?? [];
-		if (nodes.length === 0) return { pass: true };
+		const candidates = (workflow.nodes ?? []).filter(
+			(n) => n.type === HTTP_REQUEST_TYPE || n.type === SET_NODE_TYPE,
+		);
+		if (candidates.length === 0) return { pass: true, applicable: false };
 
 		const issues: string[] = [];
-
-		for (const node of nodes) {
+		for (const node of candidates) {
 			if (!node.parameters) continue;
 
 			if (node.type === HTTP_REQUEST_TYPE) {
 				checkHttpRequestNode(node.name, node.parameters, issues);
-			} else if (node.type === SET_NODE_TYPE) {
+			} else {
 				checkSetNode(node.name, node.parameters, issues);
 			}
 		}

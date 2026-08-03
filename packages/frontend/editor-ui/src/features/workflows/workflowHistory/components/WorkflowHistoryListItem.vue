@@ -252,7 +252,6 @@ onMounted(() => {
 @use './timeline' as *;
 
 $hoverBackground: var(--color--background--light-1);
-$authorMaxWidth: 130px;
 
 .item {
 	display: flex;
@@ -345,17 +344,15 @@ $authorMaxWidth: 130px;
 .metaRow {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: var(--spacing--5xs);
 	margin-top: var(--spacing--5xs);
 	min-width: 0;
 }
 
 .metaAuthor {
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: $authorMaxWidth;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .metaTime {

@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import dateformat from 'dateformat';
-import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nCard,
+	N8nIcon,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import { useToast } from '@n8n/composables/useToast';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
+import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 const props = defineProps<{
 	agent: AgentResource;
@@ -24,20 +38,77 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+const toast = useToast();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const mcpStore = useMCPStore();
+const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
+const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
+	() => props.projectId,
+);
 
-const isPublished = computed(() => props.agent.publishedVersion !== null);
+const isPublished = computed(() => props.agent.activeVersionId !== null);
+
+const isMcpEnabled = computed(
+	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
+
+// Optimistic state so the action label flips without refetching the list
+// (same pattern as the workflow card's 3-dot menu).
+const mcpToggleStatus = ref<boolean | null>(null);
+
+const isAvailableInMCP = computed(
+	() => mcpToggleStatus.value ?? props.agent.availableInMCP ?? false,
+);
+
+watch([() => props.agent, () => props.agent.availableInMCP], () => {
+	mcpToggleStatus.value = null;
+});
+
+const showMcpIndicator = computed(() => isMcpEnabled.value && isAvailableInMCP.value);
+
+const favoriteStore = useFavoritesStore();
+const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
 const actions = computed(() => {
-	return [
-		isPublished.value
-			? { value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') }
-			: { value: 'publish', label: locale.baseText('agents.list.actions.publish') },
-		{ value: 'delete', label: locale.baseText('agents.list.actions.delete'), divided: true },
-	];
+	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
+
+	if (isPublished.value && canUnpublish.value) {
+		items.push({ value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') });
+	} else if (!isPublished.value && canPublish.value) {
+		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
+	}
+
+	items.push({
+		value: 'toggleFavorite',
+		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+	});
+
+	if (isMcpEnabled.value && canUpdate.value) {
+		items.push({
+			value: 'toggleMCPAccess',
+			label: locale.baseText(
+				isAvailableInMCP.value
+					? 'agents.list.actions.disableMCPAccess'
+					: 'agents.list.actions.enableMCPAccess',
+			),
+		});
+	}
+
+	if (canDelete.value) {
+		items.push({
+			value: 'delete',
+			label: locale.baseText('agents.list.actions.delete'),
+			divided: items.length > 0,
+		});
+	}
+
+	return items;
 });
+
+const showActions = computed(() => actions.value.length > 0);
 
 const formattedCreatedAtDate = computed(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -55,6 +126,10 @@ async function onAction(action: string) {
 	} else if (action === 'unpublish') {
 		const updated = await unpublish(props.projectId, props.agent.id, props.agent.name);
 		if (updated) emit('unpublished', updated);
+	} else if (action === 'toggleFavorite') {
+		await favoriteStore.toggleFavorite(props.agent.id, 'agent');
+	} else if (action === 'toggleMCPAccess') {
+		await toggleMCPAccess(!isAvailableInMCP.value);
 	} else if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -68,7 +143,21 @@ async function onAction(action: string) {
 		});
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
+		removeProjectAgentFromListCache(props.projectId, props.agent.id);
+		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
 		emit('deleted', props.agent.id);
+	}
+}
+
+async function toggleMCPAccess(enabled: boolean) {
+	try {
+		await mcpStore.toggleAgentMcpAccess(props.agent.id, enabled);
+		mcpToggleStatus.value = enabled;
+		if (enabled) {
+			mcp.trackMcpAccessEnabledForAgent(props.agent.id);
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('agents.toggleMCP.error.title'));
 	}
 }
 </script>
@@ -78,6 +167,15 @@ async function onAction(action: string) {
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
 				{{ agent.name }}
+				<N8nBadge
+					v-if="!canUpdate"
+					:class="$style.readonlyBadge"
+					theme="tertiary"
+					bold
+					data-test-id="agent-card-readonly-badge"
+				>
+					{{ locale.baseText('agents.list.readonly') }}
+				</N8nBadge>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -86,6 +184,12 @@ async function onAction(action: string) {
 				<TimeAgo :date="String(agent.updatedAt)" /> |
 			</span>
 			<span> {{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }} </span>
+			<span v-if="showMcpIndicator">|</span>
+			<span v-if="showMcpIndicator" :class="$style.mcpIndicator" data-test-id="agent-card-mcp">
+				<N8nTooltip placement="right" :content="locale.baseText('agents.list.availableInMCP')">
+					<N8nIcon icon="mcp" size="medium" />
+				</N8nTooltip>
+			</span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
@@ -100,6 +204,7 @@ async function onAction(action: string) {
 					</N8nText>
 				</div>
 				<N8nActionToggle
+					v-if="showActions"
 					:actions="actions"
 					theme="dark"
 					data-test-id="agent-card-actions"
@@ -130,6 +235,10 @@ async function onAction(action: string) {
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
 }
 
+.readonlyBadge {
+	margin-left: var(--spacing--3xs);
+}
+
 .cardDescription {
 	min-height: var(--spacing--xl);
 	display: flex;
@@ -138,6 +247,11 @@ async function onAction(action: string) {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	gap: var(--spacing--2xs);
+}
+
+.mcpIndicator {
+	display: inline-flex;
+	align-items: center;
 }
 
 .cardActions {

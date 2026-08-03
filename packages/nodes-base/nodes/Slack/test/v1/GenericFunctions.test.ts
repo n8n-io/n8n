@@ -1,30 +1,36 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { slackApiRequest, slackApiRequestAllItems, validateJSON } from '../../V1/GenericFunctions';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
+	toMultiOptionsCsv,
+	validateJSON,
+} from '../../V1/GenericFunctions';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	NodeApiError: jest.fn(),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
+	NodeApiError: vi.fn(),
 }));
 
 describe('Slack V1 > GenericFunctions', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions = {
 			helpers: {
-				requestWithAuthentication: jest.fn(),
+				requestWithAuthentication: vi.fn(),
 			},
-			getNode: jest.fn().mockReturnValue({ type: 'n8n-nodes-base.slack', typeVersion: 1 }),
-			getNodeParameter: jest.fn().mockReturnValue('accessToken'),
+			getNode: vi.fn().mockReturnValue({ type: 'n8n-nodes-base.slack', typeVersion: 1 }),
+			getNodeParameter: vi.fn().mockReturnValue('accessToken'),
 		} as unknown as IExecuteFunctions;
 	});
 
 	describe('slackApiRequest', () => {
 		it('should handle successful response', async () => {
 			const mockResponse = { ok: true, data: 'testData' };
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -33,9 +39,9 @@ describe('Slack V1 > GenericFunctions', () => {
 		});
 
 		it('should use OAuth2 credentials when authentication is oAuth2', async () => {
-			mockExecuteFunctions.getNodeParameter = jest.fn().mockReturnValue('oAuth2');
+			mockExecuteFunctions.getNodeParameter = vi.fn().mockReturnValue('oAuth2');
 			const mockResponse = { ok: true };
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -59,7 +65,7 @@ describe('Slack V1 > GenericFunctions', () => {
 				response_metadata: { next_cursor: undefined },
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -93,7 +99,7 @@ describe('Slack V1 > GenericFunctions', () => {
 				response_metadata: { next_cursor: undefined },
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -130,7 +136,7 @@ describe('Slack V1 > GenericFunctions', () => {
 				},
 			];
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockImplementationOnce(() => responses[0])
 				.mockImplementationOnce(() => responses[1]);
@@ -144,6 +150,31 @@ describe('Slack V1 > GenericFunctions', () => {
 
 			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('toMultiOptionsCsv', () => {
+		it('joins array values', () => {
+			expect(toMultiOptionsCsv(['U123', 'U456'])).toBe('U123,U456');
+		});
+
+		it('accepts a comma-joined string and trims trailing whitespace', () => {
+			expect(toMultiOptionsCsv('U123,U456 ')).toBe('U123,U456');
+		});
+
+		it('trims whitespace around each entry in a comma-string', () => {
+			expect(toMultiOptionsCsv(' U123 , U456 ')).toBe('U123,U456');
+		});
+
+		it('drops empty entries', () => {
+			expect(toMultiOptionsCsv(['U123', '', '  ', 'U456'])).toBe('U123,U456');
+		});
+
+		it('returns empty string for undefined/null/empty', () => {
+			expect(toMultiOptionsCsv(undefined)).toBe('');
+			expect(toMultiOptionsCsv(null)).toBe('');
+			expect(toMultiOptionsCsv('')).toBe('');
+			expect(toMultiOptionsCsv([])).toBe('');
 		});
 	});
 

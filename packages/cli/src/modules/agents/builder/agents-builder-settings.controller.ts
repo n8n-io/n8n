@@ -1,7 +1,6 @@
 import {
 	AgentBuilderAdminSettingsUpdateDto,
 	type AgentBuilderAdminSettingsResponse,
-	type AgentBuilderStatusResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
@@ -37,10 +36,5 @@ export class AgentsBuilderSettingsController {
 		}
 		await this.settingsService.updateAdminSettings(parseResult.data);
 		return await this.settingsService.getAdminSettings();
-	}
-
-	@Get('/status')
-	async getStatus(): Promise<AgentBuilderStatusResponse> {
-		return await this.settingsService.getStatus();
 	}
 }

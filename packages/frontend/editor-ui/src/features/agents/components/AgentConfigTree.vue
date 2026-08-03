@@ -13,7 +13,6 @@ import {
 	AGENT_SECTION_KEY,
 	ADVANCED_SECTION_KEY,
 	CONFIG_JSON_SECTION_KEY,
-	EVALS_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
 } from '../constants';
 
@@ -23,7 +22,6 @@ const props = defineProps<{
 	config: AgentJsonConfig | null;
 	selectedKey: string | null;
 	connectedTriggers?: string[];
-	evaluationsCount?: number;
 }>();
 
 const emit = defineEmits<{ select: [key: string] }>();
@@ -89,14 +87,6 @@ const sections = computed<SectionDescriptor[]>(() => {
 		icon: 'sparkles',
 		count: skillCount,
 	});
-	out.push({
-		key: EVALS_SECTION_KEY,
-		label: i18n.baseText('agents.builder.sections.evaluations'),
-		icon: 'check',
-		disabled: true,
-		pill: i18n.baseText('agents.builder.sections.evaluations.comingSoon'),
-	});
-
 	// Divider + Executions row sits below the config primitives. The count is
 	// intentionally omitted — it would only reflect the locally-loaded page
 	// (e.g. "20" until "Load more" is clicked), which misrepresents the total.

@@ -11,6 +11,7 @@ beforeAll(async () => {
 	mockInstance(InstanceSettings, {
 		encryptionKey: INSTANCE_ENCRYPTION_KEY,
 		n8nFolder: '/tmp/n8n-test',
+		instanceType: 'main',
 	});
 	await testDb.init();
 });

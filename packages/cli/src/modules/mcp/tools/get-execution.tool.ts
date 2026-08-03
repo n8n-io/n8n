@@ -1,6 +1,8 @@
-import type { ExecutionRepository, User } from '@n8n/db';
+import { type ExecutionRepository, type User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
-import { jsonStringify, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -8,6 +10,7 @@ import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -65,14 +68,14 @@ export const createGetExecutionTool = (
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema.shape> => ({
-	name: 'get_execution',
+	name: 'get_workflow_execution',
 	config: {
 		description:
-			'Get execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
+			'Get workflow execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
-			title: 'Get Execution',
+			title: 'Get Workflow Execution',
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -88,7 +91,7 @@ export const createGetExecutionTool = (
 	}: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'get_execution',
+			tool_name: 'get_workflow_execution',
 			parameters: { workflowId, executionId, includeData, nodeNames, truncateData },
 		};
 
@@ -100,9 +103,10 @@ export const createGetExecutionTool = (
 			let execution;
 			let executionData: IRunExecutionData | null | undefined;
 			if (includeData) {
-				const fullExecution = await executionRepository.findWithUnflattenedData(executionId, [
-					workflowId,
-				]);
+				const fullExecution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
+					executionId,
+					[workflowId],
+				);
 				execution = fullExecution;
 				executionData = fullExecution?.data ?? null;
 			} else {
@@ -152,9 +156,14 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			// `structuredContent` is JSON-serialized by the MCP SDK transport, so
+			// cycles in `output` (e.g. the HTTP socket loop in
+			// `executionData.contextData`) hang the call unless replaced here.
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		} catch (er) {
 			const error = ensureError(er);
@@ -185,9 +194,11 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const safeOutput = replaceCircularReferences(output);
+
 			return {
-				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
-				structuredContent: output,
+				content: [{ type: 'text', text: JSON.stringify(safeOutput) }],
+				structuredContent: safeOutput,
 			};
 		}
 	},

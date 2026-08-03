@@ -1,6 +1,32 @@
 import { RuleTester } from '@typescript-eslint/rule-tester';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll } from 'vitest';
 
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
+
+// Fixture package whose devDependencies include `vitest` and `@vitest/expect`,
+// and whose runtime `dependencies` include `axios`. Used to verify the rule
+// allows dev-dependency imports but still restricts runtime dependencies.
+// Created synchronously because RuleTester.run reads the `filename` option at
+// module-eval time, before any test hooks fire.
+const fixtureDir = mkdtempSync(join(tmpdir(), 'n8n-restricted-imports-'));
+writeFileSync(
+	join(fixtureDir, 'package.json'),
+	JSON.stringify({
+		name: 'n8n-nodes-devdep-fixture',
+		version: '1.0.0',
+		devDependencies: { vitest: '^1.0.0', '@vitest/expect': '^1.0.0' },
+		dependencies: { axios: '^1.0.0' },
+	}),
+);
+const fixtureTestFile = join(fixtureDir, '__tests__', 'MyNode.test.ts');
+const fixtureRealFile = join(fixtureDir, 'src', 'MyNode.node.ts');
+
+afterAll(() => {
+	rmSync(fixtureDir, { recursive: true, force: true });
+});
 
 const ruleTester = new RuleTester();
 
@@ -77,6 +103,31 @@ ruleTester.run('no-restricted-imports', NoRestrictedImportsRule, {
 		},
 		{
 			code: 'const workflow = await import(`n8n-workflow`);',
+		},
+		{
+			name: 'devDependency (vitest) import is allowed in test files',
+			filename: fixtureTestFile,
+			code: 'import { describe } from "vitest";',
+		},
+		{
+			name: 'scoped devDependency import is allowed in test files',
+			filename: fixtureTestFile,
+			code: 'import { expect } from "@vitest/expect";',
+		},
+		{
+			name: 'devDependency require is allowed in test files',
+			filename: fixtureTestFile,
+			code: 'const { it } = require("vitest");',
+		},
+		{
+			name: 'devDependency dynamic import is allowed in test files',
+			filename: fixtureTestFile,
+			code: 'const vitest = await import("vitest");',
+		},
+		{
+			name: 'type-only devDependency import is allowed in node source',
+			filename: fixtureRealFile,
+			code: 'import type { Task } from "vitest";',
 		},
 	],
 	invalid: [
@@ -156,6 +207,18 @@ const lodash = require("lodash");`,
 		{
 			code: 'const express = await import("express");',
 			errors: [{ messageId: 'restrictedDynamicImport', data: { modulePath: 'express' } }],
+		},
+		{
+			name: 'runtime dependency (axios) is still restricted in a real node file',
+			filename: fixtureRealFile,
+			code: 'import axios from "axios";',
+			errors: [{ messageId: 'restrictedImport', data: { modulePath: 'axios' } }],
+		},
+		{
+			name: 'runtime dependency (axios) stays restricted even in test files',
+			filename: fixtureTestFile,
+			code: 'import axios from "axios";',
+			errors: [{ messageId: 'restrictedImport', data: { modulePath: 'axios' } }],
 		},
 		{
 			code: 'const path = require(`path`);',

@@ -7,12 +7,14 @@ Extra information, specific to the frontend codebase. Use this when doing any fr
 - PREFER using **semantic tokens** for styling from `@n8n/design-system/src/css/_tokens.scss` or `@n8n/design-system/src/css/_primitives.scss`.
 - AVOID using legacy tokens from `@n8n/design-system/src/css/_tokens.legacy.scss`
 - PREFER using existing components from `@n8n/design-system` over creating new ones
+- When rendering `el-plus` popovers/dropdowns/selects inside `N8nDialog`, prefer to keep them in the dialog stacking context with `:teleported="false"` unless they intentionally need to escape.
 - Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
   Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
 - Use centralized constants from `@/app/constants/durations` instead of hardcoding:
 
 ```typescript
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 
 useDebounceFn(() => { ... }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 ```

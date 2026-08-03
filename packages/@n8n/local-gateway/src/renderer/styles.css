@@ -9,10 +9,9 @@
 	--color-warning: #f59e0b;
 	--color-danger: #dc2626;
 	--color-badge-connected: #22a06b;
-	--color-badge-waiting: #f59e0b;
+	--color-badge-connecting: #f59e0b;
 	--color-badge-disconnected: #dc2626;
-	--color-badge-stopped: #999999;
-	--color-badge-starting: #f59e0b;
+	--color-badge-error: #dc2626;
 	--radius: 6px;
 	/* biome-ignore format: git hooks overwrite formatting to what biome throws an error for */
 	--font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -85,17 +84,14 @@ body {
 .status-dot.connected {
 	background: var(--color-badge-connected);
 }
-.status-dot.waiting {
-	background: var(--color-badge-waiting);
-}
-.status-dot.starting {
-	background: var(--color-badge-starting);
+.status-dot.connecting {
+	background: var(--color-badge-connecting);
 }
 .status-dot.disconnected {
 	background: var(--color-badge-disconnected);
 }
-.status-dot.stopped {
-	background: var(--color-badge-stopped);
+.status-dot.error {
+	background: var(--color-badge-error);
 }
 
 /* Warning banner */
@@ -209,6 +205,12 @@ body {
 	border-bottom: none;
 }
 
+.inline-actions {
+	margin-top: 12px;
+	display: flex;
+	gap: 8px;
+}
+
 .toggle-label {
 	font-size: 13px;
 }
@@ -264,28 +266,20 @@ body {
 	transform: translateX(16px);
 }
 
-.textarea {
-	width: 100%;
-	padding: 6px 10px;
-	border: 1px solid var(--color-border);
-	border-radius: var(--radius);
-	font-size: 12px;
-	font-family: monospace;
-	background: var(--color-bg);
-	color: var(--color-text);
-	resize: vertical;
-	min-height: 60px;
-	outline: none;
-}
-
-.textarea:focus {
-	border-color: var(--color-accent);
-}
-
 .form-hint {
 	font-size: 11px;
 	color: var(--color-text-secondary);
 	margin-top: 3px;
+}
+
+.connection-deeplink-copy {
+	margin-top: 10px;
+	line-height: 1.45;
+}
+
+.code-inline {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
 }
 
 /* Footer */

@@ -3,7 +3,6 @@ import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import { CSVLoader } from '@langchain/community/document_loaders/fs/csv';
 import { DocxLoader } from '@langchain/community/document_loaders/fs/docx';
 import { EPubLoader } from '@langchain/community/document_loaders/fs/epub';
-import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import type { Document } from '@langchain/core/documents';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { createWriteStream } from 'fs';
@@ -18,6 +17,7 @@ import { pipeline } from 'stream/promises';
 import { file as tmpFile, type DirectoryResult } from 'tmp-promise';
 
 import { getMetadataFiltersValues } from './helpers';
+import { N8nPdfLoader } from './loaders/n8n-pdf-loader';
 
 const SUPPORTED_MIME_TYPES = {
 	auto: ['*/*'],
@@ -105,7 +105,7 @@ export class N8nBinaryLoader {
 		mimeType: string,
 		filePathOrBlob: string | Blob,
 		itemIndex: number,
-	): Promise<PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader> {
+	): Promise<N8nPdfLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader> {
 		switch (mimeType) {
 			case 'application/pdf':
 				const splitPages = this.context.getNodeParameter(
@@ -113,7 +113,7 @@ export class N8nBinaryLoader {
 					itemIndex,
 					false,
 				) as boolean;
-				return new PDFLoader(filePathOrBlob, { splitPages });
+				return new N8nPdfLoader(filePathOrBlob, { splitPages });
 			case 'text/csv':
 				const column = this.context.getNodeParameter(
 					`${this.optionsPrefix}column`,
@@ -156,7 +156,7 @@ export class N8nBinaryLoader {
 	}
 
 	private async loadDocuments(
-		loader: PDFLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader,
+		loader: N8nPdfLoader | CSVLoader | EPubLoader | DocxLoader | TextLoader | JSONLoader,
 	): Promise<Document[]> {
 		return this.textSplitter
 			? await this.textSplitter.splitDocuments(await loader.load())

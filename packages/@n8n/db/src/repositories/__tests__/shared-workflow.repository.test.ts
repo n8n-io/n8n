@@ -1,19 +1,21 @@
 import { Container } from '@n8n/di';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { In, type SelectQueryBuilder } from '@n8n/typeorm';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { Project } from '../../entities';
 import { SharedWorkflow } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
 
 describe('SharedWorkflowRepository', () => {
-	mockEntityManager(SharedWorkflow);
+	const entityManager = mockEntityManager(SharedWorkflow);
 	const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 
-	let queryBuilder: jest.Mocked<SelectQueryBuilder<SharedWorkflow>>;
+	let queryBuilder: Mocked<SelectQueryBuilder<SharedWorkflow>>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		queryBuilder = mock<SelectQueryBuilder<SharedWorkflow>>();
 		queryBuilder.where.mockReturnThis();
@@ -21,7 +23,7 @@ describe('SharedWorkflowRepository', () => {
 		queryBuilder.innerJoin.mockReturnThis();
 		queryBuilder.select.mockReturnThis();
 
-		jest.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+		vi.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
 	describe('getSharedPersonalWorkflowsCount', () => {
@@ -58,6 +60,41 @@ describe('SharedWorkflowRepository', () => {
 			const result = await sharedWorkflowRepository.getSharedPersonalWorkflowsCount();
 
 			expect(result).toBe(12);
+		});
+	});
+
+	describe('findOwnerProjectsByWorkflowIds', () => {
+		it('should map each workflow id to its owner project', async () => {
+			const projectA = mock<Project>({ id: 'project-a' });
+			const projectB = mock<Project>({ id: 'project-b' });
+			entityManager.find.mockResolvedValue([
+				{ workflowId: 'wf-1', project: projectA },
+				{ workflowId: 'wf-2', project: projectB },
+			] as unknown as SharedWorkflow[]);
+
+			const result = await sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([
+				'wf-1',
+				'wf-2',
+			]);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				where: { workflowId: In(['wf-1', 'wf-2']), role: 'workflow:owner' },
+				relations: { project: true },
+			});
+			expect(result).toEqual(
+				new Map([
+					['wf-1', projectA],
+					['wf-2', projectB],
+				]),
+			);
+		});
+
+		it('should return an empty map when no owner rows are found', async () => {
+			entityManager.find.mockResolvedValue([]);
+
+			const result = await sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(['wf-1']);
+
+			expect(result).toEqual(new Map());
 		});
 	});
 });

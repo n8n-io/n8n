@@ -26,6 +26,7 @@ import {
 import { ParentGraphState } from './parent-graph-state';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
+import type { SsrfGuard } from './tools/utils/ssrf-guard';
 import {
 	type CoordinationLogEntry,
 	type CoordinationMetadata,
@@ -89,6 +90,8 @@ export interface MultiAgentSubgraphConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Assistant handler for routing help/debug queries via the SDK */
 	assistantHandler?: AssistantHandler;
+	/** SSRF guard for web_fetch, threaded down to the discovery subgraph. */
+	ssrf?: SsrfGuard;
 }
 
 type ParentState = typeof ParentGraphState.State;
@@ -214,6 +217,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
 		assistantHandler,
+		ssrf,
 	} = config;
 
 	const mergeAskBuild = featureFlags?.mergeAskBuild === true && !!assistantHandler;
@@ -237,6 +241,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		plannerLLM: stageLLMs.planner,
 		logger,
 		featureFlags,
+		ssrf,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
@@ -364,12 +369,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 
 				// After discovery in plan mode, getNextPhaseFromLog returns 'builder'.
 				// With builder removed, redirect back to discovery to retry planning.
-				if (
-					next === 'builder' &&
-					featureFlags?.planMode === true &&
-					state.mode === 'plan' &&
-					!state.planOutput
-				) {
+				if (next === 'builder' && state.mode === 'plan' && !state.planOutput) {
 					return { nextPhase: 'discovery', planDecision: null };
 				}
 
@@ -379,16 +379,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			.addNode('check_state', (state) => {
 				const action = determineStateAction(state, autoCompactThresholdTokens);
 
-				// In plan mode (without mergeAskBuild), skip the supervisor and
-				// route directly to discovery (which contains the planner).
+				// In plan mode (without mergeAskBuild), skip the supervisor and route directly to
+				// discovery (which contains the planner).
 				// Set nextPhase to 'discovery' so create_workflow_name can route correctly.
-				if (
-					action === 'continue' &&
-					featureFlags?.planMode === true &&
-					state.mode === 'plan' &&
-					!state.planOutput &&
-					!mergeAskBuild
-				) {
+				if (action === 'continue' && state.mode === 'plan' && !state.planOutput && !mergeAskBuild) {
 					return { nextPhase: 'discovery' };
 				}
 

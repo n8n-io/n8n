@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { checkExhaustive } from '@/app/utils/typeGuards';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
@@ -22,6 +23,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -169,8 +171,19 @@ function onSelect() {
 }
 
 async function handleActionItemClick(commandData: Command) {
-	//@ts-ignore todo: fix this type
-	emit(commandData, props.execution);
+	switch (commandData) {
+		case 'retrySaved':
+			emit('retrySaved', props.execution);
+			break;
+		case 'retryOriginal':
+			emit('retryOriginal', props.execution);
+			break;
+		case 'delete':
+			emit('delete', props.execution);
+			break;
+		default:
+			checkExhaustive(commandData);
+	}
 }
 </script>
 <template>
@@ -262,13 +275,18 @@ async function handleActionItemClick(commandData: Command) {
 				</small>
 			</span>
 		</td>
-		<td>
+		<td :class="$style.modeCell">
 			<N8nTooltip v-if="execution.mode === 'manual'" content="Manual Execution" placement="top">
 				<N8nIcon icon="flask-conical" />
 			</N8nTooltip>
 			<N8nTooltip v-else-if="execution.mode === 'chat'" content="Chat Execution" placement="top">
 				<N8nIcon icon="messages-square" />
 			</N8nTooltip>
+			<PrivateCredentialIcon
+				v-if="execution.usedPrivateCredentials"
+				data-test-id="global-execution-private-credential"
+				:tooltip-text="locale.baseText('executions.privateCredential.tooltip')"
+			/>
 		</td>
 		<td>
 			<N8nButton
@@ -326,6 +344,19 @@ async function handleActionItemClick(commandData: Command) {
 </template>
 
 <style lang="scss" module>
+.modeCell {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+
+	/* Normalize icon wrappers so SVG baseline doesn't shift relative to tooltip spans */
+	:deep(svg),
+	:deep(span) {
+		display: inline-flex;
+		align-items: center;
+	}
+}
+
 tr.dangerBg {
 	background-color: rgba(215, 56, 58, 0.1);
 }

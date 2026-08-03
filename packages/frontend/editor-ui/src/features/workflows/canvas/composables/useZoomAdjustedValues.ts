@@ -86,10 +86,21 @@ export function useZoomAdjustedValues(viewport: Ref<ViewportTransform>) {
 		});
 	}
 
+	/**
+	 * Zoom-adjusted node border opacity mapped to the CSS custom properties
+	 */
+	function calculateNodeBorderOpacityStyle() {
+		const opacity = calculateNodeBorderOpacity();
+		return computed(() => ({
+			'--canvas-node--border--opacity-light': opacity.value.light,
+			'--canvas-node--border--opacity-dark': opacity.value.dark,
+		}));
+	}
+
 	return {
 		calculateZoomAdjustedValue,
 		calculateEdgeLightness,
 		calculateHandleLightness,
-		calculateNodeBorderOpacity,
+		calculateNodeBorderOpacityStyle,
 	};
 }

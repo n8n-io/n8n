@@ -6,6 +6,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
@@ -23,6 +24,19 @@ type EditImageNodeOptions = {
 	format?: string;
 	quality?: number;
 };
+
+const VALID_IMAGE_FORMATS = new Set(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
+
+function validateImageFormat(format: unknown, node: INode): string {
+	if (typeof format === 'string' && VALID_IMAGE_FORMATS.has(format)) {
+		return format;
+	}
+
+	throw new NodeOperationError(
+		node,
+		`Invalid image format: ${format}. Valid formats are: ${Array.from(VALID_IMAGE_FORMATS).join(', ')}`,
+	);
+}
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -1139,16 +1153,10 @@ export class EditImage implements INodeType {
 						cleanupFunctions.push(cleanup);
 						await fsWriteFile(path, binaryDataBuffer);
 
-						if (operations[0].operation === 'create') {
-							// It seems like if the image gets created newly we have to create a new gm instance
-							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png'))
-								.compose(operator)
-								.geometry(geometryString)
-								.composite(path);
-						} else {
-							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
-						}
+						gmInstance = gm(gmInstance!.stream('png'))
+							.compose(operator)
+							.geometry(geometryString)
+							.composite(path);
 
 						if (operations.length !== i + 1) {
 							// If there are other operations after the current one create a new gm instance
@@ -1303,7 +1311,8 @@ export class EditImage implements INodeType {
 				}
 
 				if (options.format !== undefined) {
-					gmInstance = gmInstance!.setFormat(options.format as string);
+					const format = validateImageFormat(options.format, this.getNode());
+					gmInstance = gmInstance!.setFormat(format);
 					newItem.binary![binaryPropertyName].fileExtension = options.format as string;
 					newItem.binary![binaryPropertyName].mimeType = `image/${options.format}`;
 					const fileName = newItem.binary![binaryPropertyName].fileName;

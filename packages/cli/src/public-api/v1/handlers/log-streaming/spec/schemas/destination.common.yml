@@ -1,0 +1,42 @@
+type: object
+properties:
+  id:
+    type: string
+    readOnly: true
+    description: Server-generated unique id of the destination. Returned in responses; not accepted in requests.
+    example: 88be6560-bfb4-455c-8aa1-06971e9e5522
+  label:
+    type: string
+    description: Human-readable name shown in the UI.
+    example: My destination
+  enabled:
+    type: boolean
+    description: Whether the destination currently receives events.
+    example: true
+  subscribedEvents:
+    type: array
+    items:
+      type: string
+    description: >
+      Event names (or group prefixes, e.g. `n8n.workflow`, which matches all
+      `n8n.workflow.*` events) this destination receives. Retrieve the full list of
+      streamable event names from `GET /settings/log-streaming/event-types`.
+    example: [n8n.workflow, n8n.audit]
+  anonymizeAuditMessages:
+    type: boolean
+    description: Whether audit message payloads are anonymized before being sent.
+    example: false
+  circuitBreaker:
+    type: object
+    additionalProperties: true
+    description: >
+      Circuit-breaker tuning for delivery. After repeated failures the destination stops
+      sending for a cool-down window instead of hammering an unhealthy target. All fields are
+      optional; sensible defaults apply when omitted.
+    properties:
+      maxFailures:
+        type: integer
+        description: Maximum failures within the sliding window before the breaker opens.
+      failureWindow:
+        type: integer
+        description: Sliding window, in milliseconds, over which failures are counted.

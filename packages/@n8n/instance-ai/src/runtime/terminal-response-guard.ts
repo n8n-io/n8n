@@ -1,8 +1,11 @@
 import {
 	isDisplayableConfirmationRequest,
 	type InstanceAiConfirmationRequestEvent,
+	type InstanceAiErrorEvent,
 	type InstanceAiEvent,
 } from '@n8n/api-types';
+
+type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
 
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 
@@ -34,6 +37,7 @@ export interface TerminalResponseDecision {
 		| 'errored-silent'
 		| 'errored-after-text'
 		| 'completed-after-error'
+		| 'completed-silent-suppressed'
 		| 'confirmation-visible'
 		| 'confirmation-invalid';
 	event?: InstanceAiEvent;
@@ -58,7 +62,12 @@ function formatWorkSummaryCounts(workSummary?: WorkSummary): string {
 }
 
 function hasText(event: InstanceAiEvent): boolean {
-	return event.type === 'text-delta' && event.payload.text.trim().length > 0;
+	// The durable log stores coalesced text-block facts, never deltas, so
+	// flag-on guard reads must recognize both shapes of streamed text.
+	return (
+		(event.type === 'text-delta' || event.type === 'text-block') &&
+		event.payload.text.trim().length > 0
+	);
 }
 
 export class InstanceAiTerminalResponseGuard {
@@ -67,7 +76,12 @@ export class InstanceAiTerminalResponseGuard {
 	evaluateTerminal(
 		events: InstanceAiEvent[],
 		status: Exclude<TerminalResponseStatus, 'waiting'>,
-		options: { workSummary?: WorkSummary; errorMessage?: string } = {},
+		options: {
+			workSummary?: WorkSummary;
+			errorMessage?: string;
+			errorCode?: InstanceAiErrorCode;
+			suppressCompletedFallback?: boolean;
+		} = {},
 	): TerminalResponseDecision {
 		const visibility = this.getVisibility(events);
 		if (visibility.hasCurrentRunFallback) {
@@ -96,6 +110,23 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
+			if (visibility.hasMessageGroupRootText) {
+				return {
+					status,
+					visibilitySource: 'root-text',
+					action: 'none',
+					reason: 'already-visible',
+				};
+			}
+			// Only suppress when some agent already produced text; a turn with no text at all must still emit.
+			if (options.suppressCompletedFallback && visibility.hasAgentText) {
+				return {
+					status,
+					visibilitySource: 'none',
+					action: 'none',
+					reason: 'completed-silent-suppressed',
+				};
+			}
 			return this.emitText(
 				status,
 				'completed-silent',
@@ -106,6 +137,7 @@ export class InstanceAiTerminalResponseGuard {
 		}
 
 		if (status === 'cancelled') {
+			// A cancelled run needs no assistant placeholder: the stopped state is self-evident in the UI.
 			if (visibility.hasRootText || visibility.hasRootError) {
 				return {
 					status,
@@ -114,11 +146,12 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
-			return this.emitText(
+			return {
 				status,
-				'cancelled-silent',
-				'The run was cancelled before I could send a response.',
-			);
+				visibilitySource: 'none',
+				action: 'none',
+				reason: 'cancelled-silent',
+			};
 		}
 
 		if (visibility.hasRootError) {
@@ -135,6 +168,7 @@ export class InstanceAiTerminalResponseGuard {
 			visibility.hasRootText ? 'errored-after-text' : 'errored-silent',
 			options.errorMessage ??
 				'I hit an error before I could finish that response. Please try again.',
+			options.errorCode,
 		);
 	}
 
@@ -183,16 +217,28 @@ export class InstanceAiTerminalResponseGuard {
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
 		hasRootError: boolean;
+		hasMessageGroupRootText: boolean;
 		hasCurrentRunFallback: boolean;
+		hasAgentText: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
 		return {
 			hasRootText: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && hasText(event),
 			),
+			// Any agent's text this run. Tool calls don't count — internal calls (e.g. complete-checkpoint) aren't a visible answer.
+			hasAgentText: currentRunEvents.some((event) => hasText(event)),
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',
 			),
+			hasMessageGroupRootText:
+				this.options.messageGroupId !== undefined &&
+				events.some(
+					(event) =>
+						event.runId !== this.options.runId &&
+						event.agentId === this.options.rootAgentId &&
+						hasText(event),
+				),
 			hasCurrentRunFallback: currentRunEvents.some((event) =>
 				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:${this.options.runId}:`),
 			),
@@ -223,6 +269,7 @@ export class InstanceAiTerminalResponseGuard {
 		status: TerminalResponseStatus,
 		reason: TerminalResponseDecision['reason'],
 		content: string,
+		code?: InstanceAiErrorCode,
 	): TerminalResponseDecision {
 		return {
 			status,
@@ -234,7 +281,7 @@ export class InstanceAiTerminalResponseGuard {
 				runId: this.options.runId,
 				agentId: this.options.rootAgentId,
 				responseId: this.fallbackResponseId(status),
-				payload: { content },
+				payload: { content, ...(code ? { code } : {}) },
 			},
 		};
 	}

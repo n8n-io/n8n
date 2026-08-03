@@ -1,11 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import {
-	PERSONAL_SPACE_PUBLISHING_SETTING,
-	PERSONAL_SPACE_SHARING_SETTING,
-} from '@n8n/permissions';
 
 import { SecuritySettingsService } from '@/services/security-settings.service';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -13,6 +10,7 @@ import { setupTestServer } from '../shared/utils';
 
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mockInstance(SecuritySettingsService);
+	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
 	const instanceSettingsLoaderConfig = mockInstance(InstanceSettingsLoaderConfig, {
 		securityPolicyManagedByEnv: false,
 	});
@@ -20,15 +18,25 @@ describe('SecuritySettingsController', () => {
 	const testServer = setupTestServer({ endpointGroups: ['security-settings'] });
 	let ownerAgent: SuperAgentTest;
 
+	const readResult = {
+		personalSpacePublishing: true,
+		personalSpaceSharing: false,
+		publishedPersonalWorkflowsCount: 5,
+		sharedPersonalWorkflowsCount: 12,
+		sharedPersonalCredentialsCount: 3,
+		redactionEnforcement: { floor: 'off' as const },
+	};
+
 	beforeAll(async () => {
 		const owner = await createOwner();
 		ownerAgent = testServer.authAgentFor(owner);
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		testServer.license.enable('feat:personalSpacePolicy');
 		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
+		securitySettingsService.getSecuritySettings.mockResolvedValue(readResult);
 	});
 
 	describe('GET /settings/security', () => {
@@ -37,53 +45,28 @@ describe('SecuritySettingsController', () => {
 			await ownerAgent.get('/settings/security').expect(403);
 		});
 
-		it('should return security settings and all counts', async () => {
-			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
-				personalSpacePublishing: true,
-				personalSpaceSharing: false,
-			});
-			securitySettingsService.getPublishedPersonalWorkflowsCount.mockResolvedValue(5);
-			securitySettingsService.getSharedPersonalWorkflowsCount.mockResolvedValue(12);
-			securitySettingsService.getSharedPersonalCredentialsCount.mockResolvedValue(3);
-
+		it('should return the delegated settings plus managedByEnv', async () => {
 			const response = await ownerAgent.get('/settings/security').expect(200);
 
 			expect(response.body).toEqual({
 				data: {
-					personalSpacePublishing: true,
-					personalSpaceSharing: false,
-					publishedPersonalWorkflowsCount: 5,
-					sharedPersonalWorkflowsCount: 12,
-					sharedPersonalCredentialsCount: 3,
+					...readResult,
 					managedByEnv: false,
 				},
 			});
-			expect(securitySettingsService.arePersonalSpaceSettingsEnabled).toHaveBeenCalledTimes(1);
-			expect(securitySettingsService.getPublishedPersonalWorkflowsCount).toHaveBeenCalledTimes(1);
-			expect(securitySettingsService.getSharedPersonalWorkflowsCount).toHaveBeenCalledTimes(1);
-			expect(securitySettingsService.getSharedPersonalCredentialsCount).toHaveBeenCalledTimes(1);
+			expect(securitySettingsService.getSecuritySettings).toHaveBeenCalledTimes(1);
 		});
 
-		it('should return 0 for all counts when no resources exist', async () => {
-			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
-				personalSpacePublishing: true,
-				personalSpaceSharing: true,
-			});
-			securitySettingsService.getPublishedPersonalWorkflowsCount.mockResolvedValue(0);
-			securitySettingsService.getSharedPersonalWorkflowsCount.mockResolvedValue(0);
-			securitySettingsService.getSharedPersonalCredentialsCount.mockResolvedValue(0);
+		it('should reflect managedByEnv when the policy is env-managed', async () => {
+			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
 
 			const response = await ownerAgent.get('/settings/security').expect(200);
 
-			expect(response.body.data.publishedPersonalWorkflowsCount).toBe(0);
-			expect(response.body.data.sharedPersonalWorkflowsCount).toBe(0);
-			expect(response.body.data.sharedPersonalCredentialsCount).toBe(0);
+			expect(response.body.data.managedByEnv).toBe(true);
 		});
 
-		it('should handle service errors gracefully', async () => {
-			securitySettingsService.arePersonalSpaceSettingsEnabled.mockRejectedValue(
-				new Error('Database connection failed'),
-			);
+		it('should return 500 when the service throws', async () => {
+			securitySettingsService.getSecuritySettings.mockRejectedValueOnce(new Error('boom'));
 
 			await ownerAgent.get('/settings/security').expect(500);
 		});
@@ -98,113 +81,108 @@ describe('SecuritySettingsController', () => {
 				.expect(403);
 		});
 
-		it('should update only personalSpacePublishing when only that is set in body', async () => {
-			securitySettingsService.setPersonalSpaceSetting.mockResolvedValue(undefined);
-
-			const response = await ownerAgent
-				.post('/settings/security')
-				.send({ personalSpacePublishing: false })
-				.expect(200);
-
-			expect(response.body).toEqual({
-				data: { personalSpacePublishing: false },
+		it('should delegate the writable subset to the service and return the result', async () => {
+			securitySettingsService.updateSecuritySettings.mockResolvedValue({
+				personalSpacePublishing: false,
+				redactionEnforcement: { floor: 'production' },
 			});
-			expect(securitySettingsService.setPersonalSpaceSetting).toHaveBeenCalledTimes(1);
-			expect(securitySettingsService.setPersonalSpaceSetting).toHaveBeenCalledWith(
-				PERSONAL_SPACE_PUBLISHING_SETTING,
-				false,
-			);
-		});
-
-		it('should update only personalSpaceSharing when only that is set in body', async () => {
-			securitySettingsService.setPersonalSpaceSetting.mockResolvedValue(undefined);
-			const response = await ownerAgent
-				.post('/settings/security')
-				.send({ personalSpaceSharing: true })
-				.expect(200);
-
-			expect(response.body).toEqual({
-				data: { personalSpaceSharing: true },
-			});
-			expect(securitySettingsService.setPersonalSpaceSetting).toHaveBeenCalledTimes(1);
-			expect(securitySettingsService.setPersonalSpaceSetting).toHaveBeenCalledWith(
-				PERSONAL_SPACE_SHARING_SETTING,
-				true,
-			);
-		});
-
-		it('should update both settings when both are set in body', async () => {
-			securitySettingsService.setPersonalSpaceSetting.mockResolvedValue(undefined);
 
 			const response = await ownerAgent
 				.post('/settings/security')
-				.send({ personalSpacePublishing: true, personalSpaceSharing: false })
+				.send({ personalSpacePublishing: false, redactionEnforcement: { floor: 'production' } })
 				.expect(200);
 
 			expect(response.body).toEqual({
 				data: {
-					personalSpacePublishing: true,
-					personalSpaceSharing: false,
+					personalSpacePublishing: false,
+					redactionEnforcement: { floor: 'production' },
 				},
 			});
-			expect(securitySettingsService.setPersonalSpaceSetting).toHaveBeenCalledTimes(2);
-			expect(securitySettingsService.setPersonalSpaceSetting).toHaveBeenNthCalledWith(
-				1,
-				PERSONAL_SPACE_PUBLISHING_SETTING,
-				true,
-			);
-			expect(securitySettingsService.setPersonalSpaceSetting).toHaveBeenNthCalledWith(
-				2,
-				PERSONAL_SPACE_SHARING_SETTING,
-				false,
+			expect(securitySettingsService.updateSecuritySettings).toHaveBeenCalledWith(
+				{
+					personalSpacePublishing: false,
+					personalSpaceSharing: undefined,
+					redactionEnforcement: { floor: 'production' },
+				},
+				expect.objectContaining({ id: expect.any(String) }),
 			);
 		});
 
-		it('should call no service and return empty object when body has no settings', async () => {
-			const response = await ownerAgent.post('/settings/security').send({}).expect(200);
-
-			expect(response.body).toEqual({ data: {} });
-			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
-		});
-
-		it('should handle service errors gracefully', async () => {
-			securitySettingsService.setPersonalSpaceSetting.mockRejectedValue(
-				new Error('Database connection failed'),
-			);
-
+		it('should reject invalid floor values with 400', async () => {
 			await ownerAgent
 				.post('/settings/security')
-				.send({ personalSpacePublishing: true })
-				.expect(500);
+				.send({ redactionEnforcement: { floor: 'bogus' } })
+				.expect(400);
+
+			expect(securitySettingsService.updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		describe('when securityPolicyManagedByEnv is true', () => {
+			beforeEach(() => {
+				instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
+			});
+
+			it('should return 403 and not call the service', async () => {
+				await ownerAgent
+					.post('/settings/security')
+					.send({ personalSpacePublishing: false })
+					.expect(403);
+
+				expect(securitySettingsService.updateSecuritySettings).not.toHaveBeenCalled();
+			});
 		});
 	});
 
-	describe('when securityPolicyManagedByEnv is true', () => {
+	describe('workflowReviews', () => {
+		const originalWorkflowReviewsFlag = process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
+
 		beforeEach(() => {
-			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			testServer.license.enable('feat:workflowReviews');
+			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
+			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
 		});
 
-		it('GET should return managedByEnv: true', async () => {
-			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
-				personalSpacePublishing: true,
-				personalSpaceSharing: true,
-			});
-			securitySettingsService.getPublishedPersonalWorkflowsCount.mockResolvedValue(0);
-			securitySettingsService.getSharedPersonalWorkflowsCount.mockResolvedValue(0);
-			securitySettingsService.getSharedPersonalCredentialsCount.mockResolvedValue(0);
+		afterEach(() => {
+			if (originalWorkflowReviewsFlag === undefined) {
+				delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
+			} else {
+				process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = originalWorkflowReviewsFlag;
+			}
+		});
+
+		it('GET should include workflowReviews when licensed and dev flag is on', async () => {
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 
 			const response = await ownerAgent.get('/settings/security').expect(200);
 
-			expect(response.body.data.managedByEnv).toBe(true);
+			expect(response.body.data.workflowReviews).toEqual({ enabled: true });
 		});
 
-		it('POST should return 403 when settings are managed by env', async () => {
+		it('POST should update workflowReviews and emit its policy event', async () => {
+			const response = await ownerAgent
+				.post('/settings/security')
+				.send({ workflowReviews: { enabled: true } })
+				.expect(200);
+
+			expect(response.body.data).toEqual({ workflowReviews: { enabled: true } });
+			expect(workflowReviewPolicyService.set).toHaveBeenCalledWith(true);
+			expect(securitySettingsService.emitInstancePolicyUpdated).toHaveBeenCalledWith(
+				expect.objectContaining({ id: expect.any(String) }),
+				{ settingName: 'workflow_reviews', value: true },
+			);
+		});
+
+		it('POST should reject workflowReviews when license is off', async () => {
+			testServer.license.disable('feat:workflowReviews');
+
 			await ownerAgent
 				.post('/settings/security')
-				.send({ personalSpacePublishing: false })
+				.send({ workflowReviews: { enabled: true } })
 				.expect(403);
 
-			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
+			expect(workflowReviewPolicyService.set).not.toHaveBeenCalled();
 		});
 	});
 });

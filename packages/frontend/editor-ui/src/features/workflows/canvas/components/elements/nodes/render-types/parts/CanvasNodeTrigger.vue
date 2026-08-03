@@ -5,11 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
@@ -44,9 +41,9 @@ const containerClass = computed(() => ({
 
 const router = useRouter();
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 );
 const logsStore = useLogsStore();
 const chatHubPanelStore = useChatHubPanelStore();
@@ -67,7 +64,7 @@ const isChatHubOpen = computed(() => chatHubPanelStore.isOpen);
 const isChatOpen = computed(() =>
 	isChatHubAvailable.value ? isChatHubOpen.value : logsStore.isOpen,
 );
-const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
+const isExecuting = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 
 function openChat() {
@@ -87,7 +84,7 @@ function closeChat() {
 }
 
 async function handleClickExecute() {
-	workflowsStore.setSelectedTriggerNodeName(name);
+	workflowExecutionStateStore.value.setSelectedTriggerNodeName(name);
 	await runEntireWorkflow('node', name);
 }
 </script>

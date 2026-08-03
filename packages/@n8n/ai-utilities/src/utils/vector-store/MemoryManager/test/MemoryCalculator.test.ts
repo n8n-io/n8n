@@ -1,6 +1,6 @@
 import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 import { Document } from '@langchain/core/documents';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { MemoryCalculator } from '../MemoryCalculator';
 

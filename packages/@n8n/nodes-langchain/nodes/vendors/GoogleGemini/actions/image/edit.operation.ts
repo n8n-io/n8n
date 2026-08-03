@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import type { GenerateContentResponse } from '../../helpers/interfaces';
 import { getFilenameFromMimeType, uploadFile } from '../../helpers/utils';
@@ -144,6 +144,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const prompt = this.getNodeParameter('prompt', i, '');
+	if (typeof prompt === 'string' && !prompt.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	let model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	if (!model) {
 		model = 'models/gemini-2.5-flash-image-preview';

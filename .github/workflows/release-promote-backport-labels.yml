@@ -1,0 +1,62 @@
+name: 'Release: Promote Backport Labels'
+run-name: 'Promoting backport labels for n8n@${{ inputs.version }}'
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+    secrets:
+      N8N_ASSISTANT_APP_ID:
+        required: true
+      N8N_ASSISTANT_PRIVATE_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The minor release version (e.g. 2.10.0).'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote-backport-labels:
+    name: Reconcile backport labels
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to only what the script does: read code, write PR
+          # labels and comments (both go through the issues API).
+          permission-contents: read
+          permission-issues: write
+          permission-pull-requests: write
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # The script uses the API (via GITHUB_TOKEN env), not git, so no App
+          # token is needed here and credentials shouldn't be persisted.
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup NodeJS
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Reconcile backport labels
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node ./.github/scripts/promote-backport-labels-on-minor.mjs

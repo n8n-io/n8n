@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import type { Mock, Mocked } from 'vitest';
 
 import type { CorsService } from '@/services/cors-service';
 
@@ -6,26 +7,26 @@ import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config'
 import { DynamicCredentialCorsService } from '../dynamic-credential-cors.service';
 
 describe('DynamicCredentialCorsService', () => {
-	let mockCorsService: jest.Mocked<CorsService>;
-	let mockConfig: jest.Mocked<DynamicCredentialsConfig>;
+	let mockCorsService: Mocked<CorsService>;
+	let mockConfig: Mocked<DynamicCredentialsConfig>;
 	let mockRequest: Partial<Request>;
 	let mockResponse: Partial<Response>;
-	let statusSpy: jest.Mock;
-	let endSpy: jest.Mock;
+	let statusSpy: Mock;
+	let endSpy: Mock;
 
 	beforeEach(() => {
 		mockCorsService = {
-			applyCorsHeaders: jest.fn(),
-		} as unknown as jest.Mocked<CorsService>;
+			applyCorsHeaders: vi.fn(),
+		} as unknown as Mocked<CorsService>;
 
 		mockConfig = {
 			corsOrigin: '',
 			corsAllowCredentials: false,
 			endpointAuthToken: '',
-		} as unknown as jest.Mocked<DynamicCredentialsConfig>;
+		} as unknown as Mocked<DynamicCredentialsConfig>;
 
-		statusSpy = jest.fn().mockReturnThis();
-		endSpy = jest.fn();
+		statusSpy = vi.fn().mockReturnThis();
+		endSpy = vi.fn();
 
 		mockRequest = {
 			headers: {},
@@ -38,7 +39,7 @@ describe('DynamicCredentialCorsService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor()', () => {
@@ -145,7 +146,7 @@ describe('DynamicCredentialCorsService', () => {
 			expect(endSpy).toHaveBeenCalled();
 
 			// Test 2: CORS enabled, origin not allowed → 404
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockConfig.corsOrigin = 'https://app.com';
 			mockCorsService.applyCorsHeaders.mockReturnValue(false);
 			const service2 = new DynamicCredentialCorsService(mockCorsService, mockConfig);
@@ -157,7 +158,7 @@ describe('DynamicCredentialCorsService', () => {
 			expect(endSpy).toHaveBeenCalled();
 
 			// Test 3: CORS enabled, origin allowed → 204
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockConfig.corsOrigin = 'https://app.com';
 			mockCorsService.applyCorsHeaders.mockReturnValue(true);
 			const service3 = new DynamicCredentialCorsService(mockCorsService, mockConfig);
@@ -205,7 +206,7 @@ describe('DynamicCredentialCorsService', () => {
 			expect(mockCorsService.applyCorsHeaders).not.toHaveBeenCalled();
 
 			// Test 2: origin not allowed → corsService returns false, method returns false
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockConfig.corsOrigin = 'https://app.com';
 			mockCorsService.applyCorsHeaders.mockReturnValue(false);
 			const service2 = new DynamicCredentialCorsService(mockCorsService, mockConfig);

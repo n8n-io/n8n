@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import {
 	escapeSingleQuotes,
 	writeFileViaSandbox,
@@ -5,9 +7,13 @@ import {
 	runInSandbox,
 } from '../sandbox-fs';
 
+class TransientWriteError extends Error {
+	statusCode = 524;
+}
+
 function createMockWorkspace(overrides?: {
-	executeCommand?: jest.Mock;
-	processes?: { spawn: jest.Mock };
+	executeCommand?: Mock;
+	processes?: { spawn: Mock };
 }) {
 	return {
 		sandbox: {
@@ -38,7 +44,7 @@ describe('escapeSingleQuotes', () => {
 
 describe('runInSandbox', () => {
 	it('should use executeCommand when available', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'output',
 			stderr: '',
@@ -52,12 +58,12 @@ describe('runInSandbox', () => {
 	});
 
 	it('should fall back to processes.spawn when executeCommand is not available', async () => {
-		const waitFn = jest.fn().mockResolvedValue({
+		const waitFn = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'spawned output',
 			stderr: '',
 		});
-		const spawn = jest.fn().mockResolvedValue({ wait: waitFn });
+		const spawn = vi.fn().mockResolvedValue({ wait: waitFn });
 		const workspace = createMockWorkspace({ processes: { spawn } });
 
 		const result = await runInSandbox(workspace, 'ls -la', '/tmp');
@@ -82,7 +88,7 @@ describe('runInSandbox', () => {
 	});
 
 	it('should return non-zero exit code without throwing', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 1,
 			stdout: '',
 			stderr: 'command not found',
@@ -97,7 +103,7 @@ describe('runInSandbox', () => {
 
 describe('writeFileViaSandbox', () => {
 	it('should create parent directory and write base64-encoded content', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: '',
 			stderr: '',
@@ -123,19 +129,54 @@ describe('writeFileViaSandbox', () => {
 	});
 
 	it('should throw when the write command fails', async () => {
-		const executeCommand = jest
+		const executeCommand = vi
 			.fn()
 			.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }) // mkdir
-			.mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'permission denied' }); // write
+			.mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '' }) // temp file
+			.mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'permission denied' }); // append chunk
 		const workspace = createMockWorkspace({ executeCommand });
 
 		await expect(writeFileViaSandbox(workspace, '/home/user/test.ts', 'content')).rejects.toThrow(
 			'Failed to write file /home/user/test.ts: permission denied',
 		);
+		expect(executeCommand).toHaveBeenCalledTimes(3);
+	});
+
+	it('retries transient provider errors while writing', async () => {
+		const logger = { warn: vi.fn() };
+		const executeCommand = vi
+			.fn()
+			.mockRejectedValueOnce(new TransientWriteError('gateway timeout'))
+			.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await writeFileViaSandbox(workspace, 'test.ts', 'hello', {
+			logger,
+			retryBackoffBaseMs: 1,
+		});
+
+		expect(executeCommand).toHaveBeenCalledTimes(4);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Sandbox file I/O hit a transient error; retrying',
+			expect.objectContaining({ path: 'test.ts', attempt: 1 }),
+		);
+	});
+
+	it('retries transient provider errors while reading and keeps missing-file semantics', async () => {
+		const executeCommand = vi
+			.fn()
+			.mockRejectedValueOnce(new TransientWriteError('gateway timeout'))
+			.mockResolvedValue({ exitCode: 1, stdout: '', stderr: '' });
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await expect(
+			readFileViaSandbox(workspace, 'missing.ts', { retryBackoffBaseMs: 1 }),
+		).resolves.toBeNull();
+		expect(executeCommand).toHaveBeenCalledTimes(2);
 	});
 
 	it('should skip mkdir when file has no parent directory', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: '',
 			stderr: '',
@@ -144,19 +185,59 @@ describe('writeFileViaSandbox', () => {
 
 		await writeFileViaSandbox(workspace, 'test.ts', 'hello');
 
-		// Only one call (the base64 write), no mkdir
-		expect(executeCommand).toHaveBeenCalledTimes(1);
+		// Temp file, append chunk, decode. No mkdir.
+		expect(executeCommand).toHaveBeenCalledTimes(3);
 		expect(executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining('base64'),
 			[],
 			expect.objectContaining({}),
 		);
 	});
+
+	it('should split large content into multiple append commands', async () => {
+		const executeCommand = vi.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: '',
+			stderr: '',
+		});
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await writeFileViaSandbox(workspace, '/home/user/large.txt', 'x'.repeat(100_000));
+
+		const commands = (executeCommand.mock.calls as Array<[string, ...unknown[]]>).map(
+			([command]) => command,
+		);
+		const appendCommands = commands.filter((command) => command.startsWith("printf '%s'"));
+
+		expect(appendCommands.length).toBeGreaterThan(1);
+		expect(commands.every((command) => command.length < 40_000)).toBe(true);
+		expect(commands.some((command) => command.includes('| base64 -d >'))).toBe(false);
+	});
+
+	it('does not assign to the read-only zsh builtin `status` when capturing exit code', async () => {
+		const executeCommand = vi.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: '',
+			stderr: '',
+		});
+		const workspace = createMockWorkspace({ executeCommand });
+
+		await writeFileViaSandbox(workspace, '/home/user/test.ts', 'hello');
+
+		const commands = (executeCommand.mock.calls as Array<[string, ...unknown[]]>).map(
+			([command]) => command,
+		);
+		// `status` is read-only in zsh; assigning to it silently drops the
+		// captured exit code. Confirm the decode command uses a different name.
+		const decodeCommands = commands.filter((command) => command.includes('base64 -d'));
+		expect(decodeCommands.length).toBeGreaterThan(0);
+		expect(decodeCommands.every((command) => !/\bstatus=\$\?/.test(command))).toBe(true);
+	});
 });
 
 describe('readFileViaSandbox', () => {
 	it('should return file content on success', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'file content here',
 			stderr: '',
@@ -174,7 +255,7 @@ describe('readFileViaSandbox', () => {
 	});
 
 	it('should return null when file does not exist', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 1,
 			stdout: '',
 			stderr: '',
@@ -187,7 +268,7 @@ describe('readFileViaSandbox', () => {
 	});
 
 	it('should escape single quotes in file paths', async () => {
-		const executeCommand = jest.fn().mockResolvedValue({
+		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: 'content',
 			stderr: '',

@@ -65,11 +65,11 @@ function getAnswers(): DisplayAnswer[] {
 .wrapper {
 	display: flex;
 	justify-content: flex-end;
-	margin-bottom: var(--spacing--xs);
+	margin-block: var(--spacing--lg);
 }
 
 .userBubble {
-	background: var(--color--background);
+	background: var(--assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;
@@ -92,7 +92,7 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .skipped {
-	color: var(--color--text--tint-2);
+	color: var(--text-color);
 	font-style: italic;
 }
 </style>

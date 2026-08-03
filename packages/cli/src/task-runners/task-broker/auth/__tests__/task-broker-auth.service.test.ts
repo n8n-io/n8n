@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 
 import config from '@/config';
 import { CacheService } from '@/services/cache/cache.service';
@@ -30,7 +30,7 @@ describe('TaskBrokerAuthService', () => {
 	const authService = new TaskBrokerAuthService(globalConfig.taskRunners, cacheService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('isValidAuthToken', () => {
@@ -50,7 +50,7 @@ describe('TaskBrokerAuthService', () => {
 
 		it('should store the generated token in cache', async () => {
 			// Arrange
-			const cacheSetSpy = jest.spyOn(cacheService, 'set');
+			const cacheSetSpy = vi.spyOn(cacheService, 'set');
 
 			// Act
 			const token = await authService.createGrantToken();

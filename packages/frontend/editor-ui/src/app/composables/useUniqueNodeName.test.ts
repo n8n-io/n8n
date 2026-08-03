@@ -13,7 +13,7 @@ const TEST_WF_ID = 'test-wf-id';
 describe('useUniqueNodeName', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
-		useWorkflowsStore().workflow.id = TEST_WF_ID;
+		useWorkflowsStore().workflowId = TEST_WF_ID;
 	});
 
 	afterEach(() => {

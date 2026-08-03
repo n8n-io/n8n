@@ -3,16 +3,25 @@ import { Logger } from '@n8n/backend-common';
 import {
 	Project,
 	CredentialsEntity,
+	DbLock,
+	DbLockService,
 	SharedCredentials,
 	CredentialsRepository,
+	InstanceCredentialAssignmentRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
-import type { User, ICredentialsDb, ScopesField } from '@n8n/db';
+import type {
+	ListQueryDb,
+	SlimProject,
+	User,
+	ICredentialsDb,
+	ScopesField,
+	OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
 	type EntityManager,
@@ -42,8 +51,8 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -52,17 +61,21 @@ import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-se
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
 import { CredentialsFinderService } from './credentials-finder.service';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils';
+import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
@@ -75,9 +88,47 @@ export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
 
+type PrepareUpdateDataOptions = {
+	/**
+	 * When true, the existing oauthTokenData is NOT carried forward into the
+	 * updated credential blob. Used on Static→Private toggle.
+	 */
+	clearOauthTokenData?: boolean;
+	operationContext?: OperationContext;
+};
+
+type UpdateOptions = {
+	/** When true, delete all per-user entries for this credential (Private→Static toggle). */
+	deleteUserEntries?: boolean;
+	/** Existing instance credential whose hook-mutated payload must be revalidated. */
+	instanceCredential?: Pick<CredentialsEntity, 'id' | 'type'>;
+	/** When provided, the returned entity is enriched with `connectedByMe` for this user. */
+	user?: User;
+};
+
 type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
+
+type InstanceCredentialWriteOptions = {
+	/** Set when the caller already ran the external hooks before its transaction. */
+	skipExternalHooks?: boolean;
+	/** Carries hook mutations into the transaction. */
+	encryptedData?: ICredentialsDb;
+};
+
+type InstanceCredentialHookPayload = ICredentialsDb &
+	Partial<
+		Pick<
+			CredentialsEntity,
+			| 'isGlobal'
+			| 'isManaged'
+			| 'isResolvable'
+			| 'resolvableAllowFallback'
+			| 'resolverId'
+			| 'usageScope'
+		>
+	>;
 
 type GetManyCredentialsOptions = {
 	listQueryOptions: ListQuery.Options;
@@ -88,6 +139,31 @@ type GetManyCredentialsOptions = {
 		dependency?: CredentialDependencyFilter;
 	};
 };
+
+type WorkflowCredentialResult = {
+	id: string;
+	name: string;
+	type: string;
+	createdAt: string;
+	updatedAt: string;
+	scopes: Scope[];
+	isManaged: boolean;
+	isGlobal: boolean;
+	isResolvable: boolean;
+	homeProject: SlimProject | null;
+	sharedWithProjects: SlimProject[];
+	currentUserHasAccess: boolean;
+	connectedByMe?: boolean;
+};
+
+/** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
+function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
+	if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+	const parsed = jsonParse<unknown>(raw, { fallbackValue: null });
+	if (!Array.isArray(parsed)) return undefined;
+	const codes = parsed.filter((code): code is number => Number.isInteger(code));
+	return codes.length > 0 ? codes : undefined;
+}
 
 @Service()
 export class CredentialsService {
@@ -109,15 +185,50 @@ export class CredentialsService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
+		private readonly instanceCredentialUseRegistry: InstanceCredentialUseRegistry,
+		private readonly dbLockService: DbLockService,
 	) {}
+
+	/**
+	 * Sets `connectedByMe` on every resolvable credential in `credentials`,
+	 * using a single bulk lookup against the per-user storage. Static
+	 * (non-resolvable) credentials are left untouched.
+	 *
+	 * Mutates in place; callers may pass entities, decrypted DTOs, or plain
+	 * object literals — any shape that carries `id` and `isResolvable`.
+	 */
+	async countConnectedUsers(credentialId: string): Promise<number> {
+		return await this.connectionStatusProxy.countConnectedUsers(credentialId);
+	}
+
+	async populateConnectedByMe<T extends { id: string; isResolvable?: boolean }>(
+		credentials: T[],
+		user: User,
+	): Promise<void> {
+		const resolvable = credentials.filter((c) => c.isResolvable === true);
+		if (resolvable.length === 0) return;
+
+		const connected = await this.connectionStatusProxy.findConnectedCredentialIds(
+			user.id,
+			resolvable.map((c) => c.id),
+		);
+
+		for (const c of resolvable) {
+			(c as T & { connectedByMe?: boolean }).connectedByMe = connected.has(c.id);
+		}
+	}
 
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
 		includeData: boolean,
 		dependencyFilter?: CredentialDependencyFilter,
+		type?: string,
 	): Promise<CredentialsEntity[]> {
 		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials({
 			includeData,
+			...(type ? { type } : {}),
 			filters: { dependency: dependencyFilter },
 		});
 
@@ -126,6 +237,15 @@ export class CredentialsService {
 		const newGlobalCreds = globalCredentials.filter((gc) => !credentialIds.has(gc.id));
 
 		return [...credentials, ...newGlobalCreds];
+	}
+
+	/**
+	 * Read the credential `type` filter from listQueryOptions before any repo
+	 * call mutates it (toFindManyOptions wraps it in a Like(...) in place).
+	 */
+	private extractTypeFilter(listQueryOptions: ListQuery.Options): string | undefined {
+		const filterType = listQueryOptions.filter?.type;
+		return typeof filterType === 'string' && filterType !== '' ? filterType : undefined;
 	}
 
 	async getMany(
@@ -234,6 +354,7 @@ export class CredentialsService {
 		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
 		const { dependency: dependencyFilter } = filters ?? {};
+		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
 		// If onlySharedWithMe or dependency filtering is requested, use subquery approach.
 		if (onlySharedWithMe || dependencyFilter) {
@@ -253,7 +374,12 @@ export class CredentialsService {
 			);
 
 			if (includeGlobal) {
-				return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
+				return await this.addGlobalCredentials(
+					credentials,
+					includeData,
+					dependencyFilter,
+					typeFilter,
+				);
 			}
 
 			return credentials;
@@ -267,7 +393,12 @@ export class CredentialsService {
 		});
 
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
+			credentials = await this.addGlobalCredentials(
+				credentials,
+				includeData,
+				dependencyFilter,
+				typeFilter,
+			);
 		}
 
 		return credentials;
@@ -284,6 +415,7 @@ export class CredentialsService {
 		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
 		const { dependency: dependencyFilter } = filters ?? {};
+		const typeFilter = this.extractTypeFilter(listQueryOptions);
 
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
@@ -344,7 +476,12 @@ export class CredentialsService {
 		);
 
 		if (includeGlobal) {
-			return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
+			return await this.addGlobalCredentials(
+				credentials,
+				includeData,
+				dependencyFilter,
+				typeFilter,
+			);
 		}
 
 		return credentials;
@@ -418,9 +555,12 @@ export class CredentialsService {
 		}
 
 		if (includeData) {
-			return await this.addDecryptedDataToCredentials(credentials);
+			const decrypted = await this.addDecryptedDataToCredentials(credentials);
+			await this.populateConnectedByMe(decrypted, user);
+			return decrypted;
 		}
 
+		await this.populateConnectedByMe(credentials, user);
 		return credentials;
 	}
 
@@ -478,6 +618,8 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Returns credentials that are both accessible to the user AND accessible to the project.
+	 * A credential shared with the project but not with the requesting user would be excluded.
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
@@ -486,7 +628,7 @@ export class CredentialsService {
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: { workflowId: string } | { projectId: string },
-	) {
+	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
@@ -507,17 +649,38 @@ export class CredentialsService {
 			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
 		);
 
-		return intersection
-			.map((c) => this.roleService.addScopes(c, user, projectRelations))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-				scopes: c.scopes,
-				isManaged: c.isManaged,
-				isGlobal: c.isGlobal,
-				isResolvable: c.isResolvable,
-			}));
+		if (intersection.length > 0) {
+			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
+				intersection.map((c) => c.id),
+			);
+			intersection.forEach((c) => {
+				c.shared = relations.filter((r) => r.credentialsId === c.id);
+			});
+		}
+
+		const enriched = intersection
+			.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
+			.map((c) => this.roleService.addScopes(c, user, projectRelations)) as Array<
+			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
+		>;
+
+		const result = enriched.map((c) => ({
+			id: c.id,
+			name: c.name,
+			type: c.type,
+			createdAt: c.createdAt.toISOString(),
+			updatedAt: c.updatedAt.toISOString(),
+			scopes: c.scopes,
+			isManaged: c.isManaged,
+			isGlobal: c.isGlobal,
+			isResolvable: c.isResolvable,
+			homeProject: c.homeProject,
+			sharedWithProjects: c.sharedWithProjects,
+			currentUserHasAccess: true,
+		}));
+
+		await this.populateConnectedByMe(result, user);
+		return result;
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
@@ -563,7 +726,10 @@ export class CredentialsService {
 		globalScopes: Scope[],
 		relations: FindOptionsRelations<SharedCredentials> = { credentials: true },
 	): Promise<SharedCredentials | null> {
-		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
+		let where: FindOptionsWhere<SharedCredentials> = {
+			credentialsId: credentialId,
+			credentials: { usageScope: 'project' },
+		};
 
 		if (!hasGlobalScope(user, globalScopes, { mode: 'allOf' })) {
 			where = {
@@ -588,29 +754,9 @@ export class CredentialsService {
 		user: User,
 		data: CredentialRequest.CredentialProperties,
 		existingCredential: CredentialsEntity,
+		options?: PrepareUpdateDataOptions,
 	): Promise<CredentialsEntity> {
 		const decryptedData = await this.decrypt(existingCredential, true);
-
-		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
-		const projectOwningCredential = existingCredential.shared?.find(
-			(shared) => shared.role === 'credential:owner',
-		)!;
-
-		await validateExternalSecretsPermissions({
-			user,
-			projectId: projectOwningCredential.projectId,
-			dataToSave: data.data,
-			decryptedExistingData: decryptedData,
-		});
-
-		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
-			await validateAccessToReferencedSecretProviders(
-				projectOwningCredential.projectId,
-				data.data,
-				this.externalSecretsProviderAccessCheckService,
-				'update',
-			);
-		}
 
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
@@ -619,6 +765,37 @@ export class CredentialsService {
 				decryptedData,
 				this.getCredentialTypeProperties(existingCredential.type),
 			);
+		}
+		if (existingCredential.usageScope === 'instance') {
+			await this.validateInstanceCredentialUpdate(
+				existingCredential,
+				mergedData.data ?? decryptedData,
+				undefined,
+				options?.operationContext,
+			);
+		} else {
+			const projectOwningCredential = existingCredential.shared?.find(
+				(shared) => shared.role === 'credential:owner',
+			);
+			if (!projectOwningCredential) {
+				throw new NotFoundError(`Could not find owner for credential "${existingCredential.id}"`);
+			}
+
+			await validateExternalSecretsPermissions({
+				user,
+				projectId: projectOwningCredential.projectId,
+				dataToSave: data.data,
+				decryptedExistingData: decryptedData,
+			});
+
+			if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
+				await validateAccessToReferencedSecretProviders(
+					projectOwningCredential.projectId,
+					data.data,
+					this.externalSecretsProviderAccessCheckService,
+					'update',
+				);
+			}
 		}
 
 		// This saves us a merge but requires some type casting. These
@@ -629,8 +806,9 @@ export class CredentialsService {
 
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// every time anybody changes anything on the credentials even if it is just the name.
-		if (decryptedData.oauthTokenData) {
-			// @ts-ignore
+		// Exception: when toggling to private (Static→Private), the shared token must be cleared.
+		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
+			// @ts-expect-error data is typed as encrypted string
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
@@ -663,6 +841,30 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Clears a credential's stored OAuth token (and its derived account
+	 * identifier), returning it to a disconnected state. The normal update path
+	 * deliberately carries `oauthTokenData` forward, so a "Disconnect" action on a
+	 * fixed OAuth credential needs this dedicated path.
+	 */
+	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
+		// Decrypt via the core credential so a decryption failure aborts the
+		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
+		// which would otherwise overwrite the whole credential with empty data.
+		const decryptedData = await createCredentialsFromCredentialsEntity(credential).getData();
+		delete decryptedData.oauthTokenData;
+		delete decryptedData.accountIdentifier;
+
+		const newCredentialData = await this.createEncryptedData({
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			data: decryptedData,
+		});
+
+		await this.update(credential.id, newCredentialData, decryptedData);
+	}
+
+	/**
 	 * Decrypts the credentials data and redacts the content by default.
 	 *
 	 * If `includeRawData` is set to true it will not redact the data.
@@ -692,12 +894,17 @@ export class CredentialsService {
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
+		options?: UpdateOptions,
 	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
-		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+		const persist = async (transactionManager: EntityManager) => {
 			// Update the credentials in DB
 			await transactionManager.update(CredentialsEntity, credentialId, newCredentialData);
+
+			if (options?.deleteUserEntries) {
+				await this.connectionStatusProxy.deleteAllUserEntries(credentialId, transactionManager);
+			}
 
 			if (decryptedCredentialData) {
 				await this.credentialDependencyService.syncExternalSecretProviderDependenciesForCredential({
@@ -710,7 +917,114 @@ export class CredentialsService {
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the updated entry.
 			return await transactionManager.findOneBy(CredentialsEntity, { id: credentialId });
+		};
+
+		let result: CredentialsEntity | null;
+		if (!options?.instanceCredential) {
+			result = await this.credentialsRepository.manager.transaction(persist);
+		} else {
+			const instanceCredential = options.instanceCredential;
+			const hookedData = await this.getValidatedInstanceCredentialHookData(
+				newCredentialData,
+				instanceCredential.id,
+				instanceCredential.type,
+			);
+			result = await this.dbLockService.withLock(
+				DbLock.INSTANCE_AI_SETTINGS,
+				async (transactionManager, ctx) => {
+					await this.validateInstanceCredentialUpdate(
+						instanceCredential,
+						hookedData,
+						undefined,
+						ctx,
+					);
+					return await persist(transactionManager);
+				},
+			);
+		}
+
+		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
+		const enriched: (CredentialsEntity & { connectedByMe?: boolean }) | null = result;
+		if (enriched && options?.user) {
+			await this.populateConnectedByMe([enriched], options.user);
+		}
+
+		return enriched;
+	}
+
+	/**
+	 * Runs external credential hooks with an encrypted snapshot of the payload.
+	 * Transactional callers suppress hooks on the write and invoke this only
+	 * after the transaction commits.
+	 */
+	async runInstanceCredentialHooks(
+		event: 'create' | 'update',
+		credential: {
+			id: string | null;
+			name: string;
+			type: string;
+			data: ICredentialDataDecryptedObject;
+		},
+	): Promise<ICredentialsDb> {
+		const encrypted = await this.createEncryptedData(credential);
+		await this.externalHooks.run(`credentials.${event}`, [encrypted]);
+		return encrypted;
+	}
+
+	async updateInstanceCredential(
+		user: User,
+		credentialId: string,
+		data: CredentialRequest.CredentialProperties,
+		ctx: OperationContext,
+		options: InstanceCredentialWriteOptions = {},
+	): Promise<CredentialsEntity> {
+		if (!hasGlobalScope(user, 'credential:manageInstance')) {
+			throw new ForbiddenError('You do not have permission to update provider connections');
+		}
+
+		const credential = await this.credentialsRepository.findInstanceCredentialById(
+			credentialId,
+			ctx,
+		);
+		if (!credential) {
+			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
+		}
+
+		const prepared = await this.prepareUpdateData(user, data, credential, {
+			operationContext: ctx,
 		});
+		if (prepared.type !== credential.type) {
+			throw new BadRequestError(
+				'Provider connection type cannot be changed. Create a new connection instead.',
+			);
+		}
+		const decryptedData = prepared.data as unknown as ICredentialDataDecryptedObject;
+		const encrypted =
+			options.encryptedData ??
+			(await this.createEncryptedData({
+				id: credential.id,
+				name: prepared.name,
+				type: prepared.type,
+				data: decryptedData,
+			}));
+		if (!options.skipExternalHooks) {
+			await this.externalHooks.run('credentials.update', [encrypted]);
+		}
+		const hookedData = await this.getValidatedInstanceCredentialHookData(
+			encrypted,
+			credential.id,
+			credential.type,
+		);
+		await this.validateInstanceCredentialUpdate(credential, hookedData, undefined, ctx);
+		const updated = await this.credentialsRepository.updateInstanceCredential(
+			credential.id,
+			encrypted,
+			ctx,
+		);
+		if (!updated) {
+			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
+		}
+		return updated;
 	}
 
 	private async resolveOwningProjectIdForNewCredential(
@@ -798,16 +1112,38 @@ export class CredentialsService {
 	 * If the user does not have permission to delete the credential this does
 	 * nothing and returns void.
 	 */
-	async delete(user: User, credentialId: string) {
-		await this.externalHooks.run('credentials.delete', [credentialId]);
-
+	async delete(
+		user: User,
+		credentialId: string,
+		options: { includeInstanceCredentials?: boolean } = {},
+	) {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:delete'],
+			options,
 		);
 
 		if (!credential) {
+			return;
+		}
+
+		if (credential.isResolvable) {
+			const owningProject =
+				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
+		}
+		await this.externalHooks.run('credentials.delete', [credentialId]);
+
+		if (credential.usageScope === 'instance') {
+			const result = await this.credentialsRepository.deleteInstanceCredentialIfUnassigned(
+				credential.id,
+			);
+			if (result.status === 'assigned') {
+				throw new BadRequestError(
+					`This credential is assigned to credential use "${result.credentialUseIds.join(', ')}" and cannot be deleted`,
+				);
+			}
 			return;
 		}
 
@@ -821,7 +1157,8 @@ export class CredentialsService {
 	async testById(userId: User['id'], credentialId: string) {
 		const storedCredential = await this.credentialsFinderService.findCredentialById(credentialId);
 
-		if (!storedCredential) {
+		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
+		if (!storedCredential || storedCredential.usageScope !== 'project') {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
@@ -834,9 +1171,14 @@ export class CredentialsService {
 			credentials.id,
 			user,
 			['credential:read'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!storedCredential) {
+			if (credentials.id === '' && hasGlobalScope(user, 'credential:manageInstance')) {
+				this.validateInstanceCredentialData(credentials.data ?? {});
+				return await this.test(user.id, credentials);
+			}
 			throw new CredentialNotFoundError(credentials.id);
 		}
 
@@ -847,6 +1189,45 @@ export class CredentialsService {
 		});
 
 		return await this.test(user.id, mergedCredentials);
+	}
+
+	/**
+	 * Auth-probe a stored credential against the test URL persisted in its own
+	 * data (e.g. Templated Custom Auth, whose type declares no test of its own).
+	 * The target is never caller-supplied, so a merely readable credential
+	 * cannot be pointed at an arbitrary endpoint.
+	 */
+	async probeById(user: User, credentialId: string) {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentialId);
+		}
+
+		const data = await this.decrypt(storedCredential, true);
+
+		// Expressions (leading '=') and non-http values are refused, not resolved.
+		const testUrl = data.testUrl;
+		if (typeof testUrl !== 'string' || !/^https?:\/\//i.test(testUrl)) {
+			throw new BadRequestError('The credential has no test URL to probe');
+		}
+
+		return await this.credentialsTester.probeCredentialAuth(
+			user.id,
+			storedCredential.type,
+			{
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data,
+			},
+			testUrl,
+			{ acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes) },
+		);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.
@@ -886,7 +1267,7 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -910,9 +1291,9 @@ export class CredentialsService {
 
 			if (
 				prop.typeOptions?.password &&
-				(!data[dataKey].toString().startsWith('={{') || prop.noDataExpression)
+				(!String(data[dataKey] ?? '').startsWith('={{') || prop.noDataExpression)
 			) {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -963,6 +1344,9 @@ export class CredentialsService {
 				]),
 			);
 		}
+		// Expressions are references (e.g. external secrets), not secrets — keep
+		// them visible and editable, mirroring the field-level password rule.
+		if (typeof obj === 'string' && obj.startsWith('={{')) return obj;
 		return CUSTOM_AUTH_JSON_REDACTED_VALUE;
 	}
 
@@ -994,7 +1378,11 @@ export class CredentialsService {
 	private unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
-			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
+			// Strip a leading `=`: switching a redacted field to expression mode
+			// prepends it to the sentinel, which would otherwise defeat the match
+			// and persist the sentinel as the real value.
+			const sentinel = typeof value === 'string' && value.startsWith('=') ? value.slice(1) : value;
+			if (sentinel === CREDENTIAL_BLANKING_VALUE || sentinel === CREDENTIAL_EMPTY_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (
@@ -1016,6 +1404,25 @@ export class CredentialsService {
 		try {
 			return this.credentialTypes.getByName(credentialType).properties;
 		} catch {
+			return [];
+		}
+	}
+
+	/**
+	 * Shared (static, non-resolvable) fields whose value changed vs. the stored
+	 * credential. `newData` must be un-redacted (see `prepareUpdateData`).
+	 */
+	async getChangedSharedFields(
+		credential: CredentialsEntity,
+		newData: ICredentialDataDecryptedObject,
+	): Promise<string[]> {
+		try {
+			const credentialType = this.credentialTypes.getByName(credential.type);
+			const oldData = await this.decrypt(credential, true);
+			return getChangedSharedFields(credentialType, oldData, newData);
+		} catch {
+			// Unknown credential type or decrypt failure: fall back to leaving
+			// connections untouched rather than blocking the update.
 			return [];
 		}
 	}
@@ -1047,7 +1454,32 @@ export class CredentialsService {
 		return mergedData;
 	}
 
-	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
+	async getOne(
+		user: User,
+		credentialId: string,
+		includeDecryptedData: boolean,
+		options: { includeInstanceCredentials?: boolean } = {},
+	) {
+		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
+			const instanceCredential = await this.credentialsRepository.findOneBy({
+				id: credentialId,
+				usageScope: 'instance',
+			});
+			if (instanceCredential) {
+				const { data: _, ...rest } = instanceCredential;
+				if (includeDecryptedData) {
+					const decryptedData = await this.decrypt(instanceCredential);
+					// We never want to expose the oauthTokenData to the frontend, but it
+					// expects it to check if the credential is already connected.
+					if (decryptedData.oauthTokenData) {
+						decryptedData.oauthTokenData = true;
+					}
+					return { data: decryptedData, ...rest };
+				}
+				return { ...rest };
+			}
+		}
+
 		let sharing: SharedCredentials | null = null;
 		let decryptedData: ICredentialDataDecryptedObject | null = null;
 
@@ -1080,15 +1512,31 @@ export class CredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		await this.populateConnectedByMe([enriched], user);
+
+		if (credential.isResolvable) {
+			enriched.connectedUserCount = await this.countConnectedUsers(credential.id);
+		}
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				// For resolvable credentials, the "connected" signal lives in the
+				// per-user storage — mirror that into the existing oauthTokenData
+				// flag the frontend banner already reads.
+				if (enriched.connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...enriched };
 		}
-		return { ...rest };
+		return { ...enriched };
 	}
 
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {
@@ -1187,6 +1635,43 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: false }, user);
 	}
 
+	async createInstanceCredential(
+		dto: CreateCredentialDto,
+		user: User,
+		ctx: OperationContext,
+		options: InstanceCredentialWriteOptions = {},
+	): Promise<CredentialsEntity> {
+		if (dto.usageScope !== 'instance') {
+			throw new BadRequestError('Provider connections must use instance usage scope');
+		}
+		return await this.persistInstanceCredential({ ...dto, isManaged: false }, user, ctx, options);
+	}
+
+	/**
+	 * Creates an empty credential placeholder for package import. Skips field
+	 * validation so every known type can be stubbed; {@link save} still enforces
+	 * `credential:create` on the target project.
+	 */
+	async createStubCredential(
+		opts: { name: string; type: string; projectId: string },
+		user: User,
+	): Promise<CredentialsEntity> {
+		const encryptedCredential = await this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: {},
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+		});
+
+		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, {});
+	}
+
 	/**
 	 * Used to check credential data for creating a new credential.
 	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
@@ -1198,6 +1683,11 @@ export class CredentialsService {
 		user: User,
 		projectId: string,
 	): Promise<void> {
+		this.validateCredentialData(type, data);
+		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
+	}
+
+	private validateCredentialData(type: string, data: ICredentialDataDecryptedObject): void {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -1222,8 +1712,21 @@ export class CredentialsService {
 				}
 			}
 		}
-		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
 		this.validateOAuthCredentialUrls(type, data);
+	}
+
+	/**
+	 * Whether a credential type is OAuth1 or OAuth2, including types that extend
+	 * them (e.g. `gmailOAuth2`).
+	 */
+	isOAuthCredentialType(type: string): boolean {
+		const parentTypes = this.credentialTypes.getParentTypes(type) ?? [];
+		return (
+			type === 'oAuth1Api' ||
+			type === 'oAuth2Api' ||
+			parentTypes.includes('oAuth1Api') ||
+			parentTypes.includes('oAuth2Api')
+		);
 	}
 
 	/**
@@ -1262,8 +1765,38 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: true }, user);
 	}
 
+	/**
+	 * The end-user (resolvable) credential lifecycle — creating one, switching a
+	 * credential to or from end-user, deleting or transferring one — is limited
+	 * to roles holding `credential:createEndUser` on the owning project
+	 * (instance owners/admins, project admins, and personal project owners by
+	 * default). These operations affect every user's own connection, not just
+	 * the caller's, so they need more than the plain credential CRUD scopes.
+	 */
+	async ensureCanManageEndUserCredential(user: User, projectId?: string) {
+		const allowed =
+			projectId !== undefined &&
+			(await userHasScopes(user, ['credential:createEndUser'], false, { projectId }));
+		if (!allowed) {
+			throw new ForbiddenError(
+				'You do not have permission to manage end-user credentials in this project',
+			);
+		}
+	}
+
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		if (opts.usageScope === 'instance') {
+			const savedCredential = await this.persistInstanceCredential(opts, user, {});
+			const scopes = await this.getCredentialScopes(user, savedCredential.id);
+			const { shared, ...credential } = savedCredential;
+			return { ...credential, scopes };
+		}
+
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+
+		if (opts.isResolvable === true) {
+			await this.ensureCanManageEndUserCredential(user, targetProjectId);
+		}
 
 		await this.checkCredentialData(
 			opts.type,
@@ -1315,6 +1848,127 @@ export class CredentialsService {
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	private async persistInstanceCredential(
+		opts: CreateCredentialOptions,
+		user: User,
+		ctx: OperationContext,
+		options: InstanceCredentialWriteOptions = {},
+	): Promise<CredentialsEntity> {
+		if (!hasGlobalScope(user, 'credential:manageInstance')) {
+			throw new ForbiddenError('You do not have permission to create provider connections');
+		}
+		if (opts.isGlobal === true) {
+			throw new BadRequestError('Provider connections cannot be globally shared');
+		}
+		if (opts.isResolvable === true || opts.isManaged) {
+			throw new BadRequestError('Provider connections cannot be end-user or managed credentials');
+		}
+		const data = opts.data as ICredentialDataDecryptedObject;
+		this.validateInstanceCredentialData(data);
+
+		this.validateCredentialData(opts.type, data);
+
+		const encryptedCredential =
+			options.encryptedData ??
+			(await this.createEncryptedData({
+				id: null,
+				name: opts.name,
+				type: opts.type,
+				data,
+			}));
+		if (!options.skipExternalHooks) {
+			await this.externalHooks.run('credentials.create', [encryptedCredential]);
+		}
+		const hookedData = await this.getValidatedInstanceCredentialHookData(
+			encryptedCredential,
+			null,
+			opts.type,
+		);
+		this.validateInstanceCredentialData(hookedData);
+		this.validateCredentialData(opts.type, hookedData);
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+			usageScope: 'instance' as const,
+		});
+
+		const savedCredential = await this.credentialsRepository.saveInstanceCredential(
+			credentialEntity,
+			ctx,
+		);
+
+		this.logger.debug('New instance credential created', {
+			credentialId: savedCredential.id,
+			ownerId: user.id,
+		});
+
+		return savedCredential;
+	}
+
+	private async getValidatedInstanceCredentialHookData(
+		credential: InstanceCredentialHookPayload,
+		expectedId: string | null,
+		expectedType: string,
+	): Promise<ICredentialDataDecryptedObject> {
+		if ((credential.id ?? null) !== expectedId) {
+			throw new BadRequestError('Provider connection hooks cannot change the credential ID');
+		}
+		if (credential.type !== expectedType) {
+			throw new BadRequestError('Provider connection hooks cannot change the credential type');
+		}
+		if (
+			credential.isGlobal ||
+			credential.isManaged ||
+			credential.isResolvable ||
+			credential.resolvableAllowFallback ||
+			(credential.resolverId !== undefined && credential.resolverId !== null) ||
+			(credential.usageScope !== undefined && credential.usageScope !== 'instance')
+		) {
+			throw new BadRequestError('Provider connection hooks cannot change the credential scope');
+		}
+
+		try {
+			return await createCredentialsFromCredentialsEntity(credential).getData();
+		} catch (error) {
+			if (error instanceof CredentialDataError) {
+				throw new BadRequestError('Provider connection hooks returned invalid credential data');
+			}
+			throw error;
+		}
+	}
+
+	validateInstanceCredentialData(data: ICredentialDataDecryptedObject): void {
+		if (getExternalSecretExpressionPaths(data).length > 0) {
+			throw new BadRequestError(
+				'Provider connections cannot reference project-scoped external secrets',
+			);
+		}
+	}
+
+	/** An assigned instance credential must keep satisfying every use's policy. */
+	async validateInstanceCredentialUpdate(
+		credential: Pick<CredentialsEntity, 'id' | 'type'>,
+		data: ICredentialDataDecryptedObject,
+		credentialUseIds?: string[],
+		ctx: OperationContext = {},
+	): Promise<void> {
+		this.validateInstanceCredentialData(data);
+		const assignedUseIds =
+			credentialUseIds ??
+			(await this.instanceCredentialAssignmentRepository.findCredentialUseIds(credential.id, ctx));
+
+		for (const credentialUseId of assignedUseIds) {
+			const credentialUse = this.instanceCredentialUseRegistry.get(credentialUseId);
+			if (!credentialUse.credentialTypes.includes(credential.type)) {
+				throw new BadRequestError(
+					`Credential type "${credential.type}" is not valid for instance credential use "${credentialUseId}"`,
+				);
+			}
+			credentialUse.validate?.({ type: credential.type, data });
+		}
 	}
 
 	/**

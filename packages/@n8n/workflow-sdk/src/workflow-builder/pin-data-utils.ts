@@ -4,6 +4,7 @@
  * Functions for determining which nodes should have pin data generated.
  */
 
+import { isPlaceholderValue } from './string-utils';
 import { isHttpRequestType, isWebhookType, isDataTableType } from '../constants/node-types';
 import type { NodeInstance } from '../types/base';
 
@@ -12,11 +13,10 @@ import type { NodeInstance } from '../types/base';
  * Nodes with new credentials need pin data to avoid execution errors.
  *
  * Note: by the time a NodeInstance reaches this code, credentials slots only
- * ever contain `CredentialReference` or `__newCredential` markers — never
- * `__placeholder` markers. `placeholder()` values supplied for credentials
- * are normalized to `__newCredential` at config ingest in
- * `node-builder.ts#normalizeNodeConfig`, so we don't need a second check
- * here.
+ * ever contain `CredentialReference` or `__newCredential` markers. Bare
+ * placeholder marker strings and the `{ value }` convenience shape supplied
+ * for credentials are normalized to `__newCredential` at config ingest in
+ * `node-builder.ts#normalizeNodeConfig`, so we don't need a second check here.
  */
 export function hasNewCredential(node: NodeInstance<string, string, unknown>): boolean {
 	// Check main node credentials
@@ -75,12 +75,8 @@ export function isDataTableWithoutTable(node: NodeInstance<string, string, unkno
 		return true;
 	}
 
-	// Check if value is a placeholder (user needs to fill in)
-	if (
-		typeof dataTableId.value === 'object' &&
-		dataTableId.value !== null &&
-		'__placeholder' in dataTableId.value
-	) {
+	// Check if value is a placeholder marker (user needs to fill in)
+	if (isPlaceholderValue(dataTableId.value)) {
 		return true;
 	}
 

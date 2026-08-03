@@ -1,112 +1,145 @@
+import fastGlob from 'fast-glob';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { EXCLUDED_DIRS, buildFilesystemResource, resolveSafePath } from './fs-utils';
+import {
+	EXCLUDED_DIRS,
+	buildFilesystemResource,
+	isLikelyBinaryContent,
+	resolveReadablePath,
+} from './fs-utils';
 
-const inputSchema = z.object({
-	dirPath: z.string().describe('Directory to search in'),
-	query: z.string().describe('Text pattern to search for (literal match, not regex)'),
-	filePattern: z.string().optional().describe('Glob pattern to filter files (e.g. "**/*.ts")'),
-	ignoreCase: z.boolean().optional().describe('Case-insensitive search (default: false)'),
-	maxResults: z.number().int().optional().describe('Maximum number of results (default: 50)'),
-});
+const inputSchema = z
+	.object({
+		name: z
+			.string()
+			.describe(
+				'REQUIRED. Glob pattern for the file path(s) to find, relative to the base directory. ' +
+					'Use `**/` to match at any depth. ' +
+					'Examples: `**/joke.txt` finds joke.txt anywhere; ' +
+					'`src/**/*.ts` finds every .ts file under src/; ' +
+					'`README.md` matches only README.md at the root.',
+			),
+		query: z
+			.string()
+			.optional()
+			.describe(
+				'OPTIONAL. Literal text (not regex) to search for INSIDE the contents of the files matched by `name`. ' +
+					'Omit this to only list the matching files without opening them.',
+			),
+		ignoreCase: z
+			.boolean()
+			.optional()
+			.describe('Case-insensitive `query` search (default: false). Has no effect without `query`.'),
+		maxResults: z.number().int().optional().describe('Maximum number of results (default: 50)'),
+	})
+	.describe(
+		'Find files by name (glob pattern), and optionally grep inside their contents. ' +
+			'Pass `name` alone to locate a file by its name. ' +
+			'Pass `name` + `query` to also search for a literal text string inside the matching files.',
+	);
+
+const IGNORE_PATTERNS = [...EXCLUDED_DIRS].map((segment) => `**/${segment}/**`);
 
 export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 	name: 'search_files',
-	description: 'Search for text patterns across files using a literal text query',
+	description:
+		'Find files by name (glob pattern), and optionally search a literal text string inside the matched files. ' +
+		'To locate a file by name, pass only `name` (e.g. `{ name: "**/joke.txt" }`). ' +
+		'To grep file contents, pass `name` + `query` (e.g. `{ name: "**/*.ts", query: "TODO" }`).',
 	inputSchema,
 	annotations: { readOnlyHint: true },
-	async getAffectedResources({ dirPath }, { dir }) {
-		return [
-			await buildFilesystemResource(dir, dirPath, 'filesystemRead', `Search files in: ${dirPath}`),
-		];
+	async getAffectedResources(_args, { dir }) {
+		return [await buildFilesystemResource(dir, '.', 'filesystemRead', 'Search files')];
 	},
-	async execute({ dirPath, query, filePattern, ignoreCase, maxResults }, { dir }) {
-		const resolvedDir = await resolveSafePath(dir, dirPath);
+	async execute({ name, query, ignoreCase, maxResults }, { dir }) {
+		assertPatternStaysInside(name);
+
+		const resolvedDir = await resolveReadablePath(dir, '.');
 		const limit = maxResults ?? 50;
-		const flags = ignoreCase ? 'gi' : 'g';
-		const regex = new RegExp(escapeRegex(query), flags);
 
-		const matches: Array<{ path: string; lineNumber: number; line: string }> = [];
-		let totalMatches = 0;
+		const globbed = await fastGlob(name, {
+			cwd: resolvedDir,
+			ignore: IGNORE_PATTERNS,
+			onlyFiles: true,
+			followSymbolicLinks: false,
+			suppressErrors: true,
+		});
 
-		const filePaths = await collectFiles(resolvedDir, dir, filePattern);
+		// The literal-pattern check above cannot see paths produced by glob expansion,
+		// so re-resolve every match through the shared resolver, which re-checks
+		// containment (following symlinks safely) and drops anything outside the base.
+		const resolved = await Promise.all(
+			globbed.map(async (path) => {
+				const absolutePath = await resolveReadablePath(dir, path).catch(() => null);
+				return absolutePath ? { path, absolutePath } : null;
+			}),
+		);
+		const files = resolved.filter((file): file is ResolvedFile => file !== null);
 
-		for (const fp of filePaths) {
-			if (matches.length >= limit) break;
-
-			try {
-				const fullPath = path.join(dir, fp);
-				const stat = await fs.stat(fullPath);
-				if (stat.size > MAX_FILE_SIZE) continue;
-
-				const content = await fs.readFile(fullPath, 'utf-8');
-				const lines = content.split('\n');
-
-				for (let i = 0; i < lines.length; i++) {
-					if (regex.test(lines[i])) {
-						totalMatches++;
-						if (matches.length < limit) {
-							matches.push({ path: fp, lineNumber: i + 1, line: lines[i].substring(0, 200) });
-						}
-					}
-					regex.lastIndex = 0;
-				}
-			} catch {
-				// Skip unreadable files
-			}
+		if (!query) {
+			return formatCallToolResult({
+				name,
+				matches: files.slice(0, limit).map(({ path }) => ({ path })),
+				truncated: files.length > limit,
+				totalMatches: files.length,
+			});
 		}
 
-		return formatCallToolResult({ query, matches, truncated: totalMatches > limit, totalMatches });
+		const regex = new RegExp(escapeRegex(query), ignoreCase ? 'i' : '');
+		const matches = await Promise.all(files.map(async (file) => await grepFile(file, regex))).then(
+			(results) => results.flat(),
+		);
+
+		return formatCallToolResult({
+			name,
+			query,
+			matches: matches.slice(0, limit),
+			truncated: matches.length > limit,
+			totalMatches: matches.length,
+		});
 	},
 };
 
-async function collectFiles(
-	dir: string,
-	basePath: string,
-	pattern?: string,
-	collected: string[] = [],
-	depth = 0,
-): Promise<string[]> {
-	if (depth > 10 || collected.length > 5000) return collected;
+interface ResolvedFile {
+	path: string;
+	absolutePath: string;
+}
 
-	const entries = await fs.readdir(dir, { withFileTypes: true });
-
-	for (const entry of entries) {
-		if (EXCLUDED_DIRS.has(entry.name) && entry.isDirectory()) continue;
-
-		const fullPath = path.join(dir, entry.name);
-		const relativePath = path.relative(basePath, fullPath);
-
-		if (entry.isDirectory()) {
-			await collectFiles(fullPath, basePath, pattern, collected, depth + 1);
-		} else if (entry.isFile()) {
-			if (pattern) {
-				const regex = globToRegex(pattern);
-				if (!regex.test(entry.name) && !regex.test(relativePath)) continue;
-			}
-			collected.push(relativePath);
-		}
+function assertPatternStaysInside(pattern: string): void {
+	if (pattern.startsWith('/') || pattern.split('/').includes('..')) {
+		throw new Error(`Pattern "${pattern}" escapes the base directory`);
 	}
+}
 
-	return collected;
+async function grepFile(
+	file: ResolvedFile,
+	regex: RegExp,
+): Promise<Array<{ path: string; lineNumber: number; line: string }>> {
+	try {
+		const stat = await fs.stat(file.absolutePath);
+		if (stat.size > MAX_FILE_SIZE) return [];
+
+		const buffer = await fs.readFile(file.absolutePath);
+		if (isLikelyBinaryContent(buffer)) return [];
+
+		const lines = buffer.toString('utf-8').split('\n');
+		const hits: Array<{ path: string; lineNumber: number; line: string }> = [];
+		for (let i = 0; i < lines.length; i++) {
+			if (regex.test(lines[i])) {
+				hits.push({ path: file.path, lineNumber: i + 1, line: lines[i].substring(0, 200) });
+			}
+		}
+		return hits;
+	} catch {
+		// Unreadable file
+		return [];
+	}
 }
 
 function escapeRegex(str: string): string {
 	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function globToRegex(pattern: string): RegExp {
-	const escaped = pattern
-		.replace(/[.+^${}()|[\]\\]/g, '\\$&')
-		.replace(/\*\*\//g, '{{GLOBSTAR_SLASH}}')
-		.replace(/\*\*/g, '{{GLOBSTAR}}')
-		.replace(/\*/g, '[^/]*')
-		.replace(/\{\{GLOBSTAR_SLASH\}\}/g, '(.*/)?')
-		.replace(/\{\{GLOBSTAR\}\}/g, '.*');
-	return new RegExp(`^${escaped}$`);
 }

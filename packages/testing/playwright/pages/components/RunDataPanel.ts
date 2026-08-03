@@ -43,6 +43,30 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-data-container');
 	}
 
+	getPagination() {
+		return this.root.getByTestId('ndv-data-pagination');
+	}
+
+	getPaginationPages() {
+		return this.getPagination().locator('li');
+	}
+
+	getHighlightMarks() {
+		return this.getDataContainer().locator('mark');
+	}
+
+	getBranchTab(name: string | RegExp) {
+		return this.root.getByText(name);
+	}
+
+	getItemsCountText(text: string | RegExp) {
+		return this.getItemsCount().filter({ hasText: text });
+	}
+
+	getActiveDisplayMode() {
+		return this.root.locator('[class*="active"]');
+	}
+
 	getPinDataButton() {
 		return this.root.getByTestId('ndv-pin-data');
 	}
@@ -65,6 +89,14 @@ export class RunDataPanel {
 
 	getTableRow(index: number) {
 		return this.root.locator('tr').nth(index);
+	}
+
+	getTableRowHighlights(index: number) {
+		return this.getTableRow(index).locator('mark');
+	}
+
+	getTableCellByText(text: string) {
+		return this.getTable().locator(`text=${text}`);
 	}
 
 	getTbodyCell(row: number, col: number) {
@@ -111,6 +143,14 @@ export class RunDataPanel {
 		return this.getSchemaItems().locator('span').filter({ hasText: text }).first();
 	}
 
+	getSchemaItemToggle(text: string) {
+		return this.getSchemaItem(text).locator('.toggle');
+	}
+
+	getSchemaItemPill(text: string) {
+		return this.getSchemaItemText(text).locator('span');
+	}
+
 	getNodeInputOptions() {
 		return this.root.getByTestId('ndv-input-select');
 	}
@@ -129,6 +169,10 @@ export class RunDataPanel {
 
 	getNodeErrorMessageHeader(): Locator {
 		return this.root.getByTestId('node-error-message');
+	}
+
+	getErrorMessage(): Locator {
+		return this.getNodeErrorMessageHeader().first();
 	}
 
 	async toggleInputRunLinking() {

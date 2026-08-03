@@ -60,11 +60,24 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSendButton(): Locator {
-		return this.page.getByTitle('Send');
+		return this.page.getByTestId('chat-hub-send-message-button');
 	}
 
 	getChatMessages(): Locator {
 		return this.page.locator('[data-message-id]');
+	}
+
+	getMessageContentAt(index: number): Locator {
+		return this.getChatMessages().nth(index).getByTestId('chat-message-content');
+	}
+
+	/**
+	 * Asserts a reply streamed into the message at `index` by checking for any
+	 * non-whitespace content, rather than matching exact model-generated text.
+	 * This keeps assertions resilient to mocked-LLM fixture drift.
+	 */
+	async expectReplyAt(index: number): Promise<void> {
+		await expect(this.getMessageContentAt(index)).toContainText(/\S/);
 	}
 
 	getEditButtonAt(index: number): Locator {

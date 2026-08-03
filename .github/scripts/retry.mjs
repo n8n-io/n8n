@@ -60,7 +60,12 @@ if (!command) {
 for (let i = 1; i <= attempts; i++) {
 	try {
 		if (isSafeRetry) {
-			const result = spawnSync(command, commandArgs, { stdio: 'inherit' });
+			// On Windows a shell is required to launch `.cmd`/`.bat` shims (e.g. `pnpm`);
+			// keep the no-shell path on POSIX so the safe form stays injection-safe there.
+			const result = spawnSync(command, commandArgs, {
+				stdio: 'inherit',
+				shell: process.platform === 'win32',
+			});
 			if (result.status !== 0) throw new Error(`Exit code ${result.status}`);
 		} else {
 			execSync(command, { shell: true, stdio: 'inherit' });
@@ -69,7 +74,8 @@ for (let i = 1; i <= attempts; i++) {
 	} catch {
 		if (i < attempts) {
 			console.error(`Attempt ${i}/${attempts} failed, retrying in ${delay}s...`);
-			execSync(`sleep ${delay}`);
+			// `sleep` isn't available on Windows cmd.exe; use a timer that works everywhere.
+			await new Promise((resolve) => setTimeout(resolve, delay * 1000));
 		} else {
 			console.error(`Attempt ${i}/${attempts} failed, no more retries.`);
 		}

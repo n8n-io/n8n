@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { McpToolIncludeMode } from '../McpClientTool/types';
@@ -17,7 +18,11 @@ import {
 	loadMcpToolOptions,
 	type ResolvedMcpConfig,
 } from '../shared/runtime';
-import type { McpServerTransport } from '../shared/types';
+import {
+	isMcpOAuth2Authentication,
+	type McpAuthenticationOption,
+	type McpServerTransport,
+} from '../shared/types';
 
 /**
  * Nodes from the MCP registry are saved as `@n8n/mcp-registry.<slug>`
@@ -30,7 +35,8 @@ export class McpRegistryClientTool implements INodeType {
 		name: 'mcpRegistryClientTool',
 		hidden: true,
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Runtime backing for MCP registry-derived nodes',
 		defaults: {
 			name: 'MCP Registry Client',
@@ -145,8 +151,9 @@ export class McpRegistryClientTool implements INodeType {
 	methods = {
 		loadOptions: {
 			async getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const authentication = getCredentialType(this);
 				return await loadMcpToolOptions(this, {
-					authentication: 'mcpOAuth2Api',
+					authentication,
 					transport: this.getNodeParameter('serverTransport') as McpServerTransport,
 					endpointUrl: this.getNodeParameter('endpointUrl') as string,
 					timeout: this.getNodeParameter('options.timeout', 60000) as number,
@@ -160,7 +167,10 @@ export class McpRegistryClientTool implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return await executeMcpTool(this, (itemIndex) => resolveConfig(this, itemIndex));
+		return await executeMcpTool(this, (itemIndex) => resolveConfig(this, itemIndex), {
+			// v1.1+ reuses one MCP session across tool calls within an execution.
+			enableSessionCache: this.getNode().typeVersion >= 1.1,
+		});
 	}
 }
 
@@ -168,8 +178,9 @@ function resolveConfig(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
 ): ResolvedMcpConfig {
+	const authentication = getCredentialType(ctx);
 	return {
-		authentication: 'mcpOAuth2Api',
+		authentication,
 		transport: ctx.getNodeParameter('serverTransport', itemIndex) as McpServerTransport,
 		endpointUrl: ctx.getNodeParameter('endpointUrl', itemIndex) as string,
 		timeout: ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number,
@@ -179,4 +190,21 @@ function resolveConfig(
 			excludeTools: ctx.getNodeParameter('excludeTools', itemIndex, []) as string[],
 		},
 	};
+}
+
+function getCredentialType(
+	ctx: Pick<ILoadOptionsFunctions | ISupplyDataFunctions | IExecuteFunctions, 'getNode'>,
+): McpAuthenticationOption {
+	const node = ctx.getNode();
+	const credentials = node.credentials ?? {};
+	const credentialType = Object.keys(credentials).find(
+		// for now we support only OAuth2
+		(credentialType) => isMcpOAuth2Authentication(credentialType),
+	);
+
+	if (!credentialType) {
+		throw new NodeOperationError(node, 'No MCP OAuth2 credential type found');
+	}
+
+	return credentialType;
 }

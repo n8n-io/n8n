@@ -14,6 +14,7 @@ import { DateTime } from 'luxon';
  * @param startDate - The start date of the range (inclusive)
  * @param endDate - The end date of the range (inclusive, or "now" if today)
  * @param dbType - The database type (postgresdb or sqlite)
+ * @param now - Reference "now" used to decide whether `endDate` is today. Defaults to `DateTime.now().toUTC()`. Passed explicitly by callers/tests to keep the helper deterministic and avoid a midnight race against an externally-captured timestamp.
  * @returns SQL CTE query with `prev_start_date`, `start_date`, and `end_date` columns
  * - `prev_start_date`: The start of the previous period (used for comparison)
  * - `start_date`: The start of the current period (inclusive)
@@ -23,16 +24,17 @@ export const getDateRangesCommonTableExpressionQuery = ({
 	startDate,
 	endDate,
 	dbType,
+	now = DateTime.now().toUTC(),
 }: {
 	startDate: Date;
 	endDate: Date;
 	dbType: DatabaseConfig['type'];
+	now?: DateTime;
 }) => {
 	let startDateTime = DateTime.fromJSDate(startDate).toUTC();
 	let endDateTime = DateTime.fromJSDate(endDate).toUTC();
 
-	const today = DateTime.now().toUTC();
-	const isEndDateToday = endDateTime.hasSame(today, 'day');
+	const isEndDateToday = endDateTime.hasSame(now, 'day');
 
 	// Past range, take full days
 	if (!isEndDateToday) {

@@ -388,4 +388,84 @@ describe('parseWorkflowJSON', () => {
 		expect(json.nodes[0].typeVersion).toBe(originalTypeVersion);
 		expect(JSON.stringify(json.connections)).toBe(originalConnections);
 	});
+
+	it('rebuilds node groups, mapping member ids to their node instances', () => {
+		const json: WorkflowJSON = {
+			id: 'wf',
+			name: 'Grouped',
+			nodes: [
+				{
+					id: 'id-a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'id-b',
+					name: 'B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [10, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			// The incoming group id is irrelevant here — parse carries members as instances.
+			nodeGroups: [{ id: 'group-1', name: 'G', nodeIds: ['id-a', 'id-b'] }],
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodeGroups).toHaveLength(1);
+		expect(result.nodeGroups![0].name).toBe('G');
+		expect(result.nodeGroups![0].members.map((m) => m.id)).toEqual(['id-a', 'id-b']);
+		expect(result.nodeGroups![0].members.map((m) => m.name)).toEqual(['A', 'B']);
+	});
+
+	it('drops group members whose ids do not match a node', () => {
+		const json: WorkflowJSON = {
+			id: 'wf',
+			name: 'Grouped',
+			nodes: [
+				{
+					id: 'id-a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			nodeGroups: [{ id: 'group-1', name: 'G', nodeIds: ['id-a', 'ghost'] }],
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodeGroups![0].members.map((m) => m.id)).toEqual(['id-a']);
+	});
+
+	it('returns undefined nodeGroups when none are declared', () => {
+		const json: WorkflowJSON = {
+			id: 'wf',
+			name: 'No groups',
+			nodes: [
+				{
+					id: 'id-a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const result = parseWorkflowJSON(json);
+
+		expect(result.nodeGroups).toBeUndefined();
+	});
 });

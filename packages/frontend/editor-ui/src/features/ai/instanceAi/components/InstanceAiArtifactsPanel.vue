@@ -1,63 +1,104 @@
 <script lang="ts" setup>
-import { computed, inject } from 'vue';
-import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useInstanceAiStore } from '../instanceAi.store';
-import type { TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
+import { computed, inject, ref, type Ref } from 'vue';
+import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from '../instanceAi.handoffContext';
 import ConnectionsCard from './ConnectionsCard.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
+const projectsStore = useProjectsStore();
+const store = useInstanceAiStore();
 
 const i18n = useI18n();
-const store = useInstanceAiStore();
+const thread = useThread();
+const project = computed(() => {
+	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
+	if (!match)
+		return {
+			name: i18n.baseText('instanceAi.artifactsPanel.unknownProject'),
+			icon: { type: 'icon' as const, value: 'circle-help' as const },
+		};
+	const isPersonal = match.type === 'personal';
+	const icon = isIconOrEmoji(match.icon)
+		? match.icon
+		: { type: 'icon' as const, value: 'layers' as const };
+	return {
+		name: isPersonal ? i18n.baseText('instanceAi.artifactsPanel.personalSpace') : match.name,
+		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
+	};
+});
+const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
 	undefined,
 );
+const openAgentPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
+const pendingComposerContext = inject<Ref<InstanceAiHandoffContext | null> | undefined>(
+	'pendingComposerContext',
+	undefined,
+);
+
+interface ContextEntry {
+	key: string;
+	icon: string;
+	name: string;
+	subtitle: string;
+}
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
 	if (artifact.type === 'workflow' && artifact.id) {
-		if (e.metaKey || e.ctrlKey) {
-			window.open(`/workflow/${artifact.id}`, '_blank');
-			return;
-		}
-		openPreview?.(artifact.id);
+		if (!openPreview) return;
+		e.preventDefault();
+		openPreview(artifact.id);
 	} else if (artifact.type === 'data-table' && artifact.id) {
-		if (e.metaKey || e.ctrlKey) {
-			window.open('/data-tables', '_blank');
-			return;
-		}
-		if (artifact.projectId) {
-			openDataTablePreview?.(artifact.id, artifact.projectId);
-		}
+		if (!artifact.projectId || !openDataTablePreview) return;
+		e.preventDefault();
+		openDataTablePreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'agent' && artifact.id) {
+		if (!artifact.projectId || !openAgentPreview) return;
+		e.preventDefault();
+		openAgentPreview(artifact.id, artifact.projectId);
 	}
 }
 
 // --- Tasks ---
-const tasks = computed(() => store.currentTasks);
-
-const doneCount = computed(() => {
-	if (!tasks.value) return 0;
-	return tasks.value.tasks.filter((t) => t.status === 'done').length;
-});
+const tasks = computed(() => thread.currentTasks);
+const visibleTasks = computed(() => tasks.value?.tasks ?? []);
+const hasTasks = computed(() => visibleTasks.value.length > 0);
 
 const statusIconMap: Record<
 	TaskItem['status'],
-	{ icon: string; spin: boolean; className: string }
+	{ icon: IconName; spin: boolean; className: string }
 > = {
 	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
 	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
 	done: { icon: 'check', spin: false, className: 'doneIcon' },
-	failed: { icon: 'x-circle', spin: false, className: 'failedIcon' },
+	failed: { icon: 'circle-x', spin: false, className: 'failedIcon' },
 	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
 
 // --- Artifacts ---
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
-	for (const entry of store.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table') {
+	for (const entry of thread.producedArtifacts.values()) {
+		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
 			result.push(entry);
 		}
 	}
@@ -67,81 +108,221 @@ const artifacts = computed((): ResourceEntry[] => {
 const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	agent: 'robot',
 };
+
+function artifactHref(artifact: ResourceEntry) {
+	if (artifact.type === 'workflow') return `/workflow/${artifact.id}`;
+	if (artifact.type === 'data-table') {
+		return artifact.projectId
+			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
+			: '/data-tables';
+	}
+	if (artifact.type === 'agent') {
+		return artifact.projectId
+			? `/projects/${artifact.projectId}/agents/${artifact.id}`
+			: '/home/agents';
+	}
+	return '#';
+}
+
+function openArtifactLabel(name: string) {
+	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
+}
+
+function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
+	const key = handoffContextKey(context);
+
+	if (context.source === 'agent-preview') {
+		return {
+			key,
+			icon: agentPreviewContextIcon(context.agentIcon),
+			name: formatAgentPreviewContextLabel(
+				context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(context.agentId)?.name,
+			),
+			subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
+		};
+	}
+
+	return {
+		key,
+		icon: 'key-round',
+		name: context.credential.displayName,
+		subtitle: i18n.baseText('instanceAi.artifactsPanel.context.credentialModal'),
+	};
+}
+
+const contextEntries = computed<ContextEntry[]>(() => {
+	const entries: ContextEntry[] = [];
+	const seen = new Set<string>();
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+
+	// Pending handoff (preview "Send to Assistant") lives on the composer until
+	// the first send — include it so the sidebar matches the input chip.
+	const pending = pendingComposerContext?.value;
+	if (pending) {
+		const key = handoffContextKey(pending);
+		seen.add(key);
+		entries.push(contextEntryFor(pending));
+	}
+
+	for (const message of [...thread.messages].reverse()) {
+		if (message.role !== 'user' || !message.context) continue;
+
+		const key = handoffContextKey(message.context);
+		if (seen.has(key) || dismissedKeys.has(key)) continue;
+		seen.add(key);
+		entries.push(contextEntryFor(message.context));
+	}
+
+	return entries;
+});
+
+async function dismissContext(key: string) {
+	const pending = pendingComposerContext?.value;
+	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
+		pendingComposerContext.value = null;
+	}
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(key);
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
+}
 </script>
 
 <template>
-	<div :class="$style.panel">
-		<!-- Artifacts section -->
-		<div :class="[$style.section, $style.card]">
-			<N8nHeading :class="$style.sectionTitle" tag="h3" size="small" bold>
-				{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
-			</N8nHeading>
+	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
+		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
+			<!-- Project section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.project') }}
+					</N8nHeading>
+				</div>
 
-			<div v-if="artifacts.length > 0" :class="$style.artifactList">
-				<div
-					v-for="artifact in artifacts"
-					:key="artifact.id"
-					:class="[$style.artifactRow, artifact.archived && $style.artifactRowArchived]"
-					@click="handleArtifactClick(artifact, $event)"
-				>
-					<span :class="$style.artifactIconWrap">
-						<N8nIcon
-							:icon="artifactIconMap[artifact.type] ?? 'file'"
-							size="large"
-							:class="$style.artifactIcon"
+				<div :class="$style.artifactList">
+					<div :class="[$style.artifactRow]">
+						<span :class="$style.artifactIconWrap">
+							<ProjectIcon :icon="project.icon" size="small" border-less />
+						</span>
+						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Context section -->
+			<div v-if="contextEntries.length > 0" :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.context.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.contextList">
+					<div
+						v-for="entry in contextEntries"
+						:key="entry.key"
+						:class="$style.contextRow"
+						data-test-id="instance-ai-context-row"
+					>
+						<span :class="$style.artifactIconWrap">
+							<N8nIcon :icon="entry.icon" size="large" :class="$style.artifactIcon" />
+						</span>
+						<span :class="$style.contextText">
+							<span :class="$style.contextName">{{ entry.name }}</span>
+							<span :class="$style.contextSubtitle">{{ entry.subtitle }}</span>
+						</span>
+						<N8nIconButton
+							icon="x"
+							variant="ghost"
+							size="xsmall"
+							:class="$style.contextDismiss"
+							:aria-label="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							:title="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							data-test-id="instance-ai-context-dismiss"
+							@click="dismissContext(entry.key)"
 						/>
-					</span>
-					<span :class="$style.artifactName">{{ artifact.name }}</span>
-					<span v-if="artifact.archived" :class="$style.archivedBadge">
-						{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
-					</span>
+					</div>
 				</div>
 			</div>
 
-			<div v-else :class="$style.emptyState">
-				<div :class="$style.emptyIcons">
-					<N8nIcon icon="workflow" :size="30" :class="$style.emptyIcon" />
-					<N8nIcon icon="table" :size="30" :class="$style.emptyIcon" />
+			<!-- Artifacts section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
+					</N8nHeading>
 				</div>
-				<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
+
+				<div v-if="artifacts.length > 0" :class="$style.artifactList">
+					<a
+						v-for="artifact in artifacts"
+						:key="artifact.id"
+						:href="artifactHref(artifact)"
+						:class="[$style.artifactRow, artifact.archived && $style.artifactRowArchived]"
+						:title="artifact.name"
+						:aria-label="openArtifactLabel(artifact.name)"
+						@click="handleArtifactClick(artifact, $event)"
+					>
+						<span :class="$style.artifactIconWrap">
+							<N8nIcon
+								:icon="artifactIconMap[artifact.type] ?? 'file'"
+								size="large"
+								:class="$style.artifactIcon"
+							/>
+						</span>
+						<span :class="$style.artifactName">{{ artifact.name }}</span>
+						<span v-if="artifact.archived" :class="$style.archivedBadge">
+							{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
+						</span>
+					</a>
+				</div>
+
+				<div v-else :class="$style.emptyState">
+					<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
+				</div>
 			</div>
+
+			<!-- Tasks section -->
+			<div v-if="hasTasks" :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.taskList">
+					<div
+						v-for="task in visibleTasks"
+						:key="task.id"
+						:class="[
+							$style.task,
+							task.status === 'done' ? $style.doneTask : '',
+							task.status === 'failed' ? $style.failedTask : '',
+							task.status === 'cancelled' ? $style.cancelledTask : '',
+						]"
+					>
+						<N8nIcon
+							:icon="statusIconMap[task.status].icon"
+							:class="$style[statusIconMap[task.status].className]"
+							:spin="statusIconMap[task.status].spin"
+							size="medium"
+						/>
+						<span :class="$style.taskDescription" :title="task.description">{{
+							task.description
+						}}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Connections section -->
+			<ConnectionsCard :dropdown-portal-target="panelRef" />
 		</div>
-
-		<!-- Tasks section -->
-		<div v-if="tasks" :class="[$style.section, $style.card]">
-			<N8nHeading :class="$style.sectionTitle" tag="h3" size="small" bold>
-				{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
-				<span :class="$style.progress">{{ doneCount }}/{{ tasks.tasks.length }}</span>
-			</N8nHeading>
-
-			<div :class="$style.taskList">
-				<div
-					v-for="task in tasks.tasks"
-					:key="task.id"
-					:class="[
-						$style.task,
-						task.status === 'done' ? $style.doneTask : '',
-						task.status === 'failed' ? $style.failedTask : '',
-						task.status === 'cancelled' ? $style.cancelledTask : '',
-					]"
-				>
-					<N8nIcon
-						:icon="statusIconMap[task.status].icon as IconName"
-						:class="$style[statusIconMap[task.status].className]"
-						:spin="statusIconMap[task.status].spin"
-						size="medium"
-					/>
-					<span :class="$style.taskDescription" :title="task.description">{{
-						task.description
-					}}</span>
-				</div>
-			</div>
-		</div>
-
-		<!-- Connections section -->
-		<ConnectionsCard />
-	</div>
+	</aside>
 </template>
 
 <style lang="scss" module>
@@ -150,34 +331,54 @@ const artifactIconMap: Record<string, IconName> = {
 	flex-shrink: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
 	overflow-y: auto;
+	max-height: 100%;
+}
+
+.group {
+	border: var(--border);
+	border-radius: var(--radius--xl);
+	background: var(--color--background--light-3);
+	box-shadow: var(--shadow--xs);
+	overflow: hidden;
 }
 
 .section {
+	position: relative;
 	display: flex;
 	flex-direction: column;
+	padding: var(--spacing--2xs);
+
+	&:first-child {
+		padding-top: calc(var(--spacing--2xs) + var(--spacing--3xs));
+	}
+
+	& + & {
+		padding-top: var(--spacing--sm);
+	}
+
+	& + &::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: var(--spacing--sm);
+		right: var(--spacing--sm);
+		border-top: var(--border);
+	}
 }
 
-.card {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	background: var(--color--background--light-2);
-}
-
-.sectionTitle {
+.sectionHeader {
 	margin-bottom: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
 	display: flex;
-	align-items: baseline;
+	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--3xs);
 }
 
-.progress {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--regular);
+.sectionTitle {
+	color: var(--text-color--subtle);
 }
 
 /* Artifact list */
@@ -186,24 +387,69 @@ const artifactIconMap: Record<string, IconName> = {
 	flex-direction: column;
 }
 
+.contextList {
+	display: flex;
+	flex-direction: column;
+}
+
+.contextRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+}
+
+.contextText {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.contextName {
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--color--text--shade-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextSubtitle {
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	color: var(--color--text--tint-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextDismiss {
+	flex-shrink: 0;
+	margin-top: calc(var(--spacing--5xs) * -1);
+}
+
 .artifactRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) 0;
-	cursor: pointer;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 	border-radius: var(--radius);
-	transition: background-color 0.2s ease;
+	color: var(--color--text);
+	text-decoration: none;
+	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
 
-	&:hover {
-		background: var(--color--foreground--tint-2);
-
-		.artifactName {
-			color: var(--color--primary);
+	&:is(a) {
+		cursor: pointer;
+		&:hover,
+		&:focus-visible {
+			background: var(--background--hover);
+			outline: none;
+			text-decoration: none;
 		}
 
-		.artifactIcon {
-			color: var(--color--primary);
+		&:visited {
+			color: var(--color--text);
 		}
 	}
 }
@@ -212,9 +458,6 @@ const artifactIconMap: Record<string, IconName> = {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius);
 	flex-shrink: 0;
 }
 
@@ -224,6 +467,7 @@ const artifactIconMap: Record<string, IconName> = {
 
 .artifactName {
 	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 	color: var(--color--text--shade-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -260,18 +504,6 @@ const artifactIconMap: Record<string, IconName> = {
 	color: var(--color--text--tint-1);
 }
 
-.emptyIcons {
-	display: flex;
-	gap: var(--spacing--2xs);
-}
-
-.emptyIcon {
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
-}
-
 /* Task list */
 .taskList {
 	display: flex;
@@ -282,7 +514,8 @@ const artifactIconMap: Record<string, IconName> = {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) 0;
+	padding: var(--spacing--3xs) 0;
+	padding-left: var(--spacing--2xs);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 }

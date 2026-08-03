@@ -1,21 +1,24 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { MongoClient, ObjectId } from 'mongodb';
+import { Binary, MongoClient, ObjectId } from 'mongodb';
 import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { createSecureContext } from 'tls';
+
+import { routeBinaryProperties } from '@utils/binary';
 
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
-import { formatPrivateKey } from '../../utils/utilities';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -80,6 +83,24 @@ export function validateAndResolveMongoCredentials(
 	}
 }
 
+function isScalarUpdateKeyValue(
+	value: unknown,
+): value is string | number | boolean | bigint | Date | null {
+	if (value === null) return true;
+	const type = typeof value;
+	if (type === 'string' || type === 'number' || type === 'boolean' || type === 'bigint') {
+		return true;
+	}
+	return value instanceof Date;
+}
+
+function describeUpdateKeyValueType(value: unknown): string {
+	if (value === null) return 'null';
+	if (Array.isArray(value)) return 'array';
+	if (value instanceof Date) return 'date';
+	return typeof value;
+}
+
 export function prepareItems({
 	items,
 	fields,
@@ -87,6 +108,7 @@ export function prepareItems({
 	useDotNotation = false,
 	dateFields = [],
 	isUpdate = false,
+	node,
 }: {
 	items: INodeExecutionData[];
 	fields: string[];
@@ -94,6 +116,7 @@ export function prepareItems({
 	useDotNotation?: boolean;
 	dateFields?: string[];
 	isUpdate?: boolean;
+	node: INode;
 }) {
 	let data = items;
 
@@ -104,7 +127,7 @@ export function prepareItems({
 		data = items.filter((item) => item.json[updateKey] !== undefined);
 	}
 
-	const preparedItems = data.map(({ json }) => {
+	const preparedItems = data.map(({ json }, itemIndex) => {
 		const updateItem: IDataObject = {};
 
 		for (const field of fields) {
@@ -118,6 +141,17 @@ export function prepareItems({
 
 			if (fieldData && dateFields.includes(field)) {
 				fieldData = new Date(fieldData as string);
+			}
+
+			if (field === updateKey && !isScalarUpdateKeyValue(fieldData)) {
+				throw new NodeOperationError(
+					node,
+					`The value of "${updateKey}" must be a string, number, boolean, or date`,
+					{
+						itemIndex,
+						description: `Got ${describeUpdateKeyValueType(fieldData)} instead. Objects and arrays are not allowed as the match value.`,
+					},
+				);
 			}
 
 			if (useDotNotation && !isUpdate) {
@@ -153,6 +187,36 @@ export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	return items;
 }
 
+const mongoValueToBuffer = (value: unknown): Buffer | undefined => {
+	if (value instanceof Binary) return Buffer.from(value.buffer);
+	if (Buffer.isBuffer(value)) return value;
+	return undefined;
+};
+
+// v1.4+: move top-level binary fields to the item's binary output, and deep-serialize
+// the remaining document so nested ObjectIds/Dates become JSON-safe (hex/ISO) strings.
+// (Deeply-nested binary values still serialize to base64 within json.)
+export async function serializeMongoItems(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	return await Promise.all(
+		items.map(async (item) => {
+			const { json, binary: routed } = await routeBinaryProperties.call(
+				this,
+				item.json,
+				mongoValueToBuffer,
+			);
+
+			const result: INodeExecutionData = { ...item, json };
+			if (item.binary !== undefined || Object.keys(routed).length) {
+				result.binary = { ...(item.binary ?? {}), ...routed };
+			}
+			return result;
+		}),
+	);
+}
+
 export async function connectMongoClient(
 	connectionString: string,
 	nodeVersion: number,
@@ -165,9 +229,9 @@ export async function connectMongoClient(
 	};
 
 	if (credentials.tls) {
-		const ca = credentials.ca ? formatPrivateKey(credentials.ca as string) : undefined;
-		const cert = credentials.cert ? formatPrivateKey(credentials.cert as string) : undefined;
-		const key = credentials.key ? formatPrivateKey(credentials.key as string) : undefined;
+		const ca = credentials.ca ? formatPemBlock(credentials.ca as string) : undefined;
+		const cert = credentials.cert ? formatPemBlock(credentials.cert as string) : undefined;
+		const key = credentials.key ? formatPemBlock(credentials.key as string) : undefined;
 		const passphrase = (credentials.passphrase as string) || undefined;
 
 		const secureContext = createSecureContext({

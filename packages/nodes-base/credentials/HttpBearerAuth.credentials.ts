@@ -26,7 +26,7 @@ export class HttpBearerAuth implements ICredentialType {
 		},
 		{
 			displayName:
-				'This credential uses the "Authorization" header. To use a custom header, use a "Custom Auth" credential instead',
+				'This credential uses the "Authorization" header. To use a custom header, use a "Header Auth" credential instead',
 			name: 'useCustomAuth',
 			type: 'notice',
 			default: '',

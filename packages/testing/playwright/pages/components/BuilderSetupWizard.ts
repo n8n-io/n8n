@@ -1,5 +1,7 @@
 import type { Page, Locator } from '@playwright/test';
 
+import { NodeCredentials } from './NodeCredentials';
+
 /**
  * Page object for the AI Builder Setup Wizard card UI.
  * Encapsulates all wizard locators so specs don't use raw selectors.
@@ -9,6 +11,10 @@ export class BuilderSetupWizard {
 
 	constructor(page: Page) {
 		this.page = page;
+	}
+
+	private credentialsForCard(): NodeCredentials {
+		return new NodeCredentials(this.getCard());
 	}
 
 	// #region Locators
@@ -50,7 +56,7 @@ export class BuilderSetupWizard {
 
 	/** Credential dropdown select inside the card */
 	getCredentialSelect(): Locator {
-		return this.getCard().getByTestId('node-credentials-select');
+		return this.credentialsForCard().getSelect();
 	}
 
 	/** Parameter input for a specific parameter name */

@@ -36,8 +36,7 @@ test.describe(
 			await n8n.credentials.credentialModal.changeTab('Sharing');
 
 			// Share with all users (set to global)
-			await n8n.credentials.credentialModal.getUsersSelect().click();
-			await n8n.credentials.credentialModal.getVisibleDropdown().getByText('All users').click();
+			await n8n.credentials.credentialModal.addUserToSharing('All users');
 
 			// Save the credential with sharing
 			await n8n.credentials.credentialModal.save();
@@ -46,9 +45,7 @@ test.describe(
 			// Verify credential appears in list with global badge
 			await expect(n8n.credentials.cards.getCredential('Global HTTP Header Cred')).toBeVisible();
 			await expect(
-				n8n.credentials.cards
-					.getCredential('Global HTTP Header Cred')
-					.getByTestId('credential-global-badge'),
+				n8n.credentials.cards.getCredentialGlobalBadge('Global HTTP Header Cred'),
 			).toBeVisible();
 		});
 
@@ -63,9 +60,7 @@ test.describe(
 
 			// Verify global badge is displayed
 			await expect(
-				n8n.credentials.cards
-					.getCredential('Global HTTP Header Cred')
-					.getByTestId('credential-global-badge'),
+				n8n.credentials.cards.getCredentialGlobalBadge('Global HTTP Header Cred'),
 			).toBeVisible();
 		});
 
@@ -92,11 +87,14 @@ test.describe(
 			await credentialSelect.click();
 
 			// Check that global credential appears in dropdown
-			const dropdown = n8n.credentials.credentialModal.getVisibleDropdown();
-			await expect(dropdown.getByText('Global HTTP Header Cred')).toBeVisible();
+			await expect(
+				n8n.credentials.credentialModal.getVisibleDropdownOption('Global HTTP Header Cred'),
+			).toBeVisible();
 
 			// Select the global credential
-			await dropdown.getByText('Global HTTP Header Cred').click();
+			await n8n.credentials.credentialModal
+				.getVisibleDropdownOption('Global HTTP Header Cred')
+				.click();
 
 			// Verify credential is selected
 			await expect(credentialSelect).toHaveValue('Global HTTP Header Cred');
@@ -122,20 +120,10 @@ test.describe(
 			await n8n.credentials.credentialModal.changeTab('Sharing');
 
 			// Verify "All users" is in the sharing list
-			await expect(
-				n8n.credentials.credentialModal
-					.getModal()
-					.getByTestId('project-sharing-list-item')
-					.filter({ hasText: 'All users' }),
-			).toBeVisible();
+			await expect(n8n.credentials.credentialModal.getSharingListItem('All users')).toBeVisible();
 
 			// Remove global sharing by clicking the remove button
-			await n8n.credentials.credentialModal
-				.getModal()
-				.getByTestId('project-sharing-list-item')
-				.filter({ hasText: 'All users' })
-				.getByTestId('project-sharing-remove')
-				.click();
+			await n8n.credentials.credentialModal.removeUserFromSharing('All users');
 
 			// Save the changes
 			await n8n.credentials.credentialModal.save();
@@ -143,9 +131,7 @@ test.describe(
 
 			// Verify global badge is no longer visible
 			await expect(
-				n8n.credentials.cards
-					.getCredential('Global HTTP Header Cred')
-					.getByTestId('credential-global-badge'),
+				n8n.credentials.cards.getCredentialGlobalBadge('Global HTTP Header Cred'),
 			).toBeHidden();
 		});
 
