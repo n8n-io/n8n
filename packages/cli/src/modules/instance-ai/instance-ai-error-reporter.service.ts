@@ -24,7 +24,10 @@ function isSelfDeclaredWarning(error: unknown): boolean {
 export class InstanceAiErrorReporterService {
 	private readonly logger: Logger;
 
-	private readonly reportedErrorsByRun = new Map<string, WeakSet<object>>();
+	private readonly reportedErrorsByRun = new Map<
+		string,
+		{ executionToken: symbol; reportedErrors: WeakSet<object> }
+	>();
 
 	constructor(
 		logger: Logger,
@@ -33,11 +36,14 @@ export class InstanceAiErrorReporterService {
 		this.logger = logger.scoped('instance-ai');
 	}
 
-	beginRun(runId: string): void {
-		this.reportedErrorsByRun.set(runId, new WeakSet());
+	beginRun(runId: string): symbol {
+		const executionToken = Symbol('instance-ai-error-reporting-execution');
+		this.reportedErrorsByRun.set(runId, { executionToken, reportedErrors: new WeakSet() });
+		return executionToken;
 	}
 
-	endRun(runId: string): void {
+	endRun(runId: string, executionToken: symbol): void {
+		if (this.reportedErrorsByRun.get(runId)?.executionToken !== executionToken) return;
 		this.reportedErrorsByRun.delete(runId);
 	}
 
@@ -103,16 +109,16 @@ export class InstanceAiErrorReporterService {
 			return false;
 		}
 
-		const reportedErrors = this.reportedErrorsByRun.get(runId);
-		if (!reportedErrors) {
+		const runState = this.reportedErrorsByRun.get(runId);
+		if (!runState) {
 			return false;
 		}
 
-		if (reportedErrors.has(error)) {
+		if (runState.reportedErrors.has(error)) {
 			return true;
 		}
 
-		reportedErrors.add(error);
+		runState.reportedErrors.add(error);
 		return false;
 	}
 }
