@@ -311,13 +311,111 @@ const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const previewPanelWidth = ref(0);
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
+const isAgentPreviewDockOpen = ref(false);
+const AGENT_PREVIEW_CHAT_COLUMN_WIDTH_REM = 25;
+const AGENT_PREVIEW_CENTER_MIN_WIDTH_REM = 35;
+const DEFAULT_ROOT_FONT_SIZE_PX = 16;
+
+const isAgentPreviewDockNarrow = computed(() => {
+	if (!isAgentPreviewDockOpen.value || threadAreaWidth.value <= 0) return false;
+
+	const configuredRootFontSize = Number.parseFloat(
+		getComputedStyle(document.documentElement).fontSize,
+	);
+	const rootFontSize = Number.isFinite(configuredRootFontSize)
+		? configuredRootFontSize
+		: DEFAULT_ROOT_FONT_SIZE_PX;
+	const minimumThreeColumnWidth =
+		(AGENT_PREVIEW_CHAT_COLUMN_WIDTH_REM * 2 + AGENT_PREVIEW_CENTER_MIN_WIDTH_REM) * rootFontSize;
+
+	return threadAreaWidth.value < minimumThreeColumnWidth;
+});
+const isBuilderChatRailPointerActive = ref(false);
+const isBuilderChatRailFocusActive = ref(false);
+const isBuilderChatRailControlActive = ref(false);
+const isBuilderChatRailExpanded = computed(
+	() =>
+		isAgentPreviewDockNarrow.value &&
+		(isBuilderChatRailPointerActive.value ||
+			isBuilderChatRailFocusActive.value ||
+			isBuilderChatRailControlActive.value),
+);
+const builderChatRailToggleLabel = computed(() =>
+	i18n.baseText(
+		isBuilderChatRailControlActive.value
+			? 'instanceAi.agentPreview.collapseBuilderChat'
+			: 'instanceAi.agentPreview.expandBuilderChat',
+	),
+);
+
+watch(isAgentPreviewDockNarrow, (isNarrow) => {
+	if (!isNarrow) {
+		isBuilderChatRailPointerActive.value = false;
+		isBuilderChatRailFocusActive.value = false;
+		isBuilderChatRailControlActive.value = false;
+	}
+});
+
+function toggleBuilderChatRail() {
+	if (isBuilderChatRailControlActive.value) {
+		isBuilderChatRailControlActive.value = false;
+		isBuilderChatRailPointerActive.value = false;
+		isBuilderChatRailFocusActive.value = false;
+		return;
+	}
+
+	isBuilderChatRailControlActive.value = true;
+}
+
+function handleBuilderChatFocusIn() {
+	isBuilderChatRailFocusActive.value = isAgentPreviewDockNarrow.value;
+}
+
+function handleBuilderChatFocusOut(event: FocusEvent) {
+	const currentTarget = event.currentTarget;
+	const nextTarget = event.relatedTarget;
+	if (
+		currentTarget instanceof HTMLElement &&
+		nextTarget instanceof Node &&
+		currentTarget.contains(nextTarget)
+	) {
+		return;
+	}
+
+	isBuilderChatRailFocusActive.value = false;
+}
+
+watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
+	if (activeTabId !== previousActiveTabId) {
+		isAgentPreviewDockOpen.value = false;
+	}
+});
+
 const previewMaxWidth = computed(() => Math.round(threadAreaWidth.value / 2));
 const previewPanelStyle = computed(() =>
 	isPreviewExpanded.value ? undefined : { width: `${previewPanelWidth.value}px` },
 );
+const agentPreviewPanelStyle = computed(() =>
+	isAgentPreviewDockOpen.value
+		? {
+				width: isAgentPreviewDockNarrow.value
+					? 'calc(100% - var(--spacing--2xl))'
+					: 'calc(100% - var(--agent-preview-chat-column-width))',
+			}
+		: previewPanelStyle.value,
+);
 
 function togglePreviewExpanded() {
+	if (isAgentPreviewDockOpen.value) return;
+
 	isPreviewExpanded.value = !isPreviewExpanded.value;
+}
+
+function handleAgentPreviewDockOpenChange(open: boolean) {
+	isAgentPreviewDockOpen.value = open;
+	if (open) {
+		isPreviewExpanded.value = false;
+	}
 }
 
 // Clamp preview width when the available area shrinks (sidebar open, window
@@ -355,6 +453,8 @@ watch(
 		if (visible) {
 			isArtifactsPanelRevealed.value = false;
 			previewPanelWidth.value = Math.round(threadAreaWidth.value / 2);
+		} else {
+			isAgentPreviewDockOpen.value = false;
 		}
 	},
 	{ flush: 'sync' },
@@ -396,6 +496,7 @@ watch(
 	() => props.threadId,
 	(threadId, previousThreadId) => {
 		if (threadId !== previousThreadId) {
+			isAgentPreviewDockOpen.value = false;
 			suppressPanelTransitionsUntilStableRender();
 		}
 	},
@@ -721,86 +822,141 @@ async function dismissComposerContextChip() {
 </script>
 
 <template>
-	<div ref="threadArea" :class="$style.threadArea">
+	<div
+		ref="threadArea"
+		:class="[
+			$style.threadArea,
+			{
+				[$style.agentPreviewDockOpen]: isAgentPreviewDockOpen,
+				[$style.agentPreviewDockNarrow]: isAgentPreviewDockNarrow,
+			},
+		]"
+		data-test-id="instance-ai-thread-area"
+	>
 		<!-- Main chat area -->
-		<div :class="$style.chatArea">
-			<InstanceAiViewHeader>
-				<template #title>
-					<N8nHeading
-						v-if="currentThreadTitle"
-						tag="h2"
-						size="small"
-						:class="[
-							$style.headerTitle,
-							{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
-						]"
-					>
-						{{ currentThreadTitle }}
-					</N8nHeading>
-					<N8nText
-						v-if="thread.sseState === 'reconnecting'"
-						size="small"
-						color="text-light"
-						:class="$style.reconnecting"
-					>
-						{{ i18n.baseText('instanceAi.view.reconnecting') }}
-					</N8nText>
-				</template>
-				<template #actions>
+		<div
+			:class="[
+				$style.chatArea,
+				{
+					[$style.builderChatRailExpanded]: isBuilderChatRailExpanded,
+					[$style.agentPreviewLayoutTransition]: isPreviewPanelTransitionEnabled,
+				},
+			]"
+			:data-expanded="isBuilderChatRailExpanded"
+			:data-layout-animated="isPreviewPanelTransitionEnabled"
+			data-test-id="instance-ai-builder-chat"
+			@pointerenter="isBuilderChatRailPointerActive = isAgentPreviewDockNarrow"
+			@pointerleave="isBuilderChatRailPointerActive = false"
+			@focusin="handleBuilderChatFocusIn"
+			@focusout="handleBuilderChatFocusOut"
+		>
+			<div
+				v-if="isAgentPreviewDockNarrow"
+				:class="$style.builderChatRail"
+				data-test-id="instance-ai-builder-chat-rail"
+			>
+				<N8nTooltip
+					:content="builderChatRailToggleLabel"
+					placement="right"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
 					<N8nIconButton
-						v-if="isDebugEnabled"
-						icon="bug"
+						:icon="isBuilderChatRailControlActive ? 'panel-left-close' : 'panel-left'"
 						variant="ghost"
 						size="small"
 						icon-size="large"
-						:class="{ [$style.activeButton]: showDebugPanel }"
-						@click="
-							showDebugPanel = !showDebugPanel;
-							store.debugMode = showDebugPanel;
-						"
+						:aria-label="builderChatRailToggleLabel"
+						:aria-expanded="isBuilderChatRailControlActive"
+						data-test-id="instance-ai-builder-chat-rail-toggle"
+						@click.stop="toggleBuilderChatRail"
 					/>
-					<N8nTooltip
-						:content="artifactsPanelToggleLabel"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
-							<N8nIconButton
-								v-if="showArtifactsPanelToggle"
-								icon="list"
-								variant="ghost"
-								size="small"
-								icon-size="large"
-								data-test-id="instance-ai-artifacts-panel-toggle"
-								:aria-label="artifactsPanelToggleLabel"
-								:aria-pressed="showArtifactsPanel"
-								:disabled="!canShowArtifactsPanel"
-								@click="toggleArtifactsPanel"
-							/>
-						</Transition>
-					</N8nTooltip>
-					<N8nTooltip
-						:content="artifactsPreviewToggleLabel"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-							<N8nIconButton
-								v-if="!preview.isPreviewVisible.value"
-								icon="panel-right"
-								variant="ghost"
-								size="small"
-								icon-size="large"
-								data-test-id="instance-ai-artifacts-preview-toggle"
-								:aria-label="artifactsPreviewToggleLabel"
-								:aria-pressed="preview.isPreviewVisible.value"
-								:disabled="!hasPreviewTabs"
-								@click="toggleArtifactsPreview"
-							/>
-						</Transition>
-					</N8nTooltip>
-				</template>
-			</InstanceAiViewHeader>
+				</N8nTooltip>
+			</div>
+			<div
+				:class="$style.builderChatHeader"
+				:hidden="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded"
+				:inert="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? true : undefined"
+				:aria-hidden="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? 'true' : undefined"
+				data-test-id="instance-ai-builder-chat-header"
+			>
+				<InstanceAiViewHeader>
+					<template #title>
+						<N8nHeading
+							v-if="currentThreadTitle"
+							tag="h2"
+							size="small"
+							:class="[
+								$style.headerTitle,
+								{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
+							]"
+						>
+							{{ currentThreadTitle }}
+						</N8nHeading>
+						<N8nText
+							v-if="thread.sseState === 'reconnecting'"
+							size="small"
+							color="text-light"
+							:class="$style.reconnecting"
+						>
+							{{ i18n.baseText('instanceAi.view.reconnecting') }}
+						</N8nText>
+					</template>
+					<template #actions>
+						<N8nIconButton
+							v-if="isDebugEnabled"
+							icon="bug"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:class="{ [$style.activeButton]: showDebugPanel }"
+							@click="
+								showDebugPanel = !showDebugPanel;
+								store.debugMode = showDebugPanel;
+							"
+						/>
+						<N8nTooltip
+							:content="artifactsPanelToggleLabel"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+								<N8nIconButton
+									v-if="showArtifactsPanelToggle"
+									icon="list"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="instance-ai-artifacts-panel-toggle"
+									:aria-label="artifactsPanelToggleLabel"
+									:aria-pressed="showArtifactsPanel"
+									:disabled="!canShowArtifactsPanel"
+									@click="toggleArtifactsPanel"
+								/>
+							</Transition>
+						</N8nTooltip>
+						<N8nTooltip
+							:content="artifactsPreviewToggleLabel"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+								<N8nIconButton
+									v-if="!preview.isPreviewVisible.value"
+									icon="panel-right"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="instance-ai-artifacts-preview-toggle"
+									:aria-label="artifactsPreviewToggleLabel"
+									:aria-pressed="preview.isPreviewVisible.value"
+									:disabled="!hasPreviewTabs"
+									@click="toggleArtifactsPreview"
+								/>
+							</Transition>
+						</N8nTooltip>
+					</template>
+				</InstanceAiViewHeader>
+			</div>
 
 			<!-- Content area: chat + artifacts side by side below header -->
 			<div
@@ -811,6 +967,8 @@ async function dismissComposerContextChip() {
 					},
 					{ [$style.contentAreaWithoutLayoutTransitions]: shouldSuppressContentLayoutTransitions },
 				]"
+				:inert="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? true : undefined"
+				:aria-hidden="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? 'true' : undefined"
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
 				data-test-id="instance-ai-content-area"
 			>
@@ -967,8 +1125,15 @@ async function dismissComposerContextChip() {
 		>
 			<div
 				v-show="preview.isPreviewVisible.value"
-				:class="[$style.canvasArea, { [$style.canvasAreaExpanded]: isPreviewExpanded }]"
-				:style="previewPanelStyle"
+				:class="[
+					$style.canvasArea,
+					{
+						[$style.canvasAreaExpanded]: isPreviewExpanded,
+						[$style.agentPreviewLayoutTransition]:
+							isPreviewPanelTransitionEnabled && !isResizingPreview,
+					},
+				]"
+				:style="agentPreviewPanelStyle"
 				:data-expanded="isPreviewExpanded"
 				data-test-id="instance-ai-preview-panel"
 			>
@@ -977,7 +1142,7 @@ async function dismissComposerContextChip() {
 					:min-width="400"
 					:max-width="previewMaxWidth"
 					:supported-directions="['left']"
-					:is-resizing-enabled="!isPreviewExpanded"
+					:is-resizing-enabled="!isPreviewExpanded && !isAgentPreviewDockOpen"
 					:grid-size="8"
 					:outset="true"
 					@resize="handlePreviewResize"
@@ -993,6 +1158,7 @@ async function dismissComposerContextChip() {
 							:tabs="preview.allArtifactTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
+							:is-expand-disabled="isAgentPreviewDockOpen"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
@@ -1028,6 +1194,7 @@ async function dismissComposerContextChip() {
 								:agent-id="preview.activeAgentId.value"
 								:project-id="preview.activeAgentProjectId.value"
 								:pending="preview.activeAgentPending.value"
+								@preview-open-change="handleAgentPreviewDockOpenChange"
 							/>
 						</div>
 					</TabsRoot>
@@ -1038,6 +1205,8 @@ async function dismissComposerContextChip() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion' as motion;
+
 @property --instance-ai-artifacts-layout-width {
 	syntax: '<length>';
 	inherits: true;
@@ -1045,6 +1214,7 @@ async function dismissComposerContextChip() {
 }
 
 .threadArea {
+	--agent-preview-chat-column-width: 25rem;
 	--instance-ai-artifacts-panel-width: 280px;
 	--instance-ai-panel-transition-duration: calc(var(--duration--snappy) + 80ms);
 	--instance-ai-panel-transition-easing: var(--easing--ease-in-out);
@@ -1053,6 +1223,58 @@ async function dismissComposerContextChip() {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
+}
+
+.agentPreviewDockOpen {
+	.chatArea {
+		width: var(--agent-preview-chat-column-width);
+		flex: 0 0 auto;
+	}
+}
+
+.agentPreviewLayoutTransition {
+	--animation--width-transition--duration: var(--duration--snappy);
+	--animation--width-transition--easing: var(--easing--ease-in-out);
+
+	@include motion.width-transition;
+}
+
+.agentPreviewDockNarrow {
+	.chatArea {
+		width: var(--spacing--2xl);
+		flex-basis: var(--spacing--2xl);
+		overflow: visible;
+		z-index: 5;
+
+		> :not(.builderChatRail) {
+			width: var(--agent-preview-chat-column-width);
+			visibility: hidden;
+			pointer-events: none;
+		}
+
+		&.builderChatRailExpanded > :not(.builderChatRail) {
+			visibility: visible;
+			pointer-events: auto;
+			background-color: var(--color--background--light-2);
+		}
+	}
+}
+
+.builderChatHeader {
+	flex-shrink: 0;
+}
+
+.builderChatRail {
+	position: absolute;
+	inset: 0 auto 0 0;
+	z-index: 2;
+	width: var(--spacing--2xl);
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding-top: var(--spacing--2xs);
+	background: var(--background--surface);
+	border-right: var(--border);
 }
 
 .chatArea {

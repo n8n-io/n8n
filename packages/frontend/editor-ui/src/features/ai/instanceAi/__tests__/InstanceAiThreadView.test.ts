@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, reactive, ref, type PropType } from 'vue';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -26,11 +27,16 @@ const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
 }));
 
+const mockThreadAreaSizeState = vi.hoisted(() => ({
+	width: { value: 1600 },
+}));
+
 const planEditSubmitState = vi.hoisted(() => ({
 	message: 'Make the plan simpler',
 }));
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+const routerPushSpy = vi.hoisted(() => vi.fn());
 const localStorageState = vi.hoisted(() => ({
 	store: new Map<string, string>(),
 }));
@@ -80,7 +86,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		meta: {},
 	}),
 	useRouter: () => ({
-		push: vi.fn(),
+		push: routerPushSpy,
 		replace: vi.fn(),
 		currentRoute: {
 			get value() {
@@ -94,9 +100,11 @@ vi.mock('@vueuse/core', async (importOriginal) => ({
 	...(await importOriginal()),
 	useScroll: () => ({ arrivedState: { bottom: true } }),
 	useWindowSize: () => ({ width: mockWindowSizeState.width }),
+	useElementSize: () => ({ width: mockThreadAreaSizeState.width }),
 }));
 
 const inputFocusSpy = vi.fn();
+const mockSidebarCollapsed = ref(false);
 
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
@@ -190,13 +198,35 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
 	},
-	setup(props) {
+	emits: ['preview-open-change'],
+	setup(props, { emit }) {
 		return () =>
-			h('div', {
-				'data-test-id': 'instance-ai-agent-preview-stub',
-				'data-agent-id': props.agentId,
-				'data-project-id': props.projectId,
-			});
+			h(
+				'div',
+				{
+					'data-test-id': 'instance-ai-agent-preview-stub',
+					'data-agent-id': props.agentId,
+					'data-project-id': props.projectId,
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-open-dock',
+							onClick: () => emit('preview-open-change', true),
+						},
+						'Open preview dock',
+					),
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-agent-preview-close-dock',
+							onClick: () => emit('preview-open-change', false),
+						},
+						'Close preview dock',
+					),
+				],
+			);
 	},
 });
 
@@ -231,7 +261,7 @@ const AgentSectionStub = defineComponent({
 const renderView = createComponentRenderer(InstanceAiThreadView, {
 	global: {
 		provide: {
-			[SidebarStateKey as symbol]: { collapsed: ref(false), toggle: vi.fn() },
+			[SidebarStateKey as symbol]: { collapsed: mockSidebarCollapsed, toggle: vi.fn() },
 		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
@@ -329,6 +359,7 @@ describe('InstanceAiThreadView', () => {
 			isStreaming: false,
 			isSendingMessage: false,
 			isAwaitingConfirmation: false,
+			isHydratingThread: false,
 			amendContext: null,
 			activePlanEdit: null,
 			updatingPlanRequestIds: new Set<string>(),
@@ -376,6 +407,7 @@ describe('InstanceAiThreadView', () => {
 			},
 		] as typeof store.threads;
 		mockWindowSizeState.width.value = 1200;
+		mockThreadAreaSizeState.width.value = 1600;
 
 		// Auto-stubbed push-store actions return undefined by default; addEventListener's
 		// caller expects a removeListener function, so return a no-op.
@@ -383,14 +415,54 @@ describe('InstanceAiThreadView', () => {
 		pushStore.addEventListener.mockReturnValue(() => {});
 		inputFocusSpy.mockClear();
 		telemetryTrackSpy.mockClear();
+		routerPushSpy.mockClear();
 		planEditSubmitState.message = 'Make the plan simpler';
 		mockRouteState.params = { threadId: 'thread-1' };
 		localStorageState.store.clear();
+		mockSidebarCollapsed.value = false;
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
+
+	async function renderAgentArtifact(threadAreaWidth = 1600) {
+		mockThreadAreaSizeState.width.value = threadAreaWidth;
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-agent',
+				role: 'user',
+				content: 'Update this agent',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [
+					{
+						type: 'agent',
+						id: 'agent-1',
+						projectId: 'proj-1',
+						name: 'SEO Auditor',
+					},
+				],
+			},
+		] as typeof thread.messages;
+
+		const user = userEvent.setup();
+		const rendered = renderView({ props: { threadId: 'thread-1' } });
+		await rendered.findByTestId('instance-ai-agent-preview-stub');
+
+		return { ...rendered, user };
+	}
+
+	async function renderNarrowAgentDock() {
+		const rendered = await renderAgentArtifact(1200);
+		const { user } = rendered;
+		await user.click(rendered.getByTestId('instance-ai-agent-preview-open-dock'));
+
+		return rendered;
+	}
 
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
@@ -989,6 +1061,277 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
 	});
 
+	it('uses the three-column layout and disables outer resizing while the agent dock is open', async () => {
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-agent',
+				role: 'user',
+				content: 'Update this agent',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [
+					{
+						type: 'agent',
+						id: 'agent-1',
+						projectId: 'proj-1',
+						name: 'SEO Auditor',
+					},
+				],
+			},
+		] as typeof thread.messages;
+
+		const user = userEvent.setup();
+		const { findByTestId, getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+
+		await findByTestId('instance-ai-agent-preview-stub');
+		expect(queryByTestId('resize-handle')).toBeInTheDocument();
+		const previewPanel = getByTestId('instance-ai-preview-panel');
+		await vi.waitFor(() => {
+			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
+		});
+
+		await fireEvent.mouseDown(getByTestId('resize-handle'));
+
+		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
+
+		await fireEvent.mouseUp(window);
+
+		await vi.waitFor(() => {
+			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
+		});
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+
+		const threadArea = getByTestId('instance-ai-thread-area');
+		expect(threadArea.className).toContain('agentPreviewDockOpen');
+		expect(previewPanel).toBeVisible();
+		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
+		expect(routerPushSpy).not.toHaveBeenCalled();
+	});
+
+	it('restores and protects three-column layout when the dock opens from expanded preview', async () => {
+		const { getByTestId, user } = await renderAgentArtifact();
+		const previewPanel = getByTestId('instance-ai-preview-panel');
+		const expandToggle = getByTestId('instance-ai-preview-expand-toggle');
+
+		await user.click(expandToggle);
+		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
+
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+
+		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
+		expect(expandToggle).toBeDisabled();
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
+
+		await user.click(expandToggle);
+		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
+
+		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
+		expect(expandToggle).toBeEnabled();
+
+		await user.click(expandToggle);
+		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
+	});
+
+	it('clears the agent dock layout when switching artifacts', async () => {
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'SEO Workflow' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-agent',
+				role: 'user',
+				content: 'Update this agent',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [
+					{
+						type: 'agent',
+						id: 'agent-1',
+						projectId: 'proj-1',
+						name: 'SEO Auditor',
+					},
+				],
+			},
+		] as typeof thread.messages;
+
+		const user = userEvent.setup();
+		const { container, findByTestId, getByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+
+		await findByTestId('instance-ai-agent-preview-stub');
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		expect(getByTestId('instance-ai-thread-area').className).toContain('agentPreviewDockOpen');
+
+		const workflowTab = container.querySelector<HTMLElement>('[data-tab-id="workflow-1"]');
+		expect(workflowTab).not.toBeNull();
+		await user.click(workflowTab!);
+
+		expect(getByTestId('instance-ai-thread-area').className).not.toContain('agentPreviewDockOpen');
+	});
+
+	it('clears the agent dock layout when switching threads', async () => {
+		thread.producedArtifacts = new Map([
+			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-agent',
+				role: 'user',
+				content: 'Update this agent',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [
+					{
+						type: 'agent',
+						id: 'agent-1',
+						projectId: 'proj-1',
+						name: 'SEO Auditor',
+					},
+				],
+			},
+		] as typeof thread.messages;
+
+		const user = userEvent.setup();
+		const { findByTestId, getByTestId, rerender } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+
+		await findByTestId('instance-ai-agent-preview-stub');
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
+		expect(getByTestId('instance-ai-thread-area').className).toContain('agentPreviewDockOpen');
+
+		await rerender({ threadId: 'thread-2' });
+
+		expect(getByTestId('instance-ai-thread-area').className).not.toContain('agentPreviewDockOpen');
+	});
+
+	it('collapses Builder chat to an accessible rail in a narrow three-column layout', async () => {
+		mockSidebarCollapsed.value = true;
+		const { getByRole, getByTestId } = await renderNarrowAgentDock();
+		const header = getByTestId('instance-ai-builder-chat-header');
+		const headerControl = getByTestId('instance-ai-sidebar-toggle');
+		const content = getByTestId('instance-ai-content-area');
+		const composerSubmit = getByTestId('instance-ai-input-submit');
+
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockNarrow');
+		expect(getByTestId('instance-ai-builder-chat-rail')).toBeVisible();
+		expect(getByRole('button', { name: 'Expand Builder chat' })).toHaveAttribute(
+			'aria-expanded',
+			'false',
+		);
+		expect(header).toHaveAttribute('inert');
+		expect(header).toHaveAttribute('hidden');
+		expect(header).toHaveAttribute('aria-hidden', 'true');
+		expect(headerControl.closest('[inert]')).toBe(header);
+		expect(headerControl).not.toBeVisible();
+		expect(content).toHaveAttribute('inert');
+		expect(content).toHaveAttribute('aria-hidden', 'true');
+		expect(composerSubmit.closest('[inert]')).toBe(content);
+		expect(getByTestId('instance-ai-agent-preview-stub')).toBeVisible();
+
+		await fireEvent.click(getByTestId('instance-ai-builder-chat-rail-toggle'));
+
+		expect(header).not.toHaveAttribute('inert');
+		expect(header).not.toHaveAttribute('hidden');
+		expect(header).not.toHaveAttribute('aria-hidden');
+		expect(headerControl.closest('[inert]')).toBeNull();
+		expect(headerControl).toBeVisible();
+		expect(content).not.toHaveAttribute('inert');
+		expect(content).not.toHaveAttribute('aria-hidden');
+		expect(composerSubmit.closest('[inert]')).toBeNull();
+	});
+
+	it('expands the narrow Builder chat for pointer users and collapses it on leave', async () => {
+		const { getByTestId } = await renderNarrowAgentDock();
+		const builderChat = getByTestId('instance-ai-builder-chat');
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'false');
+
+		await fireEvent.pointerEnter(builderChat);
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'true');
+
+		await fireEvent.pointerLeave(builderChat);
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'false');
+	});
+
+	it('keeps the narrow Builder chat open while keyboard focus moves within it', async () => {
+		const { getByTestId } = await renderNarrowAgentDock();
+		const builderChat = getByTestId('instance-ai-builder-chat');
+		const toggle = getByTestId('instance-ai-builder-chat-rail-toggle');
+
+		await fireEvent.focusIn(toggle);
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'true');
+
+		const composerSubmit = getByTestId('instance-ai-input-submit');
+		await fireEvent.focusOut(toggle, { relatedTarget: composerSubmit });
+		await fireEvent.focusIn(composerSubmit, { relatedTarget: toggle });
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'true');
+
+		await fireEvent.focusOut(composerSubmit, { relatedTarget: document.body });
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'false');
+	});
+
+	it('toggles persistent narrow Builder chat expansion from the labeled control', async () => {
+		const { getByTestId } = await renderNarrowAgentDock();
+		const builderChat = getByTestId('instance-ai-builder-chat');
+		const toggle = getByTestId('instance-ai-builder-chat-rail-toggle');
+
+		await fireEvent.pointerEnter(builderChat);
+		await fireEvent.focusIn(toggle);
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'true');
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		expect(toggle).toHaveAttribute('aria-label', 'Expand Builder chat');
+
+		await fireEvent.click(toggle);
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'true');
+		expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		expect(toggle).toHaveAttribute('aria-label', 'Collapse Builder chat');
+
+		await fireEvent.pointerLeave(builderChat);
+		await fireEvent.focusOut(toggle, { relatedTarget: document.body });
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'true');
+
+		await fireEvent.pointerEnter(builderChat);
+		await fireEvent.focusIn(toggle);
+		await fireEvent.click(toggle);
+
+		expect(builderChat).toHaveAttribute('data-expanded', 'false');
+		expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		expect(toggle).toHaveAttribute('aria-label', 'Expand Builder chat');
+	});
+
+	it('does not animate the agent dock layout during initial thread hydration', async () => {
+		Reflect.set(thread, 'isHydratingThread', true);
+		const { getByTestId } = await renderNarrowAgentDock();
+		const builderChat = getByTestId('instance-ai-builder-chat');
+
+		expect(builderChat).toHaveAttribute('data-layout-animated', 'false');
+		expect(builderChat).not.toHaveClass('agentPreviewLayoutTransition');
+
+		Reflect.set(thread, 'isHydratingThread', false);
+
+		await vi.waitFor(() => {
+			expect(builderChat).toHaveAttribute('data-layout-animated', 'true');
+		});
+		expect(builderChat).toHaveClass('agentPreviewLayoutTransition');
+	});
+
 	it('hoists an active builder section without leaving an empty assistant shell', async () => {
 		const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1103,6 +1446,8 @@ describe('InstanceAiThreadView', () => {
 		await findByTestId('instance-ai-agent-preview-stub');
 		const previewPanel = await findByTestId('instance-ai-preview-panel');
 		expect(previewPanel).toBeVisible();
+		await user.click(await findByTestId('instance-ai-agent-preview-open-dock'));
+		expect(await findByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
 
 		await user.click(await findByTestId('instance-ai-artifacts-preview-toggle'));
 
@@ -1110,6 +1455,7 @@ describe('InstanceAiThreadView', () => {
 			expect(previewPanel).not.toBeVisible();
 		});
 		expect(queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
+		expect(await findByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
 	});
 
 	describe('Fix with AI card', () => {

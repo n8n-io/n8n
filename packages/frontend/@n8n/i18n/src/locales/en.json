@@ -6746,6 +6746,8 @@
 	"instanceAi.projectSelect.personalSpace": "Personal space",
 	"instanceAi.previewTabBar.expand": "Expand panel",
 	"instanceAi.previewTabBar.collapse": "Collapse panel",
+	"instanceAi.agentPreview.expandBuilderChat": "Expand Builder chat",
+	"instanceAi.agentPreview.collapseBuilderChat": "Collapse Builder chat",
 	"instanceAi.previewTabBar.openInEditor": "Open in editor",
 	"instanceAi.previewTabBar.openWorkflowInEditor": "Open workflow in editor",
 	"instanceAi.previewTabBar.copyLink": "Copy link",
