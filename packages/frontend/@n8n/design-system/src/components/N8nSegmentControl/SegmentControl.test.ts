@@ -11,7 +11,7 @@ describe('components.N8nSegmentControl', () => {
 	];
 
 	describe('rendering', () => {
-		it('renders a radiogroup with options', () => {
+		it('renders a radiogroup with labeled options and selected value', () => {
 			const { getByRole, getAllByRole } = render(SegmentControl, {
 				props: {
 					modelValue: 'one',
@@ -23,39 +23,47 @@ describe('components.N8nSegmentControl', () => {
 			});
 
 			expect(getByRole('radiogroup')).toHaveAttribute('data-test-id', 'segment-control');
-			expect(getByRole('radiogroup')).toBeInTheDocument();
 			expect(getAllByRole('radio')).toHaveLength(3);
 			expect(getByRole('radio', { name: 'One' })).toBeChecked();
+			expect(getByRole('radio', { name: 'One' })).toHaveTextContent('One');
+			expect(getByRole('radio', { name: 'Two' })).toHaveTextContent('Two');
 		});
 
-		it('renders option labels when no option slot is provided', () => {
-			const { getByRole } = render(SegmentControl, {
+		it('renders no selection when modelValue is not in options', () => {
+			const { getAllByRole } = render(SegmentControl, {
 				props: {
-					modelValue: 'one',
+					modelValue: 'missing',
 					options,
 				},
 			});
 
-			expect(getByRole('radio', { name: 'One' })).toHaveTextContent('One');
-			expect(getByRole('radio', { name: 'Two' })).toHaveTextContent('Two');
-			expect(getByRole('radio', { name: 'Three' })).toHaveTextContent('Three');
+			for (const radio of getAllByRole('radio')) {
+				expect(radio).not.toBeChecked();
+			}
 		});
 
-		it('renders custom option slot content', () => {
+		it('renders custom option slot content and exposes option data', () => {
 			const { getByRole, getByTestId } = render({
 				components: { SegmentControl },
 				template: `
 					<SegmentControl :model-value="'one'" :options="options">
 						<template #option="option">
-							<span :data-test-id="'slot-' + option.value">{{ option.label }}-slot</span>
+							<span :data-test-id="'slot-' + option.value">
+								{{ option.label }}-{{ option.data?.count }}
+							</span>
 						</template>
 					</SegmentControl>
 				`,
-				data: () => ({ options }),
+				data: () => ({
+					options: [
+						{ label: 'One', value: 'one', data: { count: 1 } },
+						{ label: 'Two', value: 'two', data: { count: 2 } },
+					],
+				}),
 			});
 
-			expect(getByRole('radio', { name: 'One' })).toHaveTextContent('One-slot');
-			expect(getByTestId('slot-two')).toHaveTextContent('Two-slot');
+			expect(getByRole('radio', { name: 'One' })).toHaveTextContent('One-1');
+			expect(getByTestId('slot-two')).toHaveTextContent('Two-2');
 		});
 
 		it('sets data-test-id on each option from its value', () => {
@@ -73,6 +81,26 @@ describe('components.N8nSegmentControl', () => {
 			expect(getByTestId('radio-button-false')).toBeInTheDocument();
 			expect(getByTestId('radio-button-true')).toBeInTheDocument();
 			expect(getByTestId('radio-button-other')).toBeInTheDocument();
+		});
+
+		it('applies class to the outer wrapper and forwards other attrs to the radiogroup', () => {
+			const { container, getByRole } = render(SegmentControl, {
+				props: {
+					modelValue: 'one',
+					options,
+				},
+				attrs: {
+					class: 'custom-class',
+					'data-test-id': 'segment-control',
+					'aria-label': 'View mode',
+				},
+			});
+
+			const wrapper = container.querySelector('.n8n-segment-control');
+			expect(wrapper).toHaveClass('custom-class');
+			expect(wrapper).not.toHaveAttribute('data-test-id');
+			expect(getByRole('radiogroup')).toHaveAttribute('data-test-id', 'segment-control');
+			expect(getByRole('radiogroup')).toHaveAttribute('aria-label', 'View mode');
 		});
 	});
 
@@ -118,31 +146,10 @@ describe('components.N8nSegmentControl', () => {
 			expect(event.metaKey).toBe(true);
 		});
 
-		it('supports boolean option values', async () => {
-			const { getByRole, emitted } = render(SegmentControl, {
+		it('supports boolean option values in both directions', async () => {
+			const { getByRole, emitted, rerender } = render(SegmentControl, {
 				props: {
 					modelValue: false,
-					options: [
-						{ label: 'Off', value: false },
-						{ label: 'On', value: true },
-					],
-				},
-			});
-
-			expect(getByRole('radio', { name: 'Off' })).toBeChecked();
-
-			await userEvent.click(getByRole('radio', { name: 'On' }));
-
-			await waitFor(() => {
-				const [value] = emitted('update:modelValue')![0] as [boolean, MouseEvent];
-				expect(value).toBe(true);
-			});
-		});
-
-		it('emits boolean false when selecting the false option', async () => {
-			const { getByRole, emitted } = render(SegmentControl, {
-				props: {
-					modelValue: true,
 					options: [
 						{ label: 'Ask', value: false },
 						{ label: 'Build', value: true },
@@ -150,11 +157,28 @@ describe('components.N8nSegmentControl', () => {
 				},
 			});
 
-			await userEvent.click(getByRole('radio', { name: 'Ask' }));
+			expect(getByRole('radio', { name: 'Ask' })).toBeChecked();
+
+			await userEvent.click(getByRole('radio', { name: 'Build' }));
 
 			await waitFor(() => {
 				const [value] = emitted('update:modelValue')![0] as [boolean, MouseEvent];
-				expect(value).toBe(false);
+				expect(value).toBe(true);
+			});
+
+			await rerender({
+				modelValue: true,
+				options: [
+					{ label: 'Ask', value: false },
+					{ label: 'Build', value: true },
+				],
+			});
+
+			await userEvent.click(getByRole('radio', { name: 'Ask' }));
+
+			await waitFor(() => {
+				const emissions = emitted('update:modelValue') as Array<[boolean, MouseEvent]>;
+				expect(emissions.at(-1)?.[0]).toBe(false);
 			});
 		});
 
@@ -320,7 +344,7 @@ describe('components.N8nSegmentControl', () => {
 			expect(onParentKeydown).not.toHaveBeenCalled();
 		});
 
-		it('loops from the last option to the first with ArrowRight', async () => {
+		it('loops from the last option to the first with ArrowRight when loop is enabled', async () => {
 			const user = userEvent.setup();
 			const { getByRole } = render({
 				components: { SegmentControl },
@@ -344,6 +368,36 @@ describe('components.N8nSegmentControl', () => {
 			await waitFor(() => {
 				expect(getByRole('radio', { name: 'One' })).toBeChecked();
 			});
+		});
+
+		it('does not loop from the last option when loop is false', async () => {
+			const user = userEvent.setup();
+			const { getByRole, emitted } = render({
+				components: { SegmentControl },
+				template: `
+					<SegmentControl
+						:model-value="modelValue"
+						:options="options"
+						:loop="false"
+						@update:model-value="onUpdate"
+					/>
+				`,
+				data: () => ({
+					modelValue: 'three' as string,
+					options,
+				}),
+				methods: {
+					onUpdate(value: string) {
+						this.modelValue = value;
+					},
+				},
+			});
+
+			getByRole('radio', { name: 'Three' }).focus();
+			await user.keyboard('{ArrowRight}');
+
+			expect(getByRole('radio', { name: 'Three' })).toBeChecked();
+			expect(emitted('update:modelValue')).toBeUndefined();
 		});
 
 		it('moves selection with ArrowLeft', async () => {
