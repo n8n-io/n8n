@@ -1,13 +1,7 @@
 import { EvalThreadCredentialAllowlistService } from '../thread-credential-allowlist.service';
 
-/**
- * The allowlist ONLY NARROWS — that is what makes it safe for an
- * `instanceAi:eval` caller to set. The test bypass has to inherit that
- * property: synthesizing a successful connection test for a credential the
- * thread cannot even see would let an eval-scoped caller assert something about
- * a credential outside its reach. A bypass id is therefore only honoured when
- * it is also in the thread's allowlist.
- */
+/** A bypass is honoured only for a credential the thread is already allowed to
+ *  see, so an eval-scoped caller can't reach one outside that set. */
 describe('EvalThreadCredentialAllowlistService', () => {
 	let service: EvalThreadCredentialAllowlistService;
 
@@ -27,9 +21,6 @@ describe('EvalThreadCredentialAllowlistService', () => {
 		expect(service.shouldBypassTest('thread-1', 'cred-b')).toBe(false);
 	});
 
-	// The gap: a bypass id outside the allowlist was honoured verbatim, so an
-	// eval-scoped caller could name ANY credential id — including one belonging
-	// to someone else — and have its connection test report success.
 	it('ignores a bypass id that is not in the thread allowlist', () => {
 		service.set('thread-1', ['cred-a'], ['someone-elses-cred']);
 
@@ -47,8 +38,7 @@ describe('EvalThreadCredentialAllowlistService', () => {
 		expect(service.shouldBypassTest('unknown-thread', 'cred-a')).toBe(false);
 	});
 
-	// The harness re-sends the whole list when it appends a mid-run credential,
-	// so a bypass dropped from a later call must not survive.
+	// The harness re-sends the whole list as it appends mid-run credentials.
 	it('overwrites rather than merges across calls', () => {
 		service.set('thread-1', ['cred-a', 'cred-b'], ['cred-a', 'cred-b']);
 		service.set('thread-1', ['cred-a', 'cred-b'], ['cred-b']);
