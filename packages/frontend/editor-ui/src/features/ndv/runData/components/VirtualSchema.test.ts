@@ -35,7 +35,7 @@ import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '@/__tests__/defaults';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.

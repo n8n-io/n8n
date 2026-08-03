@@ -31,7 +31,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 const mockIsAiGatewayEnabled = ref(false);
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ isAiGatewayEnabled: mockIsAiGatewayEnabled.value })),
 }));
 

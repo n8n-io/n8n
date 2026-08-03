@@ -1,4 +1,4 @@
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 /**
  * Whether a `postMessage` command from the given origin should be processed.

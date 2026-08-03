@@ -94,7 +94,7 @@ import type {
 	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';

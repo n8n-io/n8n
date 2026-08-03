@@ -327,7 +327,7 @@ async function renderView({
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
-	const { useSettingsStore } = await import('@/app/stores/settings.store');
+	const { useSettingsStore } = await import('@n8n/stores/settings.store');
 	const settingsStore = useSettingsStore();
 	settingsStore.settings = { activeModules: knowledgeBaseEnabled ? ['agents'] : [] } as never;
 	settingsStore.moduleSettings = {

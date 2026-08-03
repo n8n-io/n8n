@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import InstanceRolesView from './InstanceRolesView.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');

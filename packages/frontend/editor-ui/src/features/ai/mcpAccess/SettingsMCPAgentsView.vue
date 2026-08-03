@@ -14,7 +14,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { Agent } from '@/features/agents/agent.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';

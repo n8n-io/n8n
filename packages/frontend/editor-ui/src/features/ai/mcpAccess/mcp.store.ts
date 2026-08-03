@@ -27,7 +27,7 @@ import {
 } from '@/features/ai/mcpAccess/mcp.api';
 import type { Agent } from '@/features/agents/agent.types';
 import { computed, ref } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	EMPTY_OAUTH_CLIENT_FILTERS,
 	type OAuthClientFilters,

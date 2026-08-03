@@ -23,7 +23,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isEnterpriseFeatureEnabled: {
 			sharing: true,

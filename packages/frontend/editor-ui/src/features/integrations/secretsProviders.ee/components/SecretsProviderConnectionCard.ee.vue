@@ -19,7 +19,7 @@ import ProjectIcon from '@/features/collaboration/projects/components/ProjectIco
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const i18n = useI18n();
 const rbacStore = useRBACStore();

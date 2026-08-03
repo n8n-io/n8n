@@ -14,7 +14,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { formatBytes } from '@/app/utils/typesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';

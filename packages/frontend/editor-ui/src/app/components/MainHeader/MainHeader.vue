@@ -12,7 +12,7 @@ import {
 } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';

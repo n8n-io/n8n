@@ -39,7 +39,7 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
 
 export function useWorkflowSaving({

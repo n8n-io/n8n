@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '@/features/settings/users/users.constants';

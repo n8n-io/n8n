@@ -52,7 +52,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('./chat.api');
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		settings: {},
 		moduleSettings: {

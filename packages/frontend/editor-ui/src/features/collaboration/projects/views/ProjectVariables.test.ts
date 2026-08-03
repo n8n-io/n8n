@@ -1,5 +1,5 @@
 import ProjectVariables from './ProjectVariables.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createComponentRenderer } from '@/__tests__/render';

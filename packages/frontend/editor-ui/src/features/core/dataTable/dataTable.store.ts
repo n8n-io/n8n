@@ -29,7 +29,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { DataTableListSortBy } from '@n8n/api-types';

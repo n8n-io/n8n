@@ -2,7 +2,7 @@
 import { AGENT_BUILDER_DEFAULT_MODEL } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nRadioButtons, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useAgentModelCredentials } from '../../composables/useAgentModelCredentials';
 import { useAgentProjectId } from '../../composables/useAgentProjectId';

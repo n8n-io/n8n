@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { defaultSettings } from '@/__tests__/defaults';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowReviewsFeature } from './useWorkflowReviewsFeature';
 
 const { checkEnvFeatureFlag } = vi.hoisted(() => ({

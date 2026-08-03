@@ -16,7 +16,7 @@ import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { copyInviteLink } from '../invite-link.utils';

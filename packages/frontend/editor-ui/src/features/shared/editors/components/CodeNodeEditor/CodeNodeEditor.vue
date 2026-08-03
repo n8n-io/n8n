@@ -17,7 +17,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { dropInCodeEditor } from '../../plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';

@@ -53,7 +53,7 @@ const settingsStoreMock = {
 	},
 };
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => settingsStoreMock,
 }));
 

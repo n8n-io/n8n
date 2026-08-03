@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nActionToggle, N8nButton, N8nDatatable, N8nIcon, N8nText } from '@n8n/design-system';
 import type { DatatableColumn } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';

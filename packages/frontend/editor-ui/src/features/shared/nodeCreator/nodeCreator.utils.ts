@@ -42,7 +42,7 @@ import type { NodeViewItemSection } from './views/viewsData';
 
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
