@@ -46,15 +46,30 @@ type SegmentOption<Value extends string | boolean = string | boolean> = {
   disabled?: boolean;
   data?: Record<string, string | number | boolean | undefined>;
 };
+
+type SegmentControlProps<Value extends string | boolean = string | boolean> = {
+  modelValue?: Value;
+  defaultValue?: Value;
+  options?: Array<SegmentOption<Value>>;
+  size?: SegmentControlSize;
+  disabled?: boolean;
+  squareButtons?: boolean;
+  name?: string;
+  required?: boolean;
+  loop?: boolean;
+  dir?: 'ltr' | 'rtl';
+};
 ```
 
 
 **Notes**
 
-- Option values may be `string` or `boolean`. Boolean `false` and string `"false"` are distinct.
+- Option values may be `string` or `boolean`. Boolean `false` and string `"false"` are distinct (values are keyed as `` `${typeof value}:${String(value)}` `` internally).
 - Each option gets `data-test-id="radio-button-${value}"` (e.g. `radio-button-false` for boolean false).
+- A controlled `modelValue` that is not in `options` renders with no selection.
 - Arrow keys stop bubbling so parent canvas/editor shortcuts do not also fire while focus is in the control.
-- Reka listens for arrows on `window`; ancestors that call `stopPropagation` on keydown are handled via a capture-phase focus workaround so selection still updates.
+- Reka selects on arrows via a `window` keydown listener. That is blocked when keydown does not reach `window` (this control’s own `stopPropagation`, or an ancestor `@keydown.stop`). Roving focus still moves; the control completes selection by clicking the focused radio after `nextTick`.
+- `class` is applied to the outer wrapper; other fallthrough attrs are forwarded to the Reka `RadioGroupRoot`.
 
 
 ### Template usage example
@@ -101,17 +116,22 @@ const isBuildMode = ref(false)
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
-import { N8nIcon, N8nSegmentControl } from '@n8n/design-system'
+import {
+  N8nIcon,
+  N8nSegmentControl,
+  type IconName,
+  type SegmentOption,
+} from '@n8n/design-system'
 
 const view = ref('table')
-const options = [
+const options: Array<SegmentOption<string> & { icon: IconName }> = [
   { label: 'Table', value: 'table', icon: 'table' },
   { label: 'JSON', value: 'json', icon: 'json' },
-] as const
+]
 </script>
 
 <template>
-  <N8nSegmentControl v-model="view" :options="[...options]" square-buttons>
+  <N8nSegmentControl v-model="view" :options="options" square-buttons>
     <template #option="option">
       <N8nIcon :icon="option.icon" size="small" />
     </template>
