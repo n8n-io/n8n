@@ -315,6 +315,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
 			.field('variableMissingMode', 'create-with-value')
+			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')
 			.field('tagMissingMode', 'do-nothing')
 			.field('tagConflictPolicy', 'fail')
