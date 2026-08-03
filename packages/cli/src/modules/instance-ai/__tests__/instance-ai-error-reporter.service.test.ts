@@ -1,6 +1,21 @@
 import type { Mock } from 'vitest';
 
-import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import {
+	getAgentErrorSeverity,
+	InstanceAiErrorReporterService,
+} from '../instance-ai-error-reporter.service';
+
+describe('getAgentErrorSeverity', () => {
+	it.each([
+		['observer', 'warning'],
+		['reflector', 'warning'],
+		['episodic-memory', 'warning'],
+		['input-persistence', undefined],
+		['turn-delta-persistence', undefined],
+	] as const)('classifies %s as %s', (source, expected) => {
+		expect(getAgentErrorSeverity(source)).toBe(expected);
+	});
+});
 
 describe('InstanceAiErrorReporterService', () => {
 	function createService(): {
@@ -105,6 +120,44 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
+	it('reports at warning level when the context declares warning severity', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = new Error('Observer failed');
+
+		service.report(error, {
+			component: 'instance-ai-observer',
+			severity: 'warning',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({ level: 'warning' }),
+		);
+	});
+
+	it('reports unresolved masked stream failures at error level by default', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new Error('No output generated. Check the stream for errors.'), {
+			name: 'AI_NoOutputGeneratedError',
+		});
+
+		service.report(error, {
+			component: 'instance-ai-stream',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(logger.error).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.not.objectContaining({ level: 'warning' }),
+		);
+	});
+
 	it('withBoundary rethrows quota-exhausted errors without reporting to Sentry', async () => {
 		const { service, errorReporter } = createService();
 		const error = Object.assign(new Error('Have reached end of quota'), {
@@ -158,13 +211,13 @@ describe('InstanceAiErrorReporterService', () => {
 		const { service, errorReporter } = createService();
 		const error = new Error('boom');
 
-		service.beginRun('r');
+		const executionToken = service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
 			threadId: 't',
 			runId: 'r',
 		});
-		service.endRun('r');
+		service.endRun('r', executionToken);
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-run',
@@ -173,6 +226,19 @@ describe('InstanceAiErrorReporterService', () => {
 		});
 
 		expect(errorReporter.error).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not let an older segment end a newer run scope with the same run ID', () => {
+		const { service, errorReporter } = createService();
+		const firstExecution = service.beginRun('r');
+		service.beginRun('r');
+		service.endRun('r', firstExecution);
+		const error = new Error('boom');
+
+		service.report(error, { component: 'instance-ai-run', threadId: 't', runId: 'r' });
+		service.report(error, { component: 'instance-ai-stream', threadId: 't', runId: 'r' });
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not dedup run-scoped errors when beginRun was not called', () => {

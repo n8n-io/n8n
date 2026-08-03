@@ -1,4 +1,4 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { RBACPermissionCheck, AuthenticatedPermissionOptions } from '@/app/types/rbac';
 

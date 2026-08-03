@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { renderComponent } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -13,7 +13,7 @@ import { useApiKeysStore } from '../apiKeys.store';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -26,7 +26,7 @@ vi.mock('@n8n/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
 	const showToast = vi.fn();

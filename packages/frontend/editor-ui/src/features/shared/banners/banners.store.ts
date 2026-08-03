@@ -9,7 +9,7 @@ import type { BannerName } from '@n8n/api-types';
 import DynamicBannerComponent from '@/features/shared/banners/components/banners/DynamicBanner.vue';
 import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 export const useBannersStore = defineStore(STORES.BANNERS, () => {
 	const settingsStore = useSettingsStore();

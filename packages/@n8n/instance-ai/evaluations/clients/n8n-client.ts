@@ -633,10 +633,14 @@ export class N8nClient {
 	 * the thread sees no credentials).
 	 * POST /rest/instance-ai/eval/thread-credential-allowlist
 	 */
-	async setThreadCredentialAllowlist(threadId: string, credentialIds: string[]): Promise<void> {
+	async setThreadCredentialAllowlist(
+		threadId: string,
+		credentialIds: string[],
+		bypassCredentialTest?: string[],
+	): Promise<void> {
 		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
 			method: 'POST',
-			body: { threadId, credentialIds },
+			body: { threadId, credentialIds, ...(bypassCredentialTest ? { bypassCredentialTest } : {}) },
 		});
 	}
 

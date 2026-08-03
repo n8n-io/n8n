@@ -11,7 +11,7 @@ import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import DynamicBanner from './banners/DynamicBanner.vue';
 import type { Component } from 'vue';
@@ -53,7 +53,7 @@ describe('BannerStack', () => {
 	beforeEach(() => {
 		// Two tests below assert on rendered toast content, which needs the notifier
 		// the app registers at bootstrap. Explicit here because it no longer arrives
-		// as a side effect of importing `@/app/composables/useToast` (N8N-104).
+		// as a side effect of importing `@n8n/composables/useToast` (N8N-104).
 		registerToastNotifier();
 
 		bannersStore = useBannersStore();

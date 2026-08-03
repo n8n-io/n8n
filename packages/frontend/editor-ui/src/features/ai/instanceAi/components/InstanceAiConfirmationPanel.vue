@@ -625,8 +625,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 }
 
@@ -634,6 +632,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .textInputRow {

@@ -28,7 +28,7 @@ import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ExecutionRedactionQueryDto, WorkflowPublicationStatus } from '@n8n/api-types';
 import { useSettingsStore } from './settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
