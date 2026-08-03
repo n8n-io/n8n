@@ -1,0 +1,23 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
+	],
+	"compilerOptions": {
+		"target": "es2023",
+		"lib": ["es2023"],
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"types": ["node", "vitest/globals"],
+		"noEmit": true,
+		// tsgo is fast enough to skip incremental state; avoids a stray tsbuildinfo in dist/.
+		"incremental": false,
+		// load-test/ itself never uses `@/`; this maps it for the ../src files that enter
+		// this program transitively through ../evaluations, mirroring evaluations/tsconfig.
+		"paths": {
+			"@/*": ["../src/*"]
+		}
+	},
+	"include": ["**/*.ts"],
+	"exclude": [".data/**"]
+}

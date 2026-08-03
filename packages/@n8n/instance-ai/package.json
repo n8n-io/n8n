@@ -3,7 +3,7 @@
   "version": "1.18.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json && tsc -p load-test/tsconfig.json",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
@@ -23,7 +23,8 @@
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",
-    "prompts:print": "tsx scripts/print-prompts.ts"
+    "prompts:print": "tsx scripts/print-prompts.ts",
+    "loadtest:instance-ai": "tsx load-test/cli.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

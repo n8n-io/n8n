@@ -40,6 +40,21 @@ const RestoreThreadEnvelope = z.object({
 	}),
 });
 
+// -- User invitation response shapes ------------------------------------------
+
+const InvitedUserSchema = z.object({
+	id: z.string(),
+	email: z.string(),
+	/** Absent when the user already existed and had accepted a prior invite. */
+	inviteAcceptUrl: z.string().optional(),
+	emailSent: z.boolean().optional(),
+});
+export type InvitedUser = z.infer<typeof InvitedUserSchema>;
+
+const InvitationsEnvelope = z.object({
+	data: z.array(z.object({ user: InvitedUserSchema, error: z.string().optional() })),
+});
+
 // ---------------------------------------------------------------------------
 // Computer-use gateway response shapes (Zod-validated to keep the client
 // honest about API drift instead of trusting `as` casts)
@@ -185,6 +200,54 @@ export class N8nClient {
 		if (!this.sessionCookie) {
 			throw new Error('Failed to authenticate with n8n — no session cookie received');
 		}
+	}
+
+	// -- User provisioning ---------------------------------------------------
+	//
+	// Used by the load test to create many distinct users (load-test/provision.ts).
+	// Batched deliberately: POST /rest/invitations is IP-rate-limited to 10 in
+	// production, and the endpoint accepts an array, so N users cost one request.
+
+	/**
+	 * Invite users. Requires an owner/admin session (`user:create` scope).
+	 * Returns one entry per invite; `inviteAcceptUrl` carries the accept token.
+	 */
+	async inviteUsers(
+		invites: Array<{ email: string; role: 'global:member' | 'global:admin' }>,
+	): Promise<InvitedUser[]> {
+		const result = await this.fetch('/rest/invitations', { method: 'POST', body: invites });
+		const parsed = InvitationsEnvelope.safeParse(result);
+		if (!parsed.success) {
+			throw new Error('Unexpected /rest/invitations response shape');
+		}
+		return parsed.data.data.map((entry) => entry.user);
+	}
+
+	/**
+	 * Accept an invitation, setting the user's name and password.
+	 *
+	 * IMPORTANT: call this on a *fresh* client for the invitee, never on the
+	 * inviter's. The endpoint issues an auth cookie for the accepting user, and
+	 * `fetch` captures every `set-cookie` — so reusing the owner's client would
+	 * silently re-authenticate it as the new member and 403 later invites. On a
+	 * fresh client the side effect is useful: it's already logged in afterwards.
+	 */
+	async acceptInvitation(
+		token: string,
+		firstName: string,
+		lastName: string,
+		password: string,
+	): Promise<void> {
+		await this.fetch('/rest/invitations/accept', {
+			method: 'POST',
+			body: { token, firstName, lastName, password },
+		});
+	}
+
+	/** Delete a user, optionally transferring their resources. Owner/admin only. */
+	async deleteUser(userId: string, transferId?: string): Promise<void> {
+		const query = transferId === undefined ? '' : `?transferId=${encodeURIComponent(transferId)}`;
+		await this.fetch(`/rest/users/${userId}${query}`, { method: 'DELETE' });
 	}
 
 	// -- Instance-AI endpoints -----------------------------------------------
