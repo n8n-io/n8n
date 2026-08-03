@@ -158,6 +158,21 @@ describe('AgentRunTracingService', () => {
 		await service.build({ ...baseMetadata, source: 'slack', executionId: 'exec-1' });
 	});
 
+	it('marks workflow-sourced runs as rootAnchored: false so they nest under the node span, but leaves other sources anchored', async () => {
+		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
+		const service = new AgentRunTracingService(agentsConfig);
+
+		const workflowBuilt = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			executionId: 'exec-1',
+		});
+		expect(workflowBuilt?.rootAnchored).toBe(false);
+
+		const slackBuilt = await service.build({ ...baseMetadata, source: 'slack' });
+		expect(slackBuilt?.rootAnchored).toBeUndefined();
+	});
+
 	it('includes user_id and model_id only when provided', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
 		const service = new AgentRunTracingService(agentsConfig);

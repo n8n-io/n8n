@@ -83,12 +83,17 @@ export class AgentRunTracingService {
 				: {}),
 		};
 
-		return await new Telemetry()
+		const built = await new Telemetry()
 			.tracer(trace.getTracer(AGENTS_TRACER_NAME))
 			.metadata(attributes)
 			.recordInputs(this.agentsConfig.tracingRecordInputs)
 			.recordOutputs(this.agentsConfig.tracingRecordOutputs)
 			.build();
+
+		// Workflow-invoked runs nest under the calling node's OTel span (see
+		// `ExecutionLevelTracer.getActiveContext` / `AgentWorkflowExecutionService`)
+		// instead of starting a disconnected root trace like chat-integration runs do.
+		return isWorkflowTracingMetadata(metadata) ? { ...built, rootAnchored: false } : built;
 	}
 }
 
