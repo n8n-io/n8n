@@ -39,6 +39,7 @@ import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
@@ -254,6 +255,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			mock<WorkflowRepository>(),
 			mock<AgentSetupCompletionService>(),
+			mock<AgentModificationTelemetryService>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
@@ -312,6 +314,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<SubAgentCleanupService>(),
 			mock<EventService>(),
 			agentExecutionService,
+			telemetry,
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

@@ -48,7 +48,6 @@ import type {
 	AgentSkill,
 } from '../types';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
-import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
@@ -268,10 +267,8 @@ const builderTelemetry = useAgentBuilderTelemetry({
 	projectId,
 	agent,
 	localConfig,
-	savedConfig: config,
 	connectedTriggers,
 });
-const toolTelemetry = useAgentToolTelemetry(agentId);
 
 /**
  * The backend owns runnable validation so the chat entry point either opens
@@ -574,9 +571,6 @@ async function onReverted(updated: AgentResource) {
 		refreshConfigValidation(projectId.value, agentId.value),
 	]);
 	tasksReloadKey.value += 1;
-	builderTelemetry.captureToolsBaseline();
-	builderTelemetry.captureSkillsBaseline();
-	builderTelemetry.captureTasksBaseline();
 }
 
 /**
@@ -732,20 +726,11 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | u
 // UI feel laggy right after an edit.
 const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
-	onSaved: () => {
-		builderTelemetry.flushConfigEdits();
-		// Diff the saved capability lists against the last baseline. No-op when
-		// nothing new landed since the last check.
-		builderTelemetry.trackToolsAdded();
-		builderTelemetry.trackSkillsAdded();
-		builderTelemetry.trackTasksChanged();
-	},
 	onError: (error: unknown) => {
-		// Intentionally keep pending parts: `localConfig` still holds the
-		// failed edit, so the next successful autosave will persist it.
 		// Surface backend validation errors (e.g. incompatible workflow-tool
 		// triggers or body nodes) so the user isn't left wondering why their
-		// edit didn't stick.
+		// edit didn't stick. `localConfig` still holds the failed edit, so the
+		// next successful autosave will persist it.
 		showError(error, locale.baseText('agents.builder.saveError'));
 	},
 });
@@ -915,8 +900,6 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
-	// Record BEFORE assigning so the composable can diff against the pre-update state.
-	builderTelemetry.recordConfigEdit(updates);
 	// The persisted validation result no longer reflects the working copy —
 	// Publish must not stay enabled against a result that predates this edit.
 	invalidateConfigValidation();
@@ -964,18 +947,14 @@ const caps = useAgentCapabilitiesActions({
 		trackOpenedToolFromList: builderTelemetry.trackOpenedToolFromList,
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,
 		trackOpenedAddSkillModal: builderTelemetry.trackOpenedAddSkillModal,
-		trackTriggerListChanged: builderTelemetry.trackTriggerListChanged,
 		trackTriggerAdded: builderTelemetry.trackTriggerAdded,
-		trackRemovedTool: toolTelemetry.trackRemoved,
-		trackRemovedMcpServer: toolTelemetry.trackRemovedMcpServer,
 	},
 });
 // Top-level alias so the template auto-unwraps the ref (nested `caps.appliedSkills`
 // access is not unwrapped by the template compiler).
 const appliedSkills = caps.appliedSkills;
 
-function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
-	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
+function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	invalidateConfigValidation();
 	localConfig.value = deepCopy(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
@@ -994,10 +973,10 @@ function persistMissingPersonalisationGradient() {
 	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
 	if (!nextConfig) return;
 
-	replaceConfigAndScheduleSave(nextConfig, false);
+	replaceConfigAndScheduleSave(nextConfig);
 }
 
-async function onConfigUpdated(options?: { rebaselineOnly?: boolean }) {
+async function onConfigUpdated() {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
 	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
@@ -1013,23 +992,11 @@ async function onConfigUpdated(options?: { rebaselineOnly?: boolean }) {
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
 	tasksReloadKey.value += 1;
-	if (options?.rebaselineOnly) {
-		// External (e.g. Instance AI builder) writes are tracked by the backend's
-		// "Builder added ..." twins — re-baseline so frontend diffs don't
-		// double-count them, and only frontend-initiated saves emit "User added ...".
-		builderTelemetry.captureToolsBaseline();
-		builderTelemetry.captureSkillsBaseline();
-		builderTelemetry.captureTasksBaseline();
-	} else {
-		builderTelemetry.trackToolsAdded();
-		builderTelemetry.trackSkillsAdded();
-		builderTelemetry.trackTasksChanged();
-	}
 }
 
 async function refreshArtifactShell() {
 	await settleAutosave();
-	await onConfigUpdated({ rebaselineOnly: true });
+	await onConfigUpdated();
 }
 
 function handleArtifactRefreshError(error: unknown) {
@@ -1259,12 +1226,6 @@ async function initialize() {
 			skillAutosave.settleAutosave(),
 			mcpAutosave.flushAutosave(),
 		]);
-		// Drop any per-agent telemetry state from the previous agent — an in-flight
-		// save for the previous agent would've already flushed pending edits before
-		// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
-		// against the new agent's id anyway.
-		builderTelemetry.resetForAgentSwitch();
-
 		agent.value = null;
 		agentName.value = '';
 		mcpAvailabilityOverride.value = null;
@@ -1306,9 +1267,6 @@ async function initialize() {
 			]);
 			persistMissingPersonalisationGradient();
 		}
-		builderTelemetry.captureToolsBaseline();
-		builderTelemetry.captureSkillsBaseline();
-		builderTelemetry.captureTasksBaseline();
 		// Keep agent credential pickers aligned with the workflow editor: load only
 		// credentials the current user can use in this project context.
 		credentialsStore.setCredentials([]);

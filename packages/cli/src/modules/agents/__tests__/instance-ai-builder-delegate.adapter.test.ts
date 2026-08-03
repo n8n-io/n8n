@@ -363,6 +363,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent', {
 				id: undefined,
+				createdBy: 'builder',
+				user: expect.anything(),
 			});
 			expect(result).toEqual({ agentId: 'agent-9', projectId: 'project-1' });
 		});
@@ -378,6 +380,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent', {
 				id: 'aBcDeFgHiJkLmNoP',
+				createdBy: 'builder',
+				user: expect.anything(),
 			});
 		});
 

@@ -365,17 +365,12 @@ export class AgentsBuilderToolsService {
 						applyNativeWebSearchDefaultOn(zodResult.data),
 					);
 					try {
-						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+						await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							configWithDefaults,
-						);
-						this.emitConfigDiffTelemetry(
-							snapshot,
-							persistedConfig,
-							agentId,
 							user,
-							telemetryContext,
+							{ modifiedBy: 'builder' },
 						);
 						return { ok: true };
 					} catch (e) {
@@ -492,17 +487,12 @@ export class AgentsBuilderToolsService {
 					);
 
 					try {
-						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+						await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							configWithDefaults,
-						);
-						this.emitConfigDiffTelemetry(
-							snapshot,
-							persistedConfig,
-							agentId,
 							user,
-							telemetryContext,
+							{ modifiedBy: 'builder' },
 						);
 						return { ok: true };
 					} catch (e) {
@@ -751,7 +741,7 @@ export class AgentsBuilderToolsService {
 					this.ssrfProtectionService,
 				),
 				applyCredentialToMcpServer: async (serverName, credentialId) =>
-					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId),
+					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 			buildResolveIntegrationTool({
@@ -1020,10 +1010,11 @@ export class AgentsBuilderToolsService {
 	}
 
 	/**
-	 * Diff the config before/after a successful builder mutation and emit one
-	 * `Builder added/removed *` event per changed item, mirroring the
-	 * frontend's diff-on-save telemetry. Never throws — a telemetry failure
-	 * must not fail the tool call that already succeeded.
+	 * Diff the config before/after `create_tasks` and emit one
+	 * `Builder added tasks to agent` event per new task. Config writes report
+	 * through "Builder modified agent" instead; task creation persists outside
+	 * `AgentConfigService.updateConfig`, so it still needs its own event. Never
+	 * throws — a telemetry failure must not fail a tool call that succeeded.
 	 */
 	private emitConfigDiffTelemetry(
 		oldSnapshot: AgentConfigSnapshotWithStatus,
@@ -1056,6 +1047,7 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		serverName: string,
 		credentialId: string,
+		user: User,
 	): Promise<{ applied: boolean }> {
 		const snapshot = await this.getConfigSnapshot(agentId, projectId);
 		const config = snapshot.config;
@@ -1090,7 +1082,9 @@ export class AgentsBuilderToolsService {
 			applyNativeWebSearchDefaultOn(zodResult.data),
 		);
 
-		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults);
+		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults, user, {
+			modifiedBy: 'builder',
+		});
 		return { applied: true };
 	}
 }

@@ -5,19 +5,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
-/** Whether a model runs on n8n credits (the managed gateway credential) or the user's own key. */
-export type AgentCredentialKind = 'n8n_credits' | 'own';
-export type AgentConfigPart =
-	| 'instructions'
-	| 'model'
-	| 'memory'
-	| 'tools'
-	| 'skills'
-	| 'triggers'
-	| 'subAgents'
-	| 'name'
-	| 'description'
-	| 'vectorStores';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
@@ -36,8 +23,12 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: AgentCreateSource) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, { source, ...common() });
+	function trackClickedNewAgent(source: AgentCreateSource, agentId: string) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
+			source,
+			agent_id: agentId,
+			...common(),
+		});
 	}
 
 	function trackSubmittedMessage(params: {
@@ -54,23 +45,6 @@ export function useAgentTelemetry() {
 		});
 	}
 
-	function trackEditedConfig(params: {
-		agentId: string;
-		part: AgentConfigPart;
-		configVersion: string;
-		status: AgentTelemetryStatus;
-		credentialKind?: AgentCredentialKind;
-	}) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_EDITED_AGENT_CONFIG, {
-			agent_id: params.agentId,
-			part: params.part,
-			config_version: params.configVersion,
-			status: params.status,
-			...(params.credentialKind ? { credential_kind: params.credentialKind } : {}),
-			...common(),
-		});
-	}
-
 	function trackAddedTrigger(params: {
 		agentId: string;
 		triggerType: string;
@@ -82,74 +56,6 @@ export function useAgentTelemetry() {
 			agent_id: params.agentId,
 			trigger_type: params.triggerType,
 			triggers: params.triggers,
-			config_version: params.configVersion,
-			status: params.status,
-			...common(),
-		});
-	}
-
-	function trackAddedTools(params: {
-		agentId: string;
-		toolAdded: string;
-		tools: string[];
-		configVersion: string;
-		status: AgentTelemetryStatus;
-	}) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_ADDED_TOOLS_TO_AGENT, {
-			agent_id: params.agentId,
-			tool_added: params.toolAdded,
-			tools: params.tools,
-			config_version: params.configVersion,
-			status: params.status,
-			...common(),
-		});
-	}
-
-	function trackAddedSkills(params: {
-		agentId: string;
-		skillAdded: string;
-		skills: string[];
-		configVersion: string;
-		status: AgentTelemetryStatus;
-	}) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_ADDED_SKILLS_TO_AGENT, {
-			agent_id: params.agentId,
-			skill_added: params.skillAdded,
-			skills: params.skills,
-			config_version: params.configVersion,
-			status: params.status,
-			...common(),
-		});
-	}
-
-	function trackAddedTasks(params: {
-		agentId: string;
-		taskAdded: string;
-		tasks: string[];
-		configVersion: string;
-		status: AgentTelemetryStatus;
-	}) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_ADDED_TASKS_TO_AGENT, {
-			agent_id: params.agentId,
-			task_added: params.taskAdded,
-			tasks: params.tasks,
-			config_version: params.configVersion,
-			status: params.status,
-			...common(),
-		});
-	}
-
-	function trackRemovedTasks(params: {
-		agentId: string;
-		taskRemoved: string;
-		tasks: string[];
-		configVersion: string;
-		status: AgentTelemetryStatus;
-	}) {
-		safeTrack(TELEMETRY_EVENT.AGENTS.USER_REMOVED_TASKS_FROM_AGENT, {
-			agent_id: params.agentId,
-			task_removed: params.taskRemoved,
-			tasks: params.tasks,
 			config_version: params.configVersion,
 			status: params.status,
 			...common(),
@@ -216,12 +122,7 @@ export function useAgentTelemetry() {
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
-		trackEditedConfig,
 		trackAddedTrigger,
-		trackAddedTools,
-		trackAddedSkills,
-		trackAddedTasks,
-		trackRemovedTasks,
 		trackPublishedAgent,
 		trackUnpublishedAgent,
 		trackOpenedToolFromList,

@@ -173,38 +173,29 @@ describe('useAgentCapabilitiesActions', () => {
 		});
 	});
 
-	it('tracks tool removal when onRemoveTool removes a tool ref', () => {
+	it('drops the tool ref from the config when onRemoveTool removes it', () => {
 		const removedTool = {
 			type: 'node',
 			name: 'get_dates',
 		} as AgentJsonToolConfig;
-		const trackRemovedTool = vi.fn();
-		const { actions, scheduleConfigUpdate } = makeActions(
-			{ tools: [removedTool] },
-			{ trackRemovedTool },
-		);
+		const { actions, scheduleConfigUpdate } = makeActions({ tools: [removedTool] });
 
 		actions.onRemoveTool(0);
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [] });
-		expect(trackRemovedTool).toHaveBeenCalledWith(removedTool);
 	});
 
-	it('tracks MCP server removal from the tool-config modal', () => {
+	it('drops the MCP server from the config when removed from the tool-config modal', () => {
 		const mcpServer: AgentJsonMcpServerConfig = {
 			name: 'srv',
 			url: 'https://mcp.example.com',
 			authentication: 'none',
 			transport: 'streamableHttp',
 		};
-		const trackRemovedMcpServer = vi.fn();
-		const { actions, scheduleConfigUpdate } = makeActions(
-			{
-				tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],
-				mcpServers: [mcpServer],
-			},
-			{ trackRemovedMcpServer },
-		);
+		const { actions, scheduleConfigUpdate } = makeActions({
+			tools: [{ type: 'node', name: 'get_dates' } as AgentJsonToolConfig],
+			mcpServers: [mcpServer],
+		});
 
 		actions.onOpenToolFromList(1);
 
@@ -214,6 +205,5 @@ describe('useAgentCapabilitiesActions', () => {
 		modalData.data.onRemove?.();
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ mcpServers: [] });
-		expect(trackRemovedMcpServer).toHaveBeenCalledWith(mcpServer);
 	});
 });

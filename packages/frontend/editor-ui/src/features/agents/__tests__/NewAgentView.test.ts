@@ -59,6 +59,34 @@ describe('NewAgentView', () => {
 		});
 	});
 
+	it('adopts the id minted at the click, so it matches the reported click', async () => {
+		mocks.route.query = { projectId: 'project-1', agentId: 'ZyXwVuTsRqPoNmLk' };
+
+		mount(NewAgentView);
+		await flushPromises();
+
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiPendingAgentTarget: {
+				projectId: 'project-1',
+				agentId: 'ZyXwVuTsRqPoNmLk',
+			},
+		});
+	});
+
+	it('mints its own id when the one in the URL is not a valid agent id', async () => {
+		mocks.route.query = { projectId: 'project-1', agentId: 'not-a-real-id' };
+
+		mount(NewAgentView);
+		await flushPromises();
+
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiPendingAgentTarget: {
+				projectId: 'project-1',
+				agentId: 'aBcDeFgHiJkLmNoP',
+			},
+		});
+	});
+
 	it('returns to the agents list when no project was provided', async () => {
 		mocks.route.query = {};
 

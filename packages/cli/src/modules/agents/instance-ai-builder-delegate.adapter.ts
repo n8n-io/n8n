@@ -112,7 +112,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 		return {
 			createAgent: async (name, id) => {
 				await assertProjectScope('agent:create');
-				const agent = await this.agentsService.create(projectId, name, { id });
+				const agent = await this.agentsService.create(projectId, name, {
+					id,
+					createdBy: 'builder',
+					user,
+				});
 				return { agentId: agent.id, projectId };
 			},
 

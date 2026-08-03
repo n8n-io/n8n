@@ -7,11 +7,15 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { useToast } from '@n8n/composables/useToast';
 import {
+	INSTANCE_AI_AGENT_ID_QUERY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 	INSTANCE_AI_THREAD_VIEW,
 } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { AGENTS_LIST_VIEW, PROJECT_AGENTS } from '../constants';
+
+/** Shape `generateNanoId` produces, and the only shape the create API accepts. */
+const MINTED_AGENT_ID = /^[0-9A-Za-z]{16}$/;
 
 const route = useRoute();
 const router = useRouter();
@@ -35,7 +39,15 @@ onMounted(async () => {
 		return;
 	}
 
-	const agentId = generateNanoId();
+	// The entry point mints the id when it reports the click, so the "clicked"
+	// and "created" events share a join key. Entry points that don't report a
+	// click send none, and a hand-edited one is ignored rather than carried into
+	// a create the backend would reject.
+	const clickedAgentId = route.query[INSTANCE_AI_AGENT_ID_QUERY];
+	const agentId =
+		typeof clickedAgentId === 'string' && MINTED_AGENT_ID.test(clickedAgentId)
+			? clickedAgentId
+			: generateNanoId();
 	const threadId = uuidv4();
 	try {
 		await instanceAiStore.syncThread(threadId, projectId, {

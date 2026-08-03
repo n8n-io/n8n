@@ -398,7 +398,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ name: 'Renamed' },
 				user,
-				{ clearOmittedOptionalFields: true },
+				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 			);
 			// The resolved entity's config is reused; the response hash comes
 			// from updateConfig's return value, not a re-fetch.
@@ -435,7 +435,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ ...composedConfig, name: 'Patched' },
 				user,
-				{ clearOmittedOptionalFields: true },
+				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, operation: 'config.patch' });
 		});
@@ -603,6 +603,7 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				expect.objectContaining({ tools: [{ type: 'custom', id: 'my_tool' }] }),
 				user,
+				{ modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toMatchObject({
 				resource: { type: 'customTool', id: 'my_tool' },
@@ -703,12 +704,15 @@ describe('McpAgentToolsService', () => {
 			});
 			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'My Agent', {
 				availableInMCP: true,
+				createdBy: 'mcp',
+				user,
 			});
 			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
 				{ ...initialConfig, name: 'My Agent' },
 				user,
+				{ modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
@@ -1319,7 +1323,7 @@ describe('McpAgentToolsService', () => {
 				'project-9',
 				{ name: 'My Agent' },
 				user,
-				{ clearOmittedOptionalFields: true },
+				{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true });
 		});

@@ -4,6 +4,12 @@ export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
+/**
+ * The agent id minted at the click, carried to the new-agent view so the
+ * "clicked" and "created" events share a join key even though no agent exists
+ * yet. Absent for entry points that don't report the click.
+ */
+export const INSTANCE_AI_AGENT_ID_QUERY = 'agentId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
 

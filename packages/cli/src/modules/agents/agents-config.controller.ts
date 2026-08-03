@@ -67,7 +67,9 @@ export class AgentsConfigController {
 	) {
 		const { projectId } = req.params;
 		const { config } = payload;
-		return await this.agentConfigService.updateConfig(agentId, projectId, config);
+		return await this.agentConfigService.updateConfig(agentId, projectId, config, req.user, {
+			modifiedBy: 'user',
+		});
 	}
 
 	@Delete('/:agentId/tools/:toolId')

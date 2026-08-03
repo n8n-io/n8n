@@ -523,6 +523,8 @@ export class McpAgentToolsService {
 					// Agents created over MCP stay operable over MCP.
 					const agent = await this.agentsService.create(projectId, name, {
 						availableInMCP: true,
+						createdBy: 'mcp',
+						user,
 					});
 					let configHash: string | null;
 					let versionId = agent.versionId;
@@ -533,6 +535,7 @@ export class McpAgentToolsService {
 								projectId,
 								initialConfig,
 								user,
+								{ modifiedBy: 'mcp' },
 							);
 							configHash = getAgentConfigHash(result.config);
 							versionId = result.versionId;
@@ -1068,7 +1071,7 @@ export class McpAgentToolsService {
 					projectId,
 					operation.config,
 					user,
-					{ clearOmittedOptionalFields: true },
+					{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 				);
 				return { config: result.config };
 			}
@@ -1093,6 +1096,7 @@ export class McpAgentToolsService {
 					user,
 					{
 						clearOmittedOptionalFields: true,
+						modifiedBy: 'mcp',
 					},
 				);
 				return { config: result.config };
@@ -1162,7 +1166,9 @@ export class McpAgentToolsService {
 					tools: [...(config.tools ?? []), { type: 'custom' as const, id: built.id }],
 				};
 				await this.assertAccessibleCredentials(next, user, projectId);
-				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+					modifiedBy: 'mcp',
+				});
 				return { resource: { type: 'customTool', id: built.id }, config: result.config };
 			}
 			case 'customTool.delete':
@@ -1258,7 +1264,9 @@ export class McpAgentToolsService {
 		if (!found) throw new UserError(`Task "${taskId}" is not attached to the Agent`);
 		const next = { ...config, tasks };
 		await this.assertAccessibleCredentials(next, user, projectId);
-		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+			modifiedBy: 'mcp',
+		});
 		return result.config;
 	}
 

@@ -13,6 +13,17 @@ const builderSessionIdentity = {
 	run_id: z.string().optional().describe('Instance AI run that triggered this builder call'),
 };
 
+/**
+ * Shared by the three creation events, which differ only in which surface
+ * created the agent — so a union across them is a complete picture of agent
+ * creation on an instance.
+ */
+const agentCreationIdentity = {
+	agent_id: z.string(),
+	project_id: z.string(),
+	user_id: z.string().describe('The acting user, on every surface including MCP'),
+};
+
 const agentStatus = z.enum(['draft', 'production']);
 
 const agentRunType = z
@@ -35,14 +46,10 @@ const agentConfigurationTelemetry = {
 	]),
 };
 
-// The builder config-diff events capture status before the write, so a change
-// to a live agent reports 'production'. The frontend "User added/removed …"
-// twins derive status after the save — which always produces a new draft
-// version — so they effectively always report 'draft'. Warehouse consumers
-// unioning the twins must not group by status across sources.
-const builderPreWriteStatus = agentStatus.describe(
-	"Agent status before the builder's write (frontend twin events report post-save status, effectively always 'draft')",
-);
+// Captured before the write, so a change to a live agent reports 'production'.
+// The modification events express the same idea as has_published_version, which
+// is stable across an editing session rather than only true on the first edit.
+const builderPreWriteStatus = agentStatus.describe("Agent status before the builder's write");
 
 const sessionId = z.string().describe('Editor push session id (pushRef)');
 
@@ -83,6 +90,48 @@ const agentCapabilityKind = z.enum([
 	'subAgent',
 	'vectorStore',
 ]);
+
+const agentConfigPart = z.enum([
+	'instructions',
+	'model',
+	'memory',
+	'name',
+	'tools',
+	'skills',
+	'tasks',
+	'triggers',
+	'subAgents',
+	'mcpServers',
+	'vectorStores',
+]);
+
+/**
+ * Shared by the three modification events, which differ only in which surface
+ * made the change. The counts use the same names and semantics as
+ * "Agent setup completed", so an agent's profile at each modification lines up
+ * with its profile at setup completion.
+ */
+const agentModification = {
+	agent_id: z.string(),
+	project_id: z.string(),
+	user_id: z.string(),
+	event_version: z.literal('1'),
+	changed_parts: z.array(agentConfigPart).describe('Config parts this save actually changed'),
+	capability_kinds: z.array(agentCapabilityKind),
+	capability_count: z.number(),
+	tool_count: z.number(),
+	skill_count: z.number(),
+	sub_agent_count: z.number(),
+	mcp_server_count: z.number(),
+	vector_store_count: z.number(),
+	task_count: z.number(),
+	trigger_count: z.number(),
+	model: z.string().nullable(),
+	tool_types: z.array(z.string()).describe('Tool types, never user-authored tool names'),
+	has_published_version: z
+		.boolean()
+		.describe('Whether a live published version exists; stable across an editing session'),
+};
 
 export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_PUBLISHED: {
@@ -181,11 +230,52 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_CREATED_AGENT: {
 		name: 'Builder created agent',
 		description:
-			'The Instance AI builder created an agent through its delegate. Only fires inside a thread context; the frontend "User created agent" twin covers the UI create paths.',
+			'The Instance AI builder created an agent. One of three same-shaped creation events ("User created agent", "MCP created agent") — union them for total agent creation, or read one for that surface alone. Emitted once per agent from `AgentsService.create`; a create that loses a race and adopts the existing row emits nothing. event_version 2 replaced thread_id with user_id and moved the emit from the frontend-facing delegate wrapper to the service.',
 		properties: z.object({
-			agent_id: z.string(),
-			project_id: z.string(),
-			thread_id: z.string().describe('Instance AI thread hosting the builder session'),
+			...agentCreationIdentity,
+			event_version: z.literal('2'),
+		}),
+	},
+	USER_CREATED_AGENT: {
+		name: 'User created agent',
+		description:
+			'A user created an agent from the editor. One of three same-shaped creation events ("Builder created agent", "MCP created agent") — union them for total agent creation, or read one for that surface alone. Emitted once per agent from `AgentsService.create`; a create that loses a race and adopts the existing row emits nothing. Since agents are created lazily this fires on the first configuration, not on the click — "User clicked new agent" carries the same agent_id, so the two join into a click-to-creation funnel whose gap is abandoned new-agent flows. event_version 2 dropped source (editor-only knowledge, still on the click event), added project_id and user_id, and moved the emit to the backend.',
+		properties: z.object({
+			...agentCreationIdentity,
+			event_version: z.literal('2'),
+		}),
+	},
+	MCP_CREATED_AGENT: {
+		name: 'MCP created agent',
+		description:
+			'An MCP client created an agent through the `create_agent` tool. One of three same-shaped creation events ("User created agent", "Builder created agent") — union them for total agent creation, or read one for that surface alone. Emitted once per agent from `AgentsService.create`; a create that loses a race and adopts the existing row emits nothing. The coarser "User called mcp tool" event also fires for the same call.',
+		properties: z.object({
+			...agentCreationIdentity,
+			event_version: z.literal('1'),
+		}),
+	},
+	USER_MODIFIED_AGENT: {
+		name: 'User modified agent',
+		description:
+			'A user saved a change to an agent config from the editor. One of three same-shaped modification events ("Builder modified agent", "MCP modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. Replaces the per-part "User edited agent config" and the per-item "User added/removed tools/skills/tasks" and "User added/removed agent tool" events, which fired several times for a single save and never covered the builder or MCP.',
+		properties: z.object({
+			...agentModification,
+		}),
+	},
+	BUILDER_MODIFIED_AGENT: {
+		name: 'Builder modified agent',
+		description:
+			'The Instance AI builder saved a change to an agent config. One of three same-shaped modification events ("User modified agent", "MCP modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. Replaces the per-item "Builder added tools/skills to agent" and "Builder removed tasks from agent" events.',
+		properties: z.object({
+			...agentModification,
+		}),
+	},
+	MCP_MODIFIED_AGENT: {
+		name: 'MCP modified agent',
+		description:
+			'An MCP client saved a change to an agent config through the `create_agent` or `mutate_agent` tool. One of three same-shaped modification events ("User modified agent", "Builder modified agent") — union them for total agent modification, or read one for that surface alone. Emitted once per save from `AgentConfigService.updateConfig`; a save that changed nothing emits nothing. The capability counts mirror "Agent setup completed", so a profile at each modification lines up with the profile at setup completion. This surface had no modification telemetry before. The coarser "User called mcp tool" event also fires for the same call.',
+		properties: z.object({
+			...agentModification,
 		}),
 	},
 	INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW: {
@@ -225,46 +315,13 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		description: 'The user opened the MCP connect-agents dialog from the MCP settings page.',
 		properties: z.object({}),
 	},
-	BUILDER_ADDED_TOOLS: {
-		name: 'Builder added tools to agent',
-		description:
-			'The Instance AI builder saved an agent config that added a tool, mirroring the frontend "User added tools to agent" event so both sources can be aggregated together.',
-		properties: z.object({
-			...builderSessionIdentity,
-			tool_added: z.string().describe('Identifier of the newly added tool'),
-			tools: z.array(z.string()).describe('Full tool identifier list after the save'),
-			status: builderPreWriteStatus,
-		}),
-	},
-	BUILDER_ADDED_SKILLS: {
-		name: 'Builder added skills to agent',
-		description:
-			'The Instance AI builder saved an agent config that added a skill, mirroring the frontend "User added skills to agent" event.',
-		properties: z.object({
-			...builderSessionIdentity,
-			skill_added: z.string().describe('Identifier of the newly added skill'),
-			skills: z.array(z.string()).describe('Full skill identifier list after the save'),
-			status: builderPreWriteStatus,
-		}),
-	},
 	BUILDER_ADDED_TASKS: {
 		name: 'Builder added tasks to agent',
 		description:
-			'The Instance AI builder saved an agent config that added a scheduled task, mirroring the frontend "User added tasks to agent" event.',
+			'The Instance AI builder created a scheduled task through the `create_tasks` tool. That path persists outside `AgentConfigService.updateConfig`, so it is not covered by "Builder modified agent" — this event stays until the task write path is folded in.',
 		properties: z.object({
 			...builderSessionIdentity,
 			task_added: z.string().describe('Identifier of the newly added task'),
-			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
-			status: builderPreWriteStatus,
-		}),
-	},
-	BUILDER_REMOVED_TASKS: {
-		name: 'Builder removed tasks from agent',
-		description:
-			'The Instance AI builder saved an agent config that removed a scheduled task, mirroring the frontend "User removed tasks from agent" event.',
-		properties: z.object({
-			...builderSessionIdentity,
-			task_removed: z.string().describe('Identifier of the removed task'),
 			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
 			status: builderPreWriteStatus,
 		}),
@@ -325,19 +382,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	// -------------------------------------------------------------------------
 	USER_CLICKED_NEW_AGENT: {
 		name: 'User clicked new agent',
-		description: 'The user clicked a new-agent entry point (button, dropdown, or card).',
+		description:
+			'The user clicked a new-agent entry point (button, dropdown, or card). No agent exists at this point — `agent_id` is the id minted for the click, which whichever path later persists the agent creates it under, so this joins to the eventual creation event. Clicks with no matching creation are abandoned new-agent flows.',
 		properties: z.object({
 			source: z.enum(['button', 'dropdown', 'card']),
+			agent_id: z.string().describe('Minted at the click; no agent row exists yet'),
 			session_id: sessionId,
-		}),
-	},
-	USER_CREATED_AGENT: {
-		name: 'User created agent',
-		description:
-			'A draft agent was created, from the blank new-agent page or inline from a workflow surface (source carries the entry point).',
-		properties: z.object({
-			agent_id: z.string(),
-			source: z.string(),
 		}),
 	},
 	USER_SUBMITTED_MESSAGE_TO_AGENT: {
@@ -352,34 +402,6 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			session_id: sessionId,
 		}),
 	},
-	USER_EDITED_AGENT_CONFIG: {
-		name: 'User edited agent config',
-		description: 'A builder autosave persisted a config edit; one event fires per changed part.',
-		properties: z.object({
-			agent_id: z.string(),
-			part: z.enum([
-				'instructions',
-				'model',
-				'memory',
-				'tools',
-				'skills',
-				'triggers',
-				'subAgents',
-				'name',
-				'description',
-				'vectorStores',
-			]),
-			config_version: z.string(),
-			status: agentStatus,
-			credential_kind: z
-				.enum(['n8n_credits', 'own'])
-				.optional()
-				.describe(
-					'Which kind of model credential the agent now uses. Only set when part is "model".',
-				),
-			session_id: sessionId,
-		}),
-	},
 	USER_ADDED_TRIGGER_TO_AGENT: {
 		name: 'User added trigger to agent',
 		description: 'The user connected a chat trigger to an agent from the builder.',
@@ -387,58 +409,6 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: z.string(),
 			trigger_type: z.string(),
 			triggers: z.array(z.string()).describe('Connected trigger types after the change'),
-			config_version: z.string(),
-			status: agentStatus,
-			session_id: sessionId,
-		}),
-	},
-	USER_ADDED_TOOLS_TO_AGENT: {
-		name: 'User added tools to agent',
-		description:
-			'A saved builder config added a tool; one event fires per newly added tool. Twin of the backend "Builder added tools to agent" event.',
-		properties: z.object({
-			agent_id: z.string(),
-			tool_added: z.string().describe('Identifier of the newly added tool'),
-			tools: z.array(z.string()).describe('Full tool identifier list after the save'),
-			config_version: z.string(),
-			status: agentStatus,
-			session_id: sessionId,
-		}),
-	},
-	USER_ADDED_SKILLS_TO_AGENT: {
-		name: 'User added skills to agent',
-		description:
-			'A saved builder config added a skill; one event fires per newly added skill. Twin of the backend "Builder added skills to agent" event.',
-		properties: z.object({
-			agent_id: z.string(),
-			skill_added: z.string().describe('Identifier of the newly added skill'),
-			skills: z.array(z.string()).describe('Full skill identifier list after the save'),
-			config_version: z.string(),
-			status: agentStatus,
-			session_id: sessionId,
-		}),
-	},
-	USER_ADDED_TASKS_TO_AGENT: {
-		name: 'User added tasks to agent',
-		description:
-			'A saved builder config added a scheduled task; one event fires per newly added task. Twin of the backend "Builder added tasks to agent" event.',
-		properties: z.object({
-			agent_id: z.string(),
-			task_added: z.string().describe('Identifier of the newly added task'),
-			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
-			config_version: z.string(),
-			status: agentStatus,
-			session_id: sessionId,
-		}),
-	},
-	USER_REMOVED_TASKS_FROM_AGENT: {
-		name: 'User removed tasks from agent',
-		description:
-			'A saved builder config removed a scheduled task; one event fires per removed task. Twin of the backend "Builder removed tasks from agent" event.',
-		properties: z.object({
-			agent_id: z.string(),
-			task_removed: z.string().describe('Identifier of the removed task'),
-			tasks: z.array(z.string()).describe('Full task identifier list after the save'),
 			config_version: z.string(),
 			status: agentStatus,
 			session_id: sessionId,
@@ -512,33 +482,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			agent_id: optionalAgentId,
 		}),
 	},
-	USER_ADDED_AGENT_TOOL: {
-		name: 'User added agent tool',
-		description:
-			'A new tool ref or MCP server was saved to an agent for the first time from the tools modal.',
-		properties: z.object({
-			tool_type: z.enum(['custom', 'workflow', 'node', 'mcpServer']),
-			has_approval: z.boolean(),
-			...toolIdentity,
-			authentication: z.string().optional().describe('MCP server auth method'),
-			agent_id: optionalAgentId,
-		}),
-	},
 	USER_EDITED_AGENT_TOOL: {
 		name: 'User edited agent tool',
 		description: "An existing agent tool's configuration was saved from the tools modal.",
 		properties: z.object({
 			tool_type: z.enum(['custom', 'workflow', 'node']),
-			...toolIdentity,
-			agent_id: optionalAgentId,
-		}),
-	},
-	USER_REMOVED_AGENT_TOOL: {
-		name: 'User removed agent tool',
-		description:
-			'The user confirmed removing a tool or MCP server from an agent (tools modal or sidebar).',
-		properties: z.object({
-			tool_type: z.enum(['custom', 'workflow', 'node', 'mcpServer']),
 			...toolIdentity,
 			agent_id: optionalAgentId,
 		}),
