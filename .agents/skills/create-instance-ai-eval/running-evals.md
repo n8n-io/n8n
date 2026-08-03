@@ -123,15 +123,18 @@ second instance its own everything:
 # N8N_AI_ANTHROPIC_KEY. Skip .env.local: its staging base-url / port-5678
 # defaults fight the settings below.
 N8N_PORT=5680 N8N_RUNNERS_BROKER_PORT=5681 N8N_USER_FOLDER=/tmp/n8n-eval-run \
-E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= DB_SQLITE_POOL_SIZE=0 \
+E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= \
   npx dotenvx run -f .env.eval -- \
   sh -c 'ANTHROPIC_API_KEY="$N8N_AI_ANTHROPIC_KEY" exec pnpm start'
 # then seed the owner (above), and run the eval with: --base-url http://localhost:5680
 ```
 
-`DB_SQLITE_POOL_SIZE=0` selects the classic non-pooled driver — under the pooled
-one `POST /rest/e2e/reset` fails with a `SQLITE_CONSTRAINT` FK error ("Dropping
-Table role for E2E Reset error") and you can never seed the owner.
+**Don't reach for `DB_SQLITE_POOL_SIZE=0`** if you find it in an older note. It
+can't disable pooling: the schema is `.int().gte(1)`, so `0` is rejected and
+`@Env` warns (`Invalid value for DB_SQLITE_POOL_SIZE … Falling back to default
+value.`) and keeps the default of 3. There is no non-pooled path to select
+anyway — `getSqliteConnectionOptions()` always returns `type: 'sqlite-pooled'`.
+`POST /rest/e2e/reset` seeds the owner fine under the pooled driver.
 
 `pnpm start` (built dist) is enough — no need for `pnpm dev:ai`. Case JSON is read
 from source at run time, so new/edited cases need no rebuild.
