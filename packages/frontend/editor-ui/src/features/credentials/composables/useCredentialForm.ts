@@ -18,11 +18,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import {
-	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
-	type InstanceAiCredentialSetupHint,
-} from '@n8n/api-types';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
 
 import type { IUpdateInformation } from '@/Interface';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -39,9 +35,9 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { probeCredential } from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
-import { composeCredentialNameWithUser } from '../templatedAuth.utils';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
 import {
+	composeCredentialNameWithUser,
 	extractTemplateMarkers,
 	isValidTemplateShape,
 	parsePlaceholderDefs,

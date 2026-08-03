@@ -223,7 +223,13 @@ describe('useCredentialForm', () => {
 				docsUrl: falSetupHint.docsUrl,
 				serviceHost: falSetupHint.serviceHost,
 			});
-			// A filled template + persisted test URL makes the credential probeable.
+			// Freshly seeded = the required placeholder has no value yet, so the
+			// save/test gate holds until the user pastes it.
+			expect(form.isCredentialTestable.value).toBe(false);
+			form.credentialData.value = {
+				...form.credentialData.value,
+				placeholderValues: JSON.stringify({ api_key: 'pasted-secret' }),
+			};
 			expect(form.isCredentialTestable.value).toBe(true);
 		});
 
