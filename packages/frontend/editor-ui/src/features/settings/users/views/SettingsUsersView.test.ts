@@ -14,7 +14,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '../users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
@@ -59,7 +59,7 @@ const mockPageRedirectionHelper = {
 	goToUpgrade: vi.fn(),
 };
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 

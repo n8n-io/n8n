@@ -158,28 +158,41 @@ describe('CreateAgentEvalRatingDto', () => {
 			CreateAgentEvalRatingDto.safeParse({
 				vote: 'down',
 				comment: 'Wrong tool used',
-				correction: { output: 'the expected answer' },
+				correction: { finalText: 'the expected answer' },
 			}).success,
 		).toBe(true);
 	});
 
-	it('accepts a nested JSON correction', () => {
-		expect(
-			CreateAgentEvalRatingDto.safeParse({
-				vote: 'down',
-				correction: { output: { text: 'x', items: [1, 'two', true, null] }, score: 3 },
-			}).success,
-		).toBe(true);
+	it('keeps extra correction keys alongside the edited answer', () => {
+		const parsed = CreateAgentEvalRatingDto.safeParse({
+			vote: 'down',
+			correction: { finalText: 'the expected answer', fields: { tone: 'formal' }, score: 3 },
+		});
+
+		expect(parsed.success).toBe(true);
+		expect(parsed.data?.correction).toEqual({
+			finalText: 'the expected answer',
+			fields: { tone: 'formal' },
+			score: 3,
+		});
 	});
 
 	it('rejects a correction with a non-JSON leaf', () => {
 		expect(
 			CreateAgentEvalRatingDto.safeParse({
 				vote: 'down',
-				correction: { output: () => 'not json' },
+				correction: { finalText: 'ok', extra: () => 'not json' },
 			}).success,
 		).toBe(false);
 	});
+
+	// A correction with no readable edited answer is what calibration would choke on.
+	it.each([{}, { output: 'wrong key' }, { finalText: null }, { finalText: '   ' }])(
+		'rejects a correction without a usable finalText: %j',
+		(correction) => {
+			expect(CreateAgentEvalRatingDto.safeParse({ vote: 'down', correction }).success).toBe(false);
+		},
+	);
 
 	it('rejects an invalid vote', () => {
 		expect(CreateAgentEvalRatingDto.safeParse({ vote: 'maybe' }).success).toBe(false);
