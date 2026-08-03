@@ -1,3 +1,11 @@
+## [1.123.68](https://github.com/n8n-io/n8n/compare/n8n@1.123.67...n8n@1.123.68) (2026-08-03)
+
+
+### Bug Fixes
+
+* **Onfleet Trigger Node:** Fix content type issue (backport 1.x) ([#24878](https://github.com/n8n-io/n8n/issues/24878)) ([a71b153](https://github.com/n8n-io/n8n/commit/a71b153f7095d9aa144dd7209945a614ff2781f0))
+
+
 ## [1.123.67](https://github.com/n8n-io/n8n/compare/n8n@1.123.66...n8n@1.123.67) (2026-07-22)
 
 
