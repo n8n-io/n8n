@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, waitAllPromises, type MockedStore } from '@/__tests__/utils';
 import type { Role } from '@n8n/permissions';
 import { useRoleDeletion } from './useRoleDeletion';
@@ -12,7 +12,7 @@ const mockConfirm = vi.fn();
 const mockTrack = vi.fn();
 const mockPush = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 

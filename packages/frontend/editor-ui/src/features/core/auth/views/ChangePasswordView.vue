@@ -6,7 +6,7 @@ import AuthView from './AuthView.vue';
 
 import { useI18n } from '@n8n/i18n';
 import { createPasswordRules } from '@n8n/design-system';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 

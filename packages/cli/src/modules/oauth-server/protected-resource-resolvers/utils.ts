@@ -8,6 +8,9 @@ export const WORKFLOW_MCP_TRIGGER_SCOPES: string[] = [];
 /** Scopes advertised for per-workflow Form trigger resources. Empty, like MCP triggers. */
 export const FORM_TRIGGER_SCOPES: string[] = [];
 
+/** Scopes advertised for per-workflow Webhook trigger resources. */
+export const WEBHOOK_TRIGGER_SCOPES: string[] = [];
+
 /**
  * Form-trigger OAuth2 is opt-in. When the flag is off, `n8nUserAuth` form triggers
  * keep their existing cookie/HMAC auth and must not be exposed as OAuth protected
@@ -15,6 +18,15 @@ export const FORM_TRIGGER_SCOPES: string[] = [];
  */
 export function isFormOAuth2Enabled(): boolean {
 	return process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 === 'true';
+}
+
+/**
+ * Webhook-trigger OAuth2 is opt-in. When the flag is off, `n8nOAuth2` webhook
+ * triggers must not be exposed as OAuth protected resources, so the resolver
+ * short-circuits.
+ */
+export function isWebhookOAuth2Enabled(): boolean {
+	return process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS === 'true';
 }
 
 export function trimTrailingSlash(path: string): string {
@@ -43,10 +55,15 @@ export function trimSlashes(path: string): string {
  * This keeps `resolveByPath` — which matches against `/{endpoint}/…` — working the
  * same for sub-path deployments as for root deployments, and matches the path the
  * unauthenticated well-known route already receives (relative to the mount point).
+ *
+ * The query string is dropped unless `preserveQuery` is set: only webhook triggers
+ * carry one (the `?method=` selector), and the other resolvers match on exact paths,
+ * so keeping a query for them would turn a tolerated extra parameter into a miss.
  */
 export function resourceUrlToWebhookPath(
 	resourceUrl: string,
 	webhookBaseUrl: string,
+	{ preserveQuery = false }: { preserveQuery?: boolean } = {},
 ): string | undefined {
 	let url: URL;
 	try {
@@ -65,5 +82,22 @@ export function resourceUrlToWebhookPath(
 		return undefined;
 	}
 
-	return url.pathname.slice(basePath.length);
+	return url.pathname.slice(basePath.length) + (preserveQuery ? url.search : '');
+}
+
+/**
+ * Serialise the HTTP method a webhook resource URL is scoped to, as `?method=GET`.
+ *
+ * One path can host several triggers as long as their methods are disjoint, so the
+ * method selects which trigger a resource URL names. It is a *selector*, not part
+ * of the trigger's identity — see the resolver for why that distinction matters.
+ */
+export function methodQueryString(method: string): string {
+	return `?method=${method.toUpperCase()}`;
+}
+
+/** Parse a `method` query value into its canonical form, or `undefined` if absent. */
+export function parseMethodParam(value: string | null | undefined): string | undefined {
+	const method = value?.trim().toUpperCase();
+	return method === '' ? undefined : method;
 }

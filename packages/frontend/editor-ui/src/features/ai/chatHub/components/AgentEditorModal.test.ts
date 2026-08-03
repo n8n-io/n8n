@@ -55,7 +55,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError, showMessage: mockShowMessage }),
 }));
 

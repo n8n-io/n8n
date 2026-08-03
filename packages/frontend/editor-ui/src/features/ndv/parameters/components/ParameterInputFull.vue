@@ -9,7 +9,7 @@ import FromAiOverrideButton from './ParameterInputOverrides/FromAiOverrideButton
 import FromAiOverrideField from './ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from './ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getMappedResult } from '@/app/utils/mappingUtils';
 import {

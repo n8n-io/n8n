@@ -1,13 +1,14 @@
 import { UserError } from 'n8n-workflow';
 
+/**
+ * A response a worker cannot deliver back to the main instance because of its size.
+ *
+ * @param description How to make the response deliverable, which depends on
+ * which limit it crossed: the size relayable inline through the queue, or the
+ * size the binary-data store accepts for an offloaded body.
+ */
 export class WebhookResponseTooLargeError extends UserError {
-	constructor(maxSizeInMiB: number) {
-		super(
-			`The response is too large to be sent back from the worker (limit is ${maxSizeInMiB} MiB)`,
-			{
-				description:
-					'In scaling mode a response is relayed to the main instance through the queue, which limits how large it can be. Respond with binary data to have the payload streamed from storage instead, or raise N8N_WEBHOOK_RESPONSE_RELAY_SIZE_MAX.',
-			},
-		);
+	constructor(message: string, options: { description: string; cause?: unknown }) {
+		super(message, options);
 	}
 }

@@ -1,10 +1,11 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useVersionsStore } from '@n8n/stores/versions.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import type { CloudUpdateLinkSourceType, UTMCampaign } from '@/Interface';
-import { N8N_PRICING_PAGE_URL } from '@/app/constants';
+import { N8N_PRICING_PAGE_URL } from '@n8n/frontend-constants/urls';
+
+import { useCloudPlanStore } from '../cloudPlan.store';
+import { useSettingsStore } from '../settings.store';
+import type { CloudUpdateLinkSourceType, UTMCampaign } from '../types/pageRedirection';
+import { useUsersStore } from '../users.store';
+import { useVersionsStore } from '../versions.store';
 
 /**
  * Guard consulted before an upgrade redirect. Resolves `true` to proceed, `false`
@@ -15,8 +16,13 @@ export type UpgradeRedirectGuard = () => Promise<boolean>;
 
 /**
  * Injectable page-redirection composable. The app-facing `usePageRedirectionHelper`
- * wraps this and supplies the guard; this base carries no feature dependency and is
- * the unit that moves to `@n8n/composables` in N8N-71.
+ * wraps this and supplies the guard, which keeps this base free of any feature
+ * dependency.
+ *
+ * It lives in `@n8n/stores` rather than `@n8n/composables` because its body is
+ * store orchestration end to end — all four stores it reads are in this package,
+ * and `@n8n/composables` sits *below* the stores tier (see that package's
+ * `packageBoundary.test.ts`), so it cannot reach them.
  */
 export function useBasePageRedirectionHelper({ guard }: { guard: UpgradeRedirectGuard }) {
 	const usersStore = useUsersStore();

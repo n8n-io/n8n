@@ -16,7 +16,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn(() => ({ addEventListener: vi.fn(() => () => {}) })),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: vi.fn(),
 	}),
