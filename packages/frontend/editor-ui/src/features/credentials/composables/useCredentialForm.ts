@@ -9,12 +9,14 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
+	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -39,6 +41,14 @@ import { probeCredential } from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
 import { composeCredentialNameWithUser } from '../templatedAuth.utils';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
+import {
+	extractTemplateMarkers,
+	isValidTemplateShape,
+	parsePlaceholderDefs,
+	parsePlaceholderValues,
+	parseTemplatedAuthField,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '../templatedAuth.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -123,14 +133,16 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 		}
 		if (toValue(options.showAuthSelector)) {
-			const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
-			if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
-				return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
-			}
+			// The caller-requested type (the auth row clicked in the node's credential
+			// dropdown) wins over the recommended/first auth option.
 			const activeId = toValue(options.activeId);
 			if (activeId) {
 				const nodeCredential = activeNodeType.value?.credentials?.find((c) => c.name === activeId);
 				if (nodeCredential) return nodeCredential;
+			}
+			const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
+			if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
+				return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
 			}
 			return activeNodeType.value?.credentials?.[0] ?? null;
 		}
@@ -243,6 +255,24 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	});
 
 	const requiredPropertiesFilled = computed(() => {
+		// Templated Custom Auth: the real inputs are the template's {{markers}},
+		// not the type's raw JSON fields — a required marker without a stored
+		// value gates save/test exactly like an empty required field would.
+		if (credentialTypeName.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) {
+			const template = parseTemplatedAuthField<unknown>(credentialData.value.template, {});
+			// A parseable but wrong-shaped template (e.g. an array, or a string
+			// headers part) passes the JSON check below yet can never resolve.
+			if (!isValidTemplateShape(template)) return false;
+			const markers = extractTemplateMarkers(template);
+			const values = parsePlaceholderValues(credentialData.value.placeholderValues);
+			const optionalMarkers = new Set(
+				parsePlaceholderDefs(credentialData.value.placeholderDefs)
+					.filter((def) => def.optional === true)
+					.map((def) => def.name),
+			);
+			if (markers.some((marker) => !optionalMarkers.has(marker) && !values[marker])) return false;
+		}
+
 		for (const property of credentialProperties.value) {
 			if (property.required !== true) continue;
 			const value = credentialData.value[property.name];
@@ -557,10 +587,21 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		// The probe runs against the SAVED credential (the server reads its
 		// persisted test URL), so it only applies once an id exists — which the
 		// modal guarantees by testing after save.
-		const result =
-			isTemplatedAuthProbeable.value && details.id
-				? await probeCredential(rootStore.restApiContext, details.id)
-				: await credentialsStore.testCredential(details);
+		let result: INodeCredentialTestResult;
+		try {
+			result =
+				isTemplatedAuthProbeable.value && details.id
+					? await probeCredential(rootStore.restApiContext, details.id)
+					: await credentialsStore.testCredential(details);
+		} catch (error) {
+			// A transport failure or non-2xx (e.g. the persisted credential lost
+			// its test URL) lands in the banner instead of wedging the testing
+			// flags of the callers into a stuck spinner.
+			result = {
+				status: 'Error',
+				message: error instanceof Error ? error.message : String(error),
+			};
+		}
 		if (result.status === 'Error') {
 			authError.value = result.message;
 			testedSuccessfully.value = false;

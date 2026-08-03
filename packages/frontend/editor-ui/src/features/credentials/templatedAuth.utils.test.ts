@@ -1,12 +1,12 @@
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+
 import {
 	cleanPlaceholderValue,
-	composeCredentialNameWithUser,
-	deriveServiceName,
 	extractTemplateMarkers,
-	markerPrefix,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
+	storedPlaceholderValue,
 } from './templatedAuth.utils';
 
 describe('templatedAuth.utils', () => {
@@ -27,17 +27,6 @@ describe('templatedAuth.utils', () => {
 		});
 	});
 
-	describe('markerPrefix', () => {
-		it('returns the static text before the marker in the same string', () => {
-			expect(markerPrefix(template, 'api_key')).toBe('Key ');
-		});
-
-		it('returns empty when the marker starts the string or is absent', () => {
-			expect(markerPrefix(template, 'api_version')).toBe('');
-			expect(markerPrefix(template, 'missing')).toBe('');
-		});
-	});
-
 	describe('cleanPlaceholderValue', () => {
 		it('trims and strips a pasted duplicate of the template prefix', () => {
 			expect(cleanPlaceholderValue(template, 'api_key', '  Key abc123  ')).toBe('abc123');
@@ -51,6 +40,29 @@ describe('templatedAuth.utils', () => {
 			expect(cleanPlaceholderValue(template, 'api_key', '={{ $secrets.vault.key }}')).toBe(
 				'={{ $secrets.vault.key }}',
 			);
+		});
+
+		it('does not treat dots in marker names as regex wildcards', () => {
+			// an unescaped 'api.key' would match the '{{api_key}}' leaf and steal
+			// its 'Key ' prefix
+			const dotted = {
+				headers: { Authorization: 'Key {{api_key}}', 'X-Key': '{{api.key}}' },
+			};
+			expect(cleanPlaceholderValue(dotted, 'api.key', 'Key abc')).toBe('Key abc');
+		});
+	});
+
+	describe('storedPlaceholderValue', () => {
+		it('maps the display mask back to the sentinel, also when the expression toggle prefixes it', () => {
+			expect(storedPlaceholderValue(CREDENTIAL_BLANKING_VALUE)).toBe('***');
+			expect(storedPlaceholderValue(`=${CREDENTIAL_BLANKING_VALUE}`)).toBe('***');
+			expect(storedPlaceholderValue('=***')).toBe('***');
+			expect(storedPlaceholderValue('***')).toBe('***');
+		});
+
+		it('leaves real values and expressions alone', () => {
+			expect(storedPlaceholderValue('abc')).toBe('abc');
+			expect(storedPlaceholderValue('={{ $secrets.vault.key }}')).toBe('={{ $secrets.vault.key }}');
 		});
 	});
 
@@ -78,38 +90,6 @@ describe('templatedAuth.utils', () => {
 		it('keeps only string values', () => {
 			const raw = JSON.stringify({ api_key: '***', nested: { no: true }, count: 2 });
 			expect(parsePlaceholderValues(raw)).toEqual({ api_key: '***' });
-		});
-	});
-
-	describe('composeCredentialNameWithUser', () => {
-		it('suffixes first name and last initial', () => {
-			expect(
-				composeCredentialNameWithUser('fal.ai API Key', { firstName: 'Jan', lastName: 'Doe' }),
-			).toBe('fal.ai API Key (Jan D)');
-		});
-
-		it('suffixes first name alone when there is no last name', () => {
-			expect(composeCredentialNameWithUser('fal.ai API Key', { firstName: 'Jan' })).toBe(
-				'fal.ai API Key (Jan)',
-			);
-		});
-
-		it('returns the base name when the user has no first name', () => {
-			expect(composeCredentialNameWithUser('fal.ai API Key', { lastName: 'Doe' })).toBe(
-				'fal.ai API Key',
-			);
-			expect(composeCredentialNameWithUser('fal.ai API Key', null)).toBe('fal.ai API Key');
-		});
-	});
-
-	describe('deriveServiceName', () => {
-		it('uses the recipe suggested name', () => {
-			expect(deriveServiceName({ suggestedName: 'fal.ai API Key' })).toBe('fal.ai API Key');
-		});
-
-		it('returns undefined without a usable source', () => {
-			expect(deriveServiceName({ suggestedName: '   ' })).toBeUndefined();
-			expect(deriveServiceName(undefined)).toBeUndefined();
 		});
 	});
 });

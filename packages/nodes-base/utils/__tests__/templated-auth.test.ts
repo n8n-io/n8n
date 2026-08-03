@@ -1,6 +1,6 @@
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { resolveTemplatedAuth } from '../templated-auth';
+import { applyTemplatedAuth, resolveTemplatedAuth } from '../templated-auth';
 
 const credentialData = (
 	template: object,
@@ -73,10 +73,43 @@ describe('resolveTemplatedAuth', () => {
 		).toThrow('must be a plain value');
 	});
 
+	it.each(['constructor', 'toString'])('should not resolve inherited %s values', (name) => {
+		expect(() =>
+			resolveTemplatedAuth(credentialData({ headers: { Authorization: `{{${name}}}` } })),
+		).toThrow(`No value set for placeholder {{${name}}}`);
+	});
+
 	it('should throw on invalid template JSON', () => {
 		expect(() => resolveTemplatedAuth({ template: 'not json', placeholderValues: '{}' })).toThrow(
 			'Invalid Simplified Custom Auth template JSON',
 		);
+	});
+
+	it.each([
+		['array', []],
+		['string', 'headers'],
+	])('should reject a template parsed as a %s', (_, template) => {
+		expect(() =>
+			resolveTemplatedAuth({ template: JSON.stringify(template), placeholderValues: '{}' }),
+		).toThrow('Simplified Custom Auth template must be a JSON object');
+	});
+
+	it.each(['headers', 'body', 'qs'])('should reject non-object template %s', (partName) => {
+		expect(() => resolveTemplatedAuth(credentialData({ [partName]: 'invalid' }))).toThrow(
+			`Simplified Custom Auth template ${partName} must be a JSON object`,
+		);
+	});
+
+	it.each([
+		['array', []],
+		['string', 'secret'],
+	])('should reject placeholder values parsed as a %s', (_, placeholderValues) => {
+		expect(() =>
+			resolveTemplatedAuth({
+				template: '{}',
+				placeholderValues: JSON.stringify(placeholderValues),
+			}),
+		).toThrow('Simplified Custom Auth placeholder values must be a JSON object');
 	});
 
 	it('should keep reserved JSON keys as plain own properties', () => {
@@ -141,6 +174,14 @@ describe('resolveTemplatedAuth', () => {
 			expect(result.headers).toEqual({ Authorization: 'Key secret' });
 		});
 
+		it('should omit an entry before resolving its other missing placeholders', () => {
+			const result = resolveTemplatedAuth(
+				credentialData({ headers: { 'X-Scope': '{{org}}:{{api_key}}' } }, {}, defs),
+			);
+
+			expect(result.headers).toEqual({});
+		});
+
 		it('should still fail closed for empty required placeholders', () => {
 			expect(() =>
 				resolveTemplatedAuth(
@@ -158,5 +199,26 @@ describe('resolveTemplatedAuth', () => {
 				}),
 			).toThrow('No value set for placeholder {{org}}');
 		});
+	});
+});
+
+describe('applyTemplatedAuth', () => {
+	const credentials = credentialData({ body: { token: '{{api_key}}' } }, { api_key: 'secret' });
+
+	it('should merge a body template into an object body', () => {
+		const requestOptions = { body: { payload: true } };
+
+		applyTemplatedAuth(credentials, requestOptions);
+
+		expect(requestOptions.body).toEqual({ payload: true, token: 'secret' });
+	});
+
+	it.each([
+		['raw', 'payload'],
+		['binary', Buffer.from('payload')],
+	])('should reject a %s request body', (_, body) => {
+		expect(() => applyTemplatedAuth(credentials, { body })).toThrow(
+			'Simplified Custom Auth body templates cannot be applied to non-object request bodies',
+		);
 	});
 });

@@ -47,7 +47,7 @@ function sendUnauthorizedResponse(
  */
 export const n8nOAuth2Auth = async (
 	context: IWebhookFunctions,
-	options: { realm: string },
+	options: { realm: string; method?: string },
 ): Promise<
 	| {
 			status: 'ok';
@@ -61,10 +61,17 @@ export const n8nOAuth2Auth = async (
 		throw new UnexpectedError('Webhook URL is not available');
 	}
 
-	const resourceUrl = trimTrailingSlash(webhookUrl);
+	// One webhook path can host several disjoint-method triggers, so the method being
+	// served selects which one a resource URL names. It has to be carried on both the
+	// token audience (`resourceUrl`) and the metadata URL advertised in
+	// `WWW-Authenticate` (`prmUrl`), keeping mint and verify consistent. Omitted for
+	// MCP, which is always POST and needs no selector.
+	const resourceUrl =
+		trimTrailingSlash(webhookUrl) +
+		(options.method ? `?method=${options.method.toUpperCase()}` : '');
 
 	const u = new URL(resourceUrl);
-	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}`;
+	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}${u.search}`;
 
 	const resp = context.getResponseObject();
 	const req = context.getRequestObject();

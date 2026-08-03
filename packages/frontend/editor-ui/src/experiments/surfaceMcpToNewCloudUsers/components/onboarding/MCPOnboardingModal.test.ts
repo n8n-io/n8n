@@ -16,7 +16,7 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
 	}),

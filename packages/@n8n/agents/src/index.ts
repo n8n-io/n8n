@@ -27,6 +27,7 @@ export type {
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
+	ReasoningLevel,
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
@@ -209,6 +210,7 @@ export type {
 	ContentCitation,
 	ContentCustom,
 	ContentFile,
+	ContentFileRef,
 	ContentMetadata,
 	ContentReasoning,
 	ContentReasoningFile,
@@ -221,6 +223,8 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
+export { stripHydratedFileData } from './types/sdk/message';
+export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,

@@ -14,7 +14,7 @@ import type { IUpdateInformation } from '@/Interface';
 import CredentialModeSelector, { type CredentialModeOption } from './CredentialModeSelector.vue';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useI18n, addCredentialTranslation } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	BUILTIN_CREDENTIALS_DOCS_URL,
 	DOCS_DOMAIN,
@@ -32,8 +32,11 @@ import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
-import { listPlaceholderTitles, parseHttpUrl } from '@/features/credentials/templatedAuth.utils';
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
+import {
+	listPlaceholderTitles,
+	parseHttpUrl,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+} from '@/features/credentials/templatedAuth.utils';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -339,7 +342,7 @@ const isTemplatedAuthType = computed(
 // some services answer 2xx regardless of the key — so the green banner
 // states that instead of claiming the connection was verified.
 const testSuccessMessage = computed(() =>
-	props.credentialType?.name === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+	isTemplatedAuthType.value
 		? i18n.baseText('credentialEdit.credentialConfig.authProbeAccepted')
 		: i18n.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully'),
 );
@@ -493,7 +496,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							>
 								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
 								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
-									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
+									{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}
 								</N8nLink>
 							</template>
 						</span>

@@ -15,6 +15,7 @@ export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
+export * from './workflow-publish-blocked-details';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -534,6 +535,7 @@ export {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_CANVAS_GROUPS_FLAG,
+	MCP_AGENT_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,
@@ -588,6 +590,7 @@ export {
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalRunSchema,
 	CreateAgentEvalRunDto,
+	agentEvalCorrectionSchema,
 	createAgentEvalRatingSchema,
 	CreateAgentEvalRatingDto,
 	agentEvalDraftCaseSchema,
@@ -599,6 +602,7 @@ export type {
 	AgentEvalRunStatus,
 	AgentEvalResultStatus,
 	AgentEvalVote,
+	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
 	UpdateAgentEvalDatasetPayload,
 	CreateAgentEvalRunPayload,
@@ -608,6 +612,7 @@ export type {
 	AgentEvalResultRecord,
 	AgentEvalRatingRecord,
 	AgentEvalRunDetail,
+	AgentEvalRunSummary,
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,

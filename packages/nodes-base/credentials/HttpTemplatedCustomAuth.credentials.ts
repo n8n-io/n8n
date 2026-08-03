@@ -1,15 +1,9 @@
 /* eslint-disable n8n-nodes-base/cred-class-name-unsuffixed */
 /* eslint-disable n8n-nodes-base/cred-class-field-name-unsuffixed */
 /* eslint-disable n8n-nodes-base/cred-class-field-documentation-url-missing */
-import type {
-	IAuthenticate,
-	ICredentialType,
-	IDataObject,
-	INodeProperties,
-	Icon,
-} from 'n8n-workflow';
+import type { IAuthenticate, ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
 
-import { resolveTemplatedAuth } from '../utils/templated-auth';
+import { applyTemplatedAuth } from '../utils/templated-auth';
 
 export class HttpTemplatedCustomAuth implements ICredentialType {
 	name = 'httpTemplatedCustomAuth';
@@ -57,6 +51,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			default: '',
 			typeOptions: {
 				redactJsonLeaves: true,
+				resolveCredentialJsonLeaves: true,
 			},
 		},
 		{
@@ -72,7 +67,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			name: 'docsUrl',
 			type: 'string',
 			description:
-				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). Not shown in the form — the AI Assistant help thread points the user there.',
+				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). The AI Assistant help thread points the user there.',
 			default: '',
 		},
 		{
@@ -101,12 +96,8 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 	// Lets requestWithAuthentication consumers (auth probe, paginated requests)
 	// apply the credential without the HTTP node's generic-auth branch.
 	authenticate: IAuthenticate = async (credentials, requestOptions) => {
-		const { headers, body, qs } = resolveTemplatedAuth(credentials);
-		return await Promise.resolve({
-			...requestOptions,
-			...(headers && { headers: { ...requestOptions.headers, ...headers } }),
-			...(body && { body: { ...(requestOptions.body as IDataObject), ...body } }),
-			...(qs && { qs: { ...requestOptions.qs, ...qs } }),
-		});
+		const authenticatedRequestOptions = { ...requestOptions };
+		applyTemplatedAuth(credentials, authenticatedRequestOptions);
+		return await Promise.resolve(authenticatedRequestOptions);
 	};
 }

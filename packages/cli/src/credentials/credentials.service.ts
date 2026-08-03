@@ -1378,7 +1378,11 @@ export class CredentialsService {
 	private unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
-			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
+			// Strip a leading `=`: switching a redacted field to expression mode
+			// prepends it to the sentinel, which would otherwise defeat the match
+			// and persist the sentinel as the real value.
+			const sentinel = typeof value === 'string' && value.startsWith('=') ? value.slice(1) : value;
+			if (sentinel === CREDENTIAL_BLANKING_VALUE || sentinel === CREDENTIAL_EMPTY_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (

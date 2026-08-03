@@ -85,7 +85,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -100,7 +100,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
@@ -459,12 +459,6 @@ const commonStubs = {
 		template: '<div data-testid="stub-agent-memory-panel" />',
 		props: ['config', 'disabled'],
 		emits: ['update:config'],
-	},
-	AgentToolsListPanel: {
-		name: 'AgentToolsListPanel',
-		template: '<div data-testid="stub-agent-tools-list-panel" />',
-		props: ['tools', 'config', 'disabled'],
-		emits: ['open-tool', 'add-tool', 'remove-tool', 'update:config'],
 	},
 	AgentSkillsListPanel: {
 		name: 'AgentSkillsListPanel',
@@ -1320,6 +1314,38 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('flushes a pending MCP toggle before switching agents', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+			},
+		});
+		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const toggleAgentMcpAccess = vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockResolvedValue({
+			updatedCount: 1,
+			updatedIds: ['a1'],
+			unchangedIds: [],
+		});
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('toggle-mcp-access', true);
+			await nextTick();
+
+			await wrapper.setProps({ artifactAgentId: 'a2' });
+			await flushPromises();
+
+			expect(toggleAgentMcpAccess).toHaveBeenCalledExactlyOnceWith('a1', true);
+		} finally {
+			vi.useRealTimers();
+			wrapper.unmount();
+		}
 	});
 
 	it('keeps artifact mode tab switching out of the route query', async () => {

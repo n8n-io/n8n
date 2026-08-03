@@ -53,6 +53,7 @@ describe('formatPreviewSessionContext', () => {
 				id: 'exec-1',
 				userMessage: 'First question',
 				timeline: [
+					{ type: 'reasoning', content: 'I should search the orders.', timestamp: 0, endTime: 1 },
 					toolCallEvent(),
 					{ type: 'text', content: 'Here are your orders.', timestamp: 1, endTime: 2 },
 				],
@@ -69,6 +70,7 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).toContain('scope: whole session, turns: 2');
 		expect(block).toContain('User: First question');
 		expect(block).toContain('User: Second question');
+		expect(block).toContain('Reasoning: I should search the orders.');
 		expect(block).toContain('Tool call: search_orders | kind=tool | succeeded | 500ms');
 		expect(block).toContain('Input: {"query":"open orders"}');
 		expect(block).toContain('Output: {"count":2}');

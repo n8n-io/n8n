@@ -57,7 +57,7 @@ const render = createComponentRenderer(AgentsMode);
 
 function pushAgentsViewStack() {
 	useViewStacks().pushViewStack({
-		title: 'AI Agent V1',
+		title: 'AI Agent V2',
 		hasSearch: true,
 		mode: 'agents',
 		items: [],

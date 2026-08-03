@@ -332,6 +332,7 @@ export class CredentialsTester {
 	 */
 	private resolveAuthProbeVerdict(
 		error: {
+			message?: unknown;
 			httpCode?: unknown;
 			context?: { data?: { status?: unknown } };
 			cause?: { response?: { status?: unknown }; code?: unknown };
@@ -361,6 +362,10 @@ export class CredentialsTester {
 				status: 'Error',
 				message: `The test URL answered HTTP ${statusCode}, so the credential could not be verified. The test URL may be wrong — it must be a read-only endpoint that answers an authenticated GET.`,
 			};
+		}
+
+		if (typeof error.message === 'string' && !error.cause?.code) {
+			return { status: 'Error', message: error.message };
 		}
 
 		this.logger.debug('Credential auth probe inconclusive', error);

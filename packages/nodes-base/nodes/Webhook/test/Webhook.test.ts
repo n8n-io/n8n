@@ -47,6 +47,20 @@ describe('Test Webhook Node', () => {
 
 			expect(authParam?.options).toContainEqual(expect.objectContaining({ value: 'n8nOAuth2' }));
 		});
+
+		it('exposes the requireExecuteAccess toggle, on by default and scoped to the n8nOAuth2 mode', () => {
+			const node = new Webhook();
+			const requireExecuteParam = node.description.properties.find(
+				(property) => property.name === 'requireExecuteAccess',
+			);
+
+			expect(requireExecuteParam).toMatchObject({
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { authentication: ['n8nOAuth2'] } },
+				envFeatureFlag: 'WEBHOOK_PRIVATE_CREDENTIALS',
+			});
+		});
 	});
 
 	describe('handleFormData', () => {
@@ -198,6 +212,7 @@ describe('Test Webhook Node', () => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'onReceived';
 				if (paramName === 'authentication') return 'n8nOAuth2';
+				if (paramName === 'httpMethod') return 'GET';
 				return undefined;
 			});
 			req.headers = {};
@@ -226,7 +241,10 @@ describe('Test Webhook Node', () => {
 
 			const result = await node.webhook(context);
 
-			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith('bad-token', WEBHOOK_URL);
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
+				'bad-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
 			expect(res.writeHead).toHaveBeenCalledWith(
 				401,
 				expect.objectContaining({
@@ -264,8 +282,14 @@ describe('Test Webhook Node', () => {
 
 			const result = await node.webhook(context);
 
-			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith('good-token', WEBHOOK_URL);
-			expect(context.establishTriggerIdentity).toHaveBeenCalledWith('good-token', WEBHOOK_URL);
+			expect(context.validateN8nOAuth2Token).toHaveBeenCalledWith(
+				'good-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
+			expect(context.establishTriggerIdentity).toHaveBeenCalledWith(
+				'good-token',
+				`${WEBHOOK_URL}?method=GET`,
+			);
 			expect(result.workflowData).toBeDefined();
 			expect(result.workflowData?.[0][0].json.body).toEqual({ hello: 'world' });
 		});

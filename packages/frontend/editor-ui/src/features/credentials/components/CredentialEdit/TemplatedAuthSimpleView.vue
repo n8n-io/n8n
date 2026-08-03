@@ -1,19 +1,18 @@
 <script lang="ts" setup>
+import startCase from 'lodash/startCase';
+
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import {
 	cleanPlaceholderValue,
 	extractTemplateMarkers,
-	humanizeMarkerName,
 	parsePlaceholderDefs,
 	parsePlaceholderValues,
 	parseTemplatedAuthField,
+	storedPlaceholderValue,
 	TEMPLATED_AUTH_REDACTED_VALUE,
+	type TemplatedAuthPlaceholderDef,
 } from '@/features/credentials/templatedAuth.utils';
-import type {
-	InstanceAiCredentialPlaceholderDef,
-	InstanceAiCredentialSetupHint,
-} from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nIcon,
@@ -59,10 +58,7 @@ const templateText = computed(() =>
 );
 
 const template = computed(() =>
-	parseTemplatedAuthField<InstanceAiCredentialSetupHint['template']>(
-		props.credentialData.template,
-		{},
-	),
+	parseTemplatedAuthField<unknown>(props.credentialData.template, {}),
 );
 
 const markers = computed(() => extractTemplateMarkers(template.value));
@@ -96,22 +92,30 @@ function setEditing(value: boolean) {
 // Inputs start from the stored values (redacted `***` sentinels render masked,
 // expressions render in the expression editor — same as native credential
 // fields); typing over one stages a replacement, while an untouched `***`
-// merges back to the stored secret server-side on save.
+// merges back to the stored secret server-side on save. Seeded once on mount
+// deliberately: re-seeding when credentialData changes would visibly wipe
+// just-typed plain values right after save (the re-fetch returns them redacted).
 const editedValues = ref<Record<string, string>>({ ...savedValues.value });
 
 function isRequired(name: string): boolean {
 	return defsByName.value.get(name)?.optional !== true;
 }
 
+// ParameterInputExpanded truncates dotted parameter names to their last path
+// segment (collection-path convention), so inputs get index-based names and
+// map back to the real marker on update.
+const inputNameFor = (index: number) => `marker_${index}`;
+const markerFor = (inputName: string) => markers.value[Number(inputName.slice('marker_'.length))];
+
 /** One native credential parameter per template marker; defs give the UI.
  *  The def's info renders in the label's tooltip bubble like every other
  *  credential field's help text. */
 const placeholderProperties = computed<INodeProperties[]>(() =>
-	markers.value.map((name) => {
+	markers.value.map((name, index) => {
 		const def = defsByName.value.get(name);
 		return {
-			displayName: def?.title || humanizeMarkerName(name),
-			name,
+			displayName: def?.title || startCase(name),
+			name: inputNameFor(index),
 			type: 'string',
 			default: '',
 			required: isRequired(name),
@@ -121,29 +125,40 @@ const placeholderProperties = computed<INodeProperties[]>(() =>
 	}),
 );
 
-// Display-only mapping: the stored 3-char `***` sentinel renders as the same
-// full-length mask native credential fields blank to, so redacted secrets
-// don't look suspiciously short. Composition still reads `editedValues`, so
-// an untouched input keeps sending `***` (the server merge-back contract).
+// Display-only mapping: in masked inputs the stored 3-char `***` sentinel
+// renders as the same full-length mask native credential fields blank to, so
+// redacted secrets don't look suspiciously short (plain inputs keep the bare
+// sentinel — the blanking constant would read as a real value there).
+// Composition still reads `editedValues`, so an untouched input keeps sending
+// `***` (the server merge-back contract).
 const parameterValues = computed<Record<string, NodeParameterValueType>>(() =>
 	Object.fromEntries(
-		Object.entries(editedValues.value).map(([name, value]) => [
-			name,
-			value === TEMPLATED_AUTH_REDACTED_VALUE ? CREDENTIAL_BLANKING_VALUE : value,
-		]),
+		markers.value.map((name, index) => {
+			const value = editedValues.value[name] ?? '';
+			const masked = defsByName.value.get(name)?.type !== 'plain';
+			return [
+				inputNameFor(index),
+				value === TEMPLATED_AUTH_REDACTED_VALUE && masked ? CREDENTIAL_BLANKING_VALUE : value,
+			];
+		}),
 	),
 );
 
 function onParameterUpdate(update: IUpdateInformation) {
-	editedValues.value[update.name] = String(update.value ?? '');
+	const marker = markerFor(update.name);
+	if (!marker) return;
+	// storedPlaceholderValue keeps the display mask out of the stored values:
+	// the expression toggle re-emits the displayed value, which would otherwise
+	// overwrite the real secret with the mask itself on save.
+	editedValues.value[marker] = storedPlaceholderValue(String(update.value ?? ''));
 	const composed: Record<string, string> = {};
-	for (const marker of markers.value) {
-		const edited = editedValues.value[marker] ?? savedValues.value[marker] ?? '';
-		const cleaned = cleanPlaceholderValue(template.value, marker, edited);
+	for (const name of markers.value) {
+		const edited = editedValues.value[name] ?? savedValues.value[name] ?? '';
+		const cleaned = cleanPlaceholderValue(template.value, name, edited);
 		// An empty optional stays out of the stored values entirely — a stored ''
 		// would come back redacted (***) and read like a saved secret.
-		if (cleaned === '' && !isRequired(marker)) continue;
-		composed[marker] = cleaned;
+		if (cleaned === '' && !isRequired(name)) continue;
+		composed[name] = cleaned;
 	}
 	emit('update', { name: 'placeholderValues', value: JSON.stringify(composed, null, 2) });
 }
@@ -161,13 +176,13 @@ function emitSetupUpdate(name: string, value: string) {
 	emit('update', { name, value });
 }
 
-function defFor(name: string): InstanceAiCredentialPlaceholderDef {
+function defFor(name: string): TemplatedAuthPlaceholderDef {
 	return defsByName.value.get(name) ?? { name, title: '' };
 }
 
 // Rewrites the stored defs to exactly the template's current markers, merged
 // with the changed field; defs for markers no longer in the template drop out.
-function setDefField(name: string, patch: Partial<InstanceAiCredentialPlaceholderDef>) {
+function setDefField(name: string, patch: Partial<TemplatedAuthPlaceholderDef>) {
 	const defs = markers.value.map((marker) => {
 		const existing = defFor(marker);
 		return marker === name ? { ...existing, ...patch } : existing;
@@ -175,6 +190,11 @@ function setDefField(name: string, patch: Partial<InstanceAiCredentialPlaceholde
 	emitSetupUpdate('placeholderDefs', JSON.stringify(defs, null, 2));
 }
 
+// Deliberately does NOT rebuild placeholderDefs: this fires per keystroke on
+// raw JSON, so the template is transiently invalid/half-typed and a rebuild
+// would persist the loss of def metadata (titles, hints, optional flags).
+// Stale defs are inert (only current markers are ever looked up) and defs
+// reconcile to the markers on the next def-card edit (setDefField).
 function onTemplateInput(value: string) {
 	emitSetupUpdate('template', value);
 }
@@ -202,10 +222,10 @@ function onCodesInput(value: string) {
 	emitSetupUpdate('acceptedStatusCodes', codes.length ? JSON.stringify(codes) : '');
 }
 
-const typeOptions = computed(() => [
+const typeOptions = [
 	{ label: i18n.baseText('credentialEdit.templatedAuth.fieldType.secret'), value: 'password' },
 	{ label: i18n.baseText('credentialEdit.templatedAuth.fieldType.plain'), value: 'plain' },
-]);
+];
 </script>
 
 <template>
@@ -279,7 +299,7 @@ const typeOptions = computed(() => [
 						:model-value="templateText"
 						type="textarea"
 						:rows="6"
-						:class="$style.code"
+						:class="$style.mono"
 						data-test-id="templated-auth-template-input"
 						@update:model-value="onTemplateInput"
 					/>
@@ -319,7 +339,7 @@ const typeOptions = computed(() => [
 									<N8nInput
 										size="small"
 										:model-value="defFor(name).title"
-										:placeholder="humanizeMarkerName(name)"
+										:placeholder="startCase(name)"
 										@update:model-value="setDefField(name, { title: $event })"
 									/>
 								</N8nInputLabel>
@@ -452,18 +472,15 @@ const typeOptions = computed(() => [
 	flex-direction: column;
 }
 
-.code {
+.mono {
+	:global(input),
 	:global(textarea) {
 		font-family: var(--font-family--monospace);
 		font-size: var(--font-size--2xs);
-		line-height: 1.6;
 	}
-}
 
-.mono {
-	:global(input) {
-		font-family: var(--font-family--monospace);
-		font-size: var(--font-size--2xs);
+	:global(textarea) {
+		line-height: 1.6;
 	}
 }
 
@@ -495,7 +512,7 @@ const typeOptions = computed(() => [
 .chip {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--3xs);
-	background-color: var(--color--background--base);
+	background-color: var(--color--background);
 	color: var(--color--text--shade-1);
 	border-radius: var(--radius--sm);
 	padding: var(--spacing--5xs) var(--spacing--3xs);

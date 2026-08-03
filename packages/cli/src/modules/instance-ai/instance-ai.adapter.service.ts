@@ -89,6 +89,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
@@ -292,6 +293,10 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
+			/** Eval-only: resolve a credential's connection test as successful without
+			 *  contacting the provider. A predicate rather than a list because the
+			 *  harness registers bypasses mid-run, after this context is built. */
+			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
@@ -309,6 +314,7 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			credentialIdAllowlist,
+			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
 			modelId,
@@ -326,7 +332,12 @@ export class InstanceAiAdapterService {
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
+			credentialService: this.createCredentialAdapter(
+				user,
+				projectId,
+				credentialIdAllowlist,
+				shouldBypassCredentialTest,
+			),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
@@ -377,7 +388,7 @@ export class InstanceAiAdapterService {
 			...delegate,
 			createAgent: async (name) => {
 				const created = await delegate.createAgent(name);
-				this.telemetry.track('Builder created agent', {
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
 					thread_id: threadId,
 					agent_id: created.agentId,
 					project_id: created.projectId,
@@ -746,9 +757,15 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
+				// Without an explicit order the engine falls back to legacy v0, which walks
+				// the graph breadth-first. Generated code still wins if it sets its own.
+				const settings = {
+					executionOrder: 'v1',
+					...(json.settings ?? {}),
+				} as IWorkflowSettings;
+
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
-				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				if (settings.redactionPolicy !== undefined && settings.redactionPolicy !== 'none') {
 					const canUpdateRedaction = await userHasScopes(
 						user,
@@ -1139,6 +1156,12 @@ export class InstanceAiAdapterService {
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
+				// Sever the listed edges on this run's ephemeral copy only — used by
+				// scripted wait-gate verification to keep each pass acyclic.
+				const connections = options?.omitConnections?.length
+					? omitWorkflowConnections(workflow.connections, options.omitConnections)
+					: workflow.connections;
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -1150,6 +1173,7 @@ export class InstanceAiAdapterService {
 						: ('manual' as WorkflowExecuteMode),
 					workflowData: {
 						...workflow,
+						connections,
 						settings: {
 							...workflow.settings,
 							saveManualExecutions: true,
@@ -1162,6 +1186,12 @@ export class InstanceAiAdapterService {
 					},
 					userId: user.id,
 					pushRef,
+					// A verification run picks a production execution mode above so the
+					// trigger behaves realistically. Without this opt-out, a failed build
+					// attempt would dispatch the user's error workflow as if production
+					// had broken — the one side effect node simulation cannot pin, since
+					// it is dispatched by the execution lifecycle, not by a node.
+					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
 				};
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
@@ -1194,12 +1224,16 @@ export class InstanceAiAdapterService {
 
 				// In queue mode the worker rebuilds the run from persisted `execution.data`,
 				// where top-level `runData.source` doesn't survive. Persist it in
-				// `manualData` so worker-side statistics can classify IAI runs.
+				// `manualData` so worker-side statistics can classify IAI runs, and so
+				// the worker's save hook honours `suppressErrorWorkflow`. A run without
+				// `executionData` has no trigger node, which means `executionMode` is
+				// 'manual' and the error workflow is already skipped.
 				if (runData.executionData) {
 					runData.executionData.manualData = {
 						...runData.executionData.manualData,
 						userId: user.id,
 						source: runData.source,
+						suppressErrorWorkflow: runData.suppressErrorWorkflow,
 					};
 				}
 
@@ -1445,6 +1479,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
+		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
@@ -1526,6 +1561,17 @@ export class InstanceAiAdapterService {
 
 				if (!credential) {
 					throw new Error(`Credential ${credentialId} not found or not accessible`);
+				}
+
+				// Eval-only, and deliberately AFTER the access check above so a bypass can
+				// never turn "not accessible" into a synthetic success: an eval seeds
+				// placeholder tokens, so a real test would always fail and the setup card
+				// refuses to apply a credential that fails one. The message stays
+				// indistinguishable from a genuine pass on purpose — a hint that it was
+				// bypassed would make the agent hedge, which is the very behaviour such a
+				// case exists to rule out. The harness records the bypass on its own side.
+				if (shouldBypassCredentialTest?.(credentialId) === true) {
+					return { success: true, message: 'Connection tested successfully' };
 				}
 
 				const credentialsToTest: ICredentialsDecrypted = {
@@ -3502,6 +3548,25 @@ function findTriggerNode(nodes: INode[]): INode | undefined {
 	if (known) return known;
 
 	return nodes.find((n) => isTriggerNodeType(n.type));
+}
+
+/** Copy of `connections` minus every listed source→target edge (any type). */
+function omitWorkflowConnections(
+	connections: IConnections,
+	omit: Array<{ source: string; target: string }>,
+): IConnections {
+	const omitted = new Set(omit.map((edge) => `${edge.source}→${edge.target}`));
+	const result: IConnections = {};
+	for (const [source, byType] of Object.entries(connections)) {
+		const nextByType: IConnections[string] = {};
+		for (const [type, groups] of Object.entries(byType)) {
+			nextByType[type] = (groups ?? []).map((group) =>
+				group ? group.filter((connection) => !omitted.has(`${source}→${connection.node}`)) : group,
+			);
+		}
+		result[source] = nextByType;
+	}
+	return result;
 }
 
 /** Get the execution mode based on the trigger node type. */

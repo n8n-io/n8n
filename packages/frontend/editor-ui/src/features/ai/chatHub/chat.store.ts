@@ -96,8 +96,8 @@ import {
 	createFakeAgent,
 	chunkFilesBySize,
 } from './chat.utils';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { createRunExecutionData, deepCopy, type INode } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';

@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import type { AgentVersionListItemDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { listAgentVersions, publishAgent, revertAgentToVersion } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';

@@ -1,3 +1,4 @@
+import isPlainObject from 'lodash/isPlainObject';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 
@@ -9,8 +10,35 @@ export type TemplatedAuthParts = {
 	qs?: IDataObject;
 };
 
+type TemplatedAuthRequestOptions = {
+	headers?: IDataObject;
+	body?: unknown;
+	qs?: IDataObject;
+};
+
 /** A resolved string that must be dropped from the output (empty optional). */
 const OMIT = Symbol('omit');
+
+function isEmptyPlaceholderValue(value: unknown): value is null | undefined | '' {
+	return value === undefined || value === null || value === '';
+}
+
+function isPlainDataObject(value: unknown): value is IDataObject {
+	return isPlainObject(value);
+}
+
+function assertTemplatedAuthParts(value: unknown): asserts value is TemplatedAuthParts {
+	if (!isPlainDataObject(value)) {
+		throw new UserError('Simplified Custom Auth template must be a JSON object');
+	}
+
+	for (const partName of ['headers', 'body', 'qs'] satisfies Array<keyof TemplatedAuthParts>) {
+		const part = value[partName];
+		if (part !== undefined && !isPlainDataObject(part)) {
+			throw new UserError(`Simplified Custom Auth template ${partName} must be a JSON object`);
+		}
+	}
+}
 
 /** Marker names whose placeholder def declares `optional: true`. */
 function optionalMarkerNames(credentialData: ICredentialDataDecryptedObject): Set<string> {
@@ -46,24 +74,31 @@ function optionalMarkerNames(credentialData: ICredentialDataDecryptedObject): Se
 export function resolveTemplatedAuth(
 	credentialData: ICredentialDataDecryptedObject,
 ): TemplatedAuthParts {
-	const template = jsonParse<TemplatedAuthParts>((credentialData.template as string) || '{}', {
+	const template = jsonParse<unknown>((credentialData.template as string) || '{}', {
 		errorMessage: 'Invalid Simplified Custom Auth template JSON',
 	});
-	const values = jsonParse<IDataObject>((credentialData.placeholderValues as string) || '{}', {
+	assertTemplatedAuthParts(template);
+
+	const values = jsonParse<unknown>((credentialData.placeholderValues as string) || '{}', {
 		errorMessage: 'Invalid Simplified Custom Auth placeholder values JSON',
 	});
+	if (!isPlainDataObject(values)) {
+		throw new UserError('Simplified Custom Auth placeholder values must be a JSON object');
+	}
+	const placeholderValues = new Map(Object.entries(values));
 	const optionalMarkers = optionalMarkerNames(credentialData);
 
 	const resolve = <T>(part: T): T | typeof OMIT => {
 		if (typeof part === 'string') {
-			let omit = false;
+			const shouldOmit = [...part.matchAll(PLACEHOLDER_MARKER_REGEX)].some(
+				([, name]) =>
+					isEmptyPlaceholderValue(placeholderValues.get(name)) && optionalMarkers.has(name),
+			);
+			if (shouldOmit) return OMIT;
+
 			const resolved = part.replace(PLACEHOLDER_MARKER_REGEX, (marker, name: string) => {
-				const value = values[name];
-				if (value === undefined || value === null || value === '') {
-					if (optionalMarkers.has(name)) {
-						omit = true;
-						return '';
-					}
+				const value = placeholderValues.get(name);
+				if (isEmptyPlaceholderValue(value)) {
 					throw new UserError(
 						`No value set for placeholder ${marker} of the Simplified Custom Auth credential`,
 					);
@@ -75,7 +110,7 @@ export function resolveTemplatedAuth(
 				}
 				return String(value);
 			});
-			return omit ? OMIT : (resolved as T);
+			return resolved as T;
 		}
 		if (Array.isArray(part)) {
 			return (part as unknown[])
@@ -97,4 +132,30 @@ export function resolveTemplatedAuth(
 	const resolved = resolve(template);
 	// The top level is always an object, so it can never resolve to OMIT.
 	return resolved === OMIT ? {} : resolved;
+}
+
+/** Resolve and merge a Templated Custom Auth credential into request options. */
+export function applyTemplatedAuth(
+	credentialData: ICredentialDataDecryptedObject,
+	requestOptions: TemplatedAuthRequestOptions,
+): TemplatedAuthParts {
+	const templatedAuth = resolveTemplatedAuth(credentialData);
+
+	if (templatedAuth.headers) {
+		requestOptions.headers = { ...requestOptions.headers, ...templatedAuth.headers };
+	}
+	if (templatedAuth.body) {
+		const existingBody = requestOptions.body;
+		if (existingBody !== undefined && !isPlainDataObject(existingBody)) {
+			throw new UserError(
+				'Simplified Custom Auth body templates cannot be applied to non-object request bodies',
+			);
+		}
+		requestOptions.body = { ...existingBody, ...templatedAuth.body };
+	}
+	if (templatedAuth.qs) {
+		requestOptions.qs = { ...requestOptions.qs, ...templatedAuth.qs };
+	}
+
+	return templatedAuth;
 }

@@ -28,7 +28,7 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
-import { resolveTemplatedAuth } from '@utils/templated-auth';
+import { applyTemplatedAuth } from '@utils/templated-auth';
 import { keysToLowercase } from '@utils/utilities';
 
 import { mainProperties } from './Description';
@@ -611,20 +611,14 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 				if (httpTemplatedCustomAuth !== undefined) {
-					const templatedAuth = resolveTemplatedAuth(httpTemplatedCustomAuth);
+					const templatedAuth = applyTemplatedAuth(httpTemplatedCustomAuth, requestOptions);
 					if (templatedAuth.headers) {
-						requestOptions.headers = { ...requestOptions.headers, ...templatedAuth.headers };
 						authDataKeys.headers = Object.keys(templatedAuth.headers);
 					}
 					if (templatedAuth.body) {
-						requestOptions.body = {
-							...(requestOptions.body as IDataObject),
-							...templatedAuth.body,
-						};
 						authDataKeys.body = Object.keys(templatedAuth.body);
 					}
 					if (templatedAuth.qs) {
-						requestOptions.qs = { ...requestOptions.qs, ...templatedAuth.qs };
 						authDataKeys.qs = Object.keys(templatedAuth.qs);
 					}
 				}

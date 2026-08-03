@@ -1,14 +1,19 @@
 import type { Mocked } from 'vitest';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
+import type { Telemetry } from '@/telemetry';
+
 import { AgentConfigService } from '../agent-config.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -22,6 +27,10 @@ const baseConfig: AgentJsonConfig = {
 	instructions: 'Help users',
 };
 
+const storedCustomTool = {
+	tool_1: { code: 'a', descriptor: { name: 'tool_1', description: 'a', inputSchema: {} } },
+} as unknown as Agent['tools'];
+
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: agentId,
@@ -33,6 +42,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		integrations: [],
+		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
 	} as unknown as Agent;
@@ -45,8 +55,15 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const agentValidationService = mock<AgentValidationService>();
+	const telemetry = mock<Telemetry>();
 
+	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+		status: 'valid',
+		issues: [],
+	});
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
@@ -66,6 +83,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 	);
 
 	return {
@@ -76,6 +94,8 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		agentValidationService,
+		telemetry,
 	};
 }
 
@@ -250,6 +270,59 @@ describe('AgentConfigService', () => {
 			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('drops stored optional fields omitted from the payload when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					credential: 'stored-cred',
+					memory: { enabled: true, storage: 'n8n' },
+					tools: [{ type: 'custom', id: 'tool-1' }],
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			mockAccessibleCredentials(credentialsService, ['stored-cred']);
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, memory: { enabled: false, storage: 'n8n' } },
+				undefined,
+				{ clearOmittedOptionalFields: true },
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			// Provided fields keep their submitted value; omitted ones are removed
+			// instead of retaining the stored value.
+			expect(saved.schema?.memory).toEqual({ enabled: false, storage: 'n8n' });
+			expect(saved.schema).not.toHaveProperty('credential');
+			expect(saved.schema).not.toHaveProperty('tools');
+			expect(result.config).not.toHaveProperty('credential');
+		});
+
+		it('resolves accessible credentials via the user when one is provided', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'user-cred', type: 'openAiApi', name: 'user-cred' },
+			] as never);
+			const user = { id: 'user-1' } as never;
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, credential: 'user-cred' },
+				user,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId,
+			});
+			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
 		});
 
 		it('rewrites an id-valued workflow tool ref to the workflow name on save', async () => {
@@ -475,6 +548,43 @@ describe('AgentConfigService', () => {
 			});
 		});
 
+		it('resets an omitted gradient to the schema default when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+							angle: 42,
+							fromStop: 12,
+							toStop: 88,
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					personalisation: { icon: 'mail' },
+				},
+				undefined,
+				{ clearOmittedOptionalFields: true },
+			);
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: DEFAULT_AGENT_PERSONALISATION.gradient,
+			});
+		});
+
 		it('stores only existing published subagents and rejects invalid subagent refs', async () => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent();
@@ -522,6 +632,41 @@ describe('AgentConfigService', () => {
 					subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
 				}),
 			).rejects.toThrow('cannot use itself');
+		});
+
+		it('reports setup completion after claiming the marker', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			const agent = makeAgent({ tools: storedCustomTool });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				tools: [{ type: 'custom', id: 'tool_1' }],
+			} as unknown as AgentJsonConfig);
+
+			expect(agentRepository.claimSetupCompleted).toHaveBeenCalledWith(agentId, expect.any(Date));
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+				expect.objectContaining({ agent_id: agentId, tool_count: 1 }),
+			);
+		});
+
+		it('does not report setup completion when the save fails', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ tools: storedCustomTool }),
+			);
+			agentRepository.save.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.updateConfig(agentId, projectId, {
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool_1' }],
+				} as unknown as AgentJsonConfig),
+			).rejects.toThrow('db down');
+
+			expect(agentRepository.claimSetupCompleted).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
 		});
 	});
 });

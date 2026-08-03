@@ -1142,12 +1142,12 @@ describe('CredentialConfig', () => {
 				.querySelector('button');
 			await userEvent.click(button!);
 
-			// no defs stored → the humanized marker name stands in as the label; the
+			// no defs stored → the start-cased marker name stands in as the label; the
 			// recipe's key page rides along so the thread can link the exact URL
 			expect(helpSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
 					credentialType: 'httpTemplatedCustomAuth',
-					placeholderTitles: ['Api key'],
+					placeholderTitles: ['Api Key'],
 					docsUrl: 'https://replicate.com/account/api-tokens',
 				}),
 			);

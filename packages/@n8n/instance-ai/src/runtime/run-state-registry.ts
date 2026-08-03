@@ -14,6 +14,8 @@ export interface ActiveRunState {
 	runId: string;
 	threadId: string;
 	abortController: AbortController;
+	/** Prevents an older finalizer from clearing a newer executor for the same thread. */
+	executionToken?: symbol;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
 	modelId?: ModelConfig;
@@ -273,7 +275,8 @@ export class RunStateRegistry<TUser = unknown> {
 		});
 	}
 
-	clearActiveRun(threadId: string): void {
+	clearActiveRun(threadId: string, executionToken?: symbol): void {
+		if (this.activeRuns.get(threadId)?.executionToken !== executionToken) return;
 		this.activeRuns.delete(threadId);
 	}
 
@@ -314,7 +317,10 @@ export class RunStateRegistry<TUser = unknown> {
 		return suspended;
 	}
 
-	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+	activateSuspendedRun(
+		threadId: string,
+		executionToken?: symbol,
+	): SuspendedRunState<TUser> | undefined {
 		const suspended = this.suspendedRuns.get(threadId);
 		if (!suspended) return undefined;
 
@@ -324,6 +330,7 @@ export class RunStateRegistry<TUser = unknown> {
 			runId: suspended.runId,
 			threadId,
 			abortController: suspended.abortController,
+			executionToken,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
 			modelId: suspended.modelId,

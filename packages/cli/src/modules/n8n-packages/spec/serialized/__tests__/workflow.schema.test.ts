@@ -35,8 +35,8 @@ describe('serializedWorkflowSchema', () => {
 		).not.toThrow();
 	});
 
-	it('rejects an empty tagIds array', () => {
-		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), tagIds: [] })).toThrow();
+	it('accepts an empty tagIds array (an untagged workflow exported with tags)', () => {
+		expect(() => serializedWorkflowSchema.parse({ ...workflow(1), tagIds: [] })).not.toThrow();
 	});
 
 	it('rejects an empty-string tag id', () => {

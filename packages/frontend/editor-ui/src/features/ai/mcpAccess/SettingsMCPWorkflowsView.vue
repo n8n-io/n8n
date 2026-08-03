@@ -11,8 +11,8 @@ import {
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { WorkflowListItem } from '@/Interface';
