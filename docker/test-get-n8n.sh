@@ -87,7 +87,8 @@ runner_key="$(env_value "$WORK/a" SANDBOX_RUNNER_API_KEYS)"
 
 # second install must not share secrets with the first
 env N8N_DIR="$WORK/b" sh "$SCRIPT" --no-start >/dev/null 2>&1
-[ "$(env_value "$WORK/b" SANDBOX_API_KEYS)" != "$api_key" ] && pass "secrets unique per install" ||
+b_key="$(env_value "$WORK/b" SANDBOX_API_KEYS)"
+[ -n "$b_key" ] && [ "$b_key" != "$api_key" ] && pass "secrets unique per install" ||
 	fail "secrets unique per install"
 
 # idempotency: re-run leaves files byte-identical and tells the user the URL
@@ -105,6 +106,19 @@ env N8N_DIR="$WORK/pin" sh "$SCRIPT" --version 2.31.4 --no-start >/dev/null 2>&1
 	fail "--version x.y.z pins in .env"
 
 check_not "--upgrade without install fails" env N8N_DIR="$WORK/missing" sh "$SCRIPT" --upgrade
+
+# malformed --version must fail before writing anything
+check_not "rejects malformed --version" env N8N_DIR="$WORK/badver" sh "$SCRIPT" --version banana --no-start
+check "malformed --version writes nothing" test ! -e "$WORK/badver"
+
+# --upgrade --no-start bumps the pin but must not touch containers
+env N8N_DIR="$WORK/stage" sh "$SCRIPT" --version 2.31.4 --no-start >/dev/null 2>&1
+stage_out="$(env N8N_DIR="$WORK/stage" sh "$SCRIPT" --upgrade --version 2.32.0 --no-start 2>&1)" &&
+	pass "--upgrade --no-start succeeds" || fail "--upgrade --no-start succeeds"
+[ "$(env_value "$WORK/stage" N8N_VERSION)" = "2.32.0" ] && pass "--upgrade --no-start updates the pin" ||
+	fail "--upgrade --no-start updates the pin"
+echo "$stage_out" | grep -q "Not restarting" && pass "--upgrade --no-start skips the restart" ||
+	fail "--upgrade --no-start skips the restart"
 
 # refuses non-empty foreign directory
 mkdir -p "$WORK/dirty" && touch "$WORK/dirty/keep"

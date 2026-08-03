@@ -62,7 +62,10 @@ parse_args() {
 		case "$1" in
 			--version)
 				if [ $# -gt 1 ] && [ "${2#-}" = "$2" ]; then
-					REQUESTED_VERSION="$2"
+					case "$2" in
+					[0-9]*.[0-9]*) REQUESTED_VERSION="$2" ;;
+					*) fail "invalid --version '$2' — expected a release version like 2.32.0" ;;
+					esac
 					shift
 				else
 					say "get-n8n.sh v${SCRIPT_VERSION} (installs the latest stable n8n, currently $(resolve_n8n_version))"
@@ -356,6 +359,13 @@ do_upgrade() {
 		printf 'N8N_VERSION=%s\n' "$target" >>"${N8N_DIR}/.env"
 	fi
 	ok "n8n version: ${current:-unset} -> ${target}"
+
+	if [ "$NO_START" -eq 1 ]; then
+		say ""
+		say "Not restarting (--no-start). To apply the upgrade:"
+		say "  docker compose -f ${N8N_DIR}/compose.yml pull && docker compose -f ${N8N_DIR}/compose.yml up -d"
+		exit 0
+	fi
 
 	compose_checked pull -q
 	compose_checked up -d --quiet-pull
