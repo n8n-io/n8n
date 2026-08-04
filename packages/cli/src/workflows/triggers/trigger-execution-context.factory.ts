@@ -405,8 +405,8 @@ export class TriggerExecutionContextFactory {
 
 	/**
 	 * Assemble the poll execution context: the Workflow, additionalData, and
-	 * resolve-at-emit closure needed to run `poll()`. The closure reads fresh
-	 * (non-cached) so the poll cursor in staticData is never stale.
+	 * resolve-at-emit closure needed to run `poll()`. The closure bypasses the
+	 * published-workflow cache so it always reads the workflow's current data.
 	 */
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
