@@ -131,6 +131,38 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 		expect(tools[0].node.credentials).toBeUndefined();
 	});
 
+	it('does not auto-assign to an HTTP request tool even when the gateway covers it', () => {
+		// Defense-in-depth mirroring MCP: an HTTP node calls a user-controlled
+		// URL, so a managed credential is never attached automatically.
+		const tools = [nodeTool('n8n-nodes-base.httpRequestTool')];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithCredentials(['httpBasicAuth']),
+			{
+				nodes: ['n8n-nodes-base.httpRequest'],
+				credentialTypes: ['httpBasicAuth'],
+				providerConfig: {},
+			} as unknown as AiGatewayConfigDto,
+			NO_OWNED,
+		);
+		expect(tools[0].node.credentials).toBeUndefined();
+	});
+
+	it('keeps an eligible inbound managed marker on an HTTP request tool (explicit opt-in)', () => {
+		const tools = [nodeTool('n8n-nodes-base.httpRequestTool', { httpBasicAuth: { ...SENTINEL } })];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithCredentials(['httpBasicAuth']),
+			{
+				nodes: ['n8n-nodes-base.httpRequest'],
+				credentialTypes: ['httpBasicAuth'],
+				providerConfig: {},
+			} as unknown as AiGatewayConfigDto,
+			NO_OWNED,
+		);
+		expect(tools[0].node.credentials).toEqual({ httpBasicAuth: SENTINEL });
+	});
+
 	it('does not auto-assign when the project already has a credential of the type (own credential wins)', () => {
 		const tools = [nodeTool('n8n-nodes-base.slackTool')];
 		reconcileNodeToolGatewayCredentials(

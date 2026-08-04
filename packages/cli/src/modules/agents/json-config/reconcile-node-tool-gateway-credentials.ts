@@ -4,7 +4,7 @@ import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow';
 
 import type { NodeTypes } from '@/node-types';
-import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
+import { checkAiGatewayEligibility, HTTP_NODE_TYPES } from '@/services/ai-gateway-eligibility';
 
 const AI_GATEWAY_MANAGED_CREDENTIAL_NAME = 'n8n credits';
 const AI_GATEWAY_MANAGED_CREDENTIAL_FLAG = '__aiGatewayManaged';
@@ -156,6 +156,7 @@ function reconcileNode(
 	reconcileAiGatewayManagedMarkers(node, isEligible);
 
 	if (aiGatewayConfig === undefined) return;
+	if (HTTP_NODE_TYPES.has(node.nodeType)) return;
 
 	for (const slot of getRequiredNodeCredentialSlots(description)) {
 		const credentialType = slot.credentialType;

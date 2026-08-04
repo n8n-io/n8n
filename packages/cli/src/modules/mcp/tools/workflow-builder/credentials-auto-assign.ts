@@ -11,6 +11,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import {
 	checkAiGatewayEligibility,
+	HTTP_NODE_TYPES,
 	type AiGatewayEligibilityReason,
 } from '@/services/ai-gateway-eligibility';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -124,12 +125,6 @@ export type McpCredentialsAutoassignEventPayload = {
 	ai_gateway_available: boolean;
 	reason_not_ai_gateway?: ReasonNotAiGateway;
 };
-
-const HTTP_NODE_TYPES = new Set([
-	'n8n-nodes-base.httpRequest',
-	'@n8n/n8n-nodes-langchain.toolHttpRequest',
-	'n8n-nodes-base.httpRequestTool',
-]);
 
 /**
  * Normalizes n8n Connect (`__aiGatewayManaged`) markers on the given nodes.
