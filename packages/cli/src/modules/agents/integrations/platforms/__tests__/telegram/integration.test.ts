@@ -39,6 +39,7 @@ const makeContext = (
 	projectId: 'proj-1',
 	credentialId: 'cred-1',
 	credential: { accessToken: 'bot-token' },
+	ingressEnabled: true,
 	webhookUrlFor: (platform) =>
 		`https://n8n.example.com/rest/projects/proj-1/agents/v2/agent-1/webhooks/${platform}`,
 	...overrides,
@@ -331,6 +332,30 @@ describe('TelegramIntegration secret token', () => {
 			mode: 'webhook',
 			secretToken: expected,
 		});
+	});
+
+	it('createAdapter uses polling for ingress-enabled local connections', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext());
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'polling' }),
+		);
+	});
+
+	it('createAdapter forces webhook mode for ingress-disabled local connections', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext({ ingressEnabled: false }));
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'webhook' }),
+		);
 	});
 
 	it('two service instances configured with the same encryption key produce identical secrets — the multi-main invariant', async () => {

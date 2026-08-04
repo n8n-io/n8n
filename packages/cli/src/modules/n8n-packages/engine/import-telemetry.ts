@@ -70,13 +70,14 @@ export function emitPackageImportedEvent(
 		missing: scopes.flatMap(({ imported }) =>
 			imported.variablePlan.missing.map(({ name }) => name),
 		),
+		created: scopes.flatMap(({ imported }) => imported.variableResult.created),
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
 	});
-	const variablesCreated = scopes.reduce(
-		(total, { imported }) => total + imported.variableResult.createdCount,
-		0,
-	);
+	// Rows, not reconciled names: a name created in two projects is two variables, and every sibling
+	// count reports entities the same way.
+	const countCreatedRows = (pick: (result: ImportContentResult) => string[]) =>
+		scopes.reduce((total, { imported }) => total + pick(imported).length, 0);
 
 	// Tags are global, so several scopes may plan the same tag; count each id once.
 	const tagPlans = scopes.map(({ imported }) => imported.tagPlan);
@@ -135,13 +136,15 @@ export function emitPackageImportedEvent(
 			variables: {
 				matched: variableSummary.matched.length,
 				missing: variableSummary.missing.length,
-				created: variablesCreated,
+				created: countCreatedRows(({ variableResult }) => variableResult.created),
+				stubbed: countCreatedRows(({ variableResult }) => variableResult.stubbed),
 				requirements: variableRequirements,
 			},
 			tags: {
 				matched: uniqueTagIds((plan) => plan.matched),
 				created: uniqueTagIds((plan) => plan.creations),
 				renamed: uniqueTagIds((plan) => plan.renames),
+				reconciled: uniqueTagIds((plan) => plan.reconciles),
 				skipped: uniqueTagIds((plan) => plan.dropped),
 				requirements: tagRequirements,
 			},

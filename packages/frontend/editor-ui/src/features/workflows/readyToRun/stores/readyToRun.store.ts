@@ -1,4 +1,4 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { STORES } from '@n8n/stores';
 import { useLocalStorage } from '@vueuse/core';

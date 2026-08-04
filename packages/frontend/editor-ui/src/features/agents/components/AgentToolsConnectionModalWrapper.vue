@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix } from '@/app/stores/aiGateway.store';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
 	isNodePreviewKey,
@@ -225,7 +225,6 @@ function commit() {
 
 function addToolRef(savedRef: AgentJsonToolRef) {
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
-	toolTelemetry.trackAdded(savedRef);
 	commit();
 	uiStore.closeModal(props.modalName);
 	toast.showMessage({
@@ -239,7 +238,6 @@ function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
 		...workingMcpServerEntries.value,
 		{ localId: uuidv4(), server: savedServer },
 	];
-	toolTelemetry.trackAddedMcpServer(savedServer);
 	commit();
 	uiStore.closeModal(props.modalName);
 	toast.showMessage({
@@ -426,7 +424,6 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 			workingToolEntries.value = workingToolEntries.value.filter(
 				(e) => e.localId !== entry.localId,
 			);
-			toolTelemetry.trackRemoved(toolRef);
 			commit();
 		},
 	});
@@ -455,7 +452,6 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 			workingMcpServerEntries.value = workingMcpServerEntries.value.filter(
 				(e) => e.localId !== entry.localId,
 			);
-			toolTelemetry.trackRemovedMcpServer(entry.server);
 			commit();
 		},
 	});

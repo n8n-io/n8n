@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { createPasswordRules } from '@n8n/design-system';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/app/constants';
