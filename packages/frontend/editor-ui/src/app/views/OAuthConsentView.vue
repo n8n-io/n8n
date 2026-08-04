@@ -51,7 +51,37 @@ const clientDetails = computed<ConsentDetails | null>(() => consentStore.consent
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
 const hasScopes = computed(() => availableScopes.value.length > 0);
-const trustRequired = computed(() => !!clientDetails.value?.redirectUri);
+// CIMD clients don't get the manual trust gate: their redirect is attested by the
+// same verified metadata document as their identity, and it's surfaced in the CIMD
+// trust card instead. DCR clients (self-asserted, unverified) still acknowledge it.
+const trustRequired = computed(
+	() => !!clientDetails.value?.redirectUri && !clientDetails.value?.isCimd,
+);
+
+// The origin the CIMD metadata was fetched from is the trust anchor (the domain a
+// user recognizes); the full document URL stays available via "View raw metadata".
+const clientOrigin = computed(() => {
+	const id = clientDetails.value?.clientId;
+	if (!id) return '';
+	try {
+		return new URL(id).host;
+	} catch {
+		return id;
+	}
+});
+
+// A loopback redirect returns the code to the user's own machine; used to tailor
+// the CIMD redirect signal ("on this machine").
+const isLoopbackRedirect = computed(() => {
+	const uri = clientDetails.value?.redirectUri;
+	if (!uri) return false;
+	try {
+		const { hostname } = new URL(uri);
+		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+	} catch {
+		return false;
+	}
+});
 const noScopesSelected = computed(() => hasScopes.value && selectedScopes.value.length === 0);
 const allowDisabled = computed(
 	() =>
@@ -210,6 +240,71 @@ onMounted(async () => {
 						})
 					}}
 				</N8nHeading>
+				<!-- CIMD clients are identified by an HTTPS URL the server fetched their
+				     metadata from. The card surfaces the verifiable signals (domain, where the
+				     code is sent) with an honest caveat that the name/icon are self-asserted,
+				     plus a link to the raw document. -->
+				<div
+					v-if="clientDetails?.isCimd"
+					:class="$style['cimd-card']"
+					data-test-id="consent-verified-identity"
+				>
+					<div :class="$style['cimd-header']">
+						<N8nText :bold="true" color="text-dark">{{ clientDetails.clientName }}</N8nText>
+						<code
+							:class="$style['cimd-origin']"
+							:title="clientDetails.clientId"
+							data-test-id="consent-verified-url"
+						>
+							{{ clientOrigin }}
+						</code>
+					</div>
+					<ul :class="$style['cimd-signals']">
+						<li :class="$style['cimd-signal']">
+							<N8nIcon icon="circle-check" color="success" size="small" />
+							<span>{{
+								i18n.baseText('oauth.consentView.cimd.domainVerified', {
+									interpolate: { origin: clientOrigin },
+								})
+							}}</span>
+						</li>
+						<li v-if="clientDetails.redirectUri" :class="$style['cimd-signal']">
+							<N8nIcon v-if="isLoopbackRedirect" icon="circle-check" color="success" size="small" />
+							<N8nIcon v-else icon="circle" color="text-light" size="small" />
+							<span>{{
+								i18n.baseText(
+									isLoopbackRedirect
+										? 'oauth.consentView.cimd.redirectLocal'
+										: 'oauth.consentView.cimd.redirectRemote',
+									{ interpolate: { uri: clientDetails.redirectUri } },
+								)
+							}}</span>
+						</li>
+					</ul>
+					<!-- Below the divider: the honest caveat sits in the metadata strip next to the
+					     provenance, so the checklist above is only what n8n can actually verify. -->
+					<div :class="$style['cimd-meta']">
+						<div :class="$style['cimd-caveat']">
+							<N8nIcon icon="info" color="text-light" size="small" />
+							<span>{{ i18n.baseText('oauth.consentView.cimd.unreviewed') }}</span>
+						</div>
+						<div :class="$style['cimd-provenance']">
+							<N8nText size="xsmall" color="text-light">{{
+								i18n.baseText('oauth.consentView.cimd.identifiedVia')
+							}}</N8nText>
+							<a
+								:href="clientDetails.clientId"
+								target="_blank"
+								rel="noopener noreferrer"
+								:class="$style['cimd-raw-link']"
+								data-test-id="consent-raw-metadata-link"
+							>
+								{{ i18n.baseText('oauth.consentView.cimd.viewRawMetadata') }}
+								<N8nIcon icon="arrow-up-right" size="xsmall" />
+							</a>
+						</div>
+					</div>
+				</div>
 				<div :class="$style['text-content']">
 					<N8nText v-if="resourceName" color="text-base" size="medium">
 						{{
@@ -253,10 +348,11 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<!-- The trust acknowledgment lives inside the warning itself so it can't be missed:
-				     one block that says where access goes, shows the URL, and asks for the check. -->
+				<!-- DCR clients (self-asserted, unverified): the trust acknowledgment lives inside
+				     the warning so it can't be missed. CIMD clients skip this — their redirect is
+				     shown in the verified trust card above. -->
 				<N8nCallout
-					v-if="!error && clientDetails?.redirectUri"
+					v-if="!error && trustRequired"
 					theme="warning"
 					data-test-id="consent-redirect-warning"
 				>
@@ -265,7 +361,7 @@ onMounted(async () => {
 							{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
 						</N8nText>
 						<code :class="$style['redirect-warning-url']" data-test-id="consent-redirect-uri">
-							{{ clientDetails.redirectUri }}
+							{{ clientDetails?.redirectUri }}
 						</code>
 						<N8nCheckbox
 							v-model="redirectUriTrusted"
@@ -453,6 +549,74 @@ onMounted(async () => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	text-align: center;
+}
+
+.cimd-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	border: var(--border-width) solid var(--border-color--light);
+	border-radius: var(--radius--lg);
+}
+
+.cimd-header {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.cimd-origin {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	word-break: break-all;
+}
+
+.cimd-signals {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.cimd-signal {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
+}
+
+.cimd-meta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--xs);
+	border-top: var(--border-width) solid var(--border-color--light);
+}
+
+.cimd-caveat {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+}
+
+.cimd-provenance {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+}
+
+.cimd-raw-link {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	font-size: var(--font-size--2xs);
+	color: var(--link--color--secondary);
 }
 
 .text-content {

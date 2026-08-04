@@ -4,6 +4,11 @@ import { makeRestApiRequest } from '../utils';
 export interface ConsentDetails {
 	clientName: string;
 	clientId: string;
+	/**
+	 * True when the client is identified by a Client ID Metadata Document, i.e.
+	 * `clientId` is the HTTPS URL that verifiably identifies it.
+	 */
+	isCimd: boolean;
 	redirectUri?: string;
 	resourceName?: string;
 	/**

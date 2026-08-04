@@ -64,6 +64,7 @@ describe('GET /rest/consent/details', () => {
 		expect(response.body.data).toEqual({
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
+			isCimd: false,
 			redirectUri: 'https://example.com/callback',
 			scopes: supportedScopes,
 			scopeTools: expect.objectContaining({
@@ -108,6 +109,7 @@ describe('GET /rest/consent/details', () => {
 		expect(response.body.data).toEqual({
 			clientName: 'Test OAuth Client',
 			clientId: 'resource-client-id',
+			isCimd: false,
 			resourceName: 'My Named Workflow',
 			redirectUri: 'https://example.com/callback',
 			scopes: [],

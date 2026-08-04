@@ -14,11 +14,13 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 import type { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
+import type { CimdMetadataHttpClient } from '../cimd-metadata-http-client';
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
+import type { OAuthServerConfig } from '../oauth-server.config';
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
@@ -39,6 +41,11 @@ let eventService: Mocked<EventService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
 const urlServiceMock = mock<UrlService>();
+
+// CIMD is off by default so existing cases keep their DCR/virtual-client behavior;
+// the CIMD suite flips `cimdEnabled` on and stubs `fetchMetadata` per test.
+const oauthServerConfigMock = mock<OAuthServerConfig>({ cimdEnabled: false });
+const cimdMetadataClientMock = mock<CimdMetadataHttpClient>();
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -77,12 +84,114 @@ describe('OAuthServerService', () => {
 			mailer,
 			urlServiceMock,
 			eventService,
+			oauthServerConfigMock,
+			cimdMetadataClientMock,
 		);
 	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getAllowedRedirectUris.mockResolvedValue([]);
+		oauthServerConfigMock.cimdEnabled = false;
+	});
+
+	describe('CIMD client resolution', () => {
+		const CIMD_CLIENT_ID = 'https://client.example.com/metadata.json';
+		const metadata = {
+			client_id: CIMD_CLIENT_ID,
+			client_name: 'Example CIMD Client',
+			redirect_uris: ['https://client.example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+			logo_uri: 'https://client.example.com/logo.png',
+		};
+
+		beforeEach(() => {
+			oauthServerConfigMock.cimdEnabled = true;
+			cimdMetadataClientMock.fetchMetadata.mockResolvedValue(metadata);
+			oauthClientRepository.upsert.mockResolvedValue({} as never);
+		});
+
+		it('resolves an HTTPS client_id from its metadata document, not the DB row', async () => {
+			const result = await service.clientsStore.getClient(CIMD_CLIENT_ID);
+
+			expect(cimdMetadataClientMock.fetchMetadata).toHaveBeenCalledWith(CIMD_CLIENT_ID);
+			expect(oauthClientRepository.findOneBy).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				client_id: CIMD_CLIENT_ID,
+				client_name: 'Example CIMD Client',
+				redirect_uris: ['https://client.example.com/callback'],
+				logo_uri: 'https://client.example.com/logo.png',
+			});
+		});
+
+		it('persists a cap-excluded row (isCimd) so the consent/token FKs resolve', async () => {
+			await service.clientsStore.getClient(CIMD_CLIENT_ID);
+
+			expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ id: CIMD_CLIENT_ID, isCimd: true, isFirstParty: false }),
+				['id'],
+			);
+		});
+
+		it('returns undefined when the metadata document cannot be resolved', async () => {
+			cimdMetadataClientMock.fetchMetadata.mockRejectedValue(new Error('unreachable'));
+
+			const result = await service.clientsStore.getClient(CIMD_CLIENT_ID);
+
+			expect(result).toBeUndefined();
+			expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		it('ignores an HTTPS client_id as CIMD when the feature is disabled', async () => {
+			oauthServerConfigMock.cimdEnabled = false;
+			oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+			const result = await service.clientsStore.getClient(CIMD_CLIENT_ID);
+
+			expect(cimdMetadataClientMock.fetchMetadata).not.toHaveBeenCalled();
+			expect(oauthClientRepository.findOneBy).toHaveBeenCalledWith({ id: CIMD_CLIENT_ID });
+			expect(result).toBeUndefined();
+		});
+
+		it('does not treat a form-trigger URL as CIMD', async () => {
+			const formTriggerId = 'https://n8n.example.com/form/abc';
+			oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+			await service.clientsStore.getClient(formTriggerId);
+
+			expect(cimdMetadataClientMock.fetchMetadata).not.toHaveBeenCalled();
+			expect(oauthClientRepository.findOneBy).toHaveBeenCalledWith({ id: formTriggerId });
+		});
+
+		it('skips the instance redirect-URI allowlist for CIMD clients', async () => {
+			// An allowlist that would reject the request for a non-CIMD client.
+			getAllowedRedirectUris.mockResolvedValue(['https://only-this.example.com/cb']);
+			const res = mock<Response>();
+
+			await service.authorize(
+				{
+					client_id: CIMD_CLIENT_ID,
+					client_name: 'Example CIMD Client',
+					redirect_uris: ['https://client.example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+					response_types: ['code'],
+					logo_uri: undefined,
+					tos_uri: undefined,
+				},
+				{
+					redirectUri: 'https://client.example.com/callback',
+					codeChallenge: 'challenge',
+					state: 'state-xyz',
+					resource: new URL(TEST_RESOURCE_URL),
+				},
+				res,
+			);
+
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(res.status).not.toHaveBeenCalledWith(400);
+		});
 	});
 
 	describe('clientsStore', () => {
@@ -182,6 +291,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					oauthServerConfigMock,
+					cimdMetadataClientMock,
 				);
 			});
 
@@ -251,6 +362,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					oauthServerConfigMock,
+					cimdMetadataClientMock,
 				);
 
 				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
@@ -267,7 +380,10 @@ describe('OAuthServerService', () => {
 
 				await service.isClientLimitReached();
 
-				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({
+					isFirstParty: false,
+					isCimd: false,
+				});
 			});
 
 			it('counts only non-first-party clients for the instance stats', async () => {
@@ -275,7 +391,10 @@ describe('OAuthServerService', () => {
 
 				await service.getInstanceClientStats();
 
-				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({
+					isFirstParty: false,
+					isCimd: false,
+				});
 			});
 		});
 
@@ -846,6 +965,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				eventService,
+				oauthServerConfigMock,
+				cimdMetadataClientMock,
 			);
 
 			const client = {
@@ -1399,6 +1520,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				mock<EventService>(),
+				oauthServerConfigMock,
+				cimdMetadataClientMock,
 			);
 
 			expect(
@@ -1447,6 +1570,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlService,
 				mock<EventService>(),
+				oauthServerConfigMock,
+				cimdMetadataClientMock,
 			);
 		};
 

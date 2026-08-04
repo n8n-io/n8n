@@ -237,6 +237,7 @@ import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/17852471943
 import { AddMisfirePolicyToScheduler1785247194307 } from '../common/1785247194307-AddMisfirePolicyToScheduler';
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import { AddSetupCompletedAtToAgents1785500832626 } from '../common/1785500832626-AddSetupCompletedAtToAgents';
+import { AddIsCimdToOAuthClients1785500900000 } from '../common/1785500900000-AddIsCimdToOAuthClients';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -479,4 +480,5 @@ export const postgresMigrations: Migration[] = [
 	AddMisfirePolicyToScheduler1785247194307,
 	CreateAgentChatAttachmentsTable1785255306000,
 	AddSetupCompletedAtToAgents1785500832626,
+	AddIsCimdToOAuthClients1785500900000,
 ];

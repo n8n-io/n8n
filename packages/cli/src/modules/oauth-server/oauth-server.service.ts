@@ -26,10 +26,12 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
+import { CimdMetadataHttpClient } from './cimd-metadata-http-client';
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
+import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
@@ -104,11 +106,20 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly oauthServerConfig: OAuthServerConfig,
+		private readonly cimdMetadataClient: CimdMetadataHttpClient,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
 		return {
 			getClient: async (clientId: string): Promise<OAuthClientInformationFull | undefined> => {
+				// A CIMD client_id (an HTTPS URL) always resolves from its metadata
+				// document (cached), which stays the source of truth over the row we
+				// persist for the FKs.
+				if (this.isCimdClientId(clientId)) {
+					return await this.resolveCimdClient(clientId);
+				}
+
 				const client = await this.oauthClientRepository.findOneBy({ id: clientId });
 				if (!client) {
 					return await this.resolveVirtualClient(clientId);
@@ -158,9 +169,16 @@ export class OAuthServerService implements OAuthServerProvider {
 		};
 	}
 
-	/** Returns true when the instance is already at or above the registered-client cap. */
+	/**
+	 * Returns true when the instance is already at or above the registered-client
+	 * cap. Only counts DCR registrations: first-party virtual clients and CIMD
+	 * clients (identified by a verifiable URL) don't consume registration slots.
+	 */
 	async isClientLimitReached(): Promise<boolean> {
-		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const clientCount = await this.oauthClientRepository.countBy({
+			isFirstParty: false,
+			isCimd: false,
+		});
 		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
 	}
 
@@ -169,7 +187,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		limit: number;
 		atCapacity: boolean;
 	}> {
-		const count = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const count = await this.oauthClientRepository.countBy({ isFirstParty: false, isCimd: false });
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		return { count, limit, atCapacity: count >= limit };
 	}
@@ -183,7 +201,10 @@ export class OAuthServerService implements OAuthServerProvider {
 	 * — matching the response shape of the pre-check guard at the route layer.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
-		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const clientCount = await this.oauthClientRepository.countBy({
+			isFirstParty: false,
+			isCimd: false,
+		});
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		if (clientCount > limit) {
 			await this.oauthClientRepository.delete({ id: clientId });
@@ -249,6 +270,84 @@ export class OAuthServerService implements OAuthServerProvider {
 		return [this.urlService.getWebhookBaseUrl(), this.urlService.getTestWebhookBaseUrl()]
 			.map((base) => (base.endsWith('/') ? base : `${base}/`))
 			.some((base) => clientId.startsWith(base));
+	}
+
+	/**
+	 * Whether a client_id should be treated as a Client ID Metadata Document: CIMD
+	 * is enabled, the id is an HTTPS URL, and it isn't a first-party form-trigger
+	 * URL (which is handled as a virtual client).
+	 */
+	private isCimdClientId(clientId: string): boolean {
+		if (!this.oauthServerConfig.cimdEnabled) {
+			return false;
+		}
+
+		let url: URL;
+		try {
+			url = new URL(clientId);
+		} catch {
+			return false;
+		}
+
+		return url.protocol === 'https:' && !this.isFormTriggerClientId(clientId);
+	}
+
+	/**
+	 * Resolve a CIMD client by fetching its metadata document from the client_id
+	 * URL. The document (cached, SSRF-guarded) is the source of truth; a row is
+	 * upserted only so the consent/token foreign keys resolve, marked `isCimd` so
+	 * it stays out of the registered-client cap. Returns `undefined` when the
+	 * document can't be fetched or fails validation, so the SDK answers
+	 * `invalid_client` just as it would for an unknown id.
+	 */
+	private async resolveCimdClient(
+		clientId: string,
+	): Promise<OAuthClientInformationFull | undefined> {
+		let metadata;
+		try {
+			metadata = await this.cimdMetadataClient.fetchMetadata(clientId);
+		} catch (error) {
+			this.logger.warn('CIMD client resolution failed', {
+				clientId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+
+		const clientName = metadata.client_name ?? clientId;
+		const redirectUris = metadata.redirect_uris;
+		const grantTypes = metadata.grant_types ?? ['authorization_code'];
+		const tokenEndpointAuthMethod = metadata.token_endpoint_auth_method ?? 'none';
+
+		await this.oauthClientRepository.upsert(
+			{
+				id: clientId,
+				name: clientName,
+				redirectUris,
+				grantTypes,
+				tokenEndpointAuthMethod,
+				clientSecret: null,
+				clientSecretExpiresAt: null,
+				isFirstParty: false,
+				isCimd: true,
+			},
+			['id'],
+		);
+
+		// Advertise the instance's supported scopes, same as the DCR path; the user
+		// picks the effective scopes on the consent screen.
+		const supportedScopes = this.resourceRegistry.getAllScopes();
+		return {
+			client_id: clientId,
+			client_name: clientName,
+			redirect_uris: redirectUris,
+			grant_types: grantTypes,
+			token_endpoint_auth_method: tokenEndpointAuthMethod,
+			response_types: ['code'],
+			...(supportedScopes.length > 0 && { scope: supportedScopes.join(' ') }),
+			logo_uri: metadata.logo_uri,
+			tos_uri: undefined,
+		};
 	}
 
 	private validateClientRegistration(client: OAuthClientInformationFull): void {
@@ -336,7 +435,13 @@ export class OAuthServerService implements OAuthServerProvider {
 			const targetResource = resource
 				? await this.resourceRegistry.getByResourceUrl(resource)
 				: this.resourceRegistry.getDefaultResource();
-			const allowedUris = (await targetResource?.getAllowedRedirectUris?.()) ?? [];
+			// CIMD clients: the requested redirect_uri was already validated against
+			// the document's declared redirect_uris by the SDK, and per the CIMD trust
+			// model (the identity is verifiable at its URL) we don't additionally
+			// constrain it to the instance's redirect-URI allowlist.
+			const allowedUris = this.isCimdClientId(client.client_id)
+				? []
+				: ((await targetResource?.getAllowedRedirectUris?.()) ?? []);
 			if (allowedUris.length > 0 && !this.isRedirectUriAllowed(allowedUris, params.redirectUri)) {
 				this.logger.warn(
 					'MCP OAuth authorization rejected: requested redirect URI is not in the configured allowlist',

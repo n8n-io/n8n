@@ -29,6 +29,7 @@ import {
 } from '../../clients.utils';
 import type { OAuthClientFilters } from '../../clients.utils';
 import McpEmptyStateCard from '../McpEmptyStateCard.vue';
+import McpVerifiedBadge from '../McpVerifiedBadge.vue';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
 import OAuthClientOwnerCell from './OAuthClientOwnerCell.vue';
 import OAuthClientsFilters from './OAuthClientsFilters.vue';
@@ -311,9 +312,20 @@ function onRevoke(item: OAuthClientResponseDto) {
 							<N8nIcon v-else icon="mcp" :class="$style['client-icon']" />
 						</span>
 						<div :class="$style['client-name']">
-							<N8nText data-test-id="mcp-client-name" color="text-dark">
-								{{ item.name }}
-							</N8nText>
+							<span :class="$style['client-name-row']">
+								<N8nText
+									data-test-id="mcp-client-name"
+									color="text-dark"
+									:class="$style['client-name-text']"
+								>
+									{{ item.name }}
+								</N8nText>
+								<McpVerifiedBadge
+									v-if="item.isCimd"
+									:label="i18n.baseText('settings.mcp.oAuthClients.verified.badge')"
+									:tooltip="i18n.baseText('settings.mcp.oAuthClients.verified.tooltip')"
+								/>
+							</span>
 							<N8nText
 								v-if="clientTypeLabel(item)"
 								data-test-id="mcp-client-type"
@@ -433,6 +445,20 @@ function onRevoke(item: OAuthClientResponseDto) {
 .client-name {
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
+}
+
+.client-name-row {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.client-name-text {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .empty-state {

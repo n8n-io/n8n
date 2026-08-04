@@ -17,6 +17,8 @@ type ConsentDetailsResult =
 			ok: true;
 			clientName: string;
 			clientId: string;
+			/** True when the client is identified by a Client ID Metadata Document (its id is a verifiable HTTPS URL). */
+			isCimd: boolean;
 			resourceName?: string;
 			redirectUri?: string;
 			/**
@@ -86,6 +88,7 @@ export class OAuthConsentService {
 					ok: true,
 					clientName: client.name,
 					clientId: client.id,
+					isCimd: client.isCimd,
 					resourceName: resource.displayName,
 					redirectUri: sessionPayload.redirectUri,
 					scopes,
@@ -104,6 +107,7 @@ export class OAuthConsentService {
 				ok: true,
 				clientName: client.name,
 				clientId: client.id,
+				isCimd: client.isCimd,
 				redirectUri: sessionPayload.redirectUri,
 				scopes,
 				previousScopes: await this.previousScopes(user.id, client.id, scopes),

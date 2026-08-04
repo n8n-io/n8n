@@ -66,5 +66,6 @@ export const createOAuthClient = (
 	tokenEndpointAuthMethod: 'client_secret_basic',
 	grantedAt: new Date('2025-09-09T14:14:04.155Z').getTime(),
 	scopes: ['workflow:read', 'execution:read'],
+	isCimd: false,
 	...overrides,
 });

@@ -57,6 +57,7 @@ export class OAuthClientsController {
 			updatedAt: client.updatedAt.toISOString(),
 			grantedAt: client.grantedAt,
 			scopes: client.scopes,
+			isCimd: client.isCimd,
 			owner: client.owner,
 		}));
 

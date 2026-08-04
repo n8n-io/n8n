@@ -23,6 +23,11 @@ const oauthClientShape = {
 	grantedAt: z.number(),
 	/** Scopes granted on the consent screen. */
 	scopes: z.array(z.string()),
+	/**
+	 * True when the client was resolved from a Client ID Metadata Document, i.e.
+	 * its `id` is the HTTPS URL that verifiably identifies it.
+	 */
+	isCimd: z.boolean(),
 	/** Consent owner; present only when listing with ownership=all. */
 	owner: oauthClientOwnerShape.optional(),
 };
