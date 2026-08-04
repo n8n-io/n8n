@@ -1,10 +1,10 @@
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Router } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { getSanitizedCurrentPath } from '@/app/utils/urlUtils';
-import { useUsersStore } from '@/features/settings/users/users.store';
 
 let handled = false;
 

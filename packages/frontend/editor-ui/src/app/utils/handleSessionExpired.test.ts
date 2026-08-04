@@ -9,9 +9,9 @@ import {
 	resetSessionExpiredHandledFlag,
 	restoreNotificationSuppression,
 } from '@/app/utils/handleSessionExpired';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
