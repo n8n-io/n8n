@@ -69,7 +69,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				agentId,
 				options,
 			);
-			await fetchDatasets(projectId, agentId);
+			await fetchDatasets(projectId, agentId).catch(() => null);
 			return result;
 		} finally {
 			generatingCases.value = { ...generatingCases.value, [agentId]: false };
