@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getBoardList, getWorkspaces, normalizeIdList, toIso8601 } from '../helpers/filterOptions';
+import {
+	getBoardList,
+	getWorkspaceFolders,
+	getWorkspaces,
+	normalizeIdList,
+	toIso8601,
+} from '../helpers/filterOptions';
 
 describe('toIso8601', () => {
 	it('converts the n8n picker\u2019s naive local datetime to UTC ISO 8601', () => {
@@ -134,5 +140,71 @@ describe('getBoardList', () => {
 	});
 });
 
-// getWorkspaceFolders tests stay with the community package until the folder
-// loaders are ported (workspace/folder resources, a later PR in the series).
+describe('getWorkspaceFolders', () => {
+	let mockContext: any;
+	let httpMock: ReturnType<typeof vi.fn>;
+
+	beforeEach(() => {
+		httpMock = vi.fn();
+		mockContext = {
+			getNode: vi.fn(() => ({ name: 'test-node' })),
+			getCurrentNodeParameter: vi.fn(),
+			helpers: { httpRequestWithAuthentication: httpMock },
+		};
+	});
+
+	it('returns empty without an API call when no workspace is selected', async () => {
+		mockContext.getCurrentNodeParameter.mockReturnValue(undefined);
+
+		const options = await getWorkspaceFolders.call(mockContext);
+
+		expect(options).toEqual([]);
+		expect(httpMock).not.toHaveBeenCalled();
+		// The workspace param is a resource locator — the loader unwraps it.
+		expect(mockContext.getCurrentNodeParameter).toHaveBeenCalledWith(
+			'duplicateBoardOptions.workspaceId',
+			{ extractValue: true },
+		);
+	});
+
+	it('lists the selected workspace’s folders sorted by name', async () => {
+		mockContext.getCurrentNodeParameter.mockReturnValue('16476169');
+		httpMock.mockResolvedValue({
+			data: {
+				folders: [
+					{ id: '2', name: 'Zeta' },
+					{ id: '1', name: 'Alpha' },
+				],
+			},
+		});
+
+		const options = await getWorkspaceFolders.call(mockContext);
+
+		expect(options).toEqual([
+			{ name: 'Alpha', value: '1' },
+			{ name: 'Zeta', value: '2' },
+		]);
+		expect(httpMock.mock.calls[0][1].body.variables).toEqual({
+			workspaceIds: ['16476169'],
+			limit: 100,
+			page: 1,
+		});
+	});
+
+	it('pages through full pages up to the cap', async () => {
+		mockContext.getCurrentNodeParameter.mockReturnValue('16476169');
+		const fullPage = Array.from({ length: 100 }, (_, i) => ({
+			id: String(i),
+			name: `folder-${i}`,
+		}));
+		httpMock
+			.mockResolvedValueOnce({ data: { folders: fullPage } })
+			.mockResolvedValueOnce({ data: { folders: [{ id: 'last', name: 'Last' }] } });
+
+		const options = await getWorkspaceFolders.call(mockContext);
+
+		expect(options).toHaveLength(101);
+		expect(httpMock).toHaveBeenCalledTimes(2);
+		expect(httpMock.mock.calls[1][1].body.variables).toMatchObject({ page: 2 });
+	});
+});

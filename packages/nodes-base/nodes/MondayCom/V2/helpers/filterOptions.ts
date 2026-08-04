@@ -6,10 +6,10 @@ import { MondayGraphQLClient } from '../transport/MondayGraphQLClient';
 /**
  * Shared filter load-options and value-normalization helpers.
  *
- * Ported from the community package's filterOptions.ts. The folder-related
- * load-option functions that also live there in the community package arrive
- * with the resources that use them (workspace, folder, doc, form) in later
- * PRs of this series.
+ * Ported from the community package's filterOptions.ts. The folder-resource
+ * load-option functions that also live there in the community package (they
+ * depend on the folders.ts helper) arrive with the resources that use them
+ * (workspace, folder, doc, form) in later PRs of this series.
  */
 
 const WORKSPACE_PAGE_SIZE = 100;
@@ -45,6 +45,62 @@ export async function getWorkspaces(this: ILoadOptionsFunctions): Promise<INodeP
 	return rows
 		.sort((a, b) => a.name.localeCompare(b.name))
 		.map((row) => ({ name: row.name, value: row.id }));
+}
+
+const FOLDERS_PAGE_SIZE = 100;
+/** Bounded window: folders are per-workspace, so this is generous. */
+const MAX_FOLDER_PAGES = 10;
+
+/**
+ * Lists the folders of the workspace picked at `workspaceParamPath`. Folders
+ * only exist inside a workspace, so without one selected there is nothing to
+ * list — the loader returns empty without an API call, which is how the
+ * "pick a workspace first" requirement is enforced (collection options can't
+ * hard-require sibling options in n8n). The workspace parameter is a
+ * resource locator, so the read extracts the plain ID from { mode, value }.
+ */
+async function loadWorkspaceFolders(
+	context: ILoadOptionsFunctions,
+	workspaceParamPath: string,
+): Promise<INodePropertyOptions[]> {
+	const workspaceId = context.getCurrentNodeParameter(workspaceParamPath, {
+		extractValue: true,
+	}) as string | undefined;
+	if (!workspaceId) {
+		return [];
+	}
+
+	const client = new MondayGraphQLClient(context);
+	const rows: NamedRow[] = [];
+
+	for (let page = 1; page <= MAX_FOLDER_PAGES; page++) {
+		const data = await client.execute(
+			'query ($workspaceIds: [ID], $limit: Int!, $page: Int!) { folders(workspace_ids: $workspaceIds, limit: $limit, page: $page) { id name } }',
+			0,
+			{ workspaceIds: [workspaceId], limit: FOLDERS_PAGE_SIZE, page },
+		);
+		const pageRows = (data.folders ?? []) as NamedRow[];
+		rows.push(...pageRows);
+		if (pageRows.length < FOLDERS_PAGE_SIZE) break;
+	}
+
+	return rows
+		.sort((a, b) => a.name.localeCompare(b.name))
+		.map((row) => ({ name: row.name, value: row.id }));
+}
+
+/** Folder dropdown for Board: Duplicate (workspace under duplicateBoardOptions). */
+export async function getWorkspaceFolders(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return await loadWorkspaceFolders(this, 'duplicateBoardOptions.workspaceId');
+}
+
+/** Folder dropdown for Board: Create (workspace under createBoardOptions). */
+export async function getCreateBoardWorkspaceFolders(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return await loadWorkspaceFolders(this, 'createBoardOptions.workspaceId');
 }
 
 const BOARD_LIST_LIMIT = 500;

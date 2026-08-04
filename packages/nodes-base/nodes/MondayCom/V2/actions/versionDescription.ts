@@ -1,7 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
+import { boardFields, boardOperations } from './board/BoardDescription';
+import { columnFields, columnOperations } from './column/ColumnDescription';
+import { groupFields, groupOperations } from './group/GroupDescription';
 import { itemFields, itemOperations } from './item/ItemDescription';
+import { updateFields, updateOperations } from './update/UpdateDescription';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Monday.com',
@@ -61,10 +65,25 @@ export const versionDescription: INodeTypeDescription = {
 			name: 'resource',
 			type: 'options',
 			noDataExpression: true,
-			options: [{ name: 'Item', value: 'item' }],
+			options: [
+				{ name: 'Board', value: 'board' },
+				// The value stays 'group' so workflows saved before the rename keep working.
+				{ name: 'Board Group', value: 'group' },
+				{ name: 'Column', value: 'column' },
+				{ name: 'Item', value: 'item' },
+				{ name: 'Update', value: 'update' },
+			],
 			default: 'item',
 		},
+		...boardOperations,
+		...columnOperations,
+		...groupOperations,
 		...itemOperations,
+		...updateOperations,
+		...boardFields,
+		...columnFields,
+		...groupFields,
 		...itemFields,
+		...updateFields,
 	],
 };

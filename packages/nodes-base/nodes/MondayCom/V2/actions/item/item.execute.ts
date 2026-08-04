@@ -945,7 +945,7 @@ export async function moveItem(
 	return (data.move_item_to_board ?? {}) as IDataObject;
 }
 
-function safeJsonParse(text: string): unknown {
+export function safeJsonParse(text: string): unknown {
 	try {
 		return JSON.parse(text);
 	} catch {

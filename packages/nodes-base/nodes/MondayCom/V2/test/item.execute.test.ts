@@ -626,10 +626,9 @@ describe('moveItem', () => {
 
 describe('item input mode for item-only operations', () => {
 	const properties = new MondayComV2(baseDescription).description.properties;
-	// The shared selector block also covers createUpdate (Update resource,
-	// later PR); getUpdates and createNotification get their own selectors
-	// when those resources are ported.
-	const itemOnlyOps = ['createUpdate', 'getItem', 'getItemSubscribers'];
+	// createNotification joins this list when the notification resource is
+	// ported (the community node has 5 item-only operations).
+	const itemOnlyOps = ['createUpdate', 'getItem', 'getItemSubscribers', 'getUpdates'];
 
 	it('shows an Item Input selector for every item-only operation', () => {
 		const selectors = properties.filter((p) => p.name === 'itemInputMode');
@@ -662,9 +661,9 @@ describe('item input mode for item-only operations', () => {
 		const itemListBlocks = properties.filter(
 			(p) => p.name === 'itemId' && p.displayOptions?.show?.itemInputMode?.[0] === 'list',
 		);
-		// One shared block for the item slice; updates/notifications add theirs
-		// in later PRs (the community node has 3).
-		expect(itemListBlocks.length).toBe(1);
+		// Item slice + updates each contribute a block; notifications add the
+		// third in a later PR (the community node has 3).
+		expect(itemListBlocks.length).toBe(2);
 
 		for (const block of itemListBlocks) {
 			const operation = (block.displayOptions!.show!.operation as string[])[0];
