@@ -45,6 +45,8 @@ const props = defineProps<{
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	/** No agent row exists yet, so agent-scoped endpoints would 404. */
+	agentUnsaved?: boolean;
 	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
@@ -117,6 +119,7 @@ const i18n = useI18n();
 						:is-published="Boolean(agent?.activeVersionId)"
 						:validation-issues="configValidationIssues ?? []"
 						:simple-channel-setup="artifactMode"
+						:agent-unsaved="agentUnsaved"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
 						@agent-changed="emit('agent-changed')"
@@ -134,6 +137,7 @@ const i18n = useI18n();
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
 						:validation-issues="configValidationIssues ?? []"
+						:agent-unsaved="agentUnsaved"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"

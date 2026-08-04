@@ -592,16 +592,27 @@ async function buildRequestForCredentialType(
 	if (!credentialType && isTrigger && !isTestable && !hasParamIssues) return null;
 
 	// Determine whether this request still needs user intervention.
-	// A credential request needs action if no credential is set or the test failed.
+	// A credential request needs action only when the slot leaves something to
+	// collect: nothing bound, or a bound id that doesn't resolve to a stored
+	// credential in scope (e.g. an imported workflow referencing another
+	// instance's credential). A resolvable bound credential is settled even if
+	// its live test fails — tests fail transiently and re-asking for an
+	// already-connected credential is redundant friction; the failure still
+	// rides along in credentialTestResult for display.
 	// A parameter request needs action if issues remain.
 	// A trigger-only request (no credential, no param issues) never blocks apply.
 	let needsAction = false;
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
-		const hasValidCredential =
-			(typeof existingOnNode?.id === 'string' || isAiGatewayManagedCredential(existingOnNode)) &&
-			(credentialTestResult === undefined || credentialTestResult.success);
-		needsAction = !hasValidCredential;
+		const boundId =
+			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
+				? existingOnNode.id
+				: undefined;
+		const isSettled =
+			isAiGatewayManagedCredential(existingOnNode) ||
+			(boundId !== undefined &&
+				existingCredentials.some((credential) => credential.id === boundId));
+		needsAction = !isSettled;
 	}
 	if (hasParamIssues) {
 		needsAction = true;
@@ -1261,6 +1272,13 @@ export async function analyzeWorkflow(
 	context: InstanceAiContext,
 	workflowId: string,
 	triggerResults?: Record<string, { status: 'success' | 'error' | 'listening'; error?: string }>,
+	options?: {
+		/** Keep settled requests (needsAction=false) in the result. For reporting
+		 *  consumers only (e.g. the apply path surfacing a just-applied credential
+		 *  whose test failed) — never for card rendering, where settled slots must
+		 *  stay hidden. */
+		includeSettled?: boolean;
+	},
 ): Promise<SetupRequest[]> {
 	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
 
@@ -1285,11 +1303,16 @@ export async function analyzeWorkflow(
 				req.isTrigger ||
 				(req.parameterIssues && Object.keys(req.parameterIssues).length > 0),
 		)
-		// Hide cards the user has nothing to do on: credentials already set and
-		// tested, no parameter issues, not a trigger awaiting testing. Trigger
-		// steps are always kept — triggers require user testing regardless of
+		// Hide cards the user has nothing to do on: credentials already set,
+		// no parameter issues, not a trigger awaiting testing. Trigger steps
+		// are always kept — triggers require user testing regardless of
 		// credential state.
-		.filter((req) => !!req.needsAction || (req.isTrigger && !!req.isTestable));
+		.filter(
+			(req) =>
+				options?.includeSettled === true ||
+				!!req.needsAction ||
+				(req.isTrigger && !!req.isTestable),
+		);
 
 	sortByExecutionOrder(
 		setupRequests,

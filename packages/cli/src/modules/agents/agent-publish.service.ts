@@ -10,6 +10,7 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { EntityManager } from '@n8n/typeorm';
+import isEqual from 'lodash/isEqual';
 import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -21,7 +22,14 @@ import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
+import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
+import {
+	AgentModificationTelemetryService,
+	diffAgentConfigParts,
+	type AgentActor,
+} from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
@@ -33,8 +41,24 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+import {
+	configuredCapabilityKinds,
+	countAgentCapabilities,
+	totalAgentCapabilities,
+} from './utils/agent-capabilities';
 
-export type AgentPublishSource = 'editor' | 'builder' | 'channel_connect' | 'slack_setup';
+export type AgentPublishTrigger = 'explicit' | 'republish' | 'channel_connect' | 'slack_setup';
+
+/**
+ * Who published and why. `republish` is absent because the caller cannot know
+ * it: `publishAgent` derives it from a `versionId` activating an older
+ * snapshot, so a caller can't claim an explicit publish that is really a
+ * rollback.
+ */
+export interface AgentPublishEmitter {
+	by: AgentActor;
+	trigger: Exclude<AgentPublishTrigger, 'republish'>;
+}
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
@@ -87,13 +111,15 @@ export class AgentPublishService {
 		private readonly agentValidationService: AgentValidationService,
 		private readonly credentialsService: CredentialsService,
 		private readonly telemetry: Telemetry,
+		private readonly setupCompletionService: AgentSetupCompletionService,
+		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
 
 	async publishAgent(
 		agentId: string,
 		projectId: string,
 		user: User,
-		source: AgentPublishSource,
+		emitter: AgentPublishEmitter,
 		versionId?: string,
 		options: PublishAgentOptions = {},
 	): Promise<PublishAgentResult> {
@@ -134,6 +160,16 @@ export class AgentPublishService {
 			options.ignoreDraftIntegrations,
 		);
 
+		// Backstop: a channel connect publishes the agent in the same request that
+		// adds its first capability, bypassing the config-save path. Marking here
+		// keeps "setup completed" a superset of "published".
+		const emitSetupCompleted = this.setupCompletionService.recordPublishedSetupComplete(
+			agent,
+			projectId,
+			user,
+			targetHistory ? targetHistory.schema : agent.schema,
+		);
+
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (targetHistory) {
 				agent.activeVersionId = targetHistory.versionId;
@@ -162,15 +198,8 @@ export class AgentPublishService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		// activeVersionId was just set above (either to targetHistory.versionId or
-		// agent.versionId), so it is never null on this success path.
-		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_PUBLISHED, {
-			agent_id: agentId,
-			project_id: projectId,
-			user_id: user.id,
-			source,
-			version_id: agent.activeVersionId!,
-		});
+		this.trackPublished(agent, projectId, user, emitter, targetHistory);
+		await emitSetupCompleted?.();
 
 		const credentialIntegrations = agent.integrations ?? [];
 		if (credentialIntegrations.length > 0 && options.syncIntegrations !== false) {
@@ -255,7 +284,7 @@ export class AgentPublishService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		source: 'editor' | 'builder',
+		by: AgentActor,
 	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
@@ -272,12 +301,7 @@ export class AgentPublishService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		this.telemetry.track(TELEMETRY_EVENT.AGENTS.AGENT_UNPUBLISHED, {
-			agent_id: agentId,
-			project_id: projectId,
-			user_id: user.id,
-			source,
-		});
+		this.trackUnpublished(agentId, projectId, user, by);
 
 		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
 
@@ -299,7 +323,105 @@ export class AgentPublishService {
 		return agent;
 	}
 
-	async revertToPublishedAgent(agentId: string, projectId: string): Promise<Agent> {
+	/**
+	 * One event per surface rather than one event with a `by` property, matching
+	 * the creation and modification events. Written as a switch because
+	 * `Telemetry.track` types its payload against the specific event passed, so
+	 * a lookup map would widen the event to a union its payload cannot satisfy.
+	 */
+	private trackPublished(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		emitter: AgentPublishEmitter,
+		targetHistory: AgentHistory | undefined,
+	): void {
+		// The snapshot that actually went live, which for a republish is the
+		// version's schema rather than the draft.
+		const published = targetHistory ? targetHistory.schema : agent.schema;
+		const counts = countAgentCapabilities(published, agent.integrations);
+		// Only model and tool_types: this helper's own tool_count folds in MCP
+		// servers, provider tools, web search and sub-agents, which would
+		// disagree with the per-kind counts above.
+		const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(
+			published,
+			agent.integrations,
+		);
+
+		const properties = {
+			agent_id: agent.id,
+			project_id: projectId,
+			user_id: user.id,
+			// Activating an older snapshot is a rollback, whatever the caller
+			// asked for — and only this method knows which branch ran.
+			trigger: targetHistory ? ('republish' as const) : emitter.trigger,
+			// Set by the transaction above to either targetHistory.versionId or
+			// agent.versionId, so it is never null on this path.
+			version_id: agent.activeVersionId!,
+			capability_kinds: configuredCapabilityKinds(counts),
+			capability_count: totalAgentCapabilities(counts),
+			tool_count: counts.tool,
+			skill_count: counts.skill,
+			sub_agent_count: counts.subAgent,
+			mcp_server_count: counts.mcpServer,
+			vector_store_count: counts.vectorStore,
+			task_count: counts.task,
+			trigger_count: counts.channel,
+			model,
+			tool_types,
+		} as const;
+
+		switch (emitter.by) {
+			case 'user':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT, {
+					...properties,
+					event_version: '2',
+				});
+				return;
+			case 'builder':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_PUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+				return;
+			case 'mcp':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_PUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+		}
+	}
+
+	private trackUnpublished(agentId: string, projectId: string, user: User, by: AgentActor): void {
+		const properties = { agent_id: agentId, project_id: projectId, user_id: user.id } as const;
+
+		switch (by) {
+			case 'user':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_UNPUBLISHED_AGENT, {
+					...properties,
+					event_version: '2',
+				});
+				return;
+			case 'builder':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_UNPUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+				return;
+			case 'mcp':
+				this.telemetry.track(TELEMETRY_EVENT.AGENTS.MCP_UNPUBLISHED_AGENT, {
+					...properties,
+					event_version: '1',
+				});
+		}
+	}
+
+	async revertToPublishedAgent(
+		agentId: string,
+		projectId: string,
+		user: User,
+		modifiedBy: AgentActor,
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -310,6 +432,11 @@ export class AgentPublishService {
 			throw new ConflictError(`Agent "${agentId}" is not published`);
 		}
 
+		const previousSchema = agent.schema;
+		const previousTools = agent.tools ?? {};
+		const previousSkills = agent.skills ?? {};
+
+		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
 			agent.schema = activeVersion.schema ? deepCopy(activeVersion.schema) : null;
 			agent.tools = deepCopy(activeVersion.tools ?? {});
@@ -321,21 +448,37 @@ export class AgentPublishService {
 			}
 
 			await trx.save(agent);
-			await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
+			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
+			tools: !isEqual(previousTools, agent.tools ?? {}),
+			skills: !isEqual(previousSkills, agent.skills ?? {}),
+			tasks: tasksChanged,
+		});
 
 		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
 	}
 
-	async revertToVersion(agentId: string, projectId: string, versionId: string): Promise<Agent> {
+	async revertToVersion(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+		user: User,
+		modifiedBy: AgentActor,
+	): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
+		const previousSchema = agent.schema;
+		const previousTools = agent.tools ?? {};
+		const previousSkills = agent.skills ?? {};
+
+		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
 			const target = await this.agentHistoryRepository.findByVersionAndAgentId(
 				versionId,
@@ -356,10 +499,15 @@ export class AgentPublishService {
 			}
 
 			await trx.save(agent);
-			await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
+			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
+		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
+			tools: !isEqual(previousTools, agent.tools ?? {}),
+			skills: !isEqual(previousSkills, agent.skills ?? {}),
+			tasks: tasksChanged,
+		});
 
 		this.logger.debug('Reverted SDK agent to a specific version', {
 			agentId,
@@ -367,6 +515,39 @@ export class AgentPublishService {
 			versionId,
 		});
 		return agent;
+	}
+
+	/**
+	 * A revert restores a stored schema wholesale, so it is a modification like
+	 * any other config write. Integrations live outside the schema and survive
+	 * the revert untouched, hence the same list on both sides of the diff.
+	 * Sidecar body flags cover tool/skill/task bodies restored outside the schema.
+	 */
+	private async recordRevert(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		modifiedBy: AgentActor,
+		previousSchema: AgentJsonConfig | null,
+		sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>>,
+	): Promise<void> {
+		const integrations = agent.integrations ?? [];
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user,
+			by: modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				integrations,
+				integrations,
+				sidecarChanges,
+			),
+			// A revert needs a published version to revert to, so the agent was
+			// configured long before this.
+			wasUnconfigured: false,
+		});
 	}
 
 	/**
@@ -486,16 +667,35 @@ export class AgentPublishService {
 
 	/**
 	 * Bring the draft task definition rows back in line with a published snapshot
-	 * on revert.
+	 * on revert. Returns whether task bodies changed (name/objective/cron only).
 	 */
 	private async restoreTasksFromSnapshot(
 		trx: EntityManager,
 		agentId: string,
 		versionId: string,
-	): Promise<void> {
+	): Promise<boolean> {
 		const repo = trx.getRepository(AgentTask);
 		const existing = await repo.findBy({ agentId });
 		const snapshots = await this.agentTaskSnapshotRepository.findByVersionId(versionId, trx);
+
+		const existingBodies = Object.fromEntries(
+			existing.map((row) => [
+				row.id,
+				{ name: row.name, objective: row.objective, cronExpression: row.cronExpression },
+			]),
+		);
+		const snapshotBodies = Object.fromEntries(
+			snapshots.map((snapshot) => [
+				snapshot.taskId,
+				{
+					name: snapshot.name,
+					objective: snapshot.objective,
+					cronExpression: snapshot.cronExpression,
+				},
+			]),
+		);
+		const tasksChanged = !isEqual(existingBodies, snapshotBodies);
+
 		const snapshotIds = new Set(snapshots.map((snapshot) => snapshot.taskId));
 
 		const orphanIds = existing.filter((row) => !snapshotIds.has(row.id)).map((row) => row.id);
@@ -519,5 +719,7 @@ export class AgentPublishService {
 				});
 			}
 		}
+
+		return tasksChanged;
 	}
 }

@@ -52,7 +52,7 @@ import { AgentValidationService } from '../agent-validation.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
 import { AttachableWorkflowsService } from '../attachable-workflows.service';
-import { collectBuilderConfigDiffEvents, type BuilderTrackFn } from './builder-config-telemetry';
+import type { BuilderTrackFn } from './builder-config-telemetry';
 import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
@@ -111,11 +111,7 @@ interface AgentConfigSnapshot {
 	configHash: string | null;
 }
 
-interface AgentConfigSnapshotWithStatus extends AgentConfigSnapshot {
-	status: 'draft' | 'production';
-}
-
-/** Builder-session context threaded through to config-diff telemetry so it's joinable to `instance_ai_agent_build_route`. */
+/** Builder-session context threaded through telemetry so it's joinable to `instance_ai_agent_build_route`. */
 interface BuilderTelemetryContext {
 	threadId?: string;
 	runId?: string;
@@ -253,7 +249,7 @@ export class AgentsBuilderToolsService {
 	): BuilderTools {
 		return {
 			json: this.getJsonTools(agentId, projectId, credentialProvider, user, telemetryContext),
-			shared: this.getSharedTools(agentId, projectId, credentialProvider, user, telemetryContext),
+			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
 
@@ -282,8 +278,7 @@ export class AgentsBuilderToolsService {
 			.input(z.object({}))
 			.handler(async () => {
 				try {
-					// `status` is telemetry plumbing — keep it out of the LLM-facing result.
-					const { status: _status, ...snapshot } = await this.getConfigSnapshot(agentId, projectId);
+					const snapshot = await this.getConfigSnapshot(agentId, projectId);
 					return { ok: true, ...snapshot };
 				} catch (e) {
 					return {
@@ -321,7 +316,7 @@ export class AgentsBuilderToolsService {
 					if (!parsed.ok) {
 						return { ok: false, errors: parsed.errors };
 					}
-					let snapshot: AgentConfigSnapshotWithStatus;
+					let snapshot: AgentConfigSnapshot;
 					try {
 						snapshot = await this.getConfigSnapshot(agentId, projectId);
 					} catch (e) {
@@ -365,17 +360,12 @@ export class AgentsBuilderToolsService {
 						applyNativeWebSearchDefaultOn(zodResult.data),
 					);
 					try {
-						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+						await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							configWithDefaults,
-						);
-						this.emitConfigDiffTelemetry(
-							snapshot,
-							persistedConfig,
-							agentId,
 							user,
-							telemetryContext,
+							{ modifiedBy: 'builder' },
 						);
 						return { ok: true };
 					} catch (e) {
@@ -426,7 +416,7 @@ export class AgentsBuilderToolsService {
 						return { ok: false, stage: 'parse', errors: parsedOps.errors };
 					}
 
-					let snapshot: AgentConfigSnapshotWithStatus;
+					let snapshot: AgentConfigSnapshot;
 					try {
 						snapshot = await this.getConfigSnapshot(agentId, projectId);
 					} catch (e) {
@@ -492,17 +482,12 @@ export class AgentsBuilderToolsService {
 					);
 
 					try {
-						const { config: persistedConfig } = await this.agentConfigService.updateConfig(
+						await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
 							configWithDefaults,
-						);
-						this.emitConfigDiffTelemetry(
-							snapshot,
-							persistedConfig,
-							agentId,
 							user,
-							telemetryContext,
+							{ modifiedBy: 'builder' },
 						);
 						return { ok: true };
 					} catch (e) {
@@ -582,7 +567,7 @@ export class AgentsBuilderToolsService {
 						agentId,
 						projectId,
 						user,
-						'builder',
+						{ by: 'builder', trigger: 'explicit' },
 						versionId,
 					);
 					return {
@@ -751,7 +736,7 @@ export class AgentsBuilderToolsService {
 					this.ssrfProtectionService,
 				),
 				applyCredentialToMcpServer: async (serverName, credentialId) =>
-					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId),
+					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 			buildResolveIntegrationTool({
@@ -768,7 +753,6 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
-		telemetryContext?: BuilderTelemetryContext,
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
@@ -796,6 +780,7 @@ export class AgentsBuilderToolsService {
 						projectId,
 						code,
 						descriptor,
+						{ user, modifiedBy: 'builder' },
 					);
 					return { ok: true, id: built.id, name: descriptor.name };
 				} catch (e) {
@@ -850,7 +835,10 @@ export class AgentsBuilderToolsService {
 				// Each skill is already validated against `.input()` (agentSkillSchema
 				// shapes) by the tool runtime before the handler runs.
 				try {
-					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills);
+					const created = await this.agentSkillsService.createSkills(agentId, projectId, skills, {
+						user,
+						modifiedBy: 'builder',
+					});
 					return {
 						ok: true,
 						skills: created.map(({ id, skill }) => ({ id, name: skill.name })),
@@ -913,16 +901,6 @@ export class AgentsBuilderToolsService {
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.
-					// Snapshot before the write since createTasks writes the task refs into the
-					// config itself — the diff can't be read off its return value. Telemetry-only:
-					// a failed read must not block the mutation.
-					let oldSnapshot: AgentConfigSnapshotWithStatus | null = null;
-					try {
-						oldSnapshot = await this.getConfigSnapshot(agentId, projectId);
-					} catch {
-						// Skip diff telemetry; the mutation below must still run.
-					}
-
 					let created: Awaited<ReturnType<AgentTaskService['createTasks']>>;
 					try {
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
@@ -932,29 +910,13 @@ export class AgentsBuilderToolsService {
 							agentId,
 							projectId,
 							tasks.map((task) => ({ ...task, enabled: true })),
+							{ user, modifiedBy: 'builder' },
 						);
 					} catch (e) {
 						return {
 							ok: false,
 							errors: [{ message: e instanceof Error ? e.message : String(e) }],
 						};
-					}
-
-					if (oldSnapshot) {
-						try {
-							const newSnapshot = await this.getConfigSnapshot(agentId, projectId);
-							if (newSnapshot.config) {
-								this.emitConfigDiffTelemetry(
-									oldSnapshot,
-									newSnapshot.config,
-									agentId,
-									user,
-									telemetryContext,
-								);
-							}
-						} catch {
-							// Telemetry must never fail a mutation that already succeeded.
-						}
 					}
 
 					return {
@@ -1009,46 +971,12 @@ export class AgentsBuilderToolsService {
 	private async getConfigSnapshot(
 		agentId: string,
 		projectId: string,
-	): Promise<AgentConfigSnapshotWithStatus> {
+	): Promise<AgentConfigSnapshot> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new Error('Agent not found');
 
 		const config = composeJsonConfig(agent);
-		const status: 'draft' | 'production' =
-			agent.activeVersionId && agent.versionId === agent.activeVersionId ? 'production' : 'draft';
-		return { ...snapshotFromConfig(config), status };
-	}
-
-	/**
-	 * Diff the config before/after a successful builder mutation and emit one
-	 * `Builder added/removed *` event per changed item, mirroring the
-	 * frontend's diff-on-save telemetry. Never throws — a telemetry failure
-	 * must not fail the tool call that already succeeded.
-	 */
-	private emitConfigDiffTelemetry(
-		oldSnapshot: AgentConfigSnapshotWithStatus,
-		newConfig: AgentJsonConfig,
-		agentId: string,
-		user: User,
-		telemetryContext?: BuilderTelemetryContext,
-	): void {
-		try {
-			for (const { entry, properties } of collectBuilderConfigDiffEvents(
-				oldSnapshot.config,
-				newConfig,
-			)) {
-				this.telemetry.track(entry, {
-					agent_id: agentId,
-					user_id: user.id,
-					status: oldSnapshot.status,
-					...(telemetryContext?.threadId ? { thread_id: telemetryContext.threadId } : {}),
-					...(telemetryContext?.runId ? { run_id: telemetryContext.runId } : {}),
-					...properties,
-				});
-			}
-		} catch {
-			// Telemetry must never fail a mutation that already succeeded.
-		}
+		return snapshotFromConfig(config);
 	}
 
 	private async applyCredentialToMcpServer(
@@ -1056,6 +984,7 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		serverName: string,
 		credentialId: string,
+		user: User,
 	): Promise<{ applied: boolean }> {
 		const snapshot = await this.getConfigSnapshot(agentId, projectId);
 		const config = snapshot.config;
@@ -1090,7 +1019,9 @@ export class AgentsBuilderToolsService {
 			applyNativeWebSearchDefaultOn(zodResult.data),
 		);
 
-		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults);
+		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults, user, {
+			modifiedBy: 'builder',
+		});
 		return { applied: true };
 	}
 }

@@ -253,11 +253,9 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		if (
-			credential.usageScope === 'instance' &&
-			body.type !== undefined &&
-			body.type !== credential.type
-		) {
+		const isChangingAuthType = body.type !== undefined && body.type !== credential.type;
+
+		if (credential.usageScope === 'instance' && isChangingAuthType) {
 			throw new BadRequestError(
 				'Provider connection type cannot be changed. Create a new connection instead.',
 			);
@@ -290,7 +288,9 @@ export class CredentialsController {
 			req.user,
 			req.body,
 			credential,
-			{ clearOauthTokenData: isTogglingToPrivate },
+			// Switching auth method (e.g. Google Service Account -> OAuth) changes the
+			// credential's type; the previous type's OAuth token no longer applies to it.
+			{ clearOauthTokenData: isTogglingToPrivate || isChangingAuthType },
 		);
 
 		const newCredentialData = await this.credentialsService.createEncryptedData({

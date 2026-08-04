@@ -9,7 +9,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 

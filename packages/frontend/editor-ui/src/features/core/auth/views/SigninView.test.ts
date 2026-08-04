@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useRouter, useRoute } from 'vue-router';
 import SigninView from './SigninView.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';

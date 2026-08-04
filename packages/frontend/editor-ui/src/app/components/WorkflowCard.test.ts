@@ -17,7 +17,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';

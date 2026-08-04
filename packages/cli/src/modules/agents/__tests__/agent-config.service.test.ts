@@ -1,27 +1,39 @@
 import type { Mocked } from 'vitest';
 import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowRepository } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
+import type { Telemetry } from '@/telemetry';
+
 import { AgentConfigService } from '../agent-config.service';
-import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
+import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
+const user = { id: 'user-1' } as User;
+const byUser = { modifiedBy: 'user' } as const;
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Support Agent',
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Help users',
 };
+
+const storedCustomTool = {
+	tool_1: { code: 'a', descriptor: { name: 'tool_1', description: 'a', inputSchema: {} } },
+} as unknown as Agent['tools'];
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -34,6 +46,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		integrations: [],
+		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
 	} as unknown as Agent;
@@ -47,10 +60,18 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
+	const agentValidationService = mock<AgentValidationService>();
+	const telemetry = mock<Telemetry>();
 
+	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+		status: 'valid',
+		issues: [],
+	});
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	workflowRepository.find.mockResolvedValue([]);
 	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
@@ -69,6 +90,8 @@ function makeService() {
 		credentialsService,
 		workflowRepository,
 		nodeToolAiGatewayService,
+		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
+		new AgentModificationTelemetryService(telemetry),
 	);
 
 	return {
@@ -80,6 +103,8 @@ function makeService() {
 		credentialsService,
 		workflowRepository,
 		nodeToolAiGatewayService,
+		agentValidationService,
+		telemetry,
 	};
 }
 
@@ -87,9 +112,9 @@ function mockAccessibleCredentials(
 	credentialsService: Mocked<CredentialsService>,
 	credentialIds: string[],
 ) {
-	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
-		credentialIds.map((id) => ({ id, type: 'openAiApi', name: id }) as never),
-	);
+	const credentials = credentialIds.map((id) => ({ id, type: 'openAiApi', name: id }) as never);
+	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(credentials);
+	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(credentials);
 }
 
 describe('AgentConfigService', () => {
@@ -204,11 +229,17 @@ describe('AgentConfigService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			const result = await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				config: { webSearch: { enabled: false } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-			} as unknown as AgentJsonConfig);
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					config: { webSearch: { enabled: false } },
+					providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				} as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
 
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.config?.webSearch).toEqual({ enabled: false });
@@ -223,10 +254,16 @@ describe('AgentConfigService', () => {
 			const { service, agentRepository, nodeToolAiGatewayService } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				tools: [{ type: 'custom', id: 'tool_1' }],
-			} as unknown as AgentJsonConfig);
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool_1' }],
+				} as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
 
 			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith([
 				{ type: 'custom', id: 'tool_1' },
@@ -248,10 +285,13 @@ describe('AgentConfigService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			mockAccessibleCredentials(credentialsService, ['stored-cred']);
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				instructions: 'Updated instructions',
-			});
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Updated instructions' },
+				user,
+				byUser,
+			);
 			let saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema).toEqual(
 				expect.objectContaining({
@@ -264,7 +304,13 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('description');
 			expect(saved.integrations).toEqual([{ type: 'slack', credentialId: 'slack-cred' }]);
 
-			await service.updateConfig(agentId, projectId, { ...baseConfig, integrations: [] });
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, integrations: [] },
+				user,
+				byUser,
+			);
 			saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
@@ -287,8 +333,8 @@ describe('AgentConfigService', () => {
 				agentId,
 				projectId,
 				{ ...baseConfig, memory: { enabled: false, storage: 'n8n' } },
-				undefined,
-				{ clearOmittedOptionalFields: true },
+				user,
+				{ clearOmittedOptionalFields: true, ...byUser },
 			);
 
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
@@ -306,13 +352,12 @@ describe('AgentConfigService', () => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				{ id: 'user-cred', type: 'openAiApi', name: 'user-cred' },
 			] as never);
-			const user = { id: 'user-1' } as never;
-
 			await service.updateConfig(
 				agentId,
 				projectId,
 				{ ...baseConfig, credential: 'user-cred' },
 				user,
+				byUser,
 			);
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
@@ -332,14 +377,25 @@ describe('AgentConfigService', () => {
 				{ id: 'wf-2', name: 'Existing Name' },
 			] as never);
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				tools: [
-					{ type: 'workflow', workflow: 'wf-id-1', name: 'dice_roller', description: 'Roll dice' },
-					{ type: 'workflow', workflow: 'Existing Name' },
-					{ type: 'workflow', workflow: 'ghost' },
-				],
-			});
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tools: [
+						{
+							type: 'workflow',
+							workflow: 'wf-id-1',
+							name: 'dice_roller',
+							description: 'Roll dice',
+						},
+						{ type: 'workflow', workflow: 'Existing Name' },
+						{ type: 'workflow', workflow: 'ghost' },
+					],
+				},
+				user,
+				byUser,
+			);
 
 			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tools).toEqual([
@@ -383,21 +439,27 @@ describe('AgentConfigService', () => {
 				{ id: 'task-2' },
 			] as never);
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				tools: [
-					{ type: 'custom', id: 'tool_1' },
-					{ type: 'custom', id: 'missing_tool' },
-				],
-				skills: [
-					{ type: 'skill', id: 'skill-1' },
-					{ type: 'skill', id: 'missing-skill' },
-				],
-				tasks: [
-					{ type: 'task', id: 'task-1', enabled: true },
-					{ type: 'task', id: 'missing-task', enabled: true },
-				],
-			});
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tools: [
+						{ type: 'custom', id: 'tool_1' },
+						{ type: 'custom', id: 'missing_tool' },
+					],
+					skills: [
+						{ type: 'skill', id: 'skill-1' },
+						{ type: 'skill', id: 'missing-skill' },
+					],
+					tasks: [
+						{ type: 'task', id: 'task-1', enabled: true },
+						{ type: 'task', id: 'missing-task', enabled: true },
+					],
+				},
+				user,
+				byUser,
+			);
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
 			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
@@ -414,41 +476,47 @@ describe('AgentConfigService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			mockAccessibleCredentials(credentialsService, ['known-cred']);
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				credential: 'unknown-top-level',
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					observationalMemory: {
-						observerModel: { model: 'openai/gpt-4o', credential: 'unknown-nested' },
-						reflectorModel: { model: 'openai/gpt-4o', credential: 'known-cred' },
-					},
-				},
-				integrations: [{ type: 'slack', credentialId: 'unknown-integration' }],
-				mcpServers: [
-					{
-						name: 'github',
-						url: 'https://example.com/mcp',
-						transport: 'streamableHttp',
-						authentication: 'bearerAuth',
-						credential: 'unknown-mcp',
-					},
-				],
-				vectorStores: [
-					{
-						provider: 'qdrant',
-						name: 'product_docs',
-						credential: 'unknown-vector-store',
-						useWhen: 'Search product docs',
-						embedding: {
-							model: 'openai/text-embedding-3-small',
-							credential: 'unknown-embedding',
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					credential: 'unknown-top-level',
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: {
+							observerModel: { model: 'openai/gpt-4o', credential: 'unknown-nested' },
+							reflectorModel: { model: 'openai/gpt-4o', credential: 'known-cred' },
 						},
-						collectionName: 'docs',
 					},
-				],
-			});
+					integrations: [{ type: 'slack', credentialId: 'unknown-integration' }],
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://example.com/mcp',
+							transport: 'streamableHttp',
+							authentication: 'bearerAuth',
+							credential: 'unknown-mcp',
+						},
+					],
+					vectorStores: [
+						{
+							provider: 'qdrant',
+							name: 'product_docs',
+							credential: 'unknown-vector-store',
+							useWhen: 'Search product docs',
+							embedding: {
+								model: 'openai/text-embedding-3-small',
+								credential: 'unknown-embedding',
+							},
+							collectionName: 'docs',
+						},
+					],
+				},
+				user,
+				byUser,
+			);
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
 			const savedConfig = saved.schema as AgentJsonConfig;
@@ -482,19 +550,25 @@ describe('AgentConfigService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				personalisation: {
-					icon: 'mail',
-					gradient: {
-						from: '#333333',
-						to: '#444444',
-						angle: 42,
-						fromStop: 12,
-						toStop: 88,
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					personalisation: {
+						icon: 'mail',
+						gradient: {
+							from: '#333333',
+							to: '#444444',
+							angle: 42,
+							fromStop: 12,
+							toStop: 88,
+						},
 					},
 				},
-			});
+				user,
+				byUser,
+			);
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
 			expect(saved.schema?.personalisation).toEqual({
@@ -528,10 +602,13 @@ describe('AgentConfigService', () => {
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				personalisation: { icon: 'mail' },
-			});
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, personalisation: { icon: 'mail' } },
+				user,
+				byUser,
+			);
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
 			expect(saved.schema?.personalisation).toEqual({
@@ -572,8 +649,8 @@ describe('AgentConfigService', () => {
 					...baseConfig,
 					personalisation: { icon: 'mail' },
 				},
-				undefined,
-				{ clearOmittedOptionalFields: true },
+				user,
+				{ clearOmittedOptionalFields: true, ...byUser },
 			);
 
 			const saved = agentRepository.save.mock.calls[0][0] as Agent;
@@ -595,17 +672,23 @@ describe('AgentConfigService', () => {
 				return null;
 			});
 
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				subAgents: {
-					maxChildren: 3,
-					agents: [
-						{ agentId: 'missing-agent', useWhen: 'Use for missing work.' },
-						{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
-						{ agentId: 'agent-2', useWhen: 'Use for duplicate work.' },
-					],
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					subAgents: {
+						maxChildren: 3,
+						agents: [
+							{ agentId: 'missing-agent', useWhen: 'Use for missing work.' },
+							{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+							{ agentId: 'agent-2', useWhen: 'Use for duplicate work.' },
+						],
+					},
 				},
-			});
+				user,
+				byUser,
+			);
 
 			expect((agentRepository.save.mock.calls[0][0] as Agent).schema?.subAgents).toEqual({
 				maxChildren: 3,
@@ -616,20 +699,384 @@ describe('AgentConfigService', () => {
 			).toHaveLength(1);
 
 			await expect(
-				service.updateConfig(agentId, projectId, {
-					...baseConfig,
-					subAgents: {
-						agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						subAgents: {
+							agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
+						},
 					},
-				}),
+					user,
+					byUser,
+				),
 			).rejects.toThrow('must be published');
 
 			await expect(
-				service.updateConfig(agentId, projectId, {
-					...baseConfig,
-					subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
-				}),
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
+					},
+					user,
+					byUser,
+				),
 			).rejects.toThrow('cannot use itself');
+		});
+
+		it('reports setup completion after claiming the marker', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			const agent = makeAgent({ tools: storedCustomTool });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, tools: [{ type: 'custom', id: 'tool_1' }] } as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
+
+			expect(agentRepository.claimSetupCompleted).toHaveBeenCalledWith(agentId, expect.any(Date));
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_SETUP_COMPLETED,
+				expect.objectContaining({ agent_id: agentId, tool_count: 1 }),
+			);
+		});
+
+		it('does not report setup completion when the save fails', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ tools: storedCustomTool }),
+			);
+			agentRepository.save.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						tools: [{ type: 'custom', id: 'tool_1' }],
+					} as unknown as AgentJsonConfig,
+					user,
+					byUser,
+				),
+			).rejects.toThrow('db down');
+
+			expect(agentRepository.claimSetupCompleted).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('modification telemetry', () => {
+		function modifiedEvent(telemetry: Mocked<Telemetry>, entry: unknown) {
+			return telemetry.track.mock.calls.find(([called]) => called === entry)?.[1];
+		}
+
+		/** What `AgentsService.create` leaves behind: a row with nothing configured. */
+		const blankConfig: AgentJsonConfig = {
+			name: 'Support Agent',
+			model: '',
+			instructions: '',
+		};
+
+		it('reports the write that first configures an agent as a creation, not a modification', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: blankConfig }));
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, byUser);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT)).toMatchObject({
+				agent_id: agentId,
+				project_id: projectId,
+				user_id: user.id,
+				event_version: '2',
+				model: baseConfig.model,
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('reports a save to an already-configured agent as a modification, not a second creation', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Escalate billing questions' },
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toBeDefined();
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('stays silent when a write leaves the agent unconfigured, so a creation is always its first event', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: blankConfig }));
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...blankConfig, name: 'Renamed' },
+				user,
+				byUser,
+			);
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				expect.anything(),
+			);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('reports clearing the last model and instructions as a modification with zero capability counts', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(agentId, projectId, { ...blankConfig }, user, byUser);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toEqual(
+				expect.objectContaining({
+					agent_id: agentId,
+					capability_count: 0,
+					capability_kinds: [],
+					has_published_version: false,
+				}),
+			);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('reports only the parts the save actually changed', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Escalate billing questions' },
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toEqual(
+				expect.objectContaining({
+					agent_id: agentId,
+					project_id: projectId,
+					user_id: user.id,
+					event_version: '1',
+					changed_parts: ['instructions'],
+					has_published_version: false,
+				}),
+			);
+		});
+
+		it.each([
+			['builder', TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT],
+			['mcp', TELEMETRY_EVENT.AGENTS.MCP_MODIFIED_AGENT],
+		] as const)('routes a %s save to its own event', async (modifiedBy, entry) => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Escalate billing questions' },
+				user,
+				{ modifiedBy },
+			);
+
+			expect(modifiedEvent(telemetry, entry)).toEqual(
+				expect.objectContaining({ agent_id: agentId, changed_parts: ['instructions'] }),
+			);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('emits nothing when the submitted config matches what is stored', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, byUser);
+
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
+		});
+
+		it('emits nothing when the save fails', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentRepository.save.mockRejectedValue(new Error('db down'));
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, instructions: 'Escalate billing questions' },
+					user,
+					byUser,
+				),
+			).rejects.toThrow('db down');
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('reports a published agent as having a live version', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ activeVersionId: 'published-v1' }),
+			);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Escalate billing questions' },
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				has_published_version: true,
+			});
+		});
+
+		it('counts an MCP server as its own capability rather than as a tool', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ tools: storedCustomTool }),
+			);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool_1' }],
+					mcpServers: [
+						{
+							name: 'github',
+							url: 'https://example.com/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
+				} as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['tools', 'mcpServers'],
+				tool_count: 1,
+				mcp_server_count: 1,
+				capability_count: 2,
+				capability_kinds: ['mcpServer', 'tool'],
+				tool_types: ['custom', 'mcp'],
+			});
+		});
+
+		it('reports a model credential switch, which no longer rides along on the model part', async () => {
+			const { service, agentRepository, credentialsService, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			mockAccessibleCredentials(credentialsService, ['own-key']);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, credential: 'own-key' },
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['credential'],
+			});
+		});
+
+		it('reports a web-search toggle as config and providerTools parts', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, config: { webSearch: { enabled: true } } } as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['config', 'providerTools'],
+			});
+		});
+
+		it('reports a providerTools-only change', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...baseConfig,
+						config: { webSearch: { enabled: true } },
+						providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+					},
+				}),
+			);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					config: { webSearch: { enabled: true } },
+					providerTools: { 'anthropic.web_search': { maxUses: 10 } },
+				} as unknown as AgentJsonConfig,
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['providerTools'],
+			});
+		});
+
+		it('reports a channel change as a trigger part', async () => {
+			const { service, agentRepository, credentialsService, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			mockAccessibleCredentials(credentialsService, ['slack-cred']);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, integrations: [{ type: 'slack', credentialId: 'slack-cred' }] },
+				user,
+				byUser,
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['triggers'],
+				trigger_count: 1,
+			});
 		});
 	});
 });

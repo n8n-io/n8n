@@ -3,6 +3,7 @@ import type { InstanceAiContext } from '../../../types';
 import {
 	getSessionAgentByRef,
 	normalizeAgentRef,
+	PENDING_AGENT_METADATA_KEY,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 } from '../agent-target-binding';
@@ -17,7 +18,7 @@ function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
 		updatedAt: new Date(),
 	};
 	return {
-		getThread: vi.fn().mockResolvedValue(thread),
+		getThread: vi.fn<() => Promise<ThreadRecord>>().mockResolvedValue(thread),
 		patchThread: vi.fn().mockImplementation(
 			async (args: {
 				update: (current: ThreadRecord) => { metadata?: Record<string, unknown> };
@@ -101,6 +102,19 @@ describe('agent-builder target binding', () => {
 
 		await expect(resolveAgentBuilderTarget(context)).rejects.toThrow('storage unavailable');
 		expect(context.agentBuilderTarget).toBeUndefined();
+	});
+
+	it('clears the pending new-agent marker once a real agent binds, keeping other metadata', async () => {
+		const threadMemory = createThreadMemory({
+			[PENDING_AGENT_METADATA_KEY]: { projectId: 'project-1' },
+			someOtherKey: 'keep me',
+		});
+
+		await saveAgentBuilderTarget(createContext({ threadMemory }), TARGET);
+
+		const thread: ThreadRecord = await threadMemory.getThread();
+		expect(thread.metadata).not.toHaveProperty(PENDING_AGENT_METADATA_KEY);
+		expect(thread.metadata?.someOtherKey).toBe('keep me');
 	});
 
 	it('propagates a metadata write failure instead of claiming success', async () => {

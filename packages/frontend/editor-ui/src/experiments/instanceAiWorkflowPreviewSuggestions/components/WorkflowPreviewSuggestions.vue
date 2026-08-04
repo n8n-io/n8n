@@ -98,6 +98,10 @@ function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	});
 }
 
+function handleSeeAllClick() {
+	telemetry.track('AI Assistant examples see all button clicked');
+}
+
 onUnmounted(clearPreview);
 </script>
 
@@ -129,6 +133,7 @@ onUnmounted(clearPreview);
 				target="_blank"
 				rel="noopener noreferrer"
 				:class="$style.seeAllLink"
+				@click="handleSeeAllClick"
 			>
 				<span>{{
 					i18n.baseText(

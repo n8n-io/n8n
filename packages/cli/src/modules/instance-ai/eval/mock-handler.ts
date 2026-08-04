@@ -271,7 +271,7 @@ function buildMockCacheKey(
 }
 
 /** True for the fallback body `generateMockResponse` returns when all attempts failed. */
-function isMockErrorSentinel(response: EvalMockHttpResponse): boolean {
+export function isMockErrorSentinel(response: EvalMockHttpResponse): boolean {
 	const body = response.body;
 	return (
 		typeof body === 'object' && body !== null && !Array.isArray(body) && '_evalMockError' in body

@@ -14,7 +14,12 @@ import type {
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { toNodeGroupSummary, toTagSummary, workflowDetailsOutputSchema } from './schemas';
+import {
+	sanitizeNodeCredentials,
+	toNodeGroupSummary,
+	toTagSummary,
+	workflowDetailsOutputSchema,
+} from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -137,9 +142,7 @@ export async function getWorkflowDetails(
 	const activeVersion =
 		workflow.activeVersionId && workflow.activeVersion
 			? {
-					nodes: (workflow.activeVersion.nodes ?? []).map(
-						({ credentials: _credentials, ...node }) => node,
-					),
+					nodes: (workflow.activeVersion.nodes ?? []).map(sanitizeNodeCredentials),
 					connections: workflow.activeVersion.connections ?? {},
 					nodeGroups: toNodeGroupSummary(
 						workflow.activeVersion.nodeGroups ?? [],
@@ -181,7 +184,7 @@ export async function getWorkflowDetails(
 		updatedAt: workflow.updatedAt.toISOString(),
 		settings: workflow.settings ?? null,
 		connections,
-		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+		nodes: nodes.map(sanitizeNodeCredentials),
 		nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
 		activeVersion,
 		tags: toTagSummary(workflow.tags),

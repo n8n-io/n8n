@@ -12,6 +12,7 @@
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
 | schema | json |  | true |  |  |  |
+| setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
 | skills | json | '{}'::json | false |  |  |  |
 | tools | json | '{}'::json | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -75,6 +76,7 @@ erDiagram
   varchar_128_ name
   varchar_255_ projectId FK
   json schema
+  timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt

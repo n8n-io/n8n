@@ -47,7 +47,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import {

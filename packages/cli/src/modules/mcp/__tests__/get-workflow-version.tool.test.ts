@@ -51,7 +51,7 @@ describe('get-workflow-version MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
-		test('returns version content with credentials stripped from nodes', async () => {
+		test('returns version content with node credentials reduced to id and name', async () => {
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
 			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
 				createWorkflowHistoryVersion({
@@ -79,7 +79,9 @@ describe('get-workflow-version MCP tool', () => {
 			});
 			expect(content.nodeGroups[0]).not.toHaveProperty('nodeIds');
 			expect(content.nodes).toHaveLength(1);
-			expect(content.nodes[0]).not.toHaveProperty('credentials');
+			expect(content.nodes[0].credentials).toEqual({
+				httpHeaderAuth: { id: 'cred-1', name: 'Secret' },
+			});
 			expect(content.nodes[0]).toMatchObject({ name: 'HTTP Request' });
 		});
 
