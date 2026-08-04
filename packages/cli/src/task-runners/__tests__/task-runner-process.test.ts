@@ -396,6 +396,8 @@ describe('TaskRunnerProcess', () => {
 			await vi.advanceTimersByTimeAsync(0);
 
 			expect(spawnMock).toHaveBeenCalledTimes(3);
+			// the exit during the stop must not have left a retry loop behind
+			expect(vi.getTimerCount()).toBe(0);
 		});
 
 		it('should kill a runner spawned by a relaunch that was in flight when stop began', async () => {
@@ -432,7 +434,7 @@ describe('TaskRunnerProcess', () => {
 			const child = createChildProcess(42);
 			spawnMock.mockReturnValue(child);
 			await taskRunnerProcess.start();
-			auth.createGrantToken.mockRejectedValue(new Error('grant token unavailable'));
+			auth.createGrantToken.mockRejectedValueOnce(new Error('grant token unavailable'));
 
 			child.emit('exit', 1);
 			await vi.advanceTimersByTimeAsync(0);
