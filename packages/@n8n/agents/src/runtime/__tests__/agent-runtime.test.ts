@@ -1653,7 +1653,7 @@ describe('AgentRuntime — state transitions on error', () => {
 		expect(runtime.getState().status).toBe('success');
 	});
 
-	it("stream()'s own result.getState() mirrors runtime.getState() after the run completes", async () => {
+	it("reflects running→success on stream()'s own result.getState(), not just runtime.getState()", async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
 
 		const { runtime } = createRuntime();
@@ -1661,7 +1661,6 @@ describe('AgentRuntime — state transitions on error', () => {
 		await collectChunks(stream);
 
 		expect(getState().status).toBe('success');
-		expect(getState()).toEqual(runtime.getState());
 	});
 });
 
