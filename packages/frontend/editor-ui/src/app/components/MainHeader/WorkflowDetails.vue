@@ -20,6 +20,7 @@ import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -85,8 +86,7 @@ const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
-const workflowHeaderActionsRef =
-	useTemplateRef<InstanceType<typeof WorkflowHeaderDraftPublishActions>>('workflowHeaderActions');
+const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 const tagsEventBus = createEventBus();
 
 const hasChanged = (prev: readonly string[], curr: readonly string[]) => {
@@ -398,8 +398,8 @@ const onBreadcrumbsItemSelected = (item: PathItem) => {
 };
 
 const handleImportWorkflowFromFile = () => {
-	if (workflowHeaderActionsRef.value?.importFileRef) {
-		workflowHeaderActionsRef.value.importFileRef.click();
+	if (actionsMenuRef.value?.importFileRef) {
+		actionsMenuRef.value.importFileRef.click();
 	}
 };
 
@@ -460,6 +460,16 @@ onBeforeUnmount(() => {
 				</FolderBreadcrumbs>
 			</template>
 		</BreakpointsObserver>
+		<ActionsDropdownMenu
+			:id="id"
+			ref="actionsMenu"
+			:workflow-permissions="workflowPermissions"
+			:is-new-workflow="isNewWorkflow"
+			:is-archived="isArchived"
+			:name="name"
+			:tags="tags"
+			:current-folder="currentFolderForBreadcrumbs ?? undefined"
+		/>
 		<span class="tags" data-test-id="workflow-tags-container">
 			<template v-if="settingsStore.areTagsEnabled">
 				<WorkflowTagsDropdown
@@ -473,13 +483,8 @@ onBeforeUnmount(() => {
 					@blur="onTagsBlur"
 					@esc="onTagsEditEsc"
 				/>
-				<div v-else-if="tags.length === 0 && !readOnlyActions">
-					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
-						+ {{ i18n.baseText('workflowDetails.addTag') }}
-					</span>
-				</div>
 				<WorkflowTagsContainer
-					v-else
+					v-else-if="tags.length > 0"
 					:key="id"
 					:tag-ids="workflowTagIds"
 					:clickable="true"
@@ -506,13 +511,9 @@ onBeforeUnmount(() => {
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
-				ref="workflowHeaderActions"
-				:tags="tags"
-				:name="name"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
-				:current-folder="currentFolderForBreadcrumbs ?? undefined"
 			/>
 		</ConnectionTracker>
 	</div>
@@ -533,18 +534,6 @@ $--header-spacing: 20px;
 	color: $custom-font-dark;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
-}
-
-.add-tag {
-	font-size: 12px;
-	padding: 20px 0; // to be more clickable
-	color: $custom-font-very-light;
-	font-weight: var(--font-weight--bold);
-	white-space: nowrap;
-
-	&:hover {
-		color: $color-primary;
-	}
 }
 
 .tags {

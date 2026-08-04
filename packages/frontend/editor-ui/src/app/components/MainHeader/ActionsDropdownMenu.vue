@@ -144,6 +144,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			label: locale.baseText('generic.rename'),
 			disabled: props.workflowPermissions.update !== true,
 		});
+
+		if (settingsStore.areTagsEnabled && props.tags.length === 0) {
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.ADD_TAG,
+				label: locale.baseText('workflowDetails.addTag'),
+				disabled: props.workflowPermissions.update !== true,
+			});
+		}
 	}
 
 	actions.push({
@@ -196,6 +204,12 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				sourceControlStore.preferences.branchReadOnly,
 		});
 	}
+
+	actions.push({
+		id: WORKFLOW_MENU_ACTIONS.VERSION_HISTORY,
+		label: locale.baseText('menuActions.versionHistory'),
+		disabled: props.isNewWorkflow,
+	});
 
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
@@ -268,6 +282,17 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.RENAME: {
 			nodeViewEventBus.emit('renameWorkflow');
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.ADD_TAG: {
+			nodeViewEventBus.emit('addTag');
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.VERSION_HISTORY: {
+			void router.push({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: { workflowId: props.id },
+			});
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {

@@ -10,6 +10,8 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	ARCHIVE = 'archive',
 	UNARCHIVE = 'unarchive',
 	RENAME = 'rename',
+	ADD_TAG = 'add-tag',
+	VERSION_HISTORY = 'version-history',
 	CHANGE_OWNER = 'change-owner',
 	UNPUBLISH = 'unpublish',
 	SHARE = 'share',

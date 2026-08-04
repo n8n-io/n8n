@@ -332,7 +332,8 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickCreateTagButton(): Promise<void> {
-		await this.page.getByTestId('new-tag-link').click();
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-add-tag');
 	}
 
 	async clickNthTagPill(index: number): Promise<void> {
@@ -1154,16 +1155,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	// Workflow History methods
-	getWorkflowHistoryButton(): Locator {
-		return this.page.getByTestId('workflow-history-button');
-	}
-
 	getWorkflowHistoryCloseButton(): Locator {
 		return this.page.getByTestId('workflow-history-close-button');
 	}
 
 	async openWorkflowHistory(): Promise<void> {
-		await this.getWorkflowHistoryButton().click();
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-version-history');
 	}
 
 	async closeWorkflowHistory(): Promise<void> {

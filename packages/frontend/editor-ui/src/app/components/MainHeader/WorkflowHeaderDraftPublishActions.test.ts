@@ -126,12 +126,6 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 	pinia: createTestingPinia({ initialState, stubActions: false }),
 	global: {
 		stubs: {
-			ActionsMenu: {
-				template: '<div data-test-id="actions-menu-stub"></div>',
-			},
-			WorkflowHistoryButton: {
-				template: '<div data-test-id="workflow-history-button-stub"></div>',
-			},
 			N8nTooltip: {
 				template: '<div><slot name="content" /><slot /></div>',
 			},
