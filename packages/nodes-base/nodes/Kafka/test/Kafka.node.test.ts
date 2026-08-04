@@ -1,19 +1,33 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type * as _kafkajs from 'kafkajs';
-import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeTypeBaseDescription,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { Kafka } from '../Kafka.node';
+import { KafkaV1 } from '../v1/KafkaV1.node';
 
 // The node is imported directly (through vite) so vi.mock can intercept its
 // `kafkajs` / `@kafkajs/confluent-schema-registry` imports. NodeTestHarness can't
 // be used here: it loads nodes from dist via require(), where vi.mock can't reach
-// them. So every node run goes through `new Kafka().execute.call(...)`.
+// them. So every node run goes through `new KafkaV1(baseDescription).execute.call(...)`.
 //
 // The constructor mocks use `vi.fn(function () { ... })` (not `mockReturnValue`):
 // the node calls `new apacheKafka(...)` / `new SchemaRegistry(...)`, and vitest
 // throws "Cannot use mockReturnValue when called with new". importActual keeps the
 // real `CompressionTypes` enum the node relies on.
+const baseDescription: INodeTypeBaseDescription = {
+	displayName: 'Kafka',
+	name: 'kafka',
+	group: ['transform'],
+	description: 'Sends messages to a Kafka topic',
+};
+
 const {
 	mockProducerConnect,
 	mockProducerSend,
@@ -149,7 +163,7 @@ describe('Kafka Node', () => {
 			{ json: { name: 'Second item', code: 2 } },
 		];
 
-		await new Kafka().execute.call(createExecuteFunctions(params, items));
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
 		expect(mockProducerSend).toHaveBeenCalledTimes(1);
@@ -197,7 +211,7 @@ describe('Kafka Node', () => {
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }, { json: { success: true } }];
 
-		await new Kafka().execute.call(createExecuteFunctions(params, items));
+		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		// The legacy URL-parameter path stays unauthenticated
 		expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'https://test-kafka-registry.local' });
@@ -248,7 +262,7 @@ describe('Kafka Node', () => {
 		};
 		const items: INodeExecutionData[] = [{ json: { success: true } }];
 
-		await new Kafka().execute.call(
+		await new KafkaV1(baseDescription).execute.call(
 			createExecuteFunctions(params, items, { schemaRegistryCredential }),
 		);
 
@@ -287,7 +301,7 @@ describe('Kafka Node', () => {
 		const items: INodeExecutionData[] = [{ json: {} }];
 
 		await expect(
-			new Kafka().execute.call(
+			new KafkaV1(baseDescription).execute.call(
 				createExecuteFunctions(params, items, {
 					schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
 				}),
@@ -312,7 +326,9 @@ describe('Kafka Node', () => {
 		const items: INodeExecutionData[] = [{ json: {} }];
 
 		await expect(
-			new Kafka().execute.call(createExecuteFunctions(params, items, { schemaRegistryCredential })),
+			new KafkaV1(baseDescription).execute.call(
+				createExecuteFunctions(params, items, { schemaRegistryCredential }),
+			),
 		).rejects.toThrow('Verify your Schema Registry configuration');
 
 		expect(mockProducerConnect).not.toHaveBeenCalled();
@@ -331,7 +347,9 @@ describe('Kafka Node', () => {
 		const items: INodeExecutionData[] = [{ json: {} }];
 
 		await expect(
-			new Kafka().execute.call(createExecuteFunctions(params, items, { schemaRegistryCredential })),
+			new KafkaV1(baseDescription).execute.call(
+				createExecuteFunctions(params, items, { schemaRegistryCredential }),
+			),
 		).rejects.toThrow('Message is not valid JSON');
 
 		// The malformed message fails inside the loop, after the producer connected
@@ -352,7 +370,7 @@ describe('Kafka Node', () => {
 		};
 		const items: INodeExecutionData[] = [{ json: {} }];
 
-		const result = await new Kafka().execute.call(
+		const result = await new KafkaV1(baseDescription).execute.call(
 			createExecuteFunctions(params, items, {
 				schemaRegistryCredential: { ...schemaRegistryCredential, password: '' },
 				continueOnFail: true,
@@ -366,5 +384,40 @@ describe('Kafka Node', () => {
 				}),
 			],
 		]);
+	});
+});
+
+describe('Kafka (versioned entry point)', () => {
+	let kafka: Kafka;
+
+	beforeEach(() => {
+		kafka = new Kafka();
+	});
+
+	it('should instantiate without errors', () => {
+		expect(kafka).toBeInstanceOf(Kafka);
+	});
+
+	it('should expose version 1 as KafkaV1', () => {
+		expect(kafka.nodeVersions[1]).toBeInstanceOf(KafkaV1);
+	});
+
+	it('should have defaultVersion set to 1', () => {
+		expect(kafka.description.defaultVersion).toBe(1);
+	});
+
+	it('should have the correct displayName', () => {
+		expect(kafka.description.displayName).toBe('Kafka');
+	});
+
+	it('should have the correct name', () => {
+		expect(kafka.description.name).toBe('kafka');
+	});
+
+	it('should have the correct icon', () => {
+		expect(kafka.description.icon).toEqual({
+			light: 'file:kafka.svg',
+			dark: 'file:kafka.dark.svg',
+		});
 	});
 });
