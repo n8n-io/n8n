@@ -706,6 +706,19 @@ export class AgentsBuilderToolsService {
 						this.agentIntegrationPersistenceService
 							.listChatIntegrations()
 							.map((integration) => integration.type),
+					listManagedNodeToolCredentialTypes: async () => {
+						const agent = await this.agentsService.findById(agentId, projectId);
+						const types = new Set<string>();
+						for (const tool of agent?.schema?.tools ?? []) {
+							if (tool.type !== 'node') continue;
+							for (const [credentialType, ref] of Object.entries(tool.node.credentials ?? {})) {
+								if (ref && typeof ref === 'object' && '__aiGatewayManaged' in ref) {
+									types.add(credentialType);
+								}
+							}
+						}
+						return [...types];
+					},
 					getPublishBlockers: async () => {
 						// Connecting a channel auto-publishes the agent, so gate it on the
 						// same publish validation. Integration issues are excluded: the

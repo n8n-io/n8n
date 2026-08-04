@@ -45,6 +45,12 @@ export interface FinishSetupToolDeps {
 	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
 	listChatIntegrationTypes: () => string[];
 	/**
+	 * Credential types already covered by an n8n Connect managed credential on
+	 * the agent's node tools. Such a slot is served by n8n credits and needs no
+	 * user setup, so a request for it is dropped rather than shown as a card.
+	 */
+	listManagedNodeToolCredentialTypes?: () => Promise<string[]>;
+	/**
 	 * Publish-blocking validation issues on the agent's current (draft) config,
 	 * excluding `integrations.*` paths. Checked before entering a channel
 	 * phase — connecting a channel auto-publishes the agent, which would
@@ -210,12 +216,19 @@ async function computeInitialPlan(
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];
 
-	if (input.credentialRequests?.length) {
+	// Drop requests for slots the server already covers with an n8n Connect
+	// managed credential — they need no user setup, so never show a card.
+	const managedTypes = new Set((await deps.listManagedNodeToolCredentialTypes?.()) ?? []);
+	const credentialRequests = (input.credentialRequests ?? []).filter(
+		(slot) => !managedTypes.has(slot.credentialType),
+	);
+
+	if (credentialRequests.length) {
 		const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
 		const all = await deps.credentialProvider.list();
 		const credentials: Record<string, z.infer<typeof credentialOutcomeSchema>> = {};
 
-		for (const slot of input.credentialRequests) {
+		for (const slot of credentialRequests) {
 			const key = slot.credentialSlot ?? slot.credentialType;
 			const existingCredentials = credentialsOfType(all, slot.credentialType);
 			const channelMatch = existingCredentials.find((credential) =>
