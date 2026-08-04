@@ -148,6 +148,7 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 	protected onProcessExit(code: number | null, resolveFn: () => void) {
 		this.process = null;
+		this.runnerId = null;
 		const exitReason = this.analyzeExitReason?.(code) ?? { reason: 'unknown' };
 		this.emit('exit', exitReason);
 		resolveFn();
