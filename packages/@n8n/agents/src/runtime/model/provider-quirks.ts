@@ -4,6 +4,7 @@ import type {
 	GoogleThinkingConfig,
 	JSONObject,
 	OpenAIThinkingConfig,
+	ReasoningLevel,
 	ThinkingConfig,
 	XaiThinkingConfig,
 } from '../../types';
@@ -16,7 +17,35 @@ export interface ProviderQuirks {
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
 	relaxStrictJsonSchemaForRawOutput?: boolean;
 	/** Translate the agent's thinking config into this provider's providerOptions namespace. */
-	thinkingToProviderOptions?: (thinking: ThinkingConfig) => Record<string, Record<string, unknown>>;
+	thinkingToProviderOptions?: (
+		thinking: ThinkingConfig,
+		modelId: string,
+	) => Record<string, Record<string, unknown>>;
+	/**
+	 * Provider options the generic reasoning level alone doesn't produce. The AI
+	 * SDK maps the level itself, so this only fills gaps it leaves open.
+	 */
+	reasoningToProviderOptions?: (
+		reasoning: ReasoningLevel,
+		modelId: string,
+	) => Record<string, Record<string, unknown>> | undefined;
+}
+
+/** Anthropic model families that take the adaptive thinking API. */
+const ANTHROPIC_ADAPTIVE_THINKING = /claude-(?:opus-(?:5|4-6|4-7|4-8)|sonnet-(?:5|4-6)|fable-5)/;
+/** Anthropic model families that predate it and still take a fixed token budget. */
+const ANTHROPIC_BUDGET_THINKING = /claude-(?:sonnet-4-|opus-4-|haiku-4-5|3|instant|v?2)/;
+
+/**
+ * Whether a model wants `thinking: { type: 'adaptive' }` rather than a fixed
+ * budget. Mirrors the AI SDK's own classification, including its fallback of
+ * treating an unrecognised `claude-` model as adaptive, so we never send a
+ * thinking shape the provider it built the request for would reject.
+ */
+function anthropicUsesAdaptiveThinking(modelId: string): boolean {
+	if (ANTHROPIC_ADAPTIVE_THINKING.test(modelId)) return true;
+	if (ANTHROPIC_BUDGET_THINKING.test(modelId)) return false;
+	return modelId.includes('claude-');
 }
 
 /**
@@ -38,21 +67,35 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// validates tool arguments before emitting them; tools can still
 		// explicitly re-enable it via their own providerOptions.
 		toolProviderOptionDefaults: { eagerInputStreaming: false },
-		thinkingToProviderOptions: (thinking) => {
+		// QUIRK(anthropic): the two thinking APIs are mutually exclusive — an
+		// adaptive model rejects `type: 'enabled'` and vice versa — so the model
+		// decides the shape and the config only fills in its details.
+		thinkingToProviderOptions: (thinking, modelId) => {
 			const cfg = thinking as AnthropicThinkingConfig;
-			if (cfg.mode === 'adaptive') {
+			const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
+			if (anthropicUsesAdaptiveThinking(modelId)) {
 				return {
 					anthropic: {
-						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
-						effort: cfg.effort ?? 'medium',
+						thinking: { type: 'adaptive', display: adaptive?.display ?? 'summarized' },
+						effort: adaptive?.effort ?? 'medium',
 					},
 				};
 			}
+			const budgetTokens = cfg.mode === 'adaptive' ? undefined : cfg.budgetTokens;
 			return {
 				anthropic: {
-					thinking: { type: 'enabled', budgetTokens: cfg.budgetTokens ?? 10000 },
+					thinking: { type: 'enabled', budgetTokens: budgetTokens ?? 10000 },
 				},
 			};
+		},
+		// QUIRK(anthropic): adaptive models default `display` to "omitted", so the
+		// generic reasoning level on its own buys thinking whose text never comes
+		// back — signed, billed, and invisible. Ask for the text; the SDK still
+		// derives the effort from the level.
+		reasoningToProviderOptions: (reasoning, modelId) => {
+			if (reasoning === 'none' || reasoning === 'provider-default') return undefined;
+			if (!anthropicUsesAdaptiveThinking(modelId)) return undefined;
+			return { anthropic: { thinking: { type: 'adaptive', display: 'summarized' } } };
 		},
 	},
 	openai: {

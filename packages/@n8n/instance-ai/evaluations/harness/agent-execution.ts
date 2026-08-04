@@ -68,6 +68,7 @@ export async function executeAgentScenario(
 	timeoutMs?: number,
 	testCaseName?: string,
 	buildTrace?: BuildTrace,
+	outputDir?: string,
 ): Promise<ExecutionScenarioResult> {
 	const execStart = Date.now();
 	const projectId = await client.getPersonalProjectId();
@@ -130,6 +131,7 @@ export async function executeAgentScenario(
 		verifierAttempts: verification.attempts,
 		buildTrace,
 		logger,
+		outputDir,
 	});
 	const incomplete = verificationResults.length === 0;
 	const attemptErrors = verification.attempts

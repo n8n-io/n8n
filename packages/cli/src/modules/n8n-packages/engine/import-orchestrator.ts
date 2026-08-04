@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
@@ -21,6 +22,9 @@ import type {
 	PreparedFolder,
 } from '../entities/folder/folder-import.types';
 import { FolderImporter } from '../entities/folder/folder-importer';
+import { TagImporter } from '../entities/tag/tag-importer';
+import { contestedReconcileTargetFailures, droppedTagIds } from '../entities/tag/tag.types';
+import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
 	VariableApplyResult,
@@ -34,8 +38,8 @@ import {
 	type MissingNodeTypeRequirement,
 } from '../entities/workflow/missing-node-type-mode';
 import type {
+	PersistedWorkflowOutcome,
 	PreparedWorkflow,
-	WorkflowImportOutcome,
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
@@ -44,6 +48,7 @@ import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workf
 import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
+	ImportBindingMap,
 	ImportContext,
 	ImportedFolderSummary,
 	ImportFolderProperties,
@@ -51,7 +56,9 @@ import type {
 	MissingNodeTypeMode,
 	PackageImportBindings,
 } from '../n8n-packages.types';
+import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 import { toImportBlockedError } from './import-blocked.error';
+import { assertVariableCreationAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -60,19 +67,27 @@ export interface ImportOrchestrationInput {
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
+	tagRequest: TagImportRequest;
 	options: ImportWorkflowProperties & ImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
+	/** Sub-workflow dependency graph from the manifest, used to order the import. */
+	subWorkflowRequirements?: PackageWorkflowRequirement[];
 }
 
-export interface ImportOrchestrationResult {
-	workflowOutcomes: WorkflowImportOutcome[];
+/**
+ * Everything one scope's {@link ImportOrchestrator.apply} wrote, before the package-wide publish
+ * sweep runs. Telemetry consumes this shape directly — it only reads statuses and ids.
+ */
+export interface ImportContentResult {
+	workflowOutcomes: PersistedWorkflowOutcome[];
 	folderSummaries: ImportedFolderSummary[];
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
 	variableResult: VariableApplyResult;
+	tagPlan: TagImportPlan;
 }
 
 export interface ImportPlan {
@@ -83,6 +98,7 @@ export interface ImportPlan {
 	folderPlan: FolderImportPlan;
 	dataTablePlan: DataTableImportPlan;
 	variablePlan: VariableImportPlan;
+	tagPlan: TagImportPlan;
 	missingNodeTypes: MissingNodeTypeRequirement[];
 	blockingIssues: BlockingIssue[];
 }
@@ -97,18 +113,52 @@ export class ImportOrchestrator {
 		private readonly credentialImporter: CredentialImporter,
 		private readonly dataTableImporter: DataTableImporter,
 		private readonly variableImporter: VariableImporter,
+		private readonly tagImporter: TagImporter,
 		private readonly folderImporter: FolderImporter,
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly nodeTypes: NodeTypes,
+		private readonly licenseState: LicenseState,
 	) {}
 
-	async assertNotBlocked(plans: ImportPlan[]): Promise<void> {
+	/**
+	 * Gates variable creation in instance-to-project order so the broadest cause wins: licence and API
+	 * key scope, then each scope's create permission, then the quota. An unlicensed instance also reports
+	 * a zero quota, which would otherwise surface as a limit issue instead of the real cause.
+	 */
+	async assertNotBlocked(
+		plans: ImportPlan[],
+		options: { apiKeyScopes: string[] | undefined },
+	): Promise<void> {
+		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
+
+		assertVariableCreationAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: options.apiKeyScopes,
+			hasCreations: creations.length > 0,
+		});
+
+		for (const { input, variablePlan } of plans) {
+			if (variablePlan.creations.length === 0) continue;
+			await this.variableImporter.assertCanCreate(
+				input.context,
+				variablePlan.creations,
+				input.projectPendingCreation ?? false,
+			);
+		}
+
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
-		const quotaFailure = await this.variableImporter.quotaFailure(
-			plans.flatMap((plan) => plan.variablePlan.creations),
+		issues.push(
+			...contestedReconcileTargetFailures(
+				plans.map((plan) => ({
+					tagPlan: plan.tagPlan,
+					workflows: plan.workflowPlan.items.filter((item) => item.action !== 'skip'),
+				})),
+			).map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
 		);
+
+		const quotaFailure = await this.variableImporter.quotaFailure(creations);
 		if (quotaFailure) issues.push({ type: 'variable-limit-exceeded', ...quotaFailure });
 
 		if (issues.length > 0) throw toImportBlockedError(issues);
@@ -122,6 +172,7 @@ export class ImportOrchestrator {
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
+			tagRequest,
 			options,
 		} = input;
 
@@ -134,10 +185,14 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
-		const variablePlan = await this.variableImporter.plan(context, variableRequest, {
-			projectPendingCreation: input.projectPendingCreation,
-		});
+		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
+		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
+		const tagPlan = await this.tagImporter.plan(
+			context,
+			tagRequest,
+			workflowPlan.items.filter((item) => item.action !== 'skip'),
+		);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
@@ -155,6 +210,7 @@ export class ImportOrchestrator {
 			dataTablePlan,
 			variableRequest,
 			variablePlan,
+			tagPlan,
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
@@ -167,12 +223,21 @@ export class ImportOrchestrator {
 			folderPlan,
 			dataTablePlan,
 			variablePlan,
+			tagPlan,
 			missingNodeTypes,
 			blockingIssues,
 		};
 	}
 
-	async apply(plan: ImportPlan): Promise<ImportOrchestrationResult> {
+	/**
+	 * Writes this scope's content. Workflows land unpublished: publishing needs every workflow in
+	 * the package present first, so the caller runs {@link WorkflowPublisher.applyToPackage} once
+	 * all scopes have been applied.
+	 */
+	async apply(
+		plan: ImportPlan,
+		seedWorkflowBindings?: ImportBindingMap,
+	): Promise<ImportContentResult> {
 		const {
 			input,
 			folderContext,
@@ -181,13 +246,16 @@ export class ImportOrchestrator {
 			folderPlan,
 			dataTablePlan,
 			variablePlan,
+			tagPlan,
 		} = plan;
-		const { context, credentialRequest, options } = input;
+		const { context, credentialRequest } = input;
 
-		// Variables go first: stub creation is the only apply step that can still fail after the
-		// blocking-issue gate (a near-quota race), and it depends on nothing below — applying it
-		// before any other write keeps a quota-raced workflow-package import from persisting anything.
+		// Variables and tags go first: their creations are the apply steps that can still fail
+		// after the blocking-issue gate (a near-quota or unique-index race), and they depend on
+		// nothing below — applying them before any other write keeps a raced import from
+		// persisting anything else.
 		const variableResult = await this.variableImporter.apply(context, variablePlan);
+		await this.tagImporter.apply(context, tagPlan);
 
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
 
@@ -198,36 +266,43 @@ export class ImportOrchestrator {
 		);
 
 		await this.dataTableImporter.apply(context, dataTablePlan);
-		const publishBlocked = new Map<string, WorkflowPublishingBlockedReason>();
+
+		// Which workflows the publish phase must leave inactive. Known only now, because it depends
+		// on which credentials actually ended up stubbed.
+		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
 			new Set(credentialResult.stubbed),
 		)) {
-			publishBlocked.set(sourceWorkflowId, 'stub-credential');
+			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
 		// A workflow blocked for both reasons reports missing-node-type: it physically can't run.
 		for (const sourceWorkflowId of workflowsWithMissingNodeTypes(plan.missingNodeTypes)) {
-			publishBlocked.set(sourceWorkflowId, 'missing-node-type');
+			blockedFromPublish.set(sourceWorkflowId, 'missing-node-type');
 		}
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
-			{
-				...context,
-				publishingPolicy: options.workflowPublishingPolicy,
-				publishBlocked,
-			},
+			{ ...context, droppedTagIds: droppedTagIds(tagPlan) },
 			workflowPlan,
-			createBindings({ credentials: credentialResult.bindings }),
+			createBindings({
+				credentials: credentialResult.bindings,
+				// Seeds cross-scope workflow ids so a project package can resolve
+				// sub-workflow references that point into another project.
+				...(seedWorkflowBindings ? { workflows: seedWorkflowBindings } : {}),
+			}),
 		);
 
 		return {
-			workflowOutcomes: outcomes,
+			workflowOutcomes: outcomes.map((outcome) =>
+				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
+			),
 			folderSummaries,
 			bindings,
 			credentialResult,
 			dataTablePlan,
 			variablePlan,
 			variableResult,
+			tagPlan,
 		};
 	}
 
@@ -239,6 +314,7 @@ export class ImportOrchestrator {
 		dataTablePlan,
 		variableRequest,
 		variablePlan,
+		tagPlan,
 		missingNodeTypes,
 		missingNodeTypeMode,
 	}: {
@@ -249,6 +325,7 @@ export class ImportOrchestrator {
 		dataTablePlan: DataTableImportPlan;
 		variableRequest: VariableImportRequest;
 		variablePlan: VariableImportPlan;
+		tagPlan: TagImportPlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
 		missingNodeTypeMode: MissingNodeTypeMode;
 	}): BlockingIssue[] {
@@ -268,6 +345,7 @@ export class ImportOrchestrator {
 			...dataTablePlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),
 			),
+			...tagPlan.failures.map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
 				.map(toCredentialBlockingIssue),
@@ -284,6 +362,14 @@ export class ImportOrchestrator {
 			),
 		];
 	}
+}
+
+function withBlockedFromPublish(
+	outcome: PersistedWorkflowOutcome,
+	blockedFromPublish: WorkflowPublishingBlockedReason | undefined,
+): PersistedWorkflowOutcome {
+	if (outcome.status === 'skipped' || !blockedFromPublish) return outcome;
+	return { ...outcome, blockedFromPublish };
 }
 
 function toCredentialBlockingIssue(failure: CredentialResolutionFailure): BlockingIssue {

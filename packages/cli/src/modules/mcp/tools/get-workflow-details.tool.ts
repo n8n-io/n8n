@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import type { INodeTypes } from 'n8n-workflow';
+import { isTriggerNodeType, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -14,7 +14,12 @@ import type {
 	WorkflowDetailsResult,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { toNodeGroupSummary, toTagSummary, workflowDetailsOutputSchema } from './schemas';
+import {
+	sanitizeNodeCredentials,
+	toNodeGroupSummary,
+	toTagSummary,
+	workflowDetailsOutputSchema,
+} from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -137,9 +142,7 @@ export async function getWorkflowDetails(
 	const activeVersion =
 		workflow.activeVersionId && workflow.activeVersion
 			? {
-					nodes: (workflow.activeVersion.nodes ?? []).map(
-						({ credentials: _credentials, ...node }) => node,
-					),
+					nodes: (workflow.activeVersion.nodes ?? []).map(sanitizeNodeCredentials),
 					connections: workflow.activeVersion.connections ?? {},
 					nodeGroups: toNodeGroupSummary(
 						workflow.activeVersion.nodeGroups ?? [],
@@ -149,13 +152,18 @@ export async function getWorkflowDetails(
 			: null;
 
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	const triggers = nodes.filter(
-		(node) => supportedTriggers.includes(node.type) && node.disabled !== true,
+	const activeNodes = nodes.filter((node) => node.disabled !== true);
+	const triggers = activeNodes.filter((node) => supportedTriggers.includes(node.type));
+	// Triggers the workflow does have but MCP can't execute directly (e.g. Gmail Trigger),
+	// so the notice can distinguish these from a workflow with no triggers at all.
+	const unsupportedTriggers = activeNodes.filter(
+		(node) => isTriggerNodeType(node.type) && !supportedTriggers.includes(node.type),
 	);
 
 	const triggerNotice = await getTriggerDetails(
 		user,
 		triggers,
+		unsupportedTriggers,
 		baseWebhookUrl,
 		credentialsService,
 		nodeTypes,
@@ -176,7 +184,7 @@ export async function getWorkflowDetails(
 		updatedAt: workflow.updatedAt.toISOString(),
 		settings: workflow.settings ?? null,
 		connections,
-		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+		nodes: nodes.map(sanitizeNodeCredentials),
 		nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
 		activeVersion,
 		tags: toTagSummary(workflow.tags),

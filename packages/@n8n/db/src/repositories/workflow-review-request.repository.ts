@@ -32,9 +32,9 @@ export type FindManyForInboxOptions = {
  * Projection for the workflow-scoped list: the request fields the use case
  * needs plus the version pinned for the workflow the query was scoped to.
  */
-export type WorkflowReviewRequestForWorkflow = Pick<
+export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
-	'id' | 'state' | 'decision' | 'createdAt' | 'updatedAt'
+	'id' | 'state' | 'decision' | 'updatedById' | 'createdAt' | 'updatedAt'
 > & {
 	workflowVersionId: string | null;
 };
@@ -103,7 +103,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 	async findRequestsForWorkflow(
 		workflowId: string,
 		options: { state?: WorkflowReviewRequestState; skip?: number; take?: number } = {},
-	): Promise<[WorkflowReviewRequestForWorkflow[], number]> {
+	): Promise<[WorkflowReviewRequestForWorkflowRow[], number]> {
 		const qb = this.manager
 			.createQueryBuilder(WorkflowReviewRequest, 'request')
 			.innerJoin(
@@ -113,7 +113,11 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			)
 			.addSelect('requestWorkflow.workflowVersionId', 'pinnedWorkflowVersionId')
 			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
-			.orderBy('request.createdAt', 'DESC');
+			.orderBy('request.createdAt', 'DESC')
+			// Ids are random, so this only breaks ties deterministically: callers ask
+			// for the newest review to decide the publish gate, and that answer must
+			// not flip between requests when two reviews share a timestamp.
+			.addOrderBy('request.id', 'DESC');
 
 		if (options.state) {
 			qb.andWhere('request.state = :state', { state: options.state });
@@ -139,6 +143,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 			id: entity.id,
 			state: entity.state,
 			decision: entity.decision,
+			updatedById: entity.updatedById,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 			workflowVersionId: versionIdByRequestId.get(entity.id) ?? null,

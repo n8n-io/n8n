@@ -2,8 +2,7 @@ import type { LicenseState } from '@n8n/backend-common';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
-import type { VariableMissingMode } from '../n8n-packages.types';
+import type { TagImportPlan } from '../entities/tag/tag.types';
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
@@ -18,18 +17,16 @@ export function assertPackageImportApiKeyScopes(
 }
 
 /**
- * Callers decide `hasRequirements`, because each package shape looks at a different set: the
- * workflow path narrows the manifest's requirement list to the workflows it is importing, while a
- * project package takes that list whole, since it imports every project the package holds.
+ * Gated on what the import will create, not on what the package requires: a package whose variables
+ * all resolve creates nothing, so it needs neither the licence nor the scope. Mirrors the variables UI.
  */
 export function assertVariableCreationAllowed(options: {
 	licenseState: LicenseState;
 	apiKeyScopes: string[] | undefined;
-	missingMode: VariableMissingMode;
-	hasRequirements: boolean;
+	hasCreations: boolean;
 }): void {
-	const { licenseState, apiKeyScopes, missingMode, hasRequirements } = options;
-	if (!hasRequirements || !variableMissingModeCreates(missingMode)) return;
+	const { licenseState, apiKeyScopes, hasCreations } = options;
+	if (!hasCreations) return;
 
 	if (!licenseState.isVariablesLicensed()) {
 		throw new ForbiddenError(
@@ -37,4 +34,22 @@ export function assertVariableCreationAllowed(options: {
 		);
 	}
 	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+}
+
+/**
+ * Plan-derived, unlike the pre-plan data-table gate: a tag must
+ * never block an import that would not write it (skipped consumers, disabled
+ * tags, dropped conflicts), so the assert looks at what the plans actually
+ * create, rename, or reconcile.
+ */
+export function assertTagWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	tagPlans: TagImportPlan[],
+): void {
+	if (tagPlans.some((plan) => plan.creations.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);
+	}
+	if (tagPlans.some((plan) => plan.renames.length > 0 || plan.reconciles.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
+	}
 }

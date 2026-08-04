@@ -211,6 +211,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -231,6 +232,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -326,6 +328,7 @@ describe('OidcService', () => {
 				discoveryEndpoint: expect.any(URL),
 				authenticationContextClassReference: expect.any(Array),
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
@@ -891,6 +894,64 @@ describe('OidcService', () => {
 
 			expect(idpServer.captured).toEqual(['/userinfo']);
 			expect(body).toEqual({ ok: true, path: '/userinfo' });
+		});
+	});
+
+	describe('generateEndSessionUrl', () => {
+		const idToken = 'stored-id-token';
+
+		const setRpInitiatedLogoutEnabled = (enabled: boolean) => {
+			// Replace (not mutate) the runtime config so the shared default object
+			// isn't polluted across tests. updateConfig would require live discovery.
+			const service = oidcService as unknown as { oidcConfig: Record<string, unknown> };
+			service.oidcConfig = { ...service.oidcConfig, rpInitiatedLogoutEnabled: enabled };
+		};
+
+		it('returns undefined and does not contact the provider when RP-initiated logout is disabled', async () => {
+			setRpInitiatedLogoutEnabled(false);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn();
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toBeUndefined();
+			// @ts-expect-error - getOidcConfiguration is private
+			expect(oidcService.getOidcConfiguration).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when the provider does not advertise an end_session_endpoint', async () => {
+			setRpInitiatedLogoutEnabled(true);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({
+				serverMetadata: () => ({}),
+			} as unknown as client.Configuration);
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toBeUndefined();
+		});
+
+		it('builds the RP-initiated logout URL with the id_token_hint when enabled', async () => {
+			setRpInitiatedLogoutEnabled(true);
+			// @ts-expect-error - getOidcConfiguration is private
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({
+				serverMetadata: () => ({ end_session_endpoint: 'https://example.com/logout' }),
+			} as unknown as client.Configuration);
+			const expectedUrl = new URL('https://example.com/logout?id_token_hint=stored-id-token');
+			const buildEndSessionUrl = vi
+				.spyOn(client, 'buildEndSessionUrl')
+				.mockReturnValue(expectedUrl);
+
+			const url = await oidcService.generateEndSessionUrl(idToken);
+
+			expect(url).toEqual(expectedUrl);
+			expect(buildEndSessionUrl).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					id_token_hint: idToken,
+					post_logout_redirect_uri: expect.stringMatching(/\/signin$/),
+				}),
+			);
 		});
 	});
 });

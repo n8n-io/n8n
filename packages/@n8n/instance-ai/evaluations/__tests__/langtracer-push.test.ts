@@ -55,10 +55,10 @@ describe('planPush', () => {
 	});
 
 	it('skips a case that uses an unsupported seeding mode', () => {
-		const plan = planPush([item('c', { seedThread: { threadId: 't' } })], {}, {});
+		const plan = planPush([item('c', { seed: { mode: 'replay', threadId: 't' } })], {}, {});
 		expect(plan.skipped).toHaveLength(1);
 		expect(plan.skipped[0].fileSlug).toBe('c');
-		expect(plan.skipped[0].reason).toMatch(/seedThread/);
+		expect(plan.skipped[0].reason).toMatch(/seed \(mode: replay\)/);
 		expect(plan.toCreate).toEqual([]);
 	});
 

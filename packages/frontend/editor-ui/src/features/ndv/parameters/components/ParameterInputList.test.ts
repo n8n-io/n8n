@@ -90,6 +90,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: { value: false },
 		isCredentialTypeSupported: vi.fn(() => false),
+		canServeCredentialType: vi.fn(() => false),
 		isActionSupported: vi.fn(() => true),
 		isActionOptionVisible: vi.fn(() => true),
 		isNodePropertyHidden: vi.fn(() => false),
@@ -1951,6 +1952,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),
@@ -1987,6 +1989,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2044,6 +2047,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2089,6 +2093,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2162,6 +2167,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2197,6 +2203,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2236,6 +2243,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),
@@ -2280,6 +2288,7 @@ describe('ParameterInputList', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: { value: true } as never,
 				isCredentialTypeSupported: vi.fn(() => true),
+				canServeCredentialType: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),

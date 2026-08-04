@@ -2,7 +2,7 @@
  * Builder-facing SDK language reference, rendered from the interpreter's own
  * tables so guidance cannot drift from what the parser accepts.
  */
-import { NODE_GROUPING_RULES } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, NODE_GROUPING_RULES } from 'n8n-workflow';
 
 import {
 	SDK_METHODS,
@@ -86,7 +86,7 @@ export const NODE_GROUPS_REFERENCE = `## Node groups
 
 A node group is a named, visual grouping of nodes (a frame on the canvas). It is
 purely organisational — nothing about execution depends on it. Declare one with
-\`.group(name, members)\` on the workflow. Members are the node handles (the
+\`.group(name, members, options?)\` on the workflow. Members are the node handles (the
 \`const\` from \`node(...)\`) — the same way connections reference nodes:
 
 \`\`\`typescript
@@ -95,13 +95,18 @@ const transform = node({ /* ... name: 'Transform' */ });
 export default workflow('id', 'My workflow')
   .add(fetch)
   .to(transform)
-  .group('Ingestion', [fetch, transform]);
+  .group('Ingestion', [fetch, transform], {
+    description: 'Pulls the CRM contacts and normalizes them',
+  });
 \`\`\`
 
-When editing an existing workflow, **keep the \`.group(...)\` calls intact** unless
-the change is specifically about grouping.
+\`description\` is optional and shown when the group is collapsed. Keep it to one
+sentence — anything past ${GROUP_DESCRIPTION_MAX_LENGTH} characters is cut off.
 
-an invalid group is rejected on save, so these following rules MUST be followed when
+When editing an existing workflow, **keep the \`.group(...)\` calls and their descriptions
+intact** unless the change is specifically about grouping.
+
+An invalid group is rejected on save, so these following rules MUST be followed when
 creating or editing groups.
 
 Rules:

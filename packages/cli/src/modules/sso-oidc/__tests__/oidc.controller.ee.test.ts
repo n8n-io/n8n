@@ -235,6 +235,36 @@ describe('OidcController', () => {
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
+		test('Should still complete login when storing the ID token throws', async () => {
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+
+			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
+			oidcService.encryptIdToken.mockRejectedValueOnce(new Error('encryption failed'));
+
+			await controller.callbackHandler(req, res);
+
+			// The ID token cookie is skipped, but login still completes.
+			expect(res.cookie).not.toHaveBeenCalledWith(
+				OIDC_ID_TOKEN_COOKIE_NAME,
+				expect.any(String),
+				expect.any(Object),
+			);
+			expect(logger.warn).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
+				user,
+				authenticationMethod: 'oidc',
+			});
+			expect(res.redirect).toHaveBeenCalledWith('/');
+		});
+
 		test('Should render success page in test mode without creating session', async () => {
 			const req = mock<AuthlessRequest>({
 				originalUrl: '/sso/oidc/callback?code=auth_code&state=state_value',

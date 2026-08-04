@@ -217,19 +217,35 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
-		await executor.execute({
+		const result = await executor.execute({
 			descriptor,
 			action: 'send_dm',
 			input: { userId: 'U123', message: { text: 'Hello' } },
 			awaitResponse: false,
 		});
 
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(thread.post).toHaveBeenCalledWith('Hello');
 		expect(thread.subscribe).toHaveBeenCalled();
+		expect(result).toEqual({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'dm',
+					userId: 'U123',
+					threadId: 'slack:D123:123.456',
+				},
+				messageId: '123.456',
+				updatedAt: expect.any(String),
+			},
+		});
 	});
 
 	it('posts generic message card buttons with their labels', async () => {
@@ -357,6 +373,192 @@ describe('ChatIntegrationActionExecutor', () => {
 		expect(shortenCallback).toHaveBeenCalledWith(
 			'resume:run-1234567890:tool-call-1234567890:0',
 			JSON.stringify({ type: 'button', value: 'approve' }),
+		);
+		expect(mockButton).toHaveBeenLastCalledWith({
+			id: 'short1234',
+			label: 'Approve',
+			style: 'primary',
+			value: '',
+		});
+	});
+
+	it('edits an explicit message in the current Telegram conversation', async () => {
+		const editMessage = vi.fn().mockResolvedValue({
+			id: '123456:1000',
+			threadId: 'telegram:123456',
+			raw: {},
+		});
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+		const currentMessageContext = {
+			integrationConnectionId: 'telegram:cred-telegram',
+			platform: 'telegram',
+			target: { type: 'thread' as const, threadId: 'telegram:123456' },
+			messageId: '123456:11',
+			interactingUserId: '123456',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
+		expect(editMessage).toHaveBeenCalledWith('telegram:123456', '123456:1000', 'Updated status');
+		expect(result).toEqual({
+			ok: true,
+			messageContext: {
+				...currentMessageContext,
+				messageId: '123456:1000',
+				updatedAt: expect.any(String),
+			},
+		});
+	});
+
+	it('returns a structured error when edit_message has no current thread', async () => {
+		const editMessage = vi.fn();
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'channel', channelId: 'telegram:123456' },
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(chat.getAdapter).not.toHaveBeenCalled();
+		expect(editMessage).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'NO_MESSAGE_CONTEXT',
+				message: 'There is no current conversation to edit. Send a message first, then try again.',
+			},
+		});
+	});
+
+	it('returns a structured error when the active adapter cannot edit messages', async () => {
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({});
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'thread', threadId: 'telegram:123456' },
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'UNSUPPORTED_ACTION',
+				message: "The telegram integration can't edit messages. Use a supported action instead.",
+			},
+		});
+	});
+
+	it('maps and shortens callbacks when editing a Telegram rich card', async () => {
+		const editMessage = vi.fn().mockResolvedValue({
+			id: '123456:1000',
+			threadId: 'telegram:123456',
+			raw: {},
+		});
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
+			id: 'short1234',
+			value: '',
+		}));
+		Object.assign(chatIntegrationService, {
+			getShortenCallback: vi.fn().mockReturnValue(shortenCallback),
+		});
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: {
+				messageId: '123456:1000',
+				message: {
+					text: 'Choose the next step',
+					card: {
+						components: [
+							{ type: 'section', text: 'Review the updated status.' },
+							{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+						],
+					},
+				},
+			},
+			awaitResponse: true,
+			runId: 'run-1',
+			toolCallId: 'tool-1',
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'thread', threadId: 'telegram:123456' },
+				messageId: '123456:11',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual(expect.objectContaining({ ok: true }));
+		expect(shortenCallback).toHaveBeenCalledWith(
+			'resume:run-1:tool-1:0',
+			JSON.stringify({ type: 'button', value: 'approve' }),
+		);
+		expect(editMessage).toHaveBeenCalledWith(
+			'telegram:123456',
+			'123456:1000',
+			expect.objectContaining({ card: expect.any(Object) }),
 		);
 		expect(mockButton).toHaveBeenLastCalledWith({
 			id: 'short1234',
@@ -770,6 +972,165 @@ describe('ChatIntegrationActionExecutor', () => {
 				},
 				updatedAt: expect.any(String),
 			},
+		});
+	});
+
+	describe('respond in chat-triggered turns', () => {
+		const chatTurnContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread' as const,
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			replyExpectation: 'required' as const,
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		function buildExecutor() {
+			const thread = { post: vi.fn().mockResolvedValue({ id: '123.457' }) };
+			const chat = mock<ChatInstance>();
+			chat.thread.mockReturnValue(thread as never);
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.getChatInstance.mockReturnValue(chat);
+			const registry = buildRegistry();
+			Container.set(ChatIntegrationRegistry, registry);
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+			return { executor, descriptor, thread };
+		}
+
+		it('rejects a text-only respond because the reply text is already delivered', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Hello again' } },
+				awaitResponse: false,
+				currentMessageContext: chatTurnContext,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'ACTION_FAILED',
+					message: expect.stringContaining('already delivered'),
+				},
+			});
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('allows a respond that carries a card', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Summary',
+						card: { components: [{ type: 'section', text: 'Details' }] },
+					},
+				},
+				awaitResponse: false,
+				currentMessageContext: chatTurnContext,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('allows a text-only respond outside chat-triggered turns', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Task update' } },
+				awaitResponse: false,
+				currentMessageContext: { ...chatTurnContext, replyExpectation: undefined },
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith('Task update');
+		});
+	});
+
+	describe('do_not_respond', () => {
+		const slackMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread' as const,
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		it('succeeds without touching the chat instance when the reply is optional', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: {},
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'optional' },
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				silent: true,
+				note: expect.stringContaining('No reply will be sent'),
+			});
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the reply expectation is required', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: {},
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'required' },
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'REPLY_REQUIRED', message: expect.stringContaining('reply is expected') },
+			});
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the reply expectation is unset or the message context is missing', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			for (const currentMessageContext of [slackMessageContext, undefined]) {
+				const result = await executor.execute({
+					descriptor,
+					action: 'do_not_respond',
+					input: {},
+					awaitResponse: false,
+					currentMessageContext,
+				});
+
+				expect(result).toEqual({
+					ok: false,
+					error: { code: 'REPLY_REQUIRED', message: expect.any(String) },
+				});
+			}
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
 		});
 	});
 });

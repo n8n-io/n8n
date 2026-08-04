@@ -117,6 +117,7 @@ export class StreamSink implements RunOutputSink<void> {
 			messages: ctx.messages,
 			allowSystemInMessages: true,
 			abortSignal: ctx.abortSignal,
+			...(ctx.reasoning ? { reasoning: ctx.reasoning } : {}),
 			// Surface the provider's raw message_start/message_delta events so an
 			// aborted run can recover its usage — the SDK reports none on abort.
 			...(this.rawUsageReader !== undefined || this.rawErrorReader !== undefined

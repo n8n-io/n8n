@@ -17,7 +17,7 @@ import type { Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import RoleHoverPopover from './RoleHoverPopover.vue';
 import RoleContactAdminModal from './RoleContactAdminModal.vue';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';

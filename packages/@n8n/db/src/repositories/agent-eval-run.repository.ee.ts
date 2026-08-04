@@ -45,12 +45,22 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		});
 	}
 
-	async markAsError(id: string, errorCode: string, errorDetails?: IDataObject | null) {
+	/**
+	 * `metrics` is optional: a run failing before any case ran has none, but one
+	 * failing partway keeps its counts where the other statuses put them.
+	 */
+	async markAsError(
+		id: string,
+		errorCode: string,
+		errorDetails?: IDataObject | null,
+		metrics?: IDataObject | null,
+	) {
 		return await this.update(id, {
 			status: 'error',
 			completedAt: new Date(),
 			errorCode,
 			errorDetails: errorDetails ?? null,
+			metrics: metrics ?? null,
 			runningInstanceId: null,
 		});
 	}
@@ -78,6 +88,20 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 
 	async findById(id: string): Promise<AgentEvalRun | null> {
 		return await this.findOneBy({ id });
+	}
+
+	// A run has no agent column — the agent under test is its dataset's — so the
+	// ownership check walks the relation instead of trusting a bare run id.
+	async findByIdAndAgentId(id: string, agentId: string): Promise<AgentEvalRun | null> {
+		return await this.findOne({ where: { id, dataset: { agentId } } });
+	}
+
+	/** Runs of a dataset, scoped to the agent that dataset must belong to. */
+	async findByDatasetIdAndAgentId(datasetId: string, agentId: string): Promise<AgentEvalRun[]> {
+		return await this.find({
+			where: { datasetId, dataset: { agentId } },
+			order: { createdAt: 'DESC' },
+		});
 	}
 
 	/**

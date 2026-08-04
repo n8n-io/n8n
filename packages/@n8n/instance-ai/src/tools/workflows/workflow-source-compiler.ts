@@ -136,6 +136,12 @@ function parseSandboxWarnings(value: unknown): ValidationWarning[] {
 			code: warning.code,
 			message: warning.message,
 			nodeName: typeof warning.nodeName === 'string' ? warning.nodeName : undefined,
+			severity:
+				warning.severity === 'informational' ||
+				warning.severity === 'warning' ||
+				warning.severity === 'error'
+					? warning.severity
+					: undefined,
 		});
 	}
 

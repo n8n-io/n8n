@@ -35,12 +35,14 @@ import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
@@ -73,6 +75,7 @@ describe('SourceControlImportService', () => {
 	const variablesRepository = mock<VariablesRepository>();
 	const workflowService = mock<WorkflowService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowPublishGuard = mock<WorkflowPublishGuardProxy>();
 	const dataTableRepository = mock<DataTableRepository>();
 	const dataTableColumnRepository = mock<DataTableColumnRepository>();
 	const dataTableDDLService = mock<DataTableDDLService>();
@@ -123,6 +126,7 @@ describe('SourceControlImportService', () => {
 		dataTableSizeValidator,
 		activeWorkflowManager,
 		executionPersistence,
+		workflowPublishGuard,
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
@@ -130,6 +134,7 @@ describe('SourceControlImportService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		workflowPublishGuard.assertCanPublish.mockResolvedValue(undefined);
 		credentialsRepository.find.mockResolvedValue([]);
 		transactionManager.upsert.mockImplementation(
 			async (_entity, value, conflictPaths) =>
@@ -973,6 +978,106 @@ describe('SourceControlImportService', () => {
 						versionId: 'v2',
 					}),
 				);
+			});
+
+			it('keeps the published version running when an open review blocks auto-publish', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Reviewed Workflow',
+					versionId: 'v2',
+					nodes: [],
+					connections: {},
+					parentFolderId: null,
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					active: true,
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+				workflowPublishGuard.assertCanPublish.mockRejectedValue(
+					new WorkflowPublishBlockedError({
+						reason: 'review_pending',
+						workflowReviewRequestId: 'review-1',
+					}),
+				);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })],
+					mockUserId,
+					'all',
+				);
+
+				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						versionId: 'v2',
+						active: true,
+						activeVersionId: 'v1',
+					}),
+					['id'],
+				);
+				expect(result).toEqual([
+					{
+						id: 'workflow1',
+						name: mockWorkflowFile,
+						publishingError: expect.stringContaining('review is open'),
+						publishingErrorDetails: {
+							reason: 'review_pending',
+							workflowReviewRequestId: 'review-1',
+						},
+					},
+				]);
+			});
+
+			it('returns review details when publication is blocked after a new workflow is imported', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'New Reviewed Workflow',
+					versionId: 'v1',
+					nodes: [],
+					connections: {},
+					parentFolderId: null,
+				};
+				workflowRepository.findByIds.mockResolvedValue([]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+				workflowService.activateWorkflow.mockRejectedValue(
+					new WorkflowPublishBlockedError({
+						reason: 'changes_requested',
+						workflowReviewRequestId: 'review-2',
+					}),
+				);
+
+				const result = await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })],
+					mockUserId,
+					'all',
+				);
+
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						versionId: 'v1',
+						active: false,
+						activeVersionId: null,
+					}),
+					['id'],
+				);
+				expect(result).toEqual([
+					{
+						id: 'workflow1',
+						name: mockWorkflowFile,
+						publishingError: expect.stringContaining('requested changes'),
+						publishingErrorDetails: {
+							reason: 'changes_requested',
+							workflowReviewRequestId: 'review-2',
+						},
+					},
+				]);
 			});
 
 			it('should publish only previously published workflows with autoPublish="published"', async () => {

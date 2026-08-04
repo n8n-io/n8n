@@ -2,7 +2,7 @@ import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 
 import { LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW } from '@/app/constants/localStorage';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 export const useReviewRequiredStore = defineStore('workflowReviewRequired', () => {
 	const usersStore = useUsersStore();
