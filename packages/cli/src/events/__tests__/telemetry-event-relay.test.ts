@@ -34,6 +34,7 @@ import type { License } from '@/license';
 import { OtelConfig } from '@/modules/otel/otel.config';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
