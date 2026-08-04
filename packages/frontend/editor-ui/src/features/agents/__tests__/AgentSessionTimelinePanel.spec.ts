@@ -108,7 +108,7 @@ describe('AgentSessionTimelinePanel', () => {
 				{ id: 'exec-3', status: 'running', timeline: [] },
 				{ id: 'exec-4', status: 'running', timeline: [] },
 			],
-		} as ThreadDetail;
+		} as unknown as ThreadDetail;
 		const refreshed = {
 			...detail,
 			executions: [
@@ -123,7 +123,7 @@ describe('AgentSessionTimelinePanel', () => {
 					timeline: [{ type: 'text', content: 'Fourth', timestamp: 2 }],
 				},
 			],
-		} as ThreadDetail;
+		} as unknown as ThreadDetail;
 		getThreadDetail.mockResolvedValueOnce(initial).mockResolvedValueOnce(refreshed);
 		const wrapper = mountPanel();
 		await flushPromises();
@@ -168,7 +168,7 @@ describe('AgentSessionTimelinePanel', () => {
 			userMessage: 'Question',
 			timeline: [{ type: 'text', content: 'Answer', timestamp: 1 }],
 		};
-		const runningDetail = { ...detail, executions: [execution] } as ThreadDetail;
+		const runningDetail = { ...detail, executions: [execution] } as unknown as ThreadDetail;
 		let resolveRefresh!: (value: ThreadDetail) => void;
 		getThreadDetail
 			.mockResolvedValueOnce(runningDetail)
