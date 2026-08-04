@@ -4,7 +4,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 
-import { reconcileNodeToolGatewayCredentials } from '../reconcile-node-tool-gateway-credentials';
+import {
+	listAiGatewayManagedCredentialTypes,
+	reconcileNodeToolGatewayCredentials,
+} from '../reconcile-node-tool-gateway-credentials';
 
 const GATEWAY_CONFIG = {
 	nodes: ['n8n-nodes-base.slack'],
@@ -316,5 +319,46 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } })];
 		reconcileNodeToolGatewayCredentials(tools, nodeTypes, GATEWAY_CONFIG, NO_OWNED);
 		expect(tools[0].node.credentials).toEqual({});
+	});
+});
+
+describe('listAiGatewayManagedCredentialTypes', () => {
+	it('returns a type whose every required slot is served by a managed credential', () => {
+		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } })];
+		expect(
+			listAiGatewayManagedCredentialTypes(tools, nodeTypesWithCredentials(['slackApi'])),
+		).toEqual(['slackApi']);
+	});
+
+	it('treats a real credential of the type as satisfying the slot', () => {
+		const tools = [
+			nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } }),
+			nodeTool('n8n-nodes-base.slackTool', { slackApi: { id: 'c1', name: 'My Slack' } }),
+		];
+		expect(
+			listAiGatewayManagedCredentialTypes(tools, nodeTypesWithCredentials(['slackApi'])),
+		).toEqual(['slackApi']);
+	});
+
+	it('excludes a managed type that still has an empty required slot on another tool', () => {
+		// Per-operation coverage: one tool runs a covered operation on n8n credits,
+		// another needs a real credential for an uncovered one — so the type must
+		// keep prompting rather than be suppressed globally.
+		const tools = [
+			nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } }),
+			nodeTool('n8n-nodes-base.slackTool'),
+		];
+		expect(
+			listAiGatewayManagedCredentialTypes(tools, nodeTypesWithCredentials(['slackApi'])),
+		).toEqual([]);
+	});
+
+	it('ignores non-node tools and unresolvable node types', () => {
+		const nodeTypes = mock<NodeTypes>();
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('unknown node type');
+		});
+		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } })];
+		expect(listAiGatewayManagedCredentialTypes(tools, nodeTypes)).toEqual([]);
 	});
 });

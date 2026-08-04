@@ -6,7 +6,7 @@ import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow'
 import type { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility, HTTP_NODE_TYPES } from '@/services/ai-gateway-eligibility';
 
-const AI_GATEWAY_MANAGED_CREDENTIAL_NAME = 'n8n credits';
+const N8N_CONNECT_CREDENTIAL_NAME = 'n8n credits';
 const AI_GATEWAY_MANAGED_CREDENTIAL_FLAG = '__aiGatewayManaged';
 
 type NodeToolCredential = NonNullable<NodeToolConfig['credentials']>[string];
@@ -14,7 +14,7 @@ type NodeToolCredential = NonNullable<NodeToolConfig['credentials']>[string];
 function aiGatewayManagedCredential(): NodeToolCredential {
 	return {
 		id: null,
-		name: AI_GATEWAY_MANAGED_CREDENTIAL_NAME,
+		name: N8N_CONNECT_CREDENTIAL_NAME,
 		[AI_GATEWAY_MANAGED_CREDENTIAL_FLAG]: true,
 	};
 }
@@ -102,6 +102,52 @@ export function reconcileNodeToolGatewayCredentials(
 	}
 }
 
+/**
+ * Credential types whose every required, displayed node-tool slot is already
+ * satisfied (managed marker or a real id) — the finish_setup credential card
+ * for such a type is redundant and can be dropped.
+ *
+ * A type is EXCLUDED when any tool still has an empty required slot of it, even
+ * if another tool runs it on n8n credits: coverage is per node/operation, so a
+ * covered operation and an uncovered one can share a credential type, and the
+ * uncovered one must keep prompting for a real credential.
+ */
+export function listAiGatewayManagedCredentialTypes(
+	tools: AgentJsonToolConfig[] | undefined,
+	nodeTypes: NodeTypes,
+): string[] {
+	const managed = new Set<string>();
+	const unsatisfied = new Set<string>();
+
+	for (const tool of tools ?? []) {
+		if (tool.type !== 'node') continue;
+		const node = tool.node;
+
+		let description: INodeTypeDescription;
+		try {
+			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
+		} catch {
+			continue;
+		}
+
+		for (const [credentialType, ref] of Object.entries(node.credentials ?? {})) {
+			if (AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref) managed.add(credentialType);
+		}
+
+		const resolvedParameters = resolveNodeParameters(node, description);
+		for (const slot of getRequiredNodeCredentialSlots(description)) {
+			const credentialType = slot.credentialType;
+			const ref = node.credentials?.[credentialType];
+			if (ref && (ref.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref)) continue;
+			if (isCredentialDisplayed(node, description, credentialType, resolvedParameters)) {
+				unsatisfied.add(credentialType);
+			}
+		}
+	}
+
+	return [...managed].filter((credentialType) => !unsatisfied.has(credentialType));
+}
+
 function reconcileNode(
 	node: NodeToolConfig,
 	nodeTypes: NodeTypes,
@@ -112,7 +158,7 @@ function reconcileNode(
 	try {
 		description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
 	} catch {
-		dropManagedMarkers(node);
+		dropAiGatewayMarkers(node);
 		return;
 	}
 
@@ -181,7 +227,7 @@ function reconcileNode(
 	}
 }
 
-function dropManagedMarkers(node: NodeToolConfig): void {
+function dropAiGatewayMarkers(node: NodeToolConfig): void {
 	if (!node.credentials) return;
 	for (const [slot, ref] of Object.entries(node.credentials)) {
 		if (AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref) delete node.credentials[slot];

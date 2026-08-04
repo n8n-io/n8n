@@ -38,8 +38,12 @@ export interface FinishSetupToolDeps {
 	listIntegrationCredentialIds?: () => Promise<string[]>;
 	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
 	listChatIntegrationTypes: () => string[];
-	/** Credential types already covered by an n8n Connect managed credential on the agent's node tools. */
-	listManagedNodeToolCredentialTypes?: () => Promise<string[]>;
+	/**
+	 * Credential types whose every required node-tool slot is already served by an
+	 * n8n Connect managed credential — a card for these is redundant. A type still
+	 * empty on any tool is excluded, so an uncovered node/operation keeps prompting.
+	 */
+	listAiGatewayManagedCredentialTypes?: () => Promise<string[]>;
 }
 
 const finishSetupCredentialRequestInputSchema = z.object({
@@ -207,9 +211,9 @@ async function computeInitialPlan(
 
 	// Drop requests for slots the server already covers with an n8n Connect
 	// managed credential — they need no user setup, so never show a card.
-	const managedTypes = new Set((await deps.listManagedNodeToolCredentialTypes?.()) ?? []);
+	const aiGatewayManagedTypes = new Set((await deps.listAiGatewayManagedCredentialTypes?.()) ?? []);
 	const credentialRequests = (input.credentialRequests ?? []).filter(
-		(slot) => !managedTypes.has(slot.credentialType),
+		(slot) => !aiGatewayManagedTypes.has(slot.credentialType),
 	);
 
 	if (credentialRequests.length) {

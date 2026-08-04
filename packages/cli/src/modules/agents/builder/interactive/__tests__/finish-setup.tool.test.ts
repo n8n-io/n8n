@@ -109,7 +109,7 @@ describe('finish_setup tool', () => {
 			...BASE_DEPS,
 			credentialProvider,
 			// The agent's node tools already run pdfcoApi on n8n credits.
-			listManagedNodeToolCredentialTypes: async () => ['pdfcoApi'],
+			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
 		});
 		const ctx = makeCtx();
 
@@ -128,7 +128,7 @@ describe('finish_setup tool', () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
 			credentialProvider,
-			listManagedNodeToolCredentialTypes: async () => ['pdfcoApi'],
+			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
 		});
 		const ctx = makeCtx();
 
