@@ -526,12 +526,28 @@ export class ChatIntegrationService {
 	 *
 	 * Looks up the connection by platform so that the correct Chat instance
 	 * is used when an agent has multiple integrations (e.g. Slack + Discord).
+	 *
+	 * For Discord, an optional `discordApplicationId` selects among multiple
+	 * Discord apps on the same agent. It is only a routing hint — the adapter
+	 * still verifies the Ed25519 signature with that connection's public key.
 	 */
-	getWebhookHandler(agentId: string, platform: string): WebhookHandler | undefined {
+	getWebhookHandler(
+		agentId: string,
+		platform: string,
+		discordApplicationId?: string,
+	): WebhookHandler | undefined {
 		for (const [key, conn] of this.connections) {
-			if (key.startsWith(`${agentId}:${platform}:`)) {
-				return conn.chat.webhooks[platform];
+			if (!key.startsWith(`${agentId}:${platform}:`)) continue;
+			if (platform === 'discord' && discordApplicationId !== undefined) {
+				const storedApplicationId = conn.context.credential.applicationId;
+				if (
+					typeof storedApplicationId !== 'string' ||
+					storedApplicationId.trim() !== discordApplicationId
+				) {
+					continue;
+				}
 			}
+			return conn.chat.webhooks[platform];
 		}
 		return undefined;
 	}

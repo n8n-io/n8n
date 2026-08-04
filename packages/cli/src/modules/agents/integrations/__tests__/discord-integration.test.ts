@@ -2,6 +2,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+
+import type { Agent } from '../../entities/agent.entity';
+import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import type { PlatformContextQueryParams } from '../agent-chat-integration';
@@ -18,18 +23,24 @@ vi.mock('../esm-loader', () => ({
 const AGENT_ID = 'agent-1';
 const CREDENTIAL_ID = 'cred-discord';
 const GUILD_ID = '800000000000000001';
+const APPLICATION_ID = '900000000000000001';
+const PUBLIC_KEY = 'a'.repeat(64);
+const BOT_TOKEN = 'test-bot-token';
 
-function connectionContext(): AgentChatIntegrationContext {
+function connectionContext(
+	overrides: Partial<AgentChatIntegrationContext> = {},
+): AgentChatIntegrationContext {
 	return {
 		agentId: AGENT_ID,
 		projectId: 'project-1',
 		credentialId: CREDENTIAL_ID,
 		credential: {
-			botToken: 'test-bot-token',
-			publicKey: 'a'.repeat(64),
-			applicationId: '900000000000000001',
+			botToken: BOT_TOKEN,
+			publicKey: PUBLIC_KEY,
+			applicationId: APPLICATION_ID,
 		},
 		webhookUrlFor: () => 'https://n8n.example.com/webhook',
+		...overrides,
 	};
 }
 
@@ -47,11 +58,17 @@ function searchQuery(): PlatformContextQueryParams {
 
 describe('DiscordIntegration', () => {
 	let integration: DiscordIntegration;
+	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
+	let logger: ReturnType<typeof mock<Logger>>;
 
 	beforeEach(() => {
+		agentRepository = mock<AgentRepository>();
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+		logger = mock<Logger>();
 		integration = new DiscordIntegration(
-			mock<Logger>(),
+			logger,
 			mock<InstanceSettings>({ isLeader: false }),
+			agentRepository,
 		);
 	});
 
@@ -91,6 +108,112 @@ describe('DiscordIntegration', () => {
 
 	it('returns the text untouched when the bot user ID is unknown', () => {
 		expect(integration.prepareInboundText('<@1234567890> hello', {})).toBe('<@1234567890> hello');
+	});
+
+	describe('onBeforeConnect', () => {
+		let stub: ReturnType<typeof installFetchStub>;
+		let applicationCalls: number;
+
+		beforeEach(() => {
+			applicationCalls = 0;
+			stub = installFetchStub({
+				match: /discord\.com\/api/,
+				onRequest: ({ url }) => {
+					const path = new URL(url).pathname.replace(/^\/api\/v\d+/, '');
+					const apiCall = { method: path, body: {} };
+					if (path === '/oauth2/applications/@me') {
+						applicationCalls += 1;
+						return {
+							apiCall,
+							responseBody: { id: APPLICATION_ID, verify_key: PUBLIC_KEY },
+						};
+					}
+					return { apiCall, responseBody: {} };
+				},
+			});
+		});
+
+		afterEach(() => {
+			stub?.restore();
+		});
+
+		it('allows connect when Discord metadata matches the credential', async () => {
+			await expect(integration.onBeforeConnect(connectionContext())).resolves.toBeUndefined();
+			expect(applicationCalls).toBe(1);
+		});
+
+		it('rejects when Discord returns 401 for the bot token', async () => {
+			stub.restore();
+			stub = installFetchStub({
+				match: /discord\.com\/api/,
+				onRequest: () => ({
+					apiCall: { method: '/oauth2/applications/@me', body: {} },
+					responseBody: { message: '401: Unauthorized' },
+					status: 401,
+				}),
+			});
+
+			const promise = integration.onBeforeConnect(connectionContext());
+			await expect(promise).rejects.toBeInstanceOf(BadRequestError);
+			await expect(promise).rejects.toThrow(/Bot Token was rejected/);
+		});
+
+		it('rejects when the Application ID does not match Discord metadata', async () => {
+			stub.restore();
+			stub = installFetchStub({
+				match: /discord\.com\/api/,
+				onRequest: () => ({
+					apiCall: { method: '/oauth2/applications/@me', body: {} },
+					responseBody: { id: '111111111111111111', verify_key: PUBLIC_KEY },
+				}),
+			});
+
+			await expect(integration.onBeforeConnect(connectionContext())).rejects.toThrow(
+				/Application ID does not match/,
+			);
+		});
+
+		it('rejects when the Public Key does not match Discord metadata', async () => {
+			stub.restore();
+			stub = installFetchStub({
+				match: /discord\.com\/api/,
+				onRequest: () => ({
+					apiCall: { method: '/oauth2/applications/@me', body: {} },
+					responseBody: { id: APPLICATION_ID, verify_key: 'b'.repeat(64) },
+				}),
+			});
+
+			await expect(integration.onBeforeConnect(connectionContext())).rejects.toThrow(
+				/Public Key does not match/,
+			);
+		});
+
+		it('rejects repository ownership before calling Discord', async () => {
+			agentRepository.findByIntegrationCredential.mockResolvedValue([
+				{ id: 'agent-other', name: 'Other Agent' } as Agent,
+			]);
+
+			const promise = integration.onBeforeConnect(connectionContext());
+			await expect(promise).rejects.toBeInstanceOf(ConflictError);
+			await expect(promise).rejects.toThrow(
+				'Discord credential is already connected to agent "Other Agent"',
+			);
+			expect(applicationCalls).toBe(0);
+		});
+	});
+
+	describe('createAdapter logger', () => {
+		it('forwards adapter initialization through the n8n logger without metadata', async () => {
+			const adapter = (await integration.createAdapter(connectionContext())) as {
+				initialize: (chat: unknown) => Promise<void>;
+			};
+			await adapter.initialize({});
+
+			expect(logger.info).toHaveBeenCalledWith('[DiscordAdapter] Discord adapter initialized');
+			for (const [, ...rest] of logger.info.mock.calls) {
+				expect(rest).toEqual([]);
+			}
+		});
 	});
 
 	describe('search_channels', () => {

@@ -1,10 +1,16 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
+import { LockService } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { CacheService } from '@/services/cache/cache.service';
+
+import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type { ChatIntegrationActionExecutor } from '../../../integration-action-executor';
@@ -94,7 +100,7 @@ export interface DiscordReplayContext extends Omit<ReplayContextSetup, 'nextStre
  * Each call is recorded as `{ method: "<VERB> <path>", body }` so assertions can
  * name the endpoint the adapter actually hit.
  */
-function installDiscordApiStub() {
+function installDiscordApiStub(options: { failThreadCreate?: boolean } = {}) {
 	let nextMessageId = 1000;
 	return installFetchStub({
 		match: /discord\.com\/api/,
@@ -102,8 +108,25 @@ function installDiscordApiStub() {
 			const path = new URL(url).pathname.replace(/^\/api\/v\d+/, '');
 			const apiCall = { method: `${httpMethod} ${path}`, body };
 
+			if (httpMethod === 'GET' && path === '/oauth2/applications/@me') {
+				return {
+					apiCall,
+					responseBody: {
+						id: DISCORD_APPLICATION_ID,
+						verify_key: DISCORD_PUBLIC_KEY,
+					},
+				};
+			}
+
 			// Auto-thread creation for a channel mention.
 			if (httpMethod === 'POST' && path.endsWith('/threads')) {
+				if (options.failThreadCreate) {
+					return {
+						apiCall,
+						responseBody: { message: 'Missing Permissions' },
+						status: 403,
+					};
+				}
 				return { apiCall, responseBody: { id: DISCORD_THREAD_ID, name: 'Thread' } };
 			}
 			if (httpMethod === 'POST' && path === '/users/@me/channels') {
@@ -121,13 +144,44 @@ function installDiscordApiStub() {
 					responseBody: { id: String(nextMessageId++), channel_id: path.split('/')[2] },
 				};
 			}
+			if (httpMethod === 'PATCH' && /\/messages\/\d+$/.test(path)) {
+				return {
+					apiCall,
+					responseBody: { id: path.split('/').at(-1), channel_id: path.split('/')[2] },
+				};
+			}
 			return { apiCall, responseBody: {} };
 		},
 	});
 }
 
 function createIntegration() {
-	return new DiscordIntegration(mock<BackendLogger>(), mock<InstanceSettings>());
+	return new DiscordIntegration(
+		mock<BackendLogger>(),
+		mock<InstanceSettings>({ isLeader: false }),
+		mock<AgentRepository>({
+			findByIntegrationCredential: vi.fn().mockResolvedValue([]),
+		}),
+	);
+}
+
+async function ensureSharedCallbackServices(): Promise<void> {
+	// Discord shortens callback IDs into a cluster-safe CallbackStore backed by
+	// these DI services. Replay contexts reset the container on shutdown, so
+	// register fresh in-memory instances for each context.
+	const globalConfig = mock<GlobalConfig>({
+		cache: {
+			backend: 'memory',
+			memory: { maxSize: 10 * 1024 * 1024, ttl: 60_000 },
+			redis: { prefix: 'cache', ttl: 60_000 },
+		},
+		executions: { mode: 'regular' },
+		redis: { prefix: 'n8n' },
+	} as GlobalConfig);
+	const cacheService = new CacheService(globalConfig);
+	await cacheService.init();
+	Container.set(CacheService, cacheService);
+	Container.set(LockService, Container.get(LockService));
 }
 
 /**
@@ -147,13 +201,15 @@ function createIntegration() {
  * would test the `discord-interactions` library rather than n8n.
  */
 export async function createDiscordReplayContext(
-	fixtures: DiscordReplayFixtures,
+	_fixtures: DiscordReplayFixtures,
 	options: {
 		stream?: StreamChunk[];
 		integration?: AgentIntegrationConfig;
+		failThreadCreate?: boolean;
 	} = {},
 ): Promise<DiscordReplayContext> {
-	const stub = installDiscordApiStub();
+	const stub = installDiscordApiStub({ failThreadCreate: options.failThreadCreate });
+	await ensureSharedCallbackServices();
 
 	// Dynamic imports — the chat packages are ESM-only. Unlike production (which
 	// must route through esm-loader to dodge the CJS transform), vitest loads ESM
@@ -179,9 +235,35 @@ export async function createDiscordReplayContext(
 		type: 'discord',
 		credentialId: 'cred-discord',
 	};
+	const integrationImpl = createIntegration();
+	// Retain the bot token on the integration's gateway so approval settlement
+	// (which PATCHes Discord directly) can authenticate like production.
+	await integrationImpl.createAdapter({
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		credentialId: integration.credentialId,
+		credential: {
+			botToken: DISCORD_BOT_TOKEN,
+			publicKey: DISCORD_PUBLIC_KEY,
+			applicationId: DISCORD_APPLICATION_ID,
+		},
+		webhookUrlFor: () => 'https://n8n.example.com/webhook',
+	});
+	await integrationImpl.onConnected({
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		credentialId: integration.credentialId,
+		credential: {
+			botToken: DISCORD_BOT_TOKEN,
+			publicKey: DISCORD_PUBLIC_KEY,
+			applicationId: DISCORD_APPLICATION_ID,
+		},
+		webhookUrlFor: () => 'https://n8n.example.com/webhook',
+	});
+
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: createIntegration(),
+		integrationImpl,
 		integration,
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,

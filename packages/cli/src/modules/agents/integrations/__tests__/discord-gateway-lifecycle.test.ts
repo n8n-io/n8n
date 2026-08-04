@@ -2,6 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+
+import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import { DiscordIntegration } from '../platforms/discord-integration';
 
@@ -73,7 +76,12 @@ function createFakeAdapter(options?: { resolveImmediately?: boolean; ok?: boolea
 	};
 }
 
-function connectionContext(): AgentChatIntegrationContext {
+function connectionContext(
+	overrides: Partial<AgentChatIntegrationContext> & {
+		credential?: Record<string, unknown>;
+	} = {},
+): AgentChatIntegrationContext {
+	const { credential: credentialOverride, ...rest } = overrides;
 	return {
 		agentId: 'agent-1',
 		projectId: 'project-1',
@@ -82,9 +90,19 @@ function connectionContext(): AgentChatIntegrationContext {
 			botToken: 'test-bot-token',
 			publicKey: 'a'.repeat(64),
 			applicationId: '900000000000000001',
+			...credentialOverride,
 		},
 		webhookUrlFor: () => 'https://n8n.example.com/webhook',
+		...rest,
 	};
+}
+
+function makeIntegration(): DiscordIntegration {
+	return new DiscordIntegration(
+		mock<Logger>(),
+		mock<InstanceSettings>({ isLeader: true }),
+		mock<AgentRepository>(),
+	);
 }
 
 describe('DiscordIntegration Gateway lifecycle', () => {
@@ -96,10 +114,7 @@ describe('DiscordIntegration Gateway lifecycle', () => {
 		fake = createFakeAdapter();
 		hoisted.adapter = fake;
 		hoisted.createAdapter = undefined;
-		integration = new DiscordIntegration(
-			mock<Logger>(),
-			mock<InstanceSettings>({ isLeader: true }),
-		);
+		integration = makeIntegration();
 	});
 
 	afterEach(async () => {
@@ -181,11 +196,14 @@ describe('DiscordIntegration Gateway lifecycle', () => {
 		let next = 0;
 		hoisted.createAdapter = () => adapters[next++];
 
-		const ctxA = connectionContext();
-		const ctxB: AgentChatIntegrationContext = {
-			...connectionContext(),
+		const ctxA = connectionContext({
+			credential: { botToken: 'bot-token-a' },
+		});
+		const ctxB = connectionContext({
 			agentId: 'agent-2',
-		};
+			credentialId: 'cred-discord-b',
+			credential: { botToken: 'bot-token-b' },
+		});
 
 		await integration.createAdapter(ctxA);
 		await integration.onConnected(ctxA);
@@ -209,6 +227,27 @@ describe('DiscordIntegration Gateway lifecycle', () => {
 		expect(fakeA.startGatewayListener).toHaveBeenCalledTimes(2);
 		expect(fakeA.calls.at(-1)?.signal?.aborted).toBe(false);
 		expect(fakeB.calls.at(-1)?.signal?.aborted).toBe(false);
+	});
+
+	it('rejects a second agent that reuses the same bot token and keeps one listener', async () => {
+		const fakeA = createFakeAdapter();
+		const fakeB = createFakeAdapter();
+		const adapters = [fakeA, fakeB];
+		let next = 0;
+		hoisted.createAdapter = () => adapters[next++];
+
+		const ctxA = connectionContext();
+		const ctxB = connectionContext({
+			agentId: 'agent-2',
+			credentialId: 'cred-discord-2',
+		});
+
+		await integration.createAdapter(ctxA);
+		await integration.onConnected(ctxA);
+
+		await expect(integration.createAdapter(ctxB)).rejects.toBeInstanceOf(ConflictError);
+		expect(fakeA.startGatewayListener).toHaveBeenCalledTimes(1);
+		expect(fakeB.startGatewayListener).not.toHaveBeenCalled();
 	});
 
 	it('does not leave a socket behind when a takeover races a disconnect', async () => {
@@ -241,10 +280,7 @@ describe('DiscordIntegration Gateway lifecycle', () => {
 		try {
 			fake = createFakeAdapter({ ok: false });
 			hoisted.adapter = fake;
-			integration = new DiscordIntegration(
-				mock<Logger>(),
-				mock<InstanceSettings>({ isLeader: true }),
-			);
+			integration = makeIntegration();
 
 			await connect();
 

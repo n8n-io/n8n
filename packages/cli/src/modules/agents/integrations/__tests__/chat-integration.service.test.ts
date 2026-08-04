@@ -919,6 +919,47 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		});
 	});
 
+	describe('getWebhookHandler', () => {
+		const seedDiscordConnection = (
+			service: ChatIntegrationService,
+			credentialId: string,
+			applicationId: string,
+			handler: unknown,
+		) => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(service as any).connections.set(`agent-1:discord:${credentialId}`, {
+				chat: { webhooks: { discord: handler } },
+				bridge: { dispose: vi.fn() },
+				context: {
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					credentialId,
+					credential: { applicationId },
+					webhookUrlFor: () => 'https://n8n.example.com/wh',
+				},
+			});
+		};
+
+		it('selects the Discord handler whose credential applicationId matches', () => {
+			const { service } = buildServiceWith({});
+			const handlerA = vi.fn();
+			const handlerB = vi.fn();
+			seedDiscordConnection(service, 'cred-a', 'app-a', handlerA);
+			seedDiscordConnection(service, 'cred-b', '  app-b  ', handlerB);
+
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-b')).toBe(handlerB);
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-a')).toBe(handlerA);
+		});
+
+		it('returns undefined for an unknown Discord applicationId', () => {
+			const { service } = buildServiceWith({});
+			seedDiscordConnection(service, 'cred-a', 'app-a', vi.fn());
+			seedDiscordConnection(service, 'cred-b', 'app-b', vi.fn());
+
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-unknown')).toBeUndefined();
+		});
+	});
+
 	describe('broadcastIntegrationChange', () => {
 		it('does nothing when multi-main is disabled', async () => {
 			const publisher = mock<Publisher>();

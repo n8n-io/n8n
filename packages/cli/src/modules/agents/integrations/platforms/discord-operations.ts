@@ -4,6 +4,9 @@ import { connectionUnavailable, unsupportedQuery } from '../integration-helpers'
 
 const PLATFORM = 'discord';
 
+/** Discord message content hard limit. */
+const DISCORD_MESSAGE_CONTENT_LIMIT = 2000;
+
 /**
  * Guild channel types the agent can post into. Forums (15) are excluded: posting
  * there means opening a thread, which `send_channel_message` does not do.
@@ -134,4 +137,85 @@ export async function executeDiscordContextQuery(params: {
 		botToken: params.botToken,
 		input: discordSearchChannelsSchema.parse(params.input),
 	});
+}
+
+/**
+ * Target channel for a Discord REST message call. Encoded thread IDs are
+ * `discord:<guild>:<channel>[:<thread>]` — prefer the thread segment when present.
+ */
+export function resolveDiscordMessageTargetChannelId(threadId: string): string {
+	const parts = threadId.split(':');
+	if (parts[0] !== 'discord' || parts.length < 3 || !parts[2]) {
+		throw new Error(`Invalid Discord thread ID: ${threadId}`);
+	}
+	return parts[3] || parts[2];
+}
+
+/**
+ * Settle an approval card in place: replace content and clear embeds/components.
+ * The Chat SDK string edit path omits those fields, which Discord treats as
+ * "leave unchanged" — so buttons would otherwise stick around after a decision.
+ */
+export async function settleDiscordApprovalMessage(params: {
+	apiUrl: string;
+	botToken: string;
+	threadId: string;
+	messageId: string;
+	content: string;
+}): Promise<void> {
+	const channelId = resolveDiscordMessageTargetChannelId(params.threadId);
+	const content = params.content.slice(0, DISCORD_MESSAGE_CONTENT_LIMIT);
+	const response = await fetch(
+		`${params.apiUrl}/channels/${channelId}/messages/${params.messageId}`,
+		{
+			method: 'PATCH',
+			headers: {
+				Authorization: `Bot ${params.botToken}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				content,
+				embeds: [],
+				components: [],
+				allowed_mentions: { parse: [] },
+			}),
+		},
+	);
+	if (!response.ok) {
+		throw new Error(
+			`Discord API PATCH /channels/${channelId}/messages/${params.messageId} failed: ${response.status}`,
+		);
+	}
+}
+
+export interface DiscordApplicationMetadata {
+	id: string;
+	verify_key: string;
+}
+
+/** Authenticated application metadata for the bot token (`GET /oauth2/applications/@me`). */
+export async function fetchDiscordApplicationMetadata(params: {
+	apiUrl: string;
+	botToken: string;
+}): Promise<
+	| { ok: true; application: DiscordApplicationMetadata }
+	| { ok: false; kind: 'http'; status: number }
+	| { ok: false; kind: 'incomplete' }
+> {
+	const response = await fetch(`${params.apiUrl}/oauth2/applications/@me`, {
+		headers: { Authorization: `Bot ${params.botToken}` },
+	});
+	if (!response.ok) {
+		return { ok: false, kind: 'http', status: response.status };
+	}
+	const body = (await response.json()) as Partial<DiscordApplicationMetadata>;
+	if (
+		typeof body.id !== 'string' ||
+		!body.id ||
+		typeof body.verify_key !== 'string' ||
+		!body.verify_key
+	) {
+		return { ok: false, kind: 'incomplete' };
+	}
+	return { ok: true, application: { id: body.id, verify_key: body.verify_key } };
 }

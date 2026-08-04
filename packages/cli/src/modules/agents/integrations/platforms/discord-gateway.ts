@@ -105,6 +105,19 @@ export class DiscordGateway {
 	}
 
 	/**
+	 * Session key (if any) already registered with `botToken`, excluding
+	 * `excludeKey`. Used to reject a second agent claiming the same Discord bot
+	 * on this main.
+	 */
+	sessionKeyUsingBotToken(botToken: string, excludeKey?: string): string | undefined {
+		for (const [key, session] of this.sessions) {
+			if (excludeKey !== undefined && key === excludeKey) continue;
+			if (session.botToken === botToken) return key;
+		}
+		return undefined;
+	}
+
+	/**
 	 * Close the socket but keep the session registered, so a takeover that landed
 	 * during the drain can have it back.
 	 */

@@ -7,6 +7,7 @@ import type {
 	ApprovalDecisionMessageFormatter,
 	BridgeResumeExecutionContext,
 	PlatformAgentContext,
+	SettleApprovalMessage,
 } from './agent-chat-integration';
 import { onceStatusHandle } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
@@ -34,6 +35,7 @@ interface AgentChatHitlResumeHandlerOptions {
 	callbackStore?: CallbackStore;
 	deleteActionMessageBeforeResume: boolean;
 	formatApprovalDecisionMessage?: ApprovalDecisionMessageFormatter;
+	settleApprovalMessage?: SettleApprovalMessage;
 	resolvePlatformThreadId: (thread: Thread<unknown, unknown>) => string;
 	toAgentThreadId: (platformThreadId: string) => InternalThread;
 	getPlatformAgentContext: () => PlatformAgentContext;
@@ -174,7 +176,17 @@ export class AgentChatHitlResumeHandler {
 				raw: event.raw,
 				user: event.user,
 			});
-			if (message) {
+			if (!message) return;
+
+			if (this.options.settleApprovalMessage) {
+				await this.options.settleApprovalMessage({
+					agentId: this.options.agentId,
+					integration: this.options.integration,
+					threadId: event.threadId,
+					messageId: event.messageId,
+					content: message,
+				});
+			} else {
 				await event.adapter.editMessage(event.threadId, event.messageId, message);
 			}
 		} catch (editError) {

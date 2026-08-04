@@ -3,7 +3,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
@@ -96,6 +98,58 @@ describe('AgentIntegrationsController route access scopes', () => {
 });
 
 describe('AgentIntegrationsController integration credentials', () => {
+	beforeEach(() => {
+		vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+	});
+
+	it('denies connect when the user lacks agent:publish', async () => {
+		vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const agentPublishService = mock<AgentPublishService>();
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const { controller } = makeController({
+			agentIntegrationPersistenceService,
+			agentPublishService,
+			chatIntegrationService,
+		});
+
+		await expect(
+			controller.connectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-slack' },
+				} as never,
+				undefined as never,
+				'agent-1',
+			),
+		).rejects.toThrow(ForbiddenError);
+
+		expect(agentIntegrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+		expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+	});
+
+	it('denies createSlackApp when the user lacks agent:publish', async () => {
+		vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		const { controller } = makeController({ slackAppSetupService });
+
+		await expect(
+			controller.createSlackApp(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ appConfigurationToken: 'xoxe-config' },
+			),
+		).rejects.toThrow(ForbiddenError);
+
+		expect(slackAppSetupService.createApp).not.toHaveBeenCalled();
+	});
+
 	it('rejects credentials that are not usable in the agent project', async () => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
@@ -838,5 +892,93 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(res.status).toHaveBeenCalledWith(404);
 		expect(res.json).toHaveBeenCalledWith({ error: 'Not found' });
 		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+	});
+
+	it('passes Discord application_id to getWebhookHandler as a routing discriminator', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
+		const { controller } = makeController({ chatIntegrationService });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			setHeader: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { host: 'localhost', 'content-type': 'application/json' },
+				method: 'POST',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				body: { application_id: 'app-b', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'discord',
+			'app-b',
+		);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('does not look up a Discord handler when application_id is missing', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const { controller, chatIntegrationRegistry } = makeController({ chatIntegrationService });
+		chatIntegrationRegistry.get.mockReturnValue(undefined);
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: {},
+				body: { type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({
+			error: 'No active discord integration for agent "agent-1"',
+		});
+	});
+
+	it('returns 404 when Discord application_id matches no connection', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getWebhookHandler.mockReturnValue(undefined);
+		const { controller, chatIntegrationRegistry } = makeController({ chatIntegrationService });
+		chatIntegrationRegistry.get.mockReturnValue(undefined);
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: {},
+				body: { application_id: 'app-unknown', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'discord',
+			'app-unknown',
+		);
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({
+			error: 'No active discord integration for agent "agent-1"',
+		});
 	});
 });

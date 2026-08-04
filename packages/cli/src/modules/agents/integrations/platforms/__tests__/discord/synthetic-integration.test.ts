@@ -96,11 +96,13 @@ describe('Discord Gateway integration scenarios', () => {
 			await ctx.sendWebhook(fixtures.mention);
 			const context = ctx.latestContext();
 
+			const channelId =
+				context?.target && 'channelId' in context.target ? context.target.channelId : undefined;
 			const result = await ctx.actionExecutor.execute({
 				descriptor: ctx.descriptor,
 				action: 'send_channel_message',
 				input: {
-					channelId: context?.target.channelId,
+					channelId,
 					message: { text: 'Announcement for everyone' },
 				},
 				awaitResponse: false,
@@ -178,12 +180,44 @@ describe('Discord Gateway integration scenarios', () => {
 			// `deleteActionMessageBeforeResume` is false for Discord because the
 			// interaction is acknowledged with DeferredUpdateMessage, which promises
 			// Discord an edit of the source message rather than its removal.
-			expect(methodsOf(ctx.apiCalls)).toContain(
-				`PATCH /channels/${DISCORD_THREAD_ID}/messages/1000`,
-			);
+			const settlePatch = ctx.lastApiCall(`PATCH /channels/${DISCORD_THREAD_ID}/messages/1000`);
+			expect(settlePatch).toBeDefined();
+			expect(settlePatch?.body).toMatchObject({
+				embeds: [],
+				components: [],
+				allowed_mentions: { parse: [] },
+			});
+			expect(typeof settlePatch?.body.content).toBe('string');
+			expect(String(settlePatch?.body.content)).toContain('Approved');
 			expect(methodsOf(ctx.apiCalls)).not.toContain(
 				`DELETE /channels/${DISCORD_THREAD_ID}/messages/1000`,
 			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('still answers a mention when thread creation fails but does not subscribe the parent channel', async () => {
+		const ctx = await createDiscordReplayContext(fixtures, { failThreadCreate: true });
+		try {
+			await ctx.sendWebhook(fixtures.mention);
+
+			expect(methodsOf(ctx.apiCalls)).toContain(THREAD_CREATE_CALL);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.lastApiCall(POST_TO_CHANNEL)?.body).toMatchObject({ content: 'Got it' });
+			expect(ctx.lastApiCall(POST_TO_THREAD)).toBeUndefined();
+
+			ctx.agentExecutor.executeForChatPublished.mockClear();
+			await ctx.sendWebhook(
+				withFixture({
+					id: '500000000000000099',
+					content: 'follow-up without a mention',
+					mentions: [],
+					is_mention: false,
+				}),
+			);
+
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
 		} finally {
 			await ctx.shutdown();
 		}

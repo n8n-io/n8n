@@ -119,6 +119,16 @@ export type ApprovalDecisionMessageFormatter = (
 	params: ApprovalDecisionMessageParams,
 ) => string | undefined;
 
+export interface SettleApprovalMessageParams {
+	agentId: string;
+	integration: AgentIntegrationConfig;
+	threadId: string;
+	messageId: string;
+	content: string;
+}
+
+export type SettleApprovalMessage = (params: SettleApprovalMessageParams) => Promise<void>;
+
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
  *
@@ -340,6 +350,24 @@ export abstract class AgentChatIntegration {
 
 	/** Replacement text for approval cards preserved after a user responds. */
 	formatApprovalDecisionMessage?(params: ApprovalDecisionMessageParams): string | undefined;
+
+	/**
+	 * Optional platform-owned settlement for approval cards (e.g. Discord must
+	 * clear embeds/components explicitly). When absent, the bridge falls back to
+	 * the adapter's `editMessage()`.
+	 */
+	settleApprovalMessage?(params: SettleApprovalMessageParams): Promise<void>;
+
+	/**
+	 * Whether a new mention should subscribe the thread for follow-ups.
+	 * Default (no implementation): true. Discord returns false when a channel
+	 * mention could not open a thread and would otherwise subscribe the parent
+	 * channel.
+	 */
+	shouldSubscribeToNewMention?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+	}): boolean;
 
 	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,

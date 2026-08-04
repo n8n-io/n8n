@@ -7,13 +7,15 @@ import {
 	type CreateSlackAgentAppResponse,
 	type SlackAgentAppManifestResponse,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentPublishService } from './agent-publish.service';
@@ -49,6 +51,12 @@ export class AgentIntegrationsController {
 		return integration;
 	}
 
+	private async assertAgentPublishScope(user: User, projectId: string): Promise<void> {
+		if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
+			throw new ForbiddenError();
+		}
+	}
+
 	@Post('/:agentId/integrations/connect')
 	@ProjectScope('agent:update')
 	async connectIntegration(
@@ -56,6 +64,7 @@ export class AgentIntegrationsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
+		await this.assertAgentPublishScope(req.user, req.params.projectId);
 		const integration = await this.validateIntegration(req.body);
 		const { credentialId } = integration;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
@@ -110,6 +119,7 @@ export class AgentIntegrationsController {
 		@Param('agentId') agentId: string,
 		@Body payload: CreateSlackAgentAppDto,
 	): Promise<CreateSlackAgentAppResponse> {
+		await this.assertAgentPublishScope(req.user, req.params.projectId);
 		return await this.slackAppSetupService.createApp({
 			projectId: req.params.projectId,
 			agentId,
@@ -254,7 +264,21 @@ export class AgentIntegrationsController {
 			res.status(404).json({ error: 'Not found' });
 			return;
 		}
-		const webhookHandler = this.chatIntegrationService.getWebhookHandler(agentId, platform);
+		// Discord interactions carry a top-level `application_id`. Use it only as
+		// an untrusted selector among multiple Discord apps on the same agent —
+		// the chosen adapter still verifies the Ed25519 signature. Without a
+		// string application_id we must not fall back to another Discord connection.
+		const discordApplicationId =
+			platform === 'discord' &&
+			req.body !== null &&
+			typeof req.body === 'object' &&
+			typeof (req.body as { application_id?: unknown }).application_id === 'string'
+				? (req.body as { application_id: string }).application_id
+				: undefined;
+		const webhookHandler =
+			platform === 'discord' && discordApplicationId === undefined
+				? undefined
+				: this.chatIntegrationService.getWebhookHandler(agentId, platform, discordApplicationId);
 
 		if (!webhookHandler) {
 			// Allow platforms to respond to setup-time webhooks (e.g. Slack's

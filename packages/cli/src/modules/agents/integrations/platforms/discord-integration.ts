@@ -3,8 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import type { Logger as ChatLogger, Message, Thread } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+
+import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
@@ -14,6 +19,7 @@ import {
 	type BridgeResumeExecutionContext,
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
+	type SettleApprovalMessageParams,
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import type { SuspendComponent } from '../component-mapper';
@@ -27,7 +33,11 @@ import {
 	type DiscordConnection,
 	type DiscordGatewayAdapter,
 } from './discord-gateway';
-import { executeDiscordContextQuery } from './discord-operations';
+import {
+	executeDiscordContextQuery,
+	fetchDiscordApplicationMetadata,
+	settleDiscordApprovalMessage,
+} from './discord-operations';
 import { startTypingIndicator } from './typing-indicator';
 
 /** Discord's typing indicator expires after ~10s, so keep it alive on an interval. */
@@ -138,9 +148,34 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	private readonly gateway: DiscordGateway;
 
-	constructor(logger: Logger, instanceSettings: InstanceSettings) {
+	constructor(
+		private readonly logger: Logger,
+		instanceSettings: InstanceSettings,
+		private readonly agentRepository: AgentRepository,
+	) {
 		super();
 		this.gateway = new DiscordGateway(logger, instanceSettings);
+	}
+
+	/**
+	 * Reject connect when another agent already owns this credential, then
+	 * verify the bot token against Discord application metadata so a typo'd
+	 * Application ID / Public Key fails before publish rather than at runtime.
+	 */
+	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
+		const others = await this.agentRepository.findByIntegrationCredential(
+			this.type,
+			ctx.credentialId,
+			ctx.projectId,
+			ctx.agentId,
+		);
+		if (others.length > 0) {
+			throw new ConflictError(
+				`Discord credential is already connected to agent "${others[0].name}"`,
+			);
+		}
+
+		await this.validateDiscordCredential(ctx);
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -149,6 +184,11 @@ export class DiscordIntegration extends AgentChatIntegration {
 		const applicationId = this.extractApplicationId(ctx.credential);
 
 		const { createDiscordAdapter } = await loadDiscordAdapter();
+
+		// After the ESM load: reject a second in-process claim of this bot token
+		// immediately before we register the pending adapter. Same session key
+		// (reconnect) is allowed; a different agent/credential is not.
+		this.assertBotTokenAvailable(this.sessionKey(ctx), botToken);
 
 		// Every option is passed explicitly: the adapter falls back to
 		// `process.env` for anything omitted (DISCORD_MENTION_ROLE_IDS,
@@ -160,6 +200,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 			applicationId,
 			mentionRoleIds: [],
 			apiUrl: DISCORD_API_URL,
+			logger: this.createAdapterLogger(),
 		});
 
 		this.pendingConnections.set(this.sessionKey(ctx), {
@@ -184,6 +225,36 @@ export class DiscordIntegration extends AgentChatIntegration {
 		const key = this.sessionKey(ctx);
 		this.pendingConnections.delete(key);
 		await this.gateway.discard(key);
+	}
+
+	async settleApprovalMessage(params: SettleApprovalMessageParams): Promise<void> {
+		const botToken = this.gateway.botTokenFor(
+			`${params.agentId}:${params.integration.credentialId}`,
+		);
+		if (!botToken) {
+			throw new Error('Discord connection is not available to settle the approval card');
+		}
+
+		await settleDiscordApprovalMessage({
+			apiUrl: DISCORD_API_URL,
+			botToken,
+			threadId: params.threadId,
+			messageId: params.messageId,
+			content: params.content,
+		});
+	}
+
+	/**
+	 * Subscribe follow-ups only when the mention landed in a DM or a real
+	 * Discord thread. After a failed auto-thread create the adapter emits the
+	 * parent channel ID — subscribing that would make every later channel
+	 * message trigger the agent.
+	 */
+	shouldSubscribeToNewMention({ thread }: { thread: Thread; message: Message }): boolean {
+		const parts = thread.id.split(':');
+		if (parts[0] !== 'discord' || parts.length < 3) return true;
+		if (parts[1] === '@me') return true;
+		return Boolean(parts[3]);
 	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
@@ -287,6 +358,78 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	private sessionKey(ctx: AgentChatIntegrationContext): string {
 		return `${ctx.agentId}:${ctx.credentialId}`;
+	}
+
+	private assertBotTokenAvailable(sessionKey: string, botToken: string): void {
+		for (const [key, connection] of this.pendingConnections) {
+			if (key === sessionKey) continue;
+			if (connection.botToken === botToken) {
+				throw new ConflictError(
+					'This Discord bot token is already connected to another agent on this instance',
+				);
+			}
+		}
+
+		if (this.gateway.sessionKeyUsingBotToken(botToken, sessionKey)) {
+			throw new ConflictError(
+				'This Discord bot token is already connected to another agent on this instance',
+			);
+		}
+	}
+
+	private async validateDiscordCredential(ctx: AgentChatIntegrationContext): Promise<void> {
+		const botToken = this.extractBotToken(ctx.credential);
+		const publicKey = this.extractPublicKey(ctx.credential);
+		const applicationId = this.extractApplicationId(ctx.credential);
+
+		const result = await fetchDiscordApplicationMetadata({
+			apiUrl: DISCORD_API_URL,
+			botToken,
+		});
+
+		if (!result.ok) {
+			if (result.kind === 'http' && (result.status === 401 || result.status === 403)) {
+				throw new BadRequestError(
+					'The Discord Bot Token was rejected. Check that the token is correct and has not been regenerated.',
+				);
+			}
+			throw new BadRequestError(
+				'Discord did not return application metadata for this bot token. Verify the Application ID, Public Key, and Bot Token belong to the same Discord application.',
+			);
+		}
+
+		if (result.application.id !== applicationId) {
+			throw new BadRequestError(
+				'The Discord Application ID does not match this bot token. Copy the Application ID from the same Discord application that issued the token.',
+			);
+		}
+
+		if (result.application.verify_key.toLowerCase() !== publicKey.toLowerCase()) {
+			throw new BadRequestError(
+				'The Discord Public Key does not match this bot token. Copy the Public Key from the same Discord application that issued the token.',
+			);
+		}
+	}
+
+	/**
+	 * Adapter-compatible logger that forwards only the message string into n8n.
+	 * Pinned adapter 4.28.1 attaches message text, IDs, signatures, and public
+	 * keys as metadata arguments — never forward those.
+	 */
+	private createAdapterLogger(): ChatLogger {
+		const forward =
+			(level: 'debug' | 'info' | 'warn' | 'error') =>
+			(message: string, ..._args: unknown[]) => {
+				this.logger[level](`[DiscordAdapter] ${message}`);
+			};
+		const logger: ChatLogger = {
+			child: () => logger,
+			debug: forward('debug'),
+			info: forward('info'),
+			warn: forward('warn'),
+			error: forward('error'),
+		};
+		return logger;
 	}
 
 	// ---------------------------------------------------------------------------
