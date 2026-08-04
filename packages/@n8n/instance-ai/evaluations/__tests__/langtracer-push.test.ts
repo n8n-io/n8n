@@ -111,11 +111,10 @@ describe('planPush', () => {
 		expect(plan.unchanged).toEqual([]);
 	});
 
-	// Shorthand is the shape case-shapes.md promotes, and the schema stamps a fresh
-	// `id`/`createdAt` on every parse. Comparing the envelope verbatim would classify
-	// the case `toUpdate` on EVERY push forever — churning the stored ids and leaving
-	// `--dry-run` permanently dirty. The identical-envelope test can't catch it,
-	// because there both sides share one envelope.
+	// Shorthand is the shape case-shapes.md promotes, and expansion mints a fresh `id`
+	// on every parse. Comparing ids would classify the case `toUpdate` on EVERY push
+	// forever, leaving `--dry-run` permanently dirty. The identical-envelope test
+	// can't catch it, because there both sides share one envelope.
 	it('converges a shorthand-authored seed against its expanded stored export', () => {
 		// Shorthand mints a fresh `id` per parse; its `createdAt` is deterministic, so
 		// the two sides differ only in the id.
