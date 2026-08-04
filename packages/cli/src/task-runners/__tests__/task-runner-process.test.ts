@@ -435,6 +435,23 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(2);
 		});
 
+		it('should ignore a report once shutdown has begun', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			const stopPromise = taskRunnerProcess.stop();
+			reportUnresponsive(['javascript']);
+
+			expect(child.kill).not.toHaveBeenCalledWith('SIGKILL');
+
+			child.emit('exit', 0);
+			await stopPromise;
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			expect(spawnMock).toHaveBeenCalledTimes(1);
+		});
+
 		it('should ignore a report for a runner of another task type', async () => {
 			const child = createChildProcess(42);
 			spawnMock.mockReturnValue(child);

@@ -124,12 +124,15 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		}
 	}
 
-	/** Force-restart a task runner process suspected of being unresponsive. */
+	/**
+	 * Force-restart a task runner process suspected of being unresponsive.
+	 * A no-op once shutdown has begun, so a late report cannot revive the runner.
+	 */
 	protected async forceRestart() {
-		if (!this.process) return;
-
-		this.process.kill('SIGKILL');
-		await this._runPromise;
+		if (!this.isShuttingDown && this.process) {
+			this.process.kill('SIGKILL');
+			await this._runPromise;
+		}
 	}
 
 	protected onProcessExit(code: number | null, resolveFn: () => void) {
