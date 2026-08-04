@@ -175,7 +175,7 @@ async function inviteAndAccept(
 		return [];
 	}
 
-	const byEmail = new Map(invitedUsers.map((user) => [user.email.toLowerCase(), user]));
+	const byEmail = new Map(invitedUsers.map((entry) => [entry.user.email.toLowerCase(), entry]));
 
 	const accepted = await runWithConcurrency(
 		missing,
@@ -186,11 +186,20 @@ async function inviteAndAccept(
 				return undefined;
 			}
 
-			const token = extractInviteToken(invited.inviteAcceptUrl);
+			const token = extractInviteToken(invited.user.inviteAcceptUrl);
 			if (token === undefined) {
+				// n8n only attaches inviteAcceptUrl when the mailer neither sent nor
+				// threw. A configured-but-broken SMTP throws, so the URL is dropped and
+				// the reason is in the per-invite error. Surface it verbatim — the fix
+				// (N8N_EMAIL_MODE=) is not guessable from "no token".
 				failed.push({
 					email: identity.email,
-					reason: 'invitation carried no accept token (already accepted?)',
+					reason: invited.error
+						? `no accept token; invite email failed: ${invited.error}. ` +
+							'If SMTP is misconfigured, set N8N_EMAIL_MODE= (empty) so the invite URL is ' +
+							'returned in the API response instead.'
+						: 'no accept token in the invitation response (already accepted, or ' +
+							'N8N_INVITE_LINKS_EMAIL_ONLY=true)',
 				});
 				return undefined;
 			}
@@ -205,7 +214,7 @@ async function inviteAndAccept(
 				return undefined;
 			}
 
-			return { ...identity, id: invited.id, client };
+			return { ...identity, id: invited.user.id, client };
 		},
 		ACCEPT_CONCURRENCY,
 	);

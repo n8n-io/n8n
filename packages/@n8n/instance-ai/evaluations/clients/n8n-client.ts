@@ -55,6 +55,13 @@ const InvitationsEnvelope = z.object({
 	data: z.array(z.object({ user: InvitedUserSchema, error: z.string().optional() })),
 });
 
+/** An invite plus whatever went wrong sending its email — the error explains a
+ *  missing `inviteAcceptUrl`, which n8n omits when the mailer throws. */
+export interface InviteResult {
+	user: InvitedUser;
+	error?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Computer-use gateway response shapes (Zod-validated to keep the client
 // honest about API drift instead of trusting `as` casts)
@@ -214,13 +221,13 @@ export class N8nClient {
 	 */
 	async inviteUsers(
 		invites: Array<{ email: string; role: 'global:member' | 'global:admin' }>,
-	): Promise<InvitedUser[]> {
+	): Promise<InviteResult[]> {
 		const result = await this.fetch('/rest/invitations', { method: 'POST', body: invites });
 		const parsed = InvitationsEnvelope.safeParse(result);
 		if (!parsed.success) {
 			throw new Error('Unexpected /rest/invitations response shape');
 		}
-		return parsed.data.data.map((entry) => entry.user);
+		return parsed.data.data.map((entry) => ({ user: entry.user, error: entry.error }));
 	}
 
 	/**

@@ -173,7 +173,13 @@ async function main(): Promise<void> {
 			for (const user of provisioned.users) allUsers.set(user.email, user);
 
 			if (provisioned.users.length === 0) {
-				throw new Error('No users could be provisioned — see the failures above');
+				// Log them here: they were only in the report before, which never gets
+				// written because we throw first — so "see the failures above" showed
+				// nothing at all.
+				for (const failure of provisioned.failed) {
+					logger.error(`  ${failure.email}: ${failure.reason}`);
+				}
+				throw new Error(`No users could be provisioned (${provisioned.failed.length} failed)`);
 			}
 
 			const run = await runLevel({
@@ -371,9 +377,13 @@ async function runLevel(options: RunLevelOptions): Promise<RunLevelReport> {
 	// -- validity checks ----------------------------------------------------
 
 	const maxConcurrentRunsObserved = sampler.maxActiveRuns();
+	// Concurrency is only verifiable from the active-runs gauge. Without /metrics
+	// we can't confirm the plateau — but we also must not claim runs were
+	// serialized, which is a different and much more alarming statement.
+	const concurrencyVerifiable = options.capabilities.metrics && !args.dryRun;
 	const plateauReached =
 		maxConcurrentRunsObserved !== null && maxConcurrentRunsObserved >= userCount;
-	if (!plateauReached && !args.dryRun) {
+	if (concurrencyVerifiable && !plateauReached) {
 		notes.push(
 			`peak concurrency was ${maxConcurrentRunsObserved ?? 'unknown'} of ${userCount} — runs were serialized, so per-user numbers are not trustworthy`,
 		);
@@ -417,7 +427,8 @@ async function runLevel(options: RunLevelOptions): Promise<RunLevelReport> {
 		userResults,
 		cleanup,
 		maxConcurrentRunsObserved,
-		plateauReached,
+		plateauReached: concurrencyVerifiable ? plateauReached : true,
+		concurrencyVerified: concurrencyVerifiable,
 		costUsdDelta,
 		eventLoopLagMaxMs: maxOf(sampler.samples.map((sample) => sample.eventLoopLagMs)),
 		serverRestarted: restarted,

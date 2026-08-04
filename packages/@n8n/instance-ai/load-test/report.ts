@@ -82,6 +82,8 @@ export interface RunLevelReport {
 	cleanup: CleanupTally;
 	maxConcurrentRunsObserved: number | null;
 	plateauReached: boolean;
+	/** False when /metrics was unavailable, so concurrency could not be confirmed. */
+	concurrencyVerified: boolean;
 	costUsdDelta: number | null;
 	eventLoopLagMaxMs: number | null;
 	/** Server process restarted mid-run — under a memory limit, a probable OOM kill. */
@@ -313,7 +315,13 @@ export function formatHumanSummary(report: LoadTestReport): string {
 			pair('absolute', run.derived.residualLeak),
 			'',
 			'Run validity',
-			`  max concurrent runs observed  ${run.dryRun ? 'n/a (dry run)' : `${fmt(run.maxConcurrentRunsObserved)} / ${run.users}${run.plateauReached ? '' : '   <-- PLATEAU NOT REACHED'}`}`,
+			`  max concurrent runs observed  ${
+				run.dryRun
+					? 'n/a (dry run)'
+					: !run.concurrencyVerified
+						? 'not measurable without /metrics'
+						: `${fmt(run.maxConcurrentRunsObserved)} / ${run.users}${run.plateauReached ? '' : '   <-- PLATEAU NOT REACHED'}`
+			}`,
 			`  conversations completed       ${run.userResults.filter((r) => r.completed).length} / ${run.userResults.length}`,
 			`  event-loop lag max            ${fmt(run.eventLoopLagMaxMs, ' ms')}`,
 			`  LLM cost this run             ${run.costUsdDelta === null ? '—' : `$${run.costUsdDelta.toFixed(4)}`}`,

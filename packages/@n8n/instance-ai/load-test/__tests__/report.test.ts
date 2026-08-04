@@ -236,6 +236,7 @@ describe('formatHumanSummary', () => {
 			cleanup: { threadsDeleted: 5, workflowsDeleted: 0, dataTablesDeleted: 0, failures: [] },
 			maxConcurrentRunsObserved: 5,
 			plateauReached: true,
+			concurrencyVerified: true,
 			serverRestarted: false,
 			costUsdDelta: 1.23,
 			eventLoopLagMaxMs: 12,
