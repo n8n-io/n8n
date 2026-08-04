@@ -3731,4 +3731,23 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 	});
+
+	describe('runner events', () => {
+		it('should track on `runner-disconnected` event', () => {
+			const event: RelayEventMap['runner-disconnected'] = {
+				reason: 'failed-heartbeat-check',
+				mode: 'internal',
+			};
+
+			eventService.emit('runner-disconnected', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED,
+				{
+					reason: 'failed-heartbeat-check',
+					mode: 'internal',
+				},
+			);
+		});
+	});
 });
