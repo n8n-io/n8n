@@ -28,10 +28,12 @@ provider, or the model.
   ~60–75 MB at N=10 but left retained heap unchanged.
 - **Memory is not the constraint at this scale.** Budget ~1 GB for 10 concurrent
   builders and you have headroom. Build *latency* is what degrades.
-- **Validated on cloud, and it OOMs.** A cloud instance with a **640 MB** hard limit
-  peaked at ~604 MB at N=5 (matching local's 604.39) and ~622 MB at N=10 — **94% and
-  97% of its limit** — then **OOM-crashed on a repeat N=10 run**, 45 s in, before any
-  workflow was built. N=10 is not viable on 640 MB. Cloud looked flatter
+- **Validated on cloud, including an OOM and its fix.** On a **640 MB** limit: N=5
+  passed (604 MB, 94%), N=10 × 2 turns passed with an 18 MB margin (622 MB, 97%),
+  and N=10 × 4 turns **OOM-crashed twice**. Raising the limit to **1280 MB** made the
+  same workload pass at **687–745 MB (54–58%)**, which quantifies the crash: it
+  wanted ~690–750 MB and had 640. **640 MB supports ~5 concurrent builders; 1280 MB
+  supports 10.** Cloud looked flatter
   than local above N=5 only because local's 664 MB exceeds the limit; that is the
   ceiling, not efficiency. See
   [Cloud validation](#cloud-validation--local-numbers-hold).
@@ -135,6 +137,51 @@ The median barely moved while the max grew 31%, consistent with the local
 finding that concurrency shows up as slow outliers, not uniform slowdown.
 
 ### OOM confirmed at N=10 — and it is non-deterministic
+
+### Resolved by doubling the limit to 1280 MB
+
+The instance limit was raised from 640 MB to **1280 MB** (pro1 size) and the same
+N=10 × 4-turn configuration that had crashed twice was re-run:
+
+| limit | N | turns | peak | outcome |
+| --: | --: | --: | --: | --- |
+| 640 MB | 10 | 4 | wants 687–745 | **OOM, 2 of 2** |
+| 1280 MB | 10 | 4 | **687 MB** (54%) | pass — 10/10, all `runs=4/4` |
+| 1280 MB | 10 | 4 | **745 MB** (58%) | pass — 10/10, all `runs=4/4` |
+
+**This closes the OOM explanation quantitatively: the workload wants 687–745 MB and
+the pod had 640.** A 47–105 MB shortfall, and it manifested in turn 1 because that
+is where the concurrent start-up peak lands.
+
+**Two identical back-to-back runs spread 58 MB (8%)**, and the second stayed
+elevated afterwards. That is the RSS high-water-mark behaviour characterised
+locally (see [RSS is a high-water mark](#rss-is-a-high-water-mark)) — run 2 began
+from run 1's watermark and climbed further. It is not a leak: locally heap returned
+to baseline while RSS held its pages, and RSS did eventually release when idle
+(697 → 383 MB).
+
+Consequences:
+
+- **Cloud is not reliably leaner than local.** An earlier reading suggested a
+  30–50 MB advantage, but run 2 lands inside the local 717–740 MB projection. Treat
+  local and cloud as equivalent for sizing.
+- **Quote a range, not a point.** N=10 × 4 turns wants **~690–750 MB** on this
+  configuration.
+- **Unknown: does the watermark plateau?** 687 → 745 across two runs does not
+  distinguish "settles" from "keeps climbing". Every cloud run so far has been a
+  single burst then idle, so **sustained load is untested** — the relevant question
+  for an instance serving real traffic all day.
+
+Sizing guidance for cloud, measured:
+
+| limit | supported concurrent builders (4-turn conversations) |
+| --- | --- |
+| 640 MB | **~5** |
+| 1280 MB | **10** at 54–58% utilisation |
+
+Latency at N=10 × 4 turns: median 128–137 s, max 142–173 s. The fully-warm second
+run had the tighter tail (142 s vs 173 s), suggesting the first run was still
+paying some lazy initialisation.
 
 ### The workable ceiling is 5 concurrent builders
 
