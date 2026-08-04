@@ -23,12 +23,15 @@ function parsePostgresMajor(version: string): number | null {
  */
 export function getPostgresVersionWarning(version: string): string | null {
 	const major = parsePostgresMajor(version);
+	if (major === null) return null;
 
-	if (major === null || major >= OLDEST_SUPPORTED_POSTGRES_MAJOR) return null;
+	if (major < OLDEST_COMPATIBILITY_POSTGRES_MAJOR) {
+		return `Postgres ${major} is not supported. n8n supports Postgres ${OLDEST_SUPPORTED_POSTGRES_MAJOR} and newer, with ${OLDEST_COMPATIBILITY_POSTGRES_MAJOR} on compatibility support. Upgrade to Postgres ${OLDEST_SUPPORTED_POSTGRES_MAJOR} or newer.`;
+	}
 
-	if (major >= OLDEST_COMPATIBILITY_POSTGRES_MAJOR) {
+	if (major < OLDEST_SUPPORTED_POSTGRES_MAJOR) {
 		return `Postgres ${major} is outside the supported range and receives compatibility support only. Upgrade to Postgres ${OLDEST_SUPPORTED_POSTGRES_MAJOR} or newer.`;
 	}
 
-	return `Postgres ${major} is not supported. n8n supports Postgres ${OLDEST_SUPPORTED_POSTGRES_MAJOR} and newer, with ${OLDEST_COMPATIBILITY_POSTGRES_MAJOR} on compatibility support. Upgrade to Postgres ${OLDEST_SUPPORTED_POSTGRES_MAJOR} or newer.`;
+	return null;
 }
