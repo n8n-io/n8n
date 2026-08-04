@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AllowDiscordAgentChatSubscriptions1785456000000';
+const MIGRATION_NAME = 'AllowDiscordAgentChatSubscriptions1785840970000';
 
 describe('AllowDiscordAgentChatSubscriptions Migration', () => {
 	let dataSource: DataSource;
