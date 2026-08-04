@@ -3914,6 +3914,14 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
 		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
 	});
+
+	it('traces the attached resources, which the raw message no longer shows', () => {
+		const source = InstanceAiService.toString();
+
+		// Assignment-form tolerant: the wiring is what matters, not whether the
+		// field is spread into the literal or set on it afterwards.
+		expect(source).toMatch(/resourceAttachments\s*[:=]\s*contextAttachments\.map/);
+	});
 });
 
 describe('InstanceAiService — workflow verification follow-up gate', () => {

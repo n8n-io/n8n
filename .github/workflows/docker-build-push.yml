@@ -4,10 +4,11 @@
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
 name: 'Docker: Build and Push'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build and Push {0} (push={1}, arm64={2})', github.ref_name, inputs.push_enabled, inputs.include_arm64) || '' }}"
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '24.16.0'
+  NODE_VERSION: '24.18.1'
 
 on:
   schedule:
