@@ -88,7 +88,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.oauth_access_tokens](public.oauth_access_tokens.md) | 3 |  | BASE TABLE |
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
-| [public.oauth_clients](public.oauth_clients.md) | 11 |  | BASE TABLE |
+| [public.oauth_clients](public.oauth_clients.md) | 12 |  | BASE TABLE |
 | [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) | 7 |  | BASE TABLE |
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
@@ -1137,6 +1137,7 @@ erDiagram
   uuid userId FK
 }
 "public.oauth_clients" {
+  varchar_255_ applicationType
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   timestamp_3__with_time_zone createdAt

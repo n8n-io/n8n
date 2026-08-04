@@ -1,3 +1,4 @@
+import type { OAuthClientInformationFull } from '@modelcontextprotocol/server';
 import { InvalidGrantError, InvalidTargetError } from '@modelcontextprotocol/server-legacy/auth';
 import { Logger, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -191,6 +192,75 @@ describe('OAuthServerService', () => {
 
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
 			expect(res.status).not.toHaveBeenCalledWith(400);
+		});
+	});
+
+	describe('application_type (SEP-837)', () => {
+		const baseClient = {
+			client_id: 'app-type-client',
+			client_name: 'App Type Client',
+			redirect_uris: ['http://127.0.0.1/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+			response_types: ['code'],
+			logo_uri: undefined,
+			tos_uri: undefined,
+		};
+		const loopbackParams = {
+			redirectUri: 'http://127.0.0.1:53123/callback',
+			codeChallenge: 'challenge',
+			state: 'state-xyz',
+			resource: new URL(TEST_RESOURCE_URL),
+		};
+
+		it('stores application_type=web when the client declares it', async () => {
+			oauthClientRepository.insert.mockResolvedValue({} as never);
+
+			await service.clientsStore.registerClient!({
+				...baseClient,
+				client_id: 'web-client',
+				redirect_uris: ['https://web.example.com/callback'],
+				application_type: 'web',
+			} as OAuthClientInformationFull);
+
+			expect(oauthClientRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'web-client', applicationType: 'web' }),
+			);
+		});
+
+		it('defaults application_type to native when the client omits it', async () => {
+			oauthClientRepository.insert.mockResolvedValue({} as never);
+
+			await service.clientsStore.registerClient!(baseClient);
+
+			expect(oauthClientRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ applicationType: 'native' }),
+			);
+		});
+
+		it('gives native clients port-agnostic loopback redirect matching', async () => {
+			getAllowedRedirectUris.mockResolvedValue(['http://127.0.0.1/callback']);
+			oauthClientRepository.findOneBy.mockResolvedValue({
+				applicationType: 'native',
+			} as OAuthClient);
+			const res = mock<Response>();
+
+			await service.authorize(baseClient, loopbackParams, res);
+
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(res.status).not.toHaveBeenCalledWith(400);
+		});
+
+		it('denies a web client a loopback redirect on a non-registered port', async () => {
+			getAllowedRedirectUris.mockResolvedValue(['http://127.0.0.1/callback']);
+			oauthClientRepository.findOneBy.mockResolvedValue({ applicationType: 'web' } as OAuthClient);
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+
+			await service.authorize(baseClient, loopbackParams, res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.redirect).not.toHaveBeenCalledWith('/oauth/consent');
 		});
 	});
 
@@ -424,6 +494,7 @@ describe('OAuthServerService', () => {
 					clientSecret: null,
 					clientSecretExpiresAt: null,
 					tokenEndpointAuthMethod: 'none',
+					applicationType: 'native',
 					isFirstParty: false,
 				});
 				expect(result).toEqual(clientInfo);
@@ -456,6 +527,7 @@ describe('OAuthServerService', () => {
 					clientSecret: 'secret-123',
 					clientSecretExpiresAt: 1234567890,
 					tokenEndpointAuthMethod: 'client_secret_post',
+					applicationType: 'native',
 					isFirstParty: false,
 				});
 			});

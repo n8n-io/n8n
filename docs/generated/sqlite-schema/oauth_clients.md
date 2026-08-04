@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "redirectUris" text NOT NULL, "grantTypes" text NOT NULL, "clientSecret" varchar(255), "clientSecretExpiresAt" bigint, "tokenEndpointAuthMethod" varchar(255) NOT NULL DEFAULT ('none'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isFirstParty" boolean NOT NULL DEFAULT (false), "isCimd" boolean NOT NULL DEFAULT (false))
+CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "redirectUris" text NOT NULL, "grantTypes" text NOT NULL, "clientSecret" varchar(255), "clientSecretExpiresAt" bigint, "tokenEndpointAuthMethod" varchar(255) NOT NULL DEFAULT ('none'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isFirstParty" boolean NOT NULL DEFAULT (false), "isCimd" boolean NOT NULL DEFAULT (false), "applicationType" varchar(255) NOT NULL DEFAULT ('native'))
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| applicationType | varchar(255) | 'native' | false |  |  |  |
 | clientSecret | varchar(255) |  | true |  |  |  |
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -51,6 +52,7 @@ erDiagram
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "oauth_clients" {
+  varchar_255_ applicationType
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   datetime_3_ createdAt

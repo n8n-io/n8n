@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| applicationType | varchar(255) | 'native'::character varying | false |  |  |  |
 | clientSecret | varchar(255) |  | true |  |  |  |
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -21,6 +22,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | PK_c4759172d3431bae6f04e678e0d | PRIMARY KEY | PRIMARY KEY (id) |
+| oauth_clients_applicationType_not_null | n | NOT NULL "applicationType" |
 | oauth_clients_createdAt_not_null | n | NOT NULL "createdAt" |
 | oauth_clients_grantTypes_not_null | n | NOT NULL "grantTypes" |
 | oauth_clients_id_not_null | n | NOT NULL id |
@@ -48,6 +50,7 @@ erDiagram
 "public.oauth_user_consents" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 
 "public.oauth_clients" {
+  varchar_255_ applicationType
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   timestamp_3__with_time_zone createdAt

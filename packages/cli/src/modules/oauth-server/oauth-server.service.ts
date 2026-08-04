@@ -89,6 +89,17 @@ function sortOwners(owners: ConnectedOAuthClientOwner[]): ConnectedOAuthClientOw
 const MAX_REDIRECT_URI_LENGTH = 2048;
 
 /**
+ * SEP-837 `application_type` off a DCR registration payload. The v2 SDK keeps
+ * the field on the request but doesn't surface it on the typed client shape, so
+ * read it defensively. Only an explicit `web` narrows redirect matching to exact;
+ * every other value (including omitted) stays `native`, preserving the prior
+ * port-agnostic loopback behavior.
+ */
+function readApplicationType(client: OAuthClientInformationFull): 'web' | 'native' {
+	return Reflect.get(client, 'application_type') === 'web' ? 'web' : 'native';
+}
+
+/**
  * OAuth 2.1 server implementation shared by all registered protected resources.
  * Implements MCP SDK OAuthServerProvider interface for client registration, authorization, and token management
  */
@@ -159,6 +170,7 @@ export class OAuthServerService implements OAuthServerProvider {
 					clientSecret: client.client_secret ?? null,
 					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
 					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+					applicationType: readApplicationType(client),
 					isFirstParty: false,
 				});
 
@@ -381,13 +393,22 @@ export class OAuthServerService implements OAuthServerProvider {
 	 *
 	 * Non-loopback URIs must match an allowlist entry exactly. Loopback URIs
 	 * (localhost / 127.0.0.1 / [::1]) match a loopback allowlist entry that
-	 * shares the same scheme, host and path regardless of port: native clients
-	 * bind an ephemeral port at request time, so the port cannot be known in
-	 * advance (RFC 8252 §7.3).
+	 * shares the same scheme, host and path regardless of port, but only for
+	 * `native` clients: they bind an ephemeral port at request time, so the port
+	 * can't be known in advance (RFC 8252 §7.3). `web` clients get exact matching
+	 * (SEP-837), so a web client can't claim an arbitrary localhost port.
 	 */
-	private isRedirectUriAllowed(allowedUris: string[], redirectUri: string): boolean {
+	private isRedirectUriAllowed(
+		allowedUris: string[],
+		redirectUri: string,
+		applicationType: 'web' | 'native',
+	): boolean {
 		if (allowedUris.includes(redirectUri)) {
 			return true;
+		}
+
+		if (applicationType !== 'native') {
+			return false;
 		}
 
 		let requested: URL;
@@ -422,6 +443,15 @@ export class OAuthServerService implements OAuthServerProvider {
 		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 	}
 
+	/**
+	 * The stored SEP-837 `application_type` for a client, defaulting to `native`
+	 * for unknown clients so the redirect check keeps its pre-SEP-837 behavior.
+	 */
+	private async getClientApplicationType(clientId: string): Promise<'web' | 'native'> {
+		const client = await this.oauthClientRepository.findOneBy({ id: clientId });
+		return client?.applicationType === 'web' ? 'web' : 'native';
+	}
+
 	async authorize(
 		client: OAuthClientInformationFull,
 		params: AuthorizationParams,
@@ -442,7 +472,12 @@ export class OAuthServerService implements OAuthServerProvider {
 			const allowedUris = this.isCimdClientId(client.client_id)
 				? []
 				: ((await targetResource?.getAllowedRedirectUris?.()) ?? []);
-			if (allowedUris.length > 0 && !this.isRedirectUriAllowed(allowedUris, params.redirectUri)) {
+			const applicationType =
+				allowedUris.length > 0 ? await this.getClientApplicationType(client.client_id) : 'native';
+			if (
+				allowedUris.length > 0 &&
+				!this.isRedirectUriAllowed(allowedUris, params.redirectUri, applicationType)
+			) {
 				this.logger.warn(
 					'MCP OAuth authorization rejected: requested redirect URI is not in the configured allowlist',
 					{

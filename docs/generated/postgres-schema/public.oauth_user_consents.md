@@ -47,6 +47,7 @@ erDiagram
   uuid userId FK
 }
 "public.oauth_clients" {
+  varchar_255_ applicationType
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   timestamp_3__with_time_zone createdAt
