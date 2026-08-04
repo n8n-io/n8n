@@ -17,7 +17,6 @@ const BASE_SECTIONS: SdkReferenceSection[] = [
 	'import',
 	'guidelines',
 	'design',
-	'language',
 	'all',
 ];
 

@@ -59,7 +59,6 @@ export type SdkReferenceSection =
 	| 'import'
 	| 'guidelines'
 	| 'design'
-	| 'language'
 	| 'groups'
 	| 'all';
 
@@ -77,7 +76,12 @@ const DESIGN_GUIDANCE_SECTION = `## Design Guidance\n\n${DESIGN_GUIDANCE}`;
 // shared verbatim with Instance AI, so it is served as-is (no extra wrapper).
 const GROUPS_SECTION = NODE_GROUPS_REFERENCE;
 
-const SECTIONS: Record<Exclude<SdkReferenceSection, 'all' | 'language'>, string> = {
+// Language rules for the restricted SDK subset (what the AST interpreter
+// accepts). Rendered without the embedded groups docs: those are feature-flag
+// gated and appended as their own section in the full reference instead.
+const SDK_LANGUAGE_SECTION = buildSdkLanguageReference({ includeGroups: false });
+
+const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	import: SDK_IMPORT_SECTION,
 	patterns: WORKFLOW_PATTERNS_SECTION,
 	patterns_detailed: WORKFLOW_PATTERNS_DETAILED_SECTION,
@@ -89,17 +93,12 @@ const SECTIONS: Record<Exclude<SdkReferenceSection, 'all' | 'language'>, string>
 	groups: GROUPS_SECTION,
 };
 
-// The language reference embeds the node-groups docs, which are feature-flag
-// gated here, so it is rendered per-request rather than stored in SECTIONS.
-const getLanguageSection = (includeGroups: boolean): string =>
-	buildSdkLanguageReference({ includeGroups });
-
 /**
  * Get the full SDK reference content or a filtered section.
  *
  * Node-group docs are gated behind `includeGroups` (fed from the
- * `canvasGroupsEnabled` feature flag): when false, the groups section is omitted
- * everywhere so the output is byte-identical to before the flag existed.
+ * `canvasGroupsEnabled` feature flag): when false, no group content is served
+ * anywhere in the output.
  */
 export function getSdkReferenceContent(
 	section?: SdkReferenceSection,
@@ -113,10 +112,6 @@ export function getSdkReferenceContent(
 		return includeGroups ? SECTIONS.groups : '';
 	}
 
-	if (section === 'language') {
-		return getLanguageSection(includeGroups);
-	}
-
 	if (section && section !== 'all' && section in SECTIONS) {
 		return SECTIONS[section];
 	}
@@ -126,9 +121,7 @@ export function getSdkReferenceContent(
 		'',
 		SECTIONS.import,
 		'',
-		// Groups docs are appended as their own section below (flag-gated), so
-		// the embedded copy is always omitted here to avoid duplication.
-		getLanguageSection(false),
+		SDK_LANGUAGE_SECTION,
 		'',
 		SECTIONS.patterns,
 		'',

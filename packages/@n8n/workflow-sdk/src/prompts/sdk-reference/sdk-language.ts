@@ -9,7 +9,6 @@ import {
 	FORBIDDEN_NODE_TYPES,
 	SAFE_JSON_METHOD_NAMES,
 	SAFE_STRING_METHOD_NAMES,
-	SAFE_ARRAY_METHOD_NAMES,
 	BUILDER_BLOCKED_GLOBALS,
 	SDK_INLINE_CONSTRAINTS,
 	type SdkMethodGroup,
@@ -62,10 +61,9 @@ function renderInlineConstraintLines(): string {
 }
 
 const SAFE_METHODS_SENTENCE =
-	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')}, ` +
-	`the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}, ` +
-	`and the array methods ${SAFE_ARRAY_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
-	'Other native array/string methods such as `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
+	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')} ` +
+	`and the string methods ${SAFE_STRING_METHOD_NAMES.map((n) => `\`.${n}()\``).join(', ')}. ` +
+	'Native array/string methods such as `.join()`, `.map()`, `.filter()`, `.reduce()`, and `.split()` are NOT available.';
 
 /**
  * Node-groups documentation, extracted so consumers can import just this section
@@ -159,7 +157,7 @@ regex), do it in one of these:
 
 /**
  * Full reference including groups docs. Materialized into Instance AI's
- * knowledge base and served (groups-gated, via `buildSdkLanguageReference`)
- * through the MCP `get_sdk_reference` tool's "language" section.
+ * knowledge base for on-demand reading; the MCP SDK reference embeds the
+ * groups-gated variant via `buildSdkLanguageReference` instead.
  */
 export const SDK_LANGUAGE_REFERENCE = buildSdkLanguageReference();
