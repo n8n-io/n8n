@@ -216,11 +216,6 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 			isOpen.value = false;
 		};
 
-		const onIgnoreClick = (actionId: string) => {
-			console.log('Ignore clicked:', actionId);
-			alert(`Ignore clicked: ${actionId}`);
-		};
-
 		const onUpdateOpen = (open: boolean) => {
 			console.log('External open change:', open);
 			isOpen.value = open;
@@ -232,7 +227,6 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 			toggleOpen,
 			forceClose,
 			onActionClick,
-			onIgnoreClick,
 			onUpdateOpen,
 		};
 	},
@@ -253,7 +247,6 @@ const ControlledTemplate: StoryFn = (args, { argTypes }) => ({
 				v-bind="args"
 				v-model:open="isOpen"
 				@action-click="onActionClick"
-				@ignore-click="onIgnoreClick"
 			/>
 		</div>
 	`,
