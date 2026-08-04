@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nLoading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -55,7 +55,7 @@ const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 
 documentTitle.set(i18n.baseText('workflowReviews.page.title'));
 
@@ -109,12 +109,65 @@ async function onLoadMore() {
 
 const deciding = ref(false);
 
+const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
+
+const ineligibilityHint = computed(() => {
+	if (!detail.value || detail.value.viewerCanDecide) return '';
+	// Any reason other than 'author' gets the generic permission hint, so new
+	// backend reasons degrade gracefully instead of breaking the UI.
+	return detail.value.viewerDecisionIneligibilityReason === 'author'
+		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
+		: i18n.baseText('generic.missing.permissions');
+});
+
+// backend activation messages are inconsistently punctuated
+function asSentence(message: string) {
+	const trimmed = message.trim();
+	return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * A decision that closes the review drops its card from the open list, which
+ * would leave the detail on screen with nothing selected in the sidebar. Follow
+ * it to the closed tab instead, keeping the selection. The `state` query watcher
+ * refetches the list from here.
+ */
+function followClosedReview(id: string) {
+	if (activeTab.value === 'closed') return;
+	void router.replace({
+		params: { reviewRequestId: id },
+		query: { ...route.query, [REVIEW_INBOX_QUERY_PARAM.state]: 'closed' },
+	});
+}
+
 async function onDecide(id: string, decision: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 	try {
-		await store.decideOnReview(id, decision);
+		const { autoPublish, state } = await store.decideOnReview(id, decision);
+		if (state === 'closed') {
+			followClosedReview(id);
+		}
+
+		if (autoPublish?.status === 'published') {
+			showMessage({
+				type: 'success',
+				title: i18n.baseText('workflowReviews.decision.approved.published.title'),
+				message: i18n.baseText('workflowReviews.decision.approved.published.message'),
+			});
+		} else if (autoPublish?.status === 'failed') {
+			// The approval itself succeeded and is not reverted; the workflow can
+			// be published through the regular publish flow, which is the retry.
+			showMessage({
+				type: 'warning',
+				duration: 0,
+				title: i18n.baseText('workflowReviews.decision.approved.publishFailed.title'),
+				message: i18n.baseText('workflowReviews.decision.approved.publishFailed.message', {
+					interpolate: { message: asSentence(autoPublish.message) },
+				}),
+			});
+		}
 	} catch (error) {
-		showError(error, 'Could not submit review decision');
+		showError(error, i18n.baseText('workflowReviews.decision.error.title'));
 		// The decision failed because someone else already decided (409), so
 		// refetch. Otherwise the item keeps showing as open and every retry
 		// re-fails.
@@ -212,26 +265,33 @@ onUnmounted(() => {
 						>
 							{{ i18n.baseText('workflowReviews.detail.placeholder') }}
 						</N8nText>
-						<!-- TODO(LIGO-892): placeholder actions with intentionally hardcoded copy.
-							Real design: disabled-with-explanation for non-admin authors ("you
-							contributed a version to this review"), i18n, and a `viewerCanDecide`
-							capability field from the backend. -->
-						<div v-if="selectedItem.state === 'open'" :class="$style.decisionActions">
-							<N8nButton
-								:disabled="deciding"
-								data-test-id="workflow-review-approve-button"
-								@click="onDecide(selectedItem.id, 'approved')"
+						<div v-if="detail && detail.state === 'open'" :class="$style.decisionActions">
+							<N8nTooltip
+								:disabled="!ineligibilityHint"
+								:content="ineligibilityHint"
+								:show-after="300"
 							>
-								Approve
-							</N8nButton>
-							<N8nButton
-								type="secondary"
-								:disabled="deciding"
-								data-test-id="workflow-review-request-changes-button"
-								@click="onDecide(selectedItem.id, 'changes_requested')"
+								<N8nButton
+									:disabled="deciding || !viewerCanDecide"
+									data-test-id="workflow-review-approve-button"
+									@click="onDecide(detail.id, 'approved')"
+								>
+									{{ i18n.baseText('workflowReviews.detail.decision.approve') }}
+								</N8nButton>
+							</N8nTooltip>
+							<N8nTooltip
+								:disabled="!ineligibilityHint"
+								:content="ineligibilityHint"
+								:show-after="300"
 							>
-								Request changes
-							</N8nButton>
+								<N8nButton
+									:disabled="deciding || !viewerCanDecide"
+									data-test-id="workflow-review-request-changes-button"
+									@click="onDecide(detail.id, 'changes_requested')"
+								>
+									{{ i18n.baseText('workflowReviews.detail.decision.requestChanges') }}
+								</N8nButton>
+							</N8nTooltip>
 						</div>
 					</div>
 					<N8nText

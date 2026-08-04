@@ -436,7 +436,9 @@ export class ErrorReporter {
 		originalException: ApplicationError | BaseError,
 	) {
 		const { level, extra, tags } = originalException;
-		event.level = level;
+		// Sentry initializes exception events at `error`. A different level was
+		// explicitly supplied in the capture context and must take precedence.
+		if (event.level === undefined || event.level === 'error') event.level = level;
 		if (extra) event.extra = { ...event.extra, ...extra };
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}

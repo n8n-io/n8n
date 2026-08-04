@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { computed, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -42,7 +43,9 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	};
 }
 
-function setup(overrides: { supportsToolApproval?: boolean } = {}) {
+function setup(
+	overrides: { supportsToolApproval?: boolean; ensureAgentPersisted?: () => Promise<void> } = {},
+) {
 	setActivePinia(createTestingPinia({ stubActions: false }));
 	const uiStore = useUIStore();
 
@@ -180,6 +183,40 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('waits for the unsaved agent to be persisted before creating the skill', async () => {
+		let releasePersist: () => void = () => {};
+		const persisted = new Promise<void>((resolve) => {
+			releasePersist = resolve;
+		});
+		const { uiStore, actions } = setup({ ensureAgentPersisted: async () => await persisted });
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		// The agent does not exist yet, so the skill endpoint would 404.
+		expect(createAgentSkill).not.toHaveBeenCalled();
+
+		releasePersist();
+		await flushPromises();
+
+		expect(createAgentSkill).toHaveBeenCalled();
+	});
+
+	it('does not create the skill when persisting the agent fails', async () => {
+		const { uiStore, actions } = setup({
+			ensureAgentPersisted: async () => await Promise.reject(new Error('create failed')),
+		});
+
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		expect(createAgentSkill).not.toHaveBeenCalled();
 	});
 
 	it('joins applied skills against the seam bodies instead of the agent entity', () => {

@@ -7,7 +7,11 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { variableBlockingFailures, variableMissingModeCreates } from './variable-missing-mode';
+import {
+	variableBlockingFailures,
+	variableMissingModeCreates,
+	variableMissingModeUsesPackageValue,
+} from './variable-missing-mode';
 import {
 	computeVariableLimitFailure,
 	createFailure,
@@ -28,11 +32,8 @@ import type { ImportContext } from '../../n8n-packages.types';
 export class VariableImporter {
 	constructor(private readonly variablesService: VariablesService) {}
 
-	async plan(
-		context: ImportContext,
-		request: VariableImportRequest,
-		options: { projectPendingCreation?: boolean } = {},
-	): Promise<VariableImportPlan> {
+	/** Resolves requirements against the target project then global, mirroring runtime `$vars` precedence. */
+	async plan(context: ImportContext, request: VariableImportRequest): Promise<VariableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) return { matched: [], missing: [], creations: [] };
 
@@ -47,7 +48,8 @@ export class VariableImporter {
 		const matched: string[] = [];
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
-		const createStub = variableMissingModeCreates(request.missingMode);
+		const createsMissing = variableMissingModeCreates(request.missingMode);
+		const usesPackageValue = variableMissingModeUsesPackageValue(request.missingMode);
 
 		for (const requirement of requirements) {
 			const picked = pickVariableForProject(
@@ -60,17 +62,15 @@ export class VariableImporter {
 				continue;
 			}
 			missing.push(createFailure(requirement));
-			if (createStub) {
+			if (createsMissing) {
+				const value = usesPackageValue ? requirement.packageValue : undefined;
 				creations.push({
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
+					...(value !== undefined ? { value } : {}),
 					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 				});
 			}
-		}
-
-		if (creations.length > 0) {
-			await this.assertCanCreate(context, creations, options.projectPendingCreation ?? false);
 		}
 
 		return { matched, missing, creations };
@@ -93,10 +93,15 @@ export class VariableImporter {
 		return variableBlockingFailures(request.missingMode, plan);
 	}
 
+	/**
+	 * Re-checks the destination against a fresh cache before each create, so a variable an earlier
+	 * scope of this import already created is skipped rather than duplicated. `VariablesService.create`
+	 * refreshes that cache, which is what makes the cross-scope dedupe work.
+	 */
 	async apply(context: ImportContext, plan: VariableImportPlan): Promise<VariableApplyResult> {
+		const created: string[] = [];
 		const stubbed: string[] = [];
 		const skippedExisting: string[] = [];
-		let createdCount = 0;
 
 		for (const creation of plan.creations) {
 			if (await this.variableExistsAtDestination(creation)) {
@@ -108,11 +113,15 @@ export class VariableImporter {
 				await this.variablesService.create(context.user, {
 					key: creation.name,
 					type: 'string',
-					value: '',
+					value: creation.value ?? '',
 					...(creation.projectId ? { projectId: creation.projectId } : {}),
 				});
-				stubbed.push(creation.name);
-				createdCount += 1;
+				// A bundled-but-empty value still leaves the user something to fill in, so it is a stub.
+				if (creation.value) {
+					created.push(creation.name);
+				} else {
+					stubbed.push(creation.name);
+				}
 			} catch (error) {
 				// One error type covers both "key taken here" and "quota full" (LIGO-880), so re-check
 				// the destination: a row means a concurrent writer won the race, no row means a real overrun.
@@ -128,9 +137,9 @@ export class VariableImporter {
 		}
 
 		return {
+			created: [...new Set(created)],
 			stubbed: [...new Set(stubbed)],
 			skippedExisting: [...new Set(skippedExisting)],
-			createdCount,
 		};
 	}
 
@@ -143,7 +152,7 @@ export class VariableImporter {
 		);
 	}
 
-	private async assertCanCreate(
+	async assertCanCreate(
 		context: ImportContext,
 		creations: VariableCreation[],
 		projectPendingCreation: boolean,

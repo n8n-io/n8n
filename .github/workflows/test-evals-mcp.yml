@@ -1,4 +1,5 @@
 name: 'Test: MCP Workflow Evals'
+run-name: "Test: MCP Workflow Evals (branch=${{ inputs.branch || github.ref_name }}, tier=${{ inputs.tier }}, iterations=${{ inputs.iterations }}, model=${{ inputs['build-model'] }})"
 
 # Scores workflows built through the instance MCP server (packages/cli/src/modules/mcp)
 # with the Instance AI verifier, using the fused `--build-via-mcp` lane model:
