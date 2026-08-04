@@ -1,6 +1,13 @@
-import { NodeSearchEngine, SCORE_WEIGHTS } from '../node-search-engine';
-import type { SearchableNodeType } from '../node-search-engine.types';
-import { AI_CONNECTION_TYPES } from '../node-search-engine.types';
+/**
+ * Engine behaviour over a host-supplied `SearchableNodeType` (as opposed to a
+ * full `INodeTypeDescription`): result caching, n8n Connect metadata, and
+ * `builderHint.message`. Moved here from @n8n/instance-ai when the three forked
+ * search engines were consolidated into this package.
+ */
+
+import { NodeSearchEngine, SCORE_WEIGHTS } from '../search-engine';
+import type { SearchableNodeType } from '../types';
+import { AI_CONNECTION_TYPES } from '../types';
 
 // ---------------------------------------------------------------------------
 // Test fixtures

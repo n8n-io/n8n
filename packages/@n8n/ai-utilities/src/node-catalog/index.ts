@@ -11,7 +11,8 @@
 export { NodeTypeParser } from './node-type-parser';
 export type { ParsedNodeType } from './node-type-parser';
 
-export { CodeBuilderNodeSearchEngine, SCORE_WEIGHTS } from './search-engine';
+export { NodeSearchEngine, SCORE_WEIGHTS } from './search-engine';
+export type { SearchEngineInput } from './search-engine';
 
 export { searchCodeBuilderNodes, formatNodeResult } from './search';
 export type {
@@ -80,4 +81,13 @@ export type {
 	RequiredNodeCredentialSlot,
 } from './dynamic-node-parameters';
 
-export type { SubnodeRequirement, CodeBuilderNodeSearchResult } from './types';
+export { AI_CONNECTION_TYPES } from './types';
+export type {
+	AiConnectionType,
+	AiGatewayNodeMeta,
+	NodeSearchResult,
+	SearchableBuilderHintInputs,
+	SearchableConnections,
+	SearchableNodeType,
+	SubnodeRequirement,
+} from './types';

@@ -1,31 +1,39 @@
 /**
- * Code Builder Node Search Engine
+ * Node Search Engine
  *
- * This is a fork of tools/engines/node-search-engine.ts for the code-builder agent.
- * It includes additional features for subnode requirements, related subnodes, and
- * builder hints that are specific to the code-builder workflow generation approach.
+ * The single node-search implementation, shared by the MCP server tool surface
+ * (via `NodeCatalogService`) and Instance AI. It previously existed as three
+ * near-identical forks that drifted in their scoring keys and connection-type
+ * lists.
  *
- * The original node-search-engine.ts is used by the multi-agent system and has
- * different requirements.
+ * Callers hand over whatever node shape they already hold: a full
+ * `INodeTypeDescription`, a pre-digested `LeanNodeTypeDescription`, or the
+ * leaner `SearchableNodeType` an embedding host assembles. See
+ * {@link SearchableNodeType}.
  */
 
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
-import type { BuilderHintInputs, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { toLeanNodeType, type LeanNodeTypeDescription } from './lean-node-type';
-import type { CodeBuilderNodeSearchResult, SubnodeRequirement } from './types';
+import {
+	AI_CONNECTION_TYPES,
+	type NodeSearchResult,
+	type SearchableBuilderHintInputs,
+	type SearchableNodeType,
+	type SubnodeRequirement,
+} from './types';
 
-/** Detect already-lean inputs by their marker field so we can skip re-conversion. */
-function isLeanNodeType(
-	node: INodeTypeDescription | LeanNodeTypeDescription,
-): node is LeanNodeTypeDescription {
-	return 'discriminatorsByVersion' in node;
-}
+/** Any node shape the engine accepts. */
+export type SearchEngineInput = INodeTypeDescription | LeanNodeTypeDescription | SearchableNodeType;
 
-/** Type guard for NodeConnectionType */
-function isNodeConnectionType(value: string): value is NodeConnectionType {
-	return Object.values(NodeConnectionTypes).includes(value as NodeConnectionType);
+/**
+ * Only a full `INodeTypeDescription` carries `properties`, and only it needs the
+ * lean conversion (which precomputes per-version discriminators). Lean and
+ * host-supplied shapes are already usable as-is.
+ */
+function needsLeanConversion(node: SearchEngineInput): node is INodeTypeDescription {
+	return 'properties' in node && Array.isArray(node.properties);
 }
 
 /**
@@ -95,7 +103,7 @@ function getLatestVersion(version: number | number[]): number {
 	return Array.isArray(version) ? Math.max(...version) : version;
 }
 
-function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirement[] {
+function extractSubnodeRequirements(inputs?: SearchableBuilderHintInputs): SubnodeRequirement[] {
 	if (!inputs) return [];
 
 	return Object.entries(inputs)
@@ -110,8 +118,33 @@ function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirem
 		}));
 }
 
-function dedupeNodes(nodes: LeanNodeTypeDescription[]): LeanNodeTypeDescription[] {
-	const dedupeCache: Record<string, LeanNodeTypeDescription> = {};
+/** `builderHint.message` wins over `searchHint` when a host supplies both. */
+function getBuilderHintMessage(
+	builderHint?: SearchableNodeType['builderHint'],
+): string | undefined {
+	return builderHint?.message ?? builderHint?.searchHint;
+}
+
+function toNodeSearchResult(node: SearchableNodeType, score: number): NodeSearchResult {
+	const subnodeRequirements = extractSubnodeRequirements(node.builderHint?.inputs);
+	const builderHintMessage = getBuilderHintMessage(node.builderHint);
+
+	return {
+		name: node.name,
+		displayName: node.displayName,
+		description: node.description ?? 'No description available',
+		version: getLatestVersion(node.version),
+		inputs: node.inputs,
+		outputs: node.outputs,
+		score,
+		...(builderHintMessage && { builderHintMessage }),
+		...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+		...(node.aiGateway && { aiGateway: node.aiGateway }),
+	};
+}
+
+function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
+	const dedupeCache: Record<string, SearchableNodeType> = {};
 	nodes.forEach((node) => {
 		const cachedNodeType = dedupeCache[node.name];
 		if (!cachedNodeType) {
@@ -131,19 +164,42 @@ function dedupeNodes(nodes: LeanNodeTypeDescription[]): LeanNodeTypeDescription[
 }
 
 /**
+ * Copy a cached result before handing it out, so a caller mutating what it got
+ * back cannot corrupt the cache for the next query.
+ */
+function cloneSearchResult(result: NodeSearchResult): NodeSearchResult {
+	return {
+		...result,
+		...(result.subnodeRequirements
+			? {
+					subnodeRequirements: result.subnodeRequirements.map((requirement) => ({
+						...requirement,
+					})),
+				}
+			: {}),
+	};
+}
+
+function cloneSearchResults(results: NodeSearchResult[]): NodeSearchResult[] {
+	return results.map(cloneSearchResult);
+}
+
+/**
  * Pure business logic for searching nodes
  * Separated from tool infrastructure for better testability.
- *
- * Accepts either full `INodeTypeDescription[]` or already-converted
- * `LeanNodeTypeDescription[]` — production callers pass lean to avoid the
- * conversion cost, tests typically pass full descriptions and the engine
- * converts on the way in.
  */
-export class CodeBuilderNodeSearchEngine {
-	private readonly nodeTypes: LeanNodeTypeDescription[];
-	constructor(nodeTypes: Array<INodeTypeDescription | LeanNodeTypeDescription>) {
-		const lean = nodeTypes.map((n) => (isLeanNodeType(n) ? n : toLeanNodeType(n)));
-		this.nodeTypes = dedupeNodes(lean);
+export class NodeSearchEngine {
+	private readonly nodeTypes: SearchableNodeType[];
+
+	private readonly nameSearchCache = new Map<string, NodeSearchResult[]>();
+
+	private readonly connectionSearchCache = new Map<string, NodeSearchResult[]>();
+
+	constructor(nodeTypes: SearchEngineInput[]) {
+		const normalized = nodeTypes.map((node) =>
+			needsLeanConversion(node) ? toLeanNodeType(node) : node,
+		);
+		this.nodeTypes = dedupeNodes(normalized);
 	}
 
 	/**
@@ -152,31 +208,28 @@ export class CodeBuilderNodeSearchEngine {
 	 * description keyword matching and direct type-name / display-name matching
 	 * for nodes the fuzzy search missed.
 	 *
-	 * Ported from the Instance AI `NodeSearchEngine` so code-builder / MCP node
-	 * search resolves natural-language multi-word queries (e.g. "telegram send
-	 * message", "ai agent langchain") instead of returning no results — these
-	 * previously failed because sublimeSearch matched the whole query string as a
-	 * single ordered character subsequence against one field.
+	 * The per-term splitting exists because sublimeSearch matches the whole query
+	 * as a single ordered character subsequence against one field, which fails
+	 * natural-language queries like "telegram send message" or "ai agent
+	 * langchain".
 	 */
 	private fuzzySearchNodes(
 		query: string,
-		candidates: LeanNodeTypeDescription[],
+		candidates: SearchableNodeType[],
 		limit?: number,
-	): Array<{ item: LeanNodeTypeDescription; score: number }> {
+	): Array<{ item: SearchableNodeType; score: number }> {
 		const queryLower = query.toLowerCase().trim();
 		const queryTerms = queryLower.split(/\s+/).filter((t) => t.length > 1);
 		const isMultiWord = queryTerms.length > 1;
 
-		type ScoredNode = { item: LeanNodeTypeDescription; score: number };
+		type ScoredNode = { item: SearchableNodeType; score: number };
 		let searchResults: ScoredNode[];
 
 		// For multi-word queries, search each term individually then merge.
-		// sublimeSearch breaks down on multi-word queries because it tries to
-		// fuzzy-match the entire string as one character sequence.
 		if (isMultiWord) {
 			const scoreMap = new Map<string, ScoredNode>();
 			for (const term of queryTerms) {
-				const termResults = sublimeSearch<LeanNodeTypeDescription>(
+				const termResults = sublimeSearch<SearchableNodeType>(
 					term,
 					candidates,
 					NODE_SEARCH_KEYS,
@@ -190,7 +243,7 @@ export class CodeBuilderNodeSearchEngine {
 			}
 			searchResults = [...scoreMap.values()];
 		} else {
-			searchResults = sublimeSearch<LeanNodeTypeDescription>(query, candidates, NODE_SEARCH_KEYS);
+			searchResults = sublimeSearch<SearchableNodeType>(query, candidates, NODE_SEARCH_KEYS);
 		}
 
 		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
@@ -264,34 +317,28 @@ export class CodeBuilderNodeSearchEngine {
 		query: string,
 		limit: number = 20,
 		nodeFilter?: (nodeId: string) => boolean,
-	): CodeBuilderNodeSearchResult[] {
-		const nodeTypes = nodeFilter
-			? this.nodeTypes.filter((node) => nodeFilter(node.name))
-			: this.nodeTypes;
+	): NodeSearchResult[] {
+		// A predicate can't be part of a cache key, so filtered searches skip the
+		// cache rather than risk serving another filter's results.
+		if (nodeFilter) {
+			return this.fuzzySearchNodes(
+				query,
+				this.nodeTypes.filter((node) => nodeFilter(node.name)),
+				limit,
+			)
+				.slice(0, limit)
+				.map(({ item, score }) => toNodeSearchResult(item, score));
+		}
 
-		return this.fuzzySearchNodes(query, nodeTypes, limit)
+		const cacheKey = `${query}\0${limit}`;
+		const cached = this.nameSearchCache.get(cacheKey);
+		if (cached) return cloneSearchResults(cached);
+
+		const results = this.fuzzySearchNodes(query, this.nodeTypes, limit)
 			.slice(0, limit)
-			.map(
-				({
-					item,
-					score,
-				}: { item: LeanNodeTypeDescription; score: number }): CodeBuilderNodeSearchResult => {
-					const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-					return {
-						name: item.name,
-						displayName: item.displayName,
-						description: item.description ?? 'No description available',
-						version: getLatestVersion(item.version),
-						inputs: item.inputs,
-						outputs: item.outputs,
-						score,
-						...(item.builderHint?.searchHint && {
-							builderHintMessage: item.builderHint.searchHint,
-						}),
-						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-					};
-				},
-			);
+			.map(({ item, score }) => toNodeSearchResult(item, score));
+		this.nameSearchCache.set(cacheKey, results);
+		return cloneSearchResults(results);
 	}
 
 	/**
@@ -303,41 +350,32 @@ export class CodeBuilderNodeSearchEngine {
 	 * @returns Array of matching sub-nodes
 	 */
 	searchByConnectionType(
-		connectionType: NodeConnectionType,
+		connectionType: string,
 		limit: number = 20,
 		nameFilter?: string,
-	): CodeBuilderNodeSearchResult[] {
+	): NodeSearchResult[] {
+		const cacheKey = `${connectionType}\0${limit}\0${nameFilter ?? ''}`;
+		const cached = this.connectionSearchCache.get(cacheKey);
+		if (cached) return cloneSearchResults(cached);
+
 		// First, filter by connection type
 		const nodesWithConnectionType = this.nodeTypes
 			.map((nodeType) => {
 				const connectionScore = this.getConnectionScore(nodeType, connectionType);
 				return connectionScore > 0 ? { nodeType, connectionScore } : null;
 			})
-			.filter((result): result is { nodeType: LeanNodeTypeDescription; connectionScore: number } =>
+			.filter((result): result is { nodeType: SearchableNodeType; connectionScore: number } =>
 				Boolean(result),
 			);
 
 		// If no name filter, return connection matches sorted by score
 		if (!nameFilter) {
-			return nodesWithConnectionType
+			const results = nodesWithConnectionType
 				.sort((a, b) => b.connectionScore - a.connectionScore)
 				.slice(0, limit)
-				.map(({ nodeType, connectionScore }) => {
-					const subnodeRequirements = extractSubnodeRequirements(nodeType.builderHint?.inputs);
-					return {
-						name: nodeType.name,
-						displayName: nodeType.displayName,
-						version: getLatestVersion(nodeType.version),
-						description: nodeType.description ?? 'No description available',
-						inputs: nodeType.inputs,
-						outputs: nodeType.outputs,
-						score: connectionScore,
-						...(nodeType.builderHint?.searchHint && {
-							builderHintMessage: nodeType.builderHint.searchHint,
-						}),
-						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-					};
-				});
+				.map(({ nodeType, connectionScore }) => toNodeSearchResult(nodeType, connectionScore));
+			this.connectionSearchCache.set(cacheKey, results);
+			return cloneSearchResults(results);
 		}
 
 		// Apply name filter using the same multi-word-aware fuzzy search as searchByName
@@ -345,29 +383,15 @@ export class CodeBuilderNodeSearchEngine {
 		const nameFilteredResults = this.fuzzySearchNodes(nameFilter, nodeTypesOnly, limit);
 
 		// Combine connection score with name score
-		return nameFilteredResults
-			.slice(0, limit)
-			.map(({ item, score: nameScore }: { item: LeanNodeTypeDescription; score: number }) => {
-				const connectionResult = nodesWithConnectionType.find(
-					(result) => result.nodeType.name === item.name,
-				);
-				const connectionScore = connectionResult?.connectionScore ?? 0;
-				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-
-				return {
-					name: item.name,
-					version: getLatestVersion(item.version),
-					displayName: item.displayName,
-					description: item.description ?? 'No description available',
-					inputs: item.inputs,
-					outputs: item.outputs,
-					score: connectionScore + nameScore,
-					...(item.builderHint?.searchHint && {
-						builderHintMessage: item.builderHint.searchHint,
-					}),
-					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-				};
-			});
+		const results = nameFilteredResults.slice(0, limit).map(({ item, score: nameScore }) => {
+			const connectionResult = nodesWithConnectionType.find(
+				(result) => result.nodeType.name === item.name,
+			);
+			const connectionScore = connectionResult?.connectionScore ?? 0;
+			return toNodeSearchResult(item, connectionScore + nameScore);
+		});
+		this.connectionSearchCache.set(cacheKey, results);
+		return cloneSearchResults(results);
 	}
 
 	/**
@@ -375,7 +399,7 @@ export class CodeBuilderNodeSearchEngine {
 	 * @param result - Single search result
 	 * @returns XML-formatted string
 	 */
-	formatResult(result: CodeBuilderNodeSearchResult): string {
+	formatResult(result: NodeSearchResult): string {
 		const parts = [
 			'		<node>',
 			`			<node_name>${result.name}</node_name>`,
@@ -384,6 +408,16 @@ export class CodeBuilderNodeSearchEngine {
 			`			<node_inputs>${typeof result.inputs === 'object' ? JSON.stringify(result.inputs) : result.inputs}</node_inputs>`,
 			`			<node_outputs>${typeof result.outputs === 'object' ? JSON.stringify(result.outputs) : result.outputs}</node_outputs>`,
 		];
+
+		// Flag n8n Connect coverage so the model can prefer it over comparable
+		// alternatives when the user has not named a specific tool.
+		if (result.aiGateway) {
+			const minVersion =
+				result.aiGateway.minVersion !== undefined
+					? ` min_version="${result.aiGateway.minVersion}"`
+					: '';
+			parts.push(`			<n8n_credits supported="true"${minVersion} />`);
+		}
 
 		// Add builder hint message if present
 		if (result.builderHintMessage) {
@@ -477,7 +511,7 @@ export class CodeBuilderNodeSearchEngine {
 	 * @param nodeId - The node ID to look up
 	 * @returns The node type description or undefined
 	 */
-	getNodeType(nodeId: string): LeanNodeTypeDescription | undefined {
+	getNodeType(nodeId: string): SearchableNodeType | undefined {
 		return this.nodeTypes.find((n) => n.name === nodeId);
 	}
 
@@ -487,10 +521,7 @@ export class CodeBuilderNodeSearchEngine {
 	 * @param connectionType - Connection type to look for
 	 * @returns Score indicating match quality
 	 */
-	private getConnectionScore(
-		nodeType: LeanNodeTypeDescription,
-		connectionType: NodeConnectionType,
-	): number {
+	private getConnectionScore(nodeType: SearchableNodeType, connectionType: string): number {
 		const outputs = nodeType.outputs;
 
 		if (Array.isArray(outputs)) {
@@ -521,10 +552,7 @@ export class CodeBuilderNodeSearchEngine {
 	 * Get all available AI connection types
 	 * @returns Array of AI connection types
 	 */
-	static getAiConnectionTypes(): NodeConnectionType[] {
-		return Object.values(NodeConnectionTypes).filter(
-			(type): type is NodeConnectionType =>
-				isNodeConnectionType(type) && CodeBuilderNodeSearchEngine.isAiConnectionType(type),
-		);
+	static getAiConnectionTypes(): readonly string[] {
+		return AI_CONNECTION_TYPES;
 	}
 }
