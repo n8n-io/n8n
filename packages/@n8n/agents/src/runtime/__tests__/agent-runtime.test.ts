@@ -4147,6 +4147,43 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		);
 		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
 	});
+
+	it('accepts unknown keys the authored Zod resume schema would strip', async () => {
+		const approvalTool = new ToolBuilder('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.requireApproval()
+			.handler(async ({ id }: { id: string }) => await Promise.resolve({ deleted: id }))
+			.build();
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'delete', { id: 'rec-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [approvalTool],
+			checkpointStorage: 'memory',
+		});
+
+		const firstResult = await runtime.generate('Delete record rec-1');
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true, userInput: 'go ahead', credentials: { apiKey: 'x' } },
+			{ runId, toolCallId },
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ tool: 'delete', output: { deleted: 'rec-1' } }),
+			]),
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------

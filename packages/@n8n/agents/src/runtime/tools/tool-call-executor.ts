@@ -1,5 +1,5 @@
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
-import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
+import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
 	getInlineDelegateSubAgentToolOptions,
@@ -22,7 +22,7 @@ import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/a
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
-import { isZodSchema } from '../../utils/zod';
+import { zodToJsonSchema } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -166,7 +166,7 @@ function getToolResumeJsonSchema(
 ): JsonSchema7Type | undefined {
 	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
 	if (!resolvedSchema) return undefined;
-	return isZodSchema(resolvedSchema) ? zodToJsonSchema(resolvedSchema) : resolvedSchema;
+	return zodToJsonSchema(resolvedSchema, { closeObjects: false }) ?? undefined;
 }
 
 export interface ToolCallExecutorDeps {
