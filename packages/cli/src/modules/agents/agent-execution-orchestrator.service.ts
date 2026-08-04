@@ -1,9 +1,16 @@
-import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
+import {
+	INLINE_SUB_AGENT_ID,
+	parseDelegateSubAgentContinuation,
+	type Agent as RuntimeAgent,
+	type SerializableAgentState,
+	type StreamChunk,
+} from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
@@ -17,7 +24,9 @@ import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import type { ToolRegistry } from './tool-registry';
+import type { StoredAttachmentRef } from './agent-chat-attachment.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
+import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -39,6 +48,8 @@ export interface ExecuteForChatConfig {
 	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	/** Stored attachments to include as file parts on the user turn. */
+	attachments?: StoredAttachmentRef[];
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -50,6 +61,7 @@ export interface ExecuteForChatPublishedConfig {
 	message: string;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	attachments?: StoredAttachmentRef[];
 	integrationType?: string;
 	// No `user` field here: a published chat integration (Slack, Telegram, …)
 	// run is triggered by an inbound platform event, not an interactive n8n
@@ -126,12 +138,13 @@ export interface StreamChatResponseConfig {
 	agentId: string;
 	userId?: string;
 	message: string;
+	attachments?: StoredAttachmentRef[];
 	memory: AgentMemoryScope;
 	projectId: string;
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
-	telemetry?: {
+	telemetry: {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
@@ -159,6 +172,43 @@ function normalizeAbortedMessageRecord(
 ): MessageRecord {
 	if (!abortSignal?.aborted) return record;
 	return { ...record, finishReason: 'cancelled', error: null };
+}
+
+function getDelegatedChildCheckpoints(
+	checkpoint: SerializableAgentState,
+	parentAgentId: string,
+): Array<{ runId: string; agentId: string }> {
+	const childCheckpoints: Array<{ runId: string; agentId: string }> = [];
+	const seen = new Set<string>();
+
+	for (const pendingToolCall of Object.values(checkpoint.pendingToolCalls)) {
+		if (!pendingToolCall.suspended) continue;
+		const childCheckpoint = parseDelegateSubAgentContinuation(pendingToolCall.continuation);
+		if (!childCheckpoint) continue;
+
+		let ownerAgentId: string;
+		if (childCheckpoint.subAgentId === INLINE_SUB_AGENT_ID) {
+			if (childCheckpoint.resumeContext !== undefined) continue;
+			ownerAgentId = parentAgentId;
+		} else {
+			if (
+				!isRecord(childCheckpoint.resumeContext) ||
+				childCheckpoint.resumeContext.agentId !== childCheckpoint.subAgentId ||
+				typeof childCheckpoint.resumeContext.versionId !== 'string' ||
+				childCheckpoint.resumeContext.versionId.length === 0
+			) {
+				continue;
+			}
+			ownerAgentId = childCheckpoint.subAgentId;
+		}
+
+		const identity = `${ownerAgentId}\0${childCheckpoint.runId}`;
+		if (seen.has(identity)) continue;
+		seen.add(identity);
+		childCheckpoints.push({ runId: childCheckpoint.runId, agentId: ownerAgentId });
+	}
+
+	return childCheckpoints;
 }
 
 /**
@@ -204,22 +254,40 @@ export class AgentExecutionOrchestratorService {
 		runId: string;
 		resourceId: string;
 	}): Promise<boolean> {
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(params.runId);
-		if (checkpointStatus.status !== 'active') return false;
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(
+			params.runId,
+			params.agentId,
+		);
+		if (checkpointStatus.status === 'not-found' || checkpointStatus.checkpoint === undefined) {
+			return false;
+		}
 
 		const { checkpoint } = checkpointStatus;
 		if (
 			checkpoint.status !== 'suspended' ||
+			checkpoint.persistence?.delegated === true ||
 			checkpoint.persistence?.resourceId !== params.resourceId
 		) {
 			return false;
 		}
 
-		return await this.n8nCheckpointStorage.cancelSuspended(
-			params.runId,
-			checkpoint,
-			params.agentId,
+		const childCheckpoints = getDelegatedChildCheckpoints(checkpoint, params.agentId);
+		if (checkpointStatus.status === 'active') {
+			const cancelled = await this.n8nCheckpointStorage.cancelSuspended(
+				params.runId,
+				checkpoint,
+				params.agentId,
+			);
+			if (!cancelled) return false;
+		}
+
+		await Promise.all(
+			childCheckpoints.map(
+				async ({ runId, agentId }) => await this.n8nCheckpointStorage.delete(runId, agentId),
+			),
 		);
+		await this.n8nCheckpointStorage.delete(params.runId, params.agentId);
+		return true;
 	}
 
 	/**
@@ -241,7 +309,7 @@ export class AgentExecutionOrchestratorService {
 			abortSignal,
 		} = config;
 
-		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
+		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId, agentId);
 		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
 		}
@@ -253,6 +321,9 @@ export class AgentExecutionOrchestratorService {
 		const memoryScope = checkpointStatus.checkpoint?.persistence;
 		if (!memoryScope) {
 			throw new UserError(`Checkpoint ${runId} has no memory data and cannot be resumed`);
+		}
+		if (memoryScope.delegated === true) {
+			throw new UserError('Delegated actions must be resumed through their parent agent');
 		}
 
 		const threadId = memoryScope.threadId;
@@ -300,6 +371,7 @@ export class AgentExecutionOrchestratorService {
 				executionCounter: createAgentExecutionCounter(this.telemetry, {
 					agentId,
 					userId: user?.id,
+					runType,
 				}),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
@@ -342,7 +414,16 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, user, memory, onExecutionRecorded, abortSignal } = config;
+		const {
+			agentId,
+			projectId,
+			message,
+			user,
+			memory,
+			attachments,
+			onExecutionRecorded,
+			abortSignal,
+		} = config;
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
@@ -367,6 +448,7 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			userId: user.id,
 			message,
+			attachments,
 			memory,
 			projectId: runtime.projectId,
 			telemetry: {
@@ -386,7 +468,7 @@ export class AgentExecutionOrchestratorService {
 	async *executeForChatPublished(
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, memory, integrationType } = config;
+		const { agentId, projectId, message, memory, integrationType, attachments } = config;
 		await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
@@ -405,6 +487,7 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			agentId,
 			message,
+			attachments,
 			memory,
 			projectId: runtime.projectId,
 			source: integrationType,
@@ -494,6 +577,7 @@ export class AgentExecutionOrchestratorService {
 			agentId,
 			userId,
 			message,
+			attachments,
 			memory,
 			projectId,
 			source,
@@ -517,9 +601,14 @@ export class AgentExecutionOrchestratorService {
 				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
-			const resultStream = await agentInstance.stream(message, {
+			const input = attachments?.length ? buildInboundUserMessage(message, attachments) : message;
+			const resultStream = await agentInstance.stream(input, {
 				persistence: { threadId, resourceId },
-				executionCounter: createAgentExecutionCounter(this.telemetry, { agentId, userId }),
+				executionCounter: createAgentExecutionCounter(this.telemetry, {
+					agentId,
+					userId,
+					runType: telemetry.runType,
+				}),
 				...(tracing ? { telemetry: tracing } : {}),
 				...(abortSignal ? { abortSignal } : {}),
 			});
@@ -558,6 +647,7 @@ export class AgentExecutionOrchestratorService {
 					agentName: agentInstance.name,
 					projectId,
 					userMessage: message,
+					attachments,
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : undefined,
 					source,

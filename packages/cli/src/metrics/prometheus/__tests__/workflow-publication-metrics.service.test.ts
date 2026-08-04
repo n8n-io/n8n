@@ -189,6 +189,12 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			expect(mockCounterInc).toHaveBeenCalledWith(2);
 			expect(mockHistogramObserve).toHaveBeenCalledWith({ result: 'success' }, 0.5);
 		});
+
+		it('records ghost-trigger sweep removals', () => {
+			eventHandler('workflow-publication-ghost-trigger-sweep')!({ removedCount: 3 } as never);
+
+			expect(mockCounterInc).toHaveBeenCalledWith(3);
+		});
 	});
 
 	describe('gauge collection', () => {

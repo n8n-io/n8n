@@ -15,7 +15,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
@@ -34,7 +34,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	submitted: [];
+	submitted: [workflowReviewRequestId: string];
 	conflict: [];
 }>();
 
@@ -144,7 +144,7 @@ const submit = async () => {
 		reviewStatusStore.setOpenReview(workflowId, reviewRequest);
 		reviewRequiredStore.setReviewRequired(workflowId, false);
 		emit('update:open', false);
-		emit('submitted');
+		emit('submitted', reviewRequest.id);
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
 			// The conflict proves an open review this client didn't know about — lock

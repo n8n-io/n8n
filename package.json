@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -103,6 +103,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@confluentinc/kafka-javascript",
       "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
@@ -208,6 +209,7 @@
       "@babel/traverse": "^7.23.2"
     },
     "patchedDependencies": {
+      "axios": "patches/axios.patch",
       "bull@4.16.4": "patches/bull@4.16.4.patch",
       "pdfjs-dist@5.4.296": "patches/pdfjs-dist@5.4.296.patch",
       "pkce-challenge@5.0.0": "patches/pkce-challenge@5.0.0.patch",

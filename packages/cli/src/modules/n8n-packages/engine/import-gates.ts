@@ -2,6 +2,7 @@ import type { LicenseState } from '@n8n/backend-common';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
+import type { TagImportPlan } from '../entities/tag/tag.types';
 import { variableMissingModeCreates } from '../entities/variable/variable-missing-mode';
 import type { VariableMissingMode } from '../n8n-packages.types';
 
@@ -37,4 +38,22 @@ export function assertVariableCreationAllowed(options: {
 		);
 	}
 	assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:create']);
+}
+
+/**
+ * Plan-derived, unlike the pre-plan variable/data-table gates: a tag must
+ * never block an import that would not write it (skipped consumers, disabled
+ * tags, dropped conflicts), so the assert looks at what the plans actually
+ * create, rename, or reconcile.
+ */
+export function assertTagWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	tagPlans: TagImportPlan[],
+): void {
+	if (tagPlans.some((plan) => plan.creations.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);
+	}
+	if (tagPlans.some((plan) => plan.renames.length > 0 || plan.reconciles.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
+	}
 }

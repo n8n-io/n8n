@@ -74,12 +74,15 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
-			const provider = createOpenAI({ ...creds, fetch });
-			// A custom baseURL means an OpenAI-COMPATIBLE server (LM Studio, vLLM,
-			// Ollama, gateways), which speaks /chat/completions; the provider's
-			// default model targets OpenAI's own Responses API (/responses) that
-			// those servers do not implement.
-			return creds.baseURL ? provider.chat(model) : provider(model);
+			const { apiStyle, ...providerCreds } = creds;
+			const provider = createOpenAI({ ...providerCreds, fetch });
+			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
+			// vLLM, Ollama), which speaks /chat/completions; the provider's default
+			// model targets OpenAI's own Responses API (/responses) that those
+			// servers do not implement. A proxy in front of real OpenAI also sets a
+			// baseURL but does serve /responses, so `apiStyle` overrides the guess.
+			const useChat = apiStyle ? apiStyle === 'chat' : Boolean(providerCreds.baseURL);
+			return useChat ? provider.chat(model) : provider(model);
 		},
 	},
 	custom: {

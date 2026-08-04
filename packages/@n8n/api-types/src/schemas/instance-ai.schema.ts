@@ -248,6 +248,12 @@ export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
 	result: z.string().describe('Synthesized answer'),
 	error: z.string().optional(),
+	/**
+	 * Terminal state of the sub-agent. Optional: events written before this
+	 * field existed (and the backfill migration's synthesized ones) carry only
+	 * `error`, and the reducer keeps deriving the status from it for those.
+	 */
+	status: z.enum(['completed', 'cancelled', 'error']).optional(),
 });
 
 export const textDeltaPayloadSchema = z.object({
@@ -1739,6 +1745,15 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 * filtered to this set — an empty array means the thread sees no credentials.
 	 */
 	credentialIds: z.array(z.string().min(1)).max(50),
+	/**
+	 * Credential IDs whose connection test resolves as successful without
+	 * contacting the provider. Lets an eval exercise a flow the product gates
+	 * behind a passing test (the workflow setup card won't apply a credential
+	 * that fails one) while honouring "no stored provider credentials" — the
+	 * seeded token stays a placeholder. Omitted/empty reproduces today's
+	 * behaviour, so every existing case is unaffected.
+	 */
+	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 /** A workflow a conversation seed references, recreated at its given id so the

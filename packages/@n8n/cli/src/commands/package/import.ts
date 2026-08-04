@@ -2,7 +2,7 @@ import { Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { toPackagesError } from './shared';
+import { toPackagesError } from './package-error';
 import { BaseCommand } from '../../base-command';
 
 export default class PackageImport extends BaseCommand {
@@ -95,6 +95,18 @@ export default class PackageImport extends BaseCommand {
 			options: ['project', 'global'],
 			aliases: ['variable-parent-policy'],
 		}),
+		tagMissingMode: Flags.string({
+			description:
+				'What to do when a tag referenced by the package is absent on the target instance — tags are matched by source id, never by name (default on the instance: create). create creates the tag globally with its source id and name, and needs an API key with the tag:create scope when the import would create a tag; do-nothing imports the workflows without the missing tags and lists them under tags.skipped',
+			options: ['create', 'do-nothing'],
+			aliases: ['tag-missing-mode'],
+		}),
+		tagConflictPolicy: Flags.string({
+			description:
+				"What to do when a referenced tag conflicts on the target instance — the same-id target tag has a different name (rename drift), or the tag's name is held by a different tag (name collision). skip (instance default) imports the workflows without the conflicted tags and lists them under tags.skipped; fail rejects the import; rename renames a drifted target tag to the package name (needs an API key with the tag:update scope when the import would rename a tag) — name collisions still reject the import",
+			options: ['skip', 'fail', 'rename'],
+			aliases: ['tag-conflict-policy'],
+		}),
 		bindings: Flags.string({
 			description:
 				'Explicit source→target id bindings as a JSON object keyed by entity type, e.g. \'{"credentials":{"<sourceId>":"<targetId>"}}\'. Applied before credential-matching-mode resolution.',
@@ -130,6 +142,8 @@ export default class PackageImport extends BaseCommand {
 						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
 						variableMissingMode: flags.variableMissingMode,
 						variableParentPolicy: flags.variableParentPolicy,
+						tagMissingMode: flags.tagMissingMode,
+						tagConflictPolicy: flags.tagConflictPolicy,
 						bindings: flags.bindings,
 					},
 				);

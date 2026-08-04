@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User, type WorkflowEntity } from '@n8n/db';
-import type { INodeTypes } from 'n8n-workflow';
+import type { INode, INodeTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,10 +12,13 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
+import { getTriggerDetails } from '../tools/webhook-utils';
 
 vi.mock('../tools/webhook-utils', () => ({
 	getTriggerDetails: vi.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
 }));
+
+const getTriggerDetailsMock = vi.mocked(getTriggerDetails);
 
 describe('get-workflow-details MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -91,14 +94,75 @@ describe('get-workflow-details MCP tool', () => {
 			);
 
 			expect('pinData' in payload.workflow).toBe(false);
-			expect(payload.workflow.nodes.every((n) => !('credentials' in n))).toBe(true);
+			expect(payload.workflow.nodes.map((n) => n.credentials)).toEqual([
+				{ httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
+				{ httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } },
+			]);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
 			expect(payload.workflow.versionId).toBe(workflow.versionId);
 			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
 			expect(payload.workflow.activeVersion).not.toBeNull();
-			expect(payload.workflow.activeVersion?.nodes.every((n) => !('credentials' in n))).toBe(true);
+			expect(payload.workflow.activeVersion?.nodes.map((n) => n.credentials)).toEqual([
+				{ httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
+				{ httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } },
+			]);
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
+		});
+
+		test('keeps only id and name for real credentials and drops AI Gateway (null-id) slots', async () => {
+			const workflow = createWorkflow({
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'OpenAI',
+						type: '@n8n/n8n-nodes-langchain.openAi',
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+						credentials: {
+							openAiApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+						},
+					},
+					{
+						id: 'node-2',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+						credentials: {
+							httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth', extra: 'internal' },
+						},
+					},
+				] as INode[],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			// Null-id managed slot is dropped entirely (nothing to reference)
+			expect(payload.workflow.nodes[0]).not.toHaveProperty('credentials');
+			// Real credential is reduced to id and name, internal fields removed
+			expect(payload.workflow.nodes[1].credentials).toEqual({
+				httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' },
+			});
 		});
 
 		test('presents node groups by member node names, dropping stale ids', async () => {
@@ -161,6 +225,55 @@ describe('get-workflow-details MCP tool', () => {
 				expect.objectContaining({ includeTags: true }),
 			);
 			expect(payload.workflow.tags).toEqual(tags);
+		});
+
+		test('passes triggers MCP cannot execute directly to getTriggerDetails', async () => {
+			getTriggerDetailsMock.mockClear();
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Gmail Trigger',
+						type: 'n8n-nodes-base.gmailTrigger',
+						typeVersion: 1.4,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'Disabled Trigger',
+						type: 'n8n-nodes-base.telegramTrigger',
+						typeVersion: 1,
+						position: [100, 0],
+						disabled: true,
+						parameters: {},
+					},
+				],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			const [, supportedTriggers, unsupportedTriggers] = getTriggerDetailsMock.mock.calls[0];
+			expect(supportedTriggers).toEqual([]);
+			// Only the enabled unsupported trigger is passed; the disabled one is excluded.
+			expect(unsupportedTriggers.map((t) => t.name)).toEqual(['Gmail Trigger']);
 		});
 
 		test('propagates errors from workflow validation', async () => {

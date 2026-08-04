@@ -6,7 +6,7 @@ import { computed, onMounted, ref, useCssModule } from 'vue';
 import type { WorkflowListItem } from '@/Interface';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 defineProps<{
 	placeholder?: string;
@@ -83,10 +83,6 @@ function focusOnInput() {
 	selectRef.value?.focusOnInput();
 }
 
-function removeOption(value: string) {
-	workflowOptions.value = workflowOptions.value.filter((option) => option.id !== value);
-}
-
 function onVisibleChange(visible: boolean) {
 	isDropdownVisible.value = visible;
 }
@@ -106,7 +102,6 @@ onMounted(async () => {
 
 defineExpose({
 	focusOnInput,
-	removeOption,
 });
 </script>
 

@@ -22,12 +22,13 @@ import {
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
 	remapSeedWorkflowIds,
-	seedFromProse,
+	SEED_WORKFLOW_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
-import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
+import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import type { CaseSeed } from './schema';
 import { buildSeededTablesNote, dedupeScenarioSeedTables } from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
@@ -91,6 +92,16 @@ interface MultiTurnDriverConfig {
 	/** Appended to the FIRST sent message only (pre-seeded-table hint); the
 	 *  recorded turn and the proxy's conversation keep the clean prompt. */
 	openingMessageSuffix?: string;
+	/** Ids already allowlisted for this thread (from pre-run `createDeclaredCredentials`
+	 *  seeding) — wires `UserProxyLlm.credentialCreation` so `manual` can create a
+	 *  real credential when a setup card shows zero existing candidates. Omitted
+	 *  when the credential view isn't pinned (see `credentialViewPinned`), since
+	 *  the allowlist endpoint isn't available in that case either. */
+	allowlistedCredentialIds?: string[];
+	createdCredentialIds?: Set<string>;
+	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
+	 *  `CredentialCreationConfig.nameCounts`. */
+	credentialNameCounts?: Map<string, number>;
 }
 
 async function driveMultiTurnConversation(
@@ -102,6 +113,17 @@ async function driveMultiTurnConversation(
 		conversation: config.conversation,
 		messageBudget: config.messageBudget,
 		logger: config.logger,
+		...(config.allowlistedCredentialIds !== undefined
+			? {
+					credentialCreation: {
+						client: config.client,
+						threadId: config.threadId,
+						allowlistedCredentialIds: config.allowlistedCredentialIds,
+						createdCredentialIds: config.createdCredentialIds,
+						nameCounts: config.credentialNameCounts,
+					},
+				}
+			: {}),
 	});
 
 	const confirmationStrategy: ConfirmationStrategy = proxy.respondToConfirmation.bind(proxy);
@@ -183,7 +205,7 @@ export interface BuildResult {
 export interface BuildWorkflowConfig {
 	client: N8nClient;
 	/** Hand-authored conversation (≥1 turn, first `user`; one user turn →
-	 *  auto-approve, more → proxy). Optional when `seedThread` derives the live turn. */
+	 *  auto-approve, more → proxy). Optional when a `replay` seed derives the live turn. */
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
@@ -191,13 +213,10 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
-	/** Prior messages + workflows restored before the live message. */
-	conversationSeed?: ConversationSeed;
-	/** Prose turns seeded as plain-text history. */
-	priorConversation?: ConversationTurn[];
-	/** Reproduce a real conversation from its LangSmith trace (seed = before the
-	 *  last user message, live = that message). */
-	seedThread?: SeedThreadRef;
+	/** History restored before the live message — carried in the case
+	 *  (`mode: 'inline'`) or reconstructed from a trace (`mode: 'replay'`, which
+	 *  also supplies the live turn). */
+	seed?: CaseSeed;
 	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
 	 *  after a successful build, before any scenario runs (TRUST-311). */
 	executionScenarios?: ExecutionScenario[];
@@ -274,34 +293,47 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	try {
 		const buildStart = Date.now();
 
-		// `seedThread` derives both seed and live turn from a trace; otherwise the
-		// seed (if any) is a file/prose prelude and the conversation is authored.
+		// `replay` derives both seed and live turn from a trace; `inline` carries the
+		// seed in the case and the conversation is authored.
 		let seed: ConversationSeed | undefined;
 		let conversation = config.conversation ?? [];
 		try {
-			if (config.seedThread) {
-				const reconstructed = await reconstructSeedFromThread(config.seedThread);
-				seed = reconstructed.seed;
-				// The trace's last user message is the live opening; any authored
-				// `conversation` continues from there (proxy-driven follow-ups).
-				conversation = [
-					{ role: 'user', text: reconstructed.liveTurn },
-					...(config.conversation ?? []),
-				];
-				const contSuffix =
-					(config.conversation?.length ?? 0) > 0
-						? ` + ${String(config.conversation!.length)} continuation turn(s)`
-						: '';
-				const wsLabel = reconstructed.sourceWorkspace
-					? `${reconstructed.sourceWorkspace}/${reconstructed.sourceProject}`
-					: reconstructed.sourceProject;
-				logger.info(
-					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
-				);
-			} else if (config.conversationSeed) {
-				seed = config.conversationSeed;
-			} else if (config.priorConversation && config.priorConversation.length > 0) {
-				seed = seedFromProse(config.priorConversation);
+			switch (config.seed?.mode) {
+				case 'replay': {
+					const reconstructed = await reconstructSeedFromThread(config.seed);
+					seed = reconstructed.seed;
+					// The trace's last user message is the live opening; any authored
+					// `conversation` continues from there (proxy-driven follow-ups).
+					conversation = [
+						{ role: 'user', text: reconstructed.liveTurn },
+						...(config.conversation ?? []),
+					];
+					const contSuffix =
+						(config.conversation?.length ?? 0) > 0
+							? ` + ${String(config.conversation!.length)} continuation turn(s)`
+							: '';
+					const wsLabel = reconstructed.sourceWorkspace
+						? `${reconstructed.sourceWorkspace}/${reconstructed.sourceProject}`
+						: reconstructed.sourceProject;
+					logger.info(
+						`  Reconstructed seed from thread ${config.seed.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
+					);
+					break;
+				}
+				case 'inline':
+					// The arm is a superset of the restore payload — `mode` is the case
+					// schema's discriminant and never reaches restore-thread.
+					seed = config.seed;
+					break;
+				case undefined:
+					break;
+				default: {
+					// A new arm must decide what to restore here; without this the case
+					// would silently run UNSEEDED, which is the failure this slot exists
+					// to make impossible.
+					const unhandled: never = config.seed;
+					throw new Error(`Unhandled seed mode: ${JSON.stringify(unhandled)}`);
+				}
 			}
 		} catch (error: unknown) {
 			// A seed that can't be resolved is a harness/framework problem, not an
@@ -323,9 +355,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// default) before the first message, so every build-workflow call inside
 		// the build sees the same deterministic environment.
 		const declaredCredentials = config.credentials ?? [];
+		// Shared with UserProxyLlm's mid-run credential creation (if any) so a
+		// credential created during the run doesn't collide on display name with
+		// one declared here — both would otherwise default to e.g. "[eval] Slack".
+		const credentialNameCounts = new Map<string, number>();
 		const createdCredentials = await createDeclaredCredentials(client, declaredCredentials, {
 			onCreated: (id) => config.createdCredentialIds?.add(id),
 			logger,
+			nameCounts: credentialNameCounts,
 		});
 		try {
 			await client.setThreadCredentialAllowlist(
@@ -350,6 +387,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		if (seed) {
 			try {
 				const remapped = remapSeedWorkflowIds(seed);
+				await evictLeftoverSeedWorkflows(
+					client,
+					remapped,
+					config.preRunWorkflowIds,
+					logger,
+					config.laneTag,
+				);
 				const restoreResult = await client.restoreThread(
 					threadId,
 					remapped.messages,
@@ -431,6 +475,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				logger,
 				proxyResponses,
 				followUpMessagesOut: followUpMessages,
+				// Only wired when the credential view is actually pinned — the
+				// allowlist endpoint a mid-run creation depends on isn't available
+				// otherwise either (see the catch above).
+				...(credentialViewPinned
+					? {
+							allowlistedCredentialIds: createdCredentials.map((c) => c.id),
+							createdCredentialIds: config.createdCredentialIds,
+							credentialNameCounts,
+						}
+					: {}),
 				// The pre-seeded-table note goes to the agent, but the recorded turn
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
@@ -591,6 +645,89 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			credentialViewPinned,
 			seedingFailed,
 		};
+	}
+}
+
+/**
+ * Delete leftover seed workflows sharing this seed's base name before restoring.
+ *
+ * A seeded case's live turn addresses the workflow the way a user would — often by
+ * name, sometimes loosely ("the batch image workflow"). Any same-named copy left on
+ * the instance is a candidate the agent can rationally ground on instead, and it
+ * will prefer the one with failed executions when the message mentions a failure.
+ * The judge then grades a different artifact than the agent edited, which produces
+ * false greens as readily as false reds. Seen for real: three iterations all grounded
+ * on a leftover from an earlier calibration run; one read the leftover's
+ * already-applied fix, correctly concluded there was nothing to do, and scored 2/6.
+ *
+ * Leftovers accumulate because `--keep-workflows` is the documented calibration
+ * flow, and because a crashed or timed-out run skips its own cleanup.
+ *
+ * Only names this module minted are ever touched — the `[seed <8 hex>]` suffix is
+ * applied at remap time and by nothing else, so a real workflow, and any workflow
+ * the agent itself built, are both out of reach. Two iterations of one case can't
+ * race here either: the lane allocator refuses to run the same case key twice
+ * concurrently on a lane, so a sibling's fresh restore is never in the blast radius.
+ *
+ * Best-effort: a failure here must not fail an otherwise valid build, so it is
+ * logged and the restore proceeds.
+ */
+async function evictLeftoverSeedWorkflows(
+	client: N8nClient,
+	seed: ConversationSeed,
+	preRunWorkflowIds: Set<string>,
+	logger: EvalLogger,
+	laneTag?: string,
+): Promise<void> {
+	const baseNames = new Set(
+		seed.workflows.map(
+			(workflow) => SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name,
+		),
+	);
+	if (baseNames.size === 0) return;
+	try {
+		const existing = await client.listWorkflows();
+		const stale = existing.filter((workflow) => {
+			// A matching suffix alone does NOT prove a leftover. A lane admits several
+			// different case slugs at once, and it is released as soon as `buildWorkflow`
+			// returns even though that build's restored workflow stays live for scenario
+			// execution and judging. So a sibling case sharing this seed's base name
+			// would be selectable here — and hard-deleting its artifact mid-run is worse
+			// than the collision this exists to prevent.
+			//
+			// The pre-run snapshot settles it: taken once per lane before any build, so
+			// anything created DURING the run (a sibling's fresh restore, or the
+			// workflow the agent is building) is absent by construction. What remains is
+			// what was already lying there — a previous run's `--keep-workflows`
+			// leftover, or a crashed run that skipped its own cleanup.
+			if (!preRunWorkflowIds.has(workflow.id)) return false;
+			const base = SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1];
+			return base !== undefined && baseNames.has(base);
+		});
+		// Per-workflow, because best-effort has to mean each one: letting a single
+		// failed delete abort the loop leaves the rest of the leftovers selectable
+		// by name, which is the collision this eviction exists to prevent.
+		let evicted = 0;
+		for (const workflow of stale) {
+			try {
+				// deleteWorkflow archives first — a non-archived workflow can't be deleted.
+				await client.deleteWorkflow(workflow.id);
+				evicted++;
+			} catch (error: unknown) {
+				logger.info(
+					`  Could not evict leftover seed workflow "${workflow.name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+				);
+			}
+		}
+		if (evicted > 0) {
+			logger.info(
+				`  Evicted ${String(evicted)} leftover seed workflow(s) before restore${laneTag ?? ''}`,
+			);
+		}
+	} catch (error: unknown) {
+		logger.info(
+			`  Could not evict leftover seed workflows (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+		);
 	}
 }
 

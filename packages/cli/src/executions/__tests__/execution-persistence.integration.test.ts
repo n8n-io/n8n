@@ -141,6 +141,42 @@ describe('ExecutionPersistence', () => {
 			const executionEntity = await executionRepo.findOneBy({ id: executionId });
 			expect(executionEntity?.status).toEqual('new');
 		});
+
+		// CAT-3862: `ActiveExecutions.add` claims an existing execution through this
+		// path. It used to require `waiting` unconditionally, so an execution enqueued
+		// before a restart (status `new`) could never be claimed and stayed `new` forever.
+		describe.each([
+			{ requireStatus: 'new' as const, expected: true },
+			{ requireStatus: 'waiting' as const, expected: false },
+		])(
+			'claiming a `new` execution with requireStatus: $requireStatus',
+			({ requireStatus, expected }) => {
+				it(`returns ${expected}`, async () => {
+					const executionPersistence = Container.get(ExecutionPersistence);
+					const executionRepo = Container.get(ExecutionRepository);
+					const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+					const executionId = await executionPersistence.create({
+						workflowId: workflow.id,
+						data: createEmptyRunExecutionData(),
+						workflowData: workflow,
+						mode: 'webhook',
+						status: 'new',
+						finished: false,
+					});
+
+					const claimed = await executionPersistence.updateExistingExecution(
+						executionId,
+						{ data: createEmptyRunExecutionData(), waitTill: null, status: 'running' },
+						{ requireStatus },
+					);
+
+					expect(claimed).toBe(expected);
+					const row = await executionRepo.findOneBy({ id: executionId });
+					expect(row?.status).toEqual(expected ? 'running' : 'new');
+				});
+			},
+		);
 	});
 
 	describe('findSingleExecution', () => {

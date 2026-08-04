@@ -140,9 +140,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						conversation: buildArgs.conversation,
 						messageBudget: buildArgs.messageBudget,
 						credentials: buildArgs.credentials,
-						conversationSeed: buildArgs.conversationSeed,
-						priorConversation: buildArgs.priorConversation,
-						seedThread: buildArgs.seedThread,
+						seed: buildArgs.seed,
 						executionScenarios: buildArgs.executionScenarios,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: buildArgs.timeoutMs,
@@ -175,6 +173,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.buildTrace,
 						args.pinAiRoots,
 						execArgs.seedContext,
+						args.outputDir,
 					),
 			),
 			tracedExecuteAgent: wrap(
@@ -197,6 +196,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.timeoutMs,
 						execArgs.testCaseName,
 						execArgs.buildTrace,
+						args.outputDir,
 					),
 			),
 		};

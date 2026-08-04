@@ -74,6 +74,8 @@ async function importPackage(params: ImportParams) {
 		variableMissingMode: 'do-nothing',
 		variableParentPolicy: 'project',
 		missingNodeTypeMode: 'fail',
+		tagMissingMode: 'create',
+		tagConflictPolicy: 'skip',
 		...params,
 	});
 }

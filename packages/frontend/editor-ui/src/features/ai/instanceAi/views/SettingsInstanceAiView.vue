@@ -61,6 +61,7 @@ const isOff = computed(() => !isEnabled.value);
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
+const showSandboxRow = computed(() => isAdmin.value && !store.isCloudManaged);
 
 const modelCredential = computed(() =>
 	store.instanceModelCredentials.find(
@@ -130,8 +131,8 @@ const searchValue = computed(() => {
 const isSetupRequired = computed(
 	() =>
 		isEnabled.value &&
-		showCredentialsRows.value &&
-		(!isModelConfigured.value || !isSandboxConfigured.value),
+		((showCredentialsRows.value && !isModelConfigured.value) ||
+			(showSandboxRow.value && !isSandboxConfigured.value)),
 );
 const neverConfigured = computed(() => {
 	if (isEnabled.value) return false;
@@ -322,19 +323,20 @@ onMounted(() => {
 });
 
 async function handleEnable() {
-	if (!showCredentialsRows.value) {
+	if (!showCredentialsRows.value && (!showSandboxRow.value || isSandboxConfigured.value)) {
 		await store.persistEnabled(true);
 		return;
 	}
 
 	enableAfterSetup.value = true;
-	if (!isModelConfigured.value) {
+	if (showCredentialsRows.value && !isModelConfigured.value) {
 		openModelSetup();
 		return;
 	}
 
 	const modelCredentialId = store.settings?.modelCredentialId;
 	if (
+		showCredentialsRows.value &&
 		modelCredentialId &&
 		store.canManageInstanceCredentials &&
 		(!modelCredential.value ||
@@ -348,12 +350,12 @@ async function handleEnable() {
 		return;
 	}
 
-	if (!isSandboxConfigured.value) {
+	if (showSandboxRow.value && !isSandboxConfigured.value) {
 		openSandboxDialog();
 		return;
 	}
 
-	if (sandboxCredentialId.value && store.canManageInstanceCredentials) {
+	if (showSandboxRow.value && sandboxCredentialId.value && store.canManageInstanceCredentials) {
 		const isDaytona = store.settings?.sandboxProvider === 'daytona';
 		if (
 			!(await testSavedCredential(
@@ -538,7 +540,7 @@ function openAiUsageSettings() {
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
-						v-if="showCredentialsRows"
+						v-if="showSandboxRow"
 						:class="{ [$style.dim]: isOff }"
 						:clickable="!isOff && isSandboxConfigured"
 						data-test-id="n8n-agent-sandbox-row"
@@ -742,30 +744,31 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 		</template>
 
-		<template v-if="showCredentialsRows">
-			<ConnectionDialog
-				kind="model"
-				:open="activeDialog === 'model'"
-				:setup="setupChain"
-				@update:open="setDialogOpen('model', $event)"
-				@saved="handleModelSaved"
-			/>
-			<ConnectionDialog
-				kind="sandbox"
-				:open="activeDialog === 'sandbox'"
-				:setup="setupChain"
-				@update:open="setDialogOpen('sandbox', $event)"
-				@saved="handleSandboxSaved"
-				@back="activeDialog = 'model'"
-			/>
-			<ConnectionDialog
-				kind="search"
-				:open="activeDialog === 'search'"
-				:setup="setupChain"
-				@update:open="setDialogOpen('search', $event)"
-				@back="activeDialog = 'sandbox'"
-			/>
-		</template>
+		<ConnectionDialog
+			v-if="showCredentialsRows"
+			kind="model"
+			:open="activeDialog === 'model'"
+			:setup="setupChain"
+			@update:open="setDialogOpen('model', $event)"
+			@saved="handleModelSaved"
+		/>
+		<ConnectionDialog
+			v-if="showSandboxRow"
+			kind="sandbox"
+			:open="activeDialog === 'sandbox'"
+			:setup="showCredentialsRows && setupChain"
+			@update:open="setDialogOpen('sandbox', $event)"
+			@saved="handleSandboxSaved"
+			@back="activeDialog = 'model'"
+		/>
+		<ConnectionDialog
+			v-if="showCredentialsRows"
+			kind="search"
+			:open="activeDialog === 'search'"
+			:setup="setupChain"
+			@update:open="setDialogOpen('search', $event)"
+			@back="activeDialog = 'sandbox'"
+		/>
 	</N8nSettingsLayout>
 </template>
 

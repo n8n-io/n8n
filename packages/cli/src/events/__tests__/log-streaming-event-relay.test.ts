@@ -78,6 +78,8 @@ describe('LogStreamingEventRelay', () => {
 					dataTableSchemaConflictPolicy: 'keep-existing',
 					variableMissingMode: 'create-stub',
 					variableParentPolicy: 'project',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'skip',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -109,6 +111,14 @@ describe('LogStreamingEventRelay', () => {
 						created: 0,
 						requirements: 1,
 					},
+					tags: {
+						matched: 1,
+						created: 0,
+						renamed: 0,
+						reconciled: 0,
+						skipped: 0,
+						requirements: 1,
+					},
 				},
 			};
 
@@ -137,6 +147,8 @@ describe('LogStreamingEventRelay', () => {
 						dataTableSchemaConflictPolicy: 'keep-existing',
 						variableMissingMode: 'create-stub',
 						variableParentPolicy: 'project',
+						tagMissingMode: 'create',
+						tagConflictPolicy: 'skip',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
@@ -168,6 +180,7 @@ describe('LogStreamingEventRelay', () => {
 					credentials: 1,
 					dataTables: 1,
 					variables: 1,
+					tags: 1,
 				},
 			};
 
@@ -3018,6 +3031,121 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					before: 'production',
 					after: 'all',
+				},
+			});
+		});
+	});
+
+	describe('MCP server events', () => {
+		it('should log on `mcp-oauth-completed` event', () => {
+			const event: RelayEventMap['mcp-oauth-completed'] = {
+				userId: 'user-mcp-1',
+				clientId: 'client-abc',
+				clientName: 'Claude',
+			};
+
+			eventService.emit('mcp-oauth-completed', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.oauth.completed',
+				payload: {
+					userId: 'user-mcp-1',
+					clientId: 'client-abc',
+					clientName: 'Claude',
+				},
+			});
+		});
+
+		it('should log on `mcp-tool-called` event with redacted user and target workflow', () => {
+			const event: RelayEventMap['mcp-tool-called'] = {
+				user: {
+					id: 'user-mcp-2',
+					email: 'mcp@n8n.io',
+					firstName: 'Em',
+					lastName: 'Cp',
+					role: { slug: 'global:member' },
+				},
+				toolName: 'execute_workflow',
+				workflowId: 'wf-789',
+				status: 'success',
+				clientName: 'Cursor',
+			};
+
+			eventService.emit('mcp-tool-called', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.tool.called',
+				payload: {
+					userId: 'user-mcp-2',
+					_email: 'mcp@n8n.io',
+					_firstName: 'Em',
+					_lastName: 'Cp',
+					globalRole: 'global:member',
+					toolName: 'execute_workflow',
+					workflowId: 'wf-789',
+					status: 'success',
+					errorMessage: undefined,
+					clientName: 'Cursor',
+				},
+			});
+		});
+
+		it('should log on `mcp-tool-called` event with error status', () => {
+			const event: RelayEventMap['mcp-tool-called'] = {
+				user: {
+					id: 'user-mcp-3',
+					email: 'err@n8n.io',
+					firstName: 'Er',
+					lastName: 'Ror',
+					role: { slug: 'global:member' },
+				},
+				toolName: 'get_workflow_details',
+				status: 'error',
+				errorMessage: 'Workflow not found',
+			};
+
+			eventService.emit('mcp-tool-called', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.tool.called',
+				payload: {
+					userId: 'user-mcp-3',
+					_email: 'err@n8n.io',
+					_firstName: 'Er',
+					_lastName: 'Ror',
+					globalRole: 'global:member',
+					toolName: 'get_workflow_details',
+					workflowId: undefined,
+					status: 'error',
+					errorMessage: 'Workflow not found',
+					clientName: undefined,
+				},
+			});
+		});
+
+		it('should log on `mcp-access-updated` event with redacted user', () => {
+			const event: RelayEventMap['mcp-access-updated'] = {
+				user: {
+					id: 'user-mcp-4',
+					email: 'owner@n8n.io',
+					firstName: 'Own',
+					lastName: 'Er',
+					role: { slug: 'global:owner' },
+				},
+				enabled: false,
+			};
+
+			eventService.emit('mcp-access-updated', event);
+
+			expect(eventBus.sendMcpEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.mcp.access.updated',
+				payload: {
+					userId: 'user-mcp-4',
+					_email: 'owner@n8n.io',
+					_firstName: 'Own',
+					_lastName: 'Er',
+					globalRole: 'global:owner',
+					enabled: false,
 				},
 			});
 		});

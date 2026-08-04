@@ -27,7 +27,7 @@ import type {
 	INodeCredentialsDetails,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { deepCopy, Workflow } from 'n8n-workflow';
+import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -244,6 +244,68 @@ describe('CredentialsHelper', () => {
 					'internal',
 				),
 			).rejects.toThrow('save workflow to view');
+		});
+
+		test('resolves variables and external secrets in marked JSON credential leaves', async () => {
+			const credentialType: ICredentialType = {
+				name: 'httpTemplatedCustomAuth',
+				displayName: 'Simplified Custom Auth',
+				properties: [
+					{
+						displayName: 'Placeholder Values',
+						name: 'placeholderValues',
+						type: 'json',
+						default: '',
+						typeOptions: { resolveCredentialJsonLeaves: true },
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+			const externalSecretsProxy =
+				mock<NonNullable<IWorkflowExecuteAdditionalData['externalSecretsProxy']>>();
+			externalSecretsProxy.hasProvider.mockReturnValue(true);
+			externalSecretsProxy.hasSecret.mockReturnValue(true);
+			externalSecretsProxy.getSecret.mockReturnValue('secret-api-key');
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				variables: { tenant: 'acme' },
+			});
+			additionalData.externalSecretsProxy = externalSecretsProxy;
+			additionalData.externalSecretProviderKeysAccessibleByCredential = new Set(['vault']);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				additionalData,
+				{
+					placeholderValues: JSON.stringify({
+						api_key: '={{ $secrets.vault.apiKey }}',
+						tenant: '={{ $vars.tenant }}',
+					}),
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(externalSecretsProxy.hasProvider.mock.calls).toEqual([['vault']]);
+			expect(externalSecretsProxy.hasSecret.mock.calls).toEqual([['vault', 'apiKey']]);
+			expect(externalSecretsProxy.getSecret.mock.calls).toEqual([['vault', 'apiKey']]);
+			expect(jsonParse(result.placeholderValues as string)).toEqual({
+				api_key: 'secret-api-key',
+				tenant: 'acme',
+			});
 		});
 
 		test('preserves PKCE flag negotiated by dynamic client registration', async () => {
