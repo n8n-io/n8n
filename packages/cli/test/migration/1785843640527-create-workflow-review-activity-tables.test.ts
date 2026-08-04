@@ -128,21 +128,15 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 	 */
 	async function insertActivity(
 		context: TestMigrationContext,
-		fields: {
-			workflowReviewRequestId: string;
-			type?: string;
-			groupId?: number;
-			createdById?: string;
-		},
+		fields: { workflowReviewRequestId: string; type?: string; createdById?: string },
 	): Promise<number> {
 		const activityTable = context.escape.tableName(ACTIVITY_TABLE);
 		await context.runQuery(
-			`INSERT INTO ${activityTable} ("workflowReviewRequestId", "type", "groupId", "createdById", "createdAt")
-			 VALUES (:workflowReviewRequestId, :type, :groupId, :createdById, :createdAt)`,
+			`INSERT INTO ${activityTable} ("workflowReviewRequestId", "type", "createdById", "createdAt")
+			 VALUES (:workflowReviewRequestId, :type, :createdById, :createdAt)`,
 			{
 				workflowReviewRequestId: fields.workflowReviewRequestId,
 				type: fields.type ?? 'submitted',
-				groupId: fields.groupId ?? null,
 				createdById: fields.createdById ?? null,
 				createdAt: new Date(),
 			},
@@ -157,11 +151,20 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 		return maxId ?? 0;
 	}
 
-	async function insertComment(context: TestMigrationContext, activityId: number): Promise<void> {
+	async function insertComment(
+		context: TestMigrationContext,
+		activityId: number,
+		createdById?: string,
+	): Promise<void> {
 		await context.runQuery(
-			`INSERT INTO ${context.escape.tableName(COMMENT_TABLE)} ("activityId", "body", "createdAt")
-			 VALUES (:activityId, :body, :createdAt)`,
-			{ activityId, body: 'Comment body', createdAt: new Date() },
+			`INSERT INTO ${context.escape.tableName(COMMENT_TABLE)} ("activityId", "createdById", "body", "createdAt")
+			 VALUES (:activityId, :createdById, :body, :createdAt)`,
+			{
+				activityId,
+				createdById: createdById ?? null,
+				body: 'Comment body',
+				createdAt: new Date(),
+			},
 		);
 	}
 
@@ -170,26 +173,28 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			await runSingleMigration(MIGRATION_NAME);
 		});
 
-		it('creates the feed index and the partial groupId index', async () => {
+		it('creates the feed index and the thread index', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
 				const prefix = context.tablePrefix;
 				expect(await indexExists(context, `IDX_${prefix}workflow_review_activity_request`)).toBe(
 					true,
 				);
-				expect(await indexExists(context, `IDX_${prefix}workflow_review_activity_group`)).toBe(
-					true,
-				);
+				expect(
+					await indexExists(context, `IDX_${prefix}workflow_review_activity_comment_activity`),
+				).toBe(true);
 			} finally {
 				await context.queryRunner.release();
 			}
 		});
 
-		it('round-trips an activity and its comment through the entities', async () => {
+		it('round-trips an activity and its comment thread through the entities', async () => {
 			const context = createTestMigrationContext(dataSource);
 			let requestId: string;
+			let userId: string;
 			try {
 				requestId = await seedRequest(context);
+				userId = await seedUser(context);
 			} finally {
 				await context.queryRunner.release();
 			}
@@ -200,57 +205,67 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			const data = { workflowId: 'wf-1', versionId: 'v-1' };
 			const commentData = { revisions: [{ body: 'First draft' }] };
 			const editedAt = new Date('2026-01-02T03:04:05.678Z');
-			const savedFirst = await activityRepository.save(
+			const savedSubmission = await activityRepository.save(
 				activityRepository.create({ workflowReviewRequestId: requestId, type: 'submitted', data }),
 			);
-			const savedSecond = await activityRepository.save(
+			const savedThread = await activityRepository.save(
 				activityRepository.create({ workflowReviewRequestId: requestId, type: 'comment' }),
 			);
-			await commentRepository.save(
+			const savedMessage = await commentRepository.save(
 				commentRepository.create({
-					activityId: savedSecond.id,
+					activityId: savedThread.id,
 					body: 'Looks good',
 					data: commentData,
 					updatedAt: editedAt,
 				}),
 			);
+			const savedReply = await commentRepository.save(
+				commentRepository.create({
+					activityId: savedThread.id,
+					body: 'Agreed',
+					createdById: userId,
+				}),
+			);
 
 			// Assert on freshly loaded rows only: what `save()` returns is partly the in-memory
 			// object, so unset columns read back as `undefined` and `data` is the very object passed in.
-			const first = await activityRepository.findOneByOrFail({ id: savedFirst.id });
-			const second = await activityRepository.findOneByOrFail({ id: savedSecond.id });
-			const comment = await commentRepository.findOneByOrFail({ activityId: savedSecond.id });
+			const submission = await activityRepository.findOneByOrFail({ id: savedSubmission.id });
+			const thread = await activityRepository.findOneByOrFail({ id: savedThread.id });
+			const message = await commentRepository.findOneByOrFail({ id: savedMessage.id });
+			const reply = await commentRepository.findOneByOrFail({ id: savedReply.id });
 
-			expect(typeof first.id).toBe('number');
-			expect(second.id).toBeGreaterThan(first.id);
-			expect(first.type).toBe('submitted');
-			expect(first.typeVersion).toBe(1);
-			expect(first.data).toEqual(data);
-			expect(first.groupId).toBeNull();
-			expect(first.createdById).toBeNull();
-			expect(first.createdAt).toBeInstanceOf(Date);
-			expect(second.data).toBeNull();
+			expect(typeof submission.id).toBe('number');
+			expect(thread.id).toBeGreaterThan(submission.id);
+			expect(submission.type).toBe('submitted');
+			expect(submission.typeVersion).toBe(1);
+			expect(submission.data).toEqual(data);
+			expect(submission.createdById).toBeNull();
+			expect(submission.createdAt).toBeInstanceOf(Date);
+			expect(thread.data).toBeNull();
 
-			expect(comment.body).toBe('Looks good');
-			expect(comment.data).toEqual(commentData);
-			expect(comment.updatedAt).toEqual(editedAt);
-			expect(comment.deletedAt).toBeNull();
-			expect(comment.createdAt).toBeInstanceOf(Date);
+			// One activity row owns many message rows, ordered by their own id.
+			expect(message.activityId).toBe(thread.id);
+			expect(reply.activityId).toBe(thread.id);
+			expect(reply.id).toBeGreaterThan(message.id);
+
+			expect(message.body).toBe('Looks good');
+			expect(message.data).toEqual(commentData);
+			expect(message.updatedAt).toEqual(editedAt);
+			expect(message.deletedAt).toBeNull();
+			expect(message.createdAt).toBeInstanceOf(Date);
+			expect(message.createdById).toBeNull();
+			expect(reply.createdById).toBe(userId);
 		});
 
-		it('rejects an activity whose groupId has no parent row', async () => {
+		it('rejects a comment whose activityId has no parent row', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
-				const requestId = await seedRequest(context);
+				// Well past the current max, so no activity row in this suite can carry this id.
+				const orphanActivityId = (await maxActivityId(context)) + 1000;
 
-				// Offset well past the current max rather than max + 1: both engines hand out max + 1
-				// next (SQLite via the rowid alias, Postgres via the identity sequence) and the FK is
-				// checked after the row is written, so the new row would satisfy the FK with itself.
-				const orphanGroupId = (await maxActivityId(context)) + 1000;
-
-				await expect(
-					insertActivity(context, { workflowReviewRequestId: requestId, groupId: orphanGroupId }),
-				).rejects.toThrow(/foreign key constraint/i);
+				await expect(insertComment(context, orphanActivityId)).rejects.toThrow(
+					/foreign key constraint/i,
+				);
 			} finally {
 				await context.queryRunner.release();
 			}
@@ -277,57 +292,61 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			}
 		});
 
-		it('removes a reply and its comment row when the parent activity is deleted', async () => {
+		it('removes every message in a thread when its activity row is deleted', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
 				const requestId = await seedRequest(context);
-				const parentId = await insertActivity(context, { workflowReviewRequestId: requestId });
-				const replyId = await insertActivity(context, {
+				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
 					type: 'comment',
-					groupId: parentId,
 				});
-				await insertComment(context, replyId);
+				await insertComment(context, activityId);
+				await insertComment(context, activityId);
+
+				const commentsQuery = `SELECT "id" FROM ${context.escape.tableName(COMMENT_TABLE)} WHERE "activityId" = :id`;
+				expect(await context.runQuery<unknown[]>(commentsQuery, { id: activityId })).toHaveLength(
+					2,
+				);
 
 				await context.runQuery(
 					`DELETE FROM ${context.escape.tableName(ACTIVITY_TABLE)} WHERE "id" = :id`,
-					{ id: parentId },
+					{ id: activityId },
 				);
 
-				const replies = await context.runQuery<unknown[]>(
-					`SELECT "id" FROM ${context.escape.tableName(ACTIVITY_TABLE)} WHERE "id" = :id`,
-					{ id: replyId },
+				expect(await context.runQuery<unknown[]>(commentsQuery, { id: activityId })).toHaveLength(
+					0,
 				);
-				const comments = await context.runQuery<unknown[]>(
-					`SELECT "activityId" FROM ${context.escape.tableName(COMMENT_TABLE)} WHERE "activityId" = :id`,
-					{ id: replyId },
-				);
-				expect(replies).toHaveLength(0);
-				expect(comments).toHaveLength(0);
 			} finally {
 				await context.queryRunner.release();
 			}
 		});
 
-		it('keeps activity rows and nulls createdById when the author is deleted', async () => {
+		it('keeps activity and comment rows and nulls createdById when the author is deleted', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
 				const requestId = await seedRequest(context);
 				const userId = await seedUser(context);
 				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
+					type: 'comment',
 					createdById: userId,
 				});
+				await insertComment(context, activityId, userId);
 
 				await context.runQuery(`DELETE FROM ${context.escape.tableName('user')} WHERE "id" = :id`, {
 					id: userId,
 				});
 
-				const rows = await context.runQuery<Array<{ createdById: string | null }>>(
+				const activityRows = await context.runQuery<Array<{ createdById: string | null }>>(
 					`SELECT "createdById" FROM ${context.escape.tableName(ACTIVITY_TABLE)} WHERE "id" = :id`,
 					{ id: activityId },
 				);
-				expect(rows).toEqual([{ createdById: null }]);
+				const commentRows = await context.runQuery<Array<{ createdById: string | null }>>(
+					`SELECT "createdById" FROM ${context.escape.tableName(COMMENT_TABLE)} WHERE "activityId" = :id`,
+					{ id: activityId },
+				);
+				expect(activityRows).toEqual([{ createdById: null }]);
+				expect(commentRows).toEqual([{ createdById: null }]);
 			} finally {
 				await context.queryRunner.release();
 			}
@@ -348,9 +367,9 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				expect(await indexExists(context, `IDX_${prefix}workflow_review_activity_request`)).toBe(
 					false,
 				);
-				expect(await indexExists(context, `IDX_${prefix}workflow_review_activity_group`)).toBe(
-					false,
-				);
+				expect(
+					await indexExists(context, `IDX_${prefix}workflow_review_activity_comment_activity`),
+				).toBe(false);
 			} finally {
 				await context.queryRunner.release();
 			}

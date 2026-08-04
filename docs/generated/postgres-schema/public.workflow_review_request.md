@@ -92,7 +92,6 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   json data
-  integer groupId FK
   integer id
   varchar_64_ type
   integer typeVersion

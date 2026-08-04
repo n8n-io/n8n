@@ -4,11 +4,13 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| activityId | integer |  | false |  | [public.workflow_review_activity](public.workflow_review_activity.md) |  |
+| activityId | integer |  | false |  | [public.workflow_review_activity](public.workflow_review_activity.md) | Thread this message belongs to; the activity row is its header |
 | body | text |  | true |  |  | Only user-editable text in the feed; nulled on delete |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| createdById | uuid |  | true |  | [public.user](public.user.md) |  |
 | data | json |  | true |  |  | Reserved for comment revision history; cleared alongside `body` on delete |
 | deletedAt | timestamp(3) with time zone |  | true |  |  | Set when the comment is deleted |
+| id | integer |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone |  | true |  |  | Set when the body is edited |
 
 ## Constraints
@@ -16,40 +18,62 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | FK_3cd755e8ce44ee49bdf7e9222ec | FOREIGN KEY | FOREIGN KEY ("activityId") REFERENCES workflow_review_activity(id) ON DELETE CASCADE |
-| PK_3cd755e8ce44ee49bdf7e9222ec | PRIMARY KEY | PRIMARY KEY ("activityId") |
+| FK_9cfac4b106553d0930a1962bea0 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
+| PK_5a2a7dea8b7e6afa1001129da27 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_review_activity_comment_activityId_not_null | n | NOT NULL "activityId" |
 | workflow_review_activity_comment_createdAt_not_null | n | NOT NULL "createdAt" |
+| workflow_review_activity_comment_id_not_null | n | NOT NULL id |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_3cd755e8ce44ee49bdf7e9222ec | CREATE UNIQUE INDEX "PK_3cd755e8ce44ee49bdf7e9222ec" ON public.workflow_review_activity_comment USING btree ("activityId") |
+| IDX_workflow_review_activity_comment_activity | CREATE INDEX "IDX_workflow_review_activity_comment_activity" ON public.workflow_review_activity_comment USING btree ("activityId", id) |
+| PK_5a2a7dea8b7e6afa1001129da27 | CREATE UNIQUE INDEX "PK_5a2a7dea8b7e6afa1001129da27" ON public.workflow_review_activity_comment USING btree (id) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.workflow_review_activity_comment" |o--|| "public.workflow_review_activity" : "FOREIGN KEY (#quot;activityId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
+"public.workflow_review_activity_comment" }o--|| "public.workflow_review_activity" : "FOREIGN KEY (#quot;activityId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
+"public.workflow_review_activity_comment" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 
 "public.workflow_review_activity_comment" {
   integer activityId FK
   text body
   timestamp_3__with_time_zone createdAt
+  uuid createdById FK
   json data
   timestamp_3__with_time_zone deletedAt
+  integer id
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_review_activity" {
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   json data
-  integer groupId FK
   integer id
   varchar_64_ type
   integer typeVersion
   varchar_36_ workflowReviewRequestId FK
+}
+"public.user" {
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  uuid id
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
+  varchar_255_ password
+  json personalizationAnswers
+  varchar_128_ roleSlug FK
+  json settings
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 

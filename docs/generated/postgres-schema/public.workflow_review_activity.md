@@ -7,8 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) |  |
 | data | json |  | true |  |  | Detail per activity type |
-| groupId | integer |  | true |  | [public.workflow_review_activity](public.workflow_review_activity.md) | Activity entry this one replies to; NULL means top-level |
-| id | integer |  | false | [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) |  |  |
+| id | integer |  | false | [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) |  |  |
 | type | varchar(64) |  | false |  |  | Feed entry kind; see WorkflowReviewActivityType in @n8n/db |
 | typeVersion | integer | 1 | false |  |  | Schema version of the `data` payload for this `type` |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
@@ -18,7 +17,6 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | FK_61048bf6220dd354c955a9d9379 | FOREIGN KEY | FOREIGN KEY ("workflowReviewRequestId") REFERENCES workflow_review_request(id) ON DELETE CASCADE |
-| FK_e27b7a0b3bf6f0710cc250948fe | FOREIGN KEY | FOREIGN KEY ("groupId") REFERENCES workflow_review_activity(id) ON DELETE CASCADE |
 | FK_fcf78b037a72fc7aa01ab237e08 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | PK_f1e66ba0b645dec566057ad21e6 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_review_activity_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -31,7 +29,6 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_activity_group | CREATE INDEX "IDX_workflow_review_activity_group" ON public.workflow_review_activity USING btree ("groupId") WHERE ("groupId" IS NOT NULL) |
 | IDX_workflow_review_activity_request | CREATE INDEX "IDX_workflow_review_activity_request" ON public.workflow_review_activity USING btree ("workflowReviewRequestId", id) |
 | PK_f1e66ba0b645dec566057ad21e6 | CREATE UNIQUE INDEX "PK_f1e66ba0b645dec566057ad21e6" ON public.workflow_review_activity USING btree (id) |
 
@@ -41,15 +38,13 @@
 erDiagram
 
 "public.workflow_review_activity" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.workflow_review_activity" }o--o| "public.workflow_review_activity" : "FOREIGN KEY (#quot;groupId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
-"public.workflow_review_activity_comment" |o--|| "public.workflow_review_activity" : "FOREIGN KEY (#quot;activityId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
+"public.workflow_review_activity_comment" }o--|| "public.workflow_review_activity" : "FOREIGN KEY (#quot;activityId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
 "public.workflow_review_activity" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 
 "public.workflow_review_activity" {
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   json data
-  integer groupId FK
   integer id
   varchar_64_ type
   integer typeVersion
@@ -76,8 +71,10 @@ erDiagram
   integer activityId FK
   text body
   timestamp_3__with_time_zone createdAt
+  uuid createdById FK
   json data
   timestamp_3__with_time_zone deletedAt
+  integer id
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_review_request" {

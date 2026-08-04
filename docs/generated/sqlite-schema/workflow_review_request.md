@@ -97,7 +97,6 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   TEXT data
-  INTEGER groupId FK
   INTEGER id
   varchar_64_ type
   INTEGER typeVersion

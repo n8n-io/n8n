@@ -32,17 +32,11 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 				column('typeVersion')
 					.int.notNull.default(1)
 					.comment('Schema version of the `data` payload for this `type`'),
-				column('groupId').int.comment('Activity entry this one replies to; NULL means top-level'),
 				column('data').json.comment('Detail per activity type'),
 				column('createdById').uuid,
 			)
 			.withCreatedAt.withForeignKey('workflowReviewRequestId', {
 				tableName: REQUEST_TABLE,
-				columnName: 'id',
-				onDelete: 'CASCADE',
-			})
-			.withForeignKey('groupId', {
-				tableName: ACTIVITY_TABLE,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
@@ -60,23 +54,19 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 			false,
 			`IDX_${tablePrefix}workflow_review_activity_request`,
 		);
-
-		// Index the groupId self-FK so deleting activity rows does not seq-scan this table
-		// once per deleted row. Partial: top-level entries (NULL groupId) never use it, and
-		// any groupId lookup implies NOT NULL, so the planner still uses it for the cascade.
-		await createIndex(
-			ACTIVITY_TABLE,
-			['groupId'],
-			false,
-			`IDX_${tablePrefix}workflow_review_activity_group`,
-			'"groupId" IS NOT NULL',
-		);
 	}
 
-	private async createCommentTable({ schemaBuilder: { createTable, column } }: MigrationContext) {
+	private async createCommentTable({
+		schemaBuilder: { createTable, createIndex, column },
+		tablePrefix,
+	}: MigrationContext) {
 		await createTable(COMMENT_TABLE)
 			.withColumns(
-				column('activityId').int.primary,
+				column('id').int.primary.autoGenerate2,
+				column('activityId').int.notNull.comment(
+					'Thread this message belongs to; the activity row is its header',
+				),
+				column('createdById').uuid,
 				column('body').text.comment('Only user-editable text in the feed; nulled on delete'),
 				column('data').json.comment(
 					'Reserved for comment revision history; cleared alongside `body` on delete',
@@ -88,6 +78,20 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 				tableName: ACTIVITY_TABLE,
 				columnName: 'id',
 				onDelete: 'CASCADE',
+			})
+			.withForeignKey('createdById', {
+				tableName: USER_TABLE,
+				columnName: 'id',
+				onDelete: 'SET NULL',
 			});
+
+		// Thread read: all messages for one activity row ORDER BY id.
+		// Leading column also serves the activity FK cascade.
+		await createIndex(
+			COMMENT_TABLE,
+			['activityId', 'id'],
+			false,
+			`IDX_${tablePrefix}workflow_review_activity_comment_activity`,
+		);
 	}
 }

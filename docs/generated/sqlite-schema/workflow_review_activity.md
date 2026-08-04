@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "type" varchar(64) NOT NULL, "typeVersion" integer NOT NULL DEFAULT (1), "groupId" integer, "data" text, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_61048bf6220dd354c955a9d9379" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_e27b7a0b3bf6f0710cc250948fe" FOREIGN KEY ("groupId") REFERENCES "workflow_review_activity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_fcf78b037a72fc7aa01ab237e08" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "type" varchar(64) NOT NULL, "typeVersion" integer NOT NULL DEFAULT (1), "data" text, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_61048bf6220dd354c955a9d9379" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_fcf78b037a72fc7aa01ab237e08" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -18,8 +18,7 @@ CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "wor
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
 | data | TEXT |  | true |  |  |  |
-| groupId | INTEGER |  | true |  | [workflow_review_activity](workflow_review_activity.md) |  |
-| id | INTEGER |  | false | [workflow_review_activity](workflow_review_activity.md) [workflow_review_activity_comment](workflow_review_activity_comment.md) |  |  |
+| id | INTEGER |  | false | [workflow_review_activity_comment](workflow_review_activity_comment.md) |  |  |
 | type | varchar(64) |  | false |  |  |  |
 | typeVersion | INTEGER | 1 | false |  |  |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [workflow_review_request](workflow_review_request.md) |  |
@@ -29,15 +28,13 @@ CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "wor
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (groupId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_review_activity_group | CREATE INDEX "IDX_workflow_review_activity_group" ON "workflow_review_activity" ("groupId") WHERE "groupId" IS NOT NULL |
 | IDX_workflow_review_activity_request | CREATE INDEX "IDX_workflow_review_activity_request" ON "workflow_review_activity" ("workflowReviewRequestId", "id")  |
 
 ## Relations
@@ -46,15 +43,13 @@ CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "wor
 erDiagram
 
 "workflow_review_activity" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"workflow_review_activity" }o--o| "workflow_review_activity" : "FOREIGN KEY (groupId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_review_activity_comment" |o--|| "workflow_review_activity" : "FOREIGN KEY (activityId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_activity_comment" }o--|| "workflow_review_activity" : "FOREIGN KEY (activityId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_activity" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_review_activity" {
   datetime_3_ createdAt
   varchar createdById FK
   TEXT data
-  INTEGER groupId FK
   INTEGER id
   varchar_64_ type
   INTEGER typeVersion
@@ -81,8 +76,10 @@ erDiagram
   INTEGER activityId FK
   TEXT body
   datetime_3_ createdAt
+  varchar createdById FK
   TEXT data
   datetime_3_ deletedAt
+  INTEGER id
   datetime_3_ updatedAt
 }
 "workflow_review_request" {

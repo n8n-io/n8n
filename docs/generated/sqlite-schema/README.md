@@ -125,8 +125,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
-| [workflow_review_activity](workflow_review_activity.md) | 8 |  | table |
-| [workflow_review_activity_comment](workflow_review_activity_comment.md) | 6 |  | table |
+| [workflow_review_activity](workflow_review_activity.md) | 7 |  | table |
+| [workflow_review_activity_comment](workflow_review_activity_comment.md) | 8 |  | table |
 | [workflow_review_request](workflow_review_request.md) | 12 |  | table |
 | [workflow_review_request_authors](workflow_review_request_authors.md) | 2 |  | table |
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
@@ -307,9 +307,9 @@ erDiagram
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_activity" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"workflow_review_activity" }o--o| "workflow_review_activity" : "FOREIGN KEY (groupId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_activity" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_review_activity_comment" |o--|| "workflow_review_activity" : "FOREIGN KEY (activityId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_activity_comment" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"workflow_review_activity_comment" }o--|| "workflow_review_activity" : "FOREIGN KEY (activityId) REFERENCES workflow_review_activity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1497,7 +1497,6 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   TEXT data
-  INTEGER groupId FK
   INTEGER id
   varchar_64_ type
   INTEGER typeVersion
@@ -1507,8 +1506,10 @@ erDiagram
   INTEGER activityId FK
   TEXT body
   datetime_3_ createdAt
+  varchar createdById FK
   TEXT data
   datetime_3_ deletedAt
+  INTEGER id
   datetime_3_ updatedAt
 }
 "workflow_review_request" {

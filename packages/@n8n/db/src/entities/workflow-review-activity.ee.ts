@@ -19,7 +19,6 @@ export type WorkflowReviewActivityType =
  */
 @Entity({ name: 'workflow_review_activity' })
 @Index('IDX_workflow_review_activity_request', ['workflowReviewRequestId', 'id'])
-@Index('IDX_workflow_review_activity_group', ['groupId'], { where: '"groupId" IS NOT NULL' })
 export class WorkflowReviewActivity extends WithCreatedAt {
 	/**
 	 * Autoincrement int, not the usual nanoid: the feed orders by id and pages on it as a cursor.
@@ -38,10 +37,6 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 
 	@Column({ type: 'int', default: 1 })
 	typeVersion: number;
-
-	/** Activity entry this one replies to; null means top-level. */
-	@Column({ type: 'int', nullable: true })
-	groupId: number | null;
 
 	/**
 	 * Immutable per-type detail. Ids only: user references belong in `createdById`, and a type
