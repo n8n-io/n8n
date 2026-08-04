@@ -201,7 +201,6 @@ export function useWorkflowSaving({
 				if (!forceSave && isLoading) {
 					return true;
 				}
-				uiStore.addActiveAction('workflowSaving');
 
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(currentWorkflow),
@@ -253,7 +252,6 @@ export function useWorkflowSaving({
 					// workflow id and the autosave would create an empty workflow.
 					if (!autosaved) cancelAutoSave();
 				}
-				uiStore.removeActiveAction('workflowSaving');
 				void useExternalHooks().run('workflow.afterUpdate', { workflowData });
 
 				// Reset AI Builder edits flag only after successful save
@@ -266,8 +264,6 @@ export function useWorkflowSaving({
 				return true;
 			} catch (error) {
 				console.error(error);
-
-				uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 409) {
 					telemetry.track('User attempted to save locked workflow', {
@@ -397,8 +393,6 @@ export function useWorkflowSaving({
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
 		try {
-			uiStore.addActiveAction('workflowSaving');
-
 			const currentDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowId.value),
 			);
@@ -481,7 +475,6 @@ export function useWorkflowSaving({
 					params: { workflowId: workflowData.id },
 				});
 				window.open(routeData.href, '_blank');
-				uiStore.removeActiveAction('workflowSaving');
 				onSaved?.(true); // First save of new workflow
 				return workflowData.id;
 			}
@@ -549,7 +542,6 @@ export function useWorkflowSaving({
 				});
 			}
 
-			uiStore.removeActiveAction('workflowSaving');
 			// Only mark state clean if no new changes were made during the save
 			if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
 				uiStore.markStateClean();
@@ -562,8 +554,6 @@ export function useWorkflowSaving({
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
-			uiStore.removeActiveAction('workflowSaving');
-
 			toast.showMessage({
 				title: i18n.baseText('workflowHelpers.showMessage.title'),
 				message: (e as Error).message,
