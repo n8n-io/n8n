@@ -59,6 +59,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
@@ -810,6 +811,17 @@ export class CredentialsService {
 		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
 			// @ts-expect-error data is typed as encrypted string
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+		}
+
+		// Dynamic client registration fields are hidden, so a save never carries
+		// them and the token could no longer be refreshed. Dropped along with the
+		// token when the caller clears it.
+		if (!options?.clearOauthTokenData) {
+			const dataToSave = updateData.data as unknown as ICredentialDataDecryptedObject;
+			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+				if (field in dataToSave || !(field in decryptedData)) continue;
+				dataToSave[field] = decryptedData[field];
+			}
 		}
 
 		this.validateOAuthCredentialUrls(
