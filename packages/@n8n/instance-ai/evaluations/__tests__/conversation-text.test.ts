@@ -1,6 +1,8 @@
+import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, TranscriptTurn } from '../types';
 import {
 	agentTurnsAsText,
+	caseDisplayPrompt,
 	conversationUserTurnsAsText,
 	lastAgentText,
 	perTurnToolCallCounts,
@@ -106,6 +108,54 @@ describe('conversationUserTurnsAsText', () => {
 		expect(conversationUserTurnsAsText(conversation)).toBe(
 			'[attached workflow: Batch loop] why is this failing?',
 		);
+	});
+
+	// `attach.workflow` is an id; the id means nothing to a prompt-aware check, so
+	// the note carries the name the seed declares for it (what the live path shows).
+	it('names the attachment by the seed workflow name, not its id', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } },
+		];
+		expect(conversationUserTurnsAsText(conversation, seedDeclaring('Batch loop'))).toBe(
+			'[attached workflow: Batch loop]',
+		);
+	});
+});
+
+/** An inline seed declaring one workflow under the id the tests attach. */
+function seedDeclaring(name: string): CaseSeed {
+	return {
+		mode: 'inline',
+		messages: [
+			{
+				id: 'm1',
+				type: 'llm',
+				role: 'user',
+				createdAt: '2020-01-01T00:00:00.000Z',
+				content: [{ type: 'text', text: 'earlier' }],
+			},
+		],
+		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name, nodes: [], connections: {} }],
+		dataTables: [],
+	};
+}
+
+describe('caseDisplayPrompt', () => {
+	it('uses the first authored turn', () => {
+		expect(caseDisplayPrompt({ conversation: [{ role: 'user', text: 'build a webhook' }] })).toBe(
+			'build a webhook',
+		);
+	});
+
+	// Without this the report labels, the comparison table and `Running case: ""`
+	// all come out empty for the faithful hand-off shape.
+	it('names the attachment when the opening turn carries no text', () => {
+		expect(
+			caseDisplayPrompt({
+				conversation: [{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } }],
+				seed: seedDeclaring('Batch loop'),
+			}),
+		).toBe('[attached workflow: Batch loop]');
 	});
 });
 

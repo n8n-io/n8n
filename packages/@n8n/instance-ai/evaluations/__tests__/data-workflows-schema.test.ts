@@ -215,6 +215,56 @@ describe('EvalTestCaseSchema', () => {
 		expect(inlineSeedOf(parsed).messages[0].createdAt).toBe(authored);
 	});
 
+	// The restamp lands on fixed slots, never `Date.now()`-derived: `createdAt` is
+	// part of the projection `planPush` compares, so a now-based rewrite would read
+	// as an edit on every parse and re-PATCH the case forever.
+	it('restamps a future createdAt to the same value on every parse', () => {
+		const caseJson = {
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: '2099-01-01T00:00:00.000Z',
+						content: [{ type: 'text', text: 'build it' }],
+					},
+				],
+			},
+		};
+		const first = inlineSeedOf(EvalTestCaseSchema.parse(caseJson)).messages[0].createdAt;
+		const second = inlineSeedOf(EvalTestCaseSchema.parse(caseJson)).messages[0].createdAt;
+		expect(first).toBe(second);
+		expect(Date.parse(String(first))).toBeLessThan(Date.now());
+	});
+
+	// A shorthand turn appended after full envelopes stamps at the fixed epoch,
+	// which is BEFORE their authored stamps — the store would present it first while
+	// `transcriptPrefixFromSeed` still grades array order.
+	it('restamps a mixed seed whose authored timestamps do not ascend', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'user',
+						createdAt: '2026-06-29T09:00:00.000Z',
+						content: [{ type: 'text', text: 'build it' }],
+					},
+					{ role: 'assistant', text: 'Done.' },
+				],
+			},
+		});
+		const at = inlineSeedOf(parsed).messages.map((m) => Date.parse(String(m.createdAt)));
+		expect(at[0]).toBeLessThan(at[1]);
+		expect(at[1]).toBeLessThan(Date.now());
+	});
+
 	// Both arms are strict, so a seed mixing them fails instead of having the
 	// wrong-arm field stripped — which would run the case unseeded and grade it
 	// as a build from scratch.

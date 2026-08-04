@@ -4,8 +4,8 @@ import { z } from 'zod';
 import {
 	ConversationSeedSchema,
 	SeedMessageSchema,
-	clampFutureSeedTimestamps,
 	expandSeedMessageShorthand,
+	normalizeSeedTimestamps,
 } from './conversation-seed';
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
 
@@ -70,10 +70,10 @@ const ExecutionScenarioSchema = z.object({
 /** Prior messages for an inline seed. Accepts a full envelope or the `{role, text}`
  *  shorthand, expanded BEFORE validation so the envelope rules apply to the
  *  expansion and error paths stay per-message (`seed.messages.2.createdAt`).
- *  Future `createdAt` values are pulled back after expansion, so seeded history
- *  can never sort after the live turn. */
+ *  Timestamps are normalized after expansion, so seeded history always presents
+ *  in array order and never sorts after the live turn. */
 const inlineSeedMessagesSchema = z.preprocess(
-	(raw) => (Array.isArray(raw) ? clampFutureSeedTimestamps(expandSeedMessageShorthand(raw)) : raw),
+	(raw) => (Array.isArray(raw) ? normalizeSeedTimestamps(expandSeedMessageShorthand(raw)) : raw),
 	z.array(SeedMessageSchema).min(1),
 );
 

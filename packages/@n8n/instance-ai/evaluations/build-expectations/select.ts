@@ -4,7 +4,10 @@ import type { TranscriptTurn, WorkflowTestCase } from '../types';
 import { conversationUserTurnsAsText } from '../utils/conversation-text';
 
 export interface SelectAuthorExpectationsArgs {
-	testCase: Pick<WorkflowTestCase, 'processExpectations' | 'outcomeExpectations' | 'conversation'>;
+	testCase: Pick<
+		WorkflowTestCase,
+		'processExpectations' | 'outcomeExpectations' | 'conversation' | 'seed'
+	>;
 	/** Captured build transcript, if any. Empty/absent for prebuilt/MCP builds. */
 	transcript: TranscriptTurn[] | undefined;
 	buildSucceeded: boolean;
@@ -53,7 +56,12 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 
 	const transcript: TranscriptTurn[] = hasTranscript
 		? args.transcript!
-		: [{ userMessage: conversationUserTurnsAsText(testCase.conversation), steps: [] }];
+		: [
+				{
+					userMessage: conversationUserTurnsAsText(testCase.conversation, testCase.seed),
+					steps: [],
+				},
+			];
 
 	return { expectations, transcript };
 }

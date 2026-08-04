@@ -15,6 +15,25 @@ vi.mock('../harness/chat-loop', () => ({
 	recordUserTurn: vi.fn(),
 }));
 
+// The proxy's real constructor builds an LLM agent; only the script it is handed
+// matters here, so capture that and stub the rest (runMultiTurnConversation is
+// mocked above, so no other method is reached).
+const { proxyScripts } = vi.hoisted(() => ({
+	proxyScripts: [] as Array<Array<{ text: string }>>,
+}));
+
+vi.mock('../utils/user-proxy', () => ({
+	UserProxyLlm: class {
+		constructor(config: { conversation: Array<{ text: string }> }) {
+			proxyScripts.push(config.conversation);
+		}
+		respondToConfirmation = vi.fn().mockResolvedValue({ approve: true });
+		ingestEvents = vi.fn();
+		decideFollowUp = vi.fn().mockResolvedValue({ kind: 'done' });
+		getDecisionStats = vi.fn().mockReturnValue({});
+	},
+}));
+
 vi.mock('../outcome/workflow-discovery', () => ({
 	buildAgentOutcome: vi.fn().mockResolvedValue({
 		workflowsCreated: [{ id: 'built-wf-1', name: 'Built', nodeCount: 3, active: false }],
@@ -326,6 +345,33 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(recordedText).toBe(`[attached workflow: ${restoredWorkflows[0].name}]`);
 		// The agent still gets the user's real (empty) text plus the attachment itself.
 		expect(sentText).toBe('');
+	});
+
+	// The proxy renders its script and running transcript from `text` alone, so a
+	// hand-off case with follow-ups would otherwise audit plans and decide follow-ups
+	// against a blank opening turn that never mentions the workflow.
+	it('names the attached workflow in the script the user proxy reads', async () => {
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		proxyScripts.length = 0;
+
+		await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			conversation: [
+				{ role: 'user' as const, text: '', attach: { workflow: SEED_WF_ID } },
+				{ role: 'user' as const, text: 'now add error handling' },
+			],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		const restoredWorkflows = (
+			restoreThread.mock.calls[0] as [string, unknown, Array<{ id: string; name: string }>]
+		)[2];
+		expect(proxyScripts[0][0].text).toBe(`[attached workflow: ${restoredWorkflows[0].name}]`);
+		// Later turns are the author's own text, untouched.
+		expect(proxyScripts[0][1].text).toBe('now add error handling');
 	});
 
 	it('fails loudly when the attached seed workflow is missing from the restore', async () => {

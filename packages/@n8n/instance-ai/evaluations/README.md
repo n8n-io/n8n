@@ -837,10 +837,13 @@ message as `{role, text}` and the schema expands it into a full envelope for you
 The expansion stamps `createdAt` itself — ascending and in the past — so a shorthand
 message can't accidentally order *after* the live turn. Shorthand and full envelopes
 can be mixed in one `messages` array; a full envelope keeps its authored `createdAt`
-— **unless any message in the array is stamped in the FUTURE**, in which case the
-whole sequence is restamped onto the same ascending pre-live slots. A future stamp
-would sort a seeded turn after the live turn, and clamping only the offending entry
-would reorder it relative to the array the transcript is graded from.
+— **unless the authored stamps don't already ascend and sit in the past**, in which
+case the whole sequence is restamped onto the same ascending pre-live slots. A future
+stamp would sort a seeded turn after the live turn, and a non-ascending sequence (a
+shorthand turn appended after later-stamped envelopes, say) would present the history
+in an order the graded transcript never had; restamping only the offending entry would
+reorder it relative to the array the transcript is graded from. The slots are fixed,
+never derived from the current time, so re-pushing an unchanged case is a no-op.
 A near-miss (say `text: 123`) is deliberately **not** expanded: it falls through to
 the envelope rules above and fails at load, rather than becoming a message the
 transcript builder would silently drop.

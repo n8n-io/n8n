@@ -116,9 +116,17 @@ async function driveMultiTurnConversation(
 	config: MultiTurnDriverConfig,
 ): Promise<ProxyDecisionStats> {
 	const openingMessage = config.conversation[0]?.text ?? '';
+	const recordedOpeningMessage = config.recordedOpeningMessage ?? openingMessage;
+	// The proxy renders both its script and its running transcript from `text`
+	// alone, so an out-of-band attachment has to be named there too — otherwise a
+	// text-less hand-off (`text: "" + attach`) audits every plan and follow-up
+	// against a blank opening turn that never mentions the workflow.
+	const proxyConversation = config.conversation.map((turn, index) =>
+		index === 0 ? { ...turn, text: recordedOpeningMessage } : turn,
+	);
 
 	const proxy = new UserProxyLlm({
-		conversation: config.conversation,
+		conversation: proxyConversation,
 		messageBudget: config.messageBudget,
 		logger: config.logger,
 		...(config.allowlistedCredentialIds !== undefined
@@ -145,7 +153,7 @@ async function driveMultiTurnConversation(
 		return decision;
 	};
 
-	recordUserTurn(config.events, config.recordedOpeningMessage ?? openingMessage);
+	recordUserTurn(config.events, recordedOpeningMessage);
 	await config.client.sendMessage(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),

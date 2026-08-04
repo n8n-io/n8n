@@ -163,24 +163,27 @@ function isShorthandTurn(
 	);
 }
 
+/** Base for every timestamp this module stamps. A CONSTANT, not `Date.now()`: the
+ *  same case must yield the same messages on every parse, or the push diff (which
+ *  compares `seed`) reads a fresh timestamp as an edit and re-PATCHes the case on
+ *  every run forever. Only ordering depends on these values, and fixed past slots
+ *  order exactly as well. */
+const SEED_EPOCH_MS = Date.parse('2020-01-01T00:00:00.000Z');
+
+/** The slot for the message at `index` — ascending, and in the past, so array
+ *  order survives a store that presents messages by `createdAt`. */
+const seedStampAt = (index: number) => new Date(SEED_EPOCH_MS + index * 1000).toISOString();
+
 /**
  * Expand `{role, text}` shorthand messages into native llm envelopes; anything
  * else passes through for the envelope schema to validate.
  *
  * Array-level rather than per-message because the stamped timestamps ascend by
- * position — fixed and in the past, so seeded history always orders before the
- * live turn and a shorthand author cannot get the ordering wrong. A full
- * envelope keeps its own authored `createdAt`.
- *
- * The base is a CONSTANT, not `Date.now()`: the same case must expand to the same
- * envelope on every parse, or the push diff (which compares `seed`) reads a fresh
- * timestamp as an edit and re-PATCHes the case on every run forever. Only ordering
- * depends on these values, and a fixed past epoch orders exactly as well.
+ * position, so seeded history always orders before the live turn and a shorthand
+ * author cannot get the ordering wrong. A full envelope keeps its own authored
+ * `createdAt` — see `normalizeSeedTimestamps` for when that is overridden.
  */
-const SHORTHAND_SEED_EPOCH_MS = Date.parse('2020-01-01T00:00:00.000Z');
-
 export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
-	const base = SHORTHAND_SEED_EPOCH_MS;
 	return messages.map((message, index) => {
 		if (!isShorthandTurn(message)) return message;
 		return {
@@ -195,48 +198,55 @@ export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
 					text: Array.isArray(message.text) ? message.text.join('\n') : message.text,
 				},
 			],
-			createdAt: new Date(base + index * 1000).toISOString(),
+			createdAt: seedStampAt(index),
 		};
 	});
 }
 
 /**
- * Pull an inline seed's timestamps back into the past when the author put any of
- * them in the future.
+ * Restamp an inline seed's timestamps when the authored ones don't present the
+ * messages the way the array orders them: ascending, and entirely before the live
+ * turn.
  *
- * The shorthand stamps its own ascending pre-live timestamps, so it can't get
- * this wrong; a full envelope keeps what it was authored with, and a future
- * stamp sorts the seeded turn AFTER the live turn — the agent then sees its own
- * history out of order, and the judge grades a transcript that never happened.
+ * The shorthand stamps its own slots, so it can't get this wrong; a full envelope
+ * keeps what it was authored with, and two shapes then break ordering — a future
+ * stamp sorts the seeded turn AFTER the live turn, and a non-ascending sequence
+ * (a shorthand turn appended after post-epoch envelopes, say) presents the history
+ * in an order the graded transcript never had. Either way the agent sees its own
+ * history out of order and the judge grades a transcript that never happened.
  *
- * Restamps the WHOLE sequence, not just the offending entry. A per-message clamp
+ * Restamps the WHOLE sequence, not just the offending entry. A per-message fix
  * reorders relative to the array: `[future A, past B]` leaves B alone and moves A
- * to ~now, so the store presents B then A while `transcriptPrefixFromSeed` still
+ * back, so the store presents B then A while `transcriptPrefixFromSeed` still
  * grades array order. Array order is the authority, so the rewrite reproduces it
- * on the same ascending slots the shorthand uses. Authored timestamps are
- * therefore only preserved when every one of them is already in the past.
+ * on the same fixed slots the shorthand uses. Authored timestamps are therefore
+ * preserved only when they already ascend and are already in the past.
  *
  * Inline (hand-authored) seeds only — a `replay` seed is reconstructed from a
  * real trace and never reaches this schema, so no real timestamp can be moved.
  */
-export function clampFutureSeedTimestamps(messages: unknown[]): unknown[] {
-	const now = Date.now();
+export function normalizeSeedTimestamps(messages: unknown[]): unknown[] {
 	const stampOf = (message: unknown): number | undefined => {
 		if (!isRecord(message) || typeof message.createdAt !== 'string') return undefined;
 		const at = Date.parse(message.createdAt);
 		// Unparseable is the envelope schema's error to report, not ours to paper over.
 		return Number.isNaN(at) ? undefined : at;
 	};
-	const anyFuture = messages.some((message) => (stampOf(message) ?? -Infinity) >= now);
-	if (!anyFuture) return messages;
 
-	const base = now - (messages.length + 1) * 1000;
+	const now = Date.now();
+	let previous = -Infinity;
+	const presentsInArrayOrder = messages.every((message) => {
+		const at = stampOf(message);
+		if (at === undefined) return true;
+		if (at >= now || at <= previous) return false;
+		previous = at;
+		return true;
+	});
+	if (presentsInArrayOrder) return messages;
+
 	return messages.map((message, index) => {
-		if (stampOf(message) === undefined) return message;
-		return {
-			...(message as Record<string, unknown>),
-			createdAt: new Date(base + index * 1000).toISOString(),
-		};
+		if (!isRecord(message) || stampOf(message) === undefined) return message;
+		return { ...message, createdAt: seedStampAt(index) };
 	});
 }
 
