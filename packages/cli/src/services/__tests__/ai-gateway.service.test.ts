@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -49,6 +50,7 @@ let requestMock: Mock;
 
 function makeService({
 	baseUrl = BASE_URL as string | null,
+	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
 	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
@@ -58,6 +60,7 @@ function makeService({
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
+		aiGateway: { enabled: aiGatewayEnabled },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
 		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
@@ -96,6 +99,18 @@ describe('AiGatewayService', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('assertEnabled()', () => {
+		it('allows licensed instances when the opt-out is not set', () => {
+			expect(() => makeService().assertEnabled()).not.toThrow();
+		});
+
+		it('rejects instances that opt out', () => {
+			expect(() => makeService({ aiGatewayEnabled: false }).assertEnabled()).toThrow(
+				BadRequestError,
+			);
+		});
 	});
 
 	describe('getGatewayConfig()', () => {
@@ -149,6 +164,15 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('isAvailable()', () => {
+		it('returns available:false when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
 		it('returns available:false when the AI Gateway is not licensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 
@@ -175,7 +199,7 @@ describe('AiGatewayService', () => {
 			expect(result).toEqual({ available: false });
 		});
 
-		it('returns available:true with config when licensed and gateway responds', async () => {
+		it('returns available:true with config when enabled and gateway responds', async () => {
 			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
 			const service = makeService();
 
@@ -186,11 +210,18 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('getSyntheticCredential()', () => {
-		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
+		it('throws FeatureNotLicensedError when the AI Gateway is not licensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(FeatureNotLicensedError);
+		});
+
+		it('throws when n8n Connect is not enabled', async () => {
+			const service = makeService({ aiGatewayEnabled: false });
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
+			).rejects.toThrow('n8n Connect is not enabled on this instance.');
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {
