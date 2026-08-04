@@ -28,6 +28,13 @@ provider, or the model.
   ~60–75 MB at N=10 but left retained heap unchanged.
 - **Memory is not the constraint at this scale.** Budget ~1 GB for 10 concurrent
   builders and you have headroom. Build *latency* is what degrades.
+- **Validated on cloud, and it OOMs.** A cloud instance with a **640 MB** hard limit
+  peaked at ~604 MB at N=5 (matching local's 604.39) and ~622 MB at N=10 — **94% and
+  97% of its limit** — then **OOM-crashed on a repeat N=10 run**, 45 s in, before any
+  workflow was built. N=10 is not viable on 640 MB. Cloud looked flatter
+  than local above N=5 only because local's 664 MB exceeds the limit; that is the
+  ceiling, not efficiency. See
+  [Cloud validation](#cloud-validation--local-numbers-hold).
 
 ## Environment
 
@@ -70,6 +77,175 @@ conversation (16/16 per sweep), so no run is disqualified.
 Cost: $9.50 for the 2-turn sweep, $13.00 and $13.74 for the 4-turn repeats
 ($0.59 and ~$0.83 per conversation — the extra turns cost only ~1.4×, not 2×,
 because prompt caching absorbs the growing context).
+
+## Cloud validation — local numbers hold
+
+Run on a dedicated cloud test instance (`stage-app.n8n.cloud`, Linux, sqlite,
+single main, no other traffic) with a **hard memory limit of 640 MB**, driven with
+`--no-metrics` because `/metrics` is blocked at the network level there; memory was
+read from Grafana.
+
+| N | turns | local peak RSS | cloud peak RSS | delta |
+| --: | --: | --: | --: | --: |
+| 5 | 2 | 604.39 MB | **~604 MB** | ~0 |
+| 10 | 2 | 663.78 MB | **~622 MB** | −42 MB |
+
+At N=5 the agreement is within the resolution of a Grafana read, despite local
+being a macOS dev-mode process and cloud a Linux container. **So the local
+harness is a valid proxy** — iterate locally, confirm on cloud.
+
+At N=10 cloud came in **42 MB lower**, i.e. it scales *better* than local:
+
+| segment | local | cloud |
+| --- | --: | --: |
+| 5 → 10 users | 11.9 MB/user | **3.6 MB/user** |
+
+Neither run OOMed; the pod never restarted (`/healthz` polled every 4–5 s
+throughout both runs, zero non-200s).
+
+**Cloud did not scale better — it ran out of room.** The instance's hard limit is
+**640 MB**, and local's N=10 figure (663.78 MB) is *above* that. So cloud could not
+have reached it: as RSS approached the limit V8 had to collect harder rather than
+grow. The apparently flat 3.6 MB/user over 5→10 is the ceiling asserting itself,
+not efficiency, and it should **not** be extrapolated.
+
+This is the same mechanism measured locally, where GC frequency scaled ~5× with
+concurrency and *suppressed* the sampled heap peak (see
+[Why the slope is unstable](#why-the-slope-is-unstable)) — except here it is forced
+by a container limit rather than by allocation pressure alone.
+
+Consequences:
+
+- **The 42 MB gap is not headroom.** It is the difference between what the workload
+  wanted and what the pod allowed.
+- **Expect GC thrashing before OOM.** Approaching the limit, the failure mode is
+  slower builds — already visible in the tail — then either a container OOM kill or
+  a V8 `heap out of memory` crash.
+- **Local remains a valid upper-bound proxy** for what the workload *wants*; the
+  cloud reading tells you what it *gets*.
+
+Latency matched local and degrades in the tail rather than the median:
+
+| N | cloud median | cloud max |
+| --: | --: | --: |
+| 5 | 86 s | 101 s |
+| 10 | 83 s | 132 s |
+
+The median barely moved while the max grew 31%, consistent with the local
+finding that concurrency shows up as slow outliers, not uniform slowdown.
+
+### OOM confirmed at N=10 — and it is non-deterministic
+
+Three N=10 attempts on the 640 MB instance:
+
+| run | turns | pre-warmed | outcome |
+| --: | --: | :-: | --- |
+| 1 | 2 | yes | survived, peak 622 MB (**97%** of limit) |
+| 2 | 4 | partly (prior run 9 min earlier) | **OOM 45 s into load** |
+| 3 | 4 | yes — clean 1-user build first | **OOM 32 s into load** |
+
+```
+run 3:  load started 12:47:55.8Z    healthz 502/503 from 12:48:28Z  (32 s)
+```
+
+Both crashes happened **during turn 1**, before any workflow was created (the
+manual sweeps found 10 orphaned threads and **0 workflows** each time). Cloud
+turn-1 builds take ~56 s, so no second turn had begun. **A 4-turn and a 2-turn run
+are doing identical work at that point**, so the turn count is not the cause.
+
+Run 3 was deliberately pre-warmed with a successful single-user build (1/1,
+workflow built and deleted, no restart) to rule out first-run lazy init — which
+locally costs +80–123 MB and would dwarf an 18 MB margin. It OOMed anyway, and
+*sooner*.
+
+What this shows:
+
+- **N=10 is not viable on 640 MB.** Two of three attempts crashed the pod, and the
+  one that survived did so with an 18 MB margin.
+- **The pressure is run *start-up*, not accumulation.** Dying before any workflow
+  exists points at the cost of 10 concurrent agent runs initialising — prompts,
+  tool registries, sandbox handles, model streams — not at build artifacts or
+  conversation history. This is the most useful lead for reducing the footprint.
+- **97% utilisation is not a pass.** Treat the 622 MB reading as a run that
+  happened to survive.
+- **Cold start is not the explanation**, per run 3.
+
+Practical consequence: **do not size for N=10 on 640 MB**, and treat a margin in
+the tens of MB as inside this workload's variance.
+
+### Harness gap: the driver dies with the server
+
+In both crashes the driver process vanished leaving no report — the log stops at
+`[phase] load` and cleanup never ran, orphaning 10 threads each time (swept
+manually). The harness is supposed to survive a failing target: `runVirtualUser`
+catches per-user errors and `Promise.allSettled` isolates them, so a report should
+still have been written with 10 failed conversations.
+
+Worth fixing before the harness is used for OOM testing in anger, along with
+folding the `/healthz` restart poll into the tool itself — the built-in OOM
+detector reads `n8n_process_start_time_seconds` and so cannot work in
+`--no-metrics` mode, which is exactly the mode cloud requires.
+
+### Starter-plan headroom
+
+Starter is **768 MB**. Against it:
+
+Against this instance's **640 MB** hard limit:
+
+| scenario | peak | % of 640 MB | headroom |
+| --- | --: | --: | --: |
+| 5 builders, 2 turns | ~604 MB (measured) | **94%** | 36 MB |
+| 10 builders, 2 turns | ~622 MB (measured) | **97%** | **18 MB** |
+| 10 builders, 4 turns | **OOM-crashed the pod, 2 of 2 attempts** (32–45 s, in turn 1) | >100% | none |
+
+**A 640 MB instance is effectively saturated by 5 concurrent builders.** At 10 it
+survived one run on 18 MB of headroom and **OOM-crashed on the next** — see
+[OOM confirmed](#oom-confirmed-at-n10--and-it-is-non-deterministic). N=10 is not
+viable on 640 MB.
+
+For the general plan sizing (starter is 768 MB), the 2-turn numbers leave ~146 MB
+free at N=10 — but note those numbers were themselves measured under a 640 MB
+ceiling, so they represent *suppressed* demand, not what the workload would use
+given room.
+
+Measured on cloud: **10 concurrent builders reach 97% of a 640 MB limit on one run
+and OOM-crash the pod on the next.** 5 builders sit at 94%. The failure is
+non-deterministic at that margin, and it happens during run start-up rather than
+after any build completes.
+
+### Measuring on cloud without /metrics
+
+`/metrics` is unauthenticated so it is firewalled on cloud. `--no-metrics` drives
+the traffic and prints phase boundaries to paste into a Grafana range:
+
+```
+Phase boundaries (UTC) — memory not sampled; use these in Grafana
+  baseline             12:15:24.219Z  ->  12:15:24.219Z
+  threads-open         12:15:25.221Z  ->  12:15:25.221Z
+  post-load-idle       12:17:08.586Z  ->  12:17:08.586Z   <- load ran between these two
+  sse-closed           12:17:08.595Z  ->  12:17:08.595Z
+  post-cleanup         12:17:10.178Z  ->  12:17:10.178Z
+```
+
+In that mode the harness cannot measure retention (no forced GC), cannot verify
+concurrency (that comes from the active-runs gauge), and cannot enforce
+`--max-cost-usd` (spend comes from metrics). `--max-turns` and
+`--max-wall-clock` remain the only guardrails. **`E2E_TESTS=true` plus
+`NODE_OPTIONS=--expose-gc` would restore forced GC even on a production-mode
+instance** — the e2e controller is gated on `E2E_TESTS` alone, with no NODE_ENV
+check — so a test instance can have full methodology parity if `/metrics` is
+reachable.
+
+### Cloud provisioning gotcha: SMTP
+
+If SMTP is configured but broken, invitations fail in a way that looks unrelated.
+n8n only attaches `inviteAcceptUrl` to the API response when the mailer neither
+sent nor threw; a broken SMTP **throws**, so the URL is dropped and there is no
+way to accept the invite (the token is a signed JWT and can't be forged).
+
+Fix: **`N8N_EMAIL_MODE=`** (empty). The mailer is then never constructed,
+`invite()` returns `{emailSent: false}` instead of throwing, and the URL is
+included. Confirmed: provisioning went from 0/1 to 2 invited, 0 failed.
 
 ## Reproducibility — what survived a repeat
 
