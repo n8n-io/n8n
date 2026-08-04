@@ -266,7 +266,9 @@ export class KafkaV2 implements INodeType {
 			// UI default. Fall back to that same default explicitly.
 			const timeout = (options.timeout as number | undefined) ?? DEFAULT_TIMEOUT_MS;
 
-			const acks = options.acks === true ? 1 : 0;
+			// -1 = all in-sync replicas, matching the option description. v1 maps
+			// `true` to 1 (leader only) — a bug not worth carrying into a new version.
+			const acks = options.acks === true ? -1 : 0;
 
 			const credentials = await this.getCredentials<KafkaCredentials>('kafka');
 

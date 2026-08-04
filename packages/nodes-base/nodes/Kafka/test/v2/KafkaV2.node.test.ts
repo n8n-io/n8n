@@ -199,7 +199,7 @@ describe('KafkaV2 Node', () => {
 		await new KafkaV2(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		expect(mockProducerFactory).toHaveBeenCalledWith({
-			kafkaJS: { acks: 1, timeout: 1000, allowAutoTopicCreation: true },
+			kafkaJS: { acks: -1, timeout: 1000, allowAutoTopicCreation: true },
 		});
 		expect(mockProducerConnect).toHaveBeenCalledTimes(1);
 		expect(mockProducerSendBatch).toHaveBeenCalledTimes(1);
