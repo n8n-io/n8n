@@ -507,9 +507,6 @@ $--header-spacing: 20px;
 
 .name-container {
 	margin-right: var(--spacing--sm);
-	// The header collapses from the left side only: everything on the name's
-	// ancestor chain must be allowed to shrink below its content width so the
-	// name can ellipsize instead of pushing the actions out of view.
 	min-width: 0;
 
 	:deep(.el-input) {
@@ -520,8 +517,6 @@ $--header-spacing: 20px;
 		min-width: 0;
 	}
 
-	// The project breadcrumb stays rigid; the name gives way first. Below the
-	// container breakpoint the project is hidden entirely.
 	:deep([data-test-id='home-project']) {
 		flex-shrink: 0;
 	}
@@ -554,8 +549,6 @@ $--header-spacing: 20px;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-wrap: nowrap;
-	// The publish cluster never shrinks or scrolls out of view; the left side
-	// (path, then name) is what collapses when the header gets narrow.
 	flex-shrink: 0;
 }
 </style>
@@ -568,8 +561,6 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
-	// The header adapts to its own width (e.g. when a side panel squeezes the
-	// canvas), not the viewport, so collapsing is driven by a container query.
 	container-type: inline-size;
 	container-name: workflow-header;
 }
@@ -580,8 +571,6 @@ $--header-spacing: 20px;
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 }
 
-// Single collapse point, from the left: below this width the project badge and
-// folder path are dropped, leaving the workflow name to ellipsize fluidly.
 @container workflow-header (max-width: 480px) {
 	.path-separator {
 		display: none;
