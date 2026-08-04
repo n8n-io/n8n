@@ -1,0 +1,25 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_5113da58741f6d::t_2a4c9c20160b86 232,465
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_5113da58741f6d::t_4ec305605b653f 240,483
+packages/@n8n/db/src/migrations/common/1785840970000-AllowDiscordAgentChatSubscriptions.ts
+  s_5113da58741f6d::t_b09e40943d2035 7
+packages/cli/test/migration/1785840970000-allow-discord-agent-chat-subscriptions.test.ts
+  s_5113da58741f6d::t_85be12e80883c5 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6213e5a2d698f6ac644f1b4d193d8cd56c951367",
+  "prompts": {},
+  "sessions": {
+    "s_5113da58741f6d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3b298141-c419-44c6-8d40-5e6665a156c2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
