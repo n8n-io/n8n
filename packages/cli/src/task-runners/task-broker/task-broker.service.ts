@@ -811,6 +811,10 @@ export class TaskBroker {
 	/**
 	 * Reports a runner as unresponsive, so its transport can be torn down and, in internal
 	 * mode, its process force-restarted.
+	 *
+	 * Reports a runner that is no longer registered too: concurrent acceptances can reach the
+	 * timeout threshold after the transport deregistered the runner, and a process that
+	 * outlived its transport is exactly what still needs restarting.
 	 */
 	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string) {
 		this.logger.warn(`Runner (${runnerId}) ${cause}, reporting it as unresponsive`);

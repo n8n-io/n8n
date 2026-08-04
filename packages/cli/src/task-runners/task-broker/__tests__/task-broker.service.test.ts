@@ -1606,6 +1606,23 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).not.toHaveBeenCalled();
 		});
 
+		it('should report a runner that reached the threshold after deregistering', async () => {
+			const acceptances = Array.from(
+				{ length: 3 },
+				async () => await taskBroker.acceptOffer(offerFrom('runner1'), requestFor()),
+			);
+
+			// the transport deregisters the runner while the acceptances are still settling,
+			// so their timeouts are all counted against a runner no longer known
+			vi.advanceTimersByTime(ACCEPT_TIMEOUT_MS);
+			taskBroker.deregisterRunner('runner1', new Error('connection lost'));
+			await Promise.all(acceptances);
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
+				runnerId: 'runner1',
+			});
+		});
+
 		it('should count acknowledgment timeouts per runner', async () => {
 			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner2' }), vi.fn());
 
