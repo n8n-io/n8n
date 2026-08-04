@@ -39,16 +39,23 @@ function makeGenerateSuccess(text = 'OK') {
 	};
 }
 
+function* makeChunkStream(
+	chunks: Array<Record<string, unknown>>,
+): Generator<Record<string, unknown>> {
+	for (const c of chunks) {
+		yield c;
+	}
+}
+
 function makeStreamSuccess(text = 'OK') {
 	return {
-		fullStream: (function* () {
-			yield { type: 'text-delta', text };
-			yield {
-				type: 'finish',
-				finishReason: 'stop',
-				totalUsage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-			};
-		})(),
+		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text }]),
+		finishReason: Promise.resolve('stop'),
+		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+		response: Promise.resolve({
+			messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
+		}),
+		toolCalls: Promise.resolve([]),
 	};
 }
 
@@ -127,7 +134,15 @@ describe('AgentRuntime — memory span nesting under the root span (real OTel pr
 			});
 			await drain(stream);
 
-			const spans = otel.getFinishedSpans();
+			// The consumer-visible stream closes mid-loop (inside `StreamSink.finishComplete`),
+			// before the loop's promise settles and the root span's `finally` runs `span.end()` —
+			// so draining the stream doesn't guarantee the root span has finished exporting yet.
+			const spans = await vi.waitFor(() => {
+				const finished = otel.getFinishedSpans();
+				const rootSpan = finished.find((span) => span.name === 'memory-otel-stream-agent.stream');
+				expect(rootSpan).toBeDefined();
+				return finished;
+			});
 			const rootSpan = spans.find((span) => span.name === 'memory-otel-stream-agent.stream');
 			const queryMemorySpan = spans.find((span) => span.name === 'query_memory');
 			const saveMemorySpan = spans.find((span) => span.name === 'save_memory');
