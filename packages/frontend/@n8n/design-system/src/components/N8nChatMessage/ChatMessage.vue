@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useResizeObserver } from '@vueuse/core';
 import { onMounted, onUpdated, ref } from 'vue';
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const message = ref<HTMLElement | null>(null);
 const userBubble = ref<HTMLElement | null>(null);
 
 function shrinkWrapUserMessage() {
@@ -26,6 +28,7 @@ function shrinkWrapUserMessage() {
 
 onMounted(shrinkWrapUserMessage);
 onUpdated(shrinkWrapUserMessage);
+useResizeObserver(message, shrinkWrapUserMessage);
 
 defineSlots<{
 	default(): unknown;
@@ -34,7 +37,10 @@ defineSlots<{
 </script>
 
 <template>
-	<div :class="[$style.message, role === 'user' ? $style.userMessage : $style.assistantMessage]">
+	<div
+		ref="message"
+		:class="[$style.message, role === 'user' ? $style.userMessage : $style.assistantMessage]"
+	>
 		<div ref="userBubble" :class="role === 'user' ? $style.userBubble : $style.assistantContent">
 			<slot />
 			<div v-if="$slots.actions" :class="$style.actions">
