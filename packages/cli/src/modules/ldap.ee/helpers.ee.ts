@@ -95,8 +95,10 @@ export const getUserByLdapId = async (idAttributeValue: string) => {
 };
 
 export const getUserByEmail = async (email: string): Promise<User | null> => {
+	// `type: 'user'` so an LDAP entry carrying a service account's synthesized
+	// address cannot bind an LDAP identity to it and make it loginable.
 	return await Container.get(UserRepository).findOne({
-		where: { email },
+		where: { email, type: 'user' },
 	});
 };
 
@@ -182,7 +184,7 @@ export const processUsers = async (
 				// instead of creating a duplicate row and tripping the unique email
 				// constraint — same behaviour as LdapService.handleLogin.
 				const existingUser = await transactionManager.findOne(User, {
-					where: { email: user.email },
+					where: { email: user.email, type: 'user' },
 				});
 
 				if (existingUser) {

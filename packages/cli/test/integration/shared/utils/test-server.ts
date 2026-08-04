@@ -364,6 +364,10 @@ export const setupTestServer = ({
 						await import('@/modules/workflow-reviews.ee/workflow-reviews.module.js');
 						break;
 
+					case 'service-accounts':
+						await import('@/modules/service-accounts/service-accounts.module.js');
+						break;
+
 					case 'mcp':
 						await import('@/modules/mcp/mcp.module.js');
 						break;

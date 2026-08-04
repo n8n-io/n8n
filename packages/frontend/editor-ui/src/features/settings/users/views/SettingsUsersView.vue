@@ -363,6 +363,8 @@ const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions
 			expand: ['projectRelations'],
 			filter: {
 				fullText: search.value.trim(),
+				// Belt and braces: the repository already defaults to humans.
+				type: 'user',
 			},
 		});
 	} catch (error) {

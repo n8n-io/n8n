@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { ROLE, type UsersList } from '@n8n/api-types';
-import type { Role } from '@n8n/permissions';
+import { ROLE } from '@n8n/api-types';
+import type { Role, Scope } from '@n8n/permissions';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
@@ -15,10 +15,25 @@ import CustomRolesUpgradeModal from '@/features/roles/components/CustomRolesUpgr
 
 const props = withDefaults(
 	defineProps<{
-		data: UsersList['items'][number];
+		/** Any principal with a global role — a user or a service account. */
+		data: { id: string; role?: string };
 		loading?: boolean;
+		/** Scope that gates changing the role. Service accounts use their own. */
+		changeRoleScope?: Scope;
+		/** Where the role-editor links back to. */
+		fromView?: string;
+		/**
+		 * Extra caller-side condition on editability, on top of the scope check and
+		 * the owner/default exclusions.
+		 */
+		editable?: boolean;
 	}>(),
-	{ loading: false },
+	{
+		loading: false,
+		changeRoleScope: 'user:changeRole',
+		fromView: VIEWS.USERS_SETTINGS,
+		editable: true,
+	},
 );
 
 const emit = defineEmits<{
@@ -34,12 +49,12 @@ const selectedRole = computed(() =>
 	rolesStore.roles.global.find((role) => role.slug === currentRole.value),
 );
 const isEditable = computed(
-	() => currentRole.value !== ROLE.Owner && currentRole.value !== ROLE.Default,
+	() => props.editable && currentRole.value !== ROLE.Owner && currentRole.value !== ROLE.Default,
 );
 
 const hasCustomRolesLicense = computed(() => settingsStore.isCustomRolesFeatureEnabled);
 const canChangeRole = computed(() =>
-	hasPermission(['rbac'], { rbac: { scope: 'user:changeRole' } }),
+	hasPermission(['rbac'], { rbac: { scope: props.changeRoleScope } }),
 );
 
 const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
@@ -73,7 +88,7 @@ const onRoleUpdate = (role: string) => {
 			:total-permissions="TOTAL_INSTANCE_PERMISSIONS"
 			:edit-route-name="VIEWS.INSTANCE_ROLE_SETTINGS"
 			:view-route-name="VIEWS.INSTANCE_ROLE_VIEW"
-			:from-view="VIEWS.USERS_SETTINGS"
+			:from-view="props.fromView"
 			test-id="user-role-dropdown"
 			@update:role="onRoleUpdate"
 			@system-role-upgrade-needed="upgradeModalVisible = true"

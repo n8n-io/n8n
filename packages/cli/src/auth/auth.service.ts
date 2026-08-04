@@ -4,7 +4,8 @@ import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createHash } from 'crypto';
+import { hasGlobalScope } from '@n8n/permissions';
+import { createHash, randomBytes } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
@@ -28,10 +29,49 @@ interface AuthJwtPayload {
 	usedMfa?: boolean;
 	/** This indicates if the session originated from an embed login (cross-site cookie required) */
 	isEmbed?: boolean;
+	/**
+	 * Delegation claim, RFC 8693 vocabulary. Present only on impersonated
+	 * sessions: `id` above is the service account and `act.sub` is the human who
+	 * entered impersonation.
+	 *
+	 * **Polarity note.** `token-exchange`'s `ScopedJwtStrategy` resolves the acting
+	 * principal as `actor ?? subject` — the actor wins, because there a service
+	 * speaks *for* a user with its own authority. Here it is the inverse: the human
+	 * deliberately drops their authority and adopts the service account's, so the
+	 * **subject is the acting principal** and the actor is inert for authorization.
+	 * That is what makes API-key creation mint a key for the SA. Never derive a
+	 * principal from `act`, and never route this through `req.tokenGrant`.
+	 *
+	 * `hash` is the *actor's* `createJWTHash`, not the subject's — see
+	 * `validateToken` for why.
+	 */
+	act?: { sub: string; hash: string };
+	/**
+	 * Random nonce, set only on impersonation transitions — see
+	 * `DelegationOptions.isImpersonationTransition`.
+	 */
+	jti?: string;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
+}
+
+export interface DelegationOptions {
+	/**
+	 * The human on whose behalf an impersonated session runs. Recorded as the `act`
+	 * claim; never the authorization principal.
+	 */
+	actor?: User;
+	/**
+	 * Set when entering or leaving impersonation, to add a random `jti`.
+	 *
+	 * Both transitions revoke the cookie they replace, and a JWT's only varying
+	 * field is `iat`, in whole seconds. Without a nonce, exiting within a second of
+	 * entering re-mints the exact token entry revoked — and the operator is locked
+	 * out of their own session until it expires.
+	 */
+	isImpersonationTransition?: boolean;
 }
 
 interface PasswordResetToken {
@@ -132,12 +172,19 @@ export class AuthService {
 					const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 					if (isInvalid) throw new AuthError('Unauthorized');
 
-					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
+					const [user, { usedMfa, actor }] = await this.resolveJwt(token, req, res);
 					const mfaEnforced = await this.mfaService.isMFAEnforced();
+
+					// On an impersonated session the MFA gate must be evaluated against the
+					// human, not the service account: an SA is always `mfaEnabled: false`, so
+					// the "enforced but not enabled" branch below would 401 with
+					// `mfaRequired: true` and push the operator to an enrolment screen for a
+					// principal that can never enrol.
+					const mfaSubject = actor ?? user;
 
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
-						if (user.mfaEnabled) {
+						if (mfaSubject.mfaEnabled) {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
@@ -163,7 +210,20 @@ export class AuthService {
 					req.user = user;
 					req.authInfo = {
 						usedMfa,
+						actor,
 					};
+
+					if (actor && req.method !== 'GET') {
+						// POC audit trail. Every event and `updatedAt` during impersonation
+						// records the service account, so this log line is the only place the
+						// human is attributed. Not a substitute for real audit logging.
+						this.logger.info('Impersonated request', {
+							actorId: actor.id,
+							serviceAccountId: user.id,
+							method: req.method,
+							path: this.getEndpoint(req),
+						});
+					}
 				} catch (error) {
 					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
 						this.clearCookie(res);
@@ -234,15 +294,27 @@ export class AuthService {
 		browserId?: string,
 		isEmbed?: boolean,
 		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+		delegation?: DelegationOptions,
 	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
+		//
+		// Service accounts are exempt: `isWithinUsersLimit()` is
+		// `getUsersLimit() === UNLIMITED_LICENSE_QUOTA`, so on *any* seat-capped
+		// licence it is false and every non-owner cookie issuance throws — which
+		// would break entering impersonation and mid-session refresh alike. Nothing
+		// counts rows today, so exempting them is enough; if a real seat count is
+		// ever added it must filter `type = 'user'` (see `countUsersByRole`).
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
+		if (
+			user.type !== 'serviceAccount' &&
+			user.role.slug !== GLOBAL_OWNER_ROLE.slug &&
+			!isWithinUsersLimit
+		) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const token = this.issueJWT(user, usedMfa, browserId, isEmbed);
+		const token = this.issueJWT(user, usedMfa, browserId, isEmbed, delegation);
 		const { samesite, secure } = this.globalConfig.auth.cookie;
 		res.cookie(AUTH_COOKIE_NAME, token, {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
@@ -252,13 +324,23 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
+	issueJWT(
+		user: User,
+		usedMfa: boolean = false,
+		browserId?: string,
+		isEmbed?: boolean,
+		delegation?: DelegationOptions,
+	) {
+		const { actor, isImpersonationTransition } = delegation ?? {};
+
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
 			browserId: browserId && this.hash(browserId),
 			usedMfa,
 			...(isEmbed && { isEmbed }),
+			...(actor && { act: { sub: actor.id, hash: this.createJWTHash(actor) } }),
+			...(isImpersonationTransition && { jti: randomBytes(8).toString('hex') }),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
@@ -289,11 +371,11 @@ export class AuthService {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 		if (isInvalid) throw new AuthError('Unauthorized');
 
-		const { user, jwtPayload } = await this.validateToken(token);
+		const { user, actor, jwtPayload } = await this.validateToken(token);
 
 		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
-		await this.checkMfaGate(user, jwtPayload);
+		await this.checkMfaGate(actor ?? user, jwtPayload);
 
 		return user;
 	}
@@ -310,12 +392,18 @@ export class AuthService {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token: cookie });
 		if (isInvalid) throw new AuthError('Unauthorized');
 
-		const { user, jwtPayload } = await this.validateToken(cookie);
+		const { user, actor, jwtPayload } = await this.validateToken(cookie);
 
-		await this.checkMfaGate(user, jwtPayload);
+		await this.checkMfaGate(actor ?? user, jwtPayload);
 		return user;
 	}
 
+	/**
+	 * @param user The principal whose MFA state gates access. On an impersonated
+	 * session callers pass the **actor**, not `req.user`: a service account is
+	 * always `mfaEnabled: false`, so gating on it would reject the session outright
+	 * on an MFA-enforced instance.
+	 */
 	private async checkMfaGate(user: User, jwtPayload: IssuedJWT): Promise<void> {
 		if (jwtPayload.usedMfa ?? false) {
 			return;
@@ -357,6 +445,7 @@ export class AuthService {
 
 	private async validateToken(token: string): Promise<{
 		user: User;
+		actor?: User;
 		jwtPayload: IssuedJWT;
 	}> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
@@ -380,18 +469,63 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
+		const actor = jwtPayload.act
+			? await this.validateImpersonationActor(jwtPayload.act, user)
+			: undefined;
+
 		return {
 			user,
+			actor,
 			jwtPayload,
 		};
+	}
+
+	/**
+	 * Resolve and validate the human behind an impersonated session.
+	 *
+	 * **Why bind the actor's hash and not the subject's.** `createJWTHash` hashes
+	 * `[email, password]` plus an MFA-secret prefix. For a passwordless service
+	 * account that is permanently `hash('sa-x@…:null')` — no action can ever change
+	 * it, so the SA's own token is unrevocable by hash. Binding the *actor's* hash
+	 * buys the property that matters: the human changing their password or email,
+	 * or enabling/rotating MFA, kills every impersonation session they hold.
+	 *
+	 * The scope is re-checked live rather than trusted from the token, so revoking
+	 * `serviceAccount:impersonate` takes effect on the next request. `role.scopes`
+	 * is `eager: true`, so this costs nothing extra.
+	 */
+	private async validateImpersonationActor(
+		act: NonNullable<AuthJwtPayload['act']>,
+		subject: User,
+	): Promise<User> {
+		const actor = await this.userRepository.findOne({
+			where: { id: act.sub },
+			relations: ['role'],
+		});
+
+		if (
+			!actor ||
+			actor.disabled ||
+			// No service account may impersonate — closes the admin-roled-SA hole that
+			// scopes alone leave open.
+			actor.type !== 'user' ||
+			// Only service accounts can be impersonated.
+			subject.type !== 'serviceAccount' ||
+			act.hash !== this.createJWTHash(actor) ||
+			!hasGlobalScope(actor, 'serviceAccount:impersonate')
+		) {
+			throw new AuthError('Unauthorized');
+		}
+
+		return actor;
 	}
 
 	async resolveJwt(
 		token: string,
 		req: AuthenticatedRequest,
 		res: Response,
-	): Promise<[User, { usedMfa: boolean }]> {
-		const { user, jwtPayload } = await this.validateToken(token);
+	): Promise<[User, { usedMfa: boolean; actor?: User }]> {
+		const { user, actor, jwtPayload } = await this.validateToken(token);
 
 		const browserId = this.getBrowserId(req);
 		const endpoint = this.getEndpoint(req);
@@ -410,10 +544,15 @@ export class AuthService {
 				browserId,
 				jwtPayload.isEmbed,
 				embedCookieOverrides,
+				// `issueJWT` rebuilds the payload from scratch, so the `act` claim must be
+				// passed back in explicitly. Without this the refresh silently drops it
+				// mid-session and strands the operator inside the service account: the
+				// exit endpoint 400s "not impersonating" and the audit trail vanishes.
+				{ actor },
 			);
 		}
 
-		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
+		return [user, { usedMfa: jwtPayload.usedMfa ?? false, actor }];
 	}
 
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {

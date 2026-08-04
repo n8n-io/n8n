@@ -25,6 +25,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useImpersonationStore } from '@/features/settings/serviceAccounts/impersonation.store';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 
@@ -75,6 +76,8 @@ const SettingsUsageAndPlan = async () =>
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
 const SettingsEncryptionKeys = async () =>
 	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
+const SettingsServiceAccountsView = async () =>
+	await import('@/features/settings/serviceAccounts/views/SettingsServiceAccountsView.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
@@ -545,7 +548,13 @@ export const routes: RouteRecordRaw[] = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
-			middleware: ['authenticated'],
+			middleware: ['authenticated', 'custom'],
+			middlewareOptions: {
+				// Signing out of a borrowed identity is never what the operator means, and
+				// `logout()` clears the browser-id key the restored session is bound to.
+				// The sidebar offers "Return to my account" in place of sign out.
+				custom: () => !useImpersonationStore().isImpersonating,
+			},
 		},
 	},
 	{
@@ -724,6 +733,31 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'users',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'service-accounts',
+				name: VIEWS.SERVICE_ACCOUNTS_SETTINGS,
+				component: SettingsServiceAccountsView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['serviceAccount:list'],
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('SERVICE_ACCOUNTS');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'service-accounts',
 							};
 						},
 					},

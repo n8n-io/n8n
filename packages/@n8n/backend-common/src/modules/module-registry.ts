@@ -72,6 +72,8 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		// Loaded by default; the env flag inside the module is the single switch.
+		'service-accounts',
 	];
 
 	private readonly activeModules: string[] = [];

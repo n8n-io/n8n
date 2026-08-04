@@ -61,6 +61,12 @@ describe('User Entity', () => {
 			expect(user.isPending).toBe(true);
 		});
 
+		it('should NOT be pending for a service account (passwordless by design)', () => {
+			const user = createUser({ type: 'serviceAccount' });
+			user.computeIsPending();
+			expect(user.isPending).toBe(false);
+		});
+
 		it('should handle undefined authIdentities gracefully', () => {
 			const user = createUser();
 			user.authIdentities = undefined as unknown as AuthIdentity[];

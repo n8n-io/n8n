@@ -68,7 +68,9 @@ export class UserRepository extends Repository<User> {
 	async findManyByEmail(emails: string[]) {
 		return await this.find({
 			where: { email: In(emails) },
-			select: ['email', 'password', 'id'],
+			// `type` is selected so callers can reject service accounts — without it
+			// `computeIsPending` sees `type === undefined` and misreads an SA as pending.
+			select: ['email', 'password', 'id', 'type'],
 		});
 	}
 
@@ -76,6 +78,11 @@ export class UserRepository extends Repository<User> {
 		return await this.delete({ id: In(userIds) });
 	}
 
+	/**
+	 * The `password IS NOT NULL` filter is load-bearing beyond excluding shell
+	 * users: service accounts are passwordless, so it also keeps them out of
+	 * password-reset and login-by-email lookups. They must never be findable here.
+	 */
 	async findNonShellUser(email: string) {
 		return await this.findOne({
 			where: {
@@ -86,11 +93,19 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
+	/**
+	 * Counts the number of human users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }`
+	 *
+	 * Service accounts are excluded — this feeds seat/role telemetry. If a real
+	 * seat count is ever introduced it must filter `type = 'user'` too; see the
+	 * seat-limit exemption in `AuthService.issueCookie`.
+	 */
 	async countUsersByRole() {
 		const escapedRoleSlug = this.manager.connection.driver.escape('roleSlug');
+		const escapedType = this.manager.connection.driver.escape('type');
 		const rows = (await this.createQueryBuilder()
 			.select([escapedRoleSlug, `COUNT(${escapedRoleSlug}) as count`])
+			.where(`${escapedType} = :userType`, { userType: 'user' })
 			.groupBy(escapedRoleSlug)
 			.execute()) as Array<{ roleSlug: string; count: string }>;
 		return rows.reduce(
@@ -104,6 +119,9 @@ export class UserRepository extends Repository<User> {
 
 	/**
 	 * Get emails of users who have completed setup, by user IDs.
+	 *
+	 * The `password IS NOT NULL` filter also excludes service accounts, which is
+	 * required: their synthesized `.invalid` addresses must never receive mail.
 	 */
 	async getEmailsByIds(userIds: string[]) {
 		return await this.find({
@@ -162,6 +180,9 @@ export class UserRepository extends Repository<User> {
 	 * Loads `role` and `authIdentities` because the `@AfterLoad` hook needs
 	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
 	 * wrongly drop SSO/LDAP users).
+	 *
+	 * Restricted to humans: callers use this to offer people as workflow
+	 * reviewers, and downstream sorting on `email` assumes a real address.
 	 */
 	async findEligibleByProjectOrGlobalRoles({
 		projectId,
@@ -174,11 +195,12 @@ export class UserRepository extends Repository<User> {
 	}): Promise<User[]> {
 		const where: Array<FindOptionsWhere<User>> = [];
 		if (globalRoleSlugs.length > 0) {
-			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+			where.push({ disabled: false, type: 'user', role: { slug: In(globalRoleSlugs) } });
 		}
 		if (projectRoleSlugs.length > 0) {
 			where.push({
 				disabled: false,
+				type: 'user',
 				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
 			});
 		}
@@ -292,9 +314,14 @@ export class UserRepository extends Repository<User> {
 
 		if (filter?.isPending !== undefined) {
 			if (filter.isPending) {
-				queryBuilder.andWhere('user.password IS NULL AND user.role <> :ownerRole', {
-					ownerRole: 'global:owner',
-				});
+				// `type = 'user'` mirrors `User.computeIsPending`: a service account is
+				// passwordless by design, not a pending invitee.
+				queryBuilder.andWhere(
+					"user.password IS NULL AND user.role <> :ownerRole AND user.type = 'user'",
+					{
+						ownerRole: 'global:owner',
+					},
+				);
 			} else {
 				queryBuilder.andWhere('user.password IS NOT NULL');
 			}
@@ -385,6 +412,13 @@ export class UserRepository extends Repository<User> {
 		const queryBuilder = this.createQueryBuilder('user');
 
 		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
+
+		// Applied before the early return so an options-less call still excludes
+		// service accounts. `'all'` opts out entirely.
+		const userType = listQueryOptions?.filter?.type ?? 'user';
+		if (userType !== 'all') {
+			queryBuilder.andWhere('user.type = :userType', { userType });
+		}
 
 		if (listQueryOptions === undefined) {
 			return queryBuilder;

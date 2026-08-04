@@ -18,6 +18,7 @@
 | personalizationAnswers | json |  | true |  |  |  |
 | roleSlug | varchar(128) | 'global:member'::character varying | false |  | [public.role](public.role.md) |  |
 | settings | json |  | true |  |  |  |
+| type | varchar(32) | 'user'::character varying | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -32,6 +33,7 @@
 | user_id_not_null | n | NOT NULL id |
 | user_mfaEnabled_not_null | n | NOT NULL "mfaEnabled" |
 | user_roleSlug_not_null | n | NOT NULL "roleSlug" |
+| user_type_not_null | n | NOT NULL type |
 | user_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -93,6 +95,7 @@ erDiagram
   json personalizationAnswers
   varchar_128_ roleSlug FK
   json settings
+  varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_eval_dataset" {

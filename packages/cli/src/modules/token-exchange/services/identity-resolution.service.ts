@@ -134,8 +134,11 @@ export class IdentityResolutionService {
 
 		// Path 2: email fallback
 		if (email) {
+			// `type: 'user'` so an IdP asserting a service account's synthesized
+			// address cannot bind an external identity to it and make it loginable.
+			// The `.invalid` domain does most of this work; this is the hard stop.
 			const existingUser = await this.userRepository.findOne({
-				where: { email },
+				where: { email, type: 'user' },
 				relations: ['authIdentities', 'role'],
 			});
 

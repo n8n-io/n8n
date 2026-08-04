@@ -38,6 +38,7 @@ const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Own
 const _isDefaultUser = (user: IUserResponse | null) =>
 	_isInstanceOwner(user) && _isPendingUser(user);
 const _isAdmin = (user: IUserResponse | null) => user?.role === ROLE.Admin;
+const _isServiceAccount = (user: IUserResponse | null) => user?.type === 'serviceAccount';
 
 export type LoginHook = (user: CurrentUserResponse) => void | Promise<void>;
 type LogoutHook = () => void | Promise<void>;
@@ -407,9 +408,16 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	// opener. All call sites invoke it fire-and-forget (`void ...`).
 	const showPersonalizationSurvey = () => {
 		const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
-		if (surveyEnabled && currentUser.value && !currentUser.value.personalizationAnswers) {
-			modalOpeners.value.openModal(PERSONALIZATION_MODAL_KEY);
-		}
+		if (!surveyEnabled || !currentUser.value || currentUser.value.personalizationAnswers) return;
+
+		// A service account has no personalization to give, and `POST /me/survey`
+		// rejects it, so the answers could never be recorded. Since the modal has no
+		// close affordance and its dismiss path redirects to the homepage, an
+		// unguarded null check here traps an impersonating operator in a reopen loop
+		// and bounces them off any workflow they open.
+		if (_isServiceAccount(currentUser.value)) return;
+
+		modalOpeners.value.openModal(PERSONALIZATION_MODAL_KEY);
 	};
 
 	const fetchMfaQR = async () => {

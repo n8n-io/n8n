@@ -226,12 +226,16 @@ describe('users.store', () => {
 			} as unknown as FrontendSettings;
 		};
 
-		const setCurrentUser = (usersStore: ReturnType<typeof useUsersStore>) => {
+		const setCurrentUser = (
+			usersStore: ReturnType<typeof useUsersStore>,
+			overrides: Partial<CurrentUserResponse> = {},
+		) => {
 			usersStore.usersById['1'] = {
 				...mockUser,
 				isDefaultUser: false,
 				isPendingUser: false,
 				mfaEnabled: false,
+				...overrides,
 			};
 			usersStore.currentUserId = '1';
 		};
@@ -269,6 +273,35 @@ describe('users.store', () => {
 
 			// No registerModalOpeners() — the default no-op opener must not break the flow.
 			expect(() => usersStore.showPersonalizationSurvey()).not.toThrow();
+		});
+
+		it('does not open the modal for a service account', () => {
+			const usersStore = useUsersStore();
+			enableSurvey();
+			// A service account is created without answers, and `POST /me/survey` refuses
+			// to store any for it. Opening the modal here is unrecoverable: it has no close
+			// affordance, and its dismiss path navigates to the homepage.
+			setCurrentUser(usersStore, { type: 'serviceAccount', personalizationAnswers: null });
+
+			const openModal = vi.fn();
+			usersStore.registerModalOpeners({ openModal, openModalWithData: vi.fn() });
+
+			usersStore.showPersonalizationSurvey();
+
+			expect(openModal).not.toHaveBeenCalled();
+		});
+
+		it('still opens the modal for a human with no answers', () => {
+			const usersStore = useUsersStore();
+			enableSurvey();
+			setCurrentUser(usersStore, { type: 'user', personalizationAnswers: null });
+
+			const openModal = vi.fn();
+			usersStore.registerModalOpeners({ openModal, openModalWithData: vi.fn() });
+
+			usersStore.showPersonalizationSurvey();
+
+			expect(openModal).toHaveBeenCalledWith('personalization');
 		});
 	});
 

@@ -29,6 +29,7 @@ describe('permissions', () => {
 			provisioning: {},
 			securityAudit: {},
 			securitySettings: {},
+			serviceAccount: {},
 			sourceControl: {},
 			tag: {},
 			user: {},
@@ -128,6 +129,7 @@ describe('permissions', () => {
 			mcpApiKey: {},
 			securityAudit: {},
 			securitySettings: {},
+			serviceAccount: {},
 			sourceControl: {},
 			tag: {
 				create: true,

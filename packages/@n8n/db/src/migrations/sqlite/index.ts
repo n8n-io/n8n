@@ -230,6 +230,7 @@ import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138
 import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import { AddServiceAccountCredentials1785500832627 } from '../common/1785500832627-AddServiceAccountCredentials';
+import { AddTypeToUser1785763124126 } from '../common/1785763124126-AddTypeToUser';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -463,6 +464,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentChatAttachmentsTable1785255306000,
 	AddSetupCompletedAtToAgents1785500832626,
 	AddServiceAccountCredentials1785500832627,
+	AddTypeToUser1785763124126,
 ];
 
 export { sqliteMigrations };

@@ -389,8 +389,10 @@ export class SamlService {
 				throw new BadRequestError('Invalid email format');
 			}
 
+			// `type: 'user'` so an IdP asserting a service account's synthesized address
+			// cannot bind a SAML identity to it and make it loginable.
 			const user = await this.userRepository.findOne({
-				where: { email: lowerCasedEmail },
+				where: { email: lowerCasedEmail, type: 'user' },
 				relations: ['authIdentities', 'role'],
 			});
 			if (user) {

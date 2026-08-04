@@ -43,6 +43,7 @@ export const userDetailSchema = userBaseSchema.extend({
 	lastActiveAt: z.string().nullable().optional(),
 	inviteAcceptUrl: z.string().optional(),
 	isManagedByEnv: z.boolean().optional(),
+	type: z.enum(['user', 'serviceAccount']).optional(),
 });
 
 export const usersListSchema = z.object({

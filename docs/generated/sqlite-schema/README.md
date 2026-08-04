@@ -113,7 +113,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [token_exchange_jti](token_exchange_jti.md) | 3 |  | table |
 | [trusted_key](trusted_key.md) | 4 |  | table |
 | [trusted_key_source](trusted_key_source.md) | 8 |  | table |
-| [user](user.md) | 15 |  | table |
+| [user](user.md) | 16 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
 | [variables](variables.md) | 5 |  | table |
@@ -1374,6 +1374,7 @@ erDiagram
   TEXT personalizationAnswers
   varchar_128_ roleSlug FK
   TEXT settings
+  VARCHAR_32_ type
   datetime_3_ updatedAt
 }
 "user_api_keys" {

@@ -33,6 +33,7 @@ import { h } from 'vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { useImpersonationStore } from '@/features/settings/serviceAccounts/impersonation.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const state = {
@@ -260,6 +261,7 @@ function registerAuthenticationHooks() {
 	const settingsStore = useSettingsStore();
 	const ssoStore = useSSOStore();
 	const favoritesStore = useFavoritesStore();
+	const impersonationStore = useImpersonationStore();
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
@@ -293,6 +295,15 @@ function registerAuthenticationHooks() {
 			console.error(e);
 		}
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
+
+		// `GET /rest/login` is the single source of truth for impersonation state, so
+		// the banner and the sidebar badge survive a page refresh. Without this the
+		// operator has no way to find the exit after reloading.
+		impersonationStore.setState({
+			actor: user.actor,
+			serviceAccountName: user.firstName ?? user.email ?? undefined,
+		});
+
 		await settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();
 	});
@@ -305,5 +316,6 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		impersonationStore.reset();
 	});
 }

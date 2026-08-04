@@ -5,6 +5,10 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
 
+// The public API does not expose service accounts. Every lookup here is scoped to
+// humans so an SA id or synthesized email is indistinguishable from a nonexistent one.
+const HUMAN_USERS_ONLY = { type: 'user' } as const;
+
 export async function getUser(data: {
 	withIdentifier: string;
 	includeRole?: boolean;
@@ -12,6 +16,7 @@ export async function getUser(data: {
 	return await Container.get(UserRepository)
 		.findOne({
 			where: {
+				...HUMAN_USERS_ONLY,
 				...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
 				...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),
 			},
@@ -35,7 +40,7 @@ export async function getAllUsersAndCount(data: {
 	const { in: _in } = data;
 
 	const users = await Container.get(UserRepository).find({
-		where: { ...(_in && { id: In(_in) }) },
+		where: { ...HUMAN_USERS_ONLY, ...(_in && { id: In(_in) }) },
 		skip: data.offset,
 		take: data.limit,
 		relations: ['role'],
@@ -45,7 +50,7 @@ export async function getAllUsersAndCount(data: {
 			delete (user as Partial<User>).role;
 		});
 	}
-	const count = await Container.get(UserRepository).count();
+	const count = await Container.get(UserRepository).count({ where: HUMAN_USERS_ONLY });
 	return [
 		users.map((user) => ({ ...user, role: user.role?.slug }) as User & { role?: string }),
 		count,

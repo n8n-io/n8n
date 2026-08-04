@@ -423,11 +423,13 @@ describe('AuthController', () => {
 					id,
 					email: undefined,
 					password: null,
+					type: 'user',
 				}),
 				mock<User>({
 					id,
 					email: undefined,
 					password: null,
+					type: 'user',
 				}),
 			]);
 
@@ -474,6 +476,7 @@ describe('AuthController', () => {
 					firstName: 'Inviter first name',
 					lastName: 'Inviter last name',
 					password: null,
+					type: 'user',
 				}),
 				mock<User>({
 					id,
@@ -481,6 +484,7 @@ describe('AuthController', () => {
 					firstName: 'Invitee first name',
 					lastName: 'Invitee last name',
 					password: null,
+					type: 'user',
 				}),
 			]);
 
@@ -538,6 +542,7 @@ describe('AuthController', () => {
 					firstName: 'Invitee first name',
 					lastName: 'Invitee last name',
 					password: null,
+					type: 'user',
 				}),
 			]);
 
