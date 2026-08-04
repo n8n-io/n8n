@@ -1,0 +1,19 @@
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_c86301c80dfc9a::t_f52f7bb064a877 93,104,123-125,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "93a702bb4d9c63061af3c88e6c70c4d69f2d67ee",
+  "prompts": {},
+  "sessions": {
+    "s_c86301c80dfc9a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc8fd-58da-7420-8c1c-456f4a68fc45",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
