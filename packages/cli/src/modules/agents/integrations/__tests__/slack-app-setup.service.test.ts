@@ -192,6 +192,7 @@ describe('Slack setup services', () => {
 			credentialsService,
 			credentialsFinderService,
 			credentialsOverwrites,
+			agentRepository,
 		);
 		service = {
 			createApp: async (options: CreateSlackAppOptions) => await manualService.createApp(options),
@@ -608,7 +609,8 @@ describe('Slack setup services', () => {
 		);
 	});
 
-	it('returns only project-usable managed Slack OAuth credentials and their workspace', async () => {
+	it('returns managed Slack setup before the agent is persisted', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 		credentialsOverwrites.getOverwrites.mockReturnValue({
 			clientId: 'client',
 			clientSecret: 'secret',

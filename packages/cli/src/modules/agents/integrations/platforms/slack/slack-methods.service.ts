@@ -216,7 +216,10 @@ export class SlackMethodsService {
 			integration,
 			{ user, modifiedBy: 'user', broadcast: false },
 		);
-		if (savedAgent.activeVersionId === null) return credential.id;
+		await this.clearManagedAppSession(session);
+		if (savedAgent.activeVersionId === null) {
+			return credential.id;
+		}
 
 		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
@@ -224,12 +227,15 @@ export class SlackMethodsService {
 			integration,
 			'connect',
 		);
+		return credential.id;
+	}
+
+	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {
 		if (session.managerCredentialId && session.teamId) {
 			await this.cacheService.delete(
 				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}`,
 			);
 		}
-		return credential.id;
 	}
 
 	private webhookUrl(projectId: string, agentId: string): string {

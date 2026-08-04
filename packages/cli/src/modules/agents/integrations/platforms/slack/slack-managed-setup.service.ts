@@ -1,4 +1,5 @@
 import type {
+	AgentIntegrationConfig,
 	CreateSlackManagerCredentialResponse,
 	InstallSlackManagedAppResponse,
 	SlackManagedAppSettings,
@@ -31,6 +32,7 @@ import {
 	stringProperty,
 } from './slack-setup.types';
 import type { Agent } from '../../../entities/agent.entity';
+import { AgentRepository } from '../../../repositories/agent.repository';
 
 const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
@@ -146,6 +148,7 @@ export class SlackManagedSetupService {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	isSetupAvailable(): boolean {
@@ -167,7 +170,11 @@ export class SlackManagedSetupService {
 			return { managedSetupAvailable: false, managerCredentials: [] };
 		}
 
-		const agent = await this.methods.getAgent(options.agentId, options.projectId);
+		const agent = await this.agentRepository.findByIdAndProjectId(
+			options.agentId,
+			options.projectId,
+		);
+		const integrations = agent?.integrations ?? [];
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			options.user,
 			{ projectId: options.projectId },
@@ -197,7 +204,7 @@ export class SlackManagedSetupService {
 				accessToken && oauthTokenData
 					? await this.getWorkspacesFromContext(
 							{ credential, rawData, oauthTokenData, accessToken },
-							agent,
+							integrations,
 							options.user,
 							false,
 						)
@@ -242,7 +249,7 @@ export class SlackManagedSetupService {
 		this.assertSetupAvailable();
 		const agent = await this.methods.getAgent(options.agentId, options.projectId);
 		const existing = await this.findManagedBotCredential(
-			agent,
+			agent.integrations ?? [],
 			options.workspaceId,
 			options.managerCredentialId,
 			options.user,
@@ -256,7 +263,11 @@ export class SlackManagedSetupService {
 			options.projectId,
 			options.user,
 		);
-		const workspaces = await this.getWorkspacesFromContext(manager, agent, options.user);
+		const workspaces = await this.getWorkspacesFromContext(
+			manager,
+			agent.integrations ?? [],
+			options.user,
+		);
 		const workspace = workspaces.find(({ id }) => id === options.workspaceId);
 		if (!workspace) {
 			throw new NotFoundError('Slack workspace is not available to this credential');
@@ -582,7 +593,7 @@ export class SlackManagedSetupService {
 
 	private async getWorkspacesFromContext(
 		manager: ManagerCredentialContext,
-		agent: Agent,
+		integrations: readonly AgentIntegrationConfig[],
 		user: User,
 		allowRefresh = true,
 	): Promise<SlackManagedWorkspaceSummary[]> {
@@ -620,7 +631,12 @@ export class SlackManagedSetupService {
 		for (const workspace of workspaceRecords) {
 			const id = stringProperty(workspace, 'id');
 			if (!id) continue;
-			const existing = await this.findManagedBotCredential(agent, id, manager.credential.id, user);
+			const existing = await this.findManagedBotCredential(
+				integrations,
+				id,
+				manager.credential.id,
+				user,
+			);
 			result.push({
 				id,
 				name: stringProperty(workspace, 'name') ?? stringProperty(workspace, 'domain') ?? id,
@@ -638,12 +654,12 @@ export class SlackManagedSetupService {
 	}
 
 	private async findManagedBotCredential(
-		agent: Agent,
+		integrations: readonly AgentIntegrationConfig[],
 		workspaceId: string,
 		managerCredentialId: string,
 		user: User,
 	): Promise<{ appId: string; credentialId: string } | undefined> {
-		for (const integration of agent.integrations ?? []) {
+		for (const integration of integrations) {
 			if (integration.type !== 'slack' || !integration.credentialId) continue;
 			const credential = await this.credentialsFinderService.findCredentialForUser(
 				integration.credentialId,
