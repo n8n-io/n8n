@@ -1,0 +1,95 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "collapsed_for_agents": {
+            "type": "boolean"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "custom_field_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "default": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "raw_name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "description": {
+            "type": "string"
+        },
+        "editable_in_portal": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "key": {
+            "type": "null"
+        },
+        "position": {
+            "type": "integer"
+        },
+        "raw_description": {
+            "type": "string"
+        },
+        "raw_title": {
+            "type": "string"
+        },
+        "raw_title_in_portal": {
+            "type": "string"
+        },
+        "regexp_for_validation": {
+            "type": "null"
+        },
+        "removable": {
+            "type": "boolean"
+        },
+        "required": {
+            "type": "boolean"
+        },
+        "required_in_portal": {
+            "type": "boolean"
+        },
+        "tag": {
+            "type": "null"
+        },
+        "title": {
+            "type": "string"
+        },
+        "title_in_portal": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "visible_in_portal": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

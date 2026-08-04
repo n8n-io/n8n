@@ -1,8 +1,8 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { mockInstance } from '@test/mocking';
 
 describe('ActivationErrorsService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {

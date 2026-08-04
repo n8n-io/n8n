@@ -1,13 +1,17 @@
+import type { WorkBook, WritingOptions } from '@e965/xlsx';
+import { utils as xlsxUtils, write as xlsxWrite } from '@e965/xlsx';
+import { flattenObject } from '@utils/utilities';
 import iconv from 'iconv-lite';
 import get from 'lodash/get';
-import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
-import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
-import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
-import type { WorkBook, WritingOptions } from 'xlsx';
-import { utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
-
-import { flattenObject } from '@utils/utilities';
+import type {
+	IBinaryData,
+	IBinaryKeyData,
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+import { deepCopy, NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
+import type { TextContent as PdfTextContent } from 'pdfjs-dist/types/src/display/api';
 
 export type JsonToSpreadsheetBinaryFormat = 'csv' | 'html' | 'rtf' | 'ods' | 'xls' | 'xlsx';
 
@@ -29,10 +33,6 @@ export type JsonToBinaryOptions = {
 	itemIndex?: number;
 	format?: boolean;
 };
-
-type PdfDocument = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
-type PdfPage = Awaited<ReturnType<Awaited<PdfDocument['getPage']>>>;
-type PdfTextContent = Awaited<ReturnType<PdfPage['getTextContent']>>;
 
 export async function convertJsonToSpreadsheetBinary(
 	this: IExecuteFunctions,
@@ -162,17 +162,28 @@ export async function extractDataFromPDF(
 ) {
 	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
-	const params: DocumentInitParameters = { password, isEvalSupported: false };
-
+	let buffer: Buffer;
 	if (binaryData.id) {
-		params.data = await this.helpers.binaryToBuffer(
-			await this.helpers.getBinaryStream(binaryData.id),
-		);
+		const stream = await this.helpers.getBinaryStream(binaryData.id);
+		buffer = await this.helpers.binaryToBuffer(stream);
 	} else {
-		params.data = Buffer.from(binaryData.data, BINARY_ENCODING).buffer;
+		buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	const document = await readPDF(params).promise;
+	// Polyfill DOMMatrix for pdfjs-dist in Node.js environments without canvas
+	if (typeof globalThis.DOMMatrix === 'undefined') {
+		const { default: DOMMatrix } = await import('@thednp/dommatrix');
+		globalThis.DOMMatrix = DOMMatrix as unknown as typeof globalThis.DOMMatrix;
+	}
+
+	const { getDocument: readPDF, version: pdfJsVersion } = await import(
+		'pdfjs-dist/legacy/build/pdf.mjs'
+	);
+	const document = await readPDF({
+		password,
+		isEvalSupported: false,
+		data: new Uint8Array(buffer),
+	}).promise;
 	const { info, metadata } = await document
 		.getMetadata()
 		.catch(() => ({ info: null, metadata: null }));
@@ -196,10 +207,43 @@ export async function extractDataFromPDF(
 		numpages: document.numPages,
 		numrender: document.numPages,
 		info,
-		metadata: metadata?.getAll(),
+		metadata: (metadata && Object.fromEntries([...metadata])) ?? undefined,
 		text,
 		version: pdfJsVersion,
 	};
 
 	return returnData;
+}
+
+export function prepareBinariesDataList(data: string | string[] | IBinaryData | IBinaryData[]) {
+	if (Array.isArray(data)) return data;
+	if (typeof data === 'object') return [data];
+	return data.split(',').map((item: string) => item.trim());
+}
+
+/**
+ * Splits a database row into binary fields and JSON-safe fields: values recognized as binary
+ * (Buffers by default) are routed to `binary` via `prepareBinaryData`, and the rest are
+ * deep-copied so driver-native values (Dates, ObjectIds, ...) serialize to plain JSON.
+ * Pass `toBuffer` to recognize driver-specific binary wrappers (e.g. MongoDB's `Binary`).
+ */
+export async function routeBinaryProperties(
+	this: IExecuteFunctions,
+	row: IDataObject,
+	toBuffer: (value: unknown) => Buffer | undefined = (value) =>
+		Buffer.isBuffer(value) ? value : undefined,
+): Promise<{ json: IDataObject; binary: IBinaryKeyData }> {
+	const json = new Map<string, IDataObject[string]>();
+	const binary = new Map<string, IBinaryData>();
+
+	for (const [key, value] of Object.entries(row)) {
+		const buffer = toBuffer(value);
+		if (buffer) {
+			binary.set(key, await this.helpers.prepareBinaryData(buffer, key));
+		} else {
+			json.set(key, deepCopy(value));
+		}
+	}
+
+	return { json: Object.fromEntries(json), binary: Object.fromEntries(binary) };
 }

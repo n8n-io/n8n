@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { createServer } from 'node:http';
 
 export class HealthCheckServer {
@@ -11,7 +11,7 @@ export class HealthCheckServer {
 		return await new Promise<void>((resolve, reject) => {
 			const portInUseErrorHandler = (error: NodeJS.ErrnoException) => {
 				if (error.code === 'EADDRINUSE') {
-					reject(new ApplicationError(`Port ${port} is already in use`));
+					reject(new OperationalError(`Port ${port} is already in use`));
 				} else {
 					reject(error);
 				}

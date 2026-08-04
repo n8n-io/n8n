@@ -6,6 +6,8 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeType,
+	ResourceMapperField,
+	ResourceMapperTypeOptions,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -16,13 +18,40 @@ import {
 
 import type { ExtendedValidationResult } from '@/interfaces';
 
+const schemaIndexCache = new WeakMap<ResourceMapperField[], Map<string, ResourceMapperField>>();
+
+const EMPTY_SCHEMA_INDEX: ReadonlyMap<string, ResourceMapperField> = new Map();
+
+const indexSchemaById = (
+	schema: ResourceMapperField[] | undefined,
+): ReadonlyMap<string, ResourceMapperField> => {
+	// `isResourceMapperValue` only checks that `schema` is present, so a persisted
+	// `schema: null` reaches this. Indexing runs before the loop now, where the previous
+	// `schema.find` only ran inside it, so bail out here instead of throwing on iteration.
+	if (!schema?.length) {
+		return EMPTY_SCHEMA_INDEX;
+	}
+	let index = schemaIndexCache.get(schema);
+	if (!index) {
+		index = new Map<string, ResourceMapperField>();
+		for (const entry of schema) {
+			// First occurrence wins, matching the `schema.find` this index replaces
+			if (!index.has(entry.id)) index.set(entry.id, entry);
+		}
+		schemaIndexCache.set(schema, index);
+	}
+	return index;
+};
+
 const validateResourceMapperValue = (
 	parameterName: string,
 	paramValues: { [key: string]: unknown },
 	node: INode,
-	skipRequiredCheck = false,
+	resourceMapperTypeOptions?: ResourceMapperTypeOptions,
 ): ExtendedValidationResult => {
 	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
+	const skipRequiredCheck = resourceMapperTypeOptions?.mode !== 'add';
+	const enableTypeValidationOptions = Boolean(resourceMapperTypeOptions?.showTypeConversionOptions);
 	const paramNameParts = parameterName.split('.');
 	if (paramNameParts.length !== 2) {
 		return result;
@@ -32,13 +61,13 @@ const validateResourceMapperValue = (
 	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
 		return result;
 	}
-	const schema = resourceMapperField.schema;
+	const schemaById = indexSchemaById(resourceMapperField.schema);
 	const paramValueNames = Object.keys(paramValues);
 	for (let i = 0; i < paramValueNames.length; i++) {
 		const key = paramValueNames[i];
 		const resolvedValue = paramValues[key];
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-		const schemaEntry = schema.find((s) => s.id === key);
+
+		const schemaEntry = schemaById.get(key);
 
 		if (
 			!skipRequiredCheck &&
@@ -56,8 +85,8 @@ const validateResourceMapperValue = (
 		if (schemaEntry?.type) {
 			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
 				valueOptions: schemaEntry.options,
-				strict: !resourceMapperField.attemptToConvertTypes,
-				parseStrings: !!resourceMapperField.convertFieldsToString,
+				strict: enableTypeValidationOptions && !resourceMapperField.attemptToConvertTypes,
+				parseStrings: enableTypeValidationOptions && resourceMapperField.convertFieldsToString,
 			});
 
 			if (!validationResult.valid) {
@@ -157,7 +186,8 @@ export const validateValueAgainstSchema = (
 
 	const propertyDescription = nodeType.description.properties.find(
 		(prop) =>
-			parameterPath[0] === prop.name && NodeHelpers.displayParameter(node.parameters, prop, node),
+			parameterPath[0] === prop.name &&
+			NodeHelpers.displayParameter(node.parameters, prop, node, nodeType.description),
 	);
 
 	if (!propertyDescription) {
@@ -185,7 +215,7 @@ export const validateValueAgainstSchema = (
 			parameterName,
 			parameterValue as { [key: string]: unknown },
 			node,
-			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
+			propertyDescription.typeOptions?.resourceMapper,
 		);
 	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
 		validationResult = validateCollection(

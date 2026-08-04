@@ -1,8 +1,9 @@
 import 'reflect-metadata';
 import { Container, Service } from '@n8n/di';
 import { readFileSync } from 'fs';
+import { z } from 'zod';
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;
@@ -10,6 +11,7 @@ type PropertyType = number | boolean | string | Class;
 interface PropertyMetadata {
 	type: PropertyType;
 	envName?: string;
+	schema?: z.ZodType<unknown>;
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
@@ -19,28 +21,46 @@ const readEnv = (envName: string) => {
 
 	// Read the value from a file, if "_FILE" environment variable is defined
 	const filePath = process.env[`${envName}_FILE`];
-	if (filePath) return readFileSync(filePath, 'utf8');
+	if (filePath) {
+		const value = readFileSync(filePath, 'utf8');
+		if (value !== value.trim()) {
+			console.warn(
+				`[n8n] Warning: The file specified by ${envName}_FILE contains leading or trailing whitespace, which may cause authentication failures.`,
+			);
+		}
+		return value;
+	}
 
 	return undefined;
 };
 
 export const Config: ClassDecorator = (ConfigClass: Class) => {
-	const factory = function () {
-		const config = new (ConfigClass as new () => Record<PropertyKey, unknown>)();
+	const factory = function (...args: unknown[]) {
+		const config = new (ConfigClass as new (...a: unknown[]) => Record<PropertyKey, unknown>)(
+			...args,
+		);
 		const classMetadata = globalMetadata.get(ConfigClass);
 		if (!classMetadata) {
-			// eslint-disable-next-line n8n-local-rules/no-plain-errors
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
-		for (const [key, { type, envName }] of classMetadata) {
+		for (const [key, { type, envName, schema }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type as Constructable);
 			} else if (envName) {
 				const value = readEnv(envName);
 				if (value === undefined) continue;
 
-				if (type === Number) {
+				if (schema) {
+					const result = schema.safeParse(value);
+					if (result.error) {
+						console.warn(
+							`Invalid value for ${envName} - ${result.error.issues[0].message}. Falling back to default value.`,
+						);
+						continue;
+					}
+					config[key] = result.data;
+				} else if (type === Number) {
 					const parsed = Number(value);
 					if (isNaN(parsed)) {
 						console.warn(`Invalid number value for ${envName}: ${value}`);
@@ -55,13 +75,23 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					} else {
 						console.warn(`Invalid boolean value for ${envName}: ${value}`);
 					}
+				} else if (type === Date) {
+					const timestamp = Date.parse(value);
+					if (isNaN(timestamp)) {
+						console.warn(`Invalid timestamp value for ${envName}: ${value}`);
+					} else {
+						config[key] = new Date(timestamp);
+					}
 				} else if (type === String) {
-					config[key] = value;
+					config[key] = value.trim().replace(/^(['"])(.*)\1$/, '$2');
 				} else {
 					config[key] = new (type as Constructable)(value);
 				}
 			}
 		}
+
+		if (typeof config.sanitize === 'function') config.sanitize();
+
 		return config;
 	};
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -77,18 +107,20 @@ export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 };
 
 export const Env =
-	(envName: string): PropertyDecorator =>
+	(envName: string, schema?: PropertyMetadata['schema']): PropertyDecorator =>
 	(target: object, key: PropertyKey) => {
 		const ConfigClass = target.constructor;
 		const classMetadata =
 			globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
+
 		const type = Reflect.getMetadata('design:type', target, key) as PropertyType;
-		if (type === Object) {
-			// eslint-disable-next-line n8n-local-rules/no-plain-errors
+		const isZodSchema = schema instanceof z.ZodType;
+		if (type === Object && !isZodSchema) {
 			throw new Error(
 				`Invalid decorator metadata on key "${key as string}" on ${ConfigClass.name}\n Please use explicit typing on all config fields`,
 			);
 		}
-		classMetadata.set(key, { type, envName });
+
+		classMetadata.set(key, { type, envName, schema });
 		globalMetadata.set(ConfigClass, classMetadata);
 	};

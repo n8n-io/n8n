@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
 import {
@@ -29,11 +29,12 @@ export class GoogleDocs implements INodeType {
 		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Docs API.',
+		schemaPath: 'Google/Docs',
 		defaults: {
 			name: 'Google Docs',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -164,7 +165,7 @@ export class GoogleDocs implements INodeType {
 						value: 'default',
 					},
 				];
-				const driveId = this.getNodeParameter('driveId');
+				const driveId = this.getNodeParameter('driveId', 'myDrive');
 
 				const qs = {
 					q: `mimeType = \'application/vnd.google-apps.folder\' ${

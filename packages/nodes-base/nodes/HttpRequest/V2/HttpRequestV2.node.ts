@@ -1,4 +1,5 @@
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
@@ -12,15 +13,20 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	removeCircularRefs,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { sleep } from '@n8n/utils/sleep';
+
+import { applyTemplatedAuth } from '@utils/templated-auth';
+
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
+	getAllowedDomains,
 	getOAuth2AdditionalParameters,
+	getSecrets,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -46,8 +52,8 @@ export class HttpRequestV2 implements INodeType {
 				color: '#2200DD',
 			},
 			version: 2,
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'httpBasicAuth',
@@ -640,9 +646,11 @@ export class HttpRequestV2 implements INodeType {
 		} catch {}
 
 		let httpBasicAuth;
+		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
+		let httpTemplatedCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
 		let nodeCredentialType;
@@ -653,6 +661,10 @@ export class HttpRequestV2 implements INodeType {
 			if (genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpBearerAuth') {
+				try {
+					httpBearerAuth = await this.getCredentials('httpBearerAuth');
 				} catch {}
 			} else if (genericAuthType === 'httpDigestAuth') {
 				try {
@@ -665,6 +677,10 @@ export class HttpRequestV2 implements INodeType {
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpTemplatedCustomAuth') {
+				try {
+					httpTemplatedCustomAuth = await this.getCredentials('httpTemplatedCustomAuth');
 				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
@@ -679,6 +695,25 @@ export class HttpRequestV2 implements INodeType {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
 			} catch {}
+		}
+
+		let allowedDomains: string | undefined;
+		let secrets: string[] = [];
+		for (const credential of [
+			httpBasicAuth,
+			httpBearerAuth,
+			httpDigestAuth,
+			httpHeaderAuth,
+			httpQueryAuth,
+			httpTemplatedCustomAuth,
+			oAuth1Api,
+			oAuth2Api,
+		]) {
+			if (credential) {
+				allowedDomains = getAllowedDomains(this.getNode(), credential);
+				secrets.push(...getSecrets(credential));
+				break;
+			}
 		}
 
 		let requestOptions: IRequestOptions & { useStream?: boolean };
@@ -714,7 +749,42 @@ export class HttpRequestV2 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			let url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
+			}
+
+			url = url.trim();
+
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+			}
+
+			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+				);
+			}
+
+			if (nodeCredentialType) {
+				let credentialData: ICredentialDataDecryptedObject | undefined;
+				try {
+					credentialData = await this.getCredentials<ICredentialDataDecryptedObject>(
+						nodeCredentialType,
+						itemIndex,
+					);
+				} catch {}
+				if (credentialData) {
+					allowedDomains = getAllowedDomains(this.getNode(), credentialData);
+					secrets = getSecrets(credentialData);
+				}
+			}
 
 			if (
 				itemIndex > 0 &&
@@ -737,6 +807,7 @@ export class HttpRequestV2 implements INodeType {
 				uri: url,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
+				allowedDomains,
 			};
 
 			if (fullResponse) {
@@ -959,6 +1030,11 @@ export class HttpRequestV2 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpBearerAuth !== undefined) {
+				requestOptions.headers = requestOptions.headers ?? {};
+				requestOptions.headers.Authorization = `Bearer ${String(httpBearerAuth.token)}`;
+				authDataKeys.headers = ['Authorization'];
+			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
@@ -978,6 +1054,12 @@ export class HttpRequestV2 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpTemplatedCustomAuth !== undefined) {
+				const templatedAuth = applyTemplatedAuth(httpTemplatedCustomAuth, requestOptions);
+				if (templatedAuth.headers) authDataKeys.headers = Object.keys(templatedAuth.headers);
+				if (templatedAuth.body) authDataKeys.body = Object.keys(templatedAuth.body);
+				if (templatedAuth.qs) authDataKeys.qs = Object.keys(templatedAuth.qs);
+			}
 
 			if (requestOptions.headers!.accept === undefined) {
 				if (responseFormat === 'json') {
@@ -992,7 +1074,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys, secrets));
 			} catch (e) {}
 
 			if (authentication === 'genericCredentialType' || authentication === 'none') {
@@ -1165,7 +1247,6 @@ export class HttpRequestV2 implements INodeType {
 					}
 
 					if (options.splitIntoItems === true && Array.isArray(response)) {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

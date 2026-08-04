@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -12,7 +12,8 @@ import { removeDuplicateInputItems } from '../utils';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Remove Duplicates',
 	name: 'removeDuplicates',
-	icon: 'file:removeDuplicates.svg',
+	icon: 'node:remove-duplicates',
+	iconColor: 'azure',
 	group: ['transform'],
 	subtitle: '',
 	version: [1, 1.1],
@@ -20,8 +21,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Remove Duplicates',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	properties: [
 		{
 			displayName: 'Compare',

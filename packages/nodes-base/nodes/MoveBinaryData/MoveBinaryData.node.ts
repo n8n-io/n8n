@@ -14,7 +14,7 @@ import {
 	BINARY_ENCODING,
 	deepCopy,
 	jsonParse,
-	NodeConnectionType,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -58,8 +58,8 @@ export class MoveBinaryData implements INodeType {
 			name: 'Convert to/from binary data',
 			color: '#7722CC',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Mode',

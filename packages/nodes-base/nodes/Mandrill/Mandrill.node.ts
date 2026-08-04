@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
 import {
 	getGoogleAnalyticsDomainsArray,
@@ -105,8 +105,9 @@ export class Mandrill implements INodeType {
 		defaults: {
 			name: 'Mandrill',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'mandrillApi',
@@ -765,8 +766,8 @@ export class Mandrill implements INodeType {
 						message.from_name = options.fromName;
 					}
 
-					if (options.subaccount) {
-						message.subaccount = options.subaccount;
+					if (options.subAccount) {
+						message.subaccount = options.subAccount.toString();
 					}
 
 					const body: Body = {

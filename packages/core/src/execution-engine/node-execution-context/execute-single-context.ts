@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	IGetNodeParameterOptions,
@@ -10,20 +11,19 @@ import type {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	IExecuteData,
+	IDataObject,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, NodeConnectionType } from 'n8n-workflow';
+import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
+import { BaseExecuteContext } from './base-execute-context';
 import {
 	assertBinaryData,
 	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
-	getRequestHelperFunctions,
-	returnJsonArray,
-} from '@/node-execute-functions';
-
-import { BaseExecuteContext } from './base-execute-context';
+} from './utils/binary-helper-functions';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
 
 export class ExecuteSingleContext extends BaseExecuteContext implements IExecuteSingleFunctions {
 	readonly helpers: IExecuteSingleFunctions['helpers'];
@@ -67,18 +67,35 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 
 			assertBinaryData: (propertyName, inputIndex = 0) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
+				assertBinaryData(
+					inputData,
+					node,
+					itemIndex,
+					propertyName,
+					inputIndex,
+					workflow.settings.binaryMode,
+				),
 			getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				await getBinaryDataBuffer(
+					inputData,
+					itemIndex,
+					propertyName,
+					inputIndex,
+					workflow.settings.binaryMode,
+				),
 			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};
+	}
+
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
 	evaluateExpression(expression: string, itemIndex: number = this.itemIndex) {
 		return super.evaluateExpression(expression, itemIndex);
 	}
 
-	getInputData(inputIndex = 0, connectionType = NodeConnectionType.Main) {
+	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
 		if (!this.inputData.hasOwnProperty(connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return { json: {} };
@@ -88,7 +105,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 
 		const data = allItems?.[this.itemIndex];
 		if (data === undefined) {
-			throw new ApplicationError('Value of input with given index was not set', {
+			throw new UnexpectedError('Value of input with given index was not set', {
 				extra: { inputIndex, connectionType, itemIndex: this.itemIndex },
 			});
 		}

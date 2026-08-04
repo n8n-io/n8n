@@ -1,0 +1,59 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 1,
+				"options": { "fields": ["metadata", "deleted", "system"], "filter": "mycontainer" },
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureStorage",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "ab1b6258-5c75-4893-90bf-ef591264420c",
+			"name": "Azure Storage",
+			"credentials": {
+				"azureStorageSharedKeyApi": {
+					"id": "VPmcFM58eDDexWQL",
+					"name": "Azure Storage Shared Key account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Azure Storage": [
+			{
+				"json": {
+					"name": "mycontainer1",
+					"deleted": true,
+					"version": "01DB7228F6BEE6E7",
+					"properties": {
+						"lastModified": "Wed, 29 Jan 2025 08:37:00 GMT",
+						"etag": "\"0x8DD40401935032C\"",
+						"leaseStatus": "unlocked",
+						"leaseState": "expired",
+						"hasImmutabilityPolicy": false,
+						"hasLegalHold": false,
+						"immutableStorageWithVersioningEnabled": "false",
+						"deletedTime": "Wed, 29 Jan 2025 08:38:21 GMT",
+						"remainingRetentionDays": 7
+					},
+					"metadata": { "key1": "value1" }
+				}
+			}
+		]
+	}
+}

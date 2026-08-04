@@ -11,7 +11,7 @@ export class MailerLiteApi implements ICredentialType {
 
 	displayName = 'Mailer Lite API';
 
-	documentationUrl = 'mailerLite';
+	documentationUrl = 'mailerlite';
 
 	properties: INodeProperties[] = [
 		{

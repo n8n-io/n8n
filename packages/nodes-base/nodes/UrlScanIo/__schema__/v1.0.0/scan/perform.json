@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "api": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string"
+        },
+        "result": {
+            "type": "string"
+        },
+        "scanId": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

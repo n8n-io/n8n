@@ -1,8 +1,7 @@
 import type {
-	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
-	IExecuteFunctions,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -10,6 +9,7 @@ import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { processAirtableError } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { baseRLC } from '../common.descriptions';
+import type { TablesResponse } from '../types';
 
 const properties: INodeProperties[] = [
 	{
@@ -31,22 +31,25 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const baseId = this.getNodeParameter('base', 0, undefined, {
+			const baseId = this.getNodeParameter('base', i, undefined, {
 				extractValue: true,
 			}) as string;
 
-			const responseData = await apiRequest.call(this, 'GET', `meta/bases/${baseId}/tables`);
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(responseData.tables as IDataObject[]),
-				{ itemData: { item: i } },
+			const responseData: TablesResponse = await apiRequest.call(
+				this,
+				'GET',
+				`meta/bases/${baseId}/tables`,
 			);
 
-			returnData.push(...executionData);
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData.tables), {
+				itemData: { item: i },
+			});
+
+			returnData = returnData.concat(executionData);
 		} catch (error) {
 			error = processAirtableError(error as NodeApiError, undefined, i);
 			if (this.continueOnFail()) {

@@ -1,10 +1,11 @@
 import { CommunityRegisteredRequestDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import type { AxiosError } from 'axios';
 import { InstanceSettings } from 'n8n-core';
 
-import { Get, Post, RestController, GlobalScope, Body } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+import { LicenseRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
 import { LicenseService } from './license.service';
@@ -40,6 +41,7 @@ export class LicenseController {
 	}
 
 	@Post('/enterprise/community-registered')
+	@GlobalScope('license:manage')
 	async registerCommunityEdition(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -57,8 +59,12 @@ export class LicenseController {
 	@Post('/activate')
 	@GlobalScope('license:manage')
 	async activateLicense(req: LicenseRequest.Activate) {
-		const { activationKey } = req.body;
-		await this.licenseService.activateLicense(activationKey);
+		const { activationKey, eulaUri } = req.body;
+		if (eulaUri) {
+			await this.licenseService.activateLicense(activationKey, eulaUri, req.user.email);
+		} else {
+			await this.licenseService.activateLicense(activationKey);
+		}
 		return await this.getTokenAndData();
 	}
 

@@ -9,11 +9,12 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IRequestOptions,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
 	gristApiRequest,
+	gristBaseUrl,
 	parseAutoMappedInputs,
 	parseDefinedFields,
 	parseFilterProperties,
@@ -43,8 +44,9 @@ export class Grist implements INodeType {
 		defaults: {
 			name: 'Grist',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'gristApi',
@@ -72,30 +74,27 @@ export class Grist implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const { apiKey, planType, customSubdomain, selfHostedUrl } =
-					credential.data as GristCredentials;
-
-				const endpoint = '/orgs';
-
-				const gristapiurl =
-					planType === 'free'
-						? `https://docs.getgrist.com/api${endpoint}`
-						: planType === 'paid'
-							? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-							: `${selfHostedUrl}/api${endpoint}`;
+				const credentials = credential.data as GristCredentials;
 
 				const options: IRequestOptions = {
 					headers: {
-						Authorization: `Bearer ${apiKey}`,
+						Authorization: `Bearer ${credentials.apiKey}`,
 					},
 					method: 'GET',
-					uri: gristapiurl,
-					qs: { limit: 1 },
+					uri: `${gristBaseUrl(credentials)}/api/orgs`,
 					json: true,
 				};
 
 				try {
-					await this.helpers.request(options);
+					// A valid token can still grant zero accessible orgs (e.g. nothing shared); treat
+					// that as a failing test rather than a misleading success.
+					const orgs = await this.helpers.request(options);
+					if (!Array.isArray(orgs) || orgs.length === 0) {
+						return {
+							status: 'Error',
+							message: 'Connected, but no Grist organizations are accessible to this account.',
+						};
+					}
 					return {
 						status: 'OK',
 						message: 'Authentication successful',

@@ -1,15 +1,17 @@
-import { CredentialsGetManyRequestQuery, CredentialsGetOneRequestQuery } from '@n8n/api-types';
+import {
+	CreateCredentialDto,
+	CredentialsGetManyRequestQuery,
+	CredentialsGetOneRequestQuery,
+	GenerateCredentialNameRequestQuery,
+} from '@n8n/api-types';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
-import { Logger } from 'n8n-core';
-import { deepCopy } from 'n8n-workflow';
-import { z } from 'zod';
-
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import * as Db from '@/db';
+import {
+	SharedCredentials,
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	AuthenticatedRequest,
+} from '@n8n/db';
 import {
 	Delete,
 	Get,
@@ -19,21 +21,33 @@ import {
 	Put,
 	RestController,
 	ProjectScope,
-} from '@/decorators';
-import { Param, Query } from '@/decorators/args';
+	Body,
+	Param,
+	Query,
+} from '@n8n/decorators';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { In } from '@n8n/typeorm';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { z } from 'zod';
+
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
+import { CredentialsFinderService } from './credentials-finder.service';
+import { CredentialsService } from './credentials.service';
+import { EnterpriseCredentialsService } from './credentials.service.ee';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils';
+
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
-
-import { CredentialsService } from './credentials.service';
-import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -42,12 +56,15 @@ export class CredentialsController {
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
+		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -60,6 +77,11 @@ export class CredentialsController {
 			listQueryOptions: req.listQueryOptions,
 			includeScopes: query.includeScopes,
 			includeData: query.includeData,
+			onlySharedWithMe: query.onlySharedWithMe,
+			includeGlobal: query.includeGlobal,
+			filters: {
+				externalSecretsStore: query.externalSecretsStore,
+			},
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -79,8 +101,12 @@ export class CredentialsController {
 	}
 
 	@Get('/new')
-	async generateUniqueName(req: CredentialRequest.NewName) {
-		const requestedName = req.query.name ?? this.globalConfig.credentials.defaultName;
+	async generateUniqueName(
+		_req: unknown,
+		_res: unknown,
+		@Query query: GenerateCredentialNameRequestQuery,
+	) {
+		const requestedName = query.name ?? this.globalConfig.credentials.defaultName;
 
 		return {
 			name: await this.namingService.getUniqueCredentialName(requestedName),
@@ -95,8 +121,8 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
-		const { shared, ...credential } = this.license.isSharingEnabled()
-			? await this.enterpriseCredentialsService.getOne(
+		const { shared, ...credential } = this.licenseState.isSharingLicensed()
+			? await this.enterpriseCredentialsService.getOneForUser(
 					req.user,
 					credentialId,
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
@@ -104,7 +130,9 @@ export class CredentialsController {
 					// to do so.
 					query.includeData,
 				)
-			: await this.credentialsService.getOne(req.user, credentialId, query.includeData);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData, {
+					includeInstanceCredentials: true,
+				});
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
@@ -117,45 +145,51 @@ export class CredentialsController {
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
 	async testCredentials(req: CredentialRequest.Test) {
-		const { credentials } = req.body;
+		try {
+			return await this.credentialsService.testWithCredentials(req.user, req.body.credentials);
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new ForbiddenError();
+			}
 
-		const storedCredential = await this.sharedCredentialsRepository.findCredentialForUser(
-			credentials.id,
-			req.user,
-			['credential:read'],
-		);
-
-		if (!storedCredential) {
-			throw new ForbiddenError();
+			throw error;
 		}
+	}
 
-		const mergedCredentials = deepCopy(credentials);
-		const decryptedData = this.credentialsService.decrypt(storedCredential);
+	/**
+	 * Auth-probe a stored credential against the test URL saved in the
+	 * credential itself. Complements `/test`, which needs the credential type
+	 * to declare a test; generic types (e.g. Templated Custom Auth) have none,
+	 * so they are probed against their own persisted test URL instead.
+	 */
+	@Post('/:credentialId/probe')
+	@ProjectScope('credential:read')
+	async probeCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		try {
+			return await this.credentialsService.probeById(req.user, credentialId);
+		} catch (error) {
+			if (error instanceof CredentialNotFoundError) {
+				throw new ForbiddenError();
+			}
 
-		// When a sharee (or project viewer) opens a credential, the fields and the
-		// credential data are missing so the payload will be empty
-		// We need to replace the credential contents with the db version if that's the case
-		// So the credential can be tested properly
-		await this.credentialsService.replaceCredentialContentsForSharee(
-			req.user,
-			storedCredential,
-			decryptedData,
-			mergedCredentials,
-		);
-
-		if (mergedCredentials.data && storedCredential) {
-			mergedCredentials.data = this.credentialsService.unredact(
-				mergedCredentials.data,
-				decryptedData,
-			);
+			throw error;
 		}
-
-		return await this.credentialsService.test(req.user, mergedCredentials);
 	}
 
 	@Post('/')
-	async createCredentials(req: CredentialRequest.Create) {
-		const newCredential = await this.credentialsService.createCredential(req.body, req.user);
+	async createCredentials(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: CreateCredentialDto,
+	) {
+		const newCredential = await this.credentialsService.createUnmanagedCredential(
+			payload,
+			req.user,
+		);
 
 		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
 			newCredential.id,
@@ -168,7 +202,23 @@ export class CredentialsController {
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
+			uiContext: payload.uiContext,
+			isDynamic: newCredential.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(payload.data).length > 0,
+			jweEnabled: payload.data.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(newCredential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(newCredential.type, payload.data),
 		});
+
+		if (newCredential.isResolvable) {
+			this.eventService.emit('private-credential-created', {
+				user: req.user,
+				credentialType: newCredential.type,
+				credentialId: newCredential.id,
+				projectId: project?.id,
+				projectType: project?.type,
+			});
+		}
 
 		return newCredential;
 	}
@@ -176,18 +226,23 @@ export class CredentialsController {
 	@Patch('/:credentialId')
 	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
-		const { credentialId } = req.params;
+		const {
+			body,
+			user,
+			params: { credentialId },
+		} = req;
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
-			req.user,
+			user,
 			['credential:update'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
 			this.logger.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
-				userId: req.user.id,
+				userId: user.id,
 			});
 			throw new NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
@@ -198,17 +253,95 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
-		const decryptedData = this.credentialsService.decrypt(credential, true);
+		const isChangingAuthType = body.type !== undefined && body.type !== credential.type;
+
+		if (credential.usageScope === 'instance' && isChangingAuthType) {
+			throw new BadRequestError(
+				'Provider connection type cannot be changed. Create a new connection instead.',
+			);
+		}
+
+		if (
+			credential.usageScope === 'instance' &&
+			(body.isGlobal === true || body.isResolvable === true)
+		) {
+			throw new BadRequestError(
+				'Provider connections cannot be globally shared or converted to end-user credentials',
+			);
+		}
+
+		// We never want to allow users to change the oauthTokenData
+		delete body.data?.oauthTokenData;
+
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+		const isTogglingToPrivate = body.isResolvable === true && credential.isResolvable === false;
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+		const isTogglingToStatic = body.isResolvable === false && credential.isResolvable === true;
+
+		if (isTogglingToPrivate || isTogglingToStatic) {
+			const owningProject =
+				await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+			await this.credentialsService.ensureCanManageEndUserCredential(req.user, owningProject?.id);
+		}
+
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
+			req.user,
 			req.body,
-			decryptedData,
-		);
-		const newCredentialData = this.credentialsService.createEncryptedData(
-			credentialId,
-			preparedCredentialData,
+			credential,
+			// Switching auth method (e.g. Google Service Account -> OAuth) changes the
+			// credential's type; the previous type's OAuth token no longer applies to it.
+			{ clearOauthTokenData: isTogglingToPrivate || isChangingAuthType },
 		);
 
-		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
+		const newCredentialData = await this.credentialsService.createEncryptedData({
+			id: credential.id,
+			name: preparedCredentialData.name,
+			type: preparedCredentialData.type,
+			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
+		});
+
+		// Update isGlobal if provided in the payload and user has permission
+		const isGlobal = body.isGlobal;
+		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
+			if (!this.licenseState.isSharingLicensed()) {
+				throw new ForbiddenError('You are not licensed for sharing credentials');
+			}
+
+			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+			if (!canShareGlobally) {
+				throw new ForbiddenError(
+					'You do not have permission to change global sharing for credentials',
+				);
+			}
+
+			newCredentialData.isGlobal = isGlobal;
+		}
+
+		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
+
+		// A private credential's per-user connections are minted against its shared
+		// (static) config, so changing that config makes them stale — invalidate them.
+		let sharedFieldsChanged = false;
+		if (body.data && !isTogglingToStatic && newCredentialData.isResolvable) {
+			const changedFields = await this.credentialsService.getChangedSharedFields(
+				credential,
+				preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
+			);
+			sharedFieldsChanged = changedFields.length > 0;
+		}
+
+		const responseData = await this.credentialsService.update(
+			credentialId,
+			newCredentialData,
+			body.data
+				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
+				: undefined,
+			{
+				deleteUserEntries: isTogglingToStatic || sharedFieldsChanged,
+				instanceCredential: credential.usageScope === 'instance' ? credential : undefined,
+				user: req.user,
+			},
+		);
 
 		if (responseData === null) {
 			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);
@@ -219,15 +352,77 @@ export class CredentialsController {
 
 		this.logger.debug('Credential updated', { credentialId });
 
+		const updatedData = preparedCredentialData.data as unknown as ICredentialDataDecryptedObject;
 		this.eventService.emit('credentials-updated', {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			isDynamic: newCredentialData.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
+			jweEnabled: updatedData.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(credential.type, updatedData),
 		});
+
+		const wasResolvable = Boolean(credential.isResolvable);
+		const willBeResolvable = Boolean(newCredentialData.isResolvable);
+		if (!wasResolvable && willBeResolvable) {
+			this.eventService.emit('private-credential-toggled-to-private', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		} else if (wasResolvable && !willBeResolvable) {
+			this.eventService.emit('private-credential-toggled-to-static', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		} else if (sharedFieldsChanged) {
+			this.eventService.emit('private-credential-connections-cleared', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		}
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
 
 		return { ...rest, scopes };
+	}
+
+	@Delete('/:credentialId/oauth-token')
+	@ProjectScope('credential:update')
+	async disconnectOauthToken(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:update'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError(
+				'Credential not found. You can only modify credentials you have access to.',
+			);
+		}
+
+		if (credential.isManaged) {
+			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
+			throw new BadRequestError('Only OAuth credentials can be disconnected');
+		}
+
+		await this.credentialsService.clearOauthTokenData(credential);
+
+		this.logger.debug('Credential OAuth token cleared', { credentialId });
+
+		return { success: true };
 	}
 
 	@Delete('/:credentialId')
@@ -235,10 +430,11 @@ export class CredentialsController {
 	async deleteCredentials(req: CredentialRequest.Delete) {
 		const { credentialId } = req.params;
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
 			['credential:delete'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -251,7 +447,9 @@ export class CredentialsController {
 			);
 		}
 
-		await this.credentialsService.delete(req.user, credential.id);
+		await this.credentialsService.delete(req.user, credential.id, {
+			includeInstanceCredentials: true,
+		});
 
 		this.eventService.emit('credentials-deleted', {
 			user: req.user,
@@ -259,12 +457,19 @@ export class CredentialsController {
 			credentialId: credential.id,
 		});
 
+		if (credential.isResolvable) {
+			this.eventService.emit('private-credential-deleted', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		}
+
 		return true;
 	}
 
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
-	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
 		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
@@ -276,39 +481,65 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:share'],
+			['credential:read'],
 		);
 
 		if (!credential) {
 			throw new ForbiddenError();
 		}
 
+		const currentProjectIds = credential.shared
+			.filter((sc) => sc.role === 'credential:user')
+			.map((sc) => sc.projectId);
+		const newProjectIds = shareWithIds;
+
+		const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
+		const toUnshare = utils.rightDiff([newProjectIds, (id) => id], [currentProjectIds, (id) => id]);
+
+		if (toShare.length > 0) {
+			const canShare = await userHasScopes(req.user, ['credential:share'], false, {
+				credentialId,
+			});
+			if (!canShare) {
+				throw new ForbiddenError();
+			}
+		}
+
+		if (toUnshare.length > 0) {
+			const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
+				credentialId,
+			});
+			if (!canUnshare) {
+				throw new ForbiddenError();
+			}
+		}
+
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
 
-		await Db.transaction(async (trx) => {
-			const currentProjectIds = credential.shared
-				.filter((sc) => sc.role === 'credential:user')
-				.map((sc) => sc.projectId);
-			const newProjectIds = shareWithIds;
-
-			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
-			const toUnshare = utils.rightDiff(
-				[newProjectIds, (id) => id],
-				[currentProjectIds, (id) => id],
-			);
-
+		const { manager: dbManager } = this.sharedCredentialsRepository;
+		await dbManager.transaction(async (trx) => {
 			const deleteResult = await trx.delete(SharedCredentials, {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
-			await this.enterpriseCredentialsService.shareWithProjects(req.user, credential, toShare, trx);
+			await this.enterpriseCredentialsService.shareWithProjects(
+				req.user,
+				credential.id,
+				toShare,
+				trx,
+			);
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;
+				await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
+					credentialId,
+					toUnshare,
+					trx,
+				);
 			}
 
 			newShareeIds = toShare;
@@ -325,7 +556,7 @@ export class CredentialsController {
 
 		const projectsRelations = await this.projectRelationRepository.findBy({
 			projectId: In(newShareeIds),
-			role: 'project:personalOwner',
+			role: { slug: PROJECT_OWNER_ROLE_SLUG },
 		});
 
 		await this.userManagementMailer.notifyCredentialsShared({

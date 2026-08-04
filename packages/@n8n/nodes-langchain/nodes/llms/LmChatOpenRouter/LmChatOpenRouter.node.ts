@@ -1,19 +1,86 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
-	NodeConnectionType,
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+
+import {
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
+import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+
+interface OpenAIToolCall {
+	function?: { arguments?: unknown };
+}
+
+interface OpenAIChoice {
+	message?: { tool_calls?: OpenAIToolCall[] };
+}
+
+function isOpenAIResponseWithChoices(json: unknown): json is { choices: OpenAIChoice[] } {
+	return (
+		typeof json === 'object' &&
+		json !== null &&
+		'choices' in json &&
+		Array.isArray((json as { choices: unknown }).choices)
+	);
+}
+
+/**
+ * Wraps fetch to fix empty tool call arguments in API responses.
+ *
+ * When Anthropic models are accessed through OpenRouter, tool calls for tools
+ * with no parameters return empty string arguments ("") instead of "{}".
+ * LangChain's parseToolCall does JSON.parse("") which throws, breaking the agent.
+ * This wrapper normalizes empty arguments to "{}" before LangChain sees them.
+ */
+function createOpenRouterFetch(baseFetch: typeof globalThis.fetch): typeof globalThis.fetch {
+	return async (input, init) => {
+		const response = await baseFetch(input, init);
+
+		const contentType = response.headers.get('content-type') ?? '';
+		if (!contentType.includes('json')) return response;
+
+		// Clone before reading, since .json() consumes the body. If no
+		// modification is needed we return the clone with the original body intact.
+		const clone = response.clone();
+		const json: unknown = await response.json();
+
+		if (!isOpenAIResponseWithChoices(json)) return clone;
+
+		const isInvalidArgs = (args: unknown): boolean => typeof args !== 'string' || !args.trim();
+
+		const toolCallsToFix = json.choices
+			.flatMap((choice) => choice.message?.tool_calls ?? [])
+			.filter((tc) => tc.function && isInvalidArgs(tc.function.arguments));
+
+		if (toolCallsToFix.length === 0) return clone;
+
+		for (const tc of toolCallsToFix) {
+			if (!tc.function) continue;
+			const { arguments: args } = tc.function;
+			// Preserve already-parsed plain objects by stringifying them.
+			// Arrays and other non-object types are not valid tool args, so default to '{}'.
+			const isPlainObject = typeof args === 'object' && args !== null && !Array.isArray(args);
+			tc.function.arguments = isPlainObject ? JSON.stringify(args) : '{}';
+		}
+
+		const body = JSON.stringify(json);
+		return new Response(body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers: { 'content-type': contentType },
+		});
+	};
+}
 
 export class LmChatOpenRouter implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,10 +107,10 @@ export class LmChatOpenRouter implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
+
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
 			{
@@ -56,7 +123,7 @@ export class LmChatOpenRouter implements INodeType {
 			baseURL: '={{ $credentials?.url }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
@@ -114,7 +181,11 @@ export class LmChatOpenRouter implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'openai/gpt-4o-mini',
+				default: 'openai/gpt-4.1-mini',
+				builderHint: {
+					propertyHint:
+						'Default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro-preview). Avoid openai/gpt-4o, anthropic/claude-3.x, and other pre-2026 models.',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -225,15 +296,23 @@ export class LmChatOpenRouter implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: createOpenRouterFetch(globalThis.fetch),
+			fetchOptions: {
+				dispatcher: getProxyAgent(credentials.url, {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
+			},
 		};
 
 		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey,
-			modelName,
+			apiKey: credentials.apiKey,
+			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],

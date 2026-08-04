@@ -1,14 +1,23 @@
+import {
+	createTeamProject,
+	linkUserToProject,
+	createWorkflow,
+	shareWorkflowWithUsers,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { User } from '@n8n/db';
+
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { User } from '@/databases/entities/user';
 import { WaitTracker } from '@/wait-tracker';
 
-import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
-import { createTeamProject, linkUserToProject } from './shared/db/projects';
+import {
+	createSuccessfulExecution,
+	createWaitingExecution,
+	getAllExecutions,
+} from './shared/db/executions';
 import { createMember, createOwner } from './shared/db/users';
-import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
 
 mockInstance(WaitTracker);
 mockInstance(ConcurrencyControlService, {
@@ -26,26 +35,49 @@ const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	return await createSuccessfulExecution(workflow);
 };
 
+const saveWaitingExecution = async ({ belongingTo }: { belongingTo: User }) => {
+	const workflow = await createWorkflow({}, belongingTo);
+	return await createWaitingExecution(workflow);
+};
+
 beforeEach(async () => {
-	await testDb.truncate(['Execution', 'Workflow', 'SharedWorkflow']);
+	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	testServer.license.reset();
 	owner = await createOwner();
 	member = await createMember();
 });
 
 describe('GET /executions', () => {
-	test('only returns executions of shared workflows if sharing is enabled', async () => {
+	test('returns executions of workflows shared with the user regardless of sharing license', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);
 		await createSuccessfulExecution(workflow);
 
-		const response1 = await testServer.authAgentFor(member).get('/executions').expect(200);
-		expect(response1.body.data.count).toBe(0);
+		const responseWithoutLicense = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.expect(200);
+		expect(responseWithoutLicense.body.data.count).toBe(1);
 
 		testServer.license.enable('feat:sharing');
 
-		const response2 = await testServer.authAgentFor(member).get('/executions').expect(200);
-		expect(response2.body.data.count).toBe(1);
+		const responseWithLicense = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.expect(200);
+		expect(responseWithLicense.body.data.count).toBe(1);
+	});
+
+	test('project admins can list executions of project workflows without the sharing license', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(1);
 	});
 
 	test('should return a scopes array for each execution', async () => {
@@ -61,10 +93,6 @@ describe('GET /executions', () => {
 
 describe('GET /executions/:id', () => {
 	test('project viewers can view executions for workflows in the project', async () => {
-		// if sharing is not enabled, we're only returning the executions of
-		// personal workflows
-		testServer.license.enable('feat:sharing');
-
 		const teamProject = await createTeamProject();
 		await linkUserToProject(member, teamProject, 'project:viewer');
 
@@ -77,14 +105,23 @@ describe('GET /executions/:id', () => {
 		expect(response.body.data).toBeDefined();
 	});
 
-	test('only returns executions of shared workflows if sharing is enabled', async () => {
+	test('project admins can view executions for workflows in the project without the sharing license', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toBeDefined();
+	});
+
+	test('returns executions of workflows shared with the user without the sharing license', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);
 		const execution = await createSuccessfulExecution(workflow);
-
-		await testServer.authAgentFor(member).get(`/executions/${execution.id}`).expect(404);
-
-		testServer.license.enable('feat:sharing');
 
 		const response = await testServer
 			.authAgentFor(member)
@@ -114,5 +151,48 @@ describe('POST /executions/delete', () => {
 		const executions = await getAllExecutions();
 
 		expect(executions).toHaveLength(0);
+	});
+});
+
+describe('POST /executions/stop', () => {
+	test('should not stop an execution we do not have access to', async () => {
+		await saveExecution({ belongingTo: owner });
+		const incorrectExecutionId = '1234';
+
+		await testServer
+			.authAgentFor(owner)
+			.post(`/executions/${incorrectExecutionId}/stop`)
+			.expect(400);
+	});
+
+	test('should stop an execution we have access to', async () => {
+		const execution = await saveWaitingExecution({ belongingTo: owner });
+
+		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
+	});
+});
+describe('POST /executions/stopMany', () => {
+	test('should not stop an execution we do not have access to', async () => {
+		await saveWaitingExecution({ belongingTo: owner });
+
+		const result = await testServer
+			.authAgentFor(member)
+			.post('/executions/stopMany')
+			.send({ filter: { status: ['waiting'] } })
+			.expect(200);
+
+		expect(result.body.data.stopped).toBe(0);
+	});
+
+	test('should stop an execution we have access to', async () => {
+		await saveWaitingExecution({ belongingTo: owner });
+
+		const result = await testServer
+			.authAgentFor(owner)
+			.post('/executions/stopMany')
+			.send({ filter: { status: ['waiting'] } })
+			.expect(200);
+
+		expect(result.body.data.stopped).toBe(1);
 	});
 });

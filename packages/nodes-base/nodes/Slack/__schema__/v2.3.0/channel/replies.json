@@ -1,0 +1,136 @@
+{
+    "type": "object",
+    "properties": {
+        "app_id": {
+            "type": "string"
+        },
+        "blocks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "block_id": {
+                        "type": "string"
+                    },
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "elements": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "text": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "bot_id": {
+            "type": "string"
+        },
+        "bot_profile": {
+            "type": "object",
+            "properties": {
+                "app_id": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "icons": {
+                    "type": "object",
+                    "properties": {
+                        "image_36": {
+                            "type": "string"
+                        },
+                        "image_48": {
+                            "type": "string"
+                        },
+                        "image_72": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "team_id": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "client_msg_id": {
+            "type": "string"
+        },
+        "is_locked": {
+            "type": "boolean"
+        },
+        "latest_reply": {
+            "type": "string"
+        },
+        "parent_user_id": {
+            "type": "string"
+        },
+        "reply_count": {
+            "type": "integer"
+        },
+        "reply_users": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "reply_users_count": {
+            "type": "integer"
+        },
+        "subscribed": {
+            "type": "boolean"
+        },
+        "team": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "thread_ts": {
+            "type": "string"
+        },
+        "ts": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "user": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

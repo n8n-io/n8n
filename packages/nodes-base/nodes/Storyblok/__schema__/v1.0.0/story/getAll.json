@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "content_type": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "default_root": {
+            "type": "null"
+        },
+        "deleted_at": {
+            "type": "null"
+        },
+        "disable_fe_editor": {
+            "type": "boolean"
+        },
+        "disble_fe_editor": {
+            "type": "boolean"
+        },
+        "expire_at": {
+            "type": "null"
+        },
+        "full_slug": {
+            "type": "string"
+        },
+        "group_id": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "is_folder": {
+            "type": "boolean"
+        },
+        "is_startpage": {
+            "type": "boolean"
+        },
+        "last_author": {
+            "type": "object",
+            "properties": {
+                "friendly_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "userid": {
+                    "type": "string"
+                }
+            }
+        },
+        "last_author_id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "path": {
+            "type": "null"
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "position": {
+            "type": "integer"
+        },
+        "publish_at": {
+            "type": "null"
+        },
+        "published": {
+            "type": "boolean"
+        },
+        "scheduled_dates": {
+            "type": "null"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "sort_by_date": {
+            "type": "null"
+        },
+        "tag_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "unpublished_changes": {
+            "type": "boolean"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "uuid": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

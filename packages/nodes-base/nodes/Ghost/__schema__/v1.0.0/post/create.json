@@ -1,0 +1,413 @@
+{
+    "type": "object",
+    "properties": {
+        "authors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "accessibility": {
+                        "type": "string"
+                    },
+                    "comment_notifications": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "donation_notifications": {
+                        "type": "boolean"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "facebook": {
+                        "type": "null"
+                    },
+                    "free_member_signup_notification": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "last_seen": {
+                        "type": "string"
+                    },
+                    "mention_notifications": {
+                        "type": "boolean"
+                    },
+                    "meta_description": {
+                        "type": "null"
+                    },
+                    "meta_title": {
+                        "type": "null"
+                    },
+                    "milestone_notifications": {
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "paid_subscription_canceled_notification": {
+                        "type": "boolean"
+                    },
+                    "paid_subscription_started_notification": {
+                        "type": "boolean"
+                    },
+                    "recommendation_notifications": {
+                        "type": "boolean"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "created_at": {
+                                    "type": "string"
+                                },
+                                "description": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "updated_at": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "tour": {
+                        "type": "null"
+                    },
+                    "twitter": {
+                        "type": "null"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "canonical_url": {
+            "type": "null"
+        },
+        "codeinjection_foot": {
+            "type": "null"
+        },
+        "codeinjection_head": {
+            "type": "null"
+        },
+        "comment_id": {
+            "type": "string"
+        },
+        "count": {
+            "type": "object",
+            "properties": {
+                "clicks": {
+                    "type": "integer"
+                },
+                "negative_feedback": {
+                    "type": "integer"
+                },
+                "positive_feedback": {
+                    "type": "integer"
+                }
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "custom_excerpt": {
+            "type": "null"
+        },
+        "custom_template": {
+            "type": "null"
+        },
+        "email": {
+            "type": "null"
+        },
+        "email_only": {
+            "type": "boolean"
+        },
+        "email_segment": {
+            "type": "string"
+        },
+        "email_subject": {
+            "type": "null"
+        },
+        "feature_image": {
+            "type": "null"
+        },
+        "feature_image_alt": {
+            "type": "null"
+        },
+        "feature_image_caption": {
+            "type": "null"
+        },
+        "featured": {
+            "type": "boolean"
+        },
+        "frontmatter": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lexical": {
+            "type": "string"
+        },
+        "newsletter": {
+            "type": "null"
+        },
+        "og_description": {
+            "type": "null"
+        },
+        "og_title": {
+            "type": "null"
+        },
+        "primary_author": {
+            "type": "object",
+            "properties": {
+                "accessibility": {
+                    "type": "string"
+                },
+                "comment_notifications": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "donation_notifications": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "facebook": {
+                    "type": "null"
+                },
+                "free_member_signup_notification": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_seen": {
+                    "type": "string"
+                },
+                "mention_notifications": {
+                    "type": "boolean"
+                },
+                "meta_description": {
+                    "type": "null"
+                },
+                "meta_title": {
+                    "type": "null"
+                },
+                "milestone_notifications": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "paid_subscription_canceled_notification": {
+                    "type": "boolean"
+                },
+                "paid_subscription_started_notification": {
+                    "type": "boolean"
+                },
+                "recommendation_notifications": {
+                    "type": "boolean"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "created_at": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "updated_at": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tour": {
+                    "type": "null"
+                },
+                "twitter": {
+                    "type": "null"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "reading_time": {
+            "type": "integer"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "canonical_url": {
+                        "type": "null"
+                    },
+                    "codeinjection_foot": {
+                        "type": "null"
+                    },
+                    "codeinjection_head": {
+                        "type": "null"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "meta_description": {
+                        "type": "null"
+                    },
+                    "meta_title": {
+                        "type": "null"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "og_description": {
+                        "type": "null"
+                    },
+                    "og_image": {
+                        "type": "null"
+                    },
+                    "og_title": {
+                        "type": "null"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "twitter_description": {
+                        "type": "null"
+                    },
+                    "twitter_image": {
+                        "type": "null"
+                    },
+                    "twitter_title": {
+                        "type": "null"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "visibility": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tiers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "monthly_price_id": {
+                        "type": "null"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "trial_days": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "visibility": {
+                        "type": "string"
+                    },
+                    "yearly_price_id": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
+        "title": {
+            "type": "string"
+        },
+        "twitter_description": {
+            "type": "null"
+        },
+        "twitter_title": {
+            "type": "null"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "uuid": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

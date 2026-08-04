@@ -7,7 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type NodeParameterValue,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
@@ -27,6 +27,7 @@ import {
 	decodeItem,
 	simplify,
 } from './utils';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsDynamoDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,18 +38,15 @@ export class AwsDynamoDB implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the AWS DynamoDB API',
+		schemaPath: 'Aws/DynamoDB',
 		defaults: {
 			name: 'AWS DynamoDB',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -107,7 +105,7 @@ export class AwsDynamoDB implements INodeType {
 							[],
 						) as IAttributeValueUi[];
 						const conditionExpession = this.getNodeParameter(
-							'conditionExpression',
+							'additionalFields.conditionExpression',
 							i,
 							'',
 						) as string;
@@ -130,7 +128,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (conditionExpession) {
@@ -140,6 +138,7 @@ export class AwsDynamoDB implements INodeType {
 						const dataToSend = this.getNodeParameter('dataToSend', 0) as
 							| 'defineBelow'
 							| 'autoMapInputData';
+						const autoParseNumbers = this.getNodeParameter('autoParseNumbers', i, true) as boolean;
 						const item: { [key: string]: string } = {};
 
 						if (dataToSend === 'autoMapInputData') {
@@ -152,11 +151,11 @@ export class AwsDynamoDB implements INodeType {
 								item[key] = items[i].json[key] as string;
 							}
 
-							body.Item = adjustPutItem(item as PutItemUi);
+							body.Item = adjustPutItem(item as PutItemUi, autoParseNumbers);
 						} else {
 							const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
 							fields.forEach(({ fieldId, fieldValue }) => (item[fieldId] = fieldValue));
-							body.Item = adjustPutItem(item as PutItemUi);
+							body.Item = adjustPutItem(item as PutItemUi, autoParseNumbers);
 						}
 
 						const headers = {
@@ -180,7 +179,7 @@ export class AwsDynamoDB implements INodeType {
 						};
 
 						const eavUi = this.getNodeParameter(
-							'additionalFields.eavUi.eavValues',
+							'additionalFields.expressionAttributeUi.expressionAttributeValues',
 							i,
 							[],
 						) as IAttributeValueUi[];
@@ -213,7 +212,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						const headers = {
@@ -260,7 +259,7 @@ export class AwsDynamoDB implements INodeType {
 						const expressionAttributeName = adjustExpressionAttributeName(eanUi);
 
 						if (Object.keys(expressionAttributeName).length) {
-							body.expressionAttributeNames = expressionAttributeName;
+							body.ExpressionAttributeNames = expressionAttributeName;
 						}
 
 						if (additionalFields.readType) {

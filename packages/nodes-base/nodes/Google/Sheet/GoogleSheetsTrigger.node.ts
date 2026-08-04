@@ -3,9 +3,10 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	INodeProperties,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	arrayOfArraysToJson,
@@ -14,12 +15,120 @@ import {
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
 import type { ResourceLocator, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
+import { googleApiCredentialTest } from './v2/methods/credentialTest';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
 import { apiRequest } from './v2/transport';
-import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
+
+export const document: INodeProperties = {
+	displayName: 'Document',
+	name: 'documentId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'spreadSheetsSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			extractValue: {
+				type: 'regex',
+				regex: GOOGLE_DRIVE_FILE_URL_REGEX,
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: GOOGLE_DRIVE_FILE_URL_REGEX,
+						errorMessage: 'Not a valid Google Drive File URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Google Drive File ID',
+					},
+				},
+			],
+			url: '=https://docs.google.com/spreadsheets/d/{{$value}}/edit',
+		},
+	],
+};
+
+export const sheet: INodeProperties = {
+	displayName: 'Sheet',
+	name: 'sheetName',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	// default: '', //empty string set to progresivly reveal fields
+	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['documentId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'sheetsSearch',
+				searchable: false,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			extractValue: {
+				type: 'regex',
+				regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
+						errorMessage: 'Not a valid Sheet URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '((gid=)?[0-9]{1,})',
+						errorMessage: 'Not a valid Sheet ID',
+					},
+				},
+			],
+		},
+	],
+};
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,8 +143,18 @@ export class GoogleSheetsTrigger implements INodeType {
 			name: 'Google Sheets Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
+			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+				testedBy: 'googleApiCredentialTest',
+			},
 			{
 				name: 'googleSheetsTriggerOAuth2Api',
 				required: true,
@@ -52,8 +171,12 @@ export class GoogleSheetsTrigger implements INodeType {
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
-				type: 'hidden',
+				type: 'options',
 				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'OAuth2 (recommended)',
@@ -62,108 +185,8 @@ export class GoogleSheetsTrigger implements INodeType {
 				],
 				default: 'triggerOAuth2',
 			},
-			{
-				displayName: 'Document',
-				name: 'documentId',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				required: true,
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'spreadSheetsSearch',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'By URL',
-						name: 'url',
-						type: 'string',
-						extractValue: {
-							type: 'regex',
-							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
-						},
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: GOOGLE_DRIVE_FILE_URL_REGEX,
-									errorMessage: 'Not a valid Google Drive File URL',
-								},
-							},
-						],
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[a-zA-Z0-9\\-_]{2,}',
-									errorMessage: 'Not a valid Google Drive File ID',
-								},
-							},
-						],
-						url: '=https://docs.google.com/spreadsheets/d/{{$value}}/edit',
-					},
-				],
-			},
-			{
-				displayName: 'Sheet',
-				name: 'sheetName',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				// default: '', //empty string set to progresivly reveal fields
-				required: true,
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						typeOptions: {
-							searchListMethod: 'sheetsSearch',
-							searchable: false,
-						},
-					},
-					{
-						displayName: 'By URL',
-						name: 'url',
-						type: 'string',
-						extractValue: {
-							type: 'regex',
-							regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
-						},
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: GOOGLE_SHEETS_SHEET_URL_REGEX,
-									errorMessage: 'Not a valid Sheet URL',
-								},
-							},
-						],
-					},
-					{
-						displayName: 'By ID',
-						name: 'id',
-						type: 'string',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '((gid=)?[0-9]{1,})',
-									errorMessage: 'Not a valid Sheet ID',
-								},
-							},
-						],
-					},
-				],
-			},
+			document,
+			sheet,
 			{
 				displayName: 'Trigger On',
 				name: 'event',
@@ -385,6 +408,7 @@ export class GoogleSheetsTrigger implements INodeType {
 	methods = {
 		listSearch: { spreadSheetsSearch, sheetsSearch },
 		loadOptions: { getSheetHeaderRowAndSkipEmpty },
+		credentialTest: { googleApiCredentialTest },
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
@@ -430,6 +454,10 @@ export class GoogleSheetsTrigger implements INodeType {
 			if (event !== 'rowAdded') {
 				let pageToken;
 				do {
+					// Run the Drive revisions listing with the broader trigger scope
+					// (drive.readonly). The default sheetV2 scope (drive.metadata) lists
+					// revisions but omits exportLinks, which are required to download the
+					// previous revision below.
 					const { revisions, nextPageToken } = await apiRequest.call(
 						this,
 						'GET',
@@ -441,6 +469,9 @@ export class GoogleSheetsTrigger implements INodeType {
 							pageSize: 1000,
 						},
 						`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+						{},
+						{},
+						'sheetV2Trigger',
 					);
 
 					if (nextPageToken) {
@@ -530,9 +561,19 @@ export class GoogleSheetsTrigger implements INodeType {
 					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				);
 
+				if (Array.isArray(sheetData) && sheetData.length !== 0) {
+					sheetData.splice(0, 1); // Remove header row
+				}
+
+				let dataStartIndex = 0;
+				if (rangeDefinition === 'specifyRange' && keyRow < startIndex) {
+					dataStartIndex = startIndex - keyRow - 1;
+				}
+
 				if (this.getMode() === 'manual') {
 					if (Array.isArray(sheetData)) {
-						const returnData = arrayOfArraysToJson(sheetData, columns);
+						const sheetDataFromStartIndex = sheetData.slice(dataStartIndex);
+						const returnData = arrayOfArraysToJson(sheetDataFromStartIndex, columns);
 
 						if (Array.isArray(returnData) && returnData.length !== 0) {
 							return [this.helpers.returnJsonArray(returnData)];
@@ -546,7 +587,11 @@ export class GoogleSheetsTrigger implements INodeType {
 						return null;
 					}
 
-					const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
+					const rowsStartIndex = Math.max(
+						workflowStaticData.lastIndexChecked as number,
+						dataStartIndex,
+					);
+					const addedRows = sheetData?.slice(rowsStartIndex) || [];
 					const returnData = arrayOfArraysToJson(addedRows, columns);
 
 					workflowStaticData.lastIndexChecked = sheetData.length;

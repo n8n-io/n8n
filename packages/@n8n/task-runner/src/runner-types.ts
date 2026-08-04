@@ -59,7 +59,8 @@ export interface DataRequestResponse {
 }
 
 export interface TaskResultData {
-	result: INodeExecutionData[];
+	/** Raw user output, i.e. not yet validated or normalized. */
+	result: unknown;
 	customData?: Record<string, string>;
 	staticData?: IDataObject;
 }
@@ -98,6 +99,8 @@ export interface PartialAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId?: string;
 	variables: IDataObject;
+	/** Parent evaluation TestRun.id, exposed to Code nodes as `$evaluation.runId`. */
+	evaluationRunId?: string;
 }
 
 /** RPC methods that are exposed directly to the Code Node */
@@ -119,6 +122,9 @@ export const EXPOSED_RPC_METHODS = [
 
 	// httpRequest(opts: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse>
 	'helpers.httpRequest',
+
+	// (deprecated) request(uriOrObject: string | IRequestOptions, options?: IRequestOptions): Promise<any>;
+	'helpers.request',
 ];
 
 /** Helpers that exist but that we are not exposing to the Code Node */

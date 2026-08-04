@@ -1,17 +1,18 @@
 import { GlobalConfig } from '@n8n/config';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
+import {
+	WorkflowTagMapping,
+	TagRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
-import type { Project } from '@/databases/entities/project';
-import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import type { User } from '@/databases/entities/user';
-import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as Db from '@/db';
 import { License } from '@/license';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -31,7 +32,7 @@ export async function getSharedWorkflowIds(
 	} else {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
 			workflowRoles: ['workflow:owner'],
-			projectRoles: ['project:personalOwner'],
+			projectRoles: [PROJECT_OWNER_ROLE_SLUG],
 			projectId,
 		});
 	}
@@ -39,11 +40,11 @@ export async function getSharedWorkflowIds(
 
 export async function getSharedWorkflow(
 	user: User,
-	workflowId?: string | undefined,
+	workflowId?: string,
 ): Promise<SharedWorkflow | null> {
 	return await Container.get(SharedWorkflowRepository).findOne({
 		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
+			...(!hasGlobalScope(user, ['workflow:read']) && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [
@@ -60,49 +61,41 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 }
 
 export async function createWorkflow(
-	workflow: WorkflowEntity,
 	user: User,
-	personalProject: Project,
-	role: WorkflowSharingRole,
+	body: WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
 ): Promise<WorkflowEntity> {
-	return await Db.transaction(async (transactionManager) => {
-		const newWorkflow = new WorkflowEntity();
-		Object.assign(newWorkflow, workflow);
-		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+	const { projectId, parentFolderId, ...rest } = body;
 
-		const newSharedWorkflow = new SharedWorkflow();
-		Object.assign(newSharedWorkflow, {
-			role,
-			user,
-			project: personalProject,
-			workflow: savedWorkflow,
-		});
-		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+	// binaryMode and credentialResolverId are derived, internal settings rather
+	// than something users are expected to control programmatically; ignore any
+	// value sent so new workflows always get the default.
+	if (rest.settings?.binaryMode !== undefined) {
+		delete rest.settings.binaryMode;
+	}
+	if (rest.settings?.credentialResolverId !== undefined) {
+		delete rest.settings.credentialResolverId;
+	}
 
-		return savedWorkflow;
-	});
-}
+	const workflow = createWorkflowEntityFromPayload(rest);
 
-export async function setWorkflowAsActive(workflow: WorkflowEntity) {
-	await Container.get(WorkflowRepository).update(workflow.id, {
-		active: true,
-		updatedAt: new Date(),
-	});
-}
+	// A policy supplied via the API is explicit intent, so a below-floor value is
+	// rejected (422) rather than silently seeded up to the floor — matching the
+	// update endpoint. An absent policy is left for WorkflowCreationService to seed.
+	await Container.get(RedactionEnforcementService).assertNewPolicyAllowed(
+		workflow.settings?.redactionPolicy,
+	);
 
-export async function setWorkflowAsInactive(workflow: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflow.id, {
-		active: false,
-		updatedAt: new Date(),
+	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
+		projectId,
+		// Both null and undefined mean "project root", resolve to undefined
+		parentFolderId: parentFolderId ?? undefined,
+		publicApi: true,
+		source: 'api',
 	});
 }
 
 export async function deleteWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
 	return await Container.get(WorkflowRepository).remove(workflow);
-}
-
-export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {
@@ -120,8 +113,9 @@ export async function getWorkflowTags(workflowId: string) {
 	});
 }
 
-export async function updateTags(workflowId: string, newTags: string[]): Promise<any> {
-	await Db.transaction(async (transactionManager) => {
+export async function updateTags(workflowId: string, newTags: string[]): Promise<void> {
+	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
+	await dbManager.transaction(async (transactionManager) => {
 		const oldTags = await transactionManager.findBy(WorkflowTagMapping, { workflowId });
 		if (oldTags.length > 0) {
 			await transactionManager.delete(WorkflowTagMapping, oldTags);

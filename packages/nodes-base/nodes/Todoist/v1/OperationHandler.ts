@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { Section, TodoistResponse } from './Service';
@@ -43,14 +43,16 @@ export interface Command {
 	};
 }
 
-export const enum CommandType {
-	ITEM_MOVE = 'item_move',
-	ITEM_ADD = 'item_add',
-	ITEM_UPDATE = 'item_update',
-	ITEM_REORDER = 'item_reorder',
-	ITEM_DELETE = 'item_delete',
-	ITEM_COMPLETE = 'item_complete',
-}
+export const CommandTypes = {
+	ITEM_MOVE: 'item_move',
+	ITEM_ADD: 'item_add',
+	ITEM_UPDATE: 'item_update',
+	ITEM_REORDER: 'item_reorder',
+	ITEM_DELETE: 'item_delete',
+	ITEM_COMPLETE: 'item_complete',
+} as const;
+
+export type CommandType = (typeof CommandTypes)[keyof typeof CommandTypes];
 
 async function getLabelNameFromId(ctx: Context, labelIds: number[]): Promise<string[]> {
 	const labelList = [];
@@ -263,7 +265,7 @@ export class MoveHandler implements OperationHandler {
 		const body: SyncRequest = {
 			commands: [
 				{
-					type: CommandType.ITEM_MOVE,
+					type: CommandTypes.ITEM_MOVE,
 					uuid: uuid(),
 					args: {
 						id: taskId,
@@ -324,10 +326,9 @@ export class SyncHandler implements OperationHandler {
 			if (sectionId) {
 				command.args.section_id = sectionId;
 			} else {
-				throw new ApplicationError(
-					'Section ' + command.args.section + " doesn't exist on Todoist",
-					{ level: 'warning' },
-				);
+				throw new UserError('Section ' + command.args.section + " doesn't exist on Todoist", {
+					level: 'warning',
+				});
 			}
 		}
 	}
@@ -339,7 +340,7 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresProjectId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
@@ -350,6 +351,6 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private requiresTempId(command: Command) {
-		return command.type === CommandType.ITEM_ADD;
+		return command.type === CommandTypes.ITEM_ADD;
 	}
 }

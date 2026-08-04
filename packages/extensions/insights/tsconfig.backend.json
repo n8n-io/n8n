@@ -1,0 +1,8 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"moduleResolution": "bundler",
+		"module": "esnext"
+	},
+	"include": ["src/backend/**/*.ts", "src/index.ts"]
+}

@@ -1,4 +1,4 @@
-import { paramCase, snakeCase } from 'change-case';
+import { kebabCase, snakeCase } from 'change-case';
 import { createHash } from 'crypto';
 import type {
 	IDataObject,
@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { Builder } from 'xml2js';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
@@ -36,8 +36,8 @@ export class AwsS3V1 implements INodeType {
 			defaults: {
 				name: 'AWS S3',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'aws',
@@ -96,7 +96,7 @@ export class AwsS3V1 implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							headers['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.bucketObjectLockEnabled) {
 							headers['x-amz-bucket-object-lock-enabled'] =
@@ -488,7 +488,7 @@ export class AwsS3V1 implements INodeType {
 							).toUpperCase();
 						}
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							headers['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
 							headers['x-amz-grant-full-control'] = '';
@@ -767,7 +767,7 @@ export class AwsS3V1 implements INodeType {
 							).toUpperCase();
 						}
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							headers['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
 							headers['x-amz-grant-full-control'] = '';

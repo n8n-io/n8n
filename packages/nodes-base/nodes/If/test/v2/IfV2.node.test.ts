@@ -1,5 +1,6 @@
-import { mock } from 'jest-mock-extended';
-import { get } from 'lodash';
+import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { mock } from 'vitest-mock-extended';
+import get from 'lodash/get';
 import {
 	NodeOperationError,
 	type IExecuteFunctions,
@@ -8,16 +9,16 @@ import {
 	type IGetNodeParameterOptions,
 } from 'n8n-workflow';
 
-import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
-
 import * as IfV2 from '../../V2/IfV2.node';
 
-jest.mock('lodash/set', () => jest.fn());
+vi.mock('lodash/set', () => ({ default: vi.fn() }));
 
 describe('Test IF v2 Node Tests', () => {
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => vi.resetAllMocks());
 
-	describe('Test IF v2 Node Workflow Tests', () => testWorkflows(getWorkflowFilenames(__dirname)));
+	describe('Test IF v2 Node Workflow Tests', () => {
+		new NodeTestHarness().setupTests();
+	});
 
 	describe('Test IF V2 Node Unit Tests', () => {
 		const node = new IfV2.IfV2(mock<INodeTypeDescription>());
@@ -32,8 +33,8 @@ describe('Test IF v2 Node Tests', () => {
 				getNodeParameter(
 					parameterName: string,
 					itemIndex: number,
-					fallbackValue?: IDataObject | undefined,
-					options?: IGetNodeParameterOptions | undefined,
+					fallbackValue?: IDataObject,
+					options?: IGetNodeParameterOptions,
 				) {
 					const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
 

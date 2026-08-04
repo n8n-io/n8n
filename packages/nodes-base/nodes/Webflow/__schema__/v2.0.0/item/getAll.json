@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "cmsLocaleId": {
+            "type": "string"
+        },
+        "createdOn": {
+            "type": "string"
+        },
+        "fieldData": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "isDraft": {
+            "type": "boolean"
+        },
+        "lastUpdated": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

@@ -1,6 +1,6 @@
 import { capitalCase, pascalCase } from 'change-case';
 import moment from 'moment-timezone';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -48,8 +48,9 @@ export class Keap implements INodeType {
 		defaults: {
 			name: 'Keap',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'keapOAuth2Api',

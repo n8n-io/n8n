@@ -1,26 +1,29 @@
 import { Service } from '@n8n/di';
-import { ApplicationError } from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
 	INodeExecutionData,
 	IPollFunctions,
-	IGetExecuteTriggerFunctions,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	WorkflowActivateMode,
 	ITriggerResponse,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
+	ExecutionError,
 } from 'n8n-workflow';
+import assert from 'node:assert';
+
+import type { IGetExecuteTriggerFunctions } from './interfaces';
 
 @Service()
 export class TriggersAndPollers {
 	/**
-	 * Runs the given trigger node so that it can trigger the workflow when the node has data.
+	 * Runs the trigger() implementation for an active trigger or schedule trigger node.
 	 */
-	async runTrigger(
+	async runTriggerFunction(
 		workflow: Workflow,
 		node: INode,
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
@@ -33,7 +36,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.trigger) {
-			throw new ApplicationError('Node type does not have a trigger function defined', {
+			throw new UnexpectedError('Node type does not have a trigger function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});
@@ -46,46 +49,38 @@ export class TriggersAndPollers {
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerResponse!.manualTriggerResponse = new Promise((resolve, reject) => {
+				const { hooks } = additionalData;
+				assert.ok(hooks, 'Execution lifecycle hooks are not defined');
+
 				triggerFunctions.emit = (
-					(resolveEmit) =>
-					(
-						data: INodeExecutionData[][],
-						responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-						donePromise?: IDeferredPromise<IRun>,
-					) => {
-						additionalData.hooks!.hookFunctions.sendResponse = [
-							async (response: IExecuteResponsePromiseData): Promise<void> => {
-								if (responsePromise) {
-									responsePromise.resolve(response);
-								}
-							},
-						];
-
-						if (donePromise) {
-							additionalData.hooks!.hookFunctions.workflowExecuteAfter?.unshift(
-								async (runData: IRun): Promise<void> => {
-									return donePromise.resolve(runData);
-								},
-							);
-						}
-
-						resolveEmit(data);
+					data: INodeExecutionData[][],
+					responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+					donePromise?: IDeferredPromise<IRun>,
+				) => {
+					if (responsePromise) {
+						hooks.addHandler('sendResponse', (response) => responsePromise.resolve(response));
 					}
-				)(resolve);
+
+					if (donePromise) {
+						hooks.addHandler('workflowExecuteAfter', (runData) => donePromise.resolve(runData));
+					}
+
+					resolve(data);
+				};
+
 				triggerFunctions.emitError = (
-					(rejectEmit) =>
-					(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>) => {
-						additionalData.hooks!.hookFunctions.sendResponse = [
-							async (): Promise<void> => {
-								if (responsePromise) {
-									responsePromise.reject(error);
-								}
-							},
-						];
-
-						rejectEmit(error);
+					error: Error,
+					responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+				) => {
+					if (responsePromise) {
+						hooks.addHandler('sendResponse', () => responsePromise.reject(error));
 					}
-				)(reject);
+					reject(error);
+				};
+
+				triggerFunctions.saveFailedExecution = (error: ExecutionError) => {
+					reject(error);
+				};
 			});
 
 			return triggerResponse;
@@ -95,9 +90,9 @@ export class TriggersAndPollers {
 	}
 
 	/**
-	 * Runs the given poller node so that it can trigger the workflow when the node has data.
+	 * Runs the poll() implementation for a poll trigger node.
 	 */
-	async runPoll(
+	async runPollFunction(
 		workflow: Workflow,
 		node: INode,
 		pollFunctions: IPollFunctions,
@@ -105,7 +100,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.poll) {
-			throw new ApplicationError('Node type does not have a poll function defined', {
+			throw new UnexpectedError('Node type does not have a poll function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});

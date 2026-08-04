@@ -1,4 +1,4 @@
-import type { IDataObject, INode, INodeType } from 'n8n-workflow';
+import { ExpressionError, type IDataObject, type INode, type INodeType } from 'n8n-workflow';
 
 import { validateValueAgainstSchema } from '../validate-value-against-schema';
 
@@ -247,65 +247,352 @@ describe('validateValueAgainstSchema', () => {
 		expect(typeof result).toEqual('number');
 	});
 
-	describe('when the mode is in Fixed mode, and the node is a resource mapper', () => {
-		const nodeType = {
-			description: {
-				properties: [
-					{
-						name: 'operation',
-						type: 'resourceMapper',
-						typeOptions: {
-							resourceMapper: {
-								mode: 'add',
+	describe('when validating a resource mapper value', () => {
+		describe('when attemptToConvertTypes === true', () => {
+			const nodeType = {
+				description: {
+					properties: [
+						{
+							name: 'operation',
+							type: 'resourceMapper',
+							typeOptions: {
+								resourceMapper: {
+									mode: 'add',
+								},
 							},
 						},
-					},
-				],
-			},
-		} as unknown as INodeType;
-
-		const node = {
-			parameters: {
-				operation: {
-					schema: [
-						{ id: 'num', type: 'number', required: true },
-						{ id: 'str', type: 'string', required: true },
-						{ id: 'obj', type: 'object', required: true },
-						{ id: 'arr', type: 'array', required: true },
 					],
-					attemptToConvertTypes: true,
-					mappingMode: '',
-					value: '',
 				},
-			},
-		} as unknown as INode;
+			} as unknown as INodeType;
 
-		const parameterName = 'operation.value';
+			const node = {
+				parameters: {
+					operation: {
+						schema: [
+							{ id: 'num', type: 'number', required: true },
+							{ id: 'str', type: 'string', required: true },
+							{ id: 'obj', type: 'object', required: true },
+							{ id: 'arr', type: 'array', required: true },
+						],
+						attemptToConvertTypes: true,
+						mappingMode: '',
+						value: '',
+					},
+				},
+			} as unknown as INode;
 
-		describe('should correctly validate values for', () => {
-			test.each([
-				{ num: 0 },
-				{ num: 23 },
-				{ num: -0 },
-				{ num: -Infinity },
-				{ num: Infinity },
-				{ str: '' },
-				{ str: ' ' },
-				{ str: 'hello' },
-				{ arr: [] },
-				{ obj: {} },
-			])('%s', (value) => {
-				expect(() =>
-					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
-				).not.toThrow();
+			const parameterName = 'operation.value';
+
+			describe('should correctly validate values for', () => {
+				test.each([
+					{ num: 0 },
+					{ num: 23 },
+					{ num: -0 },
+					{ num: -Infinity },
+					{ num: Infinity },
+					{ str: '' },
+					{ str: ' ' },
+					{ str: 'hello' },
+					{ arr: [] },
+					{ obj: {} },
+				])('%s', (value) => {
+					expect(() =>
+						validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+					).not.toThrow();
+				});
+			});
+
+			describe('should throw an error for', () => {
+				test.each([{ num: NaN }, { num: undefined }, { num: null }])('%s', (value) => {
+					expect(() =>
+						validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+					).toThrow();
+				});
 			});
 		});
 
-		describe('should throw an error for', () => {
-			test.each([{ num: NaN }, { num: undefined }, { num: null }])('%s', (value) => {
+		describe('when showTypeConversionOptions is not set (=default)', () => {
+			test('should correctly convert types', () => {
+				const nodeType = {
+					description: {
+						properties: [
+							{
+								displayName: 'Columns',
+								name: 'columns',
+								type: 'resourceMapper',
+								required: true,
+								typeOptions: {
+									loadOptionsDependsOn: ['table.value', 'operation'],
+									resourceMapper: {
+										mode: 'upsert',
+									},
+								},
+							},
+						],
+					},
+				} as unknown as INodeType;
+
+				const node: INode = {
+					parameters: {
+						columns: {
+							mappingMode: 'defineBelow',
+							value: {
+								id: 2,
+								count: '={{ $json.count }}',
+							},
+							matchingColumns: ['id'],
+							attemptToConvertTypes: false,
+							convertFieldsToString: true,
+							schema: [
+								{
+									id: 'id',
+									displayName: 'id',
+									required: false,
+									defaultMatch: true,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+								{
+									id: 'count',
+									displayName: 'count',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: false,
+								},
+							],
+						},
+						options: {},
+					},
+					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
+					name: 'add products to DB',
+					type: 'n8n-nodes-base.postgres',
+					typeVersion: 2.3,
+					position: [420, 0],
+				};
+
+				const value = {
+					id: 2,
+					count: '23',
+				};
+
+				const parameterName = 'columns.value';
+
+				const result = validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0);
+
+				expect(result).toEqual({
+					id: 2,
+					count: 23,
+				});
+			});
+		});
+
+		describe('when showTypeConversionOptions is true', () => {
+			test('should throw an error', () => {
+				const nodeType = {
+					description: {
+						properties: [
+							{
+								displayName: 'Columns',
+								name: 'columns',
+								type: 'resourceMapper',
+								noDataExpression: true,
+								typeOptions: {
+									resourceMapper: {
+										showTypeConversionOptions: true,
+										mode: 'upsert',
+									},
+								},
+							},
+						],
+					},
+				} as unknown as INodeType;
+
+				const node: INode = {
+					parameters: {
+						columns: {
+							mappingMode: 'defineBelow',
+							value: {
+								id: 2,
+								count: '={{ $json.count }}',
+							},
+							matchingColumns: ['id'],
+							schema: [
+								{
+									id: 'id',
+									displayName: 'id',
+									required: false,
+									defaultMatch: true,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+								{
+									id: 'count',
+									displayName: 'count',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: false,
+								},
+							],
+						},
+						options: {},
+					},
+					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
+					name: 'add products to DB',
+					type: 'n8n-nodes-base.postgres',
+					typeVersion: 2.3,
+					position: [420, 0],
+				};
+
+				const value = {
+					id: 2,
+					count: '23',
+				};
+
+				const parameterName = 'columns.value';
+
 				expect(() =>
 					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
-				).toThrow();
+				).toThrow(ExpressionError);
+				expect(() =>
+					validateValueAgainstSchema(node, nodeType, value, parameterName, 0, 0),
+				).toThrow("Invalid input for 'count' [item 0]");
+			});
+		});
+
+		describe('schema field lookup', () => {
+			const nodeType = {
+				description: {
+					properties: [
+						{
+							displayName: 'Columns',
+							name: 'columns',
+							type: 'resourceMapper',
+							typeOptions: {
+								resourceMapper: {
+									mode: 'add',
+								},
+							},
+						},
+					],
+				},
+			} as unknown as INodeType;
+
+			const schemaField = (id: string, type: string, required = false) => ({
+				id,
+				displayName: id,
+				required,
+				defaultMatch: false,
+				display: true,
+				type,
+				canBeUsedToMatch: false,
+			});
+
+			const makeNode = (schema: unknown[], value: IDataObject) =>
+				({
+					parameters: {
+						columns: {
+							mappingMode: 'defineBelow',
+							value,
+							matchingColumns: [],
+							attemptToConvertTypes: false,
+							schema,
+						},
+						options: {},
+					},
+					id: '8d6cec63-8db1-440c-8966-4d6311ee69a9',
+					name: 'add products to DB',
+					type: 'n8n-nodes-base.postgres',
+					typeVersion: 2.3,
+					position: [420, 0],
+				}) as unknown as INode;
+
+			const parameterName = 'columns.value';
+
+			test('resolves every value against its own schema entry, whatever its position', () => {
+				const schema = [
+					schemaField('a', 'number'),
+					schemaField('b', 'string'),
+					schemaField('c', 'number'),
+					schemaField('d', 'boolean'),
+				];
+				const value = { d: 'true', c: '3', b: 2, a: '1' };
+
+				const result = validateValueAgainstSchema(
+					makeNode(schema, value),
+					nodeType,
+					value,
+					parameterName,
+					0,
+					0,
+				);
+
+				// `a`, `c` and `d` are cast to their schema type; `b` keeps its type, as
+				// validateFieldType does not coerce values for string fields.
+				expect(result).toEqual({ a: 1, b: 2, c: 3, d: true });
+			});
+
+			test('uses the first entry when a field id appears twice, like Array.prototype.find', () => {
+				const schema = [schemaField('dup', 'number'), schemaField('dup', 'string')];
+				const value = { dup: '42' };
+
+				const result = validateValueAgainstSchema(
+					makeNode(schema, value),
+					nodeType,
+					value,
+					parameterName,
+					0,
+					0,
+				);
+
+				// The first entry types `dup` as a number, so the string is cast. Had the second
+				// (string) entry won, the value would have stayed '42'.
+				expect(result).toEqual({ dup: 42 });
+			});
+
+			test('leaves values that have no schema entry untouched', () => {
+				const schema = [schemaField('known', 'number')];
+				const value = { known: '7', unknown: 'abc' };
+
+				const result = validateValueAgainstSchema(
+					makeNode(schema, value),
+					nodeType,
+					value,
+					parameterName,
+					0,
+					0,
+				);
+
+				expect(result).toEqual({ known: 7, unknown: 'abc' });
+			});
+
+			// `isResourceMapperValue` only checks that `schema` is present, so a persisted
+			// `schema: null` reaches the lookup. Indexing now runs before the loop, where the
+			// previous `schema.find` only ran inside it — an empty value never touched it.
+			describe.each([
+				['null', null],
+				['undefined', undefined],
+				['empty', []],
+			])('when the stored schema is %s', (_label, schema) => {
+				test('resolves no field instead of throwing', () => {
+					const value = { anything: 'kept' };
+
+					const result = validateValueAgainstSchema(
+						makeNode(schema as unknown as unknown[], value),
+						nodeType,
+						value,
+						parameterName,
+						0,
+						0,
+					);
+
+					expect(result).toEqual({ anything: 'kept' });
+				});
 			});
 		});
 	});

@@ -1,8 +1,7 @@
+import { toResult, type Result } from '@n8n/utils/result';
 import type { CallExpression, Identifier, Node, Program } from 'acorn';
 import { parse } from 'acorn';
 import { ancestor } from 'acorn-walk';
-import type { Result } from 'n8n-workflow';
-import { toResult } from 'n8n-workflow';
 
 import {
 	isAssignmentExpression,
@@ -54,8 +53,22 @@ export class BuiltInsParser {
 	) => {
 		// $(...)
 		const isDollar = node.callee.type === 'Identifier' && node.callee.name === '$';
-		if (!isDollar) return;
+		const isItems = node.callee.type === 'Identifier' && node.callee.name === '$items';
+		if (isDollar) {
+			this.visitDollarCallExpression(node, state, ancestors);
+		} else if (isItems) {
+			// $items(...) is a legacy syntax that is not documented but we still
+			// need to support it for backwards compatibility
+			this.visitDollarItemsCallExpression(node, state);
+		}
+	};
 
+	/** $(...) */
+	private visitDollarCallExpression(
+		node: CallExpression,
+		state: BuiltInsParserState,
+		ancestors: Node[],
+	) {
 		// $(): This is not valid, ignore
 		if (node.arguments.length === 0) {
 			return;
@@ -78,7 +91,31 @@ export class BuiltInsParser {
 
 		// Determine how $("node") is used
 		this.handlePrevNodeCall(node, state, ancestors);
-	};
+	}
+
+	/** $items(...) */
+	private visitDollarItemsCallExpression(node: CallExpression, state: BuiltInsParserState) {
+		// $items(): This gets items from the previous node
+		if (node.arguments.length === 0) {
+			state.markInputAsNeeded();
+			return;
+		}
+
+		const firstArg = node.arguments[0];
+		if (!isLiteral(firstArg)) {
+			// $items(variable): Can't easily determine statically, mark all nodes as needed
+			state.markNeedsAllNodes();
+			return;
+		}
+
+		if (typeof firstArg.value !== 'string') {
+			// $items(123): Static value, but not a string --> unsupported code --> ignore
+			return;
+		}
+
+		// $items(nodeName): Static value, mark 'nodeName' as needed
+		state.markNodeAsNeeded(firstArg.value);
+	}
 
 	private handlePrevNodeCall(_node: CallExpression, state: BuiltInsParserState, ancestors: Node[]) {
 		// $("node").item, .pairedItem or .itemMatching: In a case like this, the execution

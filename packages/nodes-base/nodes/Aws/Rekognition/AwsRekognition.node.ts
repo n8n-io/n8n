@@ -5,9 +5,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 
 import { awsApiRequestREST, keysTPascalCase } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsRekognition implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,18 +19,15 @@ export class AwsRekognition implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to AWS Rekognition',
+		schemaPath: 'Aws/Rekognition',
 		defaults: {
 			name: 'AWS Rekognition',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -413,10 +411,10 @@ export class AwsRekognition implements INodeType {
 						const isBinaryData = this.getNodeParameter('binaryData', i);
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							Object.assign(body, {
 								Image: {
-									Bytes: binaryPropertyData.data,
+									Bytes: binaryBuffer.toString(BINARY_ENCODING),
 								},
 							});
 						} else {

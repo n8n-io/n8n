@@ -1,0 +1,57 @@
+{
+	"objectDescribe": {
+		"activateable": false,
+		"associateEntityType": null,
+		"associateParentEntity": null,
+		"createable": true,
+		"custom": false,
+		"customSetting": false,
+		"deepCloneable": false,
+		"deletable": true,
+		"deprecatedAndHidden": false,
+		"feedEnabled": false,
+		"hasSubtypes": false,
+		"isInterface": false,
+		"isSubtype": false,
+		"keyPrefix": "00T",
+		"label": "Task",
+		"labelPlural": "Tasks",
+		"layoutable": true,
+		"mergeable": false,
+		"mruEnabled": true,
+		"name": "Task",
+		"queryable": true,
+		"replicateable": true,
+		"retrieveable": true,
+		"searchable": true,
+		"triggerable": true,
+		"undeletable": true,
+		"updateable": true,
+		"urls": {
+			"compactLayouts": "/services/data/v59.0/sobjects/Task/describe/compactLayouts",
+			"rowTemplate": "/services/data/v59.0/sobjects/Task/{ID}",
+			"describe": "/services/data/v59.0/sobjects/Task/describe",
+			"quickActions": "/services/data/v59.0/sobjects/Task/quickActions",
+			"layouts": "/services/data/v59.0/sobjects/Task/describe/layouts",
+			"sobject": "/services/data/v59.0/sobjects/Task"
+		}
+	},
+	"recentItems": [
+		{
+			"attributes": {
+				"type": "Task",
+				"url": "/services/data/v59.0/sobjects/Task/00TgL000000BbYyUAK"
+			},
+			"Id": "00TgL000000BbYyUAK",
+			"Subject": "Email"
+		},
+		{
+			"attributes": {
+				"type": "Task",
+				"url": "/services/data/v59.0/sobjects/Task/00TgL000000BfCjUAK"
+			},
+			"Id": "00TgL000000BfCjUAK",
+			"Subject": "Email"
+		}
+	]
+}

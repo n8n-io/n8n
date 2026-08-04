@@ -1,0 +1,97 @@
+@use '../common/var';
+@use '../mixins/mixins';
+@use './picker-panel.scss';
+
+@include mixins.b(date-picker) {
+	width: 322px;
+
+	&.has-sidebar.has-time {
+		width: 434px;
+	}
+
+	&.has-sidebar {
+		width: 438px;
+	}
+
+	&.has-time .el-picker-panel__body-wrapper {
+		position: relative;
+	}
+
+	.el-picker-panel__content {
+		width: 292px;
+	}
+
+	table {
+		table-layout: fixed;
+		width: 100%;
+	}
+
+	@include mixins.e(editor-wrap) {
+		position: relative;
+		display: table-cell;
+		padding: 0 5px;
+	}
+
+	@include mixins.e(time-header) {
+		position: relative;
+		border-bottom: 1px solid var.$datepicker-inner-border-color;
+		font-size: 12px;
+		padding: 8px 5px 5px;
+		display: table;
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	@include mixins.e(header) {
+		margin: 12px;
+		text-align: center;
+
+		@include mixins.m(bordered) {
+			margin-bottom: 0;
+			padding-bottom: 12px;
+			border-bottom: solid 1px var(--border-color--light);
+
+			& + .el-picker-panel__content {
+				margin-top: 0;
+			}
+		}
+	}
+
+	@include mixins.e(header-label) {
+		font-size: 16px;
+		font-weight: var(--font-weight--medium);
+		padding: 0 5px;
+		line-height: 22px;
+		text-align: center;
+		cursor: pointer;
+		color: var(--color--text--shade-1);
+
+		&:hover {
+			color: var.$datepicker-hover-font-color;
+		}
+
+		&.active {
+			color: var.$datepicker-active-color;
+		}
+	}
+
+	@include mixins.e(prev-btn) {
+		float: left;
+	}
+
+	@include mixins.e(next-btn) {
+		float: right;
+	}
+
+	@include mixins.e(time-wrap) {
+		padding: 10px;
+		text-align: center;
+	}
+
+	@include mixins.e(time-label) {
+		float: left;
+		cursor: pointer;
+		line-height: 30px;
+		margin-left: 10px;
+	}
+}

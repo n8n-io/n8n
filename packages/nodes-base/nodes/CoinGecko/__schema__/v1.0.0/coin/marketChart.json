@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "price": {
+            "type": "number"
+        },
+        "time": {
+            "type": "string"
+        },
+        "totalVolume": {
+            "type": "number"
+        }
+    },
+    "version": 3
+}

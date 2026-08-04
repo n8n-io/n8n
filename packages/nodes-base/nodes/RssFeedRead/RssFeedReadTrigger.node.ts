@@ -6,8 +6,11 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import Parser from 'rss-parser';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import type Parser from 'rss-parser';
+
+import { parseFeedUrl } from './GenericFunctions';
 
 interface PollData {
 	lastItemDate?: string;
@@ -18,7 +21,7 @@ export class RssFeedReadTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Feed Trigger',
 		name: 'rssFeedReadTrigger',
-		icon: 'fa:rss',
+		icon: 'node:rss-feed-trigger',
 		iconColor: 'orange-red',
 		group: ['trigger'],
 		version: 1,
@@ -26,11 +29,10 @@ export class RssFeedReadTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'RSS Feed Trigger',
-			color: '#b02020',
 		},
 		polling: true,
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Feed URL',
@@ -55,11 +57,9 @@ export class RssFeedReadTrigger implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 		}
 
-		const parser = new Parser();
-
 		let feed: Parser.Output<IDataObject>;
 		try {
-			feed = await parser.parseURL(feedUrl);
+			feed = await parseFeedUrl(this.helpers, feedUrl);
 		} catch (error) {
 			if (error.code === 'ECONNREFUSED') {
 				throw new NodeOperationError(

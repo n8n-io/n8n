@@ -34,6 +34,11 @@ describe('ForgotPasswordRequestDto', () => {
 				request: { email: '' },
 				expectedErrorPath: ['email'],
 			},
+			{
+				name: 'email exceeds max length',
+				request: { email: 'a'.repeat(244) + '@example.com' },
+				expectedErrorPath: ['email'],
+			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = ForgotPasswordRequestDto.safeParse(request);
 

@@ -7,8 +7,8 @@
  */
 // @ts-check
 import fs from 'fs';
-import minimist from 'minimist';
 import path from 'path';
+import { minimist } from 'zx';
 import { runInCloud } from './run-in-cloud.mjs';
 import { runLocally } from './run-locally.mjs';
 
@@ -40,6 +40,7 @@ async function main() {
 			n8nSetupsToUse,
 			vus: config.vus,
 			duration: config.duration,
+			scenarioFilter: config.scenarioFilter,
 		});
 	} else if (config.env === 'local') {
 		await runLocally({
@@ -54,6 +55,7 @@ async function main() {
 			n8nSetupsToUse,
 			vus: config.vus,
 			duration: config.duration,
+			scenarioFilter: config.scenarioFilter,
 		});
 	} else {
 		console.error('Invalid env:', config.env);
@@ -82,6 +84,7 @@ function readAvailableN8nSetups() {
  * @property {string} [runDir]
  * @property {string} [vus]
  * @property {string} [duration]
+ * @property {string} [scenarioFilter]
  *
  * @returns {Promise<Config>}
  */
@@ -109,6 +112,7 @@ async function parseAndValidateConfig() {
 	const env = args.env || 'local';
 	const vus = args.vus;
 	const duration = args.duration;
+	const scenarioFilter = args.scenarioFilter;
 
 	if (!env) {
 		printUsage();
@@ -128,11 +132,12 @@ async function parseAndValidateConfig() {
 		runDir,
 		vus,
 		duration,
+		scenarioFilter,
 	};
 }
 
 /**
- * @param {minimist.ParsedArgs} args
+ * @param {ReturnType<typeof minimist>} args
  */
 async function getAndValidateN8nSetup(args) {
 	// Last parameter is the n8n setup to use
@@ -167,6 +172,7 @@ function printUsage() {
 	console.log('  --debug              Enable verbose output');
 	console.log('  --n8nTag             Docker tag for n8n image. Default is latest');
 	console.log('  --benchmarkTag       Docker tag for benchmark cli image. Default is latest');
+	console.log('  --scenarioFilter     Filter scenarios by name (case-insensitive)');
 	console.log('  --vus                How many concurrent requests to make');
 	console.log('  --duration           Test duration, e.g. 1m or 30s');
 	console.log(

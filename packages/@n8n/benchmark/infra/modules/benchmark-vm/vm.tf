@@ -74,7 +74,7 @@ resource "azurerm_managed_disk" "data" {
   resource_group_name  = var.resource_group_name
   storage_account_type = "PremiumV2_LRS"
   create_option        = "Empty"
-  disk_size_gb         = "16"
+  disk_size_gb         = "32"
   zone                 = 1
 
   tags = var.tags

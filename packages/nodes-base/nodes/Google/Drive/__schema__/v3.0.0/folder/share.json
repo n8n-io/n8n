@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "allowFileDiscovery": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "kind": {
+            "type": "string"
+        },
+        "role": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

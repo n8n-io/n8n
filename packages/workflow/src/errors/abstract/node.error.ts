@@ -1,5 +1,5 @@
 import { ExecutionBaseError } from './execution-base.error';
-import type { IDataObject, INode, JsonObject } from '../../Interfaces';
+import type { IDataObject, INode, JsonObject } from '../../interfaces';
 import { isTraversableObject, jsonParse } from '../../utils';
 
 /**
@@ -79,7 +79,11 @@ export abstract class NodeError extends ExecutionBaseError {
 		jsonError: JsonObject,
 		potentialKeys: string[],
 		traversalKeys: string[] = [],
+		ancestors = new Set<JsonObject>(),
 	): string | null {
+		if (ancestors.has(jsonError)) return null;
+		const seen = new Set(ancestors).add(jsonError);
+
 		for (const key of potentialKeys) {
 			let value = jsonError[key];
 			if (value) {
@@ -94,12 +98,12 @@ export abstract class NodeError extends ExecutionBaseError {
 				if (typeof value === 'number') return value.toString();
 				if (Array.isArray(value)) {
 					const resolvedErrors: string[] = value
-						// eslint-disable-next-line @typescript-eslint/no-shadow
+
 						.map((jsonError) => {
 							if (typeof jsonError === 'string') return jsonError;
 							if (typeof jsonError === 'number') return jsonError.toString();
 							if (isTraversableObject(jsonError)) {
-								return this.findProperty(jsonError, potentialKeys);
+								return this.findProperty(jsonError, potentialKeys, [], seen);
 							}
 							return null;
 						})
@@ -111,7 +115,7 @@ export abstract class NodeError extends ExecutionBaseError {
 					return resolvedErrors.join(' | ');
 				}
 				if (isTraversableObject(value)) {
-					const property = this.findProperty(value, potentialKeys);
+					const property = this.findProperty(value, potentialKeys, [], seen);
 					if (property) {
 						return property;
 					}
@@ -122,7 +126,7 @@ export abstract class NodeError extends ExecutionBaseError {
 		for (const key of traversalKeys) {
 			const value = jsonError[key];
 			if (isTraversableObject(value)) {
-				const property = this.findProperty(value, potentialKeys, traversalKeys);
+				const property = this.findProperty(value, potentialKeys, traversalKeys, seen);
 				if (property) {
 					return property;
 				}

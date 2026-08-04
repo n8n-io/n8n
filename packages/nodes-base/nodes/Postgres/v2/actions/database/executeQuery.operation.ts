@@ -12,9 +12,15 @@ import type {
 	PgpDatabase,
 	PostgresNodeOptions,
 	QueriesRunner,
+	QueryValue,
 	QueryWithValues,
 } from '../../helpers/interfaces';
-import { isJSON, replaceEmptyStringsByNulls, stringToArray } from '../../helpers/utils';
+import {
+	evaluateExpression,
+	isJSON,
+	replaceEmptyStringsByNulls,
+	stringToArray,
+} from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -63,7 +69,7 @@ export async function execute(
 			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
 		}
 
-		let values: Array<IDataObject | string> = [];
+		let values: QueryValue[] = [];
 
 		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
 
@@ -84,8 +90,19 @@ export async function execute(
 					const resolvables = getResolvables(rawValues);
 					if (resolvables.length) {
 						for (const resolvable of resolvables) {
-							const evaluatedExpression =
-								this.evaluateExpression(`${resolvable}`, index)?.toString() ?? '';
+							const rawEvaluated = this.evaluateExpression(`${resolvable}`, index);
+
+							if (Array.isArray(rawEvaluated)) {
+								for (const item of rawEvaluated) {
+									if (item === undefined) continue;
+									values.push(
+										typeof item === 'object' && item !== null ? JSON.stringify(item) : item,
+									);
+								}
+								continue;
+							}
+
+							const evaluatedExpression = evaluateExpression(rawEvaluated);
 							const evaluatedValues = isJSON(evaluatedExpression)
 								? [evaluatedExpression]
 								: stringToArray(evaluatedExpression);
@@ -140,5 +157,5 @@ export async function execute(
 		return { query, values, options: { partial: true } };
 	});
 
-	return await runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, nodeOptions);
 }

@@ -1,8 +1,8 @@
+import type { WorkflowWithSharingsAndCredentials } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IExecutionResponse, IExecutionFlattedResponse } from '@/interfaces';
-import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
+import type { IExecutionFlattedResponse } from '@/interfaces';
 
 import { ExecutionService } from './execution.service';
 import type { ExecutionRequest } from './execution.types';
@@ -19,7 +19,7 @@ export class EnterpriseExecutionsService {
 	async findOne(
 		req: ExecutionRequest.GetOne,
 		sharedWorkflowIds: string[],
-	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
+	): Promise<IExecutionFlattedResponse | undefined> {
 		const execution = await this.executionService.findOne(req, sharedWorkflowIds);
 
 		if (!execution) return;

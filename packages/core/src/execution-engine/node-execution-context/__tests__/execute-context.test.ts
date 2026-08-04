@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -9,15 +8,19 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError, NodeConnectionType } from 'n8n-workflow';
+import { UnexpectedError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
+import * as validateUtil from '../utils/validate-value-against-schema';
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -38,29 +41,39 @@ describe('ExecuteContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
-	const node = mock<INode>({
+	const node: INode = {
+		id: 'test-node-id',
 		name: 'Test Node',
+		type: 'testNodeType',
+		typeVersion: 1,
+		position: [0, 0],
 		credentials: {
 			[testCredentialType]: {
 				id: 'testCredentialId',
+				name: 'testCredential',
 			},
 		},
-	});
+		parameters: {},
+	};
 	node.parameters = {
 		testParameter: 'testValue',
 		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];
 	const inputData: ITaskDataConnections = { main: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
-	const closeFn = jest.fn();
+	const closeFn = vi.fn();
 	const abortSignal = mock<AbortSignal>();
 
 	const executeContext = new ExecuteContext(
@@ -92,7 +105,7 @@ describe('ExecuteContext', () => {
 
 	describe('getInputData', () => {
 		const inputIndex = 0;
-		const connectionType = NodeConnectionType.Main;
+		const connectionType = NodeConnectionTypes.Main;
 
 		afterEach(() => {
 			inputData[connectionType] = [[{ json: { test: 'data' } }]];
@@ -105,17 +118,15 @@ describe('ExecuteContext', () => {
 		});
 
 		it('should return an empty array if the input name does not exist', () => {
-			const connectionType = 'nonExistent';
-			expect(executeContext.getInputData(inputIndex, connectionType as NodeConnectionType)).toEqual(
-				[],
-			);
+			const connectionType = 'nonExistent' as typeof NodeConnectionTypes.Main;
+			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual([]);
 		});
 
 		it('should throw an error if the input index is out of range', () => {
 			const inputIndex = 2;
 
 			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -123,7 +134,7 @@ describe('ExecuteContext', () => {
 			inputData.main[inputIndex] = null;
 
 			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 	});
@@ -166,6 +177,7 @@ describe('ExecuteContext', () => {
 
 			expect(() => executeContext.getNodeParameter('testParameter', 0)).toThrow(error);
 			expect(error.context.parameter).toEqual('testParameter');
+			expect({ ...error }).toEqual(expect.objectContaining({ cause: 'testValue' }));
 		});
 
 		it('should handle expression errors on Set nodes (Ticket #PAY-684)', () => {
@@ -179,12 +191,25 @@ describe('ExecuteContext', () => {
 			const parameter = executeContext.getNodeParameter('testParameter', 0);
 			expect(parameter).toEqual([{ name: undefined, value: undefined }]);
 		});
+
+		it('should not validate parameter if skipValidation in options', () => {
+			const validateSpy = vi.spyOn(validateUtil, 'validateValueAgainstSchema');
+
+			executeContext.getNodeParameter('testParameter', 0, '', {
+				skipValidation: true,
+			});
+
+			expect(validateSpy).not.toHaveBeenCalled();
+
+			validateSpy.mockRestore();
+		});
 	});
 
 	describe('getCredentials', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials = await executeContext.getCredentials<ICredentialDataDecryptedObject>(
 				testCredentialType,
@@ -213,6 +238,457 @@ describe('ExecuteContext', () => {
 				'last',
 				'params',
 			]);
+		});
+	});
+
+	describe('logNodeOutput', () => {
+		it('when in manual mode, should parse JSON', () => {
+			const json = '{"key": "value", "nested": {"foo": "bar"}}';
+			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
+			const numberArg = 42;
+			const stringArg = 'hello world!';
+
+			const manualModeContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const sendMessageSpy = vi.spyOn(manualModeContext, 'sendMessageToUI');
+
+			manualModeContext.logNodeOutput(json, numberArg, stringArg);
+
+			expect(sendMessageSpy.mock.calls[0][0]).toEqual(expectedParsedObject);
+			expect(sendMessageSpy.mock.calls[0][1]).toBe(numberArg);
+			expect(sendMessageSpy.mock.calls[0][2]).toBe(stringArg);
+
+			sendMessageSpy.mockRestore();
+		});
+	});
+
+	describe('sendChunk', () => {
+		test('should send call hook with structured chunk', async () => {
+			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
+				runHook: vi.fn(),
+			});
+			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
+				...additionalData,
+				hooks: hooksMock,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await testExecuteContext.sendChunk('item', 0, 'test');
+
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'item',
+					content: 'test',
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeId: 'test-node-id',
+						runIndex: 0,
+						itemIndex: 0,
+						timestamp: expect.any(Number),
+					}),
+				}),
+			]);
+		});
+
+		test('should send chunk without content when content is undefined', async () => {
+			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
+				runHook: vi.fn(),
+			});
+			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
+				...additionalData,
+				hooks: hooksMock,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await testExecuteContext.sendChunk('begin', 0);
+
+			expect(hooksMock.runHook).toHaveBeenCalledWith('sendChunk', [
+				expect.objectContaining({
+					type: 'begin',
+					content: undefined,
+					metadata: expect.objectContaining({
+						nodeName: 'Test Node',
+						nodeId: 'test-node-id',
+						runIndex: 0,
+						itemIndex: 0,
+						timestamp: expect.any(Number),
+					}),
+				}),
+			]);
+		});
+
+		test('should handle when hooks is undefined', async () => {
+			const additionalDataWithoutHooks = {
+				...additionalData,
+				hooks: undefined,
+			};
+
+			const testExecuteContext = new ExecuteContext(
+				workflow,
+				node,
+				additionalDataWithoutHooks,
+				'manual',
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			// Should not throw error
+			await expect(testExecuteContext.sendChunk('item', 0, 'test')).resolves.toBeUndefined();
+		});
+	});
+
+	describe('isToolExecution', () => {
+		it('should return false for regular workflow execution', () => {
+			expect(executeContext.isToolExecution()).toBe(false);
+		});
+	});
+
+	describe('getRuntimeCredential', () => {
+		beforeEach(() => {
+			additionalData.getRuntimeCredential.mockReset();
+		});
+
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
+
+			const result = await executeContext.getRuntimeCredential('api_key');
+
+			expect(result).toBe('Bearer xyz');
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
+		});
+
+		it('returns undefined when the underlying callback yields undefined', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
+
+			const result = await executeContext.getRuntimeCredential('missing');
+
+			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('executeAgent', () => {
+		const webhookNode: INode = {
+			id: 'webhook-node-id',
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const agentWorkflow = mock<Workflow>({
+			id: 'wf-id',
+			name: 'My workflow',
+			expression,
+			nodeTypes,
+		});
+		agentWorkflow.nodes = { [node.name]: node, [webhookNode.name]: webhookNode } as never;
+		const agentAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+			rootExecutionMode: undefined,
+		});
+
+		const agentExecuteContext = new ExecuteContext(
+			agentWorkflow,
+			node,
+			agentAdditionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[closeFn],
+			abortSignal,
+		);
+
+		it('passes the workflow context to additionalData.executeAgent', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				agentAdditionalData,
+				'manual',
+				undefined,
+				{
+					workflowId: 'wf-id',
+					workflowName: 'My workflow',
+					callingNodeName: node.name,
+					callingNodeId: node.id,
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'item',
+					exposeWorkflowData: false,
+					hasCallerSessionId: false,
+					nodes: [
+						{ name: node.name, type: node.type },
+						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					],
+					runExecutionData,
+				},
+			);
+		});
+
+		it('passes all input items when inputDataScope is all', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: true },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				agentAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'all',
+					exposeWorkflowData: true,
+				}),
+			);
+		});
+
+		it('scopes to only the indexed item when scope is item, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				1,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				'exec-1-1',
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+			);
+		});
+
+		it('includes every input item when scope is all, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
+					inputDataScope: 'all',
+				}),
+			);
+		});
+
+		it('flattens every main branch when scope is all', async () => {
+			const multiBranchInput: ITaskDataConnections = {
+				main: [[{ json: { branch: 0 } }], null, [{ json: { branch: 2 } }]],
+			};
+			const multiBranchAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			multiBranchAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const multiBranchContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				multiBranchAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				multiBranchInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await multiBranchContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(multiBranchAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				multiBranchAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
+					inputDataScope: 'all',
+				}),
+			);
+		});
+
+		it('scopes to an empty array when itemIndex is out of range', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const outOfRangeAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			outOfRangeAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const outOfRangeContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				outOfRangeAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await outOfRangeContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				5,
+			);
+
+			expect(outOfRangeAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				'exec-1-5',
+				outOfRangeAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+			);
 		});
 	});
 });

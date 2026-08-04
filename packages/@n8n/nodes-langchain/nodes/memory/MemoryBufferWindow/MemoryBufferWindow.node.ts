@@ -1,8 +1,7 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { BufferWindowMemoryInput } from 'langchain/memory';
-import { BufferWindowMemory } from 'langchain/memory';
+import type { BufferWindowMemoryInput } from '@langchain/classic/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import {
-	NodeConnectionType,
+	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -10,14 +9,14 @@ import {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 class MemoryChatBufferSingleton {
@@ -75,20 +74,21 @@ class MemoryChatBufferSingleton {
 
 export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Window Buffer Memory (easiest)',
+		displayName: 'Simple Memory',
 		name: 'memoryBufferWindow',
-		icon: 'fa:database',
+		icon: 'node:simple-memory',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
-			name: 'Window Buffer Memory',
+			name: 'Simple Memory',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
+				Memory: ['For beginners'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -98,13 +98,24 @@ export class MemoryBufferWindow implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+		builderHint: {
+			searchHint:
+				'Reuse with multiple agents in the same workflow by connecting to multiple agent nodes so agents have a shared context.',
+		},
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+
+		outputs: [NodeConnectionTypes.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			{
+				displayName:
+					'This node stores memory locally in the n8n instance. It is not compatible with Queue Mode or Multi-Main setups, as memory will not be shared across workers. For production use with scaling, consider using an external memory store such as Redis, Postgres, or another persistent memory node.',
+				name: 'scalingNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',
@@ -138,6 +149,7 @@ export class MemoryBufferWindow implements INodeType {
 				},
 			},
 			expressionSessionKeyProperty(1.3),
+			scopedSessionHint(1.4),
 			sessionKeyProperty,
 			contextWindowLengthProperty,
 		],

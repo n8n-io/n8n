@@ -9,9 +9,11 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { type AwsSnsMessage, verifySignature } from './AwsSnsTriggerHelpers';
 import { awsApiRequestSOAP } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from './utils';
 
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,13 +28,8 @@ export class AwsSnsTrigger implements INodeType {
 			name: 'AWS SNS Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		outputs: [NodeConnectionTypes.Main],
+		credentials: awsNodeCredentials,
 		webhooks: [
 			{
 				name: 'default',
@@ -42,6 +39,7 @@ export class AwsSnsTrigger implements INodeType {
 			},
 		],
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Topic',
 				name: 'topic',
@@ -248,9 +246,13 @@ export class AwsSnsTrigger implements INodeType {
 			extractValue: true,
 		}) as string;
 
-		const body = jsonParse<{ Type: string; TopicArn: string; Token: string }>(
-			req.rawBody.toString(),
-		);
+		const body = jsonParse<AwsSnsMessage>(req.rawBody.toString());
+
+		if (!(await verifySignature.call(this, body, topic))) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
 
 		if (body.Type === 'SubscriptionConfirmation' && body.TopicArn === topic) {
 			const { Token } = body;
@@ -271,7 +273,6 @@ export class AwsSnsTrigger implements INodeType {
 			return {};
 		}
 
-		//TODO verify message signature
 		return {
 			workflowData: [this.helpers.returnJsonArray(body)],
 		};

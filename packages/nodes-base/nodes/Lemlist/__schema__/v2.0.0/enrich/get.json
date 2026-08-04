@@ -1,0 +1,272 @@
+{
+    "type": "object",
+    "properties": {
+        "data": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "notFound": {
+                            "type": "boolean"
+                        },
+                        "status": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "linkedin": {
+                    "type": "object",
+                    "properties": {
+                        "companyDescription": {
+                            "type": "string"
+                        },
+                        "companyDomain": {
+                            "type": "string"
+                        },
+                        "companyEmployeesOnLinkedin": {
+                            "type": "integer"
+                        },
+                        "companyFoundedOn": {
+                            "type": "integer"
+                        },
+                        "companyHeadQuarter": {
+                            "type": "string"
+                        },
+                        "companyId": {
+                            "type": "integer"
+                        },
+                        "companyIndustry": {
+                            "type": "string"
+                        },
+                        "companyLinkedinUrl": {
+                            "type": "string"
+                        },
+                        "companyLogo": {
+                            "type": "string"
+                        },
+                        "companyName": {
+                            "type": "string"
+                        },
+                        "companySize": {
+                            "type": "string"
+                        },
+                        "companySpecialities": {
+                            "type": "string"
+                        },
+                        "companyTagline": {
+                            "type": "string"
+                        },
+                        "companyType": {
+                            "type": "string"
+                        },
+                        "companyWebsite": {
+                            "type": "string"
+                        },
+                        "firstName": {
+                            "type": "string"
+                        },
+                        "industry": {
+                            "type": "string"
+                        },
+                        "languages": {
+                            "type": "string"
+                        },
+                        "lastName": {
+                            "type": "string"
+                        },
+                        "linkedinClassicId": {
+                            "type": "string"
+                        },
+                        "linkedinMemberId": {
+                            "type": "integer"
+                        },
+                        "linkedinUrl": {
+                            "type": "string"
+                        },
+                        "locationName": {
+                            "type": "string"
+                        },
+                        "occupation": {
+                            "type": "string"
+                        },
+                        "picture": {
+                            "type": "string"
+                        },
+                        "positionGroups": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "company": {
+                                        "type": "object",
+                                        "properties": {
+                                            "description": {
+                                                "type": "string"
+                                            },
+                                            "domain": {
+                                                "type": "string"
+                                            },
+                                            "employeesOnLinkedin": {
+                                                "type": "integer"
+                                            },
+                                            "foundedOn": {
+                                                "type": "integer"
+                                            },
+                                            "headQuarter": {
+                                                "type": "string"
+                                            },
+                                            "id": {
+                                                "type": "integer"
+                                            },
+                                            "industry": {
+                                                "type": "string"
+                                            },
+                                            "linkedinUrl": {
+                                                "type": "string"
+                                            },
+                                            "linkedinUrlSalesNav": {
+                                                "type": "string"
+                                            },
+                                            "logo": {
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "type": "string"
+                                            },
+                                            "size": {
+                                                "type": "string"
+                                            },
+                                            "specialities": {
+                                                "type": "string"
+                                            },
+                                            "tagline": {
+                                                "type": "string"
+                                            },
+                                            "type": {
+                                                "type": "string"
+                                            },
+                                            "website": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "date": {
+                                        "type": "object",
+                                        "properties": {
+                                            "end": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "month": {
+                                                        "type": "integer"
+                                                    },
+                                                    "year": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            },
+                                            "start": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "month": {
+                                                        "type": "integer"
+                                                    },
+                                                    "year": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "profilePositions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "date": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "end": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "month": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "year": {
+                                                                    "type": "integer"
+                                                                }
+                                                            }
+                                                        },
+                                                        "start": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "month": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "year": {
+                                                                    "type": "integer"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "project": {
+                            "type": "string"
+                        },
+                        "skills": {
+                            "type": "string"
+                        },
+                        "summary": {
+                            "type": "string"
+                        },
+                        "tagline": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "enrichmentId": {
+            "type": "string"
+        },
+        "enrichmentStatus": {
+            "type": "string"
+        },
+        "input": {
+            "type": "object",
+            "properties": {
+                "companyDomain": {
+                    "type": "string"
+                },
+                "companyName": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "linkedinUrl": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 5
+}

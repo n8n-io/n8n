@@ -1,9 +1,7 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-export class AbortedExecutionRetryError extends ApplicationError {
+export class AbortedExecutionRetryError extends UnexpectedError {
 	constructor() {
-		super('The execution was aborted before starting, so it cannot be retried', {
-			level: 'warning',
-		});
+		super('The execution was aborted before starting, so it cannot be retried');
 	}
 }

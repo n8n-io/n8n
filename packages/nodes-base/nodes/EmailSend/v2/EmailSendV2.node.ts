@@ -5,27 +5,30 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import * as send from './send.operation';
 import * as sendAndWait from './sendAndWait.operation';
 import { smtpConnectionTest } from './utils';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
-import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import {
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
-	icon: 'fa:envelope',
+	icon: 'node:send-mail',
+	iconColor: 'black',
 	group: ['output'],
 	version: [2, 2.1],
 	description: 'Sends an email using SMTP protocol',
 	defaults: {
 		name: 'Send Email',
-		color: '#00bb88',
 	},
-	inputs: [NodeConnectionType.Main],
-	outputs: [NodeConnectionType.Main],
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
 	usableAsTool: true,
 	credentials: [
 		{
@@ -34,6 +37,7 @@ export const versionDescription: INodeTypeDescription = {
 			testedBy: 'smtpConnectionTest',
 		},
 	],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
@@ -67,6 +71,11 @@ export const versionDescription: INodeTypeDescription = {
 					action: 'Send message and wait for response',
 				},
 			],
+			displayOptions: {
+				show: {
+					resource: ['email'],
+				},
+			},
 		},
 		...send.description,
 		...sendAndWait.description,

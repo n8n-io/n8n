@@ -1,0 +1,144 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`V1 Banner > should render banner 1`] = `
+<div>
+  <div
+    class="n8n-callout callout warning onlyBottomBorder callout v1container"
+    data-test-id="banners-V1"
+    role="alert"
+  >
+    <div
+      class="messageSection"
+    >
+      <div
+        class="icon"
+      >
+        <n8n-icon-stub
+          icon="info"
+          size="medium"
+          spin="false"
+        />
+      </div>
+      <span
+        class="n8n-text size-small regular"
+      >
+        
+        
+        <div
+          class="mainContent keepSpace"
+        >
+          
+          <span>
+            n8n has been updated to version 1, introducing some breaking changes. Please consult the 
+            <a
+              href="https://docs.n8n.io/1-0-migration-checklist"
+              target="_blank"
+            >
+              migration guide
+            </a>
+             for more information.
+          </span>
+          <!--v-if-->
+          
+        </div>
+        
+        
+      </span>
+         
+      
+      
+    </div>
+    
+    <div
+      class="trailingContent"
+    >
+      
+      
+      <n8n-icon-stub
+        class="clickable"
+        data-test-id="banner-V1-close"
+        icon="x"
+        size="small"
+        spin="false"
+        title="Dismiss"
+      />
+    </div>
+    
+  </div>
+</div>
+`;
+
+exports[`V1 Banner > should render banner with dismiss call if user is owner 1`] = `
+<div>
+  <div
+    class="n8n-callout callout warning onlyBottomBorder callout v1container"
+    data-test-id="banners-V1"
+    role="alert"
+  >
+    <div
+      class="messageSection"
+    >
+      <div
+        class="icon"
+      >
+        <n8n-icon-stub
+          icon="info"
+          size="medium"
+          spin="false"
+        />
+      </div>
+      <span
+        class="n8n-text size-small regular"
+      >
+        
+        
+        <div
+          class="mainContent keepSpace"
+        >
+          
+          <span>
+            n8n has been updated to version 1, introducing some breaking changes. Please consult the 
+            <a
+              href="https://docs.n8n.io/1-0-migration-checklist"
+              target="_blank"
+            >
+              migration guide
+            </a>
+             for more information.
+          </span>
+          <a
+            class="link"
+            data-test-id="banner-confirm-v1"
+          >
+            <span>
+              Don't show again
+            </span>
+          </a>
+          
+        </div>
+        
+        
+      </span>
+         
+      
+      
+    </div>
+    
+    <div
+      class="trailingContent"
+    >
+      
+      
+      <n8n-icon-stub
+        class="clickable"
+        data-test-id="banner-V1-close"
+        icon="x"
+        size="small"
+        spin="false"
+        title="Dismiss"
+      />
+    </div>
+    
+  </div>
+</div>
+`;

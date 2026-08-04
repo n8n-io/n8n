@@ -1,0 +1,31 @@
+type: object
+additionalProperties: false
+properties:
+  role:
+    type: string
+    example: 'workflow:owner'
+  workflowId:
+    type: string
+    example: '2tUt1wbLX592XDdX'
+  projectId:
+    type: string
+    example: '2tUt1wbLX592XDdX'
+  project:
+    type: object
+    properties:
+      id:
+        type: string
+        readOnly: true
+      name:
+        type: string
+      type:
+        type: string
+        readOnly: true
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true

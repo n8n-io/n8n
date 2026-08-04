@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "contactId": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "names": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "displayNameLastFirst": {
+                    "type": "string"
+                },
+                "familyName": {
+                    "type": "string"
+                },
+                "givenName": {
+                    "type": "string"
+                },
+                "unstructuredName": {
+                    "type": "string"
+                }
+            }
+        },
+        "resourceName": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -4,7 +4,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -18,21 +18,22 @@ export class CompareDatasets implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Compare Datasets',
 		name: 'compareDatasets',
-		icon: 'file:compare.svg',
+		icon: 'node:compare-datasets',
+		iconColor: 'lime',
 		group: ['transform'],
 		version: [1, 2, 2.1, 2.2, 2.3],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 
-		inputs: [NodeConnectionType.Main, NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 		inputNames: ['Input A', 'Input B'],
 		requiredInputs: 1,
 
 		outputs: [
-			NodeConnectionType.Main,
-			NodeConnectionType.Main,
-			NodeConnectionType.Main,
-			NodeConnectionType.Main,
+			NodeConnectionTypes.Main,
+			NodeConnectionTypes.Main,
+			NodeConnectionTypes.Main,
+			NodeConnectionTypes.Main,
 		],
 		outputNames: ['In A only', 'Same', 'Different', 'In B only'],
 		properties: [

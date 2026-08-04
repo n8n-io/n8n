@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "download_url": {
+            "type": "string"
+        },
+        "download_url_png": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "template_id": {
+            "type": "string"
+        },
+        "transaction_ref": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,13 +1,13 @@
 import set from 'lodash/set';
 import {
-	ApplicationError,
+	BaseError,
 	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
@@ -20,15 +20,19 @@ export class FilterV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2],
+			version: [2, 2.1, 2.2, 2.3],
 			defaults: {
 				name: 'Filter',
 				color: '#229eff',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			outputNames: ['Kept', 'Discarded'],
 			parameterPane: 'wide',
+			builderHint: {
+				searchHint:
+					'Filter emits 0 items when nothing matches and the chain stops cleanly — no IF gate needed before downstream loops.',
+			},
 			properties: [
 				{
 					displayName: 'Conditions',
@@ -40,8 +44,15 @@ export class FilterV2 implements INodeType {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
 							typeValidation: getTypeValidationStrictness(2.1),
-							version: '={{ $nodeVersion >= 2.2 ? 2 : 1 }}',
+							version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
+					},
+					builderHint: {
+						propertyHint: `Must always contain these three sibling keys:
+- combinator: 'and' or 'or', default to 'and'
+- conditions: [ a list of condition objects ]
+- options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 1 }
+e.g.: { combinator: 'and', options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 }, conditions: [{ leftValue: expr('{{ $json.field }}'), rightValue: 'value', operator: { type: 'string', operation: 'equals' } }] }`,
 					},
 				},
 				{
@@ -125,7 +136,7 @@ export class FilterV2 implements INodeType {
 						throw error;
 					}
 
-					if (error instanceof ApplicationError) {
+					if (error instanceof BaseError) {
 						set(error, 'context.itemIndex', itemIndex);
 						throw error;
 					}

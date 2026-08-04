@@ -5,7 +5,7 @@ export class MonicaCrmApi implements ICredentialType {
 
 	displayName = 'Monica CRM API';
 
-	documentationUrl = 'monicaCrm';
+	documentationUrl = 'monicacrm';
 
 	properties: INodeProperties[] = [
 		{

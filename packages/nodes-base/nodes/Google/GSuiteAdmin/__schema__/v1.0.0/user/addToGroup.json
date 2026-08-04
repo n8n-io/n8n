@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "added": {
+            "type": "boolean"
+        },
+        "description": {
+            "type": "string"
+        },
+        "message": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

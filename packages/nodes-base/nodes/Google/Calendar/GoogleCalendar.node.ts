@@ -10,12 +10,7 @@ import type {
 	JsonObject,
 	NodeExecutionHint,
 } from 'n8n-workflow';
-import {
-	NodeConnectionType,
-	NodeApiError,
-	NodeOperationError,
-	NodeExecutionOutput,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
@@ -45,11 +40,20 @@ export class GoogleCalendar implements INodeType {
 		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
+		schemaPath: 'Google/Calendar',
 		defaults: {
 			name: 'Google Calendar',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.googleCalendarTool',
+					relationHint: 'Tool version for AI Agent use',
+				},
+			],
+		},
 		usableAsTool: true,
 		credentials: [
 			{
@@ -811,7 +815,7 @@ export class GoogleCalendar implements INodeType {
 		}
 
 		if (hints.length) {
-			return new NodeExecutionOutput([nodeExecutionData], hints);
+			this.addExecutionHints(...hints);
 		}
 
 		return [nodeExecutionData];

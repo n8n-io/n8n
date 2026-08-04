@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "enableSelfAssignment": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "string"
+        },
+        "managers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "tasks": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "timeCreated": {
+            "type": "integer"
+        },
+        "timeLastModified": {
+            "type": "integer"
+        },
+        "workers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "documentId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

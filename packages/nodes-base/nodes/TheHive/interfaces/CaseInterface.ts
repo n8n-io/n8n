@@ -32,22 +32,29 @@ export interface ICase {
 	upadtedAt?: Date;
 }
 
-export const enum CaseStatus {
-	OPEN = 'Open',
-	RESOLVED = 'Resolved',
-	DELETED = 'Deleted',
-}
+export const CaseStatuses = {
+	OPEN: 'Open',
+	RESOLVED: 'Resolved',
+	DELETED: 'Deleted',
+} as const;
 
-export const enum CaseResolutionStatus {
-	INDETERMINATE = 'Indeterminate',
-	FALSEPOSITIVE = 'FalsePositive',
-	TRUEPOSITIVE = 'TruePositive',
-	OTHER = 'Other',
-	DUPLICATED = 'Duplicated',
-}
+export type CaseStatus = (typeof CaseStatuses)[keyof typeof CaseStatuses];
 
-export const enum CaseImpactStatus {
-	NOIMPACT = 'NoImpact',
-	WITHIMPACT = 'WithImpact',
-	NOTAPPLICABLE = 'NotApplicable',
-}
+export const CaseResolutionStatuses = {
+	INDETERMINATE: 'Indeterminate',
+	FALSEPOSITIVE: 'FalsePositive',
+	TRUEPOSITIVE: 'TruePositive',
+	OTHER: 'Other',
+	DUPLICATED: 'Duplicated',
+} as const;
+
+export type CaseResolutionStatus =
+	(typeof CaseResolutionStatuses)[keyof typeof CaseResolutionStatuses];
+
+export const CaseImpactStatuses = {
+	NOIMPACT: 'NoImpact',
+	WITHIMPACT: 'WithImpact',
+	NOTAPPLICABLE: 'NotApplicable',
+} as const;
+
+export type CaseImpactStatus = (typeof CaseImpactStatuses)[keyof typeof CaseImpactStatuses];

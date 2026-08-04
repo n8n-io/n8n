@@ -1,17 +1,17 @@
-import { ApplicationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 export class CustomerIoApi implements ICredentialType {
 	name = 'customerIoApi';
 
 	displayName = 'Customer.io API';
 
-	documentationUrl = 'customerIo';
+	documentationUrl = 'customerio';
 
 	properties: INodeProperties[] = [
 		{
@@ -57,6 +57,15 @@ export class CustomerIoApi implements ICredentialType {
 			default: '',
 			description: 'Required for App API',
 		},
+		{
+			displayName: 'Webhook Signing Key',
+			name: 'webhookSigningKey',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'Used to verify webhook authenticity. Found in Customer.io under Integrations → Reporting Webhooks.',
+		},
 	];
 
 	async authenticate(
@@ -64,20 +73,25 @@ export class CustomerIoApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		// @ts-ignore
-		const url = requestOptions.url ? requestOptions.url : requestOptions.uri;
-		if (url.includes('track') || url.includes('api.customer.io')) {
+		const url = new URL(requestOptions.url ? requestOptions.url : requestOptions.uri);
+		if (url.hostname === 'track.customer.io' || url.hostname === 'track-eu.customer.io') {
 			const basicAuthKey = Buffer.from(
 				`${credentials.trackingSiteId}:${credentials.trackingApiKey}`,
 			).toString('base64');
 			// @ts-ignore
 			Object.assign(requestOptions.headers, { Authorization: `Basic ${basicAuthKey}` });
-		} else if (url.includes('beta-api.customer.io')) {
+		} else if (
+			url.hostname === 'api.customer.io' ||
+			url.hostname === 'api-eu.customer.io' ||
+			url.hostname === 'beta-api.customer.io' ||
+			url.hostname === 'beta-api-eu.customer.io'
+		) {
 			// @ts-ignore
 			Object.assign(requestOptions.headers, {
 				Authorization: `Bearer ${credentials.appApiKey as string}`,
 			});
 		} else {
-			throw new ApplicationError('Unknown way of authenticating', { level: 'warning' });
+			throw new UserError('Unknown way of authenticating', { level: 'warning' });
 		}
 
 		return requestOptions;

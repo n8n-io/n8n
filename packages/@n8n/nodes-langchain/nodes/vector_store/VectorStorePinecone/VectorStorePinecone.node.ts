@@ -3,11 +3,10 @@ import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
-import { metadataFilterField } from '@utils/sharedFields';
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { pineconeIndexRLC } from '../shared/descriptions';
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
+import { pineconeIndexRLC } from '../shared/descriptions';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 

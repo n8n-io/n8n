@@ -1,7 +1,12 @@
-import { mock } from 'jest-mock-extended';
-import { get, set } from 'lodash';
+import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import type { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';
+import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import type { Task } from '@/task-runners/task-managers/task-requester';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
@@ -16,9 +21,19 @@ class TestTaskRequester extends TaskRequester {
 describe('TaskRequester', () => {
 	let instance: TestTaskRequester;
 	const mockNodeTypes = mock<NodeTypes>();
+	const mockEventService = mock<EventService>();
+	const mockTaskRunnersConfig = mock<TaskRunnersConfig>();
+	const mockGlobalConfig = mock<GlobalConfig>();
+	const mockErrorReporter = mock<ErrorReporter>();
 
 	beforeEach(() => {
-		instance = new TestTaskRequester(mockNodeTypes);
+		instance = new TestTaskRequester(
+			mockNodeTypes,
+			mockEventService,
+			mockTaskRunnersConfig,
+			mockGlobalConfig,
+			mockErrorReporter,
+		);
 	});
 
 	describe('handleRpc', () => {
@@ -30,8 +45,9 @@ describe('TaskRequester', () => {
 			['helpers.setBinaryDataBuffer', [{ data: '123' }, Buffer.from('data').toJSON()]],
 			['helpers.binaryToString', [Buffer.from('data').toJSON(), 'utf8']],
 			['helpers.httpRequest', [{ url: 'http://localhost' }]],
+			['helpers.request', [{ url: 'http://localhost' }]],
 		])('should handle %s rpc call', async (methodName, args) => {
-			const executeFunctions = set({}, methodName.split('.'), jest.fn());
+			const executeFunctions = set({}, methodName.split('.'), vi.fn());
 
 			const mockTask = mock<Task>({
 				taskId: 'taskId',
@@ -56,7 +72,7 @@ describe('TaskRequester', () => {
 		});
 
 		it('converts any serialized buffer arguments into buffers', async () => {
-			const mockPrepareBinaryData = jest.fn().mockResolvedValue(undefined);
+			const mockPrepareBinaryData = vi.fn().mockResolvedValue(undefined);
 			const mockTask = mock<Task>({
 				taskId: 'taskId',
 				data: {
@@ -112,7 +128,7 @@ describe('TaskRequester', () => {
 					data: {
 						executeFunctions: {
 							helpers: {
-								assertBinaryData: jest.fn().mockRejectedValue(error),
+								assertBinaryData: vi.fn().mockRejectedValue(error),
 							},
 						},
 					},
@@ -131,6 +147,36 @@ describe('TaskRequester', () => {
 					},
 				]);
 			});
+		});
+	});
+
+	describe('cancelTasks', () => {
+		it('rejects pending tasks with TaskCancelledError when their execution is cancelled', async () => {
+			const taskId = 'taskId';
+			const executionId = 'executionId';
+
+			const mockTask = mock<Task>({ taskId });
+			instance.tasks.set(taskId, mockTask);
+
+			let capturedRejection: unknown;
+			const pending = new Promise((_, reject) => {
+				instance.taskAcceptRejects.set(taskId, {
+					accept: vi.fn(),
+					reject: (reason) => {
+						capturedRejection = reason;
+						reject(reason);
+					},
+				});
+			});
+
+			(
+				instance as unknown as { executionIdsToTaskIds: Map<string, Set<string>> }
+			).executionIdsToTaskIds.set(executionId, new Set([taskId]));
+
+			instance.cancelTasks(executionId);
+
+			await expect(pending).rejects.toBeInstanceOf(TaskCancelledError);
+			expect(capturedRejection).toBeInstanceOf(TaskCancelledError);
 		});
 	});
 });

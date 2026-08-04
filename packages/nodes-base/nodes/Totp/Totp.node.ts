@@ -4,14 +4,15 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import OTPAuth from 'otpauth';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import * as OTPAuth from 'otpauth';
 
 export class Totp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TOTP',
 		name: 'totp',
-		icon: 'fa:fingerprint',
+		icon: 'node:totp',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] }}',
@@ -19,8 +20,9 @@ export class Totp implements INodeType {
 		defaults: {
 			name: 'TOTP',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'totpApi',
@@ -124,9 +126,9 @@ export class Totp implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const operation = this.getNodeParameter('operation', 0);
-		const credentials = await this.getCredentials<{ label: string; secret: string }>('totpApi');
+		const credentials = await this.getCredentials<{ label?: string; secret: string }>('totpApi');
 
-		if (!credentials.label.includes(':')) {
+		if (credentials.label && !credentials.label.includes(':')) {
 			throw new NodeOperationError(this.getNode(), 'Malformed label - expected `issuer:username`');
 		}
 
@@ -140,16 +142,31 @@ export class Totp implements INodeType {
 		if (!options.digits) options.digits = 6;
 		if (!options.period) options.period = 30;
 
-		const [issuer] = credentials.label.split(':');
+		const issuer = credentials.label ? credentials.label.split(':')[0] : undefined;
 
-		const totp = new OTPAuth.TOTP({
-			issuer,
-			label: credentials.label,
+		const totpConfig: {
+			issuer?: string;
+			label?: string;
+			secret: string;
+			algorithm: string;
+			digits: number;
+			period: number;
+		} = {
 			secret: credentials.secret,
 			algorithm: options.algorithm,
 			digits: options.digits,
 			period: options.period,
-		});
+		};
+
+		if (issuer) {
+			totpConfig.issuer = issuer;
+		}
+
+		if (credentials.label) {
+			totpConfig.label = credentials.label;
+		}
+
+		const totp = new OTPAuth.TOTP(totpConfig);
 
 		const token = totp.generate();
 

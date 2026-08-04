@@ -1,7 +1,6 @@
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ApplicationError, type IWorkflowBase, type IWorkflowLoader } from 'n8n-workflow';
-
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { UserError, type IWorkflowBase, type IWorkflowLoader } from 'n8n-workflow';
 
 @Service()
 export class WorkflowLoaderService implements IWorkflowLoader {
@@ -11,7 +10,7 @@ export class WorkflowLoaderService implements IWorkflowLoader {
 		const workflow = await this.workflowRepository.findById(workflowId);
 
 		if (!workflow) {
-			throw new ApplicationError(`Failed to find workflow with ID "${workflowId}"`);
+			throw new UserError(`Failed to find workflow with ID "${workflowId}"`);
 		}
 
 		return workflow;

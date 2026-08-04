@@ -14,6 +14,7 @@ export class GoogleAnalytics extends VersionedNodeType {
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Use the Google Analytics API',
 			defaultVersion: 2,
+			schemaPath: 'Google/Analytics',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

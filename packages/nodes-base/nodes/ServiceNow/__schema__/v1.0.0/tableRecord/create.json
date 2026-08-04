@@ -1,0 +1,211 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "string"
+        },
+        "activity_due": {
+            "type": "string"
+        },
+        "additional_assignee_list": {
+            "type": "string"
+        },
+        "approval": {
+            "type": "string"
+        },
+        "approval_history": {
+            "type": "string"
+        },
+        "approval_set": {
+            "type": "string"
+        },
+        "assigned_to": {
+            "type": "string"
+        },
+        "business_duration": {
+            "type": "string"
+        },
+        "business_service": {
+            "type": "string"
+        },
+        "calendar_duration": {
+            "type": "string"
+        },
+        "close_notes": {
+            "type": "string"
+        },
+        "closed_at": {
+            "type": "string"
+        },
+        "closed_by": {
+            "type": "string"
+        },
+        "cmdb_ci": {
+            "type": "string"
+        },
+        "comments": {
+            "type": "string"
+        },
+        "comments_and_work_notes": {
+            "type": "string"
+        },
+        "contact_type": {
+            "type": "string"
+        },
+        "contract": {
+            "type": "string"
+        },
+        "correlation_display": {
+            "type": "string"
+        },
+        "correlation_id": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "due_date": {
+            "type": "string"
+        },
+        "escalation": {
+            "type": "string"
+        },
+        "expected_start": {
+            "type": "string"
+        },
+        "follow_up": {
+            "type": "string"
+        },
+        "group_list": {
+            "type": "string"
+        },
+        "impact": {
+            "type": "string"
+        },
+        "knowledge": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "made_sla": {
+            "type": "string"
+        },
+        "number": {
+            "type": "string"
+        },
+        "opened_at": {
+            "type": "string"
+        },
+        "opened_by": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "order": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "string"
+        },
+        "priority": {
+            "type": "string"
+        },
+        "reassignment_count": {
+            "type": "string"
+        },
+        "route_reason": {
+            "type": "string"
+        },
+        "service_offering": {
+            "type": "string"
+        },
+        "short_description": {
+            "type": "string"
+        },
+        "sla_due": {
+            "type": "string"
+        },
+        "state": {
+            "type": "string"
+        },
+        "sys_class_name": {
+            "type": "string"
+        },
+        "sys_created_by": {
+            "type": "string"
+        },
+        "sys_created_on": {
+            "type": "string"
+        },
+        "sys_domain": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "sys_domain_path": {
+            "type": "string"
+        },
+        "sys_id": {
+            "type": "string"
+        },
+        "sys_mod_count": {
+            "type": "string"
+        },
+        "sys_tags": {
+            "type": "string"
+        },
+        "sys_updated_by": {
+            "type": "string"
+        },
+        "sys_updated_on": {
+            "type": "string"
+        },
+        "task_effective_number": {
+            "type": "string"
+        },
+        "universal_request": {
+            "type": "string"
+        },
+        "upon_approval": {
+            "type": "string"
+        },
+        "upon_reject": {
+            "type": "string"
+        },
+        "urgency": {
+            "type": "string"
+        },
+        "user_input": {
+            "type": "string"
+        },
+        "watch_list": {
+            "type": "string"
+        },
+        "work_end": {
+            "type": "string"
+        },
+        "work_notes": {
+            "type": "string"
+        },
+        "work_notes_list": {
+            "type": "string"
+        },
+        "work_start": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

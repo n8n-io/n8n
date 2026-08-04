@@ -1,35 +1,39 @@
-import {
-	ApplicationError,
-	NodeOperationError,
-	SEND_AND_WAIT_OPERATION,
-	tryToParseJsonToFormFields,
-	updateDisplayOptions,
-	WAIT_INDEFINITELY,
-} from 'n8n-workflow';
+import isbot from 'isbot';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
-	INodeProperties,
-	IExecuteFunctions,
-	IWebhookFunctions,
-	IDataObject,
 	FormFieldsParameter,
+	IDataObject,
+	IExecuteFunctions,
+	INodeProperties,
+	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
 
+import { cssVariables } from '../../nodes/Form/cssVariables';
+import { formFieldsProperties } from '../../nodes/Form/Form.node';
+import {
+	parseFormFields,
+	parseJsonFormFields,
+	prepareFormData,
+	prepareFormFields,
+	prepareFormReturnItem,
+} from '../../nodes/Form/utils/utils';
+import { escapeHtml } from '../utilities';
+import { limitWaitTimeOption } from './descriptions';
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
-	createEmailBody,
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
 import type { IEmail } from './interfaces';
-import { formFieldsProperties } from '../../nodes/Form/Form.node';
-import { prepareFormData, prepareFormReturnItem, resolveRawData } from '../../nodes/Form/utils';
-import { escapeHtml } from '../utilities';
 
-type SendAndWaitConfig = {
+export type SendAndWaitConfig = {
 	title: string;
 	message: string;
-	url: string;
-	options: Array<{ label: string; value: string; style: string }>;
+	options: Array<{ label: string; url: string; style: string; approved: boolean }>;
+	appendAttribution?: boolean;
 };
 
 type FormResponseTypeOptions = {
@@ -37,112 +41,32 @@ type FormResponseTypeOptions = {
 	responseFormTitle?: string;
 	responseFormDescription?: string;
 	responseFormButtonLabel?: string;
+	responseFormCustomCss?: string;
 };
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
-const limitWaitTimeProperties: INodeProperties = {
-	displayName: 'Limit Wait Time',
-	name: 'limitWaitTime',
-	type: 'fixedCollection',
+const appendAttributionOption: INodeProperties = {
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
+	type: 'boolean',
+	default: true,
 	description:
-		'Whether the workflow will automatically resume execution after the specified limit type',
-	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
-	options: [
-		{
-			displayName: 'Values',
-			name: 'values',
-			values: [
-				{
-					displayName: 'Limit Type',
-					name: 'limitType',
-					type: 'options',
-					default: 'afterTimeInterval',
-					description:
-						'Sets the condition for the execution to resume. Can be a specified date or after some time.',
-					options: [
-						{
-							name: 'After Time Interval',
-							description: 'Waits for a certain amount of time',
-							value: 'afterTimeInterval',
-						},
-						{
-							name: 'At Specified Time',
-							description: 'Waits until the set date and time to continue',
-							value: 'atSpecifiedTime',
-						},
-					],
-				},
-				{
-					displayName: 'Amount',
-					name: 'resumeAmount',
-					type: 'number',
-					displayOptions: {
-						show: {
-							limitType: ['afterTimeInterval'],
-						},
-					},
-					typeOptions: {
-						minValue: 0,
-						numberPrecision: 2,
-					},
-					default: 1,
-					description: 'The time to wait',
-				},
-				{
-					displayName: 'Unit',
-					name: 'resumeUnit',
-					type: 'options',
-					displayOptions: {
-						show: {
-							limitType: ['afterTimeInterval'],
-						},
-					},
-					options: [
-						{
-							name: 'Minutes',
-							value: 'minutes',
-						},
-						{
-							name: 'Hours',
-							value: 'hours',
-						},
-						{
-							name: 'Days',
-							value: 'days',
-						},
-					],
-					default: 'hours',
-					description: 'Unit of the interval value',
-				},
-				{
-					displayName: 'Max Date and Time',
-					name: 'maxDateAndTime',
-					type: 'dateTime',
-					displayOptions: {
-						show: {
-							limitType: ['atSpecifiedTime'],
-						},
-					},
-					default: '',
-					description: 'Continue execution after the specified date and time',
-				},
-			],
-		},
-	],
+		'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
 };
 
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
-	resource: string = 'message',
+	resource: string | null = 'message',
 	additionalProperties: INodeProperties[] = [],
 	options?: {
 		noButtonStyle?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		extraOptions?: INodeProperties[];
 	},
-) {
+): INodeProperties[] {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
 		name: 'buttonStyle',
@@ -301,13 +225,15 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
+		// Advanced-HITL nodes (Slack, Telegram) render these as a section right before "Options".
+		...additionalProperties,
 		{
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeProperties],
+			options: [limitWaitTimeOption, appendAttributionOption, ...(options?.extraOptions ?? [])],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -347,7 +273,20 @@ export function getSendAndWaitProperties(
 					type: 'string',
 					default: 'Submit',
 				},
-				limitWaitTimeProperties,
+				{
+					displayName: 'Response Form Custom Styling',
+					name: 'responseFormCustomCss',
+					type: 'string',
+					typeOptions: {
+						rows: 10,
+						editor: 'cssEditor',
+					},
+					default: cssVariables.trim(),
+					description: 'Override default styling of the response form with CSS',
+				},
+				limitWaitTimeOption,
+				appendAttributionOption,
+				...(options?.extraOptions ?? []),
 			],
 			displayOptions: {
 				show: {
@@ -355,13 +294,12 @@ export function getSendAndWaitProperties(
 				},
 			},
 		},
-		...additionalProperties,
 	];
 
 	return updateDisplayOptions(
 		{
 			show: {
-				resource: [resource],
+				...(resource ? { resource: [resource] } : {}),
 				operation: [SEND_AND_WAIT_OPERATION],
 			},
 		},
@@ -394,20 +332,47 @@ const getFormResponseCustomizations = (context: IWebhookFunctions) => {
 		formTitle,
 		formDescription,
 		buttonLabel,
+		customCss: options.responseFormCustomCss,
 	};
+};
+
+// Block requests from Microsoft Preview Service to prevent accidental
+// approval/disapproval when sending links in Teams
+const isMicrosoftPreviewService = (userAgent?: string) => {
+	// The request that the Preview Service makes when the message is sent in
+	// Teams does not have a user-agent header
+	if (!userAgent) {
+		return true;
+	}
+
+	userAgent = userAgent.toLowerCase();
+	// The request that the Preview Service makes when the link is pasted in
+	// Teams does have a user-agent header that can be used to identify it
+	return ['teams', 'skype', 'preview'].some((str) => userAgent.includes(str));
 };
 
 export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const method = this.getRequestObject().method;
 	const res = this.getResponseObject();
+	const req = this.getRequestObject();
+
 	const responseType = this.getNodeParameter('responseType', 'approval') as
 		| 'approval'
 		| 'freeText'
 		| 'customForm';
 
+	if (
+		responseType === 'approval' &&
+		(isbot(req.headers['user-agent']) || isMicrosoftPreviewService(req.headers['user-agent']))
+	) {
+		res.send('');
+		return { noWebhookResponse: true };
+	}
+
 	if (responseType === 'freeText') {
 		if (method === 'GET') {
-			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+			const { formTitle, formDescription, buttonLabel, customCss } =
+				getFormResponseCustomizations(this);
 
 			const data = prepareFormData({
 				formTitle,
@@ -425,8 +390,12 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				],
 				testRun: false,
 				query: {},
+				customCss,
 			});
 
+			if (!isFormHtmlSandboxingDisabled()) {
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			}
 			res.render('form-trigger', data);
 
 			return {
@@ -438,7 +407,18 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 			return {
 				webhookResponse: ACTION_RECORDED_PAGE,
-				workflowData: [[{ json: { data: { text: data[INPUT_FIELD_IDENTIFIER] } } }]],
+				workflowData: [
+					[
+						{
+							json: {
+								data: {
+									text: data[INPUT_FIELD_IDENTIFIER],
+									respondedAt: new Date().toISOString(),
+								},
+							},
+						},
+					],
+				],
 			};
 		}
 	}
@@ -448,23 +428,22 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		let fields: FormFieldsParameter = [];
 
 		if (defineForm === 'json') {
-			try {
-				const jsonOutput = this.getNodeParameter('jsonOutput', '', {
-					rawExpressions: true,
-				}) as string;
-
-				fields = tryToParseJsonToFormFields(resolveRawData(this, jsonOutput));
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error.message, {
-					description: error.message,
-				});
-			}
+			fields = parseFormFields(this, {
+				defineForm: 'json',
+				fieldsParameterName: 'jsonOutput',
+			});
 		} else {
-			fields = this.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+			fields = parseFormFields(this, {
+				defineForm: 'fields',
+				fieldsParameterName: 'formFields.values',
+			});
 		}
 
 		if (method === 'GET') {
-			const { formTitle, formDescription, buttonLabel } = getFormResponseCustomizations(this);
+			const { formTitle, formDescription, buttonLabel, customCss } =
+				getFormResponseCustomizations(this);
+
+			fields = prepareFormFields(fields);
 
 			const data = prepareFormData({
 				formTitle,
@@ -476,8 +455,12 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				formFields: fields,
 				testRun: false,
 				query: {},
+				customCss,
 			});
 
+			if (!isFormHtmlSandboxingDisabled()) {
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			}
 			res.render('form-trigger', data);
 
 			return {
@@ -491,7 +474,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			delete json.submittedAt;
 			delete json.formMode;
 
-			returnItem.json = { data: json };
+			// respondedAt is applied last so a form field of the same name can't override
+			// the server-set response timestamp.
+			returnItem.json = { data: { ...json, respondedAt: new Date().toISOString() } };
 
 			return {
 				webhookResponse: ACTION_RECORDED_PAGE,
@@ -500,22 +485,36 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		}
 	}
 
-	const query = this.getRequestObject().query as { approved: 'false' | 'true' };
+	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
-		workflowData: [[{ json: { data: { approved } } }]],
+		workflowData: [[{ json: { data: { approved, respondedAt: new Date().toISOString() } } }]],
 	};
 }
 
 // Send and Wait Config -----------------------------------------------------------
+
+// The response form is only built when it is requested, from data that may no longer resolve
+// by then. Parse it here, exactly as the webhook will, so a form that cannot be built fails
+// the node instead of sending a message with a link that can never render.
+function validateCustomFormFields(context: IExecuteFunctions) {
+	const defineForm = context.getNodeParameter('defineForm', 0, 'fields') as 'fields' | 'json';
+	// The 'fields' branch has nothing that needs to be validated
+	if (defineForm !== 'json') return;
+
+	const getJsonOutput = () =>
+		context.getNodeParameter('jsonOutput', 0, '', {
+			rawExpressions: true,
+		}) as string;
+	parseJsonFormFields(context, getJsonOutput);
+}
+
 export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
 	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim())
 		.replace(/\\n/g, '\n')
 		.replace(/<br>/g, '\n');
 	const subject = escapeHtml(context.getNodeParameter('subject', 0, '') as string);
-	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
-	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
 	const approvalOptions = context.getNodeParameter('approvalOptions.values', 0, {}) as {
 		approvalType?: 'single' | 'double';
 		approveLabel?: string;
@@ -524,57 +523,70 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 		buttonDisapprovalStyle?: string;
 	};
 
+	const options = context.getNodeParameter('options', 0, {});
+
 	const config: SendAndWaitConfig = {
 		title: subject,
 		message,
-		url: `${resumeUrl}/${nodeId}`,
 		options: [],
+		appendAttribution: options?.appendAttribution as boolean,
 	};
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
+
+	if (responseType === 'customForm') {
+		validateCustomFormFields(context);
+	}
+
+	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
 
 	if (responseType === 'freeText' || responseType === 'customForm') {
 		const label = context.getNodeParameter('options.messageButtonLabel', 0, 'Respond') as string;
 		config.options.push({
 			label,
-			value: 'true',
+			url: approvedSignedResumeUrl,
 			style: 'primary',
+			approved: true,
 		});
 	} else if (approvalOptions.approvalType === 'double') {
 		const approveLabel = escapeHtml(approvalOptions.approveLabel || 'Approve');
 		const buttonApprovalStyle = approvalOptions.buttonApprovalStyle || 'primary';
 		const disapproveLabel = escapeHtml(approvalOptions.disapproveLabel || 'Disapprove');
 		const buttonDisapprovalStyle = approvalOptions.buttonDisapprovalStyle || 'secondary';
+		const disapprovedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'false' });
 
 		config.options.push({
 			label: disapproveLabel,
-			value: 'false',
+			url: disapprovedSignedResumeUrl,
 			style: buttonDisapprovalStyle,
+			approved: false,
 		});
 		config.options.push({
 			label: approveLabel,
-			value: 'true',
+			url: approvedSignedResumeUrl,
 			style: buttonApprovalStyle,
+			approved: true,
 		});
 	} else {
 		const label = escapeHtml(approvalOptions.approveLabel || 'Approve');
 		const style = approvalOptions.buttonApprovalStyle || 'primary';
 		config.options.push({
 			label,
-			value: 'true',
+			url: approvedSignedResumeUrl,
 			style,
+			approved: true,
 		});
 	}
 
 	return config;
 }
 
-export function createButton(url: string, label: string, approved: string, style: string) {
+export function createButton(url: string, label: string, style: string) {
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
 	}
-	return `<a href="${url}?approved=${approved}" target="_blank" style="${buttonStyle}">${label}</a>`;
+	return `<a href="${url}" target="_blank" style="${buttonStyle}">${label}</a>`;
 }
 
 export function createEmail(context: IExecuteFunctions) {
@@ -591,60 +603,31 @@ export function createEmail(context: IExecuteFunctions) {
 
 	const buttons: string[] = [];
 	for (const option of config.options) {
-		buttons.push(createButton(config.url, option.label, option.value, option.style));
+		buttons.push(createButton(option.url, option.label, option.style));
 	}
-
-	const instanceId = context.getInstanceId();
+	let emailBody: string;
+	if (config.appendAttribution !== false) {
+		const instanceId = context.getInstanceId();
+		emailBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		emailBody = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const email: IEmail = {
 		to,
 		subject: config.title,
 		body: '',
-		htmlBody: createEmailBody(config.message, buttons.join('\n'), instanceId),
+		htmlBody: emailBody,
 	};
 
 	return email;
 }
 
-export function configureWaitTillDate(context: IExecuteFunctions) {
-	let waitTill = WAIT_INDEFINITELY;
-	const limitWaitTime = context.getNodeParameter('options.limitWaitTime.values', 0, {}) as {
-		limitType?: string;
-		resumeAmount?: number;
-		resumeUnit?: string;
-		maxDateAndTime?: string;
-	};
-
-	if (Object.keys(limitWaitTime).length) {
-		try {
-			if (limitWaitTime.limitType === 'afterTimeInterval') {
-				let waitAmount = limitWaitTime.resumeAmount as number;
-
-				if (limitWaitTime.resumeUnit === 'minutes') {
-					waitAmount *= 60;
-				}
-				if (limitWaitTime.resumeUnit === 'hours') {
-					waitAmount *= 60 * 60;
-				}
-				if (limitWaitTime.resumeUnit === 'days') {
-					waitAmount *= 60 * 60 * 24;
-				}
-
-				waitAmount *= 1000;
-				waitTill = new Date(new Date().getTime() + waitAmount);
-			} else {
-				waitTill = new Date(limitWaitTime.maxDateAndTime as string);
-			}
-
-			if (isNaN(waitTill.getTime())) {
-				throw new ApplicationError('Invalid date format');
-			}
-		} catch (error) {
-			throw new NodeOperationError(context.getNode(), 'Could not configure Limit Wait Time', {
-				description: error.message,
-			});
-		}
+const sendAndWaitWaitingTooltip = (parameters: { operation: string }) => {
+	if (parameters?.operation === 'sendAndWait') {
+		return "Execution will continue after the user's response";
 	}
+	return '';
+};
 
-	return waitTill;
-}
+export const SEND_AND_WAIT_WAITING_TOOLTIP = `={{ (${sendAndWaitWaitingTooltip})($parameter) }}`;

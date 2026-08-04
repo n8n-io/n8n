@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nActionDropdown > should render custom styling correctly 1`] = `
+"<div class="action-dropdown-container actionDropdownContainer"><span id="reka-dropdown-menu-trigger-v-0" type="button" aria-haspopup="menu" aria-expanded="false" disabled="false" data-state="closed" class="trigger"><n8n-icon-button-stub variant="ghost" icon="ellipsis" size="medium" loading="false" icononly="true" disabled="false" class="activator" aria-label="Actions" aria-controls="n8n-action-dropdown-21"></n8n-icon-button-stub></span>
+  <!--v-if-->
+</div>"
+`;
+
+exports[`components > N8nActionDropdown > should render default styling correctly 1`] = `
+"<div class="action-dropdown-container actionDropdownContainer"><span id="reka-dropdown-menu-trigger-v-0" type="button" aria-haspopup="menu" aria-expanded="false" disabled="false" data-state="closed" class="trigger"><n8n-icon-button-stub variant="ghost" icon="ellipsis" size="medium" loading="false" icononly="true" disabled="false" class="activator" aria-label="Actions" aria-controls="n8n-action-dropdown-1"></n8n-icon-button-stub></span>
+  <!--v-if-->
+</div>"
+`;

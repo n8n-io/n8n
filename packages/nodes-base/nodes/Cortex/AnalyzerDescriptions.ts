@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { TLP } from './AnalyzerInterface';
+import { TLPs } from './AnalyzerInterface';
 
 export const analyzersOperations: INodeProperties[] = [
 	{
@@ -120,19 +120,19 @@ export const analyzerFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'White',
-				value: TLP.white,
+				value: TLPs.white,
 			},
 			{
 				name: 'Green',
-				value: TLP.green,
+				value: TLPs.green,
 			},
 			{
 				name: 'Amber',
-				value: TLP.amber,
+				value: TLPs.amber,
 			},
 			{
 				name: 'Red',
-				value: TLP.red,
+				value: TLPs.red,
 			},
 		],
 		default: 2,

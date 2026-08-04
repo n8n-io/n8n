@@ -42,7 +42,7 @@ class ConcreteService extends AbstractService {
 
 describe('DI Container', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 	});
 
@@ -158,6 +158,19 @@ describe('DI Container', () => {
 			class ErrorFactoryService {}
 
 			expect(() => Container.get(ErrorFactoryService)).toThrow('Factory error');
+		});
+
+		it('should handle factory with dependencies', () => {
+			const factory = vi.fn().mockReturnValue({});
+
+			@Service({ factory })
+			class FactoryWithDependencies {
+				constructor(readonly simpleService: SimpleService) {}
+			}
+
+			const instance = Container.get(FactoryWithDependencies);
+			expect(instance.simpleService).toBeUndefined();
+			expect(factory).toHaveBeenCalledWith(Container.get(SimpleService));
 		});
 	});
 

@@ -1,10 +1,8 @@
-import type { Workflow } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import type { Workflow, IWorkflowBase } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
-import type { IWorkflowDb } from '@/interfaces';
-
-export class WorkflowMissingIdError extends ApplicationError {
-	constructor(workflow: Workflow | IWorkflowDb) {
+export class WorkflowMissingIdError extends UnexpectedError {
+	constructor(workflow: Workflow | IWorkflowBase) {
 		super('Detected ID-less worklfow', { extra: { workflow } });
 	}
 }

@@ -1,0 +1,173 @@
+{
+    "type": "object",
+    "properties": {
+        "historyId": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "ARC-Authentication-Results": {
+                        "type": "string"
+                    },
+                    "ARC-Message-Signature": {
+                        "type": "string"
+                    },
+                    "ARC-Seal": {
+                        "type": "string"
+                    },
+                    "Authentication-Results": {
+                        "type": "string"
+                    },
+                    "Content-Type": {
+                        "type": "string"
+                    },
+                    "Date": {
+                        "type": "string"
+                    },
+                    "Delivered-To": {
+                        "type": "string"
+                    },
+                    "DKIM-Signature": {
+                        "type": "string"
+                    },
+                    "From": {
+                        "type": "string"
+                    },
+                    "historyId": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "internalDate": {
+                        "type": "string"
+                    },
+                    "labels": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "Message-ID": {
+                        "type": "string"
+                    },
+                    "MIME-Version": {
+                        "type": "string"
+                    },
+                    "payload": {
+                        "type": "object",
+                        "properties": {
+                            "body": {
+                                "type": "object",
+                                "properties": {
+                                    "data": {
+                                        "type": "string"
+                                    },
+                                    "size": {
+                                        "type": "integer"
+                                    }
+                                }
+                            },
+                            "filename": {
+                                "type": "string"
+                            },
+                            "mimeType": {
+                                "type": "string"
+                            },
+                            "partId": {
+                                "type": "string"
+                            },
+                            "parts": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "body": {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "string"
+                                                },
+                                                "size": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        },
+                                        "filename": {
+                                            "type": "string"
+                                        },
+                                        "headers": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "value": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "mimeType": {
+                                            "type": "string"
+                                        },
+                                        "partId": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "Received": {
+                        "type": "string"
+                    },
+                    "Received-SPF": {
+                        "type": "string"
+                    },
+                    "Return-Path": {
+                        "type": "string"
+                    },
+                    "sizeEstimate": {
+                        "type": "integer"
+                    },
+                    "snippet": {
+                        "type": "string"
+                    },
+                    "Subject": {
+                        "type": "string"
+                    },
+                    "threadId": {
+                        "type": "string"
+                    },
+                    "To": {
+                        "type": "string"
+                    },
+                    "X-Google-Smtp-Source": {
+                        "type": "string"
+                    },
+                    "X-Received": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 4
+}

@@ -1,0 +1,59 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-180, 240],
+			"id": "db450654-d59c-4fb4-a06c-af7b971f0c14",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "device",
+				"operation": "changeStatus",
+				"deviceId": {
+					"__rl": true,
+					"value": "9140fcff-7ba7-4324-8552-f7de68481b4c",
+					"mode": "list",
+					"cachedResultName": "5CC115NN33"
+				}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [-320, 680],
+			"id": "d441de38-e340-495d-8177-f8bd8bb33e50",
+			"name": "Change Status",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Change Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Change Status": [
+			{
+				"json": {
+					"kind": "admin#directory#chromeosdeviceAction",
+					"action": "reenable",
+					"status": "SUCCESS"
+				}
+			}
+		]
+	}
+}

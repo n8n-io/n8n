@@ -1,12 +1,13 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": "@n8n/typescript-config/modern/tsconfig.go.json",
 	"compilerOptions": {
 		"rootDir": ".",
-		"baseUrl": "src",
+		"noUncheckedIndexedAccess": false,
+		"types": ["vite/client", "vitest/globals"],
 		"paths": {
-			"@/*": ["./*"]
-		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+			"esprima-next": ["./node_modules/esprima-next/dist/esm/esprima"]
+		}
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
+	"exclude": ["node_modules"]
 }

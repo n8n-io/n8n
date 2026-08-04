@@ -1,5 +1,5 @@
 import countryCodes from 'currency-codes';
-import type { INodeProperties } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 
 import {
 	cleanPhoneNumber,
@@ -31,6 +31,11 @@ export const messageFields: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				action: 'Send message',
+			},
+			{
+				name: 'Send and Wait for Response',
+				value: SEND_AND_WAIT_OPERATION,
+				action: 'Send message and wait for response',
 			},
 			{
 				name: 'Send Template',
@@ -556,6 +561,11 @@ export const messageTypeFields: INodeProperties[] = [
 							{
 								displayName: 'Type',
 								name: 'type',
+								displayOptions: {
+									show: {
+										'@version': [1],
+									},
+								},
 								type: 'options',
 								options: [
 									{
@@ -592,6 +602,45 @@ export const messageTypeFields: INodeProperties[] = [
 								},
 							},
 							{
+								displayName: 'Type',
+								name: 'type',
+								displayOptions: {
+									show: {
+										'@version': [{ _cnd: { gt: 1 } }],
+									},
+								},
+								type: 'options',
+								options: [
+									{
+										name: 'Cell',
+										value: 'CELL',
+									},
+									{
+										name: 'Home',
+										value: 'HOME',
+									},
+									{
+										name: 'Iphone',
+										value: 'IPHONE',
+									},
+									{
+										name: 'Main',
+										value: 'MAIN',
+									},
+									{
+										name: 'Work',
+										value: 'WORK',
+									},
+								],
+								default: 'CELL',
+								routing: {
+									send: {
+										property: '=contacts[0].phones[{{$index}}].type',
+										type: 'body',
+									},
+								},
+							},
+							{
 								displayName: 'Phone',
 								name: 'phone',
 								type: 'string',
@@ -600,6 +649,25 @@ export const messageTypeFields: INodeProperties[] = [
 									send: {
 										property: '=contacts[0].phones[{{$index}}].phone',
 										type: 'body',
+									},
+								},
+							},
+							{
+								displayName: 'WhatsApp User ID',
+								name: 'whatsapp_user_id',
+								type: 'string',
+								default: '',
+								description:
+									'If omitted, the message will display an Invite to WhatsApp button instead of the standard buttons',
+								routing: {
+									send: {
+										property: '=contacts[0].phones[{{$index}}].wa_id',
+										type: 'body',
+									},
+								},
+								displayOptions: {
+									hide: {
+										'@version': [{ _cnd: { lt: 1.1 } }],
 									},
 								},
 							},

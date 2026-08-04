@@ -8,7 +8,7 @@ import type {
 export class QdrantApi implements ICredentialType {
 	name = 'qdrantApi';
 
-	displayName = 'QdrantApi';
+	displayName = 'Qdrant API';
 
 	documentationUrl = 'https://docs.n8n.io/integrations/builtin/credentials/qdrant/';
 
@@ -42,9 +42,7 @@ export class QdrantApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.qdrantUrl}}',
-			headers: {
-				accept: 'application/json; charset=utf-8',
-			},
+			url: '/collections',
 		},
 	};
 }

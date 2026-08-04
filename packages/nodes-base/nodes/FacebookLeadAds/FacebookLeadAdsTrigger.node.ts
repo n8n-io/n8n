@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -33,7 +33,11 @@ export class FacebookLeadAdsTrigger implements INodeType {
 			name: 'Facebook Lead Ads Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			searchHint:
+				'Webhook verification is automatic — there is NO user-settable "verify token". On activation n8n registers the Facebook Lead Ads webhook subscription and verifies Facebook\'s challenge against this node\'s own auto-generated id. Never tell the user to invent a verify-token string or look for a verify-token credential field; if Facebook\'s "Verify token" box must be filled in manually it has to be this node\'s id, not an arbitrary value.',
+		},
 		credentials: [
 			{
 				name: 'facebookLeadAdsOAuth2Api',
@@ -224,7 +228,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 					return {};
 				}
 
-				res.status(200).send(query['hub.challenge']).end();
+				res.status(200).type('text/plain').send(query['hub.challenge']).end();
 
 				return { noWebhookResponse: true };
 			}

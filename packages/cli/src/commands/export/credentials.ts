@@ -1,58 +1,65 @@
+import type { ICredentialsDb } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
 import fs from 'fs';
 import { Credentials } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import path from 'path';
+import z from 'zod';
 
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/interfaces';
+import type { ICredentialsDecryptedDb } from '@/interfaces';
 
 import { BaseCommand } from '../base-command';
+import '../../zod-alias-support';
 
-export class ExportCredentialsCommand extends BaseCommand {
-	static description = 'Export credentials';
+const flagsSchema = z.object({
+	all: z.boolean().describe('Export all credentials').optional(),
+	backup: z
+		.boolean()
+		.describe(
+			'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
+		)
+		.optional(),
+	id: z.string().describe('The ID of the credential to export').optional(),
+	projectId: z.string().describe('Export all credentials in the specified project').optional(),
+	output: z
+		.string()
+		.alias('o')
+		.describe('Output file name or directory if using separate files')
+		.optional(),
+	pretty: z.boolean().describe('Format the output in an easier to read fashion').optional(),
+	separate: z
+		.boolean()
+		.describe(
+			'Exports one file per credential (useful for versioning). Must inform a directory via --output.',
+		)
+		.optional(),
+	decrypted: z
+		.boolean()
+		.describe(
+			'Exports data decrypted / in plain text. ALL SENSITIVE INFORMATION WILL BE VISIBLE IN THE FILES. Use to migrate from a installation to another that have a different secret key (in the config file).',
+		)
+		.optional(),
+});
 
-	static examples = [
-		'$ n8n export:credentials --all',
-		'$ n8n export:credentials --id=5 --output=file.json',
-		'$ n8n export:credentials --all --output=backups/latest.json',
-		'$ n8n export:credentials --backup --output=backups/latest/',
-		'$ n8n export:credentials --all --decrypted --output=backups/decrypted.json',
-	];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-		all: Flags.boolean({
-			description: 'Export all credentials',
-		}),
-		backup: Flags.boolean({
-			description:
-				'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
-		}),
-		id: Flags.string({
-			description: 'The ID of the credential to export',
-		}),
-		output: Flags.string({
-			char: 'o',
-			description: 'Output file name or directory if using separate files',
-		}),
-		pretty: Flags.boolean({
-			description: 'Format the output in an easier to read fashion',
-		}),
-		separate: Flags.boolean({
-			description:
-				'Exports one file per credential (useful for versioning). Must inform a directory via --output.',
-		}),
-		decrypted: Flags.boolean({
-			description:
-				'Exports data decrypted / in plain text. ALL SENSITIVE INFORMATION WILL BE VISIBLE IN THE FILES. Use to migrate from a installation to another that have a different secret key (in the config file).',
-		}),
-	};
-
+@Command({
+	name: 'export:credentials',
+	description: 'Export credentials',
+	examples: [
+		'--all',
+		'--projectId=Ox8O54VQrmBrb4qL',
+		'--id=5 --output=file.json',
+		'--all --output=backups/latest.json',
+		'--backup --output=backups/latest/',
+		'--all --decrypted --output=backups/decrypted.json',
+	],
+	flagsSchema,
+})
+export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	// eslint-disable-next-line complexity
 	async run() {
-		const { flags } = await this.parse(ExportCredentialsCommand);
+		const { flags } = this;
 
 		if (flags.backup) {
 			flags.all = true;
@@ -60,13 +67,15 @@ export class ExportCredentialsCommand extends BaseCommand {
 			flags.separate = true;
 		}
 
-		if (!flags.all && !flags.id) {
-			this.logger.info('Either option "--all" or "--id" have to be set!');
+		const selectorCount = [flags.all, flags.id, flags.projectId].filter(Boolean).length;
+
+		if (selectorCount === 0) {
+			this.logger.info('One of "--all", "--id", or "--projectId" has to be set!');
 			return;
 		}
 
-		if (flags.all && flags.id) {
-			this.logger.info('You should either use "--all" or "--id" but never both!');
+		if (selectorCount > 1) {
+			this.logger.info('Use exactly one of "--all", "--id", or "--projectId".');
 			return;
 		}
 
@@ -108,22 +117,23 @@ export class ExportCredentialsCommand extends BaseCommand {
 			}
 		}
 
-		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).findBy(
-			flags.id ? { id: flags.id } : {},
-		);
+		const credentials: ICredentialsDb[] = await Container.get(CredentialsRepository).find({
+			where: this.getWhereFilter(flags),
+			relations: ['shared.project'],
+		});
 
 		if (flags.decrypted) {
 			for (let i = 0; i < credentials.length; i++) {
 				const { name, type, data } = credentials[i];
 				const id = credentials[i].id;
 				const credential = new Credentials({ id, name }, type, data);
-				const plainData = credential.getData();
+				const plainData = await credential.getData();
 				(credentials[i] as ICredentialsDecryptedDb).data = plainData;
 			}
 		}
 
 		if (credentials.length === 0) {
-			throw new ApplicationError('No credentials found with specified filters');
+			throw new UserError('No credentials found with specified filters');
 		}
 
 		if (flags.separate) {
@@ -132,7 +142,7 @@ export class ExportCredentialsCommand extends BaseCommand {
 			for (i = 0; i < credentials.length; i++) {
 				fileContents = JSON.stringify(credentials[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
-					(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
+					(flags.output!.endsWith(path.sep) ? flags.output : flags.output + path.sep) +
 					credentials[i].id
 				}.json`;
 				fs.writeFileSync(filename, fileContents);
@@ -152,5 +162,17 @@ export class ExportCredentialsCommand extends BaseCommand {
 	async catch(error: Error) {
 		this.logger.error('Error exporting credentials. See log messages for details.');
 		this.logger.error(error.message);
+	}
+
+	private getWhereFilter(flags: z.infer<typeof flagsSchema>) {
+		if (flags.id) {
+			return { id: flags.id };
+		}
+
+		if (flags.projectId) {
+			return { shared: { projectId: flags.projectId } };
+		}
+
+		return {};
 	}
 }

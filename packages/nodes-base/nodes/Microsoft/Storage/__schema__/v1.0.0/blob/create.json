@@ -1,0 +1,39 @@
+{
+    "type": "object",
+    "properties": {
+        "connection": {
+            "type": "string"
+        },
+        "contentCrc64": {
+            "type": "string"
+        },
+        "contentLength": {
+            "type": "integer"
+        },
+        "contentMd5": {
+            "type": "string"
+        },
+        "date": {
+            "type": "string"
+        },
+        "etag": {
+            "type": "string"
+        },
+        "lastModified": {
+            "type": "string"
+        },
+        "requestId": {
+            "type": "string"
+        },
+        "requestServerEncrypted": {
+            "type": "boolean"
+        },
+        "server": {
+            "type": "string"
+        },
+        "version": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

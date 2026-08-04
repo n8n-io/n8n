@@ -12,8 +12,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import {
 	// attachmentFields,
@@ -37,10 +38,11 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import type { IMessage, IMessageUi } from './MessageInterface';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import {
-	configureWaitTillDate,
 	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
 	sendAndWaitWebhook,
 } from '../../../utils/sendAndWait/utils';
 
@@ -53,11 +55,14 @@ export class GoogleChat implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Chat API',
+		schemaPath: 'Google/Chat',
 		defaults: {
 			name: 'Google Chat',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		credentials: [
 			{
@@ -196,7 +201,6 @@ export class GoogleChat implements INodeType {
 						{
 							algorithm: 'RS256',
 							header: {
-								kid: privateKey,
 								typ: 'JWT',
 								alg: 'RS256',
 							},
@@ -252,7 +256,14 @@ export class GoogleChat implements INodeType {
 			const spaceId = this.getNodeParameter('spaceId', 0) as string;
 			const body = createSendAndWaitMessageBody(this);
 
-			await googleApiRequest.call(this, 'POST', `/v1/${spaceId}/messages`, body);
+			try {
+				await googleApiRequest.call(this, 'POST', `/v1/${spaceId}/messages`, body);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
 
 			const waitTill = configureWaitTillDate(this);
 

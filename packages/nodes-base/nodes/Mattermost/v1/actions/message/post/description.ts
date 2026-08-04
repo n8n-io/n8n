@@ -370,11 +370,12 @@ export const messagePostDescription: MessageProperties = [
 		placeholder: 'Add option',
 		options: [
 			{
-				displayName: 'Make Comment',
+				displayName: 'Parent Post ID',
 				name: 'root_id',
 				type: 'string',
 				default: '',
-				description: 'The post ID to comment on',
+				description:
+					'If set, the created message will be a threaded reply to the specified parent post ID',
 			},
 		],
 	},

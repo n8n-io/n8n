@@ -1,0 +1,198 @@
+{
+    "type": "object",
+    "properties": {
+        "amount": {
+            "type": "integer"
+        },
+        "amount_captured": {
+            "type": "integer"
+        },
+        "amount_refunded": {
+            "type": "integer"
+        },
+        "application_fee": {
+            "type": "null"
+        },
+        "captured": {
+            "type": "boolean"
+        },
+        "created": {
+            "type": "integer"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "destination": {
+            "type": "null"
+        },
+        "dispute": {
+            "type": "null"
+        },
+        "disputed": {
+            "type": "boolean"
+        },
+        "failure_balance_transaction": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "livemode": {
+            "type": "boolean"
+        },
+        "object": {
+            "type": "string"
+        },
+        "on_behalf_of": {
+            "type": "null"
+        },
+        "order": {
+            "type": "null"
+        },
+        "outcome": {
+            "type": "object",
+            "properties": {
+                "network_status": {
+                    "type": "string"
+                },
+                "risk_level": {
+                    "type": "string"
+                },
+                "seller_message": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "paid": {
+            "type": "boolean"
+        },
+        "payment_method_details": {
+            "type": "object",
+            "properties": {
+                "card": {
+                    "type": "object",
+                    "properties": {
+                        "brand": {
+                            "type": "string"
+                        },
+                        "country": {
+                            "type": "string"
+                        },
+                        "exp_month": {
+                            "type": "integer"
+                        },
+                        "exp_year": {
+                            "type": "integer"
+                        },
+                        "extended_authorization": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "fingerprint": {
+                            "type": "string"
+                        },
+                        "funding": {
+                            "type": "string"
+                        },
+                        "incremental_authorization": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "installments": {
+                            "type": "null"
+                        },
+                        "last4": {
+                            "type": "string"
+                        },
+                        "mandate": {
+                            "type": "null"
+                        },
+                        "multicapture": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "network": {
+                            "type": "string"
+                        },
+                        "network_token": {
+                            "type": "object",
+                            "properties": {
+                                "used": {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "overcapture": {
+                            "type": "object",
+                            "properties": {
+                                "maximum_amount_capturable": {
+                                    "type": "integer"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "regulated_status": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "refunded": {
+            "type": "boolean"
+        },
+        "refunds": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "review": {
+            "type": "null"
+        },
+        "source_transfer": {
+            "type": "null"
+        },
+        "status": {
+            "type": "string"
+        },
+        "transfer_data": {
+            "type": "null"
+        },
+        "transfer_group": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

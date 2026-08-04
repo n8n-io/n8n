@@ -1,5 +1,10 @@
+import { getProxyAgent } from '@n8n/ai-utilities';
+import { listOpenAiModels } from '@n8n/ai-utilities/model-discovery';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import OpenAI from 'openai';
+
+import { mergeCustomHeaders } from '../../../../utils/helpers';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
@@ -10,28 +15,25 @@ export async function searchModels(
 		(this.getNodeParameter('options.baseURL', '') as string) ||
 		(credentials.url as string) ||
 		'https://api.openai.com/v1';
+	const { openAiDefaultHeaders } = Container.get(AiConfig);
+	const headers = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
-	const openai = new OpenAI({ baseURL, apiKey: credentials.apiKey as string });
-	const { data: models = [] } = await openai.models.list();
-
-	const filteredModels = models.filter((model: { id: string }) => {
-		const isValidModel =
-			(baseURL && !baseURL.includes('api.openai.com')) ||
-			model.id.startsWith('ft:') ||
-			model.id.startsWith('o1') ||
-			(model.id.startsWith('gpt-') && !model.id.includes('instruct'));
-
-		if (!filter) return isValidModel;
-
-		return isValidModel && model.id.toLowerCase().includes(filter.toLowerCase());
+	// Shared with the agents model catalog: endpoint, auth, chat-model filtering
+	// (including include-all on custom hosts) live in @n8n/ai-utilities/model-discovery.
+	const models = await listOpenAiModels({
+		apiKey: credentials.apiKey as string,
+		baseURL,
+		headers,
+		fetch: async (url, init) =>
+			await fetch(url, {
+				...init,
+				dispatcher: getProxyAgent(baseURL),
+			} as RequestInit),
 	});
 
-	const results = {
-		results: filteredModels.map((model: { id: string }) => ({
-			name: model.id,
-			value: model.id,
-		})),
+	return {
+		results: models
+			.filter((model) => !filter || model.id.toLowerCase().includes(filter.toLowerCase()))
+			.map((model) => ({ name: model.id, value: model.id })),
 	};
-
-	return results;
 }

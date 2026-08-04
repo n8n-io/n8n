@@ -154,7 +154,7 @@ export const dealFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getDealCustomProperties',
+									loadOptionsMethod: 'getDealProperties',
 								},
 								default: '',
 								description:
@@ -264,7 +264,7 @@ export const dealFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getDealCustomProperties',
+									loadOptionsMethod: 'getDealProperties',
 								},
 								default: '',
 								description:

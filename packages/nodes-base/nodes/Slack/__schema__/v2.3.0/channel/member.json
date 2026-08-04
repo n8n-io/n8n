@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "member": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

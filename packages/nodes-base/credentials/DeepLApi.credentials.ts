@@ -10,7 +10,7 @@ export class DeepLApi implements ICredentialType {
 
 	displayName = 'DeepL API';
 
-	documentationUrl = 'deepL';
+	documentationUrl = 'deepl';
 
 	properties: INodeProperties[] = [
 		{
@@ -41,8 +41,8 @@ export class DeepLApi implements ICredentialType {
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			qs: {
-				auth_key: '={{$credentials.apiKey}}',
+			headers: {
+				Authorization: '={{ "DeepL-Auth-Key " + $credentials.apiKey }}',
 			},
 		},
 	};

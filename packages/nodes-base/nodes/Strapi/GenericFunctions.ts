@@ -11,12 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-export const removeTrailingSlash = (url: string) => {
-	if (url.endsWith('/')) {
-		return url.slice(0, -1);
-	}
-	return url;
-};
+import { removeTrailingSlash } from '../../utils/utilities';
 
 export async function strapiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,

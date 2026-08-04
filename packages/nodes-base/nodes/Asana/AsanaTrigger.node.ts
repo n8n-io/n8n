@@ -8,13 +8,10 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { verifySignature } from './AsanaTriggerHelpers';
 import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
-
-// import {
-// 	createHmac,
-// } from 'crypto';
 
 export class AsanaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +25,7 @@ export class AsanaTrigger implements INodeType {
 			name: 'Asana Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'asanaApi',
@@ -209,6 +206,12 @@ export class AsanaTrigger implements INodeType {
 			};
 		}
 
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		// Is regular webhook call
 		// Check if it contains any events
 		if (
@@ -220,18 +223,6 @@ export class AsanaTrigger implements INodeType {
 			// start the workflow
 			return {};
 		}
-
-		// TODO: Had to be deactivated as it is currently not possible to get the secret
-		//       in production mode as the static data overwrites each other because the
-		//       two exist at the same time (create webhook [with webhookId] and receive
-		//       webhook [with secret])
-		// // Check if the request is valid
-		// // (if the signature matches to data and hookSecret)
-		// const computedSignature = createHmac('sha256', webhookData.hookSecret as string).update(JSON.stringify(req.body)).digest('hex');
-		// if (headerData['x-hook-signature'] !== computedSignature) {
-		// 	// Signature is not valid so ignore call
-		// 	return {};
-		// }
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body.events as IDataObject[])],

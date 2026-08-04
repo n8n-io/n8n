@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -6,8 +7,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { verifySignature } from './FormstackTriggerHelpers';
 import type { IFormstackWebhookResponseBody } from './GenericFunctions';
 import { apiRequest, getForms } from './GenericFunctions';
 
@@ -24,7 +26,7 @@ export class FormstackTrigger implements INodeType {
 			name: 'Formstack Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'formstackApi',
@@ -127,18 +129,21 @@ export class FormstackTrigger implements INodeType {
 
 				const endpoint = `form/${formId}/webhook.json`;
 
-				// TODO: Add handshake key support
+				const webhookSecret = randomBytes(32).toString('hex');
+
 				const body = {
 					url: webhookUrl,
 					standardize_field_values: true,
 					include_field_type: true,
 					content_type: 'json',
+					hmac_secret: webhookSecret,
 				};
 
 				const response = await apiRequest.call(this, 'POST', endpoint, body);
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = response.id;
+				webhookData.webhookSecret = webhookSecret;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -156,6 +161,7 @@ export class FormstackTrigger implements INodeType {
 					// Remove from the static workflow data so that it is clear
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
+					delete webhookData.webhookSecret;
 				}
 
 				return true;
@@ -164,6 +170,14 @@ export class FormstackTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData() as unknown as IFormstackWebhookResponseBody;
 		const simple = this.getNodeParameter('simple') as string;
 

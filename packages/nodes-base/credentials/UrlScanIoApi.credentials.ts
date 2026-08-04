@@ -10,7 +10,7 @@ export class UrlScanIoApi implements ICredentialType {
 
 	displayName = 'urlscan.io API';
 
-	documentationUrl = 'urlScanIo';
+	documentationUrl = 'urlscanio';
 
 	properties: INodeProperties[] = [
 		{

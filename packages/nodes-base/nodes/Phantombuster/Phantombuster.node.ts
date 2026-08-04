@@ -1,16 +1,21 @@
 import {
-	type IExecuteFunctions,
 	type IDataObject,
+	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionType,
+	NodeApiError,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { agentFields, agentOperations } from './AgentDescription';
-import { phantombusterApiRequest, validateJSON } from './GenericFunctions';
+import {
+	phantombusterApiRequest,
+	phantombusterStreamingRequest,
+	validateJSON,
+} from './GenericFunctions';
 
 // import {
 // 	sentenceCase,
@@ -20,8 +25,7 @@ export class Phantombuster implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Phantombuster',
 		name: 'phantombuster',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:phantombuster.png',
+		icon: 'file:phantombuster.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -29,8 +33,13 @@ export class Phantombuster implements INodeType {
 		defaults: {
 			name: 'Phantombuster',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		builderHint: {
+			searchHint:
+				'Recommended for scraping LinkedIn profiles and social media for leads, and company data. Use with AI Agent for lead generation workflows.',
+		},
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'phantombusterApi',
@@ -180,12 +189,11 @@ export class Phantombuster implements INodeType {
 						}
 					}
 					//https://hub.phantombuster.com/reference#post_agents-launch-1
-					if (operation === 'launch') {
+					// https://hub.phantombuster.com/reference/post_agents-launch-sync
+					if (operation === 'launch' || operation === 'launchSync') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
-
-						const resolveData = this.getNodeParameter('resolveData', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -215,34 +223,90 @@ export class Phantombuster implements INodeType {
 							const argumentParameters =
 								((additionalFields.argumentsUi as IDataObject)?.argumentValues as IDataObject[]) ||
 								[];
-							body.arguments = argumentParameters.reduce((object, currentValue) => {
+
+							const argumentsObj = argumentParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
 							}, {});
+
+							// Only set arguments if not empty as per API requirements
+							if (Object.keys(argumentsObj).length > 0) {
+								body.arguments = argumentsObj;
+							}
 							delete additionalFields.argumentsUi;
 
 							const bonusParameters =
 								((additionalFields.bonusArgumentUi as IDataObject)
 									?.bonusArgumentValue as IDataObject[]) || [];
-							body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
+
+							const bonusArgumentObj = bonusParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
 							}, {});
+
+							// Only set bonusArgument if not empty as per API requirements
+							if (Object.keys(bonusArgumentObj).length > 0) {
+								body.bonusArgument = bonusArgumentObj;
+							}
 							delete additionalFields.bonusArgumentUi;
 						}
 
 						Object.assign(body, additionalFields);
 
-						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/launch', body);
-
-						if (resolveData) {
+						if (operation === 'launch') {
 							responseData = await phantombusterApiRequest.call(
 								this,
-								'GET',
-								'/containers/fetch',
-								{},
-								{ id: responseData.containerId },
+								'POST',
+								'/agents/launch',
+								body,
 							);
+
+							const resolveData = this.getNodeParameter('resolveData', i);
+							if (resolveData) {
+								responseData = await phantombusterApiRequest.call(
+									this,
+									'GET',
+									'/containers/fetch',
+									{},
+									{ id: responseData.containerId },
+								);
+							}
+						} else {
+							let containerId: string | undefined;
+							responseData = await phantombusterStreamingRequest.call(
+								this,
+								{ method: 'POST', path: '/agents/launch-sync', body },
+								(message) => {
+									if (
+										message.type === 'start' &&
+										typeof message.data === 'object' &&
+										message.data !== null &&
+										'containerId' in message.data
+									) {
+										containerId = message.data?.containerId as string;
+									}
+								},
+							);
+							// If the streaming call disconnects without an error ( no response ) reconnect using the attach endpoint
+							const MAX_RECONNECTIONS = 5;
+							const RECONNECTION_DELAY_MS = 1_000;
+							for (
+								let attempt = 0;
+								attempt < MAX_RECONNECTIONS && !responseData && containerId;
+								attempt += 1
+							) {
+								await new Promise((resolve) => setTimeout(resolve, RECONNECTION_DELAY_MS));
+								responseData = await phantombusterStreamingRequest.call(this, {
+									method: 'GET',
+									path: '/containers/attach',
+									qs: { id: containerId },
+								});
+							}
+							if (!responseData) {
+								throw new NodeApiError(this.getNode(), {
+									message: 'Stream did not provide a response',
+								});
+							}
 						}
 					}
 				}

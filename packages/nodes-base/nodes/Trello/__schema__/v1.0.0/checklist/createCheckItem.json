@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "due": {
+            "type": "null"
+        },
+        "dueReminder": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "idChecklist": {
+            "type": "string"
+        },
+        "idMember": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "pos": {
+            "type": "integer"
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

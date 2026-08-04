@@ -1,0 +1,22 @@
+[
+	{
+		"attributes": {
+			"type": "Task",
+			"url": "/services/data/v59.0/sobjects/Task/id1"
+		},
+		"Id": "id1",
+		"Subject": "Email",
+		"Status": "In Progress",
+		"Priority": "Normal"
+	},
+	{
+		"attributes": {
+			"type": "Task",
+			"url": "/services/data/v59.0/sobjects/Task/id2"
+		},
+		"Id": "id2",
+		"Subject": "Email",
+		"Status": "In Progress",
+		"Priority": "Normal"
+	}
+]

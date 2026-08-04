@@ -42,7 +42,7 @@ export class LinearOAuth2Api implements ICredentialType {
 				},
 				{
 					name: 'Application',
-					value: 'application',
+					value: 'app',
 					description: 'Resources are created as the application',
 				},
 			],
@@ -60,7 +60,7 @@ export class LinearOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["includeAdminScope"] ? "read write issues:create comments:create admin" : "read write issues:create comments:create"}}',
+				'={{"read write issues:create comments:create" + ($self["includeAdminScope"] ? " admin" : "") + ($self["actor"] === "app" ? " app:mentionable" : "")}}',
 			required: true,
 		},
 		{
@@ -74,6 +74,15 @@ export class LinearOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
+		},
+		{
+			displayName: 'Signing Secret',
+			name: 'signingSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'The signing secret is used to verify the authenticity of webhook requests sent by Linear.',
 		},
 	];
 }

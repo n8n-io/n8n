@@ -1,31 +1,33 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
 	ITriggerFunctions,
 	IWorkflowExecuteAdditionalData,
+	SchedulingFunctions,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
-
-// eslint-disable-next-line import/no-cycle
-import {
-	getBinaryHelperFunctions,
-	getRequestHelperFunctions,
-	getSchedulingFunctions,
-	getSSHTunnelFunctions,
-	returnJsonArray,
-} from '@/node-execute-functions';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import { getRequestHelperFunctions } from './utils/request-helper-functions';
+import { returnJsonArray } from './utils/return-json-array';
+import { getSchedulingFunctions } from './utils/scheduling-helper-functions';
+import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 const throwOnEmit = () => {
-	throw new ApplicationError('Overwrite TriggerContext.emit function');
+	throw new UnexpectedError('Overwrite TriggerContext.emit function');
 };
 
 const throwOnEmitError = () => {
-	throw new ApplicationError('Overwrite TriggerContext.emitError function');
+	throw new UnexpectedError('Overwrite TriggerContext.emitError function');
+};
+
+const throwOnSaveFailedExecution = () => {
+	throw new UnexpectedError('Overwrite TriggerContext.saveFailedExecution function');
 };
 
 export class TriggerContext extends NodeExecutionContext implements ITriggerFunctions {
@@ -39,6 +41,12 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		private readonly activation: WorkflowActivateMode,
 		readonly emit: ITriggerFunctions['emit'] = throwOnEmit,
 		readonly emitError: ITriggerFunctions['emitError'] = throwOnEmitError,
+		readonly saveFailedExecution: ITriggerFunctions['saveFailedExecution'] = throwOnSaveFailedExecution,
+		schedulingFunctions: SchedulingFunctions = getSchedulingFunctions(
+			workflow.id,
+			workflow.timezone,
+			node.id,
+		),
 	) {
 		super(workflow, node, additionalData, mode);
 
@@ -48,7 +56,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getSSHTunnelFunctions(),
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getSchedulingFunctions(workflow),
+			...schedulingFunctions,
 		};
 	}
 

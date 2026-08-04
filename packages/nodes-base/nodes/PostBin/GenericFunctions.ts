@@ -51,7 +51,7 @@ export async function buildBinAPIURL(
 ): Promise<IHttpRequestOptions> {
 	const binId = parseBinId(this);
 	// Assemble the PostBin API URL and put it back to requestOptions
-	requestOptions.url = `/developers/postbin/api/bin/${binId}`;
+	requestOptions.url = `/api/bin/${binId}`;
 
 	return requestOptions;
 }
@@ -69,7 +69,7 @@ export async function buildBinTestURL(
 	const binId = parseBinId(this);
 
 	// Assemble the PostBin API URL and put it back to requestOptions
-	requestOptions.url = `/developers/postbin/${binId}`;
+	requestOptions.url = `/${binId}`;
 	return requestOptions;
 }
 
@@ -86,7 +86,7 @@ export async function buildRequestURL(
 	const reqId = this.getNodeParameter('requestId', 'shift') as string;
 	const binId = parseBinId(this);
 
-	requestOptions.url = `/developers/postbin/api/bin/${binId}/req/${reqId}`;
+	requestOptions.url = `/api/bin/${binId}/req/${reqId}`;
 	return requestOptions;
 }
 
@@ -107,8 +107,8 @@ export async function transformBinResponse(
 				nowIso: new Date(item.json.now as string).toISOString(),
 				expiresTimestamp: item.json.expires,
 				expiresIso: new Date(item.json.expires as string).toISOString(),
-				requestUrl: 'https://www.toptal.com/developers/postbin/' + (item.json.binId as string),
-				viewUrl: 'https://www.toptal.com/developers/postbin/b/' + (item.json.binId as string),
+				requestUrl: 'https://www.postb.in/' + (item.json.binId as string),
+				viewUrl: 'https://www.postb.in/b/' + (item.json.binId as string),
 			}),
 	);
 	return items;

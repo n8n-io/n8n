@@ -1,4 +1,4 @@
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { createNodeData, toIConnections } from './helpers';
 
@@ -7,7 +7,7 @@ test('toIConnections', () => {
 	const node2 = createNodeData({ name: 'Basic Node 2' });
 
 	expect(
-		toIConnections([{ from: node1, to: node2, type: NodeConnectionType.Main, outputIndex: 0 }]),
+		toIConnections([{ from: node1, to: node2, type: NodeConnectionTypes.Main, outputIndex: 0 }]),
 	).toEqual({
 		[node1.name]: {
 			// output group
@@ -17,7 +17,7 @@ test('toIConnections', () => {
 					// first connection
 					{
 						node: node2.name,
-						type: NodeConnectionType.Main,
+						type: NodeConnectionTypes.Main,
 						index: 0,
 					},
 				],

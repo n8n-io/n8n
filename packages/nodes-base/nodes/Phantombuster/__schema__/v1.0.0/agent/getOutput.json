@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "location": {
+            "type": "string"
+        },
+        "profileUrl": {
+            "type": "string"
+        },
+        "timestamp": {
+            "type": "string"
+        }
+    },
+    "version": 6
+}

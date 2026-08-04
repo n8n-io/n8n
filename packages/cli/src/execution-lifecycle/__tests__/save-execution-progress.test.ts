@@ -1,100 +1,78 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { ErrorReporter } from 'n8n-core';
-import { Logger } from 'n8n-core';
-import type { IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
+import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutionResponse } from '@/interfaces';
-import { mockInstance } from '@test/mocking';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { saveExecutionProgress } from '../save-execution-progress';
-import * as fnModule from '../to-save-settings';
 
-mockInstance(Logger);
-const errorReporter = mockInstance(ErrorReporter);
-const executionRepository = mockInstance(ExecutionRepository);
+describe('saveExecutionProgress', () => {
+	mockInstance(Logger);
+	const errorReporter = mockInstance(ErrorReporter);
+	const executionPersistence = mockInstance(ExecutionPersistence);
 
-afterEach(() => {
-	jest.clearAllMocks();
-});
-
-const commonArgs: [IWorkflowBase, string, string, ITaskData, IRunExecutionData, string] = [
-	{} as IWorkflowBase,
-	'some-execution-id',
-	'My Node',
-	{} as ITaskData,
-	{} as IRunExecutionData,
-	'some-session-id',
-];
-
-const commonSettings = { error: true, success: true, manual: true };
-
-test('should ignore if save settings say so', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: false,
+	afterEach(() => {
+		vi.resetAllMocks();
 	});
 
-	await saveExecutionProgress(...commonArgs);
+	const workflowId = 'some-workflow-id';
+	const executionId = 'some-execution-id';
+	const nodeName = 'My Node';
+	const taskData = mock<ITaskData>();
+	const runExecutionData = createRunExecutionData();
 
-	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-});
+	const commonArgs = [workflowId, executionId, nodeName, taskData, runExecutionData] as const;
 
-test('should ignore on leftover async call', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: true,
+	test('should update execution with in-memory data and conditional WHERE', async () => {
+		executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+		await saveExecutionProgress(...commonArgs);
+
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+			executionId,
+			{ data: runExecutionData, status: 'running' },
+			{ requireNotFinished: true, requireNotCanceled: true },
+		);
+		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
-	executionRepository.findSingleExecution.mockResolvedValue({
-		finished: true,
-	} as IExecutionResponse);
+	test('should set lastNodeExecuted on in-memory data before saving', async () => {
+		executionPersistence.updateExistingExecution.mockResolvedValue(true);
+		const execData = createRunExecutionData();
 
-	await saveExecutionProgress(...commonArgs);
+		await saveExecutionProgress(workflowId, executionId, nodeName, taskData, execData);
 
-	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-});
-
-test('should update execution when saving progress is enabled', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: true,
+		expect(execData.resultData.lastNodeExecuted).toBe(nodeName);
 	});
 
-	executionRepository.findSingleExecution.mockResolvedValue({} as IExecutionResponse);
+	test('should not throw when update returns false (execution finished or canceled)', async () => {
+		executionPersistence.updateExistingExecution.mockResolvedValue(false);
 
-	await saveExecutionProgress(...commonArgs);
+		await saveExecutionProgress(...commonArgs);
 
-	expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith('some-execution-id', {
-		data: {
-			executionData: undefined,
-			resultData: {
-				lastNodeExecuted: 'My Node',
-				runData: {
-					'My Node': [{}],
-				},
-			},
-			startData: {},
-		},
-		status: 'running',
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalled();
+		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
-	expect(errorReporter.error).not.toHaveBeenCalled();
-});
+	test('should handle DB errors when updating the execution', async () => {
+		const error = new Error('Something went wrong');
+		executionPersistence.updateExistingExecution.mockImplementation(() => {
+			throw error;
+		});
 
-test('should report error on failure', async () => {
-	jest.spyOn(fnModule, 'toSaveSettings').mockReturnValue({
-		...commonSettings,
-		progress: true,
+		await saveExecutionProgress(...commonArgs);
+
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledWith(error);
 	});
 
-	const error = new Error('Something went wrong');
+	test('should not fetch execution from database', async () => {
+		executionPersistence.updateExistingExecution.mockResolvedValue(true);
 
-	executionRepository.findSingleExecution.mockImplementation(() => {
-		throw error;
+		await saveExecutionProgress(...commonArgs);
+
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 	});
-
-	await saveExecutionProgress(...commonArgs);
-
-	expect(executionRepository.updateExistingExecution).not.toHaveBeenCalled();
-	expect(errorReporter.error).toHaveBeenCalledWith(error);
 });

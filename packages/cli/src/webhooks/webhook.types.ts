@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 
+import type { ExpectedWebhookNodeType } from './node-type-matcher';
+import type { WebhookResponse } from './webhook-response';
+
 export type WebhookOptionsRequest = Request & { method: 'OPTIONS' };
 
 export type WebhookRequest = Request<{ path: string }> & {
@@ -9,7 +12,7 @@ export type WebhookRequest = Request<{ path: string }> & {
 };
 
 export type WaitingWebhookRequest = WebhookRequest & {
-	params: WebhookRequest['path'] & { suffix?: string };
+	params: Pick<WebhookRequest['params'], 'path'> & { suffix?: string };
 };
 
 export interface WebhookAccessControlOptions {
@@ -21,12 +24,16 @@ export interface IWebhookManager {
 	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
 
 	/** Find the CORS options matching a path and method */
-	findAccessControlOptions?: (
+	findAccessControlOptions: (
 		path: string,
 		httpMethod: IHttpRequestMethods,
 	) => Promise<WebhookAccessControlOptions | undefined>;
 
-	executeWebhook(req: WebhookRequest, res: Response): Promise<IWebhookResponseCallbackData>;
+	executeWebhook(
+		req: WebhookRequest,
+		res: Response,
+		expectedNodeType?: ExpectedWebhookNodeType,
+	): Promise<IWebhookResponseCallbackData | WebhookResponse>;
 }
 
 export interface IWebhookResponseCallbackData {
@@ -35,3 +42,5 @@ export interface IWebhookResponseCallbackData {
 	noWebhookResponse?: boolean;
 	responseCode?: number;
 }
+
+export type Method = NonNullable<IHttpRequestMethods>;

@@ -1,7 +1,6 @@
+import type { Project } from '@n8n/db';
 import { nanoId, date, firstName, lastName, email } from 'minifaker';
 import 'minifaker/locales/en';
-
-import type { Project } from '@/databases/entities/project';
 
 type RawProjectData = Pick<Project, 'name' | 'type' | 'createdAt' | 'updatedAt' | 'id'>;
 

@@ -1,0 +1,62 @@
+import { NoJsonParseJsonStringifyRule } from './no-json-parse-json-stringify.js';
+import { NoUncaughtJsonParseRule } from './no-uncaught-json-parse.js';
+import { NoUnneededBackticksRule } from './no-unneeded-backticks.js';
+import { NoUnusedParamInCatchClauseRule } from './no-unused-param-catch-clause.js';
+import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
+import { NoSkippedTestsRule } from './no-skipped-tests.js';
+import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
+import { NoPlainErrorsRule } from './no-plain-errors.js';
+import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
+import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
+import { NoMisplacedTypeormImportDisableRule } from './no-misplaced-typeorm-import-disable.js';
+import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
+import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
+import { NoTopLevelRelativeImportsInBackendModuleRule } from './no-top-level-relative-imports-in-backend-module.js';
+import { NoConstructorInBackendModuleRule } from './no-constructor-in-backend-module.js';
+import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
+import { NoArgumentSpreadRule } from './no-argument-spread.js';
+import { NoInternalPackageImportRule } from './no-internal-package-import.js';
+import { NoImportEnterpriseEditionRule } from './no-import-enterprise-edition.js';
+import { NoTypeOnlyImportInDiRule } from './no-type-only-import-in-di.js';
+import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js';
+import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
+import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
+import { NoApplicationErrorRule } from './no-application-error.js';
+import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
+import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
+import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-api-handler.js';
+import { RequirePublicApiControllerRule } from './require-public-api-controller.js';
+import { NoPublicApiGuardrailDisableRule } from './no-public-api-guardrail-disable.js';
+
+export const rules = {
+	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
+	'no-json-parse-json-stringify': NoJsonParseJsonStringifyRule,
+	'no-unneeded-backticks': NoUnneededBackticksRule,
+	'no-unused-param-in-catch-clause': NoUnusedParamInCatchClauseRule,
+	'no-useless-catch-throw': NoUselessCatchThrowRule,
+	'no-skipped-tests': NoSkippedTestsRule,
+	'no-interpolation-in-regular-string': NoInterpolationInRegularStringRule,
+	'no-plain-errors': NoPlainErrorsRule,
+	'no-dynamic-import-template': NoDynamicImportTemplateRule,
+	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
+	'no-misplaced-typeorm-import-disable': NoMisplacedTypeormImportDisableRule,
+	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
+	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,
+	'no-top-level-relative-imports-in-backend-module': NoTopLevelRelativeImportsInBackendModuleRule,
+	'no-constructor-in-backend-module': NoConstructorInBackendModuleRule,
+	'no-argument-spread': NoArgumentSpreadRule,
+	'no-internal-package-import': NoInternalPackageImportRule,
+	'no-import-enterprise-edition': NoImportEnterpriseEditionRule,
+	'no-type-only-import-in-di': NoTypeOnlyImportInDiRule,
+	'no-error-instance-in-to-throw': NoErrorInstanceInToThrowRule,
+	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
+	'no-uncentralized-http': NoUncentralizedHttpRule,
+	'no-application-error': NoApplicationErrorRule,
+	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,
+	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
+	'no-repository-in-public-api-handler': NoRepositoryInPublicApiHandlerRule,
+	'require-public-api-controller': RequirePublicApiControllerRule,
+	'no-public-api-guardrail-disable': NoPublicApiGuardrailDisableRule,
+} satisfies Record<string, AnyRuleModule>;

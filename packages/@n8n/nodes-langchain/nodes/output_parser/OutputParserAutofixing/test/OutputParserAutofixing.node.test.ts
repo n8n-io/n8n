@@ -1,12 +1,16 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { OutputParserException } from '@langchain/core/output_parsers';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type {
+	ISupplyDataFunctions,
+	IWorkflowDataProxyData,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import type {
 	N8nOutputFixingParser,
@@ -18,13 +22,13 @@ import { NAIVE_FIX_PROMPT } from '../prompt';
 
 describe('OutputParserAutofixing', () => {
 	let outputParser: OutputParserAutofixing;
-	let thisArg: MockProxy<IExecuteFunctions>;
+	let thisArg: MockProxy<ISupplyDataFunctions>;
 	let mockModel: MockProxy<BaseLanguageModel>;
 	let mockStructuredOutputParser: MockProxy<N8nStructuredOutputParser>;
 
 	beforeEach(() => {
 		outputParser = new OutputParserAutofixing();
-		thisArg = mock<IExecuteFunctions>({
+		thisArg = mock<ISupplyDataFunctions>({
 			helpers: { normalizeItems },
 		});
 		mockModel = mock<BaseLanguageModel>();
@@ -34,27 +38,27 @@ describe('OutputParserAutofixing', () => {
 		thisArg.addInputData.mockReturnValue({ index: 0 });
 		thisArg.addOutputData.mockReturnValue();
 		thisArg.getInputConnectionData.mockImplementation(async (type: NodeConnectionType) => {
-			if (type === NodeConnectionType.AiLanguageModel) return mockModel;
-			if (type === NodeConnectionType.AiOutputParser) return mockStructuredOutputParser;
+			if (type === NodeConnectionTypes.AiLanguageModel) return mockModel;
+			if (type === NodeConnectionTypes.AiOutputParser) return mockStructuredOutputParser;
 
-			throw new ApplicationError('Unexpected connection type');
+			throw new UnexpectedError('Unexpected connection type');
 		});
 		thisArg.getNodeParameter.mockReset();
 		thisArg.getNodeParameter.mockImplementation((parameterName) => {
 			if (parameterName === 'options.prompt') {
 				return NAIVE_FIX_PROMPT;
 			}
-			throw new ApplicationError('Not implemented');
+			throw new UnexpectedError('Not implemented');
 		});
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function getMockedRetryChain(output: string) {
-		return jest.fn().mockReturnValue({
-			invoke: jest.fn().mockResolvedValue({
+		return vi.fn().mockReturnValue({
+			invoke: vi.fn().mockResolvedValue({
 				content: output,
 			}),
 		});
@@ -66,14 +70,14 @@ describe('OutputParserAutofixing', () => {
 				if (parameterName === 'options.prompt') {
 					return 'Invalid prompt without error placeholder';
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
+			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toBeInstanceOf(
+				NodeOperationError,
+			);
 			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
-				new NodeOperationError(
-					thisArg.getNode(),
-					'Auto-fixing parser prompt has to contain {error} placeholder',
-				),
+				'Auto-fixing parser prompt has to contain {error} placeholder',
 			);
 		});
 
@@ -82,14 +86,14 @@ describe('OutputParserAutofixing', () => {
 				if (parameterName === 'options.prompt') {
 					return '';
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
-			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
-				new NodeOperationError(
-					thisArg.getNode(),
-					'Auto-fixing parser prompt has to contain {error} placeholder',
-				),
+			const execution = outputParser.supplyData.call(thisArg, 0);
+
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Auto-fixing parser prompt has to contain {error} placeholder',
 			);
 		});
 
@@ -98,7 +102,7 @@ describe('OutputParserAutofixing', () => {
 				if (parameterName === 'options.prompt') {
 					return NAIVE_FIX_PROMPT;
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = (await outputParser.supplyData.call(thisArg, 0)) as {
@@ -173,7 +177,7 @@ describe('OutputParserAutofixing', () => {
 
 		it('should throw non-OutputParserException errors immediately without retry', async () => {
 			const customError = new Error('Database connection error');
-			const retryChainSpy = jest.fn();
+			const retryChainSpy = vi.fn();
 
 			mockStructuredOutputParser.parse.mockRejectedValueOnce(customError);
 

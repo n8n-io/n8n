@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "BucketArn": {
+            "type": "string"
+        },
+        "CreationDate": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

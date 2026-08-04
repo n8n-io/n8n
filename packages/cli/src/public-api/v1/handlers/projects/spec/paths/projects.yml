@@ -1,10 +1,11 @@
 post:
   x-eov-operation-id: createProject
+  x-required-scope: project:create
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects
   summary: Create a project
-  description: Create a project in your instance.
+  description: Create a project on your instance.
   requestBody:
     description: Payload for project to create.
     content:
@@ -21,6 +22,7 @@ post:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
   x-eov-operation-id: getProjects
+  x-required-scope: project:list
   x-eov-operation-handler: v1/handlers/projects/projects.handler
   tags:
     - Projects

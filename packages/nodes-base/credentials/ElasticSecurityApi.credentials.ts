@@ -11,7 +11,7 @@ export class ElasticSecurityApi implements ICredentialType {
 
 	displayName = 'Elastic Security API';
 
-	documentationUrl = 'elasticSecurity';
+	documentationUrl = 'elasticsecurity';
 
 	properties: INodeProperties[] = [
 		{

@@ -1,6 +1,6 @@
 import { snakeCase } from 'change-case';
 import set from 'lodash/set';
-import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -30,6 +30,7 @@ import {
 	clean,
 	getAssociations,
 	getCallMetadata,
+	getAllProperties,
 	getEmailMetadata,
 	getMeetingMetadata,
 	getTaskMetadata,
@@ -39,6 +40,7 @@ import {
 } from './GenericFunctions';
 import { ticketFields, ticketOperations } from './TicketDescription';
 import { generatePairedItemData } from '../../../utils/utilities';
+import { parseToTimestamp } from './utils/parseToTimestamp';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -47,13 +49,14 @@ export class HubspotV2 implements INodeType {
 		this.description = {
 			...baseDescription,
 			group: ['output'],
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			usableAsTool: true,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',
@@ -96,7 +99,7 @@ export class HubspotV2 implements INodeType {
 							value: 'apiKey',
 						},
 						{
-							name: 'APP Token',
+							name: 'Service Key',
 							value: 'appToken',
 						},
 						{
@@ -200,11 +203,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getContactLeadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					if (property.name === 'hs_lead_status') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const statusName = option.label;
 							const statusId = option.value;
 							returnData.push({
@@ -221,11 +223,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getContactLealBasics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					if (property.name === 'hs_legal_basis') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const statusName = option.label;
 							const statusId = option.value;
 							returnData.push({
@@ -244,11 +245,10 @@ export class HubspotV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					if (property.name === 'lifecyclestage') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const stageName = option.label;
 							const stageId = option.value;
 							returnData.push({
@@ -267,11 +267,10 @@ export class HubspotV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					if (property.name === 'hs_analytics_source') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const sourceName = option.label;
 							const sourceId = option.value;
 							returnData.push({
@@ -290,11 +289,10 @@ export class HubspotV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					if (property.name === 'hs_language') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const languageName = option.label;
 							const languageId = option.value;
 							returnData.push({
@@ -311,11 +309,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getContactStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					if (property.name === 'hs_content_membership_status') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const languageName = option.label;
 							const languageId = option.value;
 							returnData.push({
@@ -331,14 +328,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
 
-				let properties = (await hubspotApiRequest.call(this, 'GET', endpoint, {})) as Array<{
-					label: string;
-					name: string;
-				}>;
+				const properties = await getAllProperties.call(this, 'contacts');
 
-				properties = properties.sort((a, b) => {
+				properties.sort((a, b) => {
 					if (a.label < b.label) return -1;
 					if (a.label > b.label) return 1;
 					return 0;
@@ -361,8 +354,7 @@ export class HubspotV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					const propertyName = property.label;
 					const propertyId = property.name;
@@ -376,38 +368,16 @@ export class HubspotV2 implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact properties to display them to user so that they can
-			// select them easily
-			async getContactCustomProperties(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					if (property.hubspotDefined === null) {
-						const propertyName = property.label;
-						const propertyId = property.name;
-						returnData.push({
-							name: propertyName,
-							value: propertyId,
-						});
-					}
-				}
-				return returnData;
-			},
-
 			// Get all the contact number of employees options to display them to user so that they can
 			// select them easily
 			async getContactNumberOfEmployees(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'contacts');
 				for (const property of properties) {
 					if (property.name === 'numemployees') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const optionName = option.label;
 							const optionId = option.value;
 							returnData.push({
@@ -428,11 +398,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getCompanyIndustries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					if (property.name === 'industry') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const industryName = option.label;
 							const industryId = option.value;
 							returnData.push({
@@ -449,11 +418,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getCompanyleadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					if (property.name === 'hs_lead_status') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const statusName = option.label;
 							const statusId = option.value;
 							returnData.push({
@@ -472,11 +440,10 @@ export class HubspotV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					if (property.name === 'lifecyclestage') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const stageName = option.label;
 							const stageId = option.value;
 							returnData.push({
@@ -493,11 +460,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getCompanyTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					if (property.name === 'type') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const typeName = option.label;
 							const typeId = option.value;
 							returnData.push({
@@ -514,11 +480,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getCompanyTargetAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					if (property.name === 'hs_target_account') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const targetName = option.label;
 							const targetId = option.value;
 							returnData.push({
@@ -535,11 +500,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getCompanySourceTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					if (property.name === 'hs_analytics_source') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const typeName = option.label;
 							const typeId = option.value;
 							returnData.push({
@@ -558,11 +522,10 @@ export class HubspotV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					if (property.name === 'web_technologies') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const technologyName = option.label;
 							const technologyId = option.value;
 							returnData.push({
@@ -579,8 +542,7 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'companies');
 				for (const property of properties) {
 					const propertyName = property.label;
 					const propertyId = property.name;
@@ -588,27 +550,6 @@ export class HubspotV2 implements INodeType {
 						name: propertyName,
 						value: propertyId,
 					});
-				}
-				return returnData;
-			},
-
-			// Get all the company custom properties to display them to user so that they can
-			// select them easily
-			async getCompanyCustomProperties(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/companies/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					if (property.hubspotDefined === null) {
-						const propertyName = property.label;
-						const propertyId = property.name;
-						returnData.push({
-							name: propertyName,
-							value: propertyId,
-						});
-					}
 				}
 				return returnData;
 			},
@@ -654,33 +595,12 @@ export class HubspotV2 implements INodeType {
 
 			// Get all the deal properties to display them to user so that they can
 			// select them easily
-			async getDealCustomProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/deals/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const property of properties) {
-					if (property.hubspotDefined === null) {
-						const propertyName = property.label;
-						const propertyId = property.name;
-						returnData.push({
-							name: propertyName,
-							value: propertyId,
-						});
-					}
-				}
-				return returnData;
-			},
-			// Get all the deal properties to display them to user so that they can
-			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/deals/properties';
-				let properties = (await hubspotApiRequest.call(this, 'GET', endpoint, {})) as Array<{
-					label: string;
-					name: string;
-				}>;
 
-				properties = properties.sort((a, b) => {
+				const properties = await getAllProperties.call(this, 'deals');
+
+				properties.sort((a, b) => {
 					if (a.label < b.label) return -1;
 					if (a.label > b.label) return 1;
 					return 0;
@@ -701,8 +621,7 @@ export class HubspotV2 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/deals/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'deals');
 				for (const property of properties) {
 					const propertyName = property.label;
 					const propertyId = property.name;
@@ -710,7 +629,6 @@ export class HubspotV2 implements INodeType {
 					returnData.push({
 						name: propertyName,
 						// Hacky way to get the property type need to be parsed to be use in the api
-						// this is no longer working, properties does not returned in the response
 						value: `${propertyId}|${propertyType}`,
 					});
 				}
@@ -784,11 +702,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getTicketCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/tickets/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'tickets');
 				for (const property of properties) {
 					if (property.name === 'hs_ticket_category') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const categoryName = option.label;
 							const categoryId = option.value;
 							returnData.push({
@@ -822,11 +739,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getTicketPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/tickets/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'tickets');
 				for (const property of properties) {
 					if (property.name === 'hs_ticket_priority') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const priorityName = option.label;
 							const priorityId = option.value;
 							returnData.push({
@@ -843,8 +759,7 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/tickets/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'tickets');
 				for (const property of properties) {
 					const propertyName = property.label;
 					const propertyId = property.name;
@@ -860,11 +775,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getTicketResolutions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/tickets/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'tickets');
 				for (const property of properties) {
 					if (property.name === 'hs_resolution') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const resolutionName = option.label;
 							const resolutionId = option.value;
 							returnData.push({
@@ -881,11 +795,10 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getTicketSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/properties/v2/tickets/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				const properties = await getAllProperties.call(this, 'tickets');
 				for (const property of properties) {
 					if (property.name === 'source_type') {
-						for (const option of property.options) {
+						for (const option of property.options ?? []) {
 							const sourceName = option.label;
 							const sourceId = option.value;
 							returnData.push({
@@ -1143,7 +1056,7 @@ export class HubspotV2 implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-
+		const version = this.getNode().typeVersion;
 		//https://legacydocs.hubspot.com/docs/methods/lists/contact-lists-overview
 		if (resource === 'contactList') {
 			try {
@@ -1479,6 +1392,125 @@ export class HubspotV2 implements INodeType {
 									value: additionalFields.workEmail,
 								});
 							}
+							if (additionalFields.buyingRole) {
+								const buyingRole = Array.isArray(additionalFields.buyingRole)
+									? (additionalFields.buyingRole as string[]).join(';')
+									: additionalFields.buyingRole;
+								body.push({
+									property: 'hs_buying_role',
+									value: buyingRole,
+								});
+							}
+							if (additionalFields.countryRegionCode) {
+								body.push({
+									property: 'hs_country_region_code',
+									value: additionalFields.countryRegionCode,
+								});
+							}
+							if (additionalFields.emailCustomerQuarantinedReason) {
+								body.push({
+									property: 'hs_email_customer_quarantined_reason',
+									value: additionalFields.emailCustomerQuarantinedReason,
+								});
+							}
+							if (additionalFields.employmentRole) {
+								body.push({
+									property: 'hs_role',
+									value: additionalFields.employmentRole,
+								});
+							}
+							if (additionalFields.employmentSeniority) {
+								body.push({
+									property: 'hs_seniority',
+									value: additionalFields.employmentSeniority,
+								});
+							}
+							if (additionalFields.employmentSubRole) {
+								body.push({
+									property: 'hs_sub_role',
+									value: additionalFields.employmentSubRole,
+								});
+							}
+							if (additionalFields.enrichedEmailBounceDetected) {
+								body.push({
+									property: 'hs_enriched_email_bounce_detected',
+									value: additionalFields.enrichedEmailBounceDetected,
+								});
+							}
+							if (additionalFields.inferredLanguageCodes) {
+								body.push({
+									property: 'hs_inferred_language_codes',
+									value: additionalFields.inferredLanguageCodes,
+								});
+							}
+							if (additionalFields.latestTrafficSource) {
+								body.push({
+									property: 'hs_latest_source',
+									value: additionalFields.latestTrafficSource,
+								});
+							}
+							if (additionalFields.latestTrafficSourceDate) {
+								body.push({
+									property: 'hs_latest_source_timestamp',
+									value: new Date(additionalFields.latestTrafficSourceDate as string).getTime(),
+								});
+							}
+							if (additionalFields.linkedinUrl) {
+								body.push({
+									property: 'hs_linkedin_url',
+									value: additionalFields.linkedinUrl,
+								});
+							}
+							if (additionalFields.memberEmail) {
+								body.push({
+									property: 'hs_content_membership_email',
+									value: additionalFields.memberEmail,
+								});
+							}
+							if (additionalFields.militaryStatus) {
+								body.push({
+									property: 'military_status',
+									value: additionalFields.militaryStatus,
+								});
+							}
+							if (additionalFields.persona) {
+								body.push({
+									property: 'hs_persona',
+									value: additionalFields.persona,
+								});
+							}
+							if (additionalFields.prospectingAgentLastEnrolled) {
+								body.push({
+									property: 'hs_prospecting_agent_last_enrolled',
+									value: new Date(
+										additionalFields.prospectingAgentLastEnrolled as string,
+									).getTime(),
+								});
+							}
+							if (additionalFields.prospectingAgentTotalEnrolledCount) {
+								body.push({
+									property: 'hs_prospecting_agent_total_enrolled_count',
+									value: additionalFields.prospectingAgentTotalEnrolledCount,
+								});
+							}
+							if (additionalFields.stateRegionCode) {
+								body.push({
+									property: 'hs_state_code',
+									value: additionalFields.stateRegionCode,
+								});
+							}
+							if (additionalFields.timeZone) {
+								body.push({
+									property: 'hs_timezone',
+									value: additionalFields.timeZone,
+								});
+							}
+							if (additionalFields.whatsappPhoneNumber) {
+								body.push({
+									property: 'hs_whatsapp_phone_number',
+									value: additionalFields.whatsappPhoneNumber,
+								});
+							}
 
 							if (additionalFields.customPropertiesUi) {
 								const customProperties = (additionalFields.customPropertiesUi as IDataObject)
@@ -1670,7 +1702,11 @@ export class HubspotV2 implements INodeType {
 								}
 								//@ts-ignore
 								if (body.filterGroups.length > 3) {
-									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
+									throw new NodeOperationError(
+										this.getNode(),
+										'You can only have 3 filter groups',
+										{ itemIndex: i },
+									);
 								}
 							}
 
@@ -2565,7 +2601,11 @@ export class HubspotV2 implements INodeType {
 								}
 								//@ts-ignore
 								if (body.filterGroups.length > 3) {
-									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
+									throw new NodeOperationError(
+										this.getNode(),
+										'You can only have 3 filter groups',
+										{ itemIndex: i },
+									);
 								}
 							}
 
@@ -2608,13 +2648,19 @@ export class HubspotV2 implements INodeType {
 								);
 							}
 
+							const ownerId =
+								associations.ownerId && typeof associations.ownerId === 'number'
+									? associations.ownerId
+									: undefined;
+
 							const body: {
-								engagement: { type: string };
+								engagement: { type: string; ownerId?: number; timestamp?: number };
 								metadata: IDataObject;
 								associations: IDataObject;
 							} = {
 								engagement: {
 									type: type.toUpperCase(),
+									ownerId,
 								},
 								metadata: {},
 								associations: {},
@@ -2626,6 +2672,13 @@ export class HubspotV2 implements INodeType {
 
 							if (type === 'task') {
 								body.metadata = getTaskMetadata(metadata);
+								if (version >= 2.2) {
+									const dueDateParameter = this.getNodeParameter('dueDate', i, null);
+									if (dueDateParameter) {
+										const timestamp = parseToTimestamp(dueDateParameter);
+										body.engagement.timestamp = timestamp;
+									}
+								}
 							}
 
 							if (type === 'meeting') {
@@ -3044,16 +3097,17 @@ export class HubspotV2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
-				} catch (errorObject) {
-					const error = errorObject.cause.cause ? errorObject.cause : errorObject;
+				} catch (error) {
 					if (
-						error.cause.error?.validationResults &&
-						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'
+						error.cause?.error?.validationResults &&
+						error.cause.error.validationResults[0]?.error === 'INVALID_EMAIL'
 					) {
-						const message = error.cause.error.validationResults[0].message as string;
+						const message = error.cause?.error?.validationResults?.[0]?.message as string;
 						set(error, 'message', message);
 					}
-					if (error.cause.error?.message !== 'The resource you are requesting could not be found') {
+					if (
+						error.cause?.error?.message !== 'The resource you are requesting could not be found'
+					) {
 						if (error.httpCode === '404' && error.description === 'resource not found') {
 							const message = `${error.node.parameters.resource} #${
 								error.node.parameters[`${error.node.parameters.resource}Id`].value

@@ -1,0 +1,22 @@
+import type { StoryFn } from '@storybook/vue3-vite';
+
+import N8nPulse from './Pulse.vue';
+
+export default {
+	title: 'Core/Pulse',
+	component: N8nPulse,
+	argTypes: {},
+	parameters: {
+		docs: {
+			description: { component: 'A pulsing status indicator for active or live states.' },
+		},
+		backgrounds: { default: '--color--background--light-2' },
+	},
+};
+
+export const Default: StoryFn = () => ({
+	components: {
+		N8nPulse,
+	},
+	template: '<n8n-pulse> yo </n8n-pulse>',
+});

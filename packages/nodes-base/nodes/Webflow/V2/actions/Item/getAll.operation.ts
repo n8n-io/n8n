@@ -76,7 +76,7 @@ export async function execute(
 	let responseData;
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+			const returnAll = this.getNodeParameter('returnAll', i);
 			const collectionId = this.getNodeParameter('collectionId', i) as string;
 			const qs: IDataObject = {};
 

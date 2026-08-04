@@ -3,17 +3,22 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
 
 import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport } from './utils';
-import { createEmailBody } from '../../../utils/sendAndWait/email-templates';
+import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import {
-	configureWaitTillDate,
+	createEmailBodyWithN8nAttribution,
+	createEmailBodyWithoutN8nAttribution,
+} from '../../../utils/sendAndWait/email-templates';
+import {
 	createButton,
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
 } from '../../../utils/sendAndWait/utils';
+import { toMailString } from '../utils';
 
 export const description: INodeProperties[] = getSendAndWaitProperties(
 	[fromEmailProperty, toEmailProperty],
@@ -21,18 +26,23 @@ export const description: INodeProperties[] = getSendAndWaitProperties(
 );
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const fromEmail = this.getNodeParameter('fromEmail', 0) as string;
-	const toEmail = this.getNodeParameter('toEmail', 0) as string;
+	const fromEmail = toMailString(this.getNodeParameter('fromEmail', 0));
+	const toEmail = toMailString(this.getNodeParameter('toEmail', 0));
 
 	const config = getSendAndWaitConfig(this);
 	const buttons: string[] = [];
 	for (const option of config.options) {
-		buttons.push(createButton(config.url, option.label, option.value, option.style));
+		buttons.push(createButton(option.url, option.label, option.style));
 	}
 
-	const instanceId = this.getInstanceId();
+	let htmlBody: string;
 
-	const htmlBody = createEmailBody(config.message, buttons.join('\n'), instanceId);
+	if (config.appendAttribution !== false) {
+		const instanceId = this.getInstanceId();
+		htmlBody = createEmailBodyWithN8nAttribution(config.message, buttons.join('\n'), instanceId);
+	} else {
+		htmlBody = createEmailBodyWithoutN8nAttribution(config.message, buttons.join('\n'));
+	}
 
 	const mailOptions: IDataObject = {
 		from: fromEmail,
@@ -44,7 +54,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const credentials = await this.getCredentials('smtp');
 	const transporter = configureTransport(credentials, {});
 
-	await transporter.sendMail(mailOptions);
+	try {
+		await transporter.sendMail(mailOptions);
+	} catch (error) {
+		if (this.continueOnFail()) {
+			return [[{ json: { error: (error as JsonObject).message } }]];
+		}
+		throw error;
+	}
 
 	const waitTill = configureWaitTillDate(this);
 

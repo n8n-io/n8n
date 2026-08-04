@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { Subscriber } from './MailerLite.Interface';
 import { subscriberFields, subscriberOperations } from './SubscriberDescription';
@@ -31,8 +31,9 @@ export class MailerLiteV2 implements INodeType {
 			defaults: {
 				name: 'MailerLite',
 			},
-			inputs: [NodeConnectionType.Main],
-			outputs: [NodeConnectionType.Main],
+			usableAsTool: true,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
 					name: 'mailerLiteApi',

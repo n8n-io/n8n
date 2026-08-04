@@ -1,12 +1,19 @@
-import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
+import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
+import isNull from 'lodash/isNull';
+import isObject from 'lodash/isObject';
+import merge from 'lodash/merge';
+import reduce from 'lodash/reduce';
 import type {
 	IDataObject,
 	IDisplayOptions,
+	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
+import { jsonParse, MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE, randomInt, UserError } from 'n8n-workflow';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -146,12 +153,12 @@ export function processJsonInput<T>(jsonData: T, inputName?: string) {
 		try {
 			values = jsonParse(jsonData);
 		} catch (error) {
-			throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+			throw new UserError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 		}
 	} else if (typeof jsonData === 'object') {
 		values = jsonData;
 	} else {
-		throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
+		throw new UserError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 	}
 
 	return values;
@@ -273,37 +280,6 @@ export const keysToLowercase = <T>(headers: T) => {
 		return acc;
 	}, {} as IDataObject);
 };
-
-/**
- * Formats a private key by removing unnecessary whitespace and adding line breaks.
- * @param privateKey - The private key to format.
- * @returns The formatted private key.
- */
-export function formatPrivateKey(privateKey: string, keyIsPublic = false): string {
-	let regex = /(PRIVATE KEY|CERTIFICATE)/;
-	if (keyIsPublic) {
-		regex = /(PUBLIC KEY)/;
-	}
-	if (!privateKey || /\n/.test(privateKey)) {
-		return privateKey;
-	}
-	let formattedPrivateKey = '';
-	const parts = privateKey.split('-----').filter((item) => item !== '');
-	parts.forEach((part) => {
-		if (regex.test(part)) {
-			formattedPrivateKey += `-----${part}-----`;
-		} else {
-			const passRegex = /Proc-Type|DEK-Info/;
-			if (passRegex.test(part)) {
-				part = part.replace(/:\s+/g, ':');
-				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
-			} else {
-				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
-			}
-		}
-	});
-	return formattedPrivateKey;
-}
 
 /**
  * @TECH_DEBT Explore replacing with handlebars
@@ -460,4 +436,64 @@ export function sortItemKeysByPriorityList(data: INodeExecutionData[], priorityL
 		item.json = updatedItem;
 		return item;
 	});
+}
+
+export function createUtmCampaignLink(nodeType: string, instanceId?: string) {
+	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+		nodeType,
+	)}${instanceId ? '_' + instanceId : ''}`;
+}
+
+export const removeTrailingSlash = (url: string) => {
+	if (url.endsWith('/')) {
+		return url.slice(0, -1);
+	}
+	return url;
+};
+
+export function addExecutionHints(
+	context: IExecuteFunctions,
+	node: INode,
+	items: INodeExecutionData[],
+	operation: string,
+	executeOnce: boolean | undefined,
+) {
+	if (
+		(node.type === POSTGRES_NODE_TYPE || node.type === MYSQL_NODE_TYPE) &&
+		operation === 'select' &&
+		items.length > 1 &&
+		!executeOnce
+	) {
+		context.addExecutionHints({
+			message: `This node ran ${items.length} times, once for each input item. To run for the first item only, enable 'execute once' in the node settings`,
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		node.type === POSTGRES_NODE_TYPE &&
+		operation === 'executeQuery' &&
+		items.length > 1 &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
+
+	if (
+		node.type === MYSQL_NODE_TYPE &&
+		operation === 'executeQuery' &&
+		(context.getNodeParameter('options.queryBatching', 0, 'single') as string) === 'single' &&
+		(context.getNodeParameter('query', 0, '') as string).toLowerCase().startsWith('insert')
+	) {
+		context.addExecutionHints({
+			message:
+				"Inserts were batched for performance. If you need to preserve item matching, consider changing 'Query batching' to 'Independent' in the options.",
+			location: 'outputPane',
+		});
+	}
 }
