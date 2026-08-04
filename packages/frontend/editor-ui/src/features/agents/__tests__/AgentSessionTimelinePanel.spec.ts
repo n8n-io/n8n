@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
@@ -22,7 +22,11 @@ vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 
 const stubs = {
 	SessionTimelineChart: { template: '<div data-test-id="chart-stub" />' },
-	SessionTimelineTable: { template: '<div data-test-id="table-stub" />' },
+	SessionTimelineTable: {
+		name: 'SessionTimelineTable',
+		props: ['selectedIndex'],
+		template: '<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" />',
+	},
 	SessionEventFilter: { template: '<div data-test-id="filter-stub" />' },
 	SessionDetailPanel: { template: '<div data-test-id="detail-stub" />' },
 	N8nInput: { template: '<input data-test-id="search-stub" />' },
@@ -45,6 +49,10 @@ describe('AgentSessionTimelinePanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getThreadDetail.mockResolvedValue(detail);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	it('loads the thread detail on mount for its props', async () => {
@@ -90,5 +98,93 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(showError).toHaveBeenCalled();
+	});
+
+	it('polls the complete thread so simultaneous executions update together', async () => {
+		vi.useFakeTimers();
+		const initial = {
+			...detail,
+			executions: [
+				{ id: 'exec-3', status: 'running', timeline: [] },
+				{ id: 'exec-4', status: 'running', timeline: [] },
+			],
+		} as ThreadDetail;
+		const refreshed = {
+			...detail,
+			executions: [
+				{
+					id: 'exec-3',
+					status: 'running',
+					timeline: [{ type: 'text', content: 'Third', timestamp: 1 }],
+				},
+				{
+					id: 'exec-4',
+					status: 'success',
+					timeline: [{ type: 'text', content: 'Fourth', timestamp: 2 }],
+				},
+			],
+		} as ThreadDetail;
+		getThreadDetail.mockResolvedValueOnce(initial).mockResolvedValueOnce(refreshed);
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		await vi.advanceTimersByTimeAsync(5_000);
+		await flushPromises();
+
+		expect(getThreadDetail).toHaveBeenCalledTimes(2);
+		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([refreshed]);
+		wrapper.unmount();
+	});
+
+	it('stops polling after the panel unmounts', async () => {
+		vi.useFakeTimers();
+		let resolveRefresh!: (value: ThreadDetail) => void;
+		getThreadDetail
+			.mockResolvedValueOnce(detail)
+			.mockReturnValueOnce(new Promise<ThreadDetail>((resolve) => (resolveRefresh = resolve)));
+		const wrapper = mountPanel();
+		await flushPromises();
+		vi.advanceTimersByTime(5_000);
+		await flushPromises();
+		expect(getThreadDetail).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
+		resolveRefresh(detail);
+		await flushPromises();
+
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		expect(getThreadDetail).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not restore a stale selection when a refresh resolves', async () => {
+		vi.useFakeTimers();
+		const execution = {
+			id: 'exec-1',
+			status: 'running',
+			createdAt: '2026-08-04T07:00:00.000Z',
+			startedAt: '2026-08-04T07:00:00.000Z',
+			stoppedAt: null,
+			duration: 0,
+			userMessage: 'Question',
+			timeline: [{ type: 'text', content: 'Answer', timestamp: 1 }],
+		};
+		const runningDetail = { ...detail, executions: [execution] } as ThreadDetail;
+		let resolveRefresh!: (value: ThreadDetail) => void;
+		getThreadDetail
+			.mockResolvedValueOnce(runningDetail)
+			.mockReturnValueOnce(new Promise<ThreadDetail>((resolve) => (resolveRefresh = resolve)));
+		const wrapper = mountPanel();
+		await flushPromises();
+		const table = wrapper.findComponent({ name: 'SessionTimelineTable' });
+		table.vm.$emit('select', 0);
+		vi.advanceTimersByTime(5_000);
+		await flushPromises();
+
+		table.vm.$emit('select', 1);
+		resolveRefresh(runningDetail);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-selected-index')).toBe('1');
+		wrapper.unmount();
 	});
 });

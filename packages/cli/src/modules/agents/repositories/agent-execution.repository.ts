@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not, Repository } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 
@@ -12,6 +13,34 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	/** All executions in a thread, oldest first — used by the timeline view. */
 	async findByThreadIdOrdered(threadId: string): Promise<AgentExecution[]> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
+	}
+
+	async findRunning(): Promise<AgentExecution[]> {
+		return await this.find({ where: { status: 'running' }, relations: { thread: true } });
+	}
+
+	async touchRunning(executionId: string): Promise<void> {
+		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	}
+
+	async updateIfRunning(
+		executionId: string,
+		values: Pick<
+			AgentExecution,
+			'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error'
+		> &
+			Partial<
+				Pick<
+					AgentExecution,
+					'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost' | 'hitlStatus'
+				>
+			>,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status: 'running' },
+			values as QueryDeepPartialEntity<AgentExecution>,
+		);
+		return result.affected === 1;
 	}
 
 	/**

@@ -153,6 +153,8 @@ describe('SubAgentForegroundRunner', () => {
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
+		agentExecutionService.startExecution.mockResolvedValue('agent-execution-1');
+		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		const result = await runner.runForeground(spawnRequest, {
 			projectId,
 			credentialProvider,
@@ -196,7 +198,13 @@ describe('SubAgentForegroundRunner', () => {
 		const childPrompt = childAgent.stream.mock.calls[0]?.[0] as string;
 		expect(childPrompt).toContain('CONTEXT:\nFocus on auth endpoints.');
 		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
-		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+		expect(agentExecutionService.startExecution).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: result.threadId, source: 'subagent' }),
+			'child-run-1',
+			expect.any(Date),
+		);
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				threadId: result.threadId,
 				agentId: 'agent-1',
@@ -209,6 +217,10 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
+		const startedAt = agentExecutionService.startExecution.mock.calls[0][2];
+		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+		expect(agentExecutionService.recordMessage).not.toHaveBeenCalled();
 	});
 
 	it('records the child turn with the parent run type, not its own published state', async () => {

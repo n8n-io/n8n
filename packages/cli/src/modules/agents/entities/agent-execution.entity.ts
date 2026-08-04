@@ -9,7 +9,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 import { AgentExecutionThread } from './agent-execution-thread.entity';
 import type { TimelineEvent } from '../execution-recorder';
 
-export type AgentExecutionStatus = 'success' | 'error';
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -38,6 +38,9 @@ export class AgentExecution extends WithTimestampsAndStringId {
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
+
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	runId: string | null;
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;

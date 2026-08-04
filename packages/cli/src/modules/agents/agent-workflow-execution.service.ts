@@ -26,7 +26,7 @@ import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
 } from './agent-telemetry';
-import { AgentExecutionService } from './agent-execution.service';
+import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
@@ -211,6 +211,7 @@ export class AgentWorkflowExecutionService {
 			workflowId?: string;
 			nodeId?: string;
 		};
+		recording?: StartExecutionParams;
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
 			agentInstance,
@@ -221,9 +222,16 @@ export class AgentWorkflowExecutionService {
 			runType,
 			outputSchema,
 			tracing,
+			recording,
 		} = params;
 
-		const recorder = new ExecutionRecorder();
+		let agentExecutionId: string | undefined;
+		const recorder = new ExecutionRecorder(undefined, (event) => {
+			if (agentExecutionId) {
+				this.agentExecutionService.recordTimelineEvent(agentExecutionId, event);
+			}
+		});
+		const startedAt = recorder.startedAt;
 
 		let structuredOutput: unknown = null;
 		const toolCalls: ExecuteAgentData['toolCalls'] = [];
@@ -262,6 +270,22 @@ export class AgentWorkflowExecutionService {
 				}),
 				...(telemetry ? { telemetry } : {}),
 			});
+			if (recording) {
+				try {
+					const executionId = await this.agentExecutionService.startExecution(
+						recording,
+						resultStream.runId,
+						startedAt,
+					);
+					agentExecutionId = executionId;
+				} catch (error) {
+					this.logger.warn('Failed to start agent execution recording from workflow', {
+						agentId: recording.agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
 				recorder.record(value);
@@ -293,6 +317,7 @@ export class AgentWorkflowExecutionService {
 			structuredOutput,
 			toolCalls,
 			streamError,
+			agentExecutionId,
 		};
 	}
 
@@ -407,29 +432,46 @@ export class AgentWorkflowExecutionService {
 				workflowId: workflowContext?.workflowId,
 				nodeId: workflowContext?.callingNodeId,
 			},
-		});
-
-		void this.agentExecutionService
-			.recordMessage({
+			recording: {
 				threadId,
 				agentId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,
-				record: run.messageRecord,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				telemetry: {
 					runType,
 					configuration: telemetryConfiguration,
 				},
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution from workflow', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
+			},
+		});
+
+		const recordParams = {
+			threadId,
+			agentId,
+			agentName: agentInstance.name,
+			projectId,
+			userMessage: message,
+			record: run.messageRecord,
+			source: AGENT_WORKFLOW_TRIGGER_TYPE,
+			telemetry: {
+				runType,
+				configuration: telemetryConfiguration,
+			},
+		};
+		try {
+			if (run.agentExecutionId) {
+				await this.agentExecutionService.finalizeExecution(run.agentExecutionId, recordParams);
+			} else {
+				await this.agentExecutionService.recordMessage(recordParams);
+			}
+		} catch (error) {
+			this.logger.warn('Failed to record agent execution from workflow', {
+				agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
 			});
+		}
 
 		return this.buildWorkflowResult({
 			run,
@@ -597,4 +639,5 @@ interface WorkflowAgentRunOutcome {
 	structuredOutput: unknown;
 	toolCalls: ExecuteAgentData['toolCalls'];
 	streamError?: Error;
+	agentExecutionId?: string;
 }

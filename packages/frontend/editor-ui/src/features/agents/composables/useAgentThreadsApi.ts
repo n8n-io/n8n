@@ -24,7 +24,7 @@ export interface AgentExecutionThread {
 	source?: string | null;
 }
 
-export type AgentExecutionStatus = 'success' | 'error';
+export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
 
 /**
@@ -48,6 +48,7 @@ export interface AgentExecution {
 	threadId: string;
 	agentId: string;
 	status: AgentExecutionStatus;
+	runId: string | null;
 	createdAt: string;
 	startedAt: string | null;
 	stoppedAt: string | null;

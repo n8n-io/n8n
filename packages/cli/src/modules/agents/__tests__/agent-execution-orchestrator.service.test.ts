@@ -79,8 +79,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		agent: {
 			name: 'Runtime Agent',
 			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
-			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			stream: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
+			resume: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
 			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
@@ -170,6 +174,48 @@ function delegatedPending(
 describe('AgentExecutionOrchestratorService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecution.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime([
+			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+			}),
+		);
+
+		expect(executionService.startExecution).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'thread-1', userMessage: 'hello' }),
+			'runtime-run-1',
+			expect.any(Date),
+		);
+		expect(executionService.startExecution.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.recordTimelineEvent.mock.invocationCallOrder[0],
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-running',
+			expect.objectContaining({
+				record: expect.objectContaining({ assistantResponse: 'Working' }),
+			}),
+		);
+		const startedAt = executionService.startExecution.mock.calls[0][2];
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+		expect(executionService.recordMessage).not.toHaveBeenCalled();
 	});
 
 	it('streams chat responses and records suspended executions', async () => {

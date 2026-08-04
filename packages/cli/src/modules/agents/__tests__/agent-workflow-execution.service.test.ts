@@ -75,8 +75,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 	return {
 		agent: {
 			name: 'Runtime Agent',
-			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			stream: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
+			resume: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
 			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
@@ -151,6 +155,8 @@ describe('AgentWorkflowExecutionService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecution.mockResolvedValue('agent-execution-1');
+		executionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 
 		const result = await service.executeForWorkflow(
 			agentId,
@@ -188,7 +194,8 @@ describe('AgentWorkflowExecutionService', () => {
 			run_type: 'production',
 			message_count: 1,
 		});
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				telemetry: expect.objectContaining({
 					runType: 'production',
@@ -198,6 +205,10 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
+		const startedAt = executionService.startExecution.mock.calls[0][2];
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+		expect(executionService.recordMessage).not.toHaveBeenCalled();
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId,
