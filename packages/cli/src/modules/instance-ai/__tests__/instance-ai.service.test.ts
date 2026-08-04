@@ -3918,7 +3918,9 @@ describe('InstanceAiService — editor handoff context resources', () => {
 	it('traces the attached resources, which the raw message no longer shows', () => {
 		const source = InstanceAiService.toString();
 
-		expect(source).toContain('resourceAttachments: contextAttachments.map');
+		// Assignment-form tolerant: the wiring is what matters, not whether the
+		// field is spread into the literal or set on it afterwards.
+		expect(source).toMatch(/resourceAttachments\s*[:=]\s*contextAttachments\.map/);
 	});
 });
 
