@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { createInternalApiClient } from '@n8n/rest-api-client';
 
 export type OtelSettings = {
 	enabled: boolean;
@@ -19,14 +19,16 @@ export type OtelSettingsResponse = OtelSettings & {
 };
 
 export async function getOtelSettings(context: IRestApiContext): Promise<OtelSettingsResponse> {
-	return await makeRestApiRequest(context, 'GET', '/otel/settings');
+	// API-42: call through the generated, type-safe internal client. The response
+	// type comes from the backend's @ApiResponse(OtelSettingsResponseDto).
+	return await createInternalApiClient(context).otel.getSettings();
 }
 
 export async function updateOtelSettings(
 	context: IRestApiContext,
 	settings: OtelSettings,
 ): Promise<OtelSettingsResponse> {
-	return await makeRestApiRequest(context, 'PUT', '/otel/settings', settings);
+	return await createInternalApiClient(context).otel.updateSettings({ body: settings });
 }
 
 export type OtelTestConnection = Pick<
@@ -44,5 +46,5 @@ export async function sendOtelTestTrace(
 	context: IRestApiContext,
 	connection: OtelTestConnection,
 ): Promise<OtelTestTraceResponse> {
-	return await makeRestApiRequest(context, 'POST', '/otel/test-trace', connection);
+	return await createInternalApiClient(context).otel.testTrace({ body: connection });
 }

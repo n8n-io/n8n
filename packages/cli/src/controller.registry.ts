@@ -1,5 +1,5 @@
 import type { ZodClass } from '@n8n/api-types';
-import { inProduction } from '@n8n/backend-common';
+import { inProduction, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { isAuthenticatedRequest } from '@n8n/db';
@@ -112,7 +112,24 @@ export class ControllerRegistry {
 						}
 					} else throw new UnexpectedError('Unknown arg type: ' + arg.type);
 				}
-				return await controller[handlerName](...args);
+				const result = await controller[handlerName](...args);
+
+				// API-42 spike: when a route declares a response DTO (via @ApiResponse),
+				// validate + strip the output through it so the wire matches the contract.
+				// On mismatch we warn and fall through to the raw value to avoid breaking
+				// the endpoint during the spike.
+				if (route.responseDto) {
+					try {
+						return route.responseDto.parse(result);
+					} catch (error) {
+						Container.get(Logger).warn(
+							`[API-42] Response for ${route.method.toUpperCase()} ${route.path} did not match its declared @ApiResponse DTO`,
+							{ error },
+						);
+						return result;
+					}
+				}
+				return result;
 			};
 
 			const bodyArgIdx = route.args.findIndex((arg) => arg?.type === 'body');

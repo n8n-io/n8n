@@ -43,7 +43,8 @@
     "js-base64": "catalog:",
     "n8n-workflow": "workspace:*",
     "axios": "catalog:",
-    "flatted": "catalog:"
+    "flatted": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",

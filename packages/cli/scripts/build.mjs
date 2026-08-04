@@ -17,11 +17,20 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 generateUserManagementEmailTemplates();
 generateTimezoneData();
 copyInstanceAiExamplesData();
+generateInternalApiClient();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
 	bundleOpenApiSpecs();
+}
+
+// API-42: regenerate the type-safe internal API client for the frontend from the
+// freshly-compiled controllers (reads ControllerRegistryMetadata). Runs here, after
+// `tsc`, so the client always reflects the current routes + @ApiResponse DTOs.
+function generateInternalApiClient() {
+	const script = path.resolve(ROOT_DIR, 'scripts', 'generate-internal-api-client.cjs');
+	shell.exec(`node "${script}"`, { silent: false });
 }
 
 function generateUserManagementEmailTemplates() {

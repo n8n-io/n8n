@@ -144,6 +144,13 @@ export {
 	LIST_API_KEYS_SORT_OPTIONS,
 	type ListApiKeysSortOption,
 } from './api-keys/list-api-keys-query.dto';
+export {
+	ApiKeyResponseDto,
+	ApiKeyListResponseDto,
+	ApiKeyWithRawValueResponseDto,
+	SuccessResponseDto,
+	ApiKeyScopesResponseDto,
+} from './api-keys/api-key-response.dto';
 
 export { CreateFolderDto } from './folders/create-folder.dto';
 export { UpdateFolderDto } from './folders/update-folder.dto';
@@ -315,5 +322,7 @@ export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
+export { OtelSettingsResponseDto } from './otel/otel-settings-response.dto';
+export { OtelTestTraceResponseDto } from './otel/otel-test-trace-response.dto';
 
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';

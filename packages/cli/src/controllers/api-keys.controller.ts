@@ -1,10 +1,15 @@
 import {
+	ApiKeyListResponseDto,
+	ApiKeyScopesResponseDto,
+	ApiKeyWithRawValueResponseDto,
 	CreateApiKeyRequestDto,
 	ListApiKeysQueryDto,
+	SuccessResponseDto,
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
+	ApiResponse,
 	Body,
 	Delete,
 	Get,
@@ -40,6 +45,7 @@ export class ApiKeysController {
 
 	@GlobalScope('apiKey:create')
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
+	@ApiResponse(ApiKeyWithRawValueResponseDto)
 	async createApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -64,6 +70,10 @@ export class ApiKeysController {
 	// `apiKey:manage` callers see every key by default; `ownership=mine` narrows to own.
 	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
+	// No wire-accurate return-type annotation here on purpose: the handler returns
+	// the raw entity (Date fields, internal props), which is not assignable to the
+	// wire DTO. @ApiResponse validates + normalizes the output at runtime instead.
+	@ApiResponse(ApiKeyListResponseDto)
 	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
 		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
 			take: query.take,
@@ -78,6 +88,7 @@ export class ApiKeysController {
 	// Members can delete their own keys; `apiKey:manage` holders can revoke anyone's.
 	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
+	@ApiResponse(SuccessResponseDto)
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
 		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
@@ -93,6 +104,7 @@ export class ApiKeysController {
 	// Owner-only — `apiKey:manage` doesn't extend to editing someone else's key.
 	@GlobalScope('apiKey:update')
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
+	@ApiResponse(SuccessResponseDto)
 	async updateApiKey(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -111,6 +123,7 @@ export class ApiKeysController {
 	// Owner-only — re-issues the secret in place, keeping label, scopes and expiry.
 	@GlobalScope('apiKey:update')
 	@Post('/:id/rotate', { middlewares: [isApiEnabledMiddleware] })
+	@ApiResponse(ApiKeyWithRawValueResponseDto)
 	async rotateApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
 		const rotatedApiKey = await this.publicApiKeyService.rotateApiKey(req.user, apiKeyId);
 
@@ -126,6 +139,7 @@ export class ApiKeysController {
 
 	@GlobalScope('apiKey:list')
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
+	@ApiResponse(ApiKeyScopesResponseDto)
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
