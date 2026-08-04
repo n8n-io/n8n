@@ -1,4 +1,5 @@
 name: 'Release: Standalone Package'
+run-name: 'Release: ${{ inputs.package }} (${{ inputs.bump }})'
 
 on:
   workflow_dispatch:
