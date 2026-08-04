@@ -211,11 +211,12 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 
 	code {
 		font-family: inherit;
-		background-color: transparent;
+		/** Override background color injected by hjs **/
+		background: transparent !important;
 	}
 }
 .isExpanded {
-	padding-bottom: 2em;
+	scroll-padding-bottom: 2em;
 }
 
 .expandButtonContainer {
