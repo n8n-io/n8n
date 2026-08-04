@@ -52,4 +52,14 @@ describe('N8nClient.listDataTables', () => {
 
 		expect(await new N8nClient('http://n8n.test').listDataTables('project-1')).toEqual([]);
 	});
+
+	// The default page is 10; every caller enumerates the whole set, so a short
+	// page silently leaves leftover seed tables behind.
+	it('asks for a full page rather than the default 10', async () => {
+		const fn = mockFetch({ data: { count: 0, data: [] } });
+
+		await new N8nClient('http://n8n.test').listDataTables('project-1');
+
+		expect(String(fn.mock.calls[0][0])).toContain('take=250');
+	});
 });

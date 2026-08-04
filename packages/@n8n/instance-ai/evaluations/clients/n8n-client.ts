@@ -718,7 +718,13 @@ export class N8nClient {
 		// The list endpoint paginates: `{ data: { count, data: [...] } }`. Reading
 		// `result.data` as the array made this return [] for every project, silently —
 		// it has no error path, so every caller just saw "no tables".
-		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`)) as {
+		//
+		// `take` is explicit because the default page is 10, and every caller here
+		// enumerates the WHOLE set (seed eviction, CU cleanup, discovery's pre-existing
+		// set) — a short page silently leaves leftovers behind. 250 is the server's
+		// per-page cap; a case declares at most 20 tables and eviction runs before
+		// every build, so the backlog drains rather than outgrowing one page.
+		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables?take=250`)) as {
 			data?: { data?: Array<{ id: string; name: string }> } | Array<{ id: string; name: string }>;
 		};
 		const payload = result.data;

@@ -244,6 +244,12 @@ export function uniquifySeedName(name: string, suffix: string): string {
 	return `${name.slice(0, MAX_SEED_NAME - suffix.length)}${suffix}`;
 }
 
+/** The base a declared name will actually carry once suffixed. Eviction matches on
+ *  the stored base, so it has to truncate the declared name the same way or a long
+ *  name never matches its own leftover. */
+export const seedNameBase = (name: string) =>
+	name.slice(0, MAX_SEED_NAME - seedNameSuffix('0'.repeat(8)).length);
+
 const escapeForRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Rewrite every string inside a parsed value, leaving structure untouched. */

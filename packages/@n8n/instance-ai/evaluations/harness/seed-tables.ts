@@ -8,7 +8,12 @@
 
 import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
 
-import { freshSeedNameSuffix, SEED_NAME_RE, uniquifySeedName } from './conversation-seed';
+import {
+	freshSeedNameSuffix,
+	SEED_NAME_RE,
+	seedNameBase,
+	uniquifySeedName,
+} from './conversation-seed';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import type { ExecutionScenario } from '../types';
@@ -108,7 +113,7 @@ export async function evictLeftoverSeedTables(
 	laneTag?: string,
 ): Promise<void> {
 	if (!preRunDataTableIds || preRunDataTableIds.size === 0) return;
-	const baseNames = new Set(declared.map((table) => table.name));
+	const baseNames = new Set(declared.map((table) => seedNameBase(table.name)));
 	try {
 		const projectId = await client.getPersonalProjectId();
 		const stale = (await client.listDataTables(projectId)).filter((table) => {

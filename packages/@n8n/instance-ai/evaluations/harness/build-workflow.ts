@@ -23,6 +23,7 @@ import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
 	remapSeedWorkflowIds,
 	SEED_NAME_RE,
+	seedNameBase,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
@@ -722,7 +723,9 @@ async function evictLeftoverSeedWorkflows(
 	laneTag?: string,
 ): Promise<void> {
 	const baseNames = new Set(
-		seed.workflows.map((workflow) => SEED_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name),
+		seed.workflows.map((workflow) =>
+			seedNameBase(SEED_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name),
+		),
 	);
 	if (baseNames.size === 0) return;
 	try {

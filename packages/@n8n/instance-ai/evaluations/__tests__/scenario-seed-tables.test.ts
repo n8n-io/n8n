@@ -278,6 +278,22 @@ describe('evictLeftoverSeedTables', () => {
 		expect(deleteDataTable).not.toHaveBeenCalled();
 	});
 
+	// A name past the column bound loses its tail before the suffix goes on, so the
+	// stored base is the truncated one — matching on the declared name found nothing
+	// and the leftover accumulated run after run.
+	it('matches a leftover whose base was truncated to fit the column bound', async () => {
+		const deleteDataTable = vi.fn();
+		const longName = 'x'.repeat(200);
+		const [stored] = uniquifyScenarioTableNames([{ ...jobApplications, name: longName }]);
+		await evictLeftoverSeedTables(
+			evictClient([{ id: 'left-long', name: stored.name }], deleteDataTable),
+			[{ ...jobApplications, name: longName }],
+			new Set(['left-long']),
+			silentLogger,
+		);
+		expect(deleteDataTable).toHaveBeenCalledWith('project-1', 'left-long');
+	});
+
 	it('never touches a table without the seed suffix, or one of another case', async () => {
 		const deleteDataTable = vi.fn();
 		await evictLeftoverSeedTables(
