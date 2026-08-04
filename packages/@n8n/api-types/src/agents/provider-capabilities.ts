@@ -170,6 +170,14 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	// OpenAI-compatible custom endpoints (N8N_INSTANCE_AI_MODEL_URL / custom/*).
+	custom: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
 	cohere: {
 		thinking: false,
 		promptCaching: false,

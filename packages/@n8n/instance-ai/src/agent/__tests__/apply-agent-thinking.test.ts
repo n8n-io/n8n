@@ -141,6 +141,14 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
+	it('enables medium reasoning effort for custom OpenAI-compatible endpoints', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'custom/Kimi-K3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
+			reasoningEffort: 'medium',
+		});
+	});
+
 	it('enables adaptive thinking for Vertex Claude', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'vertex/claude-opus-4-8');

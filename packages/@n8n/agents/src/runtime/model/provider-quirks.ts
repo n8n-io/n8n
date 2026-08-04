@@ -211,6 +211,14 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { togetherai: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
 		},
 	},
+	custom: {
+		// OpenAI-compatible chat schema (@ai-sdk/openai-compatible name: 'custom');
+		// reasoning maps to top-level `reasoning_effort` via providerOptions.custom.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { custom: { reasoningEffort: cfg.reasoningEffort ?? 'medium' } };
+		},
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
@@ -234,8 +242,12 @@ export function providerIdFromModelId(modelId: string): string {
 /** GLM 5.2 default output cap on Baseten/Z.AI (131072 max; 65536 is the API default). */
 export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
 
-/** Kimi K3 default completion tokens on direct/OpenAI-compatible routes. */
-export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = 131_072;
+/**
+ * Kimi K3 default completion tokens on direct/OpenAI-compatible routes.
+ * Context window is 131072 input+output shared; requesting the full window as
+ * max_tokens overflows once any prompt tokens are present.
+ */
+export const KIMI_K3_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
 
 /**
  * Thinking budget for Fireworks models on the Anthropic Messages path.

@@ -60,12 +60,12 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; wafer/* → EVALS_WAFER_KEY; morph/* → EVALS_MORPH_KEY; togetherai/* → EVALS_TOGETHER_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). With model-url (Azure Foundry Anthropic): EVALS_AZURE_FOUNDRY_KEY.'
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). Examples: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6. openai/* → EVALS_OPENAI_KEY; openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY; baseten/* → EVALS_BASETEN_KEY; fireworks/* → EVALS_FIREWORKS_KEY; wafer/* → EVALS_WAFER_KEY; morph/* → EVALS_MORPH_KEY; togetherai/* → EVALS_TOGETHER_KEY; vertex/* → EVALS_VERTEX_SA_JSON (+ vertex-project/location). custom/* + model-url → OpenAI-compatible endpoint (no key required). anthropic/* + model-url → EVALS_AZURE_FOUNDRY_KEY.'
         required: false
         type: string
         default: ''
       model-url:
-        description: 'Optional Anthropic-compatible base URL for lane backends (e.g. https://<resource>.services.ai.azure.com/anthropic). When set, lanes use EVALS_AZURE_FOUNDRY_KEY and N8N_INSTANCE_AI_MODEL_URL. Eval CLI verifier/mocks keep EVALS_ANTHROPIC_KEY.'
+        description: 'Optional base URL for lane backends (N8N_INSTANCE_AI_MODEL_URL). With custom/*: OpenAI-compatible endpoint (e.g. https://host/v1), no API key. With anthropic/*: Anthropic-compatible base (e.g. Azure Foundry https://<resource>.services.ai.azure.com/anthropic) using EVALS_AZURE_FOUNDRY_KEY. Eval CLI verifier/mocks keep EVALS_ANTHROPIC_KEY.'
         required: false
         type: string
         default: ''
@@ -120,11 +120,11 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, wafer/Kimi-K3, morph/morph-kimik3, morph/morph-kimik3-fast, morph/morph-glm52-744b, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct, togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-opus-5, anthropic/claude-sonnet-4-6, anthropic/claude-opus-4-8 (+ model-url for Azure Foundry), custom/Kimi-K3 (+ model-url for OpenAI-compatible routers), vertex/claude-opus-4-8, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openai/gpt-5.6-luna, openrouter/moonshotai/kimi-k3, wafer/Kimi-K3, morph/morph-kimik3, morph/morph-kimik3-fast, morph/morph-glm52-744b, xai/grok-4.5, baseten/zai-org/GLM-5.2, baseten/zai-org/GLM-5.2-Fast, fireworks/accounts/fireworks/models/llama-v3p1-70b-instruct, togetherai/meta-llama/Llama-3.3-70B-Instruct-Turbo.'
         required: false
         default: ''
       model-url:
-        description: 'Optional Anthropic-compatible base URL (e.g. https://<resource>.services.ai.azure.com/anthropic for Azure Foundry). When set, lanes use EVALS_AZURE_FOUNDRY_KEY. Leave empty for provider defaults.'
+        description: 'Optional base URL (N8N_INSTANCE_AI_MODEL_URL). custom/* → OpenAI-compatible /v1 endpoint, no key. anthropic/* → Anthropic-compatible base (e.g. Azure Foundry) with EVALS_AZURE_FOUNDRY_KEY. Leave empty for provider defaults.'
         required: false
         default: ''
       vertex-project:
@@ -287,12 +287,19 @@ jobs:
 
           # Lane builds use the provider matching N8N_INSTANCE_AI_MODEL.
           # The eval CLI step keeps EVALS_ANTHROPIC_KEY for Sonnet verifier/mocks.
-          # model-url wins over provider-prefix key selection so Azure Foundry
-          # can keep anthropic/<deployment> while authenticating with the Foundry key.
+          # model-url + custom/* → OpenAI-compatible endpoint (dedicated routers; no key).
+          # model-url + anthropic/* (etc.) → Azure Foundry / Anthropic-compatible key.
           MODEL_API_KEY="$EVALS_ANTHROPIC_KEY"
-          if [ -n "$INSTANCE_AI_MODEL_URL" ]; then
+          if [[ "$INSTANCE_AI_MODEL" == custom/* ]]; then
+            if [ -z "$INSTANCE_AI_MODEL_URL" ]; then
+              echo "::error::model custom/* requires model-url (OpenAI-compatible base URL ending in /v1)"
+              exit 1
+            fi
+            # Dedicated OpenAI-compatible routers often need no auth.
+            MODEL_API_KEY=""
+          elif [ -n "$INSTANCE_AI_MODEL_URL" ]; then
             if [ -z "$EVALS_AZURE_FOUNDRY_KEY" ]; then
-              echo "::error::model-url is set but EVALS_AZURE_FOUNDRY_KEY secret is empty"
+              echo "::error::model-url is set but EVALS_AZURE_FOUNDRY_KEY secret is empty (use custom/* for keyless OpenAI-compatible endpoints)"
               exit 1
             fi
             MODEL_API_KEY="$EVALS_AZURE_FOUNDRY_KEY"
