@@ -280,7 +280,12 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 	it('canonicalizes an eligible managed marker, dropping smuggled fields', () => {
 		const tools = [
 			nodeTool('n8n-nodes-base.slackTool', {
-				slackApi: { id: null, name: 'hacked', __aiGatewayManaged: true },
+				slackApi: {
+					id: null,
+					name: 'hacked',
+					__aiGatewayManaged: true,
+					injected: 'x',
+				} as never,
 			}),
 		];
 		reconcileNodeToolGatewayCredentials(

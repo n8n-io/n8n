@@ -710,9 +710,7 @@ export class AgentsBuilderToolsService {
 						for (const tool of agent?.schema?.tools ?? []) {
 							if (tool.type !== 'node') continue;
 							for (const [credentialType, ref] of Object.entries(tool.node.credentials ?? {})) {
-								if (ref && typeof ref === 'object' && '__aiGatewayManaged' in ref) {
-									types.add(credentialType);
-								}
+								if ('__aiGatewayManaged' in ref) types.add(credentialType);
 							}
 						}
 						return [...types];

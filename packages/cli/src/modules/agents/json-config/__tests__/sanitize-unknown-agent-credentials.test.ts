@@ -212,6 +212,9 @@ describe('sanitizeUnknownAgentCredentials', () => {
 	});
 
 	it('preserves the n8n Connect managed sentinel on a node-tool credential', () => {
+		// Relies on the non-string-id recursion branch of the `credentials`
+		// handler — this pin exists so a refactor of that branch can't silently
+		// start clearing managed refs.
 		const result = sanitizeUnknownAgentCredentials(
 			{
 				tools: [

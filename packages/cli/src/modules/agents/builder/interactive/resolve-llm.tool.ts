@@ -171,10 +171,8 @@ async function resolveDefaultModelForCredential(
 
 /**
  * Resolve the n8n Connect managed credential for a provider on an explicit
- * request. Unlike the implicit path, this ignores whether the user already has
- * an own credential for the provider — an explicit "use n8n credits" wins — and
- * never asks. Fails only when the provider is unknown or the gateway does not
- * serve it.
+ * request; fails only when the provider is unknown or the gateway does not
+ * serve it (own-credential precedence is the caller's concern).
  *
  * Model failures flow straight through from the shared resolvers, so an
  * `unknown_model` result still carries `availableModels` (the gateway's

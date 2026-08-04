@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import userEvent from '@testing-library/user-event';
 import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -82,10 +83,12 @@ function mountSection(
 	taskRefs: AgentJsonTaskConfig[] = [],
 	projectAgents: AgentResource[] = [],
 	extraProps: Record<string, unknown> = {},
+	attachTo?: Element,
 ) {
 	projectAgentsListRef.value = projectAgents;
 
 	return mount(AgentCapabilitiesSection, {
+		attachTo,
 		props: {
 			config,
 			tools,
@@ -809,6 +812,53 @@ describe('AgentCapabilitiesSection', () => {
 			expect(taskChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
 				'agents.builder.validation.issue.missingReference',
 			);
+		});
+
+		it('marks only the invalid member of a grouped tool inside the dropdown menu', async () => {
+			getNodeType.mockImplementation((type: string) => {
+				if (type === 'n8n-nodes-base.gmailTool') {
+					return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
+				}
+				return null;
+			});
+
+			const gmailTool = (name: string): AgentJsonToolRef => ({
+				type: 'node',
+				name,
+				node: { nodeType: 'n8n-nodes-base.gmailTool', nodeTypeVersion: 1, nodeParameters: {} },
+			});
+
+			const wrapper = mountSection(
+				[gmailTool('inbox_triage'), gmailTool('send_follow_up')],
+				{},
+				null,
+				[],
+				[],
+				{
+					validationIssues: [
+						{
+							code: 'missing_credential',
+							path: 'tools.0.node.credentials.gmailOAuth2',
+							capability: { kind: 'tool', id: 'inbox_triage', index: 0, toolType: 'node' },
+						},
+					],
+				},
+				// Attached mount: the real Reka trigger only opens on trusted-shape
+				// pointer events, and the menu teleports to document.body.
+				document.body,
+			);
+			await flushPromises();
+
+			await userEvent.click(wrapper.find('[aria-haspopup="menu"]').element);
+
+			await vi.waitFor(() => {
+				expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
+			});
+			expect(
+				document.querySelectorAll('[data-testid="agent-capabilities-tool-menu-invalid-icon"]'),
+			).toHaveLength(1);
+
+			wrapper.unmount();
 		});
 
 		it('shows capability-specific tooltip messages for workflow tools and sub-agents', async () => {

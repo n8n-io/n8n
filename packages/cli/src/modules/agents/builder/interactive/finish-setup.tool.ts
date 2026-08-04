@@ -38,11 +38,7 @@ export interface FinishSetupToolDeps {
 	listIntegrationCredentialIds?: () => Promise<string[]>;
 	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
 	listChatIntegrationTypes: () => string[];
-	/**
-	 * Credential types already covered by an n8n Connect managed credential on
-	 * the agent's node tools. Such a slot is served by n8n credits and needs no
-	 * user setup, so a request for it is dropped rather than shown as a card.
-	 */
+	/** Credential types already covered by an n8n Connect managed credential on the agent's node tools. */
 	listManagedNodeToolCredentialTypes?: () => Promise<string[]>;
 }
 
