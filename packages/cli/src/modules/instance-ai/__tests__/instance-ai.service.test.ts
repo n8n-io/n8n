@@ -3487,13 +3487,62 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 				metadata: { completion_source: 'resume_claim' },
 			},
 		);
-		expect(terminalResponse).not.toHaveBeenCalled();
-		expect(service.eventBus.events).toEqual([]);
+		expect(terminalResponse).toHaveBeenCalledWith('thread-a', 'run-1', 'errored', {
+			messageGroupId: 'group-1',
+			errorMessage: 'Something went wrong before I could finish that response. Please try again.',
+			errorCode: undefined,
+		});
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalled();
 		expect(service.tracing.finalizeMessageTraceRoot).not.toHaveBeenCalled();
-		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
 		expect(service.taskProjector.syncFromWorkflowLoop).not.toHaveBeenCalled();
+	});
+
+	it('surfaces an error to the user when a resume throws before claiming its checkpoint', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		const resumeError = new Error(
+			'Invalid resume payload: data must NOT have additional properties',
+		);
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(resumeError);
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
+			resumeError,
+			expect.objectContaining({ component: 'instance-ai-resume-claim', runId: 'run-1' }),
+		);
+		expect(service.eventBus.events).toEqual([
+			expect.objectContaining({
+				type: 'error',
+				runId: 'run-1',
+				payload: {
+					content: 'Something went wrong before I could finish that response. Please try again.',
+				},
+			}),
+			expect.objectContaining({ type: 'run-finish', payload: { status: 'error' } }),
+		]);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith(
+			'thread-a',
+			opts.resumeExecutionToken,
+		);
+	});
+
+	it('stays silent when a resume fails before claiming because the run was aborted', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		abortController.abort();
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('aborted mid-claim'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.eventBus.events).toEqual([]);
+		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
 	});
 
 	it('terminalizes a same-name error that occurs after the resume was claimed', async () => {

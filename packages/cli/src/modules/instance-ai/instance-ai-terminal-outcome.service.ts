@@ -353,6 +353,24 @@ export class InstanceAiTerminalOutcomeService {
 		};
 	}
 
+	/** Settle a resume that failed before it claimed its checkpoint and so never reaches the ordinary terminal path. */
+	async finishFailedResumeRun(args: {
+		threadId: string;
+		runId: string;
+		messageGroupId?: string;
+		errorMessage: string;
+		errorCode?: InstanceAiErrorCode;
+		snapshotStorage: DbSnapshotStorage;
+	}): Promise<void> {
+		await this.evaluateTerminalResponse(args.threadId, args.runId, 'errored', {
+			messageGroupId: args.messageGroupId,
+			errorMessage: args.errorMessage,
+			errorCode: args.errorCode,
+		});
+		this.publishRunFinish(args.threadId, args.runId, 'errored', args.errorMessage);
+		await this.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage);
+	}
+
 	private buildBackgroundTerminalOutcome(task: ManagedBackgroundTask): TerminalOutcome {
 		const status =
 			task.status === 'failed' ? 'failed' : task.status === 'cancelled' ? 'cancelled' : 'completed';

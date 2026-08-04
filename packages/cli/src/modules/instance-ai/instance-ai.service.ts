@@ -5007,24 +5007,7 @@ export class InstanceAiService {
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
-				this.instanceAiErrorReporter.report(claimError, {
-					component: 'instance-ai-resume-claim',
-					threadId: opts.threadId,
-					runId: opts.runId,
-					tracing: opts.tracing,
-					agentId: orchestratorAgentId(opts.runId),
-					userId: opts.user.id,
-					messageGroupId: opts.messageGroupId,
-				});
-				await this.tracing.finalizeDetachedTraceRun(
-					`unclaimed-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'failed',
-						error: getErrorMessage(claimError),
-						metadata: { completion_source: 'resume_claim' },
-					},
-				);
+				await this.failUnclaimedResume(opts, claimError);
 				return;
 			}
 			if (result.status === 'suspended') {
@@ -5279,24 +5262,7 @@ export class InstanceAiService {
 			}
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
-				this.instanceAiErrorReporter.report(error, {
-					component: 'instance-ai-resume-claim',
-					threadId: opts.threadId,
-					runId: opts.runId,
-					tracing: opts.tracing,
-					agentId: orchestratorAgentId(opts.runId),
-					userId: opts.user.id,
-					messageGroupId: opts.messageGroupId,
-				});
-				await this.tracing.finalizeDetachedTraceRun(
-					`unclaimed-resume:${opts.runId}`,
-					opts.discardTracingOnStale,
-					{
-						status: 'failed',
-						error: getErrorMessage(error),
-						metadata: { completion_source: 'resume_claim' },
-					},
-				);
+				await this.failUnclaimedResume(opts, error);
 				return;
 			}
 
@@ -5476,6 +5442,55 @@ export class InstanceAiService {
 				this.instanceAiErrorReporter.endRun(opts.runId, errorReporterExecutionToken);
 			}
 		}
+	}
+
+	/**
+	 * Unlike a stale resume, where another owner is driving the run and silence is
+	 * correct, nothing else will report back here — so the user has to be told.
+	 */
+	private async failUnclaimedResume(
+		opts: {
+			threadId: string;
+			runId: string;
+			user: User;
+			signal: AbortSignal;
+			snapshotStorage: DbSnapshotStorage;
+			tracing?: InstanceAiTraceContext;
+			messageGroupId?: string;
+			discardTracingOnStale?: InstanceAiTraceContext;
+		},
+		error: unknown,
+	): Promise<void> {
+		this.instanceAiErrorReporter.report(error, {
+			component: 'instance-ai-resume-claim',
+			threadId: opts.threadId,
+			runId: opts.runId,
+			tracing: opts.tracing,
+			agentId: orchestratorAgentId(opts.runId),
+			userId: opts.user.id,
+			messageGroupId: opts.messageGroupId,
+		});
+		await this.tracing.finalizeDetachedTraceRun(
+			`unclaimed-resume:${opts.runId}`,
+			opts.discardTracingOnStale,
+			{
+				status: 'failed',
+				error: getErrorMessage(error),
+				metadata: { completion_source: 'resume_claim' },
+			},
+		);
+
+		// A cancelled or shutting-down run settles through its own cancellation path.
+		if (opts.signal.aborted) return;
+
+		await this.terminalOutcome.finishFailedResumeRun({
+			threadId: opts.threadId,
+			runId: opts.runId,
+			messageGroupId: opts.messageGroupId,
+			errorMessage: getUserFacingErrorMessage(error),
+			errorCode: getUserFacingErrorCode(error),
+			snapshotStorage: opts.snapshotStorage,
+		});
 	}
 
 	// ── Background task management ──────────────────────────────────────────
