@@ -24,10 +24,10 @@ import {
  * partitionId, and Return Full Metadata.
  */
 export const getRow: OperationDefinition = {
-	displayName: 'Get a Row by ID',
+	displayName: 'Get',
 	value: 'get',
 	description: 'Get a single row by its primary key',
-	action: 'Get a row by ID',
+	action: 'Get a row',
 	properties: [
 		commonEntitySetProperty(['get']),
 		commonRecordIdProperty(['get']),

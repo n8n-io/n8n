@@ -1,5 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
-import type { OperationDefinition } from './types';
+import { NodeOperationError } from 'n8n-workflow';
+
 import { type DataverseQuery } from '../GenericFunctions';
 import { buildODataQs, executeRequest, normalizeEntitySet } from './shared';
 import {
@@ -11,34 +12,36 @@ import {
 	commonSelectOption,
 	forOperation,
 } from './sharedProperties';
+import type { OperationDefinition } from './types';
 
 /**
- * dv connector — "List rows" (`ListRecords`).
+ * dv connector — "Get Many" rows (`ListRecords`).
  *
  * `GET /{entitySet}` with the full Dataverse OData query surface:
- * `$select`, `$filter`, `$orderby`, `$expand`, `$top`, `$skiptoken`,
- * plus FetchXml, partitionId, and Return Full Metadata.
+ * `$select`, `$filter`, `$orderby`, `$expand`, and `$top`, plus FetchXml,
+ * partitionId, and Return Full Metadata.
  *
  * Two paging modes:
- *   - **Return All**: follows `@odata.nextLink` until exhausted.
+ *   - **Return All**: follows `@odata.nextLink` for OData queries until exhausted.
+ *     FetchXML queries cannot use Return All.
  *   - **Limit**: stops after N rows (default 50). For one-shot `$top`
  *     semantics the user can either rely on this limit or set `$top`
  *     explicitly via Options → Row Count.
  */
-export const listRows: OperationDefinition = {
-	displayName: 'List Rows',
-	value: 'list',
-	description: 'List rows in a Microsoft Dataverse table',
-	action: 'List rows',
+export const getManyRows: OperationDefinition = {
+	displayName: 'Get Many',
+	value: 'getAll',
+	description: 'Get many rows in a Microsoft Dataverse table',
+	action: 'Get many rows',
 	properties: [
-		commonEntitySetProperty(['list']),
+		commonEntitySetProperty(['getAll']),
 		{
 			displayName: 'Return All',
 			name: 'returnAll',
 			type: 'boolean',
 			default: false,
 			description: 'Whether to return all results or only up to a given limit',
-			displayOptions: forOperation(['list']),
+			displayOptions: forOperation(['getAll']),
 		},
 		{
 			displayName: 'Limit',
@@ -48,10 +51,10 @@ export const listRows: OperationDefinition = {
 			default: 50,
 			description: 'Max number of results to return',
 			displayOptions: {
-				show: { ...forOperation(['list']).show, returnAll: [false] },
+				show: { ...forOperation(['getAll']).show, returnAll: [false] },
 			},
 		},
-		buildOptionsCollection('list', [
+		buildOptionsCollection('getAll', [
 			commonExpandOption(),
 			{
 				displayName: 'FetchXML Query',
@@ -61,7 +64,7 @@ export const listRows: OperationDefinition = {
 				default: '',
 				placeholder: '<fetch>...</fetch>',
 				description:
-					'Advanced query — forwarded as ?fetchXml=. Overrides OData query options when set.',
+					'Advanced query — forwarded as ?fetchXml=. Overrides OData query options when set. Cannot be used with Return All.',
 			},
 			{
 				displayName: 'Filter Rows',
@@ -84,23 +87,12 @@ export const listRows: OperationDefinition = {
 			},
 			commonSelectOption(),
 			{
-				displayName: 'Skip Token',
-				name: 'skiptoken',
-				// Not a secret: an opaque OData continuation token. Masking it would
-				// hurt UX (users paste/inspect/edit these). The lint rule only flags it
-				// because the field name contains "token".
-				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
-				type: 'string',
-				default: '',
-				description: 'Continuation token returned from a previous List Rows page',
-			},
-			{
 				displayName: 'Sort Column Name or ID',
 				name: 'orderbyColumn',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getColumns',
-					loadOptionsDependsOn: ['entitySet'],
+					loadOptionsDependsOn: ['entitySet.value'],
 				},
 				default: '',
 				description:
@@ -132,7 +124,7 @@ export const listRows: OperationDefinition = {
 		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
 		const returnAll = ctx.getNodeParameter('returnAll', i, false) as boolean;
 		const limit = returnAll ? 0 : (ctx.getNodeParameter('limit', i, 50) as number);
-		const options = ctx.getNodeParameter('listOptions', i, {}) as IDataObject;
+		const options = ctx.getNodeParameter('getAllOptions', i, {}) as IDataObject;
 
 		const orderbyColumn = (options.orderbyColumn as string) ?? '';
 		const orderbyDirection = (options.orderbyDirection as string) ?? 'asc';
@@ -141,6 +133,13 @@ export const listRows: OperationDefinition = {
 			: ((options.orderby as string) ?? '');
 
 		const fetchXml = (options.fetchXml as string) ?? '';
+		if (returnAll && fetchXml.trim()) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'FetchXML Query cannot be used with Return All because FetchXML pagination is not supported. Disable Return All and set a Limit instead.',
+				{ itemIndex: i },
+			);
+		}
 		const qs: DataverseQuery = fetchXml
 			? { fetchXml }
 			: buildODataQs({
@@ -149,7 +148,6 @@ export const listRows: OperationDefinition = {
 					orderby,
 					expand: options.expand,
 					top: typeof options.top === 'number' && options.top > 0 ? options.top : undefined,
-					skiptoken: options.skiptoken,
 				});
 
 		return await executeRequest(ctx, credentialType, {

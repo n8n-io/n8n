@@ -1,5 +1,11 @@
-import type { ILoadOptionsFunctions, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
 import { DATAVERSE_API_PATH } from './constants';
 import { dataverseApiRequestRaw, type DataverseQuery } from './GenericFunctions';
 
@@ -22,6 +28,8 @@ import { dataverseApiRequestRaw, type DataverseQuery } from './GenericFunctions'
 interface EntityDefinition {
 	LogicalName: string;
 	EntitySetName: string | null;
+	PrimaryIdAttribute?: string;
+	PrimaryNameAttribute?: string;
 	DisplayName?: {
 		UserLocalizedLabel?: { Label?: string };
 	};
@@ -31,6 +39,7 @@ interface AttributeDefinition {
 	LogicalName: string;
 	AttributeOf?: string | null;
 	IsValidForRead?: boolean;
+	AttributeType?: string;
 	DisplayName?: {
 		UserLocalizedLabel?: { Label?: string };
 	};
@@ -49,6 +58,14 @@ function labelOf(def: { DisplayName?: { UserLocalizedLabel?: { Label?: string } 
 	if (typeof raw !== 'string') return null;
 	const trimmed = raw.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+function parameterValue(value: unknown): string {
+	if (typeof value === 'string') return value.trim();
+	if (typeof value === 'object' && value !== null && 'value' in value) {
+		return typeof value.value === 'string' ? value.value.trim() : '';
+	}
+	return '';
 }
 
 async function dataverseGet<T>(
@@ -226,6 +243,59 @@ export async function getEntitySets(this: ILoadOptionsFunctions): Promise<INodeP
 	return options;
 }
 
+export async function searchEntitySets(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const filterLower = filter?.trim().toLowerCase();
+	const options = await getEntitySets.call(this);
+	const results = options
+		.filter((option) => !filterLower || option.name.toLowerCase().includes(filterLower))
+		.map(({ name, value }) => ({ name, value }));
+	return { results };
+}
+
+export async function searchRows(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const entitySet = parameterValue(this.getCurrentNodeParameter('entitySet'));
+	if (!entitySet) return { results: [] };
+
+	const metadata = await dataverseGet<ODataCollection<EntityDefinition>>(
+		this,
+		'/EntityDefinitions',
+		{
+			$select: 'PrimaryIdAttribute,PrimaryNameAttribute',
+			$filter: `EntitySetName eq '${entitySet.replace(/'/g, "''")}'`,
+		},
+	);
+	const { PrimaryIdAttribute: idAttribute, PrimaryNameAttribute: nameAttribute } =
+		metadata.value?.[0] ?? {};
+	if (!idAttribute) return { results: [] };
+
+	const qs: DataverseQuery = {
+		$select: nameAttribute ? `${idAttribute},${nameAttribute}` : idAttribute,
+		$top: 100,
+	};
+	const trimmedFilter = filter?.trim();
+	if (trimmedFilter && nameAttribute) {
+		qs.$filter = `contains(${nameAttribute},'${trimmedFilter.replace(/'/g, "''")}')`;
+	}
+	const response = await dataverseGet<ODataCollection<Record<string, unknown>>>(
+		this,
+		`/${entitySet}`,
+		qs,
+	);
+	const results = (response.value ?? []).flatMap((row) => {
+		const id = row[idAttribute];
+		if (typeof id !== 'string' || !id) return [];
+		const name = nameAttribute ? row[nameAttribute] : undefined;
+		return [{ name: typeof name === 'string' && name ? `${name} (${id})` : id, value: id }];
+	});
+	return { results };
+}
+
 /**
  * List columns for the currently-selected table. Requires the caller to set
  * `loadOptionsDependsOn: ['entitySet']` so the picker reloads when the user
@@ -237,7 +307,7 @@ export async function getEntitySets(this: ILoadOptionsFunctions): Promise<INodeP
  * attributes. Two short metadata calls.
  */
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const entitySet = String(this.getCurrentNodeParameter('entitySet') ?? '').trim();
+	const entitySet = parameterValue(this.getCurrentNodeParameter('entitySet'));
 	if (!entitySet) return [];
 	// `EntitySetName eq '<value>'` — the single quotes are OData literal
 	// syntax (not URL syntax), so they go in the value verbatim. The HTTP
@@ -257,7 +327,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	const attrs = await dataverseGet<ODataCollection<AttributeDefinition>>(
 		this,
 		`/EntityDefinitions(LogicalName='${logicalName}')/Attributes`,
-		{ $select: 'LogicalName,DisplayName,AttributeOf,IsValidForRead' },
+		{ $select: 'LogicalName,DisplayName,AttributeOf,IsValidForRead,AttributeType' },
 	);
 	const options: INodePropertyOptions[] = [];
 	for (const attr of attrs.value ?? []) {
@@ -266,7 +336,17 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		if (attr.AttributeOf) continue;
 		if (attr.IsValidForRead === false) continue;
 		const label = labelOf(attr) ?? attr.LogicalName;
-		options.push({ name: `${label} (${attr.LogicalName})`, value: attr.LogicalName });
+		// Lookup columns (incl. Customer/Owner) can't be written by logical name —
+		// the node rewrites them to @odata.bind. Flag them so users understand the
+		// column behaves differently from a plain value column.
+		const isLookup =
+			attr.AttributeType === 'Lookup' ||
+			attr.AttributeType === 'Customer' ||
+			attr.AttributeType === 'Owner';
+		const name = isLookup
+			? `${label} (${attr.LogicalName}) — lookup`
+			: `${label} (${attr.LogicalName})`;
+		options.push({ name, value: attr.LogicalName });
 	}
 	options.sort((a, b) => a.name.localeCompare(b.name));
 	return options;

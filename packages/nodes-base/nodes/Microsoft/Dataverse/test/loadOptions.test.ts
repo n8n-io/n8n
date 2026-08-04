@@ -6,7 +6,7 @@ import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { getColumns, getEntitySets } from '../loadOptions';
+import { getColumns, getEntitySets, searchEntitySets, searchRows } from '../loadOptions';
 
 const BASE_URL = 'https://org.crm.dynamics.com';
 
@@ -156,12 +156,17 @@ describe('Microsoft Dataverse loadOptions', () => {
 		});
 
 		it('looks up the logical name then maps readable attributes', async () => {
-			ctx.getCurrentNodeParameter.mockReturnValue('accounts');
+			ctx.getCurrentNodeParameter.mockReturnValue({ mode: 'list', value: 'accounts' });
 			request.mockResolvedValueOnce({ value: [{ LogicalName: 'account' }] }).mockResolvedValueOnce({
 				value: [
 					{
 						LogicalName: 'name',
 						DisplayName: { UserLocalizedLabel: { Label: 'Name' } },
+					},
+					{
+						LogicalName: 'primarycontactid',
+						AttributeType: 'Lookup',
+						DisplayName: { UserLocalizedLabel: { Label: 'Primary Contact' } },
 					},
 					{ LogicalName: 'accountidname', AttributeOf: 'accountid' },
 					{ LogicalName: 'hidden', IsValidForRead: false },
@@ -170,7 +175,12 @@ describe('Microsoft Dataverse loadOptions', () => {
 
 			const options = await getColumns.call(ctx);
 
-			expect(options).toEqual([{ name: 'Name (name)', value: 'name' }]);
+			expect(options).toEqual([
+				{ name: 'Name (name)', value: 'name' },
+				{ name: 'Primary Contact (primarycontactid) — lookup', value: 'primarycontactid' },
+			]);
+			const [, attrOptions] = request.mock.calls[1];
+			expect(attrOptions.qs.$select).toContain('AttributeType');
 		});
 
 		it('returns an empty list when the table lookup finds nothing', async () => {
@@ -189,6 +199,53 @@ describe('Microsoft Dataverse loadOptions', () => {
 
 			const [, options] = request.mock.calls[0];
 			expect(options.qs.$filter).toBe("EntitySetName eq 'o''brien'");
+		});
+	});
+
+	describe('listSearch', () => {
+		it('filters table locator results by display name', async () => {
+			request.mockResolvedValue({
+				value: [
+					{
+						LogicalName: 'account',
+						EntitySetName: 'accounts',
+						DisplayName: { UserLocalizedLabel: { Label: 'Account' } },
+					},
+					{
+						LogicalName: 'contact',
+						EntitySetName: 'contacts',
+						DisplayName: { UserLocalizedLabel: { Label: 'Contact' } },
+					},
+				],
+			});
+
+			expect(await searchEntitySets.call(ctx, 'acc')).toEqual({
+				results: [{ name: 'Account (accounts)', value: 'accounts' }],
+			});
+		});
+
+		it('searches rows by the selected table primary name and returns primary IDs', async () => {
+			ctx.getCurrentNodeParameter.mockReturnValue({ mode: 'list', value: 'accounts' });
+			request
+				.mockResolvedValueOnce({
+					value: [{ PrimaryIdAttribute: 'accountid', PrimaryNameAttribute: 'name' }],
+				})
+				.mockResolvedValueOnce({
+					value: [{ accountid: 'row-1', name: 'Acme' }],
+				});
+
+			expect(await searchRows.call(ctx, "Ac'me")).toEqual({
+				results: [{ name: 'Acme (row-1)', value: 'row-1' }],
+			});
+			const [, metadataRequest] = request.mock.calls[0];
+			expect(metadataRequest.qs.$filter).toBe("EntitySetName eq 'accounts'");
+			const [, rowsRequest] = request.mock.calls[1];
+			expect(rowsRequest.url).toContain('/accounts');
+			expect(rowsRequest.qs).toMatchObject({
+				$select: 'accountid,name',
+				$filter: "contains(name,'Ac''me')",
+				$top: 100,
+			});
 		});
 	});
 });

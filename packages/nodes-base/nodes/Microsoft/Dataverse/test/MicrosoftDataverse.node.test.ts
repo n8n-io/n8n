@@ -2,9 +2,10 @@ import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow'
 import { NodeOperationError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { searchEntitySets, searchRows } from '../loadOptions';
 import { MicrosoftDataverse } from '../MicrosoftDataverse.node';
 import { createRow } from '../operations/createRow';
-import { listRows } from '../operations/listRows';
+import { getManyRows } from '../operations/getManyRows';
 
 const CREDENTIAL_TYPE = 'microsoftDataverseOAuth2Api';
 
@@ -49,6 +50,46 @@ describe('MicrosoftDataverse Node', () => {
 		vi.restoreAllMocks();
 	});
 
+	it('uses searchable resource locators for every table and row ID property', () => {
+		const instance = new MicrosoftDataverse();
+		const tableProperties = instance.description.properties.filter(
+			(property) => property.name === 'entitySet',
+		);
+		const rowProperties = instance.description.properties.filter(
+			(property) => property.name === 'recordId',
+		);
+
+		expect(tableProperties).toHaveLength(6);
+		expect(tableProperties.every((property) => property.type === 'resourceLocator')).toBe(true);
+		expect(
+			tableProperties.every(
+				(property) => property.modes?.[0]?.typeOptions?.searchListMethod === 'searchEntitySets',
+			),
+		).toBe(true);
+		expect(rowProperties).toHaveLength(4);
+		expect(rowProperties.every((property) => property.type === 'resourceLocator')).toBe(true);
+		expect(
+			rowProperties.every(
+				(property) => property.modes?.[0]?.typeOptions?.searchListMethod === 'searchRows',
+			),
+		).toBe(true);
+		expect(instance.methods.listSearch).toEqual({
+			searchEntitySets,
+			searchRows,
+		});
+	});
+
+	it('lists operations alphabetically by name, matching the n8n catalog convention', () => {
+		const instance = new MicrosoftDataverse();
+		const operation = instance.description.properties.find(
+			(property) => property.name === 'operation',
+		);
+		const names = (operation?.options ?? []).map((option) => (option as { name: string }).name);
+
+		expect(names).toEqual(['Create', 'Create or Update', 'Delete', 'Get', 'Get Many', 'Update']);
+		expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+	});
+
 	it('routes an operation to the matching op module and wraps the result', async () => {
 		ctx.getInputData.mockReturnValue([{ json: { in: 1 } }]);
 		ctx.getNodeParameter.mockReturnValue('create');
@@ -62,8 +103,8 @@ describe('MicrosoftDataverse Node', () => {
 
 	it('flattens an array result from an op module into multiple items', async () => {
 		ctx.getInputData.mockReturnValue([{ json: {} }]);
-		ctx.getNodeParameter.mockReturnValue('list');
-		vi.spyOn(listRows, 'execute').mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+		ctx.getNodeParameter.mockReturnValue('getAll');
+		vi.spyOn(getManyRows, 'execute').mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
 
 		const result = await MicrosoftDataverse.prototype.execute.call(ctx);
 
@@ -71,10 +112,20 @@ describe('MicrosoftDataverse Node', () => {
 		expect(result[0].map((r) => r.json)).toEqual([{ id: 'a' }, { id: 'b' }]);
 	});
 
-	it('resolves the deprecated "query" alias to the list operation', async () => {
+	it('resolves the deprecated "query" alias to the Get Many operation', async () => {
 		ctx.getInputData.mockReturnValue([{ json: {} }]);
 		ctx.getNodeParameter.mockReturnValue('query');
-		const listSpy = vi.spyOn(listRows, 'execute').mockResolvedValue([]);
+		const listSpy = vi.spyOn(getManyRows, 'execute').mockResolvedValue([]);
+
+		await MicrosoftDataverse.prototype.execute.call(ctx);
+
+		expect(listSpy).toHaveBeenCalledWith(ctx, 0, CREDENTIAL_TYPE);
+	});
+
+	it('resolves the deprecated "list" alias to the Get Many operation', async () => {
+		ctx.getInputData.mockReturnValue([{ json: {} }]);
+		ctx.getNodeParameter.mockReturnValue('list');
+		const listSpy = vi.spyOn(getManyRows, 'execute').mockResolvedValue([]);
 
 		await MicrosoftDataverse.prototype.execute.call(ctx);
 

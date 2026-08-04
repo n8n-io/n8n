@@ -2,16 +2,24 @@ import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { dataverseApiRequest, dataverseApiRequestAllItems } from '../GenericFunctions';
+import { applyLookupBindings, resolveLookupFields } from '../operations/lookups';
 import { createRow } from '../operations/createRow';
 import { deleteRow } from '../operations/deleteRow';
 import { getRow } from '../operations/getRow';
-import { listRows } from '../operations/listRows';
+import { getManyRows } from '../operations/getManyRows';
 import { updateRow } from '../operations/updateRow';
 import { upsertRow } from '../operations/upsertRow';
 
 vi.mock('../GenericFunctions', () => ({
 	dataverseApiRequest: vi.fn(),
 	dataverseApiRequestAllItems: vi.fn(),
+}));
+
+// Lookup translation is unit-tested in lookups.test.ts. Here we stub it to a
+// pass-through so the write-op assertions stay focused on request shape.
+vi.mock('../operations/lookups', () => ({
+	resolveLookupFields: vi.fn().mockResolvedValue(new Map()),
+	applyLookupBindings: vi.fn((_ctx: unknown, _i: number, body: unknown) => body),
 }));
 
 const CREDENTIAL_TYPE = 'microsoftDataverseOAuth2Api';
@@ -73,13 +81,29 @@ describe('Microsoft Dataverse operations', () => {
 			expect(credType).toBe(CREDENTIAL_TYPE);
 		});
 
+		it('resolves lookup fields and translates the body before sending', async () => {
+			withParams({
+				entitySet: 'accounts',
+				inputMode: 'json',
+				fieldsJson: '{"name":"Acme"}',
+				createOptions: {},
+			});
+
+			await createRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			expect(resolveLookupFields).toHaveBeenCalledWith(ctx, CREDENTIAL_TYPE, 'accounts');
+			expect(applyLookupBindings).toHaveBeenCalled();
+		});
+
 		it('throws when the body is empty', async () => {
 			withParams({ entitySet: 'accounts', inputMode: 'json', fieldsJson: '{}', createOptions: {} });
 
 			await expect(createRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(
-				/Add a New Row requires at least one field/,
+				/Create requires at least one field/,
 			);
 			expect(dataverseApiRequest).not.toHaveBeenCalled();
+			// The empty body is rejected before any lookup metadata is fetched.
+			expect(resolveLookupFields).not.toHaveBeenCalled();
 		});
 	});
 
@@ -106,18 +130,40 @@ describe('Microsoft Dataverse operations', () => {
 			await expect(getRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(/required/);
 			expect(dataverseApiRequest).not.toHaveBeenCalled();
 		});
+
+		it('resolves table and row resource locator values', async () => {
+			withParams({
+				entitySet: { mode: 'list', value: 'accounts' },
+				recordId: { mode: 'list', value: 'abc-123' },
+				getOptions: {},
+			});
+
+			await getRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			expect(singleCall()[2]).toBe('/accounts(abc-123)');
+		});
 	});
 
-	describe('listRows', () => {
+	describe('getManyRows', () => {
+		it('does not expose a Skip Token option', () => {
+			const options = getManyRows.properties.find((property) => property.name === 'getAllOptions');
+
+			expect(options?.options?.some((option) => option.name === 'skiptoken')).toBe(false);
+		});
+
 		it('pages with a limit and derives $orderby from column + direction', async () => {
 			withParams({
 				entitySet: 'accounts',
 				returnAll: false,
 				limit: 25,
-				listOptions: { orderbyColumn: 'name', orderbyDirection: 'desc', filter: 'statecode eq 0' },
+				getAllOptions: {
+					orderbyColumn: 'name',
+					orderbyDirection: 'desc',
+					filter: 'statecode eq 0',
+				},
 			});
 
-			const result = await listRows.execute(ctx, 0, CREDENTIAL_TYPE);
+			const result = await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
 
 			expect(result).toEqual([{ id: 'row-1' }]);
 			const [, method, path, qs, limit, credType] = pagedCall();
@@ -129,25 +175,72 @@ describe('Microsoft Dataverse operations', () => {
 		});
 
 		it('uses limit 0 (unbounded) when returnAll is true', async () => {
-			withParams({ entitySet: 'accounts', returnAll: true, listOptions: {} });
+			withParams({ entitySet: 'accounts', returnAll: true, getAllOptions: {} });
 
-			await listRows.execute(ctx, 0, CREDENTIAL_TYPE);
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
 
 			const [, , , , limit] = pagedCall();
 			expect(limit).toBe(0);
 		});
 
-		it('forwards a FetchXML query verbatim and ignores OData options', async () => {
+		it('forwards Row Count as $top', async () => {
 			withParams({
 				entitySet: 'accounts',
 				returnAll: true,
-				listOptions: { fetchXml: '<fetch>x</fetch>', filter: 'ignored' },
+				getAllOptions: { top: 250 },
 			});
 
-			await listRows.execute(ctx, 0, CREDENTIAL_TYPE);
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
 
 			const [, , , qs] = pagedCall();
+			expect(qs).toMatchObject({ $top: 250 });
+		});
+
+		it('ignores a stale saved Skip Token option', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: true,
+				getAllOptions: { skiptoken: 'already%2Fencoded' },
+			});
+
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, , , qs] = pagedCall();
+			expect(qs).not.toHaveProperty('$skiptoken');
+		});
+
+		it('rejects FetchXML queries when returnAll is enabled', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: true,
+				getAllOptions: { fetchXml: '<fetch>x</fetch>' },
+			});
+
+			await expect(getManyRows.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(
+				'FetchXML Query cannot be used with Return All because FetchXML pagination is not supported',
+			);
+			expect(dataverseApiRequestAllItems).not.toHaveBeenCalled();
+		});
+
+		it('forwards a limited FetchXML query verbatim and ignores OData options', async () => {
+			withParams({
+				entitySet: 'accounts',
+				returnAll: false,
+				limit: 25,
+				getAllOptions: {
+					fetchXml: '<fetch>x</fetch>',
+					filter: 'ignored',
+					select: ['ignored'],
+				},
+			});
+
+			await getManyRows.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			const [, method, path, qs, limit] = pagedCall();
+			expect(method).toBe('GET');
+			expect(path).toBe('/accounts');
 			expect(qs).toEqual({ fetchXml: '<fetch>x</fetch>' });
+			expect(limit).toBe(25);
 		});
 	});
 
@@ -182,9 +275,11 @@ describe('Microsoft Dataverse operations', () => {
 			});
 
 			await expect(updateRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(
-				/Update a Row requires at least one field/,
+				/Update requires at least one field/,
 			);
 			expect(dataverseApiRequest).not.toHaveBeenCalled();
+			// The empty body is rejected before any lookup metadata is fetched.
+			expect(resolveLookupFields).not.toHaveBeenCalled();
 		});
 	});
 
@@ -268,9 +363,11 @@ describe('Microsoft Dataverse operations', () => {
 			});
 
 			await expect(upsertRow.execute(ctx, 0, CREDENTIAL_TYPE)).rejects.toThrow(
-				/Upsert a Row requires at least one field/,
+				/Create or Update requires at least one field/,
 			);
 			expect(dataverseApiRequest).not.toHaveBeenCalled();
+			// The empty body is rejected before any lookup metadata is fetched.
+			expect(resolveLookupFields).not.toHaveBeenCalled();
 		});
 
 		it('throws naming the alternate-key parameter when it is empty', async () => {

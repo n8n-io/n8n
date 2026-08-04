@@ -434,7 +434,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			expect(request).toHaveBeenCalledTimes(1);
 		});
 
-		it('merges a caller Prefer header with the page-size hint', async () => {
+		it('preserves a caller Prefer header', async () => {
 			request.mockResolvedValueOnce({ value: [] });
 
 			await dataverseApiRequestAllItems(ctx, 'GET', '/accounts', {}, 0, CREDENTIAL_TYPE, {
@@ -442,16 +442,26 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			});
 
 			const [, options] = request.mock.calls[0];
-			expect(options.headers.Prefer).toBe('return=representation,odata.maxpagesize=100');
+			expect(options.headers.Prefer).toBe('return=representation');
 		});
 
-		it('applies only the page-size hint when no caller Prefer is given', async () => {
+		it('does not set Prefer when the caller does not provide one', async () => {
 			request.mockResolvedValueOnce({ value: [] });
 
 			await dataverseApiRequestAllItems(ctx, 'GET', '/accounts', {}, 0, CREDENTIAL_TYPE);
 
 			const [, options] = request.mock.calls[0];
-			expect(options.headers.Prefer).toBe('odata.maxpagesize=100');
+			expect(options.headers.Prefer).toBeUndefined();
+		});
+
+		it('forwards $top without a conflicting page-size preference', async () => {
+			request.mockResolvedValueOnce({ value: [] });
+
+			await dataverseApiRequestAllItems(ctx, 'GET', '/accounts', { $top: 250 }, 0, CREDENTIAL_TYPE);
+
+			const [, options] = request.mock.calls[0];
+			expect(options.qs).toEqual({ $top: 250 });
+			expect(options.headers.Prefer).toBeUndefined();
 		});
 
 		it('returns an empty array when a page has no value field', async () => {

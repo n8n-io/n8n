@@ -21,7 +21,7 @@ import {
  * branch on `success`.
  */
 export const deleteRow: OperationDefinition = {
-	displayName: 'Delete a Row',
+	displayName: 'Delete',
 	value: 'delete',
 	description: 'Delete a row from a Microsoft Dataverse table',
 	action: 'Delete a row',

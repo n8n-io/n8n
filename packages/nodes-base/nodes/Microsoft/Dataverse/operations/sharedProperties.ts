@@ -11,11 +11,11 @@ import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 /**
  * Build the standard `displayOptions.show` block scoping a property or
  * collection to one or more record-level operations. Replaces the
- * `{ show: { resource: ['record'], operation: ops } }` boilerplate that was
+ * `{ show: { resource: ['row'], operation: ops } }` boilerplate that was
  * previously inlined in every shared property factory.
  */
 export function forOperation(operations: string[]): IDisplayOptions {
-	return { show: { resource: ['record'], operation: operations } };
+	return { show: { resource: ['row'], operation: operations } };
 }
 
 /** Plural Web API name of the table (e.g. `accounts`). */
@@ -23,13 +23,28 @@ export function commonEntitySetProperty(operations: string[]): INodeProperties {
 	return {
 		displayName: 'Table Name or ID',
 		name: 'entitySet',
-		type: 'options',
-		typeOptions: { loadOptionsMethod: 'getEntitySets' },
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		description: 'The Dataverse table to operate on',
 		displayOptions: forOperation(operations),
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchEntitySets',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. accounts',
+			},
+		],
 	};
 }
 
@@ -38,12 +53,31 @@ export function commonRecordIdProperty(operations: string[]): INodeProperties {
 	return {
 		displayName: 'Row ID',
 		name: 'recordId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		placeholder: '00000000-0000-0000-0000-000000000000',
-		description: 'Globally unique identifier (GUID) of the row',
+		description: 'The Dataverse row to operate on',
 		displayOptions: forOperation(operations),
+		typeOptions: {
+			loadOptionsDependsOn: ['entitySet.value'],
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'searchRows',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '00000000-0000-0000-0000-000000000000',
+			},
+		],
 	};
 }
 
@@ -102,7 +136,7 @@ export function commonRowItemProperties(operations: string[]): INodeProperties[]
 							type: 'options',
 							typeOptions: {
 								loadOptionsMethod: 'getColumns',
-								loadOptionsDependsOn: ['entitySet'],
+								loadOptionsDependsOn: ['entitySet.value'],
 							},
 							default: '',
 							description:
@@ -154,7 +188,7 @@ export function commonSelectOption(): INodeProperties {
 		type: 'multiOptions',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
-			loadOptionsDependsOn: ['entitySet'],
+			loadOptionsDependsOn: ['entitySet.value'],
 		},
 		default: [],
 		description:

@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 	name = 'microsoftDataverseOAuth2Api';
@@ -58,21 +58,39 @@ export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 				'Base URL of your Dataverse environment. ' +
 				'Find it in Power Platform admin center under your environment details, ' +
 				'or inside the environment at Settings → Session details.',
-			hint: 'Must start with https:// and must not include a trailing slash. Example: https://yourorg.crm.dynamics.com',
+			hint: 'Must start with https://. A trailing slash is accepted and normalized. Example: https://yourorg.crm.dynamics.com',
 		},
 		{
+			displayName: 'National Cloud',
+			name: 'cloud',
+			type: 'options',
+			default: 'global',
+			description:
+				'The Microsoft national cloud your Dataverse environment lives in. Controls the Entra login host used for authentication.',
+			options: [
+				{ name: 'Global (Public Cloud)', value: 'global' },
+				{ name: 'US Government (GCC High)', value: 'usgov' },
+				{ name: 'US Government (DoD)', value: 'dod' },
+				{ name: 'China (21Vianet)', value: 'china' },
+			],
+		},
+		{
+			// Login host is derived from the selected national cloud so a sovereign
+			// tenant authenticates against the matching login host. Values are a fixed
+			// Microsoft host enum (mirrors LOGIN_HOSTS_BY_GRAPH_URL in the Entra
+			// credential), keeping the token exchange on trusted hosts.
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
 			default:
-				'={{ "https://login.microsoftonline.com/" + $self["tenantId"] + "/oauth2/v2.0/authorize" }}',
+				'={{ ($self["cloud"] === "china" ? "https://login.partner.microsoftonline.cn" : ($self["cloud"] === "usgov" || $self["cloud"] === "dod" ? "https://login.microsoftonline.us" : "https://login.microsoftonline.com")) + "/" + $self["tenantId"].trim() + "/oauth2/v2.0/authorize" }}',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
 			default:
-				'={{ "https://login.microsoftonline.com/" + $self["tenantId"] + "/oauth2/v2.0/token" }}',
+				'={{ ($self["cloud"] === "china" ? "https://login.partner.microsoftonline.cn" : ($self["cloud"] === "usgov" || $self["cloud"] === "dod" ? "https://login.microsoftonline.us" : "https://login.microsoftonline.com")) + "/" + $self["tenantId"].trim() + "/oauth2/v2.0/token" }}',
 		},
 		{
 			// Scope resolution rules:
@@ -86,7 +104,7 @@ export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{ $self["environmentUrl"] + "/.default" + ($self["grantType"] === "clientCredentials" ? "" : " offline_access") }}',
+				'={{ $self["environmentUrl"].trim().replace(/\\/+$/, "") + "/.default" + ($self["grantType"] === "clientCredentials" ? "" : " offline_access") }}',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -100,5 +118,32 @@ export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'header',
 		},
+		{
+			// Inherited from microsoftOAuth2Api but unused: Dataverse doesn't call
+			// Microsoft Graph (the data URL comes from environmentUrl) and the login
+			// host is driven by the National Cloud selector above. Hide it so the modal
+			// doesn't render a control that does nothing.
+			displayName: 'Microsoft Graph API Base URL',
+			name: 'graphApiBaseUrl',
+			type: 'hidden',
+			default: 'https://graph.microsoft.com',
+		},
 	];
+
+	// Runs on save so setup problems surface immediately instead of as a 403 at
+	// execution time. Crucially this validates the Client Credentials flow, which
+	// has no interactive connect step: Entra issues an app-only token even when the
+	// application user hasn't been created in the environment, so a bare token
+	// acquisition proves nothing. GET WhoAmI additionally catches a wrong tenant
+	// and a mistyped environment URL. The trailing slash is stripped the same way
+	// as the scope expression and resolveBaseUrl; the API version is kept in sync
+	// with DATAVERSE_API_PATH in the node's constants.ts.
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{ $credentials.environmentUrl.trim().replace(/\\/+$/, "") }}',
+			url: '/api/data/v9.2/WhoAmI',
+			method: 'GET',
+			headers: { Accept: 'application/json' },
+		},
+	};
 }

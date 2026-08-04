@@ -325,10 +325,9 @@ export async function dataverseApiRequest(
 /**
  * Fetch all pages of a Dataverse collection, following ``@odata.nextLink``.
  *
- * Caller-supplied `Prefer` is merged comma-separated with the paging hint
- * `odata.maxpagesize=100` so the page-size cap is never accidentally dropped.
- * All other headers are forwarded as-is. Each page dispatch uses the same
- * retry-with-back-off policy as single-shot requests.
+ * Dataverse controls the page size unless the caller explicitly supplies a
+ * `Prefer` header. All headers are forwarded as-is. Each page dispatch uses
+ * the same retry-with-back-off policy as single-shot requests.
  */
 export async function dataverseApiRequestAllItems(
 	ctx: IExecuteFunctions,
@@ -341,14 +340,10 @@ export async function dataverseApiRequestAllItems(
 ): Promise<IDataObject[]> {
 	const baseUrl = await resolveBaseUrl(ctx, credentialType);
 
-	const PAGE_SIZE_PREFER = 'odata.maxpagesize=100';
-	const callerPrefer = extraHeaders.Prefer ?? '';
-	const mergedPrefer = callerPrefer ? `${callerPrefer},${PAGE_SIZE_PREFER}` : PAGE_SIZE_PREFER;
 	const headers: DataverseHeaders = {
 		...ODATA_DEFAULT_HEADERS,
 		'User-Agent': buildUserAgent(ctx.getNode().typeVersion),
 		...extraHeaders,
-		Prefer: mergedPrefer,
 	};
 
 	const results: IDataObject[] = [];

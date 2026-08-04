@@ -1,5 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
 import type { OperationDefinition } from './types';
+import { applyLookupBindings, resolveLookupFields } from './lookups';
 import {
 	assertNonEmptyBody,
 	assertNonEmptyRecordId,
@@ -25,7 +26,7 @@ import {
  * variant). `Prefer: return=representation` echoes the post-update row.
  */
 export const updateRow: OperationDefinition = {
-	displayName: 'Update a Row',
+	displayName: 'Update',
 	value: 'update',
 	description: 'Modify any selected row in a Microsoft Dataverse table',
 	action: 'Update a row',
@@ -42,7 +43,12 @@ export const updateRow: OperationDefinition = {
 	async execute(ctx, i, credentialType) {
 		const entitySet = normalizeEntitySet(ctx.getNodeParameter('entitySet', i));
 		const recordId = assertNonEmptyRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
-		const body = assertNonEmptyBody(ctx, i, parseItemInput(ctx, i), 'Update a Row');
+		// Validate before resolving lookup metadata so an empty Row Item fails fast
+		// without spending metadata requests. applyLookupBindings only rewrites keys,
+		// so a non-empty body can never become empty afterwards.
+		const rawBody = assertNonEmptyBody(ctx, i, parseItemInput(ctx, i), 'Update');
+		const lookupFields = await resolveLookupFields(ctx, credentialType, entitySet);
+		const body = applyLookupBindings(ctx, i, rawBody, lookupFields);
 		return await executeRequest(ctx, credentialType, {
 			method: 'PATCH',
 			path: buildRecordPath(entitySet, recordId),

@@ -6,21 +6,21 @@
 import type { OperationDefinition } from './types';
 import { createRow } from './createRow';
 import { getRow } from './getRow';
-import { listRows } from './listRows';
+import { getManyRows } from './getManyRows';
 import { updateRow } from './updateRow';
 import { upsertRow } from './upsertRow';
 import { deleteRow } from './deleteRow';
 
 export { toDropdownOption } from './types';
 
-/** Display order matches the dv connector's action order in the editor. */
+/** Display order is alphabetical by name, matching the n8n catalog convention. */
 export const RECORD_OPERATIONS: OperationDefinition[] = [
 	createRow,
-	getRow,
-	listRows,
-	updateRow,
 	upsertRow,
 	deleteRow,
+	getRow,
+	getManyRows,
+	updateRow,
 ];
 
 export const OPERATION_BY_VALUE: Record<string, OperationDefinition> = RECORD_OPERATIONS.reduce(
@@ -35,10 +35,12 @@ export const OPERATION_BY_VALUE: Record<string, OperationDefinition> = RECORD_OP
  * Backwards-compat alias map — keys are deprecated operation values that
  * existing workflows may still hold; values are the current op id.
  *
- *   `query` → `list`   (renamed for dv-connector parity)
+ *   `query` → `getAll`   (legacy value from an earlier iteration)
+ *   `list`  → `getAll`   (earlier id before the rename to Get Many)
  */
 export const OPERATION_ALIASES: Record<string, string> = {
-	query: 'list',
+	query: 'getAll',
+	list: 'getAll',
 };
 
 export function resolveOperation(value: string): OperationDefinition | undefined {

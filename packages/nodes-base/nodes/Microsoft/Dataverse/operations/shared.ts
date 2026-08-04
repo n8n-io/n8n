@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, IHttpRequestMethods } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 import {
 	dataverseApiRequest,
 	dataverseApiRequestAllItems,
@@ -10,9 +10,9 @@ import {
 /**
  * Names of OData system query options accepted by the Dataverse Web API in the
  * shape this module supports. Mirrors the dv connector (Power Automate) param
- * surface: `$select`, `$filter`, `$orderby`, `$expand`, `$top`, `$skiptoken`.
+ * surface: `$select`, `$filter`, `$orderby`, `$expand`, `$top`.
  */
-export type ODataOptionKey = 'select' | 'filter' | 'orderby' | 'expand' | 'top' | 'skiptoken';
+export type ODataOptionKey = 'select' | 'filter' | 'orderby' | 'expand' | 'top';
 
 const OPTION_TO_QS: Record<ODataOptionKey, string> = {
 	select: '$select',
@@ -20,7 +20,6 @@ const OPTION_TO_QS: Record<ODataOptionKey, string> = {
 	orderby: '$orderby',
 	expand: '$expand',
 	top: '$top',
-	skiptoken: '$skiptoken',
 };
 
 /**
@@ -73,7 +72,7 @@ export function parseItemInput(ctx: IExecuteFunctions, itemIndex: number): IData
 		const out: IDataObject = {};
 		for (const entry of raw.field ?? []) {
 			if (!entry || !entry.name) continue;
-			out[entry.name] = entry.value as IDataObject[string];
+			setSafeObjectProperty(out, entry.name, entry.value);
 		}
 		return out;
 	}
@@ -129,9 +128,18 @@ export function buildPreferHeader(opts: PreferOptions): string | undefined {
  * (e.g. someone pasting "accounts/"). Dataverse rejects either of those
  * variants with an unhelpful 404, so we normalize aggressively up-front.
  */
+function resourceLocatorValue(value: unknown): string {
+	if (typeof value === 'string') return value;
+	if (typeof value === 'object' && value !== null && 'value' in value) {
+		return typeof value.value === 'string' ? value.value : '';
+	}
+	return '';
+}
+
 export function normalizeEntitySet(value: unknown): string {
-	if (typeof value !== 'string') return '';
-	return value.trim().replace(/^\/+|\/+$/g, '');
+	return resourceLocatorValue(value)
+		.trim()
+		.replace(/^\/+|\/+$/g, '');
 }
 
 /**
@@ -165,7 +173,7 @@ export function assertNonEmptyRecordId(
 	recordId: unknown,
 	paramName = 'recordId',
 ): string {
-	const trimmed = typeof recordId === 'string' ? recordId.trim() : '';
+	const trimmed = resourceLocatorValue(recordId).trim();
 	if (!trimmed) {
 		throw new NodeOperationError(
 			ctx.getNode(),

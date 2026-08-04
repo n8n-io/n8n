@@ -1,6 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
-import type { OperationDefinition } from './types';
+
 import { type DataverseHeaders } from '../GenericFunctions';
+import { applyLookupBindings, resolveLookupFields } from './lookups';
 import {
 	assertNonEmptyBody,
 	assertNonEmptyRecordId,
@@ -12,10 +13,12 @@ import {
 import {
 	buildOptionsCollection,
 	commonEntitySetProperty,
+	commonRecordIdProperty,
 	commonReturnFullMetadataOption,
 	commonRowItemProperties,
 	forOperation,
 } from './sharedProperties';
+import type { OperationDefinition } from './types';
 
 /**
  * dv connector — "Upsert a row" (`PATCH /{entitySet}({recordId})`).
@@ -56,12 +59,7 @@ export const upsertRow: OperationDefinition = {
 			],
 		},
 		{
-			displayName: 'Row ID',
-			name: 'recordId',
-			type: 'string',
-			default: '',
-			required: true,
-			placeholder: '00000000-0000-0000-0000-000000000000',
+			...commonRecordIdProperty(['upsert']),
 			description:
 				'GUID of the row to upsert. Dataverse will create the row with this GUID if it does not exist yet.',
 			displayOptions: {
@@ -118,7 +116,13 @@ export const upsertRow: OperationDefinition = {
 				? assertNonEmptyRecordId(ctx, i, ctx.getNodeParameter('alternateKey', i), 'alternateKey')
 				: assertNonEmptyRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 
-		const body = assertNonEmptyBody(ctx, i, parseItemInput(ctx, i), 'Upsert a Row');
+		const rawBody = parseItemInput(ctx, i);
+		// Validate before resolving lookup metadata so an empty Row Item fails fast
+		// without spending metadata requests. applyLookupBindings only rewrites keys,
+		// so a non-empty body can never become empty afterwards.
+		assertNonEmptyBody(ctx, i, rawBody, 'Create or Update');
+		const lookupFields = await resolveLookupFields(ctx, credentialType, entitySet);
+		const body = applyLookupBindings(ctx, i, rawBody, lookupFields);
 		const options = ctx.getNodeParameter('upsertOptions', i, {}) as IDataObject;
 		const behavior = (options.behavior as string) ?? 'upsert';
 		const extraHeaders: DataverseHeaders = {};

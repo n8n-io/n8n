@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { getColumns, getEntitySets } from './loadOptions';
+import { getColumns, getEntitySets, searchEntitySets, searchRows } from './loadOptions';
 import {
 	OPERATION_ALIASES,
 	RECORD_OPERATIONS,
@@ -22,7 +22,7 @@ export class MicrosoftDataverse implements INodeType {
 		icon: { light: 'file:microsoftDataverse.svg', dark: 'file:microsoftDataverse.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interact with the Microsoft Dataverse Web API',
 		defaults: { name: 'Microsoft Dataverse' },
 		usableAsTool: true,
@@ -40,11 +40,11 @@ export class MicrosoftDataverse implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				default: 'record',
+				default: 'row',
 				options: [
 					{
-						name: 'Record',
-						value: 'record',
+						name: 'Row',
+						value: 'row',
 						description: 'Read or write rows in a Dataverse table',
 					},
 				],
@@ -54,11 +54,10 @@ export class MicrosoftDataverse implements INodeType {
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				default: 'list',
-				displayOptions: { show: { resource: ['record'] } },
-				// Order mirrors the Power Automate "dv connector" actions and is asserted
-				// by test/Dataverse.node.test.ts — do not alphabetize. Generated from the
-				// RECORD_OPERATIONS registry so the op list lives in exactly one place.
+				default: 'getAll',
+				displayOptions: { show: { resource: ['row'] } },
+				// Generated from the RECORD_OPERATIONS registry so the op list lives in
+				// exactly one place; the registry is ordered alphabetically by name.
 				options: RECORD_OPERATIONS.map(toDropdownOption),
 			},
 			...RECORD_OPERATIONS.flatMap((op) => op.properties),
@@ -69,6 +68,10 @@ export class MicrosoftDataverse implements INodeType {
 		loadOptions: {
 			getEntitySets,
 			getColumns,
+		},
+		listSearch: {
+			searchEntitySets,
+			searchRows,
 		},
 	};
 

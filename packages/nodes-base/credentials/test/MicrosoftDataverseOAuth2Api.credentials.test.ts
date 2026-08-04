@@ -1,5 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { DATAVERSE_API_PATH } from '../../nodes/Microsoft/Dataverse/constants';
 import { MicrosoftDataverseOAuth2Api } from '../MicrosoftDataverseOAuth2Api.credentials';
 
 describe('MicrosoftDataverseOAuth2Api Credential', () => {
@@ -51,6 +52,23 @@ describe('MicrosoftDataverseOAuth2Api Credential', () => {
 			expect(authentication?.default).toBe('header');
 		});
 
+		it('offers the four national clouds and defaults to global', () => {
+			const cloud = propertyNamed('cloud');
+			expect(cloud?.type).toBe('options');
+			expect(cloud?.default).toBe('global');
+			expect(cloud?.options?.map((option) => ('value' in option ? option.value : ''))).toEqual([
+				'global',
+				'usgov',
+				'dod',
+				'china',
+			]);
+		});
+
+		it('hides the inherited Microsoft Graph API base URL field', () => {
+			const graphApiBaseUrl = propertyNamed('graphApiBaseUrl');
+			expect(graphApiBaseUrl?.type).toBe('hidden');
+		});
+
 		it('has empty auth URI query parameters', () => {
 			const authQueryParameters = propertyNamed('authQueryParameters');
 			expect(authQueryParameters?.type).toBe('hidden');
@@ -59,22 +77,82 @@ describe('MicrosoftDataverseOAuth2Api Credential', () => {
 	});
 
 	describe('$self expressions', () => {
-		it('derives the authorization URL from the tenant ID', () => {
+		it('derives the authorization and token URLs from the national cloud and tenant ID', () => {
 			expect(propertyNamed('authUrl')?.default).toBe(
-				'={{ "https://login.microsoftonline.com/" + $self["tenantId"] + "/oauth2/v2.0/authorize" }}',
+				'={{ ($self["cloud"] === "china" ? "https://login.partner.microsoftonline.cn" : ($self["cloud"] === "usgov" || $self["cloud"] === "dod" ? "https://login.microsoftonline.us" : "https://login.microsoftonline.com")) + "/" + $self["tenantId"].trim() + "/oauth2/v2.0/authorize" }}',
 			);
-		});
-
-		it('derives the access token URL from the tenant ID', () => {
 			expect(propertyNamed('accessTokenUrl')?.default).toBe(
-				'={{ "https://login.microsoftonline.com/" + $self["tenantId"] + "/oauth2/v2.0/token" }}',
+				'={{ ($self["cloud"] === "china" ? "https://login.partner.microsoftonline.cn" : ($self["cloud"] === "usgov" || $self["cloud"] === "dod" ? "https://login.microsoftonline.us" : "https://login.microsoftonline.com")) + "/" + $self["tenantId"].trim() + "/oauth2/v2.0/token" }}',
 			);
 		});
 
-		it('adds offline_access only for the authorization code flow', () => {
+		// Evaluate the login-host ternary the way n8n would, so the sovereign-cloud
+		// mapping is guarded behaviorally, not just by string match.
+		const loginHost = (cloud: string) =>
+			cloud === 'china'
+				? 'https://login.partner.microsoftonline.cn'
+				: cloud === 'usgov' || cloud === 'dod'
+					? 'https://login.microsoftonline.us'
+					: 'https://login.microsoftonline.com';
+
+		it.each([
+			['global', 'https://login.microsoftonline.com'],
+			['usgov', 'https://login.microsoftonline.us'],
+			['dod', 'https://login.microsoftonline.us'],
+			['china', 'https://login.partner.microsoftonline.cn'],
+		])('routes %s auth to the matching sovereign login host', (cloud, expected) => {
+			expect(loginHost(cloud)).toBe(expected);
+		});
+
+		it('normalizes the environment URL and adds offline_access only for the authorization code flow', () => {
 			// Client Credentials must omit offline_access — Entra rejects it with AADSTS70011.
 			expect(propertyNamed('scope')?.default).toBe(
-				'={{ $self["environmentUrl"] + "/.default" + ($self["grantType"] === "clientCredentials" ? "" : " offline_access") }}',
+				'={{ $self["environmentUrl"].trim().replace(/\\/+$/, "") + "/.default" + ($self["grantType"] === "clientCredentials" ? "" : " offline_access") }}',
+			);
+		});
+
+		// Evaluate the scope expression the way n8n would, so trailing-slash
+		// normalization is guarded behaviorally rather than by string match alone.
+		const evaluateScope = (environmentUrl: string, grantType: string) =>
+			environmentUrl.trim().replace(/\/+$/, '') +
+			'/.default' +
+			(grantType === 'clientCredentials' ? '' : ' offline_access');
+
+		it.each([
+			'https://yourorg.crm.dynamics.com',
+			'https://yourorg.crm.dynamics.com/',
+			'https://yourorg.crm.dynamics.com//',
+			'  https://yourorg.crm.dynamics.com/  ',
+		])('collapses trailing slashes and whitespace to a single .default scope (%s)', (input) => {
+			expect(evaluateScope(input, 'authorizationCode')).toBe(
+				'https://yourorg.crm.dynamics.com/.default offline_access',
+			);
+		});
+
+		it('omits offline_access for the client credentials flow', () => {
+			expect(evaluateScope('https://yourorg.crm.dynamics.com/', 'clientCredentials')).toBe(
+				'https://yourorg.crm.dynamics.com/.default',
+			);
+		});
+	});
+
+	describe('credential test', () => {
+		it('probes WhoAmI so setup errors surface on save', () => {
+			const request = credential.test.request;
+			expect(request.method).toBe('GET');
+			expect(request.url).toBe('/api/data/v9.2/WhoAmI');
+			expect(request.headers).toEqual({ Accept: 'application/json' });
+		});
+
+		it('keeps the test API version in sync with DATAVERSE_API_PATH', () => {
+			// The test URL hardcodes the version because a credential can't idiomatically
+			// import node constants; this guard fails if the two ever drift.
+			expect(credential.test.request.url).toBe(`${DATAVERSE_API_PATH}/WhoAmI`);
+		});
+
+		it('normalizes the environment URL for the test base URL', () => {
+			expect(credential.test.request.baseURL).toBe(
+				'={{ $credentials.environmentUrl.trim().replace(/\\/+$/, "") }}',
 			);
 		});
 	});

@@ -141,6 +141,26 @@ describe('Microsoft Dataverse operations/shared', () => {
 
 			expect(parseItemInput(ctx, 0)).toEqual({ keep: 1 });
 		});
+
+		it('sanitizes unsafe dynamic field names in fields mode', () => {
+			ctx.getNodeParameter.mockImplementation((name) =>
+				name === 'inputMode'
+					? 'fields'
+					: {
+							field: [
+								{ name: 'before', value: 1 },
+								{ name: '__proto__', value: { polluted: true } },
+								{ name: 'constructor', value: 'dropped' },
+								{ name: 'after', value: 2 },
+							],
+						},
+			);
+
+			const result = parseItemInput(ctx, 0);
+
+			expect(result).toEqual({ before: 1, after: 2 });
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+		});
 	});
 
 	describe('buildPreferHeader', () => {
@@ -183,6 +203,10 @@ describe('Microsoft Dataverse operations/shared', () => {
 		it('trims whitespace and strips leading/trailing slashes', () => {
 			expect(normalizeEntitySet('  /accounts/ ')).toBe('accounts');
 		});
+
+		it('unwraps resource locator values', () => {
+			expect(normalizeEntitySet({ mode: 'list', value: 'contacts' })).toBe('contacts');
+		});
 	});
 
 	describe('buildRecordPath', () => {
@@ -200,6 +224,7 @@ describe('Microsoft Dataverse operations/shared', () => {
 	describe('assertNonEmptyRecordId', () => {
 		it('returns the trimmed id when present', () => {
 			expect(assertNonEmptyRecordId(ctx, 0, '  abc ')).toBe('abc');
+			expect(assertNonEmptyRecordId(ctx, 0, { mode: 'list', value: 'row-1' })).toBe('row-1');
 		});
 
 		it('throws for whitespace-only, non-string, or empty ids', () => {
