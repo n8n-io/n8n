@@ -1,0 +1,32 @@
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.test.ts
+  s_cf289f39ab832a::t_b8b9458e8a1ad4 248-280
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.ts
+  s_cf289f39ab832a::t_1e3361b3bd9086 267-268
+  s_cf289f39ab832a::t_244c9347f74c3a 87-88
+  s_cf289f39ab832a::t_4df0a8dab1ddff 270-271
+  s_cf289f39ab832a::t_77ce22913d70bf 8
+  s_cf289f39ab832a::t_f2d2c1cb98b87f 161-165,167-170,174-175
+  s_cf289f39ab832a::t_2b3451f22f6d25 80-84,86,89-90
+  s_cf289f39ab832a::t_6d40bbcdc87295 172-173,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f067638781c4fe6db5e1b4176eb620066b3d8abc",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_cf289f39ab832a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f4f3bff-f837-4c80-b095-a4151f89c765",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
