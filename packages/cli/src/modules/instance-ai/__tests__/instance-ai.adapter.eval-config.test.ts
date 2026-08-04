@@ -17,6 +17,7 @@ import type { UpsertEvaluationConfigInput } from '@n8n/instance-ai';
 
 import {
 	buildEvaluationConfigDto,
+	evaluationConfigToDetail,
 	evaluationConfigToSummary,
 } from '../instance-ai.adapter.service';
 
@@ -183,5 +184,58 @@ describe('evaluationConfigToSummary', () => {
 
 		expect(summary.dataTableId).toBeUndefined();
 		expect(summary.datasetSource).toBe('google_sheets');
+	});
+});
+
+describe('evaluationConfigToDetail', () => {
+	const detailConfig = {
+		id: 'cfg-1',
+		workflowId: 'wf-1',
+		name: 'Answer quality',
+		status: 'valid',
+		invalidReason: null,
+		datasetSource: 'data_table',
+		datasetRef: { dataTableId: 'dt-1' },
+		startNodeName: 'Agent',
+		endNodeName: 'Agent',
+		metrics: [
+			{
+				id: 'm-1',
+				name: 'Correctness',
+				type: 'llm_judge',
+				config: {
+					preset: 'correctness',
+					provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					credentialId: 'cred-1',
+					model: 'gpt-4o',
+					outputType: 'numeric',
+					inputs: {
+						actualAnswer: '={{ $json.output }}',
+						expectedAnswer: '={{ $json.expected }}',
+					},
+				},
+			},
+		],
+	} as unknown as EvaluationConfig;
+
+	it('keeps the full metric bodies the summary strips', () => {
+		const detail = evaluationConfigToDetail(detailConfig);
+
+		expect(detail).toEqual({
+			id: 'cfg-1',
+			workflowId: 'wf-1',
+			name: 'Answer quality',
+			status: 'valid',
+			invalidReason: null,
+			startNodeName: 'Agent',
+			endNodeName: 'Agent',
+			metrics: detailConfig.metrics,
+			datasetSource: 'data_table',
+			dataTableId: 'dt-1',
+		});
+		// The expression strings — the reason this mapper exists — survive.
+		expect(detail.metrics[0]).toMatchObject({
+			config: { inputs: { actualAnswer: '={{ $json.output }}' } },
+		});
 	});
 });

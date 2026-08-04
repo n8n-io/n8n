@@ -168,9 +168,11 @@ export class CanvasPage extends BasePage {
 
 	/**
 	 * @param options - Configuration options for waiting for save workflow completion.
-	 * @param options.timeout - Timeout in milliseconds. Defaults to 2000ms to account for the 1500ms autosave debounce.
+	 * @param options.timeout - Timeout in milliseconds. Defaults to 5000ms: the 1500ms
+	 * autosave debounce plus round-trip headroom, since CI runs one n8n instance for
+	 * as many workers as there are cores.
 	 */
-	async waitForSaveWorkflowCompleted({ timeout = 2000 }: { timeout?: number } = {}) {
+	async waitForSaveWorkflowCompleted({ timeout = 5000 }: { timeout?: number } = {}) {
 		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
@@ -592,7 +594,7 @@ export class CanvasPage extends BasePage {
 	 * interacting with it after a navigation.
 	 */
 	async waitForCanvasReady(): Promise<void> {
-		await expect(this.canvasPane()).toBeVisible();
+		await expect(this.canvasPane()).toBeVisible({ timeout: 30_000 });
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
 	}
@@ -954,6 +956,10 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
 	}
 
+	getNodePinnedStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-pinned');
+	}
+
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
 		return this.page.locator(
 			`[data-test-id="canvas-node"][data-node-name="${nodeName}"].running, [data-test-id="canvas-node"][data-node-name="${nodeName}"].waiting`,
@@ -1259,6 +1265,14 @@ export class CanvasPage extends BasePage {
 
 	getNodeGroupFrame(title: string): Locator {
 		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
+	}
+
+	async getNodeGroupFrameBoundingBox(
+		title: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getNodeGroupFrame(title).boundingBox();
+		if (!box) throw new Error(`Node group frame for "${title}" not found or not visible`);
+		return box;
 	}
 
 	async toggleNodeGroup(title: string) {

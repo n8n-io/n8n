@@ -243,6 +243,18 @@ export async function createStubServices(
 				returned: { from: 0, to: 0 },
 			};
 		},
+		async getResolvedNodeParameters(_executionId: string, nodeName: string) {
+			return {
+				nodeName,
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: null,
+				resolved: null,
+				failedExpressions: [],
+				emptyResolutions: [],
+				suppressed: 'parameter-values-disabled' as const,
+			};
+		},
 	};
 
 	const dataTableService: InstanceAiDataTableService = {
@@ -298,6 +310,7 @@ export async function createStubServices(
 
 	const context: InstanceAiContext = {
 		userId: options.userId ?? 'eval-user',
+		logger: { info() {}, warn() {}, error() {}, debug() {} },
 		workflowService,
 		executionService,
 		credentialService,

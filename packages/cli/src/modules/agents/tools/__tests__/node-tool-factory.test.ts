@@ -210,3 +210,45 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		);
 	});
 });
+
+describe('resolveNodeTool → eval instrumentation', () => {
+	it('binds the sanitized tool name into the ephemeral execution when instrumented', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const instrumentToolAdditionalData = vi.fn();
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+			instrumentToolAdditionalData,
+		});
+		await tool.handler!({}, {} as never);
+
+		const request = executeInline.mock.calls[0][0] as {
+			nodeName?: string;
+			configureAdditionalData?: (additionalData: object) => void;
+		};
+		expect(request.nodeName).toBe('Google_Drive');
+		expect(request.configureAdditionalData).toBeDefined();
+
+		const additionalData = {};
+		request.configureAdditionalData!(additionalData);
+		expect(instrumentToolAdditionalData).toHaveBeenCalledWith(additionalData, {
+			toolName: 'Google_Drive',
+			toolKind: 'node',
+		});
+	});
+
+	it('passes neither override when not instrumented', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+		await tool.handler!({}, {} as never);
+
+		const request = executeInline.mock.calls[0][0] as Record<string, unknown>;
+		expect(request.nodeName).toBeUndefined();
+		expect(request.configureAdditionalData).toBeUndefined();
+	});
+});

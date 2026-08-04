@@ -2,7 +2,7 @@ import type { Agent as RuntimeAgent, BuiltAgent, BuiltTool, CredentialProvider }
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
-	formatZodErrors,
+	formatAgentConfigZodError,
 	RunnableInlineAgentConfigSchema,
 	sanitizeAgentJsonConfig,
 	sanitizeAgentSkillBodies,
@@ -27,6 +27,7 @@ import {
 	buildAgentConfigurationTelemetryFromConfig,
 } from './agent-telemetry';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
@@ -55,6 +56,7 @@ export class AgentWorkflowExecutionService {
 		private readonly telemetry: Telemetry,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
+		private readonly agentRunTracingService: AgentRunTracingService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -110,6 +112,7 @@ export class AgentWorkflowExecutionService {
 	async compileIsolated(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
+		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
@@ -129,6 +132,7 @@ export class AgentWorkflowExecutionService {
 				await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 					agentEntity,
 					credentialProvider,
+					runType,
 				);
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
@@ -153,6 +157,7 @@ export class AgentWorkflowExecutionService {
 		syntheticAgentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
@@ -167,6 +172,7 @@ export class AgentWorkflowExecutionService {
 					toolCodeByName: {},
 					skills,
 					runtimeProfile: 'inline',
+					runType,
 				});
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
@@ -197,10 +203,25 @@ export class AgentWorkflowExecutionService {
 		threadId: string;
 		telemetryAgentId: string;
 		telemetryUserId?: string;
+		runType: AgentRunTelemetryType;
 		outputSchema?: JSONSchema7;
+		tracing: {
+			projectId: string;
+			executionId?: string;
+			workflowId?: string;
+			nodeId?: string;
+		};
 	}): Promise<WorkflowAgentRunOutcome> {
-		const { agentInstance, message, threadId, telemetryAgentId, telemetryUserId, outputSchema } =
-			params;
+		const {
+			agentInstance,
+			message,
+			threadId,
+			telemetryAgentId,
+			telemetryUserId,
+			runType,
+			outputSchema,
+			tracing,
+		} = params;
 
 		const recorder = new ExecutionRecorder();
 
@@ -210,6 +231,21 @@ export class AgentWorkflowExecutionService {
 		let streamError: Error | undefined;
 
 		try {
+			// No model_id here: BuiltAgent (unlike the cached-runtime RuntimeAgent
+			// used by the chat/task paths) doesn't expose a snapshot. The AI SDK's
+			// own gen_ai.request.model attribute on its model spans still carries
+			// this regardless.
+			const telemetry = await this.agentRunTracingService.build({
+				agentId: telemetryAgentId,
+				projectId: tracing.projectId,
+				threadId,
+				userId: telemetryUserId,
+				source: 'workflow',
+				executionId: tracing.executionId,
+				workflowId: tracing.workflowId,
+				nodeId: tracing.nodeId,
+			});
+
 			const resultStream = await agentInstance.stream(message, {
 				// The memory store scopes message reads by `resourceId` (the
 				// "per-user scope"; chat integrations pass the chat user id there).
@@ -222,7 +258,9 @@ export class AgentWorkflowExecutionService {
 				executionCounter: createAgentExecutionCounter(this.telemetry, {
 					agentId: telemetryAgentId,
 					userId: telemetryUserId,
+					runType,
 				}),
+				...(telemetry ? { telemetry } : {}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -319,9 +357,7 @@ export class AgentWorkflowExecutionService {
 	async executeForWorkflow(
 		agentId: string,
 		message: string,
-		// Kept for positional compatibility; memory persistence is keyed by
-		// threadId (stable across executions), not by the execution.
-		_executionId: string,
+		executionId: string,
 		threadId: string,
 		projectId: string,
 		telemetryUserId?: string,
@@ -342,11 +378,13 @@ export class AgentWorkflowExecutionService {
 			agentData = getPublishedAgentSnapshot(agentEntity);
 		}
 		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
+		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolated(
 			agentData,
 			credentialProvider,
+			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
 		);
@@ -361,7 +399,14 @@ export class AgentWorkflowExecutionService {
 			threadId,
 			telemetryAgentId: agentId,
 			telemetryUserId,
+			runType,
 			outputSchema,
+			tracing: {
+				projectId,
+				executionId,
+				workflowId: workflowContext?.workflowId,
+				nodeId: workflowContext?.callingNodeId,
+			},
 		});
 
 		void this.agentExecutionService
@@ -374,7 +419,7 @@ export class AgentWorkflowExecutionService {
 				record: run.messageRecord,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				telemetry: {
-					runType: useDraftVersion ? 'test' : 'production',
+					runType,
 					configuration: telemetryConfiguration,
 				},
 			})
@@ -407,9 +452,7 @@ export class AgentWorkflowExecutionService {
 	async executeInlineForWorkflow(
 		inlineAgent: InlineAgentPayload,
 		message: string,
-		// Kept for positional compatibility; memory persistence is keyed by
-		// threadId (stable across executions), not by the execution.
-		_executionId: string,
+		executionId: string,
 		threadId: string,
 		projectId: string,
 		telemetryUserId?: string,
@@ -455,6 +498,7 @@ export class AgentWorkflowExecutionService {
 			syntheticAgentId,
 			projectId,
 			credentialProvider,
+			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
 		);
@@ -468,7 +512,14 @@ export class AgentWorkflowExecutionService {
 			threadId,
 			telemetryAgentId: syntheticAgentId,
 			telemetryUserId,
+			runType,
 			outputSchema,
+			tracing: {
+				projectId,
+				executionId,
+				workflowId: workflowContext?.workflowId,
+				nodeId: workflowContext?.callingNodeId,
+			},
 		});
 
 		// No `recordMessage` here: inline runs have no agent entity to attach a
@@ -486,6 +537,7 @@ export class AgentWorkflowExecutionService {
 				configuration: buildAgentConfigurationTelemetryFromConfig(runtimeConfig),
 				latency_ms: run.messageRecord.duration,
 				cost: run.messageRecord.totalCost ?? 0,
+				token_count: run.messageRecord.usage?.totalTokens ?? 0,
 				tool_call_count: run.messageRecord.timeline.filter((t) => t.type === 'tool-call').length,
 			});
 		} catch (error) {
@@ -517,10 +569,9 @@ export class AgentWorkflowExecutionService {
 			...(payload.skills !== undefined ? { skills: sanitizeAgentSkillBodies(payload.skills) } : {}),
 		});
 		if (!parsed.success) {
-			const details = formatZodErrors(parsed.error)
-				.map((issue) => `${issue.path}: ${issue.message}`)
-				.join('; ');
-			throw new UserError(`Invalid inline agent configuration: ${details}`);
+			throw new UserError(
+				`Invalid inline agent configuration: ${formatAgentConfigZodError(parsed.error)}`,
+			);
 		}
 		const config = parsed.data.config;
 

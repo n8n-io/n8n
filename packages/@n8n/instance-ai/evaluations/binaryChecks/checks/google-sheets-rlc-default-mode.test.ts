@@ -23,8 +23,8 @@ function sheetWorkflow(documentId: unknown, sheetName?: unknown): WorkflowRespon
 }
 
 describe('googleSheetsRlcDefaultMode', () => {
-	it('fails when documentId defaults to an empty By ID field (INS-631 shape)', () => {
-		const result = googleSheetsRlcDefaultMode.run(
+	it('fails when documentId defaults to an empty By ID field (INS-631 shape)', async () => {
+		const result = await googleSheetsRlcDefaultMode.run(
 			sheetWorkflow({
 				__rl: true,
 				mode: 'id',
@@ -38,8 +38,8 @@ describe('googleSheetsRlcDefaultMode', () => {
 		expect(result.comment).toContain('Append Row.documentId');
 	});
 
-	it('fails when documentId is By ID mode with only a placeholder value', () => {
-		const result = googleSheetsRlcDefaultMode.run(
+	it('fails when documentId is By ID mode with only a placeholder value', async () => {
+		const result = await googleSheetsRlcDefaultMode.run(
 			sheetWorkflow({
 				__rl: true,
 				mode: 'id',
@@ -51,8 +51,8 @@ describe('googleSheetsRlcDefaultMode', () => {
 		expect(result.pass).toBe(false);
 	});
 
-	it('fails when documentId is By ID mode with a fabricated ID absent from the prompt (real-build shape)', () => {
-		const result = googleSheetsRlcDefaultMode.run(
+	it('fails when documentId is By ID mode with a fabricated ID absent from the prompt (real-build shape)', async () => {
+		const result = await googleSheetsRlcDefaultMode.run(
 			sheetWorkflow({
 				__rl: true,
 				mode: 'id',
@@ -66,8 +66,8 @@ describe('googleSheetsRlcDefaultMode', () => {
 		expect(result.comment).toContain('Append Row.documentId');
 	});
 
-	it('passes when documentId uses the From list picker mode', () => {
-		const result = googleSheetsRlcDefaultMode.run(
+	it('passes when documentId uses the From list picker mode', async () => {
+		const result = await googleSheetsRlcDefaultMode.run(
 			sheetWorkflow(
 				{ __rl: true, mode: 'list', value: '', cachedResultName: 'SmartAssist Bookings' },
 				{ __rl: true, mode: 'list', value: 0, cachedResultName: 'Sheet1' },
@@ -78,8 +78,8 @@ describe('googleSheetsRlcDefaultMode', () => {
 		expect(result.pass).toBe(true);
 	});
 
-	it('passes when the user supplied a concrete spreadsheet ID', () => {
-		const result = googleSheetsRlcDefaultMode.run(
+	it('passes when the user supplied a concrete spreadsheet ID', async () => {
+		const result = await googleSheetsRlcDefaultMode.run(
 			sheetWorkflow({
 				__rl: true,
 				mode: 'id',
@@ -91,8 +91,8 @@ describe('googleSheetsRlcDefaultMode', () => {
 		expect(result.pass).toBe(true);
 	});
 
-	it('is not applicable when there are no Google Sheets nodes', () => {
-		const result = googleSheetsRlcDefaultMode.run(
+	it('is not applicable when there are no Google Sheets nodes', async () => {
+		const result = await googleSheetsRlcDefaultMode.run(
 			{
 				id: 'wf',
 				name: 'x',

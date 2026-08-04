@@ -3,7 +3,6 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionBase } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 

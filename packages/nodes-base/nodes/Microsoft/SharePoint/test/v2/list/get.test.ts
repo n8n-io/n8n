@@ -228,14 +228,14 @@ describe('Microsoft SharePoint v2 — List: Get', () => {
 	it('throws a clear error for an unknown operation', async () => {
 		setParams({
 			resource: 'list',
-			operation: 'getAll',
+			operation: 'delete',
 			site: { mode: 'id', value: SITE_ID },
 			list: LIST_ID,
 			simplify: true,
 		});
 
 		await expect(node.execute.call(ctx)).rejects.toThrow(
-			'The operation "getAll" is not supported!',
+			'The operation "delete" is not supported!',
 		);
 		expect(apiRequest).not.toHaveBeenCalled();
 	});

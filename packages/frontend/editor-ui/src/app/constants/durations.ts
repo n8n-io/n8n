@@ -93,10 +93,3 @@ export const DEBOUNCE_TIME = {
 		WEBSOCKET_DISCONNECT: 500,
 	},
 } as const;
-
-/**
- * `getDebounceTime` lives in `@n8n/composables`, colocated with `useDebounce`
- * (its only consumer). Re-exported here so existing `@/app/constants/durations`
- * and `@/app/constants` call sites keep working unchanged.
- */
-export { getDebounceTime } from '@n8n/composables/useDebounce';

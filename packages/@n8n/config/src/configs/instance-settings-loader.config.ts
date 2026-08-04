@@ -59,6 +59,13 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_SSO_OIDC_ACR_VALUES')
 	oidcAcrValues: string = '';
 
+	/** Space-separated additional scopes appended to the OIDC authorization request. */
+	@Env('N8N_SSO_OIDC_ADDITIONAL_SCOPES')
+	oidcAdditionalScopes: string = '';
+
+	@Env('N8N_SSO_OIDC_RP_INITIATED_LOGOUT_ENABLED')
+	oidcRpInitiatedLogoutEnabled: boolean = false;
+
 	/**
 	 * When true, security policy settings are managed via environment variables.
 	 * On every startup the security policy will be overridden by env vars.

@@ -25,7 +25,7 @@ const { mockToast, mockI18n, mockSettingsStore, mockWorkflowsStore } = vi.hoiste
 	},
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 

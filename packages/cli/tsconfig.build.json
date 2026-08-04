@@ -2,7 +2,12 @@
 	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.go.json"],
 	"compilerOptions": {
 		"rootDir": "src",
-		"outDir": "dist"
+		"outDir": "dist",
+		"paths": {
+			"@/*": ["./src/*"],
+			"@test/*": ["./test/shared/*"],
+			"@test-integration/*": ["./test/integration/shared/*"]
+		}
 	},
 	"include": ["src/**/*.ts"],
 	"exclude": ["test/**", "src/**/__tests__/**"]

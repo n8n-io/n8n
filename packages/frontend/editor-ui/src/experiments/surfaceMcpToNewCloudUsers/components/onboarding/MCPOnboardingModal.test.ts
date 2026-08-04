@@ -8,7 +8,7 @@ import MCPOnboardingModal from './MCPOnboardingModal.vue';
 const mockClipboardCopy = vi.fn();
 const mockShowError = vi.fn();
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({
 		copy: mockClipboardCopy,
 		copied: { value: false },
@@ -16,7 +16,7 @@ vi.mock('@/app/composables/useClipboard', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
 	}),

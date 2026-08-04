@@ -24,7 +24,7 @@ import type { INode } from 'n8n-workflow';
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Start } from '@/commands/start';
-import { ExecutionService } from '@/executions/execution.service';
+import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { Push } from '@/push';
@@ -57,7 +57,10 @@ mockInstance(WorkflowHistoryCompactionService);
 mockInstance(WorkflowStatisticsRollupService);
 mockInstance(N8NCheckpointStorage);
 mockInstance(DurableScheduler);
-mockInstance(ExecutionService).findAllEnqueuedExecutions.mockResolvedValue([]);
+// Also proves `run()`'s dynamic `.js` import resolves to the same module as this
+// static one - otherwise the mock would silently not apply and the real recovery
+// would query the test DB.
+const enqueuedExecutionRecovery = mockInstance(EnqueuedExecutionRecoveryService);
 
 beforeAll(async () => {
 	await testDb.init();
@@ -88,7 +91,7 @@ afterAll(async () => {
 	);
 	Container.get(WorkflowPublicationOutboxConsumer).stopPolling();
 	Container.get(WorkflowPublicationOutboxCleanupService).stopCleanup();
-	Container.get(WorkflowPublicationReconciler).stopReconciler();
+	Container.get(WorkflowPublicationReconciler).shutdown();
 	await Container.get(ActiveWorkflowManager).removeAll();
 	await testDb.terminate();
 });
@@ -116,6 +119,7 @@ describe('Start.run() with workflow publication service', () => {
 		// imports — or none at all — leaves the event without a listener).
 		expect(hasWakeUpHandler()).toBe(true);
 		expect(Container.get(PubSubEventBus).listenerCount('workflow-publish-wake-up')).toBe(1);
+		expect(enqueuedExecutionRecovery.recoverEnqueuedExecutions).toHaveBeenCalled();
 
 		// An active, published workflow whose trigger is not yet registered in
 		// memory — the state a wake-up drain must reconcile.

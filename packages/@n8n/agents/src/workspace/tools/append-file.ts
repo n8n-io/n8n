@@ -18,8 +18,10 @@ export function createAppendFileTool(filesystem: WorkspaceFilesystem): BuiltTool
 				success: z.boolean().describe('Whether the append was successful'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.appendFile(input.path, input.content);
+		.handler(async (input, ctx) => {
+			await filesystem.appendFile(input.path, input.content, {
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

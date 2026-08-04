@@ -3,6 +3,10 @@ import type { AgentJsonToolConfig } from '@n8n/api-types';
 import type { INodeParameters } from 'n8n-workflow';
 
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
+import {
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from '@/node-execution/node-tool-operation-support';
 
 type NodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 
@@ -47,6 +51,14 @@ export async function validateNodeToolConfigs(
 		const nodeType: string = tool.node.nodeType;
 		const nodeTypeVersion: number = tool.node.nodeTypeVersion;
 		const nodeParameters = tool.node.nodeParameters ?? {};
+		const operation = nodeParameters.operation;
+
+		if (isUnsupportedEphemeralNodeOperation(operation)) {
+			errors.push(
+				`Node tool "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${unsupportedEphemeralNodeOperationMessage(operation)}`,
+			);
+			continue;
+		}
 
 		const result = validateNodeConfig(
 			nodeType,

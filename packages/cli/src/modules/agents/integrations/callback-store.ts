@@ -5,7 +5,11 @@ import { TtlMap } from '@/utils/ttl-map';
 export interface CallbackPayload {
 	actionId: string;
 	value: string;
+	kind?: 'approval';
+	groupId?: string;
 }
+
+export type CallbackMetadata = Pick<CallbackPayload, 'kind' | 'groupId'>;
 
 /**
  * Maps short callback keys to full action payloads.
@@ -23,12 +27,12 @@ export class CallbackStore {
 	}
 
 	/** Store a callback payload and return a short key (8 hex chars). */
-	async store(actionId: string, value: string): Promise<string> {
+	async store(actionId: string, value: string, metadata: CallbackMetadata = {}): Promise<string> {
 		let key: string;
 		do {
 			key = randomBytes(4).toString('hex');
 		} while (this.entries.has(key));
-		this.entries.set(key, { actionId, value });
+		this.entries.set(key, { actionId, value, ...metadata });
 		return key;
 	}
 
@@ -36,7 +40,13 @@ export class CallbackStore {
 	async resolve(key: string): Promise<CallbackPayload | undefined> {
 		const entry = this.entries.get(key);
 		if (!entry) return undefined;
-		this.entries.delete(key);
+		if (entry.groupId) {
+			for (const [candidateKey, candidate] of this.entries) {
+				if (candidate.groupId === entry.groupId) this.entries.delete(candidateKey);
+			}
+		} else {
+			this.entries.delete(key);
+		}
 		return entry;
 	}
 

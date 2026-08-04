@@ -32,7 +32,14 @@ import {
 	switchBranchFields,
 	tagFields,
 } from './descriptions';
-import { mapGitConfigList, validateGitReference } from './GenericFunctions';
+import {
+	type ConfiguredRemoteRepositories,
+	getConfiguredRemoteRepositories,
+	getRepositoryTypeForRemoteConfigKey,
+	mapGitConfigList,
+	validateGitReference,
+	validateGitTag,
+} from './GenericFunctions';
 
 const REMOTE_HELPER_TRANSPORT = /^[a-zA-Z][a-zA-Z0-9+.-]*::/;
 
@@ -303,8 +310,20 @@ export class Git implements INodeType {
 		const hasUrlScheme = (repositoryPath: string) =>
 			/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(repositoryPath);
 
-		const isSshRepositoryPath = (repositoryPath: string) =>
-			/^(?:[^@\s]+@)?[^:\s]+:.+/.test(repositoryPath);
+		const isSshRepositoryPath = (repositoryPath: string) => {
+			const colonIndex = repositoryPath.indexOf(':');
+			if (colonIndex === -1) {
+				return false;
+			}
+
+			const remoteHost = repositoryPath.slice(0, colonIndex);
+			return (
+				remoteHost.length > 0 &&
+				!remoteHost.includes('/') &&
+				!remoteHost.includes('\\') &&
+				/^(?:[^@\s]+@)?[^@\s]+$/.test(remoteHost)
+			);
+		};
 
 		const assertLocalRepositoryPathAllowed = async (
 			repositoryPath: string,
@@ -375,35 +394,23 @@ export class Git implements INodeType {
 			}
 		};
 
-		const getRemoteOriginTargetRepositories = (
-			configValues: Record<string, Record<string, string | string[] | undefined>>,
-		) => {
-			const remoteOriginUrls: string[] = [];
-			const remoteOriginPushUrls: string[] = [];
+		const validateConfiguredRemoteRepositories = async (
+			git: SimpleGit,
+			repositoryType: 'source' | 'target',
+			baseDir: string,
+		): Promise<ConfiguredRemoteRepositories> => {
+			const config = await git.listConfig();
+			const remoteRepositories = getConfiguredRemoteRepositories(config.values, this.getNode());
+			const validationTargets =
+				repositoryType === 'source'
+					? remoteRepositories.sourceValidationTargets
+					: remoteRepositories.targetValidationTargets;
 
-			for (const values of Object.values(configValues)) {
-				for (const key of ['remote.origin.url', 'remote.origin.pushurl'] as const) {
-					const value = values[key];
-					if (value === undefined) {
-						continue;
-					}
-
-					if (typeof value !== 'string') {
-						throw new NodeOperationError(this.getNode(), 'Target repository is required');
-					}
-
-					if (key === 'remote.origin.pushurl') {
-						remoteOriginPushUrls.push(value);
-					} else {
-						remoteOriginUrls.push(value);
-					}
-				}
+			for (const repository of validationTargets) {
+				await assertRepositoryReferenceAllowed(repository, repositoryType, baseDir);
 			}
 
-			return {
-				validationTargets: [...remoteOriginUrls, ...remoteOriginPushUrls],
-				pushTarget: remoteOriginPushUrls[0] ?? remoteOriginUrls[0],
-			};
+			return remoteRepositories;
 		};
 
 		const isFileNotFoundError = (error: unknown) =>
@@ -506,11 +513,13 @@ export class Git implements INodeType {
 				};
 
 				const cleanEnv = Object.create(null) as Record<string, unknown>;
+				const isWriteOperation = operation === 'push' || operation === 'pushTags';
 				// Tell git not to ask for any information via the terminal like for
 				// example the username. As nobody will be able to answer it would
 				// n8n keep on waiting forever.
 				cleanEnv['GIT_TERMINAL_PROMPT'] = '0';
-				cleanEnv['GIT_ALLOW_PROTOCOL'] = 'file:git:http:https:ssh';
+				cleanEnv['GIT_ALLOW_PROTOCOL'] =
+					isWriteOperation && !enableHooks ? 'git:http:https:ssh' : 'file:git:http:https:ssh';
 				const git: SimpleGit = simpleGit(gitOptions).env(cleanEnv);
 
 				if (operation === 'add') {
@@ -550,6 +559,11 @@ export class Git implements INodeType {
 							this.getNode(),
 							`The provided git config key '${key}' is not allowed`,
 						);
+					}
+
+					const repositoryType = getRepositoryTypeForRemoteConfigKey(key);
+					if (repositoryType) {
+						await assertRepositoryReferenceAllowed(value, repositoryType, resolvedRepositoryPath);
 					}
 
 					if (options.mode === 'append') {
@@ -653,6 +667,7 @@ export class Git implements INodeType {
 					//         fetch
 					// ----------------------------------
 
+					await validateConfiguredRemoteRepositories(git, 'source', resolvedRepositoryPath);
 					await git.fetch();
 					returnItems.push({
 						json: {
@@ -693,6 +708,7 @@ export class Git implements INodeType {
 					//         pull
 					// ----------------------------------
 
+					await validateConfiguredRemoteRepositories(git, 'source', resolvedRepositoryPath);
 					await git.pull();
 					returnItems.push({
 						json: {
@@ -725,18 +741,11 @@ export class Git implements INodeType {
 						await git.push(targetRepository);
 					} else {
 						const authentication = this.getNodeParameter('authentication', 0) as string;
-						const config = await git.listConfig();
-						const { validationTargets, pushTarget } = getRemoteOriginTargetRepositories(
-							config.values,
+						const { pushTarget } = await validateConfiguredRemoteRepositories(
+							git,
+							'target',
+							resolvedRepositoryPath,
 						);
-
-						for (const targetRepository of validationTargets) {
-							await assertRepositoryReferenceAllowed(
-								targetRepository,
-								'target',
-								resolvedRepositoryPath,
-							);
-						}
 
 						if (authentication === 'gitPassword') {
 							if (pushTarget === undefined) {
@@ -763,6 +772,7 @@ export class Git implements INodeType {
 					//         pushTags
 					// ----------------------------------
 
+					await validateConfiguredRemoteRepositories(git, 'target', resolvedRepositoryPath);
 					await git.pushTags();
 					returnItems.push({
 						json: {
@@ -912,6 +922,7 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const name = this.getNodeParameter('name', itemIndex, '') as string;
+					validateGitTag(name, this.getNode());
 
 					await git.addTag(name);
 					returnItems.push({

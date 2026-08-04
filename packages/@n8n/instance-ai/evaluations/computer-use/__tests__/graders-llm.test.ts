@@ -45,7 +45,13 @@ function trace(overrides: Partial<ScenarioTrace> = {}): ScenarioTrace {
 		confirmations: [],
 		finalText: '',
 		durationMs: 0,
-		tokens: { totalInput: 0, totalOutput: 0, byTool: [] },
+		tokens: {
+			perCall: [],
+			totalArgsEst: 0,
+			totalResultsEst: 0,
+			largestResultEst: 0,
+			estimated: true,
+		},
 		threadId: 'thread-1',
 		...overrides,
 	};
@@ -62,7 +68,7 @@ function call(toolName: string, args: Record<string, unknown> = {}): CapturedToo
 
 const grader: LlmTaskCompletedGrader = { type: 'llm.taskCompleted' };
 const userPrompt = 'Set up a Slack OAuth credential';
-const category: ScenarioCategory = 'credential-setup';
+const category: ScenarioCategory = 'browser';
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -143,7 +149,7 @@ describe('llm.taskCompleted', () => {
 			);
 
 			const sent = captureUserMessage();
-			expect(sent).toContain('credential-setup');
+			expect(sent).toContain('browser');
 			expect(sent).toContain('Set up a Slack OAuth credential');
 			expect(sent).toContain('Final response from the agent.');
 		});

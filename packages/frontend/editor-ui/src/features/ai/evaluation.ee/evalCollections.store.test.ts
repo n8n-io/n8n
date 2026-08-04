@@ -14,6 +14,7 @@ const {
 	getCollections,
 	getCollection,
 	createCollection,
+	rerunCollection,
 	updateCollection,
 	deleteCollection,
 	addRunToCollection,
@@ -24,6 +25,7 @@ const {
 	getCollections: vi.fn(),
 	getCollection: vi.fn(),
 	createCollection: vi.fn(),
+	rerunCollection: vi.fn(),
 	updateCollection: vi.fn(),
 	deleteCollection: vi.fn(),
 	addRunToCollection: vi.fn(),
@@ -36,6 +38,7 @@ vi.mock('./evalCollections.api', () => ({
 	getCollections,
 	getCollection,
 	createCollection,
+	rerunCollection,
 	updateCollection,
 	deleteCollection,
 	addRunToCollection,
@@ -148,6 +151,7 @@ describe('evalCollections.store', () => {
 			...RECORD,
 			runsStartedIds: [],
 		} satisfies CreateCollectionResponse);
+		rerunCollection.mockResolvedValue({ ...RECORD, runsStartedIds: ['run-x', 'run-y'] });
 		updateCollection.mockResolvedValue({ ...RECORD, name: 'renamed' });
 		deleteCollection.mockResolvedValue({ success: true, runsUnlinked: 0 });
 		addRunToCollection.mockResolvedValue(COMPLETED_DETAIL);
@@ -230,6 +234,66 @@ describe('evalCollections.store', () => {
 			).resolves.toMatchObject({ id: 'col-2' });
 
 			expect(store.getCollections('wf-1').map((c) => c.id)).toContain('col-2');
+		});
+	});
+
+	describe('rerunCollection', () => {
+		it('calls the api and refreshes detail so the UI flips to running', async () => {
+			getCollection.mockResolvedValueOnce(RUNNING_DETAIL);
+
+			const result = await store.rerunCollection('wf-1', 'col-1');
+
+			expect(rerunCollection).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				'wf-1',
+				'col-1',
+			);
+			expect(result.runsStartedIds).toEqual(['run-x', 'run-y']);
+			// Detail was refetched and now reports the in-flight run.
+			expect(getCollection).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				'wf-1',
+				'col-1',
+			);
+			expect(store.getDetail('col-1')?.runs[0].status).toBe('running');
+		});
+
+		it('still resolves when the post-rerun detail refresh fails', async () => {
+			// The re-run is already scheduled server-side; a transient detail
+			// refresh failure must not surface as a re-run failure.
+			getCollection.mockRejectedValueOnce(new Error('detail fetch failed'));
+
+			await expect(store.rerunCollection('wf-1', 'col-1')).resolves.toMatchObject({
+				runsStartedIds: ['run-x', 'run-y'],
+			});
+		});
+
+		it('propagates an error when the rerun request itself fails', async () => {
+			rerunCollection.mockRejectedValueOnce(new Error('already in progress'));
+			await expect(store.rerunCollection('wf-1', 'col-1')).rejects.toThrow('already in progress');
+		});
+
+		it('drops cached insights after a re-run so the fresh runs reload them', async () => {
+			await store.generateInsights('wf-1', 'col-1');
+			expect(store.getInsights('col-1')).not.toBeNull();
+
+			getCollection.mockResolvedValueOnce(RUNNING_DETAIL);
+			await store.rerunCollection('wf-1', 'col-1');
+
+			expect(store.getInsights('col-1')).toBeNull();
+		});
+
+		it('arms polling after a re-run even when the detail refresh fails', async () => {
+			// Refresh fails transiently, so nothing armed polling inline...
+			getCollection.mockRejectedValueOnce(new Error('detail fetch failed'));
+			await store.rerunCollection('wf-1', 'col-1');
+
+			// ...but the unconditional startPolling means the next tick still refetches,
+			// so the view isn't stuck on the old terminal state.
+			const callsBefore = getCollection.mock.calls.length;
+			getCollection.mockResolvedValueOnce(RUNNING_DETAIL);
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(getCollection.mock.calls.length).toBeGreaterThan(callsBefore);
 		});
 	});
 

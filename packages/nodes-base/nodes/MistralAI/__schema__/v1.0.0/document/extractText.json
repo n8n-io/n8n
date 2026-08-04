@@ -18,6 +18,12 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "blocks": {
+                        "type": "null"
+                    },
+                    "confidence_scores": {
+                        "type": "null"
+                    },
                     "dimensions": {
                         "type": "object",
                         "properties": {
@@ -94,5 +100,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }
