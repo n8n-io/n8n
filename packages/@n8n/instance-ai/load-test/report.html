@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Assistant — concurrent-user memory load test</title>
+<style>
+  /* Palette roles. Light values first; dark declared under both the OS media
+     query and the explicit theme scope so a toggle wins either way. */
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --axis:           #c3c2b7;
+    --border:         rgba(11, 11, 11, 0.10);
+    --series-1:       #2a78d6;
+    --series-wash:    rgba(42, 120, 214, 0.10);
+    --status-good:    #0ca30c;
+    --status-critical:#d03b3b;
+    --status-warning: #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --axis:           #383835;
+      --border:         rgba(255, 255, 255, 0.10);
+      --series-1:       #3987e5;
+      --series-wash:    rgba(57, 135, 229, 0.14);
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --axis:           #383835;
+    --border:         rgba(255, 255, 255, 0.10);
+    --series-1:       #3987e5;
+    --series-wash:    rgba(57, 135, 229, 0.14);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .viz-root { background: var(--page); min-height: 100vh; padding: 40px 24px 72px; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header.masthead { margin-bottom: 32px; }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px;
+  }
+  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 10px; font-weight: 650; letter-spacing: -0.015em; }
+  .standfirst { font-size: 16px; color: var(--text-secondary); margin: 0; max-width: 68ch; }
+  .meta { margin: 16px 0 0; font-size: 13px; color: var(--text-muted); }
+  .meta code { font-size: 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+
+  section { margin: 40px 0 0; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+       color: var(--text-muted); margin: 0 0 16px; }
+  h3 { font-size: 16px; font-weight: 620; margin: 0 0 6px; }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 22px;
+  }
+
+  /* KPI row */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+  .kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .kpi .label { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 6px; font-weight: 500; }
+  .kpi .value { font-size: 34px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; color: var(--text-primary); }
+  .kpi .value .unit { font-size: 17px; font-weight: 550; color: var(--text-secondary); margin-left: 3px; }
+  .kpi .note { font-size: 12px; color: var(--text-muted); margin: 7px 0 0; }
+
+  /* hero figure */
+  .hero { display: flex; flex-wrap: wrap; align-items: baseline; gap: 18px; }
+  .hero .fig { font-size: 60px; font-weight: 680; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary); }
+  .hero .fig .unit { font-size: 24px; font-weight: 560; color: var(--text-secondary); margin-left: 4px; }
+  .hero .caption { font-size: 14.5px; color: var(--text-secondary); max-width: 46ch; margin: 0; }
+
+  /* callout */
+  .callout { display: flex; gap: 14px; align-items: flex-start; border-left: 3px solid var(--status-critical); }
+  .callout .ico { flex: 0 0 auto; margin-top: 1px; }
+  .callout p { margin: 0; font-size: 14.5px; color: var(--text-secondary); }
+  .callout p strong { color: var(--text-primary); }
+
+  /* chart */
+  figure { margin: 0; }
+  figcaption { font-size: 13px; color: var(--text-muted); margin: 12px 0 0; }
+  .chart-title { font-size: 16px; font-weight: 620; margin: 0 0 2px; }
+  .chart-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 14px; }
+  /* Scoped to the chart only — a global svg{width:100%} inflates inline icons. */
+  #chart { display: block; width: 100%; height: auto; overflow: visible; }
+  .callout .ico { width: 18px; height: 18px; flex: 0 0 18px; }
+  .pill svg { width: 13px; height: 13px; flex: 0 0 13px; }
+  .tick text { font-size: 11px; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .axis-title { font-size: 11.5px; fill: var(--text-muted); }
+  .pt-label { font-size: 12px; font-weight: 620; fill: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .thr-label { font-size: 11px; font-weight: 600; }
+
+  /* tooltip */
+  .tip {
+    position: absolute; pointer-events: none; opacity: 0; transition: opacity .1s;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 11px; min-width: 148px;
+    box-shadow: 0 3px 14px rgba(0,0,0,.14); z-index: 5;
+  }
+  .tip .tn { font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px; }
+  .tip .tv { font-size: 19px; font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .tip .tr { font-size: 11.5px; color: var(--text-secondary); margin-top: 5px; display: flex; align-items: center; gap: 6px; }
+  .tip .key { width: 12px; height: 2px; border-radius: 1px; background: var(--series-1); flex: 0 0 auto; }
+  .chart-holder { position: relative; }
+
+  /* meters */
+  .meters { display: grid; gap: 16px; }
+  .meter-row { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .meter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13.5px; }
+  .meter-head .who { color: var(--text-primary); font-weight: 560; }
+  .meter-head .num { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .track { height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; }
+  .fill { height: 100%; border-radius: 5px; }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  caption { text-align: left; font-size: 13px; color: var(--text-muted); padding-bottom: 10px; }
+  th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--grid); }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
+  td { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  td.strong { color: var(--text-primary); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: none; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+
+  ul.findings { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+  ul.findings li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 14.5px; color: var(--text-secondary); }
+  ul.findings strong { color: var(--text-primary); }
+  ul.findings .n { font-size: 12px; font-weight: 650; color: var(--text-muted); font-variant-numeric: tabular-nums; padding-top: 3px; }
+
+  .caveats { font-size: 13.5px; color: var(--text-secondary); }
+  .caveats li { margin-bottom: 8px; }
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--border);
+           font-size: 12.5px; color: var(--text-muted); }
+  @media (max-width: 620px) { .hero .fig { font-size: 46px; } h1 { font-size: 24px; } }
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Instance AI · load testing</p>
+    <h1>What a concurrent workflow-builder costs in memory</h1>
+    <p class="standfirst">
+      A load-test harness drives N distinct users through real multi-turn workflow builds
+      against the live model, so the backend's per-user state actually multiplies.
+      These are measurements from a dedicated cloud instance — not projections.
+    </p>
+    <p class="meta">
+      Measured 2026-08-04 · single main, sqlite, no other traffic · 4-turn conversations ·
+      harness at <code>packages/@n8n/instance-ai/load-test/</code>
+    </p>
+  </header>
+
+  <!-- Hero: the one number that transfers to any plan size -->
+  <section>
+    <div class="card hero">
+      <div>
+        <div class="fig">~14<span class="unit">MB</span></div>
+      </div>
+      <p class="caption">
+        Each <strong>additional</strong> concurrent builder. Corroborated by three
+        independent measurements — local, cloud 10→20, cloud 10→30 — which is why
+        this is the figure to plan with.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The budget</h2>
+    <div class="kpis">
+      <div class="kpi">
+        <p class="label">Idle instance</p>
+        <div class="value">495<span class="unit">MB</span></div>
+        <p class="note">Consumed before a single user connects</p>
+      </div>
+      <div class="kpi">
+        <p class="label">Per concurrent builder</p>
+        <div class="value">~14<span class="unit">MB</span></div>
+        <p class="note">Marginal, measured N=10→30</p>
+      </div>
+      <div class="kpi">
+        <p class="label">Peak at 30 builders</p>
+        <div class="value">1013<span class="unit">MB</span></div>
+        <p class="note">79% of a 1280 MB instance</p>
+      </div>
+      <div class="kpi">
+        <p class="label">Retained after teardown</p>
+        <div class="value">~0.4<span class="unit">MB</span></div>
+        <p class="note">Per user — no leak</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card callout">
+      <svg class="ico" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <circle cx="9" cy="9" r="8" fill="none" stroke="#d03b3b" stroke-width="1.6"/>
+        <path d="M9 4.8v5.2" stroke="#d03b3b" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="9" cy="13" r="1.05" fill="#d03b3b"/>
+      </svg>
+      <p>
+        <strong>A 640 MB instance cannot run 10 concurrent builders.</strong>
+        It OOM-crashed the pod on two of two attempts, ~32–45 s in, before any workflow
+        had been created. The arithmetic: 495 MB idle leaves ~145 MB for a load that
+        wants ~245 MB. Doubling the limit to 1280 MB made the identical workload pass
+        three times over.
+      </p>
+    </div>
+  </section>
+
+  <!-- Chart: single series, so no legend — the title names what is plotted -->
+  <section>
+    <h2>Scaling</h2>
+    <div class="card">
+      <figure>
+        <p class="chart-title">Peak memory vs. concurrent builders</p>
+        <p class="chart-sub">Measured on the 1280&nbsp;MB instance. Dots are individual runs; the line follows the worst case at each level.</p>
+        <div class="chart-holder">
+          <svg id="chart" viewBox="0 0 760 360" role="img"
+               aria-label="Peak memory rises from 495 MB at idle to 1013 MB at 30 concurrent builders, crossing the 640 MB limit between 5 and 10 builders and staying below the 1280 MB limit throughout."></svg>
+          <div class="tip" id="tip" aria-hidden="true"></div>
+        </div>
+        <figcaption>
+          Load is <strong>sub-linear</strong>: doubling users from 10 to 20 added only ~58% more
+          load memory. Full values in the table below.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Utilisation by configuration</h2>
+    <div class="card meters" id="meters"></div>
+  </section>
+
+  <section>
+    <h2>Every run</h2>
+    <div class="card">
+      <table>
+        <caption>All cloud measurements. Outcome is labelled, never colour-only.</caption>
+        <thead>
+          <tr>
+            <th>Instance limit</th><th>Builders</th><th>Turns</th>
+            <th>Peak RAM</th><th>Utilisation</th><th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>What we learned</h2>
+    <div class="card">
+      <ul class="findings">
+        <li><span class="n">01</span><div><strong>Idle cost dominates on small plans.</strong> ~495 MB is gone before anyone arrives, so small instances are constrained by the baseline, not by per-user cost. That is why 640 MB died at 10 users and why doubling the limit fixed it so decisively.</div></li>
+        <li><span class="n">02</span><div><strong>No memory leak.</strong> After a full lifecycle — conversation, thread deleted, forced GC — retained memory is ~0.4 MB per user, reproduced in every run at every concurrency level. Peaks fall back to the 495 MB baseline afterwards.</div></li>
+        <li><span class="n">03</span><div><strong>The cost is concurrent run start-up, not accumulated state.</strong> Both OOMs died in turn 1, before any workflow existed. Prompts, tool registries, sandbox handles and model streams — that is where to look to reduce the footprint.</div></li>
+        <li><span class="n">04</span><div><strong>Conversation length adds peak, not retention.</strong> Doubling turns raises the transient peak but nothing accumulates.</div></li>
+        <li><span class="n">05</span><div><strong>Latency degrades before memory does.</strong> Median build time held roughly flat across concurrency while the tail stretched from ~60 s at one user to ~200 s at thirty. If anything limits concurrency today, it is latency rather than RAM.</div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Read these before quoting the numbers</h2>
+    <div class="card caveats">
+      <ul>
+        <li><strong>Peaks above N=20 are lower bounds.</strong> The harness hits <code>409 "run already active"</code> on follow-up turns under high concurrency. At N=30, 20 of 30 users delivered 3 turns instead of 4 — roughly 17% less work than the label implies. Needs fixing before trusting numbers above 20.</li>
+        <li><strong>Memory was read from Grafana, not sampled by the tool.</strong> Cloud <code>/metrics</code> is firewalled, so the harness recorded phase boundaries and the peaks were read off the dashboard.</li>
+        <li><strong>Marginal cost is approximate, not precise.</strong> A three-point least-squares fit did not reproduce across runs; the ~14 MB figure comes from endpoint estimates, which did.</li>
+        <li><strong>Not tested:</strong> sustained/continuous load (every run was burst-then-idle), Postgres, multi-main, and anything above 30 concurrent builders.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Full methodology, every measurement and the failure modes behind these numbers:
+    <code>packages/@n8n/instance-ai/load-test/FINDINGS.md</code>
+  </footer>
+</div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---- data -------------------------------------------------------------
+  // Chart series: the 1280 MB instance only. The N=5 reading (604 MB) was taken
+  // on the 640 MB instance where the ceiling was suppressing demand, so mixing
+  // it in would confound the scaling curve. It appears in the table instead.
+  const series = [
+    { n: 0,  runs: [495],           label: "idle" },
+    { n: 10, runs: [687, 745, 736] },
+    { n: 20, runs: [875, 805] },
+    { n: 30, runs: [1013] },
+  ];
+  const LIMIT_BREACHED = 640;
+  const LIMIT_CURRENT  = 1280;
+
+  const rows = [
+    { limit: 640,  n: 5,  turns: 4, peak: 604,  ok: true  },
+    { limit: 640,  n: 10, turns: 2, peak: 622,  ok: true, note: "18 MB margin" },
+    { limit: 640,  n: 10, turns: 4, peak: null, ok: false, note: "crashed twice, ~32–45 s in" },
+    { limit: 1280, n: 10, turns: 4, peak: 736,  ok: true, note: "687–745 across 3 runs" },
+    { limit: 1280, n: 20, turns: 4, peak: 875,  ok: true, note: "805–875 across 2 runs" },
+    { limit: 1280, n: 30, turns: 4, peak: 1013, ok: true, note: "all 30 workflows built" },
+  ];
+
+  // `state` spells out what the fill colour means — status colour never alone.
+  const meters = [
+    { who: "640 MB · 5 builders",   pct: 604 / 640,   detail: "604 MB of 640 MB",   state: "at limit" },
+    { who: "640 MB · 10 builders",  pct: 1,           detail: "wants ~745 MB",      state: "over limit — OOM", over: true },
+    { who: "1280 MB · 10 builders", pct: 745 / 1280,  detail: "745 MB of 1280 MB",  state: "headroom" },
+    { who: "1280 MB · 20 builders", pct: 875 / 1280,  detail: "875 MB of 1280 MB",  state: "headroom" },
+    { who: "1280 MB · 30 builders", pct: 1013 / 1280, detail: "1013 MB of 1280 MB", state: "headroom" },
+  ];
+
+  const css = (name) => getComputedStyle(document.querySelector(".viz-root")).getPropertyValue(name).trim();
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs = {}) => {
+    const node = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    return node;
+  };
+
+  // ---- scales -----------------------------------------------------------
+  const W = 760, H = 360;
+  const M = { top: 26, right: 74, bottom: 46, left: 58 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+  const X_MAX = 32, Y_MAX = 1400;
+  const sx = (n) => M.left + (n / X_MAX) * plotW;
+  const sy = (v) => M.top + plotH - (v / Y_MAX) * plotH;
+
+  const svg = document.getElementById("chart");
+  const tip = document.getElementById("tip");
+
+  function render() {
+    svg.textContent = "";
+    const grid = css("--grid"), axis = css("--axis"), muted = css("--text-muted"),
+          s1 = css("--series-1"), wash = css("--series-wash"),
+          surface = css("--surface-1"), critical = css("--status-critical");
+
+    // gridlines — hairline, solid, recessive
+    const yTicks = [0, 200, 400, 600, 800, 1000, 1200, 1400];
+    for (const t of yTicks) {
+      svg.appendChild(el("line", {
+        x1: M.left, x2: M.left + plotW, y1: sy(t), y2: sy(t),
+        stroke: t === 0 ? axis : grid, "stroke-width": 1,
+      }));
+      const g = el("g", { class: "tick" });
+      const tx = el("text", { x: M.left - 10, y: sy(t) + 4, "text-anchor": "end" });
+      tx.textContent = t.toLocaleString();
+      g.appendChild(tx); svg.appendChild(g);
+    }
+    const yTitle = el("text", { class: "axis-title", x: M.left - 10, y: M.top - 12, "text-anchor": "end" });
+    yTitle.textContent = "MB";
+    svg.appendChild(yTitle);
+
+    // x ticks
+    for (const n of [0, 5, 10, 15, 20, 25, 30]) {
+      const g = el("g", { class: "tick" });
+      const tx = el("text", { x: sx(n), y: M.top + plotH + 20, "text-anchor": "middle" });
+      tx.textContent = String(n);
+      g.appendChild(tx); svg.appendChild(g);
+    }
+    const xTitle = el("text", { class: "axis-title", x: M.left + plotW / 2, y: M.top + plotH + 40, "text-anchor": "middle" });
+    xTitle.textContent = "Concurrent builders";
+    svg.appendChild(xTitle);
+
+    // threshold lines — solid hairlines with direct labels (never colour alone)
+    const thresholds = [
+      { v: LIMIT_BREACHED, color: critical, text: "640 MB limit — breached" },
+      { v: LIMIT_CURRENT,  color: muted,    text: "1280 MB limit" },
+    ];
+    for (const th of thresholds) {
+      svg.appendChild(el("line", {
+        x1: M.left, x2: M.left + plotW, y1: sy(th.v), y2: sy(th.v),
+        stroke: th.color, "stroke-width": 1.5, "stroke-dasharray": "5 4",
+      }));
+      const lb = el("text", {
+        class: "thr-label", x: M.left + plotW + 8, y: sy(th.v) + 4, fill: th.color,
+      });
+      lb.textContent = th.text.split(" — ")[0];
+      svg.appendChild(lb);
+      if (th.text.includes("—")) {
+        const sub = el("text", { class: "thr-label", x: M.left + plotW + 8, y: sy(th.v) + 17, fill: th.color });
+        sub.textContent = "breached";
+        svg.appendChild(sub);
+      }
+    }
+
+    // area wash under the worst-case line
+    const worst = series.map((d) => ({ n: d.n, v: Math.max(...d.runs) }));
+    const areaPts = worst.map((d) => `${sx(d.n)},${sy(d.v)}`).join(" ");
+    svg.appendChild(el("polygon", {
+      points: `${sx(0)},${sy(0)} ${areaPts} ${sx(30)},${sy(0)}`,
+      fill: wash, stroke: "none",
+    }));
+
+    // 2px line, round joins
+    svg.appendChild(el("polyline", {
+      points: areaPts, fill: "none", stroke: s1,
+      "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round",
+    }));
+
+    // every individual run as a dot with a 2px surface ring
+    for (const d of series) {
+      for (const v of d.runs) {
+        svg.appendChild(el("circle", {
+          cx: sx(d.n), cy: sy(v), r: 4.5,
+          fill: s1, stroke: surface, "stroke-width": 2,
+        }));
+      }
+    }
+
+    // selective direct labels only: the endpoint and the idle baseline
+    const endLab = el("text", { class: "pt-label", x: sx(30), y: sy(1013) - 13, "text-anchor": "middle" });
+    endLab.textContent = "1013";
+    svg.appendChild(endLab);
+    const idleLab = el("text", { class: "pt-label", x: sx(0) + 8, y: sy(495) - 11 });
+    idleLab.textContent = "495 idle";
+    svg.appendChild(idleLab);
+
+    // ---- hover layer: crosshair snapping to the nearest level ------------
+    const cross = el("line", {
+      y1: M.top, y2: M.top + plotH, stroke: axis, "stroke-width": 1, opacity: 0,
+    });
+    svg.appendChild(cross);
+    const halo = el("circle", { r: 7.5, fill: "none", stroke: s1, "stroke-width": 2, opacity: 0 });
+    svg.appendChild(halo);
+
+    const hit = el("rect", {
+      x: M.left, y: M.top, width: plotW, height: plotH,
+      fill: "transparent", style: "cursor:crosshair",
+    });
+    svg.appendChild(hit);
+
+    const show = (evt) => {
+      const box = svg.getBoundingClientRect();
+      const px = ((evt.clientX - box.left) / box.width) * W;
+      const nAt = (px - M.left) / plotW * X_MAX;
+      let best = series[0];
+      for (const d of series) if (Math.abs(d.n - nAt) < Math.abs(best.n - nAt)) best = d;
+
+      const peak = Math.max(...best.runs);
+      cross.setAttribute("x1", sx(best.n)); cross.setAttribute("x2", sx(best.n));
+      cross.setAttribute("opacity", 1);
+      halo.setAttribute("cx", sx(best.n)); halo.setAttribute("cy", sy(peak));
+      halo.setAttribute("opacity", 1);
+
+      tip.textContent = "";
+      const tn = document.createElement("div"); tn.className = "tn";
+      tn.textContent = best.n === 0 ? "Idle — no users" : `${best.n} concurrent builders`;
+      const tv = document.createElement("div"); tv.className = "tv";
+      tv.textContent = `${peak} MB`;
+      tip.append(tn, tv);
+      const tr = document.createElement("div"); tr.className = "tr";
+      const key = document.createElement("span"); key.className = "key";
+      const txt = document.createElement("span");
+      txt.textContent = best.runs.length > 1
+        ? `${best.runs.length} runs: ${best.runs.join(", ")} MB`
+        : `${Math.round((peak / LIMIT_CURRENT) * 100)}% of 1280 MB`;
+      tr.append(key, txt);
+      tip.appendChild(tr);
+
+      const holder = svg.parentElement.getBoundingClientRect();
+      const left = box.left - holder.left + (sx(best.n) / W) * box.width;
+      const top = box.top - holder.top + (sy(peak) / H) * box.height;
+      tip.style.left = `${Math.min(Math.max(left + 14, 0), holder.width - 170)}px`;
+      tip.style.top = `${Math.max(top - 52, 0)}px`;
+      tip.style.opacity = 1;
+    };
+    const hide = () => {
+      tip.style.opacity = 0; cross.setAttribute("opacity", 0); halo.setAttribute("opacity", 0);
+    };
+    hit.addEventListener("pointermove", show);
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("pointerdown", show);
+  }
+
+  // ---- meters -----------------------------------------------------------
+  function renderMeters() {
+    const host = document.getElementById("meters");
+    host.textContent = "";
+    for (const m of meters) {
+      const row = document.createElement("div"); row.className = "meter-row";
+      const head = document.createElement("div"); head.className = "meter-head";
+      const who = document.createElement("span"); who.className = "who"; who.textContent = m.who;
+      const num = document.createElement("span"); num.className = "num";
+      num.textContent = m.over
+        ? `${m.detail} · ${m.state}`
+        : `${m.detail} · ${Math.round(m.pct * 100)}% · ${m.state}`;
+      head.append(who, num);
+      const track = document.createElement("div"); track.className = "track";
+      const fill = document.createElement("div"); fill.className = "fill";
+      fill.style.width = `${Math.min(m.pct, 1) * 100}%`;
+      // Same-ramp track: series hue for headroom, status only where it means failure
+      fill.style.background = m.over ? "var(--status-critical)"
+        : m.pct > 0.9 ? "var(--status-warning)" : "var(--series-1)";
+      track.appendChild(fill);
+      row.append(head, track);
+      host.appendChild(row);
+    }
+  }
+
+  // ---- table ------------------------------------------------------------
+  function renderTable() {
+    const body = document.getElementById("tbody");
+    body.textContent = "";
+    for (const r of rows) {
+      const tr = document.createElement("tr");
+      const cells = [
+        `${r.limit} MB`,
+        String(r.n),
+        String(r.turns),
+        r.peak === null ? "—" : `${r.peak} MB`,
+        r.peak === null ? "—" : `${Math.round((r.peak / r.limit) * 100)}%`,
+      ];
+      cells.forEach((c, i) => {
+        const td = document.createElement("td");
+        if (i === 3) td.className = "strong";
+        td.textContent = c;
+        tr.appendChild(td);
+      });
+      const td = document.createElement("td");
+      const pill = document.createElement("span"); pill.className = "pill";
+      pill.style.color = r.ok ? "var(--status-good)" : "var(--status-critical)";
+      const ico = document.createElementNS(NS, "svg");
+      ico.setAttribute("width", "13"); ico.setAttribute("height", "13");
+      ico.setAttribute("viewBox", "0 0 13 13"); ico.setAttribute("aria-hidden", "true");
+      if (r.ok) {
+        const p = el("path", { d: "M2.5 7l2.6 2.6L10.5 4", fill: "none",
+          stroke: "currentColor", "stroke-width": "1.9", "stroke-linecap": "round", "stroke-linejoin": "round" });
+        ico.appendChild(p);
+      } else {
+        ico.appendChild(el("path", { d: "M3.3 3.3l6.4 6.4M9.7 3.3l-6.4 6.4", fill: "none",
+          stroke: "currentColor", "stroke-width": "1.9", "stroke-linecap": "round" }));
+      }
+      const lbl = document.createElement("span");
+      lbl.textContent = r.ok ? "Pass" : "OOM";
+      pill.append(ico, lbl);
+      td.appendChild(pill);
+      if (r.note) {
+        const note = document.createElement("div");
+        note.style.cssText = "font-size:11.5px;color:var(--text-muted);font-weight:400;margin-top:2px";
+        note.textContent = r.note;
+        td.appendChild(note);
+      }
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+  }
+
+  render(); renderMeters(); renderTable();
+  window.addEventListener("resize", render);
+  // re-render on theme change so the SVG picks up the new role values
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+})();
+</script>
+</body>
+</html>
