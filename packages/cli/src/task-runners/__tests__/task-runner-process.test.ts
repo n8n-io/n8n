@@ -161,6 +161,15 @@ describe('TaskRunnerProcess', () => {
 			expect(Object.getPrototypeOf(options.env)).toBeNull();
 		});
 
+		it('should bind the assigned runner ID to the grant token', async () => {
+			authService.createGrantToken.mockResolvedValue('grantToken');
+
+			await taskRunnerProcess.start();
+
+			const { env } = spawnMock.mock.calls[0][2] as SpawnOptions;
+			expect(authService.createGrantToken).toHaveBeenCalledWith(env!.N8N_RUNNERS_ID);
+		});
+
 		it('should not inherit env keys from Object.prototype', async () => {
 			authService.createGrantToken.mockResolvedValue('grantToken');
 			runnerConfig.maxOldSpaceSize = '';

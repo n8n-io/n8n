@@ -103,11 +103,11 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	}
 
 	private async spawnAndMonitor() {
-		const grantToken = await this.authService.createGrantToken();
-		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
-
 		// A relaunched runner is a new runner, so it gets a new ID.
 		this.runnerId = nanoid();
+
+		const grantToken = await this.authService.createGrantToken(this.runnerId);
+		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
 
 		const runnerProcess = this.startProcess(grantToken, taskBrokerUri, this.runnerId);
 
