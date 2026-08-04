@@ -42,6 +42,7 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 	align-items: center;
 	justify-content: center;
 	border: none;
+	flex: 1;
 	border-radius: var(--radius--3xs);
 	background: transparent;
 	height: var(--segment-control--item-height);
