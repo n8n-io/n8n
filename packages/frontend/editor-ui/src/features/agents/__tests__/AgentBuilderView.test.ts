@@ -522,7 +522,7 @@ function resetViewMocks() {
 	getAgentMock.mockResolvedValue(makeAgentResponse());
 	createAgentMock.mockReset();
 	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
-	getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
 	listAgentFilesMock.mockReset();
@@ -1623,6 +1623,110 @@ describe('AgentBuilderView — three-column shell', () => {
 			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
 
 			expect(wrapper.emitted('persisted')).toHaveLength(1);
+		});
+
+		it('keeps the editor mounted while a newly persisted artifact hydrates', async () => {
+			const wrapper = await renderView({ props: pendingProps });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const ensureAgentPersisted = editor.props('ensureAgentPersisted') as () => Promise<void>;
+
+			await ensureAgentPersisted();
+
+			let finishHydrating = () => {};
+			getAgentMock.mockReturnValueOnce(
+				new Promise((resolve) => {
+					finishHydrating = () => resolve(makeAgentResponse());
+				}),
+			);
+
+			await wrapper.setProps({ artifactAgentPending: false });
+			await nextTick();
+
+			expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
+			expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
+
+			finishHydrating();
+			await flushPromises();
+		});
+
+		it('flushes a pending config edit before same-agent artifact hydration', async () => {
+			const wrapper = await renderView({ props: pendingProps });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const ensureAgentPersisted = editor.props('ensureAgentPersisted') as () => Promise<void>;
+
+			vi.useFakeTimers();
+			try {
+				editor.vm.$emit('update:config', { instructions: 'Keep these instructions' });
+				await nextTick();
+
+				await ensureAgentPersisted();
+
+				let resolveUpdate!: (value: { versionId: string; stale: boolean }) => void;
+				updateConfigMock.mockReset();
+				updateConfigMock.mockImplementation(
+					() =>
+						new Promise((resolve) => {
+							resolveUpdate = resolve;
+						}),
+				);
+				intendedConfig = {
+					name: 'agents.new.defaultName',
+					instructions: 'Keep these instructions',
+				};
+				fetchConfigMock.mockClear();
+
+				await wrapper.setProps({ artifactAgentPending: false });
+				await flushPromises();
+
+				expect(updateConfigMock).toHaveBeenCalledWith(
+					'p1',
+					'aBcDeFgHiJkLmNoP',
+					expect.objectContaining({ instructions: 'Keep these instructions' }),
+				);
+				expect(fetchConfigMock).not.toHaveBeenCalled();
+
+				resolveUpdate({ versionId: 'v2', stale: false });
+				await flushPromises();
+
+				expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'aBcDeFgHiJkLmNoP');
+				expect(
+					wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+				).toEqual(expect.objectContaining({ instructions: 'Keep these instructions' }));
+
+				updateConfigMock.mockClear();
+				await vi.advanceTimersByTimeAsync(500);
+				await flushPromises();
+				expect(updateConfigMock).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+				wrapper.unmount();
+			}
+		});
+
+		it('keeps a channel added while the persisted artifact trigger baseline finishes', async () => {
+			let finishBaseline = () => {};
+			const pendingBaseline = new Promise<string[]>((resolve) => {
+				finishBaseline = () => resolve([]);
+			});
+			builderTelemetryMock.fetchInitialTriggersBaseline
+				.mockResolvedValueOnce([])
+				.mockReturnValueOnce(pendingBaseline);
+			const wrapper = await renderView({ props: pendingProps });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const ensureAgentPersisted = editor.props('ensureAgentPersisted') as () => Promise<void>;
+
+			await ensureAgentPersisted();
+			await wrapper.setProps({ artifactAgentPending: false });
+			await vi.waitFor(() =>
+				expect(builderTelemetryMock.fetchInitialTriggersBaseline).toHaveBeenCalledTimes(2),
+			);
+
+			editor.vm.$emit('update:connected-triggers', ['slack']);
+			await nextTick();
+			finishBaseline();
+			await flushPromises();
+
+			expect(editor.props('connectedTriggers')).toEqual(['slack']);
 		});
 	});
 
