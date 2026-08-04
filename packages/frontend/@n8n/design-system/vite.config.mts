@@ -2,6 +2,7 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import icons from 'unplugin-icons/vite';
+import dts from 'vite-plugin-dts';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
 import { lucideIconsPlugin } from './src/icons/lucide/vite';
@@ -33,6 +34,21 @@ export default mergeConfig(
 			icons({
 				compiler: 'vue3',
 				autoInstall: true,
+			}),
+			// The plugin drives the emit rather than a bare `vue-tsc -p`: invoked
+			// directly, vue-tsc exits 0 and silently writes nothing for a component
+			// whose template context reaches a type it cannot name (54 of them during
+			// the spike). Acceptance counts emitted files, not the exit code.
+			dts({
+				// `tsconfig.build.json` rather than `tsconfig.json`: the latter maps the
+				// sibling `@n8n/*` packages to their `src`, which pulls files outside
+				// `rootDir` into the program (TS6059) and points the declarations at
+				// another package's sources instead of its published types.
+				tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
+				// Per-file declarations, not a rollup: api-extractor cannot follow `.vue`
+				// module specifiers and leaves the imports dangling. Rejected in ADR-0002.
+				rollupTypes: false,
+				entryRoot: resolve(__dirname, 'src'),
 			}),
 		],
 		resolve: {
