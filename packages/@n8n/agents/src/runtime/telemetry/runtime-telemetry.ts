@@ -169,15 +169,25 @@ export interface MemorySpanAttributes {
  * Best-effort gen_ai.memory.store.* attributes from a BuiltMemory's
  * descriptor. Only positively identifies `InMemoryMemory`; any other backend
  * gets `storeNames` from its declared name but no `storeTypes` guess.
+ *
+ * Swallows a throwing `describe()` (e.g. a third-party `BuiltMemory` with a
+ * broken implementation) — this call happens inside `withMemorySpan`'s
+ * `buildInitialAttributes` thunk, outside its try/catch, so an uncaught
+ * throw here would skip the actual memory operation entirely just because
+ * telemetry happened to be on.
  */
 export function inferMemoryStoreAttributes(
 	memory: BuiltMemory,
 ): Pick<MemorySpanAttributes, 'storeTypes' | 'storeNames'> {
-	const descriptor = memory.describe();
-	return {
-		...(descriptor.name ? { storeNames: [descriptor.name] } : {}),
-		...(descriptor.constructorName === 'InMemoryMemory' ? { storeTypes: ['in_memory'] } : {}),
-	};
+	try {
+		const descriptor = memory.describe();
+		return {
+			...(descriptor.name ? { storeNames: [descriptor.name] } : {}),
+			...(descriptor.constructorName === 'InMemoryMemory' ? { storeTypes: ['in_memory'] } : {}),
+		};
+	} catch {
+		return {};
+	}
 }
 
 function buildMemorySpanAttributes(

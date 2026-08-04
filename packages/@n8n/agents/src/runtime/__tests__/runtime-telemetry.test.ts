@@ -1,17 +1,8 @@
+import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import type { BuiltTool } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { RuntimeTelemetry, withMemorySpan } from '../telemetry/runtime-telemetry';
-
-function builtTelemetry(overrides: Partial<BuiltTelemetry> = {}): BuiltTelemetry {
-	return {
-		enabled: true,
-		recordInputs: true,
-		recordOutputs: true,
-		integrations: [],
-		...overrides,
-	};
-}
 
 describe('RuntimeTelemetry.resolve()', () => {
 	it('stamps own telemetry with the runtime name only when it lacks a functionId, without mutating the config', () => {
@@ -39,24 +30,6 @@ describe('RuntimeTelemetry.resolve()', () => {
 		expect(runtimeTelemetry.resolve(undefined)).toBeUndefined();
 	});
 });
-
-function fakeSpan() {
-	return {
-		end: vi.fn(),
-		recordException: vi.fn(),
-		setStatus: vi.fn(),
-		setAttributes: vi.fn(),
-	};
-}
-
-function fakeTracer(span: ReturnType<typeof fakeSpan>) {
-	return {
-		startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
-			const spanFn = fn as (spanValue: ReturnType<typeof fakeSpan>) => Promise<unknown>;
-			return await spanFn(span);
-		}),
-	};
-}
 
 describe('RuntimeTelemetry.withRootSpan()', () => {
 	it('falls through to fn() without starting a span when telemetry is disabled, root span is off, or the tracer is not active-span-capable', async () => {
@@ -737,5 +710,16 @@ describe('inferMemoryStoreAttributes()', () => {
 		} as unknown as import('../../types').BuiltMemory;
 
 		expect(inferMemoryStoreAttributes(unnamedMemory)).toEqual({ storeTypes: ['in_memory'] });
+	});
+
+	it('returns {} instead of throwing when describe() is broken, so the memory operation still runs', async () => {
+		const { inferMemoryStoreAttributes } = await import('../telemetry/runtime-telemetry.js');
+		const brokenMemory = {
+			describe: () => {
+				throw new Error('Method not implemented.');
+			},
+		} as unknown as import('../../types').BuiltMemory;
+
+		expect(inferMemoryStoreAttributes(brokenMemory)).toEqual({});
 	});
 });
