@@ -1,19 +1,20 @@
-import { findTriggerNode, getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
-import type { ExecutionEnqueuedEvent, StepMessage, WorkQueue } from '../queue';
+import { findTriggerNode } from '../graph';
+import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
-import { finishExecutionIfDone } from './finish-execution';
 import type { StepStore } from './step-store';
 
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
- * (`queued → running`), records the trigger as a completed step, and plans the
- * first step(s).
+ * (`queued → running`), records the trigger as a completed step, and announces
+ * that completion. Planning deliberately doesn't happen here — the
+ * `step:completed` handler plans the trigger's successors exactly as it plans
+ * any other node's, so the readiness rule lives in one place.
  */
 export class ExecutionStartHandler {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -36,38 +37,16 @@ export class ExecutionStartHandler {
 
 		// The trigger's output was captured at execution start; record it as
 		// already completed so successors can treat it as a satisfied predecessor.
-		// Planned together with the successors so a fan-out is one round trip.
-		// The trigger is the only node that has completed, so a successor sitting
-		// behind anything else isn't ready yet — `StepCompletedHandler` plans it once
-		// that predecessor finishes.
-		const successorNodeIds = getSuccessorNodeIds(execution.graph, trigger.id).filter((nodeId) =>
-			getPredecessorNodeIds(execution.graph, nodeId).every((id) => id === trigger.id),
-		);
-		const created = await this.stepStore.createSteps([
+		// The claim above makes this the only writer, so the row cannot exist yet.
+		const [triggerStep] = await this.stepStore.createSteps([
 			{ executionId: event.executionId, nodeId: trigger.id, status: 'completed' },
-			...successorNodeIds.map((nodeId) => ({
-				executionId: event.executionId,
-				nodeId,
-				status: 'queued' as const,
-			})),
 		]);
 
-		// Published only after the rows exist, so a consumer can always load the
-		// step. The trigger's row is already completed, so it isn't announced.
-		const successorSteps = created.filter(({ nodeId }) => nodeId !== trigger.id);
-		if (successorSteps.length === 0) {
-			// Nothing to run, so no step will ever report completion — this is the only
-			// chance to notice the execution is already over.
-			await finishExecutionIfDone(this.executionStore, this.stepStore, event.executionId);
-			return;
-		}
-
-		for (const { id: stepId } of successorSteps) {
-			await this.stepQueue.publish({
-				type: 'step:ready',
-				executionId: event.executionId,
-				stepId,
-			});
-		}
+		// Published only after the row exists, so the consumer can always load it.
+		await this.orchestrationQueue.publish({
+			type: 'step:completed',
+			executionId: event.executionId,
+			stepId: triggerStep.id,
+		});
 	}
 }

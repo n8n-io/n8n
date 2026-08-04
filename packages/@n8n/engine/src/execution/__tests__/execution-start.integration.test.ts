@@ -59,7 +59,7 @@ describe('execution start (integration)', () => {
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
 			new StepCompletedHandler(executionStore, stepStore, stepQueue),
 		);
 		worker.start();
@@ -110,8 +110,8 @@ describe('execution start (integration)', () => {
 	it('is idempotent across duplicate execution:enqueued deliveries', async () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
-		const stepQueue: WorkQueue<StepMessage> = { publish, start: vi.fn(), stop: vi.fn() };
-		const handler = new ExecutionStartHandler(executionStore, stepStore, stepQueue);
+		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
+		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
 
 		const { id: executionId } = await executionStore.createExecution({
 			workflowId: 'wf-2',
@@ -134,7 +134,7 @@ describe('execution start (integration)', () => {
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });
-		expect(steps).toHaveLength(2); // trigger (completed) + step-a (queued)
+		expect(steps).toHaveLength(1); // the trigger's completed row; planning happens downstream
 		expect(publish).toHaveBeenCalledTimes(1);
 	});
 });

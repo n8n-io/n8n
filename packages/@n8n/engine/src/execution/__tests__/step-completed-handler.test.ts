@@ -105,6 +105,25 @@ describe('StepCompletedHandler', () => {
 		});
 	});
 
+	it("plans the trigger's successors like any other node's", async () => {
+		// execution start only announces the trigger's completion; the first
+		// steps are planned here, through the same readiness rule as the rest
+		const stepStore = makeStepStore({ id: 'step-trigger', nodeId: 'trigger' });
+		const queue = makeQueue();
+		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, queue);
+
+		await handler.handle({ ...event, stepId: 'step-trigger' });
+
+		expect(stepStore.createSteps).toHaveBeenCalledWith([
+			{ executionId: 'exec-1', nodeId: 'a', status: 'queued' },
+		]);
+		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
 	it("asks readiness in one query, for the successors' own predecessors", async () => {
 		const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' });
 		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, makeQueue());
@@ -129,6 +148,23 @@ describe('StepCompletedHandler', () => {
 		// Node ids are workflow-scoped, so 'a' resolves against exec-1's graph too:
 		// unguarded, a sibling execution's step would plan and announce real work here.
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+	});
+
+	it('rejects an event whose step references a node absent from the graph', async () => {
+		const stepStore = makeStepStore({ nodeId: 'ghost' });
+		const executionStore = makeExecutionStore();
+		const queue = makeQueue();
+		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+
+		await expect(handler.handle(event)).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('absent from the execution graph') as string,
+		});
+
+		// Unguarded, an unknown node has no successors, so this would silently
+		// finish the execution on a corrupted row.
 		expect(queue.publish).not.toHaveBeenCalled();
 		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 	});

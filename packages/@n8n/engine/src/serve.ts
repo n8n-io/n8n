@@ -45,7 +45,7 @@ async function main(): Promise<void> {
 		const stepStore = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
 			new StepCompletedHandler(executionStore, stepStore, stepQueue),
 		);
 		// No executors here: the v1 one lives in `@n8n/node-engine-compatibility`,

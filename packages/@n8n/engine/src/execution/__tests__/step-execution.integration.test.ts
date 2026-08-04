@@ -54,25 +54,26 @@ describe('step execution (integration)', () => {
 
 	/**
 	 * Wires both workers over shared queues and runs a workflow through them.
-	 * Resolves once a `step:completed` has been published, which is the point at
-	 * which the step's outcome is durable.
+	 * Resolves once the execution's outcome is recorded, which is after every
+	 * step's own outcome is durable.
 	 */
 	async function runWorkflow(executor: IStepExecutor, triggerPayload: JsonObject) {
 		const { executionStore, stepStore } = stores();
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 
-		let stepDone!: () => void;
-		const completed = new Promise<void>((resolve) => (stepDone = resolve));
-		const publish = orchestrationQueue.publish.bind(orchestrationQueue);
-		vi.spyOn(orchestrationQueue, 'publish').mockImplementation(async (message) => {
-			await publish(message);
-			if (message.type === 'step:completed') stepDone();
+		let done!: () => void;
+		const finished = new Promise<void>((resolve) => (done = resolve));
+		const finishExecution = executionStore.finishExecution.bind(executionStore);
+		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+			const recorded = await finishExecution(id, status);
+			done();
+			return recorded;
 		});
 
 		const orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
 			new StepCompletedHandler(executionStore, stepStore, stepQueue),
 		);
 		const stepWorker = new StepWorker(
@@ -89,7 +90,7 @@ describe('step execution (integration)', () => {
 			executionStore,
 			orchestrationQueue,
 		).start({ workflowId: 'wf-1', graph, triggerPayload });
-		await completed;
+		await finished;
 
 		await stepWorker.stop();
 		await orchestrationWorker.stop();
@@ -186,7 +187,7 @@ describe('step execution (integration)', () => {
 
 		const orchestrationWorker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, stepQueue),
+			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
 			new StepCompletedHandler(executionStore, stepStore, stepQueue),
 		);
 		const stepWorker = new StepWorker(
