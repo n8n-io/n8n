@@ -33,7 +33,7 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
 	}
 
-	async startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess> {
+	startProcess(grantToken: string, taskBrokerUri: string): ChildProcess {
 		const startScript = require.resolve('@n8n/task-runner/start');
 		const flags = this.runnerConfig.insecureMode
 			? []

@@ -31,7 +31,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		super('task-runner-py', logger, runnerConfig, authService, runnerLifecycleEvents);
 	}
 
-	async startProcess(grantToken: string, taskBrokerUri: string) {
+	startProcess(grantToken: string, taskBrokerUri: string) {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const venvPath = PyTaskRunnerProcess.getVenvPath();
 

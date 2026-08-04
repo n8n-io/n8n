@@ -109,7 +109,7 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	private async spawnAndMonitor() {
 		const grantToken = await this.authService.createGrantToken();
 		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
-		const runnerProcess = await this.startProcess(grantToken, taskBrokerUri);
+		const runnerProcess = this.startProcess(grantToken, taskBrokerUri);
 
 		try {
 			forwardToLogger(this.logger, runnerProcess, `[${this.name}] `);
@@ -197,7 +197,14 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		});
 	}
 
-	abstract startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess>;
+	/**
+	 * Spawns the runner process and returns it.
+	 *
+	 * Synchronous by contract: monitoring is attached to the returned process, and
+	 * an `exit` emitted before that attachment is lost, leaving the runner dead
+	 * with no relaunch. Any async preparation belongs before the spawn.
+	 */
+	abstract startProcess(grantToken: string, taskBrokerUri: string): ChildProcess;
 	setupProcessMonitoring?(process: ChildProcess): void;
 	analyzeExitReason?(code: number | null): { reason: ExitReason };
 }
