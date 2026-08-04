@@ -155,11 +155,14 @@ describe('AgentEvalService', () => {
 
 		// The agent lookup below reads a module entity, so the dependency check has
 		// to land before it — otherwise TypeORM raises missing metadata first.
+		// Not-found, not bad-request: with `agents` off there is no agent to address,
+		// matching the 404 that module's own unregistered routes already give.
 		it.each(callsRequiringAnAgent)(
-			'%s reports the inactive module instead of querying the agent',
+			'%s reports the inactive module as not-found instead of querying the agent',
 			async (_, call) => {
 				moduleRegistry.isActive.mockImplementation((name) => name !== 'agents');
 
+				await expect(call()).rejects.toThrow(NotFoundError);
 				await expect(call()).rejects.toThrow('Agent evals require these modules to be active');
 				expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 			},
