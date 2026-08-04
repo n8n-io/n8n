@@ -1,0 +1,719 @@
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-214
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/13.json
+  s_558da949c3ee4b::t_ff58b736200e70 1-30
+packages/cli/src/modules/mcp/tools/publish-workflow.tool.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-5,12,19-23,41,48-50,53-61,123-124,131,137
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_558da949c3ee4b::t_ff58b736200e70 665-667,672
+packages/frontend/editor-ui/src/features/agents/components/EmbeddingModelSelector.vue
+  s_558da949c3ee4b::t_ff58b736200e70 87,92,125
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_558da949c3ee4b::t_ff58b736200e70 162-169,202-209
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigModal.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 77,84
+packages/@n8n/workflow-sdk/src/validation.ts
+  s_558da949c3ee4b::t_ff58b736200e70 11-18,21-24
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2,130
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_558da949c3ee4b::t_ff58b736200e70 15,110,179-181,191-196
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_558da949c3ee4b::t_ff58b736200e70 266-268
+docs/generated/sqlite-schema/agents.md
+  s_558da949c3ee4b::t_ff58b736200e70 21,54,97-109
+  s_558da949c3ee4b::t_7852ba1641f1a2 110
+packages/@n8n/workflow-sdk/src/cli/validate.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-291
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-187
+packages/workflow/test/errors/execution-base.error.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-23,26-27,34-84
+  s_558da949c3ee4b::t_24948d193c9af0 85
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_558da949c3ee4b::t_ff58b736200e70 30
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2243-2246,2248-2293
+  s_558da949c3ee4b::t_d5d80982f0cc62 2247
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_558da949c3ee4b::t_ff58b736200e70 248-271,274-275
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2-7,9,12-15,18,44,101,167-173,178,202,286-288,292-297,299-300,302-315,326,328-329,334,337,342,347-354,366-455
+  s_558da949c3ee4b::t_951e66cc1c775c 456
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigModal.vue
+  s_558da949c3ee4b::t_ff58b736200e70 259,342
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4,7,15-20
+packages/@n8n/api-types/src/agents/types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 194,207-211
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 238,479
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 10,53-80
+  s_558da949c3ee4b::t_c68f24aa0bdbd5 81-82
+packages/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.ts
+  s_558da949c3ee4b::t_ff58b736200e70 104-111
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 86-95,115
+packages/@n8n/workflow-sdk/src/lint/code-node/extract-snippets.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-51
+packages/@n8n/workflow-sdk/src/validation/informational-validation-codes.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-23
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,3,88-146
+  s_558da949c3ee4b::t_0869ead3fa9f21 147
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_558da949c3ee4b::t_ff58b736200e70 473
+packages/@n8n/eslint-config/src/rules/no-dynamic-import-template.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-43
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 645-667
+packages/@n8n/workflow-sdk/src/lint/types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-28
+packages/cli/src/modules/agents/agent-message-mapper.ts
+  s_558da949c3ee4b::t_ff58b736200e70 15-22
+packages/cli/src/workflows/workflow-publish-guard-proxy.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-23
+packages/@n8n/workflow-sdk/src/lint/code-node/js.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-228
+packages/cli/src/modules/agents/__tests__/agent-test-chat.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3,14,18,21
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_558da949c3ee4b::t_ff58b736200e70 11,175,184,274,293
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 9-16,53-56,108-109
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_558da949c3ee4b::t_ff58b736200e70 5061-5063,7150-7152,7266-7272,7341
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-81
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,4-9,23-34,48-54,173-777
+packages/nodes-base/nodes/RabbitMQ/test/RabbitMQ.node.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3,15,33,131-148
+  s_558da949c3ee4b::t_58161d6f7e36db 149
+packages/nodes-base/nodes/Wait/Wait.node.ts
+  s_558da949c3ee4b::t_ff58b736200e70 534
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_558da949c3ee4b::t_ff58b736200e70 5-12,14,62-115,219,221,231,247,259-263,358-359,365,376,378-388,429-434
+  s_558da949c3ee4b::t_23c8e5ecdeb940 435
+packages/@n8n/api-types/src/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 18
+packages/@n8n/workflow-sdk/src/validation/informational-validation-codes.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-9
+packages/cli/src/scaling/job-processor.ts
+  s_558da949c3ee4b::t_ff58b736200e70 60,199-200,221
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_558da949c3ee4b::t_ff58b736200e70 16,19
+packages/cli/src/commands/import/workflow.ts
+  s_558da949c3ee4b::t_ff58b736200e70 19
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigWorkflowContent.vue
+  s_558da949c3ee4b::t_ff58b736200e70 10,39-42,47,56
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_558da949c3ee4b::t_ff58b736200e70 50-58,65-70,79,86,93-142,146-162
+  s_558da949c3ee4b::t_e3465746db73ce 163
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 50,165,650-658
+  s_558da949c3ee4b::t_ae5e72aed02c1a 659
+docs/generated/postgres-schema/public.binary_data.md
+  s_558da949c3ee4b::t_ff58b736200e70 21
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_558da949c3ee4b::t_ff58b736200e70 223-231,621-666,669,671,675-680,682-684
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3,634-834
+  s_558da949c3ee4b::t_66a1d1192a1cef 835-836
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_558da949c3ee4b::t_ff58b736200e70 26,42-43,66,132,149,166,170-175,177-178,181-182,188-192,209-215,236-241,331-343,374-384,470-477,483-484,565,682-685,689-692,694-697,700-707,711-714,717-718,726-819,822-823,831,837,861-866,873-874,881-884
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 239-257
+packages/@n8n/instance-ai/knowledge-base/reference/workflow-builder-guardrails.md
+  s_558da949c3ee4b::t_ff58b736200e70 7-10,121,123-126
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.attachments.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-62
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/missing-trigger-validator.ts
+  s_558da949c3ee4b::t_ff58b736200e70 43
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-2,4-10,14-15,32-53,57-69,94-96,107-338
+packages/@n8n/workflow-sdk/src/cli/node-definition-dirs.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-75
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_558da949c3ee4b::t_ff58b736200e70 93
+packages/nodes-base/nodes/RabbitMQ/RabbitMQ.node.ts
+  s_558da949c3ee4b::t_ff58b736200e70 394
+packages/@n8n/workflow-sdk/src/generate-types/generate-zod-schemas.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 17
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4-5,42-55,63-67,115,120-121,124-126,129-130,134,140,145,149-150,153-154,158,161,163-164,167,169,172-174,177-184,188,194,197,201,206
+packages/@n8n/utils/src/json/json-size-exceeds.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-403
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentModelCredentials.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-160
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-5,17-28,76,79,114-115
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_558da949c3ee4b::t_ff58b736200e70 11,708,715-728,851,853,862-869,871
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/resolve-schema.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-226
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 6,26,83,86-99,357-371
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-63
+packages/@n8n/workflow-sdk/src/lint/lint-workflow-source.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-61
+packages/@n8n/api-types/src/workflow-publish-blocked-details.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-17
+packages/cli/src/errors/http-error-serializers.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-2,29-32,35-39
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 129
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validator.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-694
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.publish.yml
+  s_558da949c3ee4b::t_ff58b736200e70 41-49
+packages/cli/src/credentials-overwrites.ts
+  s_558da949c3ee4b::t_ff58b736200e70 31-37,136
+packages/workflow/src/interfaces.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1246
+packages/workflow/test/errors/node.error.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 5,24-33
+  s_558da949c3ee4b::t_02f4a44c2139b2 34
+packages/cli/src/security-audit/security-audit.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 66,69
+packages/@n8n/db/src/entities/binary-data-file.ts
+  s_558da949c3ee4b::t_ff58b736200e70 6-11
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 141-186
+packages/cli/src/modules/agents/entities/agent-chat-attachment.entity.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-62
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_558da949c3ee4b::t_ff58b736200e70 6,94-115,189,218-225,232
+packages/nodes-base/nodes/RespondToWebhook/test/RespondToWebhook.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 12,85,122,142,163,184,213,236,257,277,303,327,340-376,389,555,580,608,635
+packages/nodes-base/nodes/Slack/test/SlackTrigger.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2,5,711-731
+  s_558da949c3ee4b::t_3b56db7f975679 732-733
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_558da949c3ee4b::t_ff58b736200e70 2,16-17,52,62-64,78-99,117-121,124-128,196,198-212,219,227,232,238-260,285,320-354,361-363,365,463-475
+packages/@n8n/api-types/src/__tests__/workflow-publish-blocked-details.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-56
+packages/@n8n/agents/src/runtime/loop/hydrate-file-parts.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-58
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 230,461
+packages/@n8n/agents/src/types/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 12,24-26
+  s_558da949c3ee4b::t_d89a02e8d033f1 27
+packages/@n8n/instance-ai/src/tools/workflows/workflow-validation-warnings.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-2,7-8,12-17,25,31,34-37
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3-4,19-41
+  s_558da949c3ee4b::t_9d98def844ecb5 42
+packages/@n8n/workflow-sdk/src/validation/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-6,8-15,22,24-28,30-37,39-47
+docs/generated/postgres-schema/public.agents.md
+  s_558da949c3ee4b::t_ff58b736200e70 10,51,94-106
+  s_558da949c3ee4b::t_395d4e420b60ab 107
+packages/cli/src/errors/webhook-response-too-large.error.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-13
+packages/@n8n/workflow-sdk/src/validation/node-port-resolvers/resolve-main-input-count.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-41
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_558da949c3ee4b::t_ff58b736200e70 326-328,336-338
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,43,58,155,836-842,845,894,902-904,972-976,993-997,2054-2058,2076-2088,2096-2098,2107
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_558da949c3ee4b::t_ff58b736200e70 167-191,198-205,207-215
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2,6-7,9,13,16-17,20,24-27,37,50,53-102,112-113,125-126,158-165,171,188-195,321-379
+  s_558da949c3ee4b::t_ea992cde787a16 380
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 10,1570-1584
+  s_558da949c3ee4b::t_7cad0214331574 1585
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_558da949c3ee4b::t_ff58b736200e70 8,22,96-97,355-357,512-514,593-596
+  s_558da949c3ee4b::t_906633e1500d48 597
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-helpers.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-152
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuSearchableContent.vue
+  s_558da949c3ee4b::t_ff58b736200e70 12,109,160,166-167,179
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 24,26,98-99,127,229,235,260-284
+  s_558da949c3ee4b::t_19228645e594ea 285-286
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/manifest.json
+  s_558da949c3ee4b::t_ff58b736200e70 112-129
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 8,66,80,88,104,159,643-645
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_558da949c3ee4b::t_ff58b736200e70 38-45,56
+docs/generated/sqlite-schema/binary_data.md
+  s_558da949c3ee4b::t_ff58b736200e70 9,32
+docs/generated/sqlite-schema/README.md
+  s_558da949c3ee4b::t_ff58b736200e70 11,18,140-141,321-334,407,421
+packages/cli/src/modules/agents/utils/inbound-attachments.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-71
+packages/workflow/src/errors/abstract/execution-base.error.ts
+  s_558da949c3ee4b::t_ff58b736200e70 10-13,16,40-41,58-63
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-58
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 180
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-218
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-3474
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1583-1585
+  s_558da949c3ee4b::t_6674839de2834a 1586-1593
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 20,40,616-619,634-638,670-673,682
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-validation-integration.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-606
+docs/generated/postgres-schema/public.agent_chat_attachments.md
+  s_558da949c3ee4b::t_ff58b736200e70 1-97
+.agents/skills/public-api/reference.md
+  s_558da949c3ee4b::t_ff58b736200e70 1-115
+docs/generated/sqlite-schema/project.md
+  s_558da949c3ee4b::t_ff58b736200e70 23,48,91-102
+  s_558da949c3ee4b::t_2d8b67169ebc2b 103-104
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/12.json
+  s_558da949c3ee4b::t_ff58b736200e70 1-49
+packages/@n8n/workflow-sdk/src/cli/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4,6,8-22,27,32-34,37-38
+packages/workflow/src/errors/abstract/node.error.ts
+  s_558da949c3ee4b::t_ff58b736200e70 82,84-86,106,118,129
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-2,4,6,8,12-23,31-81,87-88,94-101,103-109,112,120,128,136-144,155-196,198-329
+docs/generated/postgres-schema/README.md
+  s_558da949c3ee4b::t_ff58b736200e70 11,18,157-158,334-347,420
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_558da949c3ee4b::t_ff58b736200e70 26,549-554,556
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 967,975,1101,1114,1165,2600,2626-2629,4053-4064,4066,4068-4070,4072-4073,4076-4078,4080-4082,4223,4271,4279,4313,4884,5285,5291,5294-5297,5300-5304,5309-5311
+packages/cli/src/modules/agents/agents.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 16,38,246-253
+  s_558da949c3ee4b::t_54d8fb7349a8d4 254
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-publish-guard.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-32
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_558da949c3ee4b::t_ff58b736200e70 10,86-103,105,132-133,145,216,221
+docs/generated/sqlite-schema/agent_execution.md
+  s_558da949c3ee4b::t_ff58b736200e70 9,18,32,43-45,65,79
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_558da949c3ee4b::t_ff58b736200e70 56-64
+packages/cli/src/modules/mcp/__tests__/publish-workflow.tool.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 7,252-293,314
+packages/@n8n/agents/src/types/sdk/file-store.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-26
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 58-59,82,103,118,135,152,178,200,219,269,292,312,328
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-183
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_558da949c3ee4b::t_ff58b736200e70 67-77,95-97,99-102,222-244
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-135
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2,567-833
+  s_558da949c3ee4b::t_5b7ba023b604e6 834
+packages/@n8n/workflow-sdk/package.json
+  s_558da949c3ee4b::t_ff58b736200e70 61-62,89-91,106
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-source-compiler.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 190-197
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 65-71
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 293-314,363-381
+  s_558da949c3ee4b::t_aabbe7ebf1089b 382
+packages/cli/src/__tests__/credentials-overwrites.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 633-634,641,700,757,873-875,877-878,881,886,890,895
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_558da949c3ee4b::t_ff58b736200e70 280-285
+packages/cli/src/modules/agents/agent-test-chat.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3,16-19,37-39
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,8,27,33,35,112-158
+  s_558da949c3ee4b::t_799bcb3474f495 159
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 38,45,78,129,137,983-1081
+  s_558da949c3ee4b::t_a65a2bc5d4d2fd 1082
+packages/@n8n/config/src/configs/executions.config.ts
+  s_558da949c3ee4b::t_ff58b736200e70 5,167-177
+packages/cli/src/services/frontend.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 146
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_558da949c3ee4b::t_ff58b736200e70 99,113
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 257-259
+packages/@n8n/instance-ai/evaluations/data/discovery/workflow-builder-no-credential-ask.json
+  s_558da949c3ee4b::t_ff58b736200e70 27
+packages/@n8n/api-types/src/agents/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1
+packages/@n8n/db/src/migrations/common/1785255306000-CreateAgentChatAttachmentsTable.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-86
+packages/@n8n/workflow-sdk/src/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 162-168
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.activate.yml
+  s_558da949c3ee4b::t_ff58b736200e70 44-52
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 18,23-24,118,1433-1457
+  s_558da949c3ee4b::t_4c17316ac88401 1458
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 648-688,799-816,887-891
+packages/@n8n/eslint-config/src/rules/no-dynamic-import-template.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3-4,10,16-17,33-48
+  s_558da949c3ee4b::t_a8098572b03ab0 49
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/resolve-schema.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-519
+packages/cli/src/modules/agents/adapters/__tests__/agents-credential-provider.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-51
+packages/cli/src/modules/instance-ai/__tests__/run-debug-gating.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 21,54,67-70,93
+packages/@n8n/workflow-sdk/src/workflow-builder-plugins.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1086,1105
+packages/@n8n/workflow-sdk/src/cli/node-definition-dirs.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-88
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 16-18,26,28,32-33,37,41,43,107,376,1024,1078,1116,1132-1237,1302,1618,1733,1878,1998
+scripts/build-n8n.mjs
+  s_558da949c3ee4b::t_ff58b736200e70 221-226,228-234,237-241
+packages/cli/src/modules/agents/agents.module.ts
+  s_558da949c3ee4b::t_ff58b736200e70 131,164
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,3,7-25,31-37,39
+docs/generated/sqlite-schema/agent_chat_attachments.md
+  s_558da949c3ee4b::t_ff58b736200e70 1-99
+packages/@n8n/workflow-sdk/src/lint/code-node/python.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-42
+packages/@n8n/workflow-sdk/src/validation/input-index-validation.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-297
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 10,70
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-5,10,16,27-43,68
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-244
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.target-registry.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-222
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3-7,26-31,36-47,54-58,110-135,151,153,155,157,166-167
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-227
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 517-552
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4,7-8,872-967
+packages/cli/src/workflows/publication/workflow-publication-outbox-consumer.ts
+  s_558da949c3ee4b::t_ff58b736200e70 98-101
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 14,63-83
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4,14-16,34-39,132-171,188-191,228-248,251-252,264-301,306,332,365,383-388,390
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 44-48
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_558da949c3ee4b::t_ff58b736200e70 2,63-72,113-118,168-182
+  s_558da949c3ee4b::t_bd2c5196f7e412 183-184
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_558da949c3ee4b::t_ff58b736200e70 29,250,258,261,284,287,295,297,300
+.github/workflows/util-publish-api-schema.yml
+  s_558da949c3ee4b::t_ff58b736200e70 61-68
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 140-184
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 441-442
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 15,67-76
+  s_558da949c3ee4b::t_e605fd27d8c598 77-78
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-feature-gate.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-53
+packages/@n8n/agents/src/sdk/agent.ts
+  s_558da949c3ee4b::t_ff58b736200e70 53,172-173,370-375,1097
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 30,36,137,284,299,304,359
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 748-754
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 8,22,24,26,32-34,36,59-60,83-84,86,95-97,113,119-141,531-604
+  s_558da949c3ee4b::t_a11d4f082f31a1 605-606
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 25,142
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-2,8-59
+  s_558da949c3ee4b::t_4ada7682e714eb 60
+packages/@n8n/workflow-sdk/src/ast-interpreter/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 43
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,8,28,33-36,45-50,66-98
+packages/@n8n/workflow-sdk/src/lint/ast-walk.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-51
+packages/cli/src/modules/source-control.ee/types/import-result.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,8
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 35,38,58,101,106,132-225
+packages/cli/test/migration/1785255306000-create-agent-chat-attachments-table.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-201
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 326-375,715-785
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_558da949c3ee4b::t_ff58b736200e70 8-9,18-28,30,32-33,38,48-50,54-63,71-74,78-80,82-89,95-143,148-193,198,226-229,231-357,359,372,386-443
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvInlineControls.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 14-15
+packages/@n8n/workflow-sdk/src/validation/validate-workflow.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-1367
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_558da949c3ee4b::t_ff58b736200e70 8,66,70-109,158-163,165,168,171,275-276,286-294,296,298-303,305-309,315-318,396
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_558da949c3ee4b::t_ff58b736200e70 6,119,233-342
+  s_558da949c3ee4b::t_029566119fa588 343
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3-4,7-9,26-28,35-53
+  s_558da949c3ee4b::t_92b33ceb0b1969 54
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_558da949c3ee4b::t_ff58b736200e70 16,58-68,129-140,143-144,282
+packages/cli/package.json
+  s_558da949c3ee4b::t_ff58b736200e70 215
+packages/@n8n/config/test/config.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 540
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2,7,65-66,76,85,172-221
+  s_558da949c3ee4b::t_fb85acb0805817 222
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolCatalog.ts
+  s_558da949c3ee4b::t_ff58b736200e70 144,154
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_558da949c3ee4b::t_ff58b736200e70 455
+packages/core/src/errors/error-reporter.ts
+  s_558da949c3ee4b::t_ff58b736200e70 133-135,137,154
+packages/nodes-base/nodes/Wait/test/Wait.node.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4-9,111-127
+  s_558da949c3ee4b::t_1c9d72d8bb14eb 128-129
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 30,203,1090,1120,1156
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_558da949c3ee4b::t_ff58b736200e70 17-20,35-38,40,45-68
+  s_558da949c3ee4b::t_8923091042724a 69
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_558da949c3ee4b::t_ff58b736200e70 21,182,190-196,261
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpServer.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 173-277
+packages/@n8n/api-types/src/agents/dto.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4-10,133-151,153-184
+packages/cli/src/public-api/v1/__tests__/public-api-error-response.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 8,52-67
+  s_558da949c3ee4b::t_d532f49ef7c214 68-69
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.ts
+  s_558da949c3ee4b::t_ff58b736200e70 10-16,24
+packages/@n8n/workflow-sdk/src/lint/code-node/extract-snippets.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-129
+packages/@n8n/workflow-sdk/src/validation/output-index-validation.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-152
+packages/@n8n/agents/src/runtime/__tests__/crash-resume.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 17-18,335-459
+  s_558da949c3ee4b::t_c8db377138e2ca 460-461
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/validators/disconnected-node-validator.ts
+  s_558da949c3ee4b::t_ff58b736200e70 218
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 20,22,44-45,57,134,351-360,385,405,424,514,538-539,580
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_558da949c3ee4b::t_ff58b736200e70 19-20,32-47,433-438
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 207-239
+.agents/skills/public-api/SKILL.md
+  s_558da949c3ee4b::t_ff58b736200e70 4-7,12-54,58-59,67-164
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_558da949c3ee4b::t_ff58b736200e70 10,66,149,435,437-438,494-499,502,504-508,625-627
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_558da949c3ee4b::t_ff58b736200e70 251-256
+packages/@n8n/workflow-sdk/src/lint/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-26
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-66
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_558da949c3ee4b::t_ff58b736200e70 547-552
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 5-6
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  s_558da949c3ee4b::t_ff58b736200e70 1-188
+packages/cli/src/workflows/workflow.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 23,55,57,64-65,99,568-569,633-641,643,860-863
+  s_558da949c3ee4b::t_025f15418c2755 864-865
+packages/nodes-base/nodes/RespondToWebhook/RespondToWebhook.node.ts
+  s_558da949c3ee4b::t_ff58b736200e70 577
+packages/@n8n/agents/src/runtime/__tests__/file-parts.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-200
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/test-schema-setup.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-117
+packages/cli/src/auth/auth.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 42-45,65-71,112-118,335-340,347
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 5-6,10,31,42,50,362-521
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-feature-gate.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 8-9,23-26,28-34,36-39,44-47,49-50
+packages/nodes-base/nodes/Slack/test/v2/Slack.node.test.ts
+  s_558da949c3ee4b::t_7c511884e609a9 2518-2519
+  s_558da949c3ee4b::t_ff58b736200e70 4,2385-2517
+packages/frontend/editor-ui/src/features/agents/composables/useAgentModelCredentials.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3-5,37-47,93-95,97-106
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_558da949c3ee4b::t_ff58b736200e70 229-230,234,236
+docs/generated/postgres-schema/public.agent_execution.md
+  s_558da949c3ee4b::t_ff58b736200e70 7,60
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_558da949c3ee4b::t_ff58b736200e70 22
+packages/@n8n/api-types/src/schemas/source-controlled-file.schema.ts
+  s_558da949c3ee4b::t_ff58b736200e70 3-4,61
+packages/@n8n/workflow-sdk/src/lint/code-node/code-node.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-67
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 134-168
+packages/cli/src/scaling/scaling.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 10-11,34,356-357,360
+packages/cli/src/workflows/__tests__/workflow-publish-guard-proxy.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-25
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_558da949c3ee4b::t_ff58b736200e70 186,208-234
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_558da949c3ee4b::t_ff58b736200e70 328-332
+packages/@n8n/workflow-sdk/src/validation/validate-workflow-builder.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-80
+packages/@n8n/workflow-sdk/src/codegen/codegen-roundtrip.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 15,31-35,47-51,72,92,2925-2957,2959
+  s_558da949c3ee4b::t_de5911dc16b98e 2958,2960-2962
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_558da949c3ee4b::t_ff58b736200e70 42,287-288
+packages/cli/src/errors/response-errors/workflow-publish-blocked.error.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-19
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageAttachments.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-80
+packages/@n8n/workflow-sdk/src/validation/node-port-resolvers/resolve-main-output-count.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-41
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 360-364
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowPublishBlockedError.yml
+  s_558da949c3ee4b::t_ff58b736200e70 1-16
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_558da949c3ee4b::t_ff58b736200e70 14-15
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_558da949c3ee4b::t_ff58b736200e70 123-127
+  s_558da949c3ee4b::t_6ccdfc99fea11e 128-129
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 410-419
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 354,364-368
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_558da949c3ee4b::t_ff58b736200e70 139-144
+packages/@n8n/utils/src/json/json-size-exceeds.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-337
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolRefAdapter.ts
+  s_558da949c3ee4b::t_ff58b736200e70 158,166
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 2,38,210,632-633,655-663,791,802-807
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1,11-15,52,82-88,94-98,100,108,113,118-121,125,162-203
+  s_558da949c3ee4b::t_f846e67ef6429b 204
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_558da949c3ee4b::t_ff58b736200e70 115,289-290,501,591,645,647
+packages/@n8n/api-types/src/agents/agent-chat-attachments.constants.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-13
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_558da949c3ee4b::t_ff58b736200e70 7-10,136-155
+packages/@n8n/workflow-sdk/src/validation/node-parameter-schema/schema-helpers.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-64
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_558da949c3ee4b::t_ff58b736200e70 750
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 9-10
+packages/@n8n/workflow-sdk/src/validation/issue-severity.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-36
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 29,43,77-84,1976-2063
+packages/@n8n/instance-ai/src/types.ts
+  s_558da949c3ee4b::t_ff58b736200e70 902-903,989
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_558da949c3ee4b::t_ff58b736200e70 98
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 42,689-715
+  s_558da949c3ee4b::t_71897264ad985b 716
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-5,95-100,104-124
+  s_558da949c3ee4b::t_05081dc46d9734 125-126
+packages/cli/src/modules/agents/utils/__tests__/inbound-attachments.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-78
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_558da949c3ee4b::t_ff58b736200e70 5,20,54,104-107,191-194,196,206,241-244,353,389,450-456,523-526
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4-5,13-15,17-25,43-49,55-58,65-67,136-145,175,186,228-385,411-416,418-419,421-422,425-427,429-432,434-447,450,496-497,500
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 656,662-663,681,3295-3358,3379-3380,3428-3542
+packages/frontend/editor-ui/src/features/ai/components/CredentialSelectorModal.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 18
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-43
+packages/nodes-base/nodes/Slack/SlackTrigger.node.ts
+  s_558da949c3ee4b::t_ff58b736200e70 17,299,302,307,309,312
+packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json
+  s_558da949c3ee4b::t_ff58b736200e70 53-56
+  s_558da949c3ee4b::t_f30983104245dc 52
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 23,37,47,267,295,358-359,386,475,513-565,601,641,649-650,655-656,676,702,716-717,740-745,759,786-791,809,840-845,870-875,881-882,885,890-894,896,898,900-901,903-993,995,998,1000-1005,1012,1014-1016,1018-1020,1024,1026,1030,1036,1038,1047-1055,1059,1065,1068,1072-1073,1087,1089,1093,1100-1104,1110,1116-1120,1124-1125,1151-1155,1158,1160-1161,1163,1166-1172,1175-1178,1180-1189,1191,1193-1198,1350,1360,1436,1446,1480
+packages/cli/src/services/ai-gateway.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 351-401
+packages/@n8n/agents/src/index.ts
+  s_558da949c3ee4b::t_ff58b736200e70 213,226-227
+packages/cli/src/modules/agents/__tests__/agent-message-mapper.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-45
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_558da949c3ee4b::t_ff58b736200e70 582-583,588-590
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 76-77,118-120,176-178
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-validation-warnings.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 4,6-13,18-26
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.yml
+  s_558da949c3ee4b::t_ff58b736200e70 80-88
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 36,127
+packages/@n8n/workflow-sdk/src/lint/lint-workflow-source.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-60
+docs/generated/postgres-schema/public.project.md
+  s_558da949c3ee4b::t_ff58b736200e70 12,42,85-96
+  s_558da949c3ee4b::t_9f89652fe22220 97-98
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 27,32-33,262,273,281-284,322-325
+packages/cli/src/services/project.service.ee.ts
+  s_558da949c3ee4b::t_ff58b736200e70 133-138,248-254,267-272
+  s_558da949c3ee4b::t_ceb6d88c82bb95 273-278
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_558da949c3ee4b::t_ff58b736200e70 6-10,16,37-38,40-42,64-66,71,140,186-188,197-207,211,221-224,229,440-448,450-452,709-710,716,736-737
+packages/@n8n/node-engine-compatibility/eslint.config.mjs
+  s_558da949c3ee4b::t_ff58b736200e70 4-10
+packages/@n8n/workflow-sdk/src/lint/sdk/workflow-sdk-lint.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-394
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_558da949c3ee4b::t_ff58b736200e70 11-14,30-31,72,150,289
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 535-559
+packages/core/src/errors/__tests__/error-reporter.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 392-401
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolRefAdapter.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 344,356,367-383,391-396
+packages/@n8n/workflow-sdk/src/validation/node-port-resolvers/resolve-main-input-count.test.ts
+  s_558da949c3ee4b::t_ff58b736200e70 1-82
+packages/@n8n/workflow-sdk/test-fixtures/committed-workflows/11.json
+  s_558da949c3ee4b::t_ff58b736200e70 1-29
+pnpm-lock.yaml
+  s_558da949c3ee4b::t_9917dbc1e41dd9 3981-3983,4297-4299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "1f1214e74380ec2d6c96c70a85fc3d9fc459066b",
+  "prompts": {},
+  "sessions": {
+    "s_558da949c3ee4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7593febb-f1db-4d1b-b072-abcbeed8e6b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

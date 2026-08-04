@@ -1,0 +1,25 @@
+packages/nodes-base/utils/templated-auth.ts
+  s_3adc5e3b9c1c50::t_262818bd63526d 12-17,107-125
+  s_3adc5e3b9c1c50::t_800a0ce20d06b6 126
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_3adc5e3b9c1c50::t_262818bd63526d 99-100
+  s_3adc5e3b9c1c50::t_5c0e9a1c590d1f 4,6,98
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_3adc5e3b9c1c50::t_262818bd63526d 31,614
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "528be06e3190a4e817378de6d2ee028cc507b156",
+  "prompts": {},
+  "sessions": {
+    "s_3adc5e3b9c1c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-412f-7363-a731-817990745551",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

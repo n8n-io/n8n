@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTelegramAccessSettingsForm.test.ts
+  s_2aa332997f69a5::t_16eec74b11887d 88-99
+  s_2aa332997f69a5::t_09c8656f72680e 1-87,102-116
+  s_2aa332997f69a5::t_aff2f2cc7b1952 100-101
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2aa332997f69a5::t_04268488cbd2bb 7699-7701
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_2aa332997f69a5::t_16eec74b11887d 44,146-157,483-484
+packages/frontend/editor-ui/src/features/agents/utils/telegramAccessSettings.ts
+  s_2aa332997f69a5::t_04268488cbd2bb 1-6,29-38,44,50-52
+packages/frontend/editor-ui/src/features/agents/components/AgentTelegramAccessSettingsForm.vue
+  s_2aa332997f69a5::t_04268488cbd2bb 2-11,13-16,20,24-26,56-59,64,68,123-136,138,140-141,143-148,150-153,156
+  s_2aa332997f69a5::t_ab14f294099888 149,195
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_2aa332997f69a5::t_09c8656f72680e 1-5,34-62
+  s_2aa332997f69a5::t_6d94e3eb5bf68a 63
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_2aa332997f69a5::t_04268488cbd2bb 1,44-53,58
+  s_2aa332997f69a5::t_ab14f294099888 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7338fd26c41cd61aa041826b7564e5ee6ef8fe10",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
