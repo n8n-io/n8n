@@ -1802,51 +1802,19 @@ export const instanceAiEvalSeedDataTableSchema = z.object({
 
 export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
 
-/** Every `credential`/`credentials` entry holding a value, as dotted paths. */
-function credentialPathsIn(value: unknown, path: string): string[] {
-	if (Array.isArray(value)) {
-		return value.flatMap((entry, index) => credentialPathsIn(entry, `${path}[${index}]`));
-	}
-	if (typeof value !== 'object' || value === null) return [];
-	return Object.entries(value).flatMap(([key, entry]) => {
-		const here = `${path}.${key}`;
-		if (key === 'credential' || key === 'credentials') {
-			return entry === undefined || entry === '' ? [] : [here];
-		}
-		return credentialPathsIn(entry, here);
-	});
-}
-
 /** An agent a conversation seed references, recreated at its given id in the
  *  thread's project. `config`/`skills` are the shapes the agent's own config and
- *  skills routes return, so a seed can be authored from a fetched agent verbatim. */
-export const instanceAiEvalSeedAgentSchema = z
-	.object({
-		// ≥8 chars like a seed data table: the harness remaps this id by whole-document
-		// string replace before restoring.
-		id: z.string().min(8).max(64),
-		/** Carries the agent's display name as `config.name`. */
-		config: AgentJsonConfigSchema,
-		/** Skill bodies keyed by the ids `config.skills[].id` references. */
-		skills: z.record(agentSkillSchema).optional(),
-	})
-	.superRefine((agent, ctx) => {
-		// Credential ids belong to the instance the seed was authored on and resolve
-		// to nothing here, leaving an agent the builder may try to "fix" — graded as
-		// its behaviour. Refused rather than stripped, because the config schema
-		// REQUIRES `credential` on vector stores and episodic memory, so removing one
-		// yields an agent that fails validation. Enforced here so it binds both the
-		// case loader and the restore endpoint — the workflow path's node-credential
-		// strip is the equivalent, and a captured seed carries a real user's ids.
-		const paths = credentialPathsIn(agent.config, 'config');
-		if (paths.length > 0) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: ['config'],
-				message: `carries credential ids (${paths.join(', ')}) — remove them, and declare what the case should see in its own credentials[]`,
-			});
-		}
-	});
+ *  skills routes return, so a seed can be authored from a fetched agent verbatim.
+ *  Credential ids in the config are blanked on restore. */
+export const instanceAiEvalSeedAgentSchema = z.object({
+	// ≥8 chars like a seed data table: the harness remaps this id by whole-document
+	// string replace before restoring.
+	id: z.string().min(8).max(64),
+	/** Carries the agent's display name as `config.name`. */
+	config: AgentJsonConfigSchema,
+	/** Skill bodies keyed by the ids `config.skills[].id` references. */
+	skills: z.record(agentSkillSchema).optional(),
+});
 
 export type InstanceAiEvalSeedAgent = z.infer<typeof instanceAiEvalSeedAgentSchema>;
 

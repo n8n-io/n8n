@@ -289,6 +289,41 @@ describe('EvalThreadRestoreService', () => {
 			});
 		});
 
+		it('blanks credential ids, which address the instance the seed came from', async () => {
+			// The agent counterpart of stripping a seed workflow's node credentials.
+			// Emptied rather than removed: `credential` is a required FIELD on a vector
+			// store and its embedding, so deleting it would fail config validation.
+			const agent = seedAgent();
+			const config = {
+				...agent.config,
+				credential: 'cred-from-source-instance',
+				vectorStores: [
+					{
+						provider: 'pinecone' as const,
+						name: 'docs',
+						credential: 'cred-pinecone',
+						useWhen: 'searching docs',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'cred-openai' },
+						indexName: 'docs',
+					},
+				],
+			};
+
+			await service.restoreAgents([{ ...agent, config }], 'project-1');
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			expect(options?.schema).toMatchObject({
+				credential: '',
+				vectorStores: [{ credential: '', embedding: { credential: '' } }],
+			});
+			// Everything else survives the blanking untouched.
+			expect(options?.schema).toMatchObject({
+				name: 'Support Triage',
+				instructions: 'Triage inbound tickets.',
+				vectorStores: [{ indexName: 'docs', name: 'docs' }],
+			});
+		});
+
 		it('rolls back agents already created when a later one fails', async () => {
 			// A partial restore would leak an agent into the shared eval project, and the
 			// build fails anyway — the thread never gets the history that references it.

@@ -91,55 +91,6 @@ function makeAgentSeed(): ConversationSeed {
 	};
 }
 
-describe('ConversationSeedSchema seeded agents', () => {
-	const parseAgent = (config: Record<string, unknown>) =>
-		ConversationSeedSchema.safeParse({
-			messages: makeAgentSeed().messages,
-			agents: [{ id: AGENT_ID, config }],
-		});
-
-	const baseConfig = { name: 'Support Triage', model: '', instructions: 'Triage.' };
-
-	it('accepts a config with no credential ids', () => {
-		expect(parseAgent(baseConfig).success).toBe(true);
-	});
-
-	// Credential ids belong to the instance the seed came from. The workflow path
-	// strips node credentials server-side; an agent config can't be stripped (vector
-	// stores and episodic memory REQUIRE `credential`), so the seed is refused.
-	it('refuses a top-level credential id', () => {
-		const result = parseAgent({ ...baseConfig, credential: 'cred-from-source' });
-		expect(result.success).toBe(false);
-		expect(JSON.stringify(result.error?.issues)).toContain('config.credential');
-	});
-
-	it('refuses credential ids nested in a vector store, where stripping is impossible', () => {
-		// `credential` is REQUIRED on both the store and its embedding, so these are
-		// exactly the ids a strip could not remove without producing an invalid agent.
-		const result = parseAgent({
-			...baseConfig,
-			vectorStores: [
-				{
-					provider: 'pinecone',
-					name: 'docs',
-					credential: 'cred-pinecone',
-					useWhen: 'searching docs',
-					embedding: { model: 'openai/text-embedding-3-small', credential: 'cred-openai' },
-					indexName: 'docs',
-				},
-			],
-		});
-		expect(result.success).toBe(false);
-		const issues = JSON.stringify(result.error?.issues);
-		expect(issues).toContain('vectorStores[0].credential');
-		expect(issues).toContain('vectorStores[0].embedding.credential');
-	});
-
-	it('treats an empty credential as unset, which is what a draft agent has', () => {
-		expect(parseAgent({ ...baseConfig, credential: '' }).success).toBe(true);
-	});
-});
-
 describe('ConversationSeedSchema message envelope', () => {
 	const message = (over: Record<string, unknown> = {}) => ({
 		id: 'm1',
