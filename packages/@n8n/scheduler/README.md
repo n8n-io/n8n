@@ -228,11 +228,14 @@ that mixes a fast rule with a slow one will always see the fast rule's instant w
 and the slow rule's catch-up is structurally superseded. The owner is caught up once,
 at the freshest missed instant, not once per rule.
 
-Jobs group only when they agree on everything the surviving row carries into the
-recorded run: the owner, the task type, the payload, the attempt limit and the grace
+Jobs group only when they agree on the owner, the task type, the payload and the grace
 window. The Schedule Trigger writes the same values for every rule of a node, so its
-rules group; a provisioner whose sibling rows differ gets one catch-up run per
-distinct shape, which is not helpful but does not lose the difference.
+rules group; a provisioner whose sibling rows differ in one of them gets one catch-up
+run per distinct shape, which is not helpful but does not lose the difference. The
+attempt limit is deliberately not part of that: it is a delivery detail of the one
+surviving row, and a job's rows can legitimately disagree about it (the limit comes
+from configuration read at provisioning time, and existing rows are not rewritten when
+it changes), so keying on it would silently stop a node's rules grouping.
 
 ### The residual gaps
 
@@ -265,16 +268,20 @@ those residual gaps:
 
 - `n8n_scheduler_catch_ups_grouped_total`: catch-up runs grouping collapsed away
   because a sibling in the same pass won the group.
-- `n8n_scheduler_catch_ups_retained_total`: catch-up runs recorded under
-  `coalesce_owner`, i.e. the ones grouping kept. Most owners hold a single job, so
-  this counts ordinary single-rule catch-ups too; it is the number of catch-up fires
-  the policy produced, not a count of missed grouping opportunities.
+- `n8n_scheduler_catch_ups_retained_total`: catch-up runs recorded for a job that
+  carries an owner key and `coalesce_owner`, i.e. the ones grouping kept. Most owners
+  hold a single job, so this counts ordinary single-rule catch-ups too; it is the
+  number of catch-up fires the policy produced, not a count of missed grouping
+  opportunities.
 
 Read the two together: `grouped` rising against `retained` is grouping doing work.
 Per-pass traces carry the same two numbers (`n8n.scheduler.grouped_catch_ups`,
 `n8n.scheduler.retained_owner_catch_ups`) plus
-`n8n.scheduler.multi_member_owner_groups`, how many owners in that pass had more than
-one overdue job, which is the population grouping could apply to at all.
+`n8n.scheduler.multi_member_owner_groups`: how many groups in that pass held more than
+one member, where a group is everything jobs must agree on to group (owner, task type,
+payload, grace window) and a member is a job that planned a catch-up run on this pass.
+So one owner with two task types contributes 2. That is the population grouping could
+apply to at all.
 
 Poll triggers use `skip` on purpose: a poll asks "what changed since last time?", so
 replaying a missed poll adds nothing that the next poll will not pick up anyway. They

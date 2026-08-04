@@ -56,10 +56,11 @@ export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMig
 	/**
 	 * `misfirePolicy`, `misfireGraceSeconds` and `missedAfter` were added with raw
 	 * `ALTER TABLE`, which TypeORM never observed, so the `Table` it caches per query
-	 * runner can be stale. Every dialect reads that cache for the CHECK swap: SQLite
-	 * rebuilds the table from it and would silently drop those columns, Postgres looks
-	 * the CHECK up in it and would fail to find one it never saw added. `getTable()`
-	 * reloads the real schema from the database.
+	 * runner can be stale. SQLite rebuilds the table from that cache for the CHECK swap
+	 * and would silently drop those columns. What the cache holds at this point depends
+	 * on which unrelated migrations happened to run earlier on the same query runner, so
+	 * every dialect refreshes rather than depend on that. `getTable()` reloads the real
+	 * schema from the database.
 	 */
 	private async refreshTableMetadata({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.getTable(`${tablePrefix}${jobTable}`);

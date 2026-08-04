@@ -109,7 +109,7 @@ export class PrometheusSchedulerMetricsService
 
 		this.catchUpsRetained = new promClient.Counter({
 			name: `${prefix}scheduler_catch_ups_retained_total`,
-			help: "Total number of catch-up runs recorded under the 'coalesce_owner' misfire policy, i.e. the ones grouping kept. Most owners hold a single job, so this counts ordinary single-rule catch-ups too; compare it against scheduler_catch_ups_grouped_total rather than reading it alone.",
+			help: "Total number of catch-up runs recorded for a job that carries an owner key and the 'coalesce_owner' misfire policy, i.e. the ones grouping kept. Most owners hold a single job, so this counts ordinary single-rule catch-ups too; compare it against scheduler_catch_ups_grouped_total rather than reading it alone.",
 		});
 
 		this.occurrencesMissed = new promClient.Counter({

@@ -517,6 +517,26 @@ describe('materialize', () => {
 			expect(summary.multiMemberOwnerGroups).toBe(1);
 		});
 
+		it('completes the pass and records a catch-up run for a sibling whose payload cannot be serialised', async () => {
+			const tx = makeTx();
+			const cyclic: Record<string, unknown> = { rule: 'one' };
+			cyclic.self = cyclic;
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [{ ...makeSibling(1), payload: cyclic }, makeSibling(2), makeSibling(3)],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+			expect(rows.map(({ jobId }) => jobId)).toEqual([1, 2]);
+			expect(summary.groupedCatchUps).toBe(1);
+			expect(summary.retainedOwnerCatchUps).toBe(2);
+			expect(summary.multiMemberOwnerGroups).toBe(1);
+			expect(tx.advanceJobs.mock.calls[0][0]).toHaveLength(3);
+		});
+
 		it('reports the catch-up run of an owner with no sibling as retained, in no group', async () => {
 			const tx = makeTx();
 			tx.claimDueJobs.mockResolvedValue({

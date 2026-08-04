@@ -315,7 +315,7 @@ describe('coalesceSiblingCatchUps', () => {
 		expect(byId(result, 2).plan.catchUpAt).toEqual(secondsBefore(NOW, 20));
 	});
 
-	it('keeps both catch-up runs when siblings carry different attempt limits', () => {
+	it('groups siblings that differ only in their attempt limits', () => {
 		const planned = [
 			makeMember({ id: 1, maxAttempts: 1 }, secondsBefore(NOW, 30)),
 			makeMember({ id: 2, maxAttempts: 3 }, secondsBefore(NOW, 20)),
@@ -323,7 +323,26 @@ describe('coalesceSiblingCatchUps', () => {
 
 		const result = coalesceSiblingCatchUps(planned);
 
-		expect(result.filter(({ plan }) => plan.catchUpAt !== null)).toHaveLength(2);
+		expect(byId(result, 1).plan.catchUpAt).toBeNull();
+		expect(byId(result, 1).plan.groupedCatchUps).toBe(1);
+		expect(byId(result, 2).plan.catchUpAt).toEqual(secondsBefore(NOW, 20));
+	});
+
+	it('keeps the catch-up run of a sibling whose payload cannot be serialised', () => {
+		const cyclic: Record<string, unknown> = { rule: 'one' };
+		cyclic.self = cyclic;
+		const planned = [
+			makeMember({ id: 1, payload: cyclic }, secondsBefore(NOW, 30)),
+			makeMember({ id: 2 }, secondsBefore(NOW, 20)),
+			makeMember({ id: 3 }, secondsBefore(NOW, 10)),
+		];
+
+		const result = coalesceSiblingCatchUps(planned);
+
+		expect(byId(result, 1).plan.catchUpAt).toEqual(secondsBefore(NOW, 30));
+		expect(byId(result, 1).plan.groupedCatchUps).toBe(0);
+		expect(byId(result, 2).plan.catchUpAt).toBeNull();
+		expect(byId(result, 3).plan.catchUpAt).toEqual(secondsBefore(NOW, 10));
 	});
 
 	it('keeps both catch-up runs when siblings carry different grace windows', () => {

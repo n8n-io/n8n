@@ -58,6 +58,8 @@ function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
 		if (catchUpAt === null) continue;
 
 		const key = groupKey(entry.job);
+		if (key === null) continue;
+
 		const member: GroupMember = { entry, catchUpAt: catchUpAt.getTime() };
 		const members = groups.get(key);
 		if (members === undefined) groups.set(key, [member]);
@@ -67,14 +69,17 @@ function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
 	return groups;
 }
 
-function groupKey(job: ScheduledJob): string {
-	return JSON.stringify([
-		job.ownerKey,
-		job.taskType,
-		job.maxAttempts,
-		job.misfireGraceSeconds,
-		stableShape(job.payload),
-	]);
+function groupKey(job: ScheduledJob): string | null {
+	try {
+		return JSON.stringify([
+			job.ownerKey,
+			job.taskType,
+			job.misfireGraceSeconds,
+			stableShape(job.payload),
+		]);
+	} catch {
+		return null;
+	}
 }
 
 function stableShape(value: unknown): unknown {
