@@ -10,7 +10,12 @@ import {
 } from './apiResponses';
 import { credentials } from './credentials';
 
-describe('MondayCom V2 > Item Workflows', () => {
+// Skipped until version 2 is registered in MondayCom.node.ts (the final PR of
+// the V2 series): the harness resolves nodes through the versioned wrapper, so
+// typeVersion 2 workflows cannot run before then. To run locally, register
+// version 2 in the wrapper and replace `describe.skip` with `describe`.
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('MondayCom V2 > Item Workflows', () => {
 	beforeAll(() => {
 		// Every GraphQL operation POSTs to the same endpoint, so the mocks
 		// are matched by the query/mutation each operation sends.
