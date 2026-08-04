@@ -194,9 +194,154 @@ describe('get-workflow-versions-diff MCP tool', () => {
 
 			expect(result.structuredContent).toMatchObject({
 				success: true,
-				connectionsAdded: [{ from: 'B', to: 'A', type: 'main' }],
-				connectionsRemoved: [{ from: 'A', to: 'B', type: 'main' }],
+				connectionsAdded: [{ from: 'B', to: 'A', type: 'main', fromOutput: 0, toInput: 0 }],
+				connectionsRemoved: [{ from: 'A', to: 'B', type: 'main', fromOutput: 0, toInput: 0 }],
 			});
+		});
+
+		describe('node identity in the connection diff', () => {
+			const trigger = makeNode({ id: 'node-t', name: 'Trigger' });
+			const slack = makeNode({ id: 'node-s', name: 'Slack' });
+			// Trigger -> <middle> -> Slack. Connections are keyed by node name, which
+			// is exactly what makes a rename look like a rewire.
+			const chainVia = (middle: string) => ({
+				[trigger.name]: { main: [[{ node: middle, type: 'main', index: 0 }]] },
+				[middle]: { main: [[{ node: slack.name, type: 'main', index: 0 }]] },
+			});
+			const triggerStraightToSlack = {
+				[trigger.name]: { main: [[{ node: slack.name, type: 'main', index: 0 }]] },
+			};
+
+			const diffVersions = async (
+				fromNodes: INode[],
+				toNodes: INode[],
+				fromConnections: object,
+				toConnections: object,
+			) => {
+				mockVersions(fromNodes, toNodes, fromConnections, toConnections);
+				const result = await buildTool().handler(
+					{ workflowId: 'wf-1', fromVersionId: 'v1', toVersionId: 'v2' },
+					callContext,
+				);
+				return result.structuredContent as {
+					nodesModified: Array<Record<string, unknown>>;
+					connectionsAdded: Array<Record<string, unknown>>;
+					connectionsRemoved: Array<Record<string, unknown>>;
+				};
+			};
+
+			test('a rename alone does not change the connection diff', async () => {
+				const content = await diffVersions(
+					[trigger, makeNode({ id: 'node-f', name: 'Fetch' }), slack],
+					[trigger, makeNode({ id: 'node-f', name: 'Get Data' }), slack],
+					chainVia('Fetch'),
+					chainVia('Get Data'),
+				);
+
+				// The wiring is unchanged, so only the node itself is reported.
+				expect(content.connectionsAdded).toEqual([]);
+				expect(content.connectionsRemoved).toEqual([]);
+				expect(content.nodesModified).toMatchObject([
+					{
+						id: 'node-f',
+						name: 'Get Data',
+						changes: { name: { __old: 'Fetch', __new: 'Get Data' } },
+					},
+				]);
+			});
+
+			test('a rewire in the same version as a rename still reports the rewire', async () => {
+				const content = await diffVersions(
+					[trigger, makeNode({ id: 'node-f', name: 'Fetch' }), slack],
+					[trigger, makeNode({ id: 'node-f', name: 'Get Data' }), slack],
+					chainVia('Fetch'),
+					triggerStraightToSlack,
+				);
+
+				expect(content.connectionsAdded).toMatchObject([{ from: 'Trigger', to: 'Slack' }]);
+				// Reported under the renamed node's current name, which still resolves.
+				expect(content.connectionsRemoved).toMatchObject([
+					{ from: 'Trigger', to: 'Get Data' },
+					{ from: 'Get Data', to: 'Slack' },
+				]);
+			});
+
+			test('a removed node keeps its base-version name on removed connections', async () => {
+				const content = await diffVersions(
+					[trigger, makeNode({ id: 'node-f', name: 'Fetch' }), slack],
+					[trigger, slack],
+					chainVia('Fetch'),
+					{},
+				);
+
+				expect(content.connectionsRemoved).toMatchObject([
+					{ from: 'Trigger', to: 'Fetch' },
+					{ from: 'Fetch', to: 'Slack' },
+				]);
+			});
+
+			test('empty output slots do not register as connection changes', async () => {
+				const ifNode = makeNode({ id: 'node-if', name: 'If', type: 'n8n-nodes-base.if' });
+				const connections = {
+					[ifNode.name]: { main: [null, [{ node: slack.name, type: 'main', index: 0 }]] },
+				};
+
+				const content = await diffVersions([ifNode, slack], [ifNode, slack], connections, {
+					...connections,
+				});
+
+				expect(content.connectionsAdded).toEqual([]);
+				expect(content.connectionsRemoved).toEqual([]);
+			});
+		});
+
+		test('distinguishes a rewire between two outputs of the same node', async () => {
+			const ifNode = makeNode({ id: 'node-if', name: 'If', type: 'n8n-nodes-base.if' });
+			const slack = makeNode({ id: 'node-s', name: 'Slack' });
+			const target = [{ node: slack.name, type: 'main', index: 0 }];
+
+			mockVersions(
+				[ifNode, slack],
+				[ifNode, slack],
+				{ [ifNode.name]: { main: [target, []] } },
+				{ [ifNode.name]: { main: [[], target] } },
+			);
+
+			const tool = buildTool();
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', fromVersionId: 'v1', toVersionId: 'v2' },
+				callContext,
+			);
+
+			// Without the output index both entries would be identical, hiding the
+			// move from the true branch to the false branch.
+			expect(result.structuredContent).toMatchObject({
+				connectionsAdded: [{ from: 'If', to: 'Slack', fromOutput: 1 }],
+				connectionsRemoved: [{ from: 'If', to: 'Slack', fromOutput: 0 }],
+			});
+		});
+
+		test.each([
+			['disabled', { disabled: true }],
+			['onError', { onError: 'continueRegularOutput' as const }],
+			['retryOnFail', { retryOnFail: true }],
+			['executeOnce', { executeOnce: true }],
+			['alwaysOutputData', { alwaysOutputData: true }],
+			['notes', { notes: 'handle rate limits here' }],
+		])('reports a change to the %s node setting', async (property, override) => {
+			mockVersions([makeNode({})], [makeNode(override)]);
+
+			const tool = buildTool();
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', fromVersionId: 'v1', toVersionId: 'v2' },
+				callContext,
+			);
+
+			const content = result.structuredContent as {
+				nodesModified: Array<{ changes: Record<string, unknown> }>;
+			};
+			expect(content.nodesModified).toHaveLength(1);
+			expect(content.nodesModified[0].changes).toHaveProperty(`${property}__added`);
 		});
 
 		test('reduces credentials to id and name in the delta', async () => {
