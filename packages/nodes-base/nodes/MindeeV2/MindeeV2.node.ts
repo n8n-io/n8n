@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import FormData from 'form-data';
 import {
 	type IDataObject,
@@ -64,7 +65,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: { show: { resource: ['document'] } },
 				options: [
 					{
-						name: 'Document Data Extraction',
+						name: '✨ Document Data Extraction',
 						value: 'extraction',
 						description:
 							'Extract data from a document file and return the result.' +
@@ -74,7 +75,7 @@ export class MindeeV2 implements INodeType {
 					{
 						name: 'Document Classification',
 						value: 'classification',
-						description: 'Classify documents using your Mindee classification utility model.',
+						description: 'Classify documents using your Mindee classification utility model',
 						action: 'Classify a document',
 					},
 					{
@@ -85,17 +86,17 @@ export class MindeeV2 implements INodeType {
 						action: 'Crop a document',
 					},
 					{
-						name: 'Raw Text Reading (OCR)',
-						value: 'ocr',
-						description: 'Extract raw document text using your Mindee OCR model.',
-						action: 'Extract all text from a document',
-					},
-					{
 						name: 'Document Splitting Operation',
 						value: 'split',
 						description:
 							'Split document pages using your Mindee split model. Can be chained with an Extraction model.',
 						action: 'Extract sub-documents from a multi-page document.',
+					},
+					{
+						name: 'Raw Text Reading (OCR)',
+						value: 'ocr',
+						description: 'Extract raw document text using your Mindee OCR model',
+						action: 'Extract all text from a document',
 					},
 				],
 				default: 'extraction',
@@ -277,11 +278,11 @@ export class MindeeV2 implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		for (let i = 0; i < items.length; i++) {
+			let result: IDataObject[] | undefined;
 			try {
-				let result: IDataObject[] | undefined = undefined;
 				const resource = this.getNodeParameter('resource', i);
 				const operation = this.getNodeParameter('operation', i);
-				const slug = operation as string;
+				const slug = operation;
 
 				if (resource === 'document') {
 					const params = readUIParams(this, i);
@@ -289,6 +290,7 @@ export class MindeeV2 implements INodeType {
 					await buildRequestBody(this, i, params, form);
 					const headers = {
 						...form.getHeaders?.(),
+						// eslint-disable-next-line @typescript-eslint/naming-convention
 						'User-Agent': `mindee-api-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
 					} as IDataObject;
 					const enqueue = await mindeeApiRequest.call(
@@ -302,13 +304,6 @@ export class MindeeV2 implements INodeType {
 					const pollingUrl = extractPollingUrl(this, enqueue);
 					result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
 				}
-				if (!result) {
-					throw new NodeOperationError(this.getNode(), 'Unknown operation', {
-						description: 'No operation matched the provided operation',
-					});
-				}
-
-				returnData.push.apply(returnData, Array.isArray(result) ? result : [result]);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const errorMessage =
@@ -320,6 +315,19 @@ export class MindeeV2 implements INodeType {
 				}
 				throw error;
 			}
+
+			if (!result) {
+				const error = new NodeOperationError(this.getNode(), 'Unknown operation', {
+					description: 'No operation matched the provided operation',
+				});
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
+			}
+
+			returnData.push.apply(returnData, Array.isArray(result) ? result : [result]);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

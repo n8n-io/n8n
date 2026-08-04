@@ -3,10 +3,12 @@ import nock, { type Scope } from 'nock';
 import { readFileSync } from 'node:fs';
 import path from 'path';
 
+/* eslint-disable import-x/extensions */
 import complete from './fixtures/complete.json';
 import models from './fixtures/models.json';
 import okProcessed from './fixtures/okProcessed.json';
 import okProcessing from './fixtures/okProcessing.json';
+/* eslint-enable import-x/extensions */
 
 const credentials = { mindeeApiKey: { apiKey: 'mindeeApiKey' } };
 const filePath = path.join(__dirname, 'fixtures/invoice.pdf');
@@ -14,10 +16,12 @@ const filePath = path.join(__dirname, 'fixtures/invoice.pdf');
 function setupNocks(): Scope[] {
 	const bytes = readFileSync(filePath);
 
+	/* eslint-disable @typescript-eslint/naming-convention */
 	const fileScope = nock('https://example.com').get('/invoice.pdf').reply(200, bytes, {
 		'Content-Type': 'application/pdf',
 		'Content-Length': bytes.length.toString(),
 	});
+	/* eslint-enable @typescript-eslint/naming-convention */
 
 	const mindee = nock('https://api-v2.mindee.net/v2');
 	mindee.get('/search/models').optionally().reply(200, models);
@@ -28,6 +32,7 @@ function setupNocks(): Scope[] {
 		.reply(200, okProcessing)
 		.get('/jobs/12345678-1234-1234-1234-123456789ABC')
 		.reply(302, okProcessed, {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Location: 'https://api-v2.mindee.net/v2/inferences/12345678-1234-1234-1234-123456789ABC',
 		});
 	mindee.get('/inferences/12345678-1234-1234-1234-123456789ABC').reply(200, complete);
