@@ -34,6 +34,7 @@ import type { License } from '@/license';
 import { OtelConfig } from '@/modules/otel/otel.config';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -3729,6 +3730,25 @@ describe('TelemetryEventRelay', () => {
 				is_approved: true,
 				is_authorized: false,
 			});
+		});
+	});
+
+	describe('runner events', () => {
+		it('should track on `runner-disconnected` event', () => {
+			const event: RelayEventMap['runner-disconnected'] = {
+				reason: 'failed-heartbeat-check',
+				mode: 'internal',
+			};
+
+			eventService.emit('runner-disconnected', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED,
+				{
+					reason: 'failed-heartbeat-check',
+					mode: 'internal',
+				},
+			);
 		});
 	});
 });
