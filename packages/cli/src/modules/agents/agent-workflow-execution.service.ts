@@ -307,6 +307,18 @@ export class AgentWorkflowExecutionService {
 			streamError = normalizedError;
 		}
 
+		if (streamError && recording && !agentExecutionId) {
+			try {
+				agentExecutionId = await this.agentExecutionService.startExecution(recording, startedAt);
+			} catch (error) {
+				this.logger.warn('Failed to start agent execution recording from workflow', {
+					agentId: recording.agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
 		return {
 			recorder,
 			messageRecord: recorder.getMessageRecord(),

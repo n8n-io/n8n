@@ -221,6 +221,26 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 	});
 
+	it('records workflow stream setup failures', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockRejectedValue(new Error('stream setup failed'));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecution.mockResolvedValue('fallback-execution-1');
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow('stream setup failed');
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'fallback-execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ error: 'stream setup failed', finishReason: 'error' }),
+			}),
+		);
+	});
+
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
 		const { service, agentRepository, reconstructionService, agentRunTracingService } =
 			makeService();
