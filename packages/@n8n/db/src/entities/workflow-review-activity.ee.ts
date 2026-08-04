@@ -13,8 +13,8 @@ export type WorkflowReviewActivityType =
 	| 'published';
 
 /**
- * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` holds an
- * incoming CASCADE FK, so the rebuild takes the comment rows with it: any later migration
+ * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` references it
+ * with ON DELETE CASCADE, so the rebuild takes the comment rows with it: any later migration
  * touching these columns needs a `sqlite/` subclass with `withFKsDisabled`.
  */
 @Entity({ name: 'workflow_review_activity' })
@@ -22,9 +22,9 @@ export type WorkflowReviewActivityType =
 export class WorkflowReviewActivity extends WithCreatedAt {
 	/**
 	 * Autoincrement int, not the usual nanoid: the feed orders by id and pages on it as a cursor.
-	 * On SQLite `id` is a plain rowid alias with no AUTOINCREMENT, so ids are reused once the top
-	 * rows are deleted — which deleting a review request does. A cursor must therefore never be
-	 * trusted across a deletion, and reads must be scoped by `workflowReviewRequestId`.
+	 * On SQLite this is a plain rowid alias, so ids are reused once the top rows are deleted, which
+	 * deleting a review request does. Never trust a cursor across a deletion; scope reads by
+	 * `workflowReviewRequestId`.
 	 */
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -39,19 +39,13 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	typeVersion: number;
 
 	/**
-	 * Immutable per-type detail. Ids only: user references belong in `createdById`, and a type
-	 * needing a second actor gets its own `SET NULL` column rather than an id in here — a user id
-	 * stored in `data` survives user deletion untouched.
+	 * Immutable per-type detail. Ids only: a user id stored here would survive user deletion,
+	 * unlike `createdById`, so a type needing another actor gets its own `SET NULL` column.
 	 */
 	@JsonColumn({ nullable: true })
 	data: IDataObject | null;
 
-	/**
-	 * Who produced this entry. For `type = 'comment'` it is a denormalised copy of the first
-	 * message's author, so it must be written in the same transaction as that message; the message
-	 * row stays authoritative for the author-only edit check. If the two drift, the feed renders
-	 * one name above a first message written by someone else.
-	 */
+	/** Who produced this entry. For a comment thread, whoever opened it. */
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 }
