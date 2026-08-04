@@ -1,4 +1,5 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { PollerConfig } from '@n8n/config';
 import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import {
 	ExecutionEntity,
@@ -20,6 +21,7 @@ describe('poll cursor atomicity', () => {
 	let executionRepository: ExecutionRepository;
 	let pollerStateRepository: PollerStateRepository;
 	let transactionRunner: TransactionRunner;
+	let pollerConfig: PollerConfig;
 	let workflow: WorkflowEntity;
 
 	beforeAll(async () => {
@@ -29,11 +31,14 @@ describe('poll cursor atomicity', () => {
 		executionRepository = Container.get(ExecutionRepository);
 		pollerStateRepository = Container.get(PollerStateRepository);
 		transactionRunner = Container.get(TransactionRunner);
+		pollerConfig = Container.get(PollerConfig);
 	});
 
 	beforeEach(async () => {
 		await testDb.truncate(['PollerState', 'ExecutionEntity', 'WorkflowEntity']);
 		workflow = await createWorkflow();
+		// Atomicity is flag-gated; enable it for these tests.
+		pollerConfig.durableCursorsEnabled = true;
 	});
 
 	afterAll(async () => {
@@ -61,7 +66,7 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('commits the cursor advance and the execution row together', async () => {
-		await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', { lastItemId: 'a' });
+		await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 
 		const { executionId } = await pollCursorService.commitWithExecution({
 			workflowId: workflow.id,
@@ -80,7 +85,7 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('leaves the cursor unadvanced and writes no execution when the insert fails', async () => {
-		await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', { lastItemId: 'a' });
+		await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 
 		const key = 'wf:node-1:t1';
 		// A dispatched execution already holds this key, so the insert violates the
@@ -107,14 +112,12 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('persists a standalone cursor advance with no execution row', async () => {
-		await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', { lastItemId: 'a' });
+		await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
 
 		await pollCursorService.commitCursorOnly({
 			workflowId: workflow.id,
 			nodeId,
-			nodeName: 'Poll Node',
 			cursor: { lastItemId: 'b' },
-			nodeStaticData: {},
 		});
 
 		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
@@ -124,16 +127,51 @@ describe('poll cursor atomicity', () => {
 	});
 
 	it('seeds the cursor from the given blob on the first read and keeps it afterwards', async () => {
-		const seeded = await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', {
+		const seeded = await pollCursorService.resolveCursor(workflow.id, nodeId, {
 			lastItemId: 'from-static-data',
 		});
 
-		expect(seeded).toEqual({ lastItemId: 'from-static-data' });
+		expect(seeded).toEqual({ migrated: true, cursor: { lastItemId: 'from-static-data' } });
 		expect(
-			await pollCursorService.readCursor(workflow.id, nodeId, 'Poll Node', {
-				lastItemId: 'ignored',
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'ignored' }),
+		).toEqual({ migrated: true, cursor: { lastItemId: 'from-static-data' } });
+	});
+
+	it('does not create a row for a node that has never migrated when the flag is off', async () => {
+		pollerConfig.durableCursorsEnabled = false;
+
+		const resolved = await pollCursorService.resolveCursor(workflow.id, nodeId, {
+			lastItemId: 'from-static-data',
+		});
+
+		expect(resolved).toEqual({ migrated: false });
+		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toBeNull();
+	});
+
+	it('still advances the cursor when the execution insert fails and the flag is off, for a node that already migrated', async () => {
+		// Migrate the row while the flag is on, then flip it off: reads still prefer
+		// the row, and the flag only narrows to write atomicity from here on.
+		await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
+		pollerConfig.durableCursorsEnabled = false;
+
+		const key = 'wf:node-1:t1';
+		await executionPersistence.create({ ...buildPayload(key), status: 'running' });
+
+		await expect(
+			pollCursorService.commitWithExecution({
+				workflowId: workflow.id,
+				nodeId,
+				cursor: { lastItemId: 'b' },
+				payload: buildPayload(key),
 			}),
-		).toEqual({ lastItemId: 'from-static-data' });
+		).rejects.toThrow();
+
+		// Unlike the flag-on case above, the advance is not rolled back: with the flag
+		// off the two writes are independent, reopening the old race as a known cost
+		// of the kill switch rather than a fallback to static data.
+		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
+			lastItemId: 'b',
+		});
 	});
 
 	describe('ExecutionRepository.runInTransaction', () => {
