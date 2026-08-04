@@ -22,14 +22,19 @@ import {
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
 	remapSeedWorkflowIds,
-	SEED_WORKFLOW_NAME_RE,
+	SEED_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import type { CaseSeed } from './schema';
-import { buildSeededTablesNote, dedupeScenarioSeedTables } from './seed-tables';
+import {
+	buildSeededTablesNote,
+	dedupeScenarioSeedTables,
+	evictLeftoverSeedTables,
+	uniquifyScenarioTableNames,
+} from './seed-tables';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
@@ -242,6 +247,9 @@ export interface BuildWorkflowConfig {
 	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
+	/** Data tables present before any build on this lane — the only ones the
+	 *  scenario-table eviction may delete. Omitted = no eviction. */
+	preRunDataTableIds?: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	/** Optional " [lane N/M]" suffix appended to the scenario log line. */
@@ -439,18 +447,30 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		}
 
 		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
-		// under their EXACT declared names BEFORE the build turn, so the agent
-		// discovers the real table (Data Table list/schema) and binds its real id —
-		// the production-faithful flow where the user's table pre-exists. Rows are
-		// reset+seeded per scenario (reseedScenarioTables) because a build-time
-		// self-verification execution can mutate them. The created ids fold into
-		// restoredDataTableIds so the outer catch and cleanupBuild already cover them
-		// (a build failure still cleans them up); a create failure is a harness
-		// problem, so flag seedingFailed → the CLI attributes framework_issue.
+		// BEFORE the build turn, so the agent discovers the real table (Data Table
+		// list/schema) and binds its real id — the production-faithful flow where the
+		// user's table pre-exists. Rows are reset+seeded per scenario
+		// (reseedScenarioTables) because a build-time self-verification execution can
+		// mutate them. The created ids fold into restoredDataTableIds so the outer
+		// catch and cleanupBuild already cover them (a build failure still cleans them
+		// up); a create failure is a harness problem, so flag seedingFailed → the CLI
+		// attributes framework_issue.
 		try {
 			const scenarioSeedTables = dedupeScenarioSeedTables(config.executionScenarios ?? [], logger);
 			if (scenarioSeedTables.length > 0) {
-				const schemasOnly = scenarioSeedTables.map((table) => ({ ...table, rows: undefined }));
+				await evictLeftoverSeedTables(
+					client,
+					scenarioSeedTables,
+					config.preRunDataTableIds,
+					logger,
+					config.laneTag,
+				);
+				// `uniquifyNames: false` stays — the harness mints the suffix so it knows
+				// which name to give the agent below.
+				const schemasOnly = uniquifyScenarioTableNames(scenarioSeedTables).map((table) => ({
+					...table,
+					rows: undefined,
+				}));
 				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, {
 					uniquifyNames: false,
 				});
@@ -461,11 +481,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						`Pre-seeding created ${String(dataTableIds.length)} data table(s) but the case declares ${String(scenarioSeedTables.length)}; cannot map names to ids.`,
 					);
 				}
+				// Keyed by the DECLARED name — what a scenario writes.
 				scenarioSeedTables.forEach((table, index) => {
 					scenarioTableIdsByName[table.name] = dataTableIds[index];
 				});
 				restoredDataTableIds = [...restoredDataTableIds, ...dataTableIds];
-				scenarioSeedTablesNote = buildSeededTablesNote(scenarioSeedTables);
+				// The agent looks up the name that exists, not the declared one.
+				scenarioSeedTablesNote = buildSeededTablesNote(schemasOnly);
 				logger.info(
 					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${config.laneTag ?? ''}`,
 				);
@@ -700,9 +722,7 @@ async function evictLeftoverSeedWorkflows(
 	laneTag?: string,
 ): Promise<void> {
 	const baseNames = new Set(
-		seed.workflows.map(
-			(workflow) => SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name,
-		),
+		seed.workflows.map((workflow) => SEED_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name),
 	);
 	if (baseNames.size === 0) return;
 	try {
@@ -721,7 +741,7 @@ async function evictLeftoverSeedWorkflows(
 			// what was already lying there — a previous run's `--keep-workflows`
 			// leftover, or a crashed run that skipped its own cleanup.
 			if (!preRunWorkflowIds.has(workflow.id)) return false;
-			const base = SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1];
+			const base = SEED_NAME_RE.exec(workflow.name)?.[1];
 			return base !== undefined && baseNames.has(base);
 		});
 		// Per-workflow, because best-effort has to mean each one: letting a single
