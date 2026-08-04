@@ -169,6 +169,8 @@ export {
 	SecretsProviderConnection,
 };
 
+export type { UserType } from './user';
+
 export const entities = {
 	AgentEvalDataset,
 	AgentEvalRun,

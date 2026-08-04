@@ -42,6 +42,7 @@ export enum VIEWS {
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	SETTINGS = 'Settings',
 	USERS_SETTINGS = 'UsersSettings',
+	SERVICE_ACCOUNTS_SETTINGS = 'ServiceAccountsSettings',
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	SECURITY_SETTINGS = 'SecuritySettings',

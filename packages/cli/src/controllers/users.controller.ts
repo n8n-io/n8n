@@ -151,8 +151,11 @@ export class UsersController {
 	@Get('/:id/password-reset-link')
 	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: req.params.id },
+		// `type: 'user'` keeps the human and service-account id namespaces separate:
+		// an SA id is indistinguishable from a nonexistent one, so this is not an
+		// existence oracle. Service accounts have no password to reset.
+		const user = await this.userRepository.findOne({
+			where: { id: req.params.id, type: 'user' },
 			relations: ['role'],
 		});
 		if (!user) {
@@ -176,7 +179,12 @@ export class UsersController {
 		const inviterId = req.user.id;
 		const inviteeId = req.params.id;
 
-		const targetUser = await this.userRepository.findOne({ where: { id: inviteeId } });
+		// `type: 'user'` because this mints a 90-day signup JWT: a token naming a
+		// service account would carry it into `resolve-signup-token` and
+		// `invitations/accept`, which would turn it into a loginable human.
+		const targetUser = await this.userRepository.findOne({
+			where: { id: inviteeId, type: 'user' },
+		});
 
 		if (!targetUser) {
 			throw new NotFoundError('User to generate invite link for not found');
@@ -234,8 +242,9 @@ export class UsersController {
 
 		const { transferId } = req.query;
 
+		// Service accounts are deleted through `DELETE /rest/service-accounts/:id`.
 		const userToDelete = await this.userRepository.findOne({
-			where: { id: idToDelete },
+			where: { id: idToDelete, type: 'user' },
 			relations: ['role'],
 		});
 
@@ -357,8 +366,9 @@ export class UsersController {
 			throw new ForbiddenError(CANNOT_CHANGE_OWN_ROLE);
 		}
 
+		// Service-account roles are changed through `PATCH /rest/service-accounts/:id/role`.
 		const targetUser = await this.userRepository.findOne({
-			where: { id },
+			where: { id, type: 'user' },
 			relations: ['role'],
 		});
 		if (targetUser === null) {

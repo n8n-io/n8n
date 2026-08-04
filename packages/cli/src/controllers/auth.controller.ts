@@ -1,4 +1,9 @@
-import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import {
+	impersonationActorSchema,
+	LoginRequestDto,
+	ResolveSignupTokenQueryDto,
+	type ImpersonationActor,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
@@ -81,6 +86,7 @@ export class AuthController {
 		}
 
 		const preliminaryUser = await emailHandler.handleLogin(emailOrLdapLoginId, password);
+		this.rejectServiceAccountLogin(preliminaryUser, emailOrLdapLoginId);
 		this.validateSsoRestrictions(preliminaryUser, emailOrLdapLoginId);
 
 		const { user, usedAuthenticationMethod } = await this.authenticateWithPassword(
@@ -89,6 +95,9 @@ export class AuthController {
 			password,
 			preliminaryUser,
 		);
+		// Also checked after the alternative (LDAP/SSO) handler, which resolves its
+		// own user rather than reusing `preliminaryUser`.
+		this.rejectServiceAccountLogin(user, emailOrLdapLoginId);
 
 		await this.validateMfa(user, mfaCode, mfaRecoveryCode);
 
@@ -104,6 +113,23 @@ export class AuthController {
 			withScopes: true,
 			mfaAuthenticated: user.mfaEnabled,
 		});
+	}
+
+	/**
+	 * A service account can never log in interactively. The bcrypt comparison
+	 * against a null password already fails, but only incidentally — this makes
+	 * it explicit, and covers handlers that resolve a user without a password.
+	 * Reuses the generic wrong-credentials message so it is not an existence oracle.
+	 */
+	private rejectServiceAccountLogin(user: User | undefined, userEmail: string): void {
+		if (user?.type !== 'serviceAccount') return;
+
+		this.eventService.emit('user-login-failed', {
+			authenticationMethod: 'email',
+			userEmail,
+			reason: 'wrong credentials',
+		});
+		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 
 	private validateEmailFormat(authMethod: AuthProviderType, emailOrLdapLoginId: string): void {
@@ -189,15 +215,29 @@ export class AuthController {
 	@Get('/login', {
 		allowSkipMFA: true,
 	})
-	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
+	async currentUser(
+		req: AuthenticatedRequest,
+	): Promise<PublicUser & { impersonating?: boolean; actor?: ImpersonationActor }> {
 		// We need auth identities to determine signInType in toPublic method
 		const user = await this.userService.findUserWithAuthIdentities(req.user.id);
 
-		return await this.userService.toPublic(user, {
+		const publicUser = await this.userService.toPublic(user, {
 			posthog: this.postHog,
 			withScopes: true,
 			mfaAuthenticated: req.authInfo?.usedMfa,
 		});
+
+		// `authInfo.actor` is server-side only, so without this a page refresh would
+		// lose the impersonation banner and the operator would have no way to find the
+		// exit short of clearing cookies. Required, not cosmetic.
+		const actor = req.authInfo?.actor;
+		if (!actor) return publicUser;
+
+		return {
+			...publicUser,
+			impersonating: true,
+			actor: impersonationActorSchema.parse(actor),
+		};
 	}
 
 	/** Validate invite token to enable invitee to set up their account */
@@ -248,7 +288,9 @@ export class AuthController {
 		}
 
 		const invitee = users.find((user) => user.id === inviteeId);
-		if (!invitee || invitee.password) {
+		// `type !== 'user'` because a service account is passwordless: without it an
+		// SA id in a signup token would reach the account-setup screen.
+		if (!invitee || invitee.password || invitee.type !== 'user') {
 			this.logger.error('Invalid invite URL - invitee already setup', {
 				inviterId,
 				inviteeId,

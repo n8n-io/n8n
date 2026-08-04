@@ -401,6 +401,7 @@ describe('SettingsUsersView', () => {
 					expand: ['projectRelations'],
 					filter: {
 						fullText: '',
+						type: 'user',
 					},
 				});
 			});
@@ -420,6 +421,7 @@ describe('SettingsUsersView', () => {
 					expand: ['projectRelations'],
 					filter: {
 						fullText: '@#$%^&*()',
+						type: 'user',
 					},
 				});
 			});
@@ -447,6 +449,7 @@ describe('SettingsUsersView', () => {
 					expand: ['projectRelations'],
 					filter: {
 						fullText: 'test',
+						type: 'user',
 					},
 				});
 			});
@@ -466,6 +469,7 @@ describe('SettingsUsersView', () => {
 					expand: ['projectRelations'],
 					filter: {
 						fullText: '', // Should be trimmed to empty string
+						type: 'user',
 					},
 				});
 			});
@@ -492,6 +496,7 @@ describe('SettingsUsersView', () => {
 					expand: ['projectRelations'],
 					filter: {
 						fullText: '',
+						type: 'user',
 					},
 				});
 			});
@@ -995,6 +1000,7 @@ describe('SettingsUsersView', () => {
 				expand: ['projectRelations'],
 				filter: {
 					fullText: '',
+					type: 'user',
 				},
 			});
 		});
@@ -1015,6 +1021,7 @@ describe('SettingsUsersView', () => {
 				expand: ['projectRelations'],
 				filter: {
 					fullText: '',
+					type: 'user',
 				},
 			});
 		});
@@ -1035,6 +1042,7 @@ describe('SettingsUsersView', () => {
 				expand: ['projectRelations'],
 				filter: {
 					fullText: '',
+					type: 'user',
 				},
 			});
 		});
@@ -1060,6 +1068,7 @@ describe('SettingsUsersView', () => {
 				expand: ['projectRelations'],
 				filter: {
 					fullText: '',
+					type: 'user',
 				},
 			});
 		});
@@ -1080,6 +1089,7 @@ describe('SettingsUsersView', () => {
 				expand: ['projectRelations'],
 				filter: {
 					fullText: '',
+					type: 'user',
 				},
 			});
 		});
@@ -1212,6 +1222,7 @@ describe('SettingsUsersView', () => {
 				expand: ['projectRelations'],
 				filter: {
 					fullText: '',
+					type: 'user',
 				},
 			});
 		});
@@ -1235,6 +1246,7 @@ describe('SettingsUsersView', () => {
 					expand: ['projectRelations'],
 					filter: {
 						fullText: 'abc',
+						type: 'user',
 					},
 				});
 			});

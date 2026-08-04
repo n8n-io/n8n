@@ -25,7 +25,7 @@ import type { Project } from './project';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
-import type { User } from './user';
+import type { User, UserType } from './user';
 import type { WorkflowEntity } from './workflow-entity';
 import type { WorkflowHistory } from './workflow-history';
 
@@ -145,6 +145,7 @@ export interface PublicUser {
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
 	isManagedByEnv?: boolean;
+	type?: UserType;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -440,6 +441,17 @@ export type AuthenticationInformation = {
 	usedMfa: boolean;
 	// Indicates the user is logged in but hasn't completed required MFA enrollment
 	mfaEnrollmentRequired?: boolean;
+	/**
+	 * Set only on impersonated sessions. `req.user` is the service account and is
+	 * the principal for **authorization**; this is the human to attribute the
+	 * action to, and the identity to restore when impersonation ends.
+	 *
+	 * Note the polarity is the inverse of `TokenGrant.actor`, where the actor
+	 * speaks *for* a subject with its own authority. Here the human deliberately
+	 * drops their authority and adopts the service account's, so the subject
+	 * wins. Never derive a principal from this field.
+	 */
+	actor?: User;
 };
 
 /**

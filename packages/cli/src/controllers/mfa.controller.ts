@@ -10,6 +10,7 @@ import {
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
+import { assertNotServiceAccount } from '@/auth/service-account.guard';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -66,6 +67,8 @@ export class MFAController {
 		allowSkipMFA: true,
 	})
 	async canEnableMFA(req: AuthenticatedRequest) {
+		assertNotServiceAccount(req.user, 'enrol in MFA');
+
 		await this.externalHooks.run('mfa.beforeSetup', [req.user]);
 		return;
 	}
@@ -74,6 +77,10 @@ export class MFAController {
 		allowSkipMFA: true,
 	})
 	async getQRCode(req: AuthenticatedRequest) {
+		// An impersonated session must not be able to enrol MFA on the service
+		// account: nobody holds the secret afterwards, so the SA becomes unusable.
+		assertNotServiceAccount(req.user, 'enrol in MFA');
+
 		const { email, id, mfaEnabled } = req.user;
 
 		if (mfaEnabled)
@@ -117,6 +124,8 @@ export class MFAController {
 		keyedRateLimit: createUserKeyedRateLimiter({}),
 	})
 	async activateMFA(req: MFA.Activate, res: Response) {
+		assertNotServiceAccount(req.user, 'enrol in MFA');
+
 		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
 
@@ -202,6 +211,8 @@ export class MFAController {
 		keyedRateLimit: createUserKeyedRateLimiter({}),
 	})
 	async verifyMFA(req: MFA.Verify) {
+		assertNotServiceAccount(req.user, 'enrol in MFA');
+
 		const { id } = req.user;
 		const { mfaCode } = req.body;
 

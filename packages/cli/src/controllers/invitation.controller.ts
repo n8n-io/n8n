@@ -7,6 +7,7 @@ import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
+import { assertNotServiceAccount } from '@/auth/service-account.guard';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -118,6 +119,11 @@ export class InvitationController {
 		}
 
 		const invitee = users.find((user) => user.id === inviteeId) as User;
+
+		// Must precede the password check: a service account has `password === null`,
+		// so it would pass and be handed a name, a bcrypt password and a cookie —
+		// converting it into a loginable human that keeps its role and credentials.
+		assertNotServiceAccount(invitee, 'accept invitations');
 
 		if (invitee.password) {
 			this.logger.debug(

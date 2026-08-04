@@ -29,6 +29,10 @@ export const RESOURCES = {
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
+	// Deliberately not reused from `user:*`: `user:list` is granted to members,
+	// `user:create` carries seat/invite/email semantics, and impersonation is a
+	// privilege-escalation primitive that must be grantable and revocable alone.
+	serviceAccount: [...DEFAULT_OPERATIONS, 'impersonate'] as const,
 	sourceControl: ['pull', 'push', 'manage'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [

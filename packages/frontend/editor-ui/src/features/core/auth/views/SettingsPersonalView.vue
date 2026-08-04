@@ -14,6 +14,7 @@ import {
 	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useImpersonationStore } from '@/features/settings/serviceAccounts/impersonation.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -83,6 +84,7 @@ const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 ]);
 
 const uiStore = useUIStore();
+const impersonationStore = useImpersonationStore();
 const usersStore = useUsersStore();
 const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
@@ -96,6 +98,15 @@ const currentUser = computed((): IUser | null => {
 const isManagedByEnv = computed((): boolean => {
 	return currentUser.value?.isManagedByEnv ?? false;
 });
+
+/**
+ * While acting as a service account, `currentUser` is the service account. Its
+ * name, email, password and 2FA are all managed through the service-account
+ * endpoints, and the backend rejects `PATCH /me` for it outright — so present it
+ * as read-only rather than letting the form fail on submit. The menu entry stays
+ * visible so the sidebar doesn't look broken.
+ */
+const isServiceAccount = computed((): boolean => impersonationStore.isImpersonating);
 
 const isLdapCurrentAuthMethod = computed((): boolean => {
 	return ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
@@ -133,6 +144,7 @@ const canConfigureMfa = computed((): boolean => {
 });
 
 const isSecuritySectionVisible = computed((): boolean => {
+	if (isServiceAccount.value) return false;
 	return !isManagedByEnv.value && (isPersonalSecurityEnabled.value || canConfigureMfa.value);
 });
 
@@ -198,7 +210,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'given-name',
 				capitalize: true,
-				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value || isServiceAccount.value,
 			},
 		},
 		{
@@ -210,7 +222,7 @@ onMounted(() => {
 				required: true,
 				autocomplete: 'family-name',
 				capitalize: true,
-				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
+				disabled: isManagedByEnv.value || isExternalAuthEnabled.value || isServiceAccount.value,
 			},
 		},
 		{
@@ -223,7 +235,8 @@ onMounted(() => {
 				validationRules: [{ name: 'VALID_EMAIL' }],
 				autocomplete: 'email',
 				capitalize: true,
-				disabled: isManagedByEnv.value || !isPersonalSecurityEnabled.value,
+				disabled:
+					isManagedByEnv.value || !isPersonalSecurityEnabled.value || isServiceAccount.value,
 			},
 		},
 	];
@@ -405,6 +418,11 @@ onBeforeUnmount(() => {
 				v-if="isManagedByEnv"
 				:content="i18n.baseText('settings.personal.managedByEnv')"
 				data-test-id="managed-by-env-notice"
+			/>
+			<N8nNotice
+				v-if="isServiceAccount"
+				:content="i18n.baseText('impersonation.personal.blocked')"
+				data-test-id="service-account-notice"
 			/>
 			<div data-test-id="personal-data-form">
 				<N8nFormInputs

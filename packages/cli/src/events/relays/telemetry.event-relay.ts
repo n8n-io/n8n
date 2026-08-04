@@ -539,11 +539,14 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private publicApiKeyCreated(event: RelayEventMap['public-api-key-created']) {
-		const { user, publicApi } = event;
+		const { user, publicApi, actorId } = event;
 
 		this.telemetry.track('API key created', {
 			user_id: user.id,
 			public_api: publicApi,
+			// Present when the key was created while impersonating a service account:
+			// `user_id` is then the SA and this is the human who did it.
+			...(actorId && { actor_user_id: actorId }),
 		});
 	}
 

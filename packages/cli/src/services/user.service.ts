@@ -264,6 +264,12 @@ export class UserService {
 
 		const existingUsers = await this.userRepository.findManyByEmail(emails);
 
+		// Reject explicitly rather than silently no-op: an SA is passwordless, so it
+		// would otherwise be classed as a pending invitee and re-invited.
+		if (existingUsers.some((user) => user.type === 'serviceAccount')) {
+			throw new BadRequestError('Service accounts cannot be invited');
+		}
+
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
 		const toCreateUsers = invitations.filter(({ email }) => !existUsersEmails.includes(email));

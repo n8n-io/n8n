@@ -144,7 +144,8 @@ describe('UsersController', () => {
 			const result = await controller.generateInviteLink(request, mock<Response>());
 
 			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { id: inviteeId },
+				// Scoped to humans: a service-account id must not yield a signup token.
+				where: { id: inviteeId, type: 'user' },
 			});
 			expect(jwtService.sign).toHaveBeenCalledWith(
 				{
@@ -181,7 +182,8 @@ describe('UsersController', () => {
 
 			expect(userRepository.findOne).toHaveBeenCalledTimes(2);
 			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { id: inviteeId },
+				// Scoped to humans: a service-account id must not yield a signup token.
+				where: { id: inviteeId, type: 'user' },
 			});
 			expect(jwtService.sign).not.toHaveBeenCalled();
 			expect(urlService.getInstanceBaseUrl).not.toHaveBeenCalled();

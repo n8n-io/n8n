@@ -86,7 +86,11 @@ export class PasswordResetController {
 
 			// User should just be able to reset password if one is already present
 			const user = await this.userRepository.findNonShellUser(email);
-			if (!user) {
+			// `findNonShellUser` already excludes service accounts via its
+			// `password IS NOT NULL` filter; this makes the intent explicit and
+			// survives that filter changing. Silent return, not a 403, so the
+			// endpoint stays free of an existence oracle.
+			if (!user || user.type !== 'user') {
 				this.logger.debug('No user found in the system');
 				return;
 			}
@@ -174,7 +178,9 @@ export class PasswordResetController {
 	) {
 		const { token } = payload;
 		const user = await this.authService.resolvePasswordResetToken(token);
-		if (!user) throw new NotFoundError('');
+		// A service account has no password to reset. Reject as not-found rather
+		// than forbidden so the token can't be used to probe for SA ids.
+		if (!user || user.type !== 'user') throw new NotFoundError('');
 
 		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
@@ -203,7 +209,7 @@ export class PasswordResetController {
 		const { token, password, mfaCode } = payload;
 
 		const user = await this.authService.resolvePasswordResetToken(token);
-		if (!user) throw new NotFoundError('');
+		if (!user || user.type !== 'user') throw new NotFoundError('');
 
 		if (user.mfaEnabled) {
 			if (!mfaCode) throw new BadRequestError('If MFA enabled, mfaCode is required.');

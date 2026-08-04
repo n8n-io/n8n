@@ -56,6 +56,7 @@ type EndpointGroup =
 	| 'workflowDependencies'
 	| 'encryption-keys'
 	| 'workflow-reviews'
+	| 'service-accounts'
 	| 'test-webhooks';
 
 type ModuleName =
@@ -71,7 +72,8 @@ type ModuleName =
 	| 'redaction'
 	| 'source-control'
 	| 'token-exchange'
-	| 'workflow-reviews';
+	| 'workflow-reviews'
+	| 'service-accounts';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

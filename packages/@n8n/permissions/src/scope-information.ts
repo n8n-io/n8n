@@ -128,4 +128,29 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
+	'serviceAccount:create': {
+		displayName: 'Create Service Account',
+		description: 'Allows creating new service accounts.',
+	},
+	'serviceAccount:read': {
+		displayName: 'Read Service Account',
+		description: 'Allows reading service account details.',
+	},
+	'serviceAccount:update': {
+		displayName: 'Update Service Account',
+		description: 'Allows renaming service accounts and changing their role.',
+	},
+	'serviceAccount:delete': {
+		displayName: 'Delete Service Account',
+		description: 'Allows deleting service accounts and the resources they own.',
+	},
+	'serviceAccount:list': {
+		displayName: 'List Service Accounts',
+		description: 'Allows listing the service accounts on this instance.',
+	},
+	'serviceAccount:impersonate': {
+		displayName: 'Act as Service Account',
+		description:
+			'Allows acting as a service account, gaining all of its permissions and access to everything it owns, including creating API keys on its behalf. Grant with care.',
+	},
 };

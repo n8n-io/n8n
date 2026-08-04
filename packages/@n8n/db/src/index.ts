@@ -13,6 +13,7 @@ export {
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
 export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
 export { generateHostInstanceId } from './utils/generators';
+export { isServiceAccount } from './utils/is-service-account';
 export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';

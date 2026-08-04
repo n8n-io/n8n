@@ -51,7 +51,13 @@ export class ApiKeysController {
 
 		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUser(req.user, body);
 
-		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
+		this.eventService.emit('public-api-key-created', {
+			user: req.user,
+			publicApi: false,
+			// Set while impersonating: `req.user` is the service account that owns the
+			// key, so this is the only record of who actually created it.
+			actorId: req.authInfo?.actor?.id,
+		});
 
 		return {
 			...newApiKey,

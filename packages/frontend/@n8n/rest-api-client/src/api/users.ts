@@ -1,4 +1,5 @@
 import type {
+	ImpersonationActor,
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
@@ -72,6 +73,14 @@ export interface IUserResponse extends User {
 
 export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
+	/**
+	 * Set when this session is acting as a service account. `id` and the rest of
+	 * this response then describe the **service account**; `actor` is the human
+	 * behind it. Typed here rather than on `userDetailSchema` because it can only
+	 * ever be present on the current user.
+	 */
+	impersonating?: boolean;
+	actor?: ImpersonationActor;
 }
 
 export interface IUser extends IUserResponse {

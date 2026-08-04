@@ -4,6 +4,16 @@ import { Brackets, DataSource, Repository } from '@n8n/typeorm';
 
 import { Project } from '../entities';
 
+/**
+ * SQL predicate for "this personal project's owner has finished setting up".
+ *
+ * A service account is passwordless but fully active, so a bare
+ * `creator.password IS NOT NULL` would filter its personal project out of the
+ * project list and sort it last. Kept as one constant so the three usages —
+ * two filters and the sort order — can't drift apart.
+ */
+const CREATOR_IS_ACTIVATED = "(creator.password IS NOT NULL OR creator.type = 'serviceAccount')";
+
 @Service()
 export class ProjectRepository extends Repository<Project> {
 	constructor(dataSource: DataSource) {
@@ -140,7 +150,7 @@ export class ProjectRepository extends Repository<Project> {
 				new Brackets((qb) => {
 					qb.where('p.type != :personalTypeFilter', {
 						personalTypeFilter: 'personal',
-					}).orWhere('creator.password IS NOT NULL');
+					}).orWhere(CREATOR_IS_ACTIVATED);
 				}),
 			);
 		}
@@ -178,7 +188,7 @@ export class ProjectRepository extends Repository<Project> {
 				new Brackets((qb) => {
 					qb.where('project.type != :personalTypeFilter', {
 						personalTypeFilter: 'personal',
-					}).orWhere('creator.password IS NOT NULL');
+					}).orWhere(CREATOR_IS_ACTIVATED);
 				}),
 			);
 		}
@@ -192,7 +202,7 @@ export class ProjectRepository extends Repository<Project> {
 	private applyActivationOrder(query: SelectQueryBuilder<Project>): void {
 		query
 			.addSelect(
-				"CASE WHEN project.type != 'personal' THEN 0 WHEN creator.password IS NOT NULL THEN 1 ELSE 2 END",
+				`CASE WHEN project.type != 'personal' THEN 0 WHEN ${CREATOR_IS_ACTIVATED} THEN 1 ELSE 2 END`,
 				'activation_order',
 			)
 			.orderBy('activation_order', 'ASC')
