@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { ResponseError } from '@n8n/rest-api-client';
 import { describe, expect, it, vi } from 'vitest';
 
 import AgentChannelSlackManagedSetup from '../components/AgentChannelSlackManagedSetup.vue';
@@ -7,10 +8,12 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-function mountSetup(workspaceCount: number, managerCredentialCount = 1) {
+function mountSetup(workspaceCount: number, managerCredentialCount = 1, installError?: Error) {
 	const connectManager = vi.fn().mockResolvedValue(true);
 	const editManager = vi.fn();
-	const installApp = vi.fn().mockResolvedValue(true);
+	const installApp = installError
+		? vi.fn().mockRejectedValue(installError)
+		: vi.fn().mockResolvedValue(true);
 	const workspaces = Array.from({ length: workspaceCount }, (_, index) => ({
 		id: `T${index + 1}`,
 		name: `Workspace ${index + 1}`,
@@ -87,6 +90,24 @@ describe('AgentChannelSlackManagedSetup', () => {
 		const { wrapper } = mountSetup(2);
 
 		expect(wrapper.find('[data-testid="slack-managed-workspace-select"]').exists()).toBe(true);
+	});
+
+	it('shows the Slack app limit message when installation exceeds service limits', async () => {
+		const error = new ResponseError('Slack could not install the Slack app', {
+			httpStatusCode: 400,
+			meta: {
+				integrationType: 'slack',
+				code: 'service_limits_exceeded',
+			},
+		});
+		const { wrapper } = mountSetup(1, 1, error);
+
+		await wrapper.get('[data-testid="slack-managed-install"]').trigger('click');
+
+		expect(wrapper.get('[data-testid="slack-managed-install-service-limit-error"]').text()).toBe(
+			'agents.channels.slack.managed.install.serviceLimitsExceeded',
+		);
+		expect(wrapper.text()).not.toContain('agents.channels.slack.managed.install.error');
 	});
 
 	it('uses the credential dropdown new-credential action to connect another workspace', async () => {

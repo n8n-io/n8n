@@ -7835,6 +7835,7 @@
 	"agents.channels.slack.managed.install.button": "Install app",
 	"agents.channels.slack.managed.install.connectFirst": "Connect to Slack to choose a workspace.",
 	"agents.channels.slack.managed.install.error": "The Slack app couldn't be installed. Check Slack approval settings and try again.",
+	"agents.channels.slack.managed.install.serviceLimitsExceeded": "This Slack workspace has reached its app limit. Upgrade your Slack plan, then try again.",
 	"agents.channels.slack.managed.workspace.placeholder": "Select a workspace",
 	"agents.channels.slack.managed.settings.name": "Name",
 	"agents.channels.slack.managed.settings.description": "Description",

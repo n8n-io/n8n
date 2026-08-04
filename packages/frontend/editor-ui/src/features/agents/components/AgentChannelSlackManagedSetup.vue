@@ -17,6 +17,7 @@ import { computed, ref, watch } from 'vue';
 import CredentialsDropdown, {
 	type CredentialOption,
 } from '@/features/credentials/components/CredentialPicker/CredentialsDropdown.vue';
+import { getSlackApiErrorCode } from '../channels/slack/api';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,7 +41,7 @@ const selectedCredentialId = ref('');
 const selectedWorkspaceId = ref('');
 const connecting = ref(false);
 const installing = ref(false);
-const error = ref<'connect' | 'install' | null>(null);
+const error = ref<'connect' | 'install' | 'service_limits_exceeded' | null>(null);
 
 const steps = computed(() => [
 	{
@@ -112,8 +113,11 @@ async function install() {
 	try {
 		const installed = await props.installApp(selectedCredentialId.value, selectedWorkspaceId.value);
 		if (!installed) error.value = 'install';
-	} catch {
-		error.value = 'install';
+	} catch (installError) {
+		error.value =
+			getSlackApiErrorCode(installError) === 'service_limits_exceeded'
+				? 'service_limits_exceeded'
+				: 'install';
 	} finally {
 		installing.value = false;
 	}
@@ -218,6 +222,14 @@ async function install() {
 						</N8nText>
 						<N8nText v-if="error === 'install'" size="small" :class="$style.error">
 							{{ i18n.baseText('agents.channels.slack.managed.install.error') }}
+						</N8nText>
+						<N8nText
+							v-else-if="error === 'service_limits_exceeded'"
+							size="small"
+							:class="$style.error"
+							data-testid="slack-managed-install-service-limit-error"
+						>
+							{{ i18n.baseText('agents.channels.slack.managed.install.serviceLimitsExceeded') }}
 						</N8nText>
 					</template>
 				</div>

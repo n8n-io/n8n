@@ -1,10 +1,8 @@
 import type {
-	SlackApiErrorMeta,
 	SlackManagedAppSettings,
 	SlackManagedAppSettingsErrorCode,
 	SlackManagedSetupState,
 } from '@n8n/api-types';
-import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch, type Ref } from 'vue';
 
@@ -20,6 +18,7 @@ import type { AgentChannelRuntime, AgentChannelRuntimeContext } from '../types';
 import {
 	createSlackAgentApp,
 	createSlackManagerCredential,
+	getSlackApiErrorCode,
 	getSlackManagedAppSettings,
 	getSlackManagedSetup,
 	installSlackManagedApp,
@@ -28,17 +27,6 @@ import {
 
 const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
 const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackManagerOAuth2Api';
-
-function isSlackApiErrorMeta(value: unknown): value is SlackApiErrorMeta {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'integrationType' in value &&
-		value.integrationType === 'slack' &&
-		'code' in value &&
-		typeof value.code === 'string'
-	);
-}
 
 export interface SlackChannelRuntime extends AgentChannelRuntime {
 	setup: Ref<SlackManagedSetupState>;
@@ -263,9 +251,9 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 				update,
 			);
 		} catch (error) {
-			const meta = error instanceof ResponseError ? error.meta : undefined;
-			if (isSlackApiErrorMeta(meta) && meta.code === 'service_limits_exceeded') {
-				settingsSaveError.value = meta.code;
+			const code = getSlackApiErrorCode(error);
+			if (code === 'service_limits_exceeded') {
+				settingsSaveError.value = code;
 			}
 			throw error;
 		} finally {
