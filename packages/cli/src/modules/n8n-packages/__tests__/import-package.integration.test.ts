@@ -2500,6 +2500,63 @@ describe('Package import workflow publishing policy', () => {
 		// No (re)activation was triggered for the imported draft.
 		expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 	});
+
+	const webhookNodes = (id: string, path: string) => [
+		{
+			id,
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: { path },
+		},
+	];
+
+	it('"publish-all" publishes one of two workflows sharing a webhook path and reports the other as failed', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-webhook-a',
+					name: 'Webhook A',
+					isPublished: false,
+					nodes: webhookNodes('wh-a', '/test'),
+				}),
+				serializedWorkflow({
+					id: 'wf-webhook-b',
+					name: 'Webhook B',
+					isPublished: false,
+					nodes: webhookNodes('wh-b', '/test'),
+				}),
+			]),
+			workflowConflictPolicy: 'fail',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows).toHaveLength(2);
+		expect(
+			result.workflows.map(({ status, publishing, activeVersionId }) => ({
+				status,
+				publishing,
+				activeVersionId,
+			})),
+		).toEqual(
+			expect.arrayContaining([
+				{
+					status: 'created',
+					publishing: { state: 'published' },
+					activeVersionId: expect.any(String),
+				},
+				{
+					status: 'created',
+					publishing: { state: 'failed', error: 'There is a conflict with one of the webhooks.' },
+					activeVersionId: null,
+				},
+			]),
+		);
+	});
 });
 
 describe('Package import missing node type mode', () => {

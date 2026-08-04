@@ -310,6 +310,40 @@ export class WebhookService {
 	}
 
 	/**
+	 * `method path` for each webhook the given nodes would register, to compare two workflows
+	 * before either is published. Expression paths are skipped, since resolving one needs a live
+	 * workflow. So are paths holding `:`, which {@link getWebhookPath} prefixes with the node's
+	 * own webhook id, so no two nodes can claim the same one.
+	 */
+	getStaticWebhookKeys(nodes: INode[]): string[] {
+		return nodes.flatMap((node) => {
+			if (node.disabled === true) return [];
+
+			const { description } = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!description.webhooks?.length) return [];
+
+			// Resolved, not raw: a webhook on its default method carries no `httpMethod`.
+			const parameters =
+				NodeHelpers.getNodeParameters(
+					description.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+					description,
+				) ?? {};
+
+			const { path, httpMethod } = parameters;
+			if (typeof path !== 'string' || path.startsWith('=') || path.includes(':')) return [];
+
+			return [httpMethod]
+				.flat()
+				.filter((method): method is string => typeof method === 'string')
+				.map((method) => `${method} ${path}`);
+		});
+	}
+
+	/**
 	 * Returns all the webhooks which should be created for the given node.
 	 */
 	getNodeWebhooks(
