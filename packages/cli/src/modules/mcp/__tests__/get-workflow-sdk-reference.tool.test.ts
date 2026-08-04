@@ -52,6 +52,25 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 		expect(content).toContain('output: [{}]');
 	});
 
+	describe('SDK language rules in the full reference', () => {
+		test('includes the language reference', () => {
+			const content = getSdkReferenceContent('all');
+
+			expect(content).toContain('restricted subset of TypeScript');
+			expect(content).toContain('## Forbidden constructs');
+			expect(content).toContain('## Global objects are unavailable');
+			expect(content).toContain('## Where to put runtime logic');
+		});
+
+		test('embeds the groups docs exactly once when the flag is on, never when off', () => {
+			const withGroups = getSdkReferenceContent(undefined, { includeGroups: true });
+			expect(withGroups.split('## Node groups')).toHaveLength(2);
+
+			const withoutGroups = getSdkReferenceContent(undefined, { includeGroups: false });
+			expect(withoutGroups).not.toContain('## Node groups');
+		});
+	});
+
 	test('accepts patterns_detailed as a tool section', async () => {
 		const tool = createGetWorkflowSdkReferenceTool(user, telemetry, { canvasGroupsEnabled: false });
 		const sectionSchema = tool.config.inputSchema?.section;
