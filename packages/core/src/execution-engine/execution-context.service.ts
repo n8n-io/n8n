@@ -67,6 +67,27 @@ export class ExecutionContextService {
 		return await this.cipher.encryptV2(payload);
 	}
 
+	/**
+	 * Builds and encrypts a credential context for an unattended run started on a
+	 * user's behalf (a catalog subscription firing on their schedule).
+	 *
+	 * Unlike the other sources, no live session or inbound request exists at this
+	 * point, so the caller mints a short-lived token instead of forwarding one it
+	 * received. The token is what makes the claim verifiable — see the
+	 * `scheduled-trigger` branch in `N8NIdentifier` for the checks applied on the
+	 * way back in.
+	 *
+	 * @param token - Short-lived signed token naming the user the run acts for.
+	 */
+	async buildScheduledTriggerCredentials(token: string): Promise<string> {
+		const payload: ICredentialContext = {
+			version: 1,
+			identity: token,
+			metadata: { source: 'scheduled-trigger' },
+		};
+		return await this.cipher.encryptV2(payload);
+	}
+
 	async encryptExecutionContext(context: PlaintextExecutionContext): Promise<IExecutionContext> {
 		const { credentials, secureArtifacts, ...rest } = context;
 		const result: IExecutionContext = { ...rest };

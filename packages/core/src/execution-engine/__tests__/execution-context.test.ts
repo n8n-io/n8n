@@ -342,6 +342,78 @@ describe('establishExecutionContext', () => {
 		});
 	});
 
+	describe('runner identity on unattended runs', () => {
+		const additionalDataWithIdentity = mock<IWorkflowExecuteAdditionalData>({
+			encryptedRunnerIdentity: 'encrypted-runner-identity',
+		});
+
+		beforeEach(() => {
+			// The identity is opaque ciphertext here, so keep the hooks from trying to
+			// decrypt it; what this block asserts is that it survives to `runtimeData`.
+			vi.spyOn(
+				ExecutionContextService.prototype,
+				'augmentExecutionContextWithHooks',
+			).mockImplementation(async (_workflow, _startItem, context) => ({
+				context,
+				triggerItems: null,
+			}));
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		const buildRunExecutionData = () =>
+			createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: mock<INode>({ name: 'Trigger', type: 'n8n-nodes-base.scheduleTrigger' }),
+							data: { main: [[{ json: {} }]] },
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+		it.each<WorkflowExecuteMode>(['trigger', 'webhook', 'integrated'])(
+			'should carry the identity in %s mode, not just manual',
+			async (mode) => {
+				const runExecutionData = buildRunExecutionData();
+
+				await establishExecutionContext(
+					mockWorkflow,
+					runExecutionData,
+					additionalDataWithIdentity,
+					mode,
+				);
+
+				expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+					'encrypted-runner-identity',
+				);
+			},
+		);
+
+		it('should leave credentials unset when no identity was supplied', async () => {
+			const runExecutionData = buildRunExecutionData();
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'trigger',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
+		});
+	});
+
 	describe('webhook resume context preservation', () => {
 		it('should preserve existing context when runtimeData already exists', async () => {
 			const existingContext: IExecutionContext = {

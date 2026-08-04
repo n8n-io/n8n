@@ -1,26 +1,44 @@
 import type { Mocked } from 'vitest';
-import type { User } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import type { AccessService } from '@/services/access.service';
 import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
 import { N8NIdentifier } from '../n8n-identifier';
+import type { RunnerBindingService } from '../runner-binding.service';
+import type { ScheduledTriggerIdentityService } from '../scheduled-trigger-identity';
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;
 	let mockAuthService: Mocked<AuthService>;
 	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
+	let mockRunnerIdentity: Mocked<ScheduledTriggerIdentityService>;
+	let mockBindings: Mocked<RunnerBindingService>;
+	let mockUserRepository: Mocked<UserRepository>;
+	let mockAccessService: Mocked<AccessService>;
 
 	const mockUser = mock<User>({ id: 'user-123' });
 
 	beforeEach(() => {
 		mockAuthService = mock<AuthService>();
 		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
+		mockRunnerIdentity = mock<ScheduledTriggerIdentityService>();
+		mockBindings = mock<RunnerBindingService>();
+		mockUserRepository = mock<UserRepository>();
+		mockAccessService = mock<AccessService>();
 
-		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier);
+		identifier = new N8NIdentifier(
+			mockAuthService,
+			mockOAuthVerifier,
+			mockRunnerIdentity,
+			mockBindings,
+			mockUserRepository,
+			mockAccessService,
+		);
 	});
 
 	afterEach(() => {
@@ -358,6 +376,87 @@ describe('N8NIdentifier', () => {
 						resource: 'https://host/mcp/workflow-b',
 					},
 				};
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+			});
+		});
+
+		describe('scheduled-trigger source', () => {
+			const context = {
+				identity: 'minted-runner-token',
+				version: 1 as const,
+				metadata: { source: 'scheduled-trigger' as const },
+			};
+
+			/** All four checks passing; individual tests below fail exactly one. */
+			const allChecksPass = () => {
+				mockRunnerIdentity.verifyToken.mockReturnValue({
+					userId: 'user-123',
+					workflowId: 'workflow-1',
+				});
+				mockUserRepository.findOne.mockResolvedValue(
+					mock<User>({ id: 'user-123', disabled: false }),
+				);
+				mockBindings.isActive.mockResolvedValue(true);
+				mockAccessService.hasExecuteAccess.mockResolvedValue(true);
+			};
+
+			it('should resolve the user named by the token', async () => {
+				allChecksPass();
+
+				const result = await identifier.resolve(context, {});
+
+				expect(result).toBe('user-123');
+				expect(mockRunnerIdentity.verifyToken).toHaveBeenCalledWith('minted-runner-token');
+				expect(mockBindings.isActive).toHaveBeenCalledWith('workflow-1', 'user-123');
+				expect(mockAccessService.hasExecuteAccess).toHaveBeenCalledWith('user-123', 'workflow-1');
+			});
+
+			it('should not fall back to the cookie-based paths', async () => {
+				allChecksPass();
+
+				await identifier.resolve(context, {});
+
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+			});
+
+			it('should reject a token that fails verification', async () => {
+				allChecksPass();
+				mockRunnerIdentity.verifyToken.mockImplementation(() => {
+					throw new Error('jwt expired');
+				});
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+				expect(mockBindings.isActive).not.toHaveBeenCalled();
+			});
+
+			it('should reject when the user no longer exists', async () => {
+				allChecksPass();
+				mockUserRepository.findOne.mockResolvedValue(null);
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+			});
+
+			it('should reject when the user has been disabled', async () => {
+				allChecksPass();
+				mockUserRepository.findOne.mockResolvedValue(
+					mock<User>({ id: 'user-123', disabled: true }),
+				);
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+			});
+
+			it('should reject when the binding has been revoked', async () => {
+				allChecksPass();
+				mockBindings.isActive.mockResolvedValue(false);
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+			});
+
+			it('should reject when the user lost access to the workflow after granting', async () => {
+				allChecksPass();
+				mockAccessService.hasExecuteAccess.mockResolvedValue(false);
 
 				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
 			});

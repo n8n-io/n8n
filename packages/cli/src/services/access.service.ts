@@ -39,4 +39,21 @@ export class AccessService {
 
 		return workflow !== null;
 	}
+
+	/**
+	 * Whether a user may run a workflow. Re-checked at run time for unattended
+	 * runs, where the grant was recorded long before the run and the user may
+	 * since have lost project access.
+	 */
+	async hasExecuteAccess(userId: User['id'], workflowId: Workflow['id']) {
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+
+		if (!user) return false;
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:execute',
+		]);
+
+		return workflow !== null;
+	}
 }
