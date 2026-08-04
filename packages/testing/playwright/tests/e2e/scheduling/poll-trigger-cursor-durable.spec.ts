@@ -29,7 +29,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should emit an item past the cursor and mirror the advance to static data', async ({
+		test('should emit an item past the cursor and advance it in poller_state', async ({
 			api,
 			services,
 		}) => {
@@ -51,14 +51,6 @@ test.describe(
 
 			await expect
 				.poll(async () => await api.getPollerCursor(workflowId, nodeId), { timeout: 15_000 })
-				.toEqual({ lastItemId: 2 });
-
-			// The mirror is what lets the flag be turned back off without losing the
-			// place the durable cursor reached.
-			await expect
-				.poll(async () => await readNodeStaticData(api, workflowId, POLL_TRIGGER_NODE_NAME), {
-					timeout: 15_000,
-				})
 				.toEqual({ lastItemId: 2 });
 		});
 
