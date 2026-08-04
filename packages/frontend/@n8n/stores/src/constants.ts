@@ -34,6 +34,8 @@ export const STORES = {
 	BECOME_TEMPLATE_CREATOR: 'becomeTemplateCreator',
 	PROJECTS: 'projects',
 	API_KEYS: 'apiKeys',
+	SERVICE_ACCOUNTS: 'serviceAccounts',
+	IMPERSONATION: 'impersonation',
 	EVALUATION: 'evaluation',
 	EVAL_COLLECTIONS: 'evalCollections',
 	FOLDERS: 'folders',

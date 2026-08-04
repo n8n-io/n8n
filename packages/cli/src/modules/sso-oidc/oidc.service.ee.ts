@@ -339,8 +339,10 @@ export class OidcService {
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
 
+		// `type: 'user'` so an IdP asserting a service account's synthesized address
+		// cannot bind an OIDC identity to it and make it loginable.
 		const foundUser = await this.userRepository.findOne({
-			where: { email: userInfo.email },
+			where: { email: userInfo.email, type: 'user' },
 			relations: ['authIdentities', 'role'],
 		});
 

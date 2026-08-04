@@ -122,6 +122,18 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'user:list',
 		],
 	},
+	serviceAccount: {
+		Manage: [
+			'serviceAccount:create',
+			'serviceAccount:read',
+			'serviceAccount:update',
+			'serviceAccount:delete',
+			'serviceAccount:list',
+		],
+		// Separate from Manage: acting as a service account adopts its permissions
+		// entirely, so it must be grantable and revocable on its own.
+		Impersonate: ['serviceAccount:read', 'serviceAccount:list', 'serviceAccount:impersonate'],
+	},
 	role: {
 		'Manage project roles': ['role:read', 'role:manageProject'],
 		Manage: ['role:read', 'role:manage'],

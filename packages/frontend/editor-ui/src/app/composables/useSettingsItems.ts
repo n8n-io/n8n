@@ -47,6 +47,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.USERS_SETTINGS } },
 			},
 			{
+				id: 'settings-service-accounts',
+				icon: 'user-cog',
+				label: i18n.baseText('settings.serviceAccounts'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.SERVICE_ACCOUNTS_SETTINGS),
+				route: { to: { name: VIEWS.SERVICE_ACCOUNTS_SETTINGS } },
+			},
+			{
 				id: 'settings-ai',
 				icon: 'sparkles',
 				label: i18n.baseText('settings.ai'),

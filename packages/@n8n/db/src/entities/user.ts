@@ -26,6 +26,13 @@ import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isValidEmail } from '../utils/is-valid-email';
 import { lowerCaser, objectRetriever } from '../utils/transformers';
 
+/**
+ * `serviceAccount` is a non-human principal: it never has a password, can never
+ * log in interactively, and is acted on behalf of by a human who impersonates it.
+ * Otherwise it is an ordinary user — same roles, scopes, credentials and projects.
+ */
+export type UserType = 'user' | 'serviceAccount';
+
 @Entity()
 export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@PrimaryGeneratedColumn('uuid')
@@ -79,6 +86,9 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
 
+	@Column({ type: 'varchar', length: 32, default: 'user' })
+	type: UserType;
+
 	@BeforeInsert()
 	@BeforeUpdate()
 	preUpsertHook(): void {
@@ -113,6 +123,13 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
+		// A service account is passwordless by design, not half-set-up. Without this
+		// it would render as a pending invitee everywhere `isPending` surfaces.
+		if (this.type === 'serviceAccount') {
+			this.isPending = false;
+			return;
+		}
+
 		const hasExternalAuthIdentity =
 			this.authIdentities?.some((identity) => identity.providerType !== 'email') ?? false;
 		this.isPending =

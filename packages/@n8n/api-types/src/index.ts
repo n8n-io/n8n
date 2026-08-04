@@ -190,6 +190,15 @@ export {
 } from './schemas/user.schema';
 
 export {
+	serviceAccountSchema,
+	serviceAccountsListSchema,
+	impersonationActorSchema,
+	type ServiceAccount,
+	type ServiceAccountsList,
+	type ImpersonationActor,
+} from './schemas/service-account.schema';
+
+export {
 	encryptionKeySchema,
 	encryptionKeysListSchema,
 	type EncryptionKey,

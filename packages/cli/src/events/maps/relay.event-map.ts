@@ -322,6 +322,37 @@ export type RelayEventMap = {
 		targetUserNewRole: string;
 	};
 
+	// `userId` on every service-account event is the **human actor**, never the
+	// service account. During impersonation `req.user` is the SA, so these must be
+	// populated from `req.authInfo.actor` at the call site.
+	'service-account-created': {
+		userId: string;
+		serviceAccountId: string;
+		serviceAccountRole: string;
+	};
+
+	'service-account-deleted': {
+		userId: string;
+		serviceAccountId: string;
+		migrationStrategy: 'transfer_data' | 'delete_data';
+	};
+
+	'service-account-role-changed': {
+		userId: string;
+		serviceAccountId: string;
+		serviceAccountNewRole: string;
+	};
+
+	'service-account-impersonation-started': {
+		userId: string;
+		serviceAccountId: string;
+	};
+
+	'service-account-impersonation-ended': {
+		userId: string;
+		serviceAccountId: string;
+	};
+
 	'user-retrieved-user': {
 		userId: string;
 		publicApi: boolean;
@@ -399,6 +430,12 @@ export type RelayEventMap = {
 	'public-api-key-created': {
 		user: UserLike;
 		publicApi: boolean;
+		/**
+		 * The human who created the key, when it was created while impersonating a
+		 * service account. `user` is the key's owner (the SA). There is no
+		 * `user_api_keys.createdBy` column, so this event is the only record.
+		 */
+		actorId?: string;
 	};
 
 	'public-api-key-deleted': {

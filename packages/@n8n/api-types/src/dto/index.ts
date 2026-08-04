@@ -179,6 +179,10 @@ export {
 	USERS_LIST_SORT_OPTIONS,
 } from './user/users-list-filter.dto';
 
+export { CreateServiceAccountRequestDto } from './service-account/create-service-account-request.dto';
+export { UpdateServiceAccountRequestDto } from './service-account/update-service-account-request.dto';
+export { StartImpersonationRequestDto } from './service-account/start-impersonation-request.dto';
+
 export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
 export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';

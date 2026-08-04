@@ -13,6 +13,7 @@ import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
+import { assertNotServiceAccount } from '@/auth/service-account.guard';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
@@ -50,6 +51,12 @@ export class MeController {
 		res: Response,
 		@Body payload: UserUpdateRequestDto,
 	): Promise<PublicUser> {
+		// A service account's name and email are managed through the service-account
+		// endpoints. Left open, an impersonating operator could rewrite the SA's email
+		// unchallenged (`password === null` skips the current-password check below),
+		// which also changes `createJWTHash` and self-invalidates the session.
+		assertNotServiceAccount(req.user, 'update their own profile');
+
 		const {
 			id: userId,
 			email: currentEmail,
@@ -196,6 +203,8 @@ export class MeController {
 		@Body payload: PasswordUpdateRequestDto,
 	) {
 		const { user } = req;
+		assertNotServiceAccount(user, 'have a password');
+
 		const { currentPassword, newPassword, mfaCode } = payload;
 
 		if (this.isUserManagedByEnv(user)) {
@@ -262,6 +271,8 @@ export class MeController {
 	 */
 	@Post('/survey')
 	async storeSurveyAnswers(req: MeRequest.SurveyAnswers) {
+		assertNotServiceAccount(req.user, 'answer the personalization survey');
+
 		const { body: personalizationAnswers } = req;
 
 		if (!personalizationAnswers) {
@@ -311,6 +322,8 @@ export class MeController {
 		_: Response,
 		@Body payload: UserSelfSettingsUpdateRequestDto,
 	): Promise<User['settings']> {
+		assertNotServiceAccount(req.user, 'update their own settings');
+
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);

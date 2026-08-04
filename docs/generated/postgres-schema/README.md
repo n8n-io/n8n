@@ -113,7 +113,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
-| [public.user](public.user.md) | 15 |  | BASE TABLE |
+| [public.user](public.user.md) | 16 |  | BASE TABLE |
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
 | [public.variables](public.variables.md) | 5 |  | BASE TABLE |
@@ -1385,6 +1385,7 @@ erDiagram
   json personalizationAnswers
   varchar_128_ roleSlug FK
   json settings
+  varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.user_api_keys" {

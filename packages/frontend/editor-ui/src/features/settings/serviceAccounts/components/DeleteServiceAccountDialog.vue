@@ -1,0 +1,51 @@
+<script lang="ts" setup>
+import type { ServiceAccount } from '@n8n/api-types';
+import { N8nAlertDialog } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
+
+import { getServiceAccountDisplayName } from '../serviceAccounts.utils';
+
+const props = defineProps<{
+	serviceAccount: ServiceAccount | null;
+	open: boolean;
+	loading?: boolean;
+}>();
+
+const emit = defineEmits<{
+	'update:open': [value: boolean];
+	confirm: [];
+	cancel: [];
+}>();
+
+const i18n = useI18n();
+
+const title = computed(() =>
+	props.serviceAccount
+		? i18n.baseText('settings.serviceAccounts.delete.title', {
+				interpolate: { name: getServiceAccountDisplayName(props.serviceAccount) },
+			})
+		: '',
+);
+</script>
+
+<template>
+	<!--
+		No transfer option: this POC cascades everything the service account owns.
+		The description says so explicitly rather than offering a choice we can't honor.
+	-->
+	<N8nAlertDialog
+		:open="open"
+		:title="title"
+		:description="i18n.baseText('settings.serviceAccounts.delete.description')"
+		:action-label="i18n.baseText('settings.serviceAccounts.delete.confirm')"
+		:cancel-label="i18n.baseText('generic.cancel')"
+		action-variant="destructive"
+		:loading="loading"
+		size="medium"
+		data-test-id="delete-service-account-confirm"
+		@action="emit('confirm')"
+		@cancel="emit('cancel')"
+		@update:open="emit('update:open', $event)"
+	/>
+</template>

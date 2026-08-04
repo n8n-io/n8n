@@ -22,6 +22,7 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'tag',
 	'project',
 	'insights',
+	'serviceAccount',
 ];
 
 /** i18n label key per resource group. */
@@ -33,6 +34,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	tag: 'instanceRoles.resource.tag',
 	project: 'instanceRoles.resource.project',
 	insights: 'instanceRoles.resource.insights',
+	serviceAccount: 'instanceRoles.resource.serviceAccount',
 };
 
 /**
@@ -46,6 +48,7 @@ export const INSTANCE_OPTION_LABEL_KEYS: Record<string, BaseTextKey> = {
 	'Manage own': 'instanceRoles.option.manageOwn',
 	'Manage all': 'instanceRoles.option.manageAll',
 	'Manage project roles': 'instanceRoles.option.manageProjectRoles',
+	Impersonate: 'instanceRoles.option.impersonate',
 };
 
 /**
@@ -73,6 +76,10 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 		'Manage project roles': 'instanceRoles.description.role.manageProjectRoles',
 		Manage: 'instanceRoles.description.role.manage',
 	},
+	serviceAccount: {
+		Manage: 'instanceRoles.description.serviceAccount.manage',
+		Impersonate: 'instanceRoles.description.serviceAccount.impersonate',
+	},
 	apiKey: {
 		'Manage own': 'instanceRoles.description.apiKey.manageOwn',
 		'Manage all': 'instanceRoles.description.apiKey.manageAll',
@@ -90,6 +97,7 @@ export const INSTANCE_OPTION_ORDER: string[] = [
 	'Manage',
 	'Manage own',
 	'Manage all',
+	'Impersonate',
 ];
 
 export type InstanceScopeOption = {

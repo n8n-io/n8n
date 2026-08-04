@@ -30,7 +30,7 @@ const usersListSortByValidator = z
 	.optional();
 
 const userSelectSchema = z.array(
-	z.enum(['id', 'firstName', 'lastName', 'email', 'disabled', 'mfaEnabled', 'role']),
+	z.enum(['id', 'firstName', 'lastName', 'email', 'disabled', 'mfaEnabled', 'role', 'type']),
 );
 
 const userFilterSchema = z.object({
@@ -43,6 +43,8 @@ const userFilterSchema = z.object({
 	fullText: z.string().optional(), // Full text search across firstName, lastName, and email
 	isPending: z.boolean().optional(),
 	projectId: z.string().optional(),
+	/** Defaults to `user` in the repository, so service accounts are hidden unless asked for. */
+	type: z.enum(['user', 'serviceAccount', 'all']).optional(),
 });
 
 const filterValidatorSchema = z
