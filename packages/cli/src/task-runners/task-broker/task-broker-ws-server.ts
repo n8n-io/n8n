@@ -16,7 +16,10 @@ import type {
 	TaskBrokerServerInitRequest,
 	TaskBrokerServerInitResponse,
 } from '@/task-runners/task-broker/task-broker-types';
-import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
+import {
+	TaskRunnerLifecycleEvents,
+	type TaskRunnerLifecycleEventMap,
+} from '@/task-runners/task-runner-lifecycle-events';
 
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
@@ -62,7 +65,9 @@ export class TaskBrokerWsServer {
 		this.runnerLifecycleEvents.on('runner:unresponsive', this.onRunnerUnresponsive);
 	}
 
-	private readonly onRunnerUnresponsive = ({ runnerId }: { runnerId: string }) => {
+	private readonly onRunnerUnresponsive = ({
+		runnerId,
+	}: TaskRunnerLifecycleEventMap['runner:unresponsive']) => {
 		void this.removeConnection(runnerId, {
 			reason: 'runner-unresponsive',
 			code: WsStatusCodes.CloseProtocolError,

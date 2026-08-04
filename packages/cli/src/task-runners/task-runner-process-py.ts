@@ -22,6 +22,8 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 
 	protected readonly loggerScope = 'task-runner-py';
 
+	protected readonly taskType = 'python';
+
 	constructor(
 		readonly logger: Logger,
 		readonly runnerConfig: TaskRunnersConfig,

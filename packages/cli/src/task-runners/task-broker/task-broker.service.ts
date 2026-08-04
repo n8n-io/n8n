@@ -777,10 +777,10 @@ export class TaskBroker {
 			this.consecutiveAcceptTimeouts.set(runnerId, failures);
 		} else {
 			this.consecutiveAcceptTimeouts.delete(runnerId);
-			this.logger.warn(
-				`Runner (${runnerId}) failed to acknowledge ${MAX_CONSECUTIVE_ACCEPT_TIMEOUTS} consecutive task acceptances, reporting it as unresponsive`,
+			this.reportUnresponsive(
+				runnerId,
+				`failed to acknowledge ${MAX_CONSECUTIVE_ACCEPT_TIMEOUTS} consecutive task acceptances`,
 			);
-			this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
 		}
 	}
 
@@ -802,11 +802,24 @@ export class TaskBroker {
 			.filter(({ isRunnerReachable }) => isRunnerReachable())
 			.filter(({ runner }) => this.isSilent(runner.id))
 			.forEach(({ runner }) => {
-				this.logger.warn(
-					`Runner (${runner.id}) sent no task offers while a task request expired, reporting it as unresponsive`,
-				);
-				this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId: runner.id });
+				this.reportUnresponsive(runner.id, 'sent no task offers while a task request expired');
 			});
+	}
+
+	/**
+	 * Reports a runner as unresponsive, so its transport can be torn down and, in internal
+	 * mode, its process force-restarted. A no-op for a runner that is no longer registered,
+	 * as it has nothing left to tear down.
+	 */
+	private reportUnresponsive(runnerId: TaskRunner['id'], cause: string) {
+		const runner = this.knownRunners.get(runnerId)?.runner;
+		if (runner) {
+			this.logger.warn(`Runner (${runnerId}) ${cause}, reporting it as unresponsive`);
+			this.taskRunnerLifecycleEvents.emit('runner:unresponsive', {
+				runnerId,
+				taskTypes: runner.taskTypes,
+			});
+		}
 	}
 
 	private isSilent(runnerId: TaskRunner['id']) {

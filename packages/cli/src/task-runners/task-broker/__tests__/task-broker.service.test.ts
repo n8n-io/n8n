@@ -21,6 +21,12 @@ import type {
 
 const createValidUntil = (ms: number) => process.hrtime.bigint() + BigInt(ms * 1_000_000);
 
+const createRunner = (id: string, taskTypes: string[]): TaskRunner => ({
+	id,
+	taskTypes,
+	lastSeen: new Date(),
+});
+
 describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
@@ -1508,7 +1514,7 @@ describe('TaskBroker', () => {
 				lifecycleEvents,
 				mock(),
 			);
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(createRunner('runner1', ['taskType1']), vi.fn());
 		});
 
 		// a failing assertion must not leak fake timers into later tests
@@ -1552,6 +1558,7 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
 			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
 				runnerId: 'runner1',
+				taskTypes: ['taskType1'],
 			});
 
 			await timeOutAcceptance();
@@ -1596,7 +1603,7 @@ describe('TaskBroker', () => {
 			await timeOutAcceptance();
 
 			taskBroker.deregisterRunner('runner1', new Error('connection lost'));
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1' }), vi.fn());
+			taskBroker.registerRunner(createRunner('runner1', ['taskType1']), vi.fn());
 
 			await timeOutAcceptance();
 			await timeOutAcceptance();
@@ -1605,7 +1612,7 @@ describe('TaskBroker', () => {
 		});
 
 		it('should count acknowledgment timeouts per runner', async () => {
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner2' }), vi.fn());
+			taskBroker.registerRunner(createRunner('runner2', ['taskType1']), vi.fn());
 
 			await timeOutAcceptance('runner1');
 			await timeOutAcceptance('runner1');
@@ -1617,6 +1624,7 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
 			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
 				runnerId: 'runner2',
+				taskTypes: ['taskType1'],
 			});
 		});
 	});
@@ -1646,7 +1654,7 @@ describe('TaskBroker', () => {
 
 		const registerRunner = (isRunnerReachable?: () => boolean) => {
 			taskBroker.registerRunner(
-				mock<TaskRunner>({ id: 'runner1', taskTypes: ['taskType1', 'taskType2'] }),
+				createRunner('runner1', ['taskType1', 'taskType2']),
 				vi.fn(),
 				isRunnerReachable,
 			);
@@ -1670,6 +1678,7 @@ describe('TaskBroker', () => {
 			expect(lifecycleEvents.emit).toHaveBeenCalledTimes(1);
 			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', {
 				runnerId: 'runner1',
+				taskTypes: ['taskType1', 'taskType2'],
 			});
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:requestexpired',
@@ -1748,7 +1757,7 @@ describe('TaskBroker', () => {
 		});
 
 		it('should not report a runner that does not support the task type', () => {
-			taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: ['other'] }), vi.fn());
+			taskBroker.registerRunner(createRunner('runner1', ['other']), vi.fn());
 
 			letRequestExpire();
 

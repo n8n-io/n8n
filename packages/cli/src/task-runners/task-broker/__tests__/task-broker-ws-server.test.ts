@@ -306,7 +306,10 @@ describe('TaskBrokerWsServer', () => {
 			server.runnerConnections.set('test-runner', ws);
 			server.start();
 
-			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
+			runnerLifecycleEvents.emit('runner:unresponsive', {
+				runnerId: 'test-runner',
+				taskTypes: ['javascript'],
+			});
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 			expect(disconnectAnalyzer.toDisconnectError).toHaveBeenCalledWith(
@@ -324,7 +327,10 @@ describe('TaskBrokerWsServer', () => {
 
 			const ws = mockWs();
 			server.runnerConnections.set('test-runner', ws);
-			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
+			runnerLifecycleEvents.emit('runner:unresponsive', {
+				runnerId: 'test-runner',
+				taskTypes: ['javascript'],
+			});
 
 			expect(ws.close).not.toHaveBeenCalled();
 		});

@@ -20,6 +20,8 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 
 	readonly loggerScope = 'task-runner-js';
 
+	readonly taskType = 'javascript';
+
 	private oomDetector: NodeProcessOomDetector | null = null;
 
 	constructor(

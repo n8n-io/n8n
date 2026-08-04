@@ -8,7 +8,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 
-import type { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
+import { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
 
 // Source imports `spawn` from `node:child_process` as an ESM binding, so mutating
 // `require('child_process').spawn` does not intercept it — mock the module instead.
@@ -36,6 +36,14 @@ describe('TaskRunnerProcess', () => {
 	runnerConfig.insecureMode = false;
 	const authService = mock<TaskBrokerAuthService>();
 	let taskRunnerProcess = new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
+
+	const createChildProcess = (pid?: number) =>
+		Object.assign(new EventEmitter(), {
+			pid,
+			stdout: new EventEmitter(),
+			stderr: new EventEmitter(),
+			kill: vi.fn(),
+		}) as unknown as ChildProcess;
 
 	afterEach(async () => {
 		spawnMock.mockClear();
@@ -66,6 +74,16 @@ describe('TaskRunnerProcess', () => {
 
 			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
 				'runner:timed-out-during-task',
+				expect.any(Function),
+			);
+		});
+
+		it('should register listener for `runner:unresponsive` event', () => {
+			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+			new JsTaskRunnerProcess(logger, runnerConfig, authService, runnerLifecycleEvents);
+
+			expect(runnerLifecycleEvents.on).toHaveBeenCalledWith(
+				'runner:unresponsive',
 				expect.any(Function),
 			);
 		});
@@ -211,14 +229,6 @@ describe('TaskRunnerProcess', () => {
 	describe('relaunch on unexpected exit', () => {
 		let auth: MockProxy<TaskBrokerAuthService>;
 
-		const createChildProcess = (pid?: number) =>
-			Object.assign(new EventEmitter(), {
-				pid,
-				stdout: new EventEmitter(),
-				stderr: new EventEmitter(),
-				kill: vi.fn(),
-			}) as unknown as ChildProcess;
-
 		beforeEach(() => {
 			vi.useFakeTimers();
 			auth = mock<TaskBrokerAuthService>();
@@ -361,6 +371,58 @@ describe('TaskRunnerProcess', () => {
 			await taskRunnerProcess.stop();
 			await vi.advanceTimersByTimeAsync(10_000);
 
+			expect(spawnMock).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('restart on unresponsive report', () => {
+		let runnerLifecycleEvents: TaskRunnerLifecycleEvents;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			const auth = mock<TaskBrokerAuthService>();
+			auth.createGrantToken.mockResolvedValue('grantToken');
+			runnerLifecycleEvents = new TaskRunnerLifecycleEvents();
+			taskRunnerProcess = new JsTaskRunnerProcess(
+				logger,
+				runnerConfig,
+				auth,
+				runnerLifecycleEvents,
+			);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const reportUnresponsive = (taskTypes: string[]) => {
+			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'runner1', taskTypes });
+		};
+
+		it('should force-kill and relaunch a runner of its own task type', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			reportUnresponsive(['javascript']);
+
+			// a runner with a blocked event loop never exits on its own
+			expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+
+			child.emit('exit', null);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(spawnMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should ignore a report for a runner of another task type', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			reportUnresponsive(['python']);
+
+			expect(child.kill).not.toHaveBeenCalled();
 			expect(spawnMock).toHaveBeenCalledTimes(1);
 		});
 	});

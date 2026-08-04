@@ -28,6 +28,8 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 	protected readonly loggerScope: LogScope;
 
+	protected readonly taskType: string;
+
 	protected process: ChildProcess | null = null;
 
 	protected _runPromise: Promise<void> | null = null;
@@ -53,6 +55,17 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
 			this.logger.warn('Task runner timed out during task, restarting...');
 			void this.forceRestart();
+		});
+
+		// Internal mode runs one process per task type,
+		// so the task type is what says which process to restart.
+		// The runner ID cannot: runners mint their own,
+		// so it is never tied to a process n8n spawned.
+		this.runnerLifecycleEvents.on('runner:unresponsive', ({ taskTypes }) => {
+			if (taskTypes.includes(this.taskType)) {
+				this.logger.warn('Task runner was reported unresponsive, restarting...');
+				void this.forceRestart();
+			}
 		});
 	}
 
