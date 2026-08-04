@@ -76,6 +76,11 @@ const telegram: AgentIntegrationConfig = {
 	credentialId: 'cred-telegram',
 };
 
+const discord: AgentIntegrationConfig = {
+	type: 'discord',
+	credentialId: 'cred-discord',
+};
+
 class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 	readonly type = 'telegram';
 
@@ -323,7 +328,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.thread.mockReturnValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string, _label?: string) => ({
 			id: 'short1234',
 			value: '',
 		}));
@@ -366,13 +371,15 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		expect(result).toEqual(expect.objectContaining({ ok: true }));
-		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith('agent-1', {
-			type: 'telegram',
-			credentialId: 'cred-telegram',
-		});
+		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'cred-telegram' },
+			{ groupId: JSON.stringify(['run-1234567890', 'tool-call-1234567890']) },
+		);
 		expect(shortenCallback).toHaveBeenCalledWith(
 			'resume:run-1234567890:tool-call-1234567890:0',
 			JSON.stringify({ type: 'button', value: 'approve' }),
+			'Approve',
 		);
 		expect(mockButton).toHaveBeenLastCalledWith({
 			id: 'short1234',
@@ -554,6 +561,12 @@ describe('ChatIntegrationActionExecutor', () => {
 		expect(shortenCallback).toHaveBeenCalledWith(
 			'resume:run-1:tool-1:0',
 			JSON.stringify({ type: 'button', value: 'approve' }),
+			'Approve',
+		);
+		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'cred-telegram' },
+			{ groupId: JSON.stringify(['run-1', 'tool-1']) },
 		);
 		expect(editMessage).toHaveBeenCalledWith(
 			'telegram:123456',
@@ -663,6 +676,43 @@ describe('ChatIntegrationActionExecutor', () => {
 				},
 				messageId: '999.000',
 				updatedAt: expect.any(String),
+			},
+		});
+	});
+
+	it('adds Discord reactions to the current message context', async () => {
+		const addReaction = vi.fn().mockResolvedValue(undefined);
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ addReaction });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
+		const threadId = 'discord:800000000000000001:700000000000000001:600000000000000001';
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '✅' },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'discord:cred-discord',
+				platform: 'discord',
+				target: { type: 'thread', threadId },
+				messageId: 'message-1',
+				updatedAt: '2026-08-04T00:00:00.000Z',
+			},
+		});
+
+		expect(addReaction).toHaveBeenCalledWith(threadId, 'message-1', '✅');
+		expect(result).toMatchObject({
+			ok: true,
+			reaction: { emoji: '✅', threadId, messageId: 'message-1' },
+			messageContext: {
+				integrationConnectionId: 'discord:cred-discord',
+				platform: 'discord',
+				target: { type: 'thread', threadId },
+				messageId: 'message-1',
 			},
 		});
 	});

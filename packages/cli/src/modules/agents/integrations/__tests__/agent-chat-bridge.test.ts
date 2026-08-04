@@ -616,14 +616,17 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('does not post a fallback for a cardless integration action suspension', async () => {
+		it('drops buffered card preamble but keeps text emitted after suspension', async () => {
 			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Here is the approval card.' },
 				integrationActionSuspension,
+				{ type: 'text-delta', id: 't2', delta: 'The action was approved.' },
 				finishChunk,
 			]);
 
 			expect(componentMapper.toCard).not.toHaveBeenCalled();
-			expect(thread.post).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'The action was approved.' });
 		});
 
 		it('does not post an error when a failed tool call is retried successfully', async () => {

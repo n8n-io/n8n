@@ -18,6 +18,7 @@ import {
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
 import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
+import type { CallbackMetadata } from './callback-store';
 import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
@@ -568,10 +569,11 @@ export class ChatIntegrationService {
 	getShortenCallback(
 		agentId: string,
 		integration: { type: string; credentialId: string },
+		metadata?: CallbackMetadata,
 	): ShortenCallback | undefined {
 		return this.connections
 			.get(this.connectionKey(agentId, integration.type, integration.credentialId))
-			?.bridge?.getShortenCallback();
+			?.bridge?.getShortenCallback(metadata);
 	}
 
 	/**

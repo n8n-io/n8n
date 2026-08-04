@@ -15,7 +15,7 @@ export function externalServicesSkill(): RuntimeSkill {
 		id: 'agent-builder-external-services',
 		name: 'Agent Builder External Services',
 		description:
-			'Use when connecting the target agent to any external product: deciding whether Slack, Linear, Telegram, or another platform is a chat integration/trigger versus an MCP, node, or workflow tool; adding, removing, or updating chat integrations or MCP servers; and wiring n8n node-backed tools (search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions).',
+			'Use when connecting the target agent to any external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus an MCP, node, or workflow tool; adding, removing, or updating chat integrations or MCP servers; and wiring n8n node-backed tools (search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions).',
 		recommendedTools: [
 			'resolve_integration',
 			'list_integration_types',
@@ -67,6 +67,8 @@ Examples:
 - Slack integration: the agent should be chatted with in Slack, respond in
   Slack threads, DM users, message channels, add reactions, or render rich UI
   to Slack users.
+- Discord integration: the agent should be mentioned or messaged in Discord,
+  respond in Discord threads or DMs, or render approval buttons there.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.

@@ -13,17 +13,18 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
-	type ApprovalDecisionMessageParams,
+	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
-	type SettleApprovalMessageParams,
+	type SettleActionMessageParams,
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import type { SuspendComponent } from '../component-mapper';
 import { loadDiscordAdapter } from '../esm-loader';
+import type { ReplyExpectation } from '../integration-tools';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
@@ -36,7 +37,7 @@ import {
 import {
 	executeDiscordContextQuery,
 	fetchDiscordApplicationMetadata,
-	settleDiscordApprovalMessage,
+	settleDiscordActionMessage,
 } from './discord-operations';
 import { startTypingIndicator } from './typing-indicator';
 
@@ -81,13 +82,13 @@ export class DiscordIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Discord mentions and direct messages as agent triggers.',
 			'Respond in Discord channels, threads, and direct messages.',
-			'Edit existing messages in the current Discord conversation.',
+			'Edit existing messages and add emoji reactions in the current Discord conversation.',
 			'Render Discord embeds with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Discord or act as a Discord bot.',
 			'The agent needs to reply to Discord users in the same conversation context.',
-			'The agent needs to update a Discord message in the current conversation.',
+			'The agent needs to update or react to a Discord message in the current conversation.',
 			'The agent should send Discord messages as the connected Discord bot.',
 		],
 		useNodeToolWhen: [
@@ -109,6 +110,8 @@ export class DiscordIntegration extends AgentChatIntegration {
 		'send_dm',
 		'send_channel_message',
 		'edit_message',
+		'add_reaction',
+		'do_not_respond',
 	]);
 
 	readonly contextToolDefinitions = resolveIntegrationContextQueryDefinitions([
@@ -123,7 +126,6 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	readonly actionToolGuidance = [
 		'For edit_message, pass the messageId returned by a previous Discord action or get_current_message_context. The current Discord conversation is selected automatically.',
-		'After a Discord button callback, edit the source message promptly so stale buttons are removed.',
 		'For send_channel_message, channelId must be shaped "discord:<guildId>:<channelId>" — pass the value returned by search_channels or get_current_message_context. A bare Discord channel ID copied from the Discord app is rejected.',
 		'A Discord mention is answered inside a thread created off that message. Use send_channel_message when the reply belongs in the channel itself rather than that thread.',
 	];
@@ -135,7 +137,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 	/**
 	 * Discord acknowledges a button click with `DeferredUpdateMessage`, which
 	 * promises Discord an edit of the source message. Deleting it instead would
-	 * break that contract, so the approval card is settled in place.
+	 * break that contract, so the action card is settled in place.
 	 */
 	readonly deleteActionMessageBeforeResume = false;
 
@@ -233,15 +235,15 @@ export class DiscordIntegration extends AgentChatIntegration {
 		await this.gateway.discard(key);
 	}
 
-	async settleApprovalMessage(params: SettleApprovalMessageParams): Promise<void> {
+	async settleActionMessage(params: SettleActionMessageParams): Promise<void> {
 		const botToken = this.gateway.botTokenFor(
 			`${params.agentId}:${params.integration.credentialId}`,
 		);
 		if (!botToken) {
-			throw new Error('Discord connection is not available to settle the approval card');
+			throw new Error('Discord connection is not available to settle the action card');
 		}
 
-		await settleDiscordApprovalMessage({
+		await settleDiscordActionMessage({
 			apiUrl: DISCORD_API_URL,
 			botToken,
 			threadId: params.threadId,
@@ -261,6 +263,18 @@ export class DiscordIntegration extends AgentChatIntegration {
 		if (parts[0] !== 'discord' || parts.length < 3) return true;
 		if (parts[1] === '@me') return true;
 		return Boolean(parts[3]);
+	}
+
+	getReplyExpectation(params: {
+		message: BridgeMessageContextParams['message'];
+		isNewMention: boolean;
+	}): ReplyExpectation {
+		if (params.isNewMention || params.message.isMention === true) return 'required';
+
+		const parts = params.message.threadId.split(':');
+		const isGuildThread =
+			parts[0] === 'discord' && Boolean(parts[1] && parts[1] !== '@me' && parts[2] && parts[3]);
+		return isGuildThread ? 'optional' : 'required';
 	}
 
 	async executeContextQuery(params: PlatformContextQueryParams): Promise<unknown> {
@@ -310,7 +324,10 @@ export class DiscordIntegration extends AgentChatIntegration {
 	): Promise<BridgeExecutionContext> {
 		return {
 			platformAgentContext: this.getPlatformAgentContext(params.chat),
-			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+			statusHandle:
+				params.replyExpectation === 'optional'
+					? undefined
+					: this.startTyping(params.thread, params.logger, params.agentId),
 		};
 	}
 
@@ -337,9 +354,19 @@ export class DiscordIntegration extends AgentChatIntegration {
 		});
 	}
 
-	formatApprovalDecisionMessage({ approved, raw, user }: ApprovalDecisionMessageParams): string {
+	formatActionDecisionMessage({
+		approved,
+		selectedLabel,
+		raw,
+		user,
+	}: ActionDecisionMessageParams): string {
 		const responder = user.fullName || user.userName || user.userId;
-		const outcome = approved ? `✅ Approved by ${responder}` : `🚫 Declined by ${responder}`;
+		const outcome =
+			approved === undefined
+				? `✅ ${selectedLabel || 'Action'} selected by ${responder}`
+				: approved
+					? `✅ Approved by ${responder}`
+					: `🚫 Declined by ${responder}`;
 		const originalText = this.extractCardText(raw);
 		return originalText ? `${originalText}\n\n${outcome}` : outcome;
 	}

@@ -111,17 +111,18 @@ export interface BridgeMessageContextParams {
 	replyExpectation: ReplyExpectation;
 }
 
-export interface ApprovalDecisionMessageParams {
-	approved: boolean;
+export interface ActionDecisionMessageParams {
+	approved?: boolean;
+	selectedLabel?: string;
 	raw: unknown;
 	user: Author;
 }
 
-export type ApprovalDecisionMessageFormatter = (
-	params: ApprovalDecisionMessageParams,
+export type ActionDecisionMessageFormatter = (
+	params: ActionDecisionMessageParams,
 ) => string | undefined;
 
-export interface SettleApprovalMessageParams {
+export interface SettleActionMessageParams {
 	agentId: string;
 	integration: AgentIntegrationConfig;
 	threadId: string;
@@ -129,7 +130,7 @@ export interface SettleApprovalMessageParams {
 	content: string;
 }
 
-export type SettleApprovalMessage = (params: SettleApprovalMessageParams) => Promise<void>;
+export type SettleActionMessage = (params: SettleActionMessageParams) => Promise<void>;
 
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
@@ -350,15 +351,15 @@ export abstract class AgentChatIntegration {
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
 
-	/** Replacement text for approval cards preserved after a user responds. */
-	formatApprovalDecisionMessage?(params: ApprovalDecisionMessageParams): string | undefined;
+	/** Replacement text for action cards preserved after a user responds. */
+	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;
 
 	/**
-	 * Optional platform-owned settlement for approval cards (e.g. Discord must
+	 * Optional platform-owned settlement for action cards (e.g. Discord must
 	 * clear embeds/components explicitly). When absent, the bridge falls back to
 	 * the adapter's `editMessage()`.
 	 */
-	settleApprovalMessage?(params: SettleApprovalMessageParams): Promise<void>;
+	settleActionMessage?(params: SettleActionMessageParams): Promise<void>;
 
 	/**
 	 * Whether a new mention should subscribe the thread for follow-ups.
@@ -398,9 +399,8 @@ export abstract class AgentChatIntegration {
 	executeContextQuery?(params: PlatformContextQueryParams): Promise<unknown>;
 
 	/**
-	 * Execute a platform-specific action (e.g. Linear `create_issue`, Slack
-	 * `add_reaction`). The central executor handles the cross-platform actions
-	 * (`respond`, `send_dm`, `send_channel_message`) before delegating here.
+	 * Execute a platform-specific action (e.g. Linear `create_issue`). The
+	 * central executor handles cross-platform actions before delegating here.
 	 *
 	 * Return `undefined` to signal the action isn't owned by this platform — the
 	 * caller then returns an `UNSUPPORTED_ACTION` error.

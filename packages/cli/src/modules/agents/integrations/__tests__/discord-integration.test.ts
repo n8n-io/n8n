@@ -7,9 +7,11 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
-import type { AgentChatIntegrationContext } from '../agent-chat-integration';
+import type {
+	AgentChatIntegrationContext,
+	PlatformContextQueryParams,
+} from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
-import type { PlatformContextQueryParams } from '../agent-chat-integration';
 import { DiscordIntegration } from '../platforms/discord-integration';
 import { installFetchStub } from './helpers/replay-test-helpers';
 
@@ -123,6 +125,77 @@ describe('DiscordIntegration', () => {
 			shouldSubscribe('discord:800000000000000001:700000000000000001:600000000000000001'),
 		).toBe(true);
 		expect(shouldSubscribe('discord:800000000000000001:700000000000000001')).toBe(false);
+	});
+
+	it.each([
+		{
+			name: 'new mention',
+			threadId: `discord:${GUILD_ID}:700000000000000001:600000000000000001`,
+			isNewMention: true,
+			isMention: false,
+			expected: 'required',
+		},
+		{
+			name: 'explicit mention',
+			threadId: `discord:${GUILD_ID}:700000000000000001:600000000000000001`,
+			isNewMention: false,
+			isMention: true,
+			expected: 'required',
+		},
+		{
+			name: 'DM follow-up',
+			threadId: 'discord:@me:400000000000000001',
+			isNewMention: false,
+			isMention: false,
+			expected: 'required',
+		},
+		{
+			name: 'guild thread follow-up',
+			threadId: `discord:${GUILD_ID}:700000000000000001:600000000000000001`,
+			isNewMention: false,
+			isMention: false,
+			expected: 'optional',
+		},
+		{
+			name: 'malformed thread',
+			threadId: 'discord:invalid',
+			isNewMention: false,
+			isMention: false,
+			expected: 'required',
+		},
+	] as const)('sets $name replies to $expected', (testCase) => {
+		expect(
+			integration.getReplyExpectation({
+				message: { threadId: testCase.threadId, isMention: testCase.isMention } as never,
+				isNewMention: testCase.isNewMention,
+			}),
+		).toBe(testCase.expected);
+	});
+
+	it('shows typing only when a reply is required', async () => {
+		const startTyping = vi.fn().mockResolvedValue(undefined);
+		const params = {
+			chat: { getAdapter: vi.fn().mockReturnValue({}) },
+			thread: { id: 'discord:@me:400000000000000001', startTyping },
+			message: {},
+			logger,
+			agentId: AGENT_ID,
+			isNewMention: false,
+		};
+
+		const optional = await integration.createBridgeExecutionContext({
+			...params,
+			replyExpectation: 'optional',
+		} as never);
+		expect(optional.statusHandle).toBeUndefined();
+		expect(startTyping).not.toHaveBeenCalled();
+
+		const required = await integration.createBridgeExecutionContext({
+			...params,
+			replyExpectation: 'required',
+		} as never);
+		expect(startTyping).toHaveBeenCalledOnce();
+		await required.statusHandle?.clearBeforeResponse();
 	});
 
 	describe('onBeforeConnect', () => {

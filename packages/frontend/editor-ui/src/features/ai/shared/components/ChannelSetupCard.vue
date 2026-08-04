@@ -298,7 +298,7 @@ watch(
 				:connected="isConfigured"
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[currentIntegration.type]"
-				:is-published="false"
+				:is-published="Boolean(agent?.activeVersionId)"
 				:project-id="projectId"
 				:agent-id="agentId"
 				:force-new-credential="true"

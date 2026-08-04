@@ -1,7 +1,4 @@
-import {
-	searchDiscordChannels,
-	settleDiscordApprovalMessage,
-} from '../platforms/discord-operations';
+import { searchDiscordChannels, settleDiscordActionMessage } from '../platforms/discord-operations';
 import { installFetchStub } from './helpers/replay-test-helpers';
 
 const API_URL = 'https://discord.com/api/v10';
@@ -135,7 +132,7 @@ describe('searchDiscordChannels', () => {
 	});
 });
 
-it('settles an approval by replacing the message and removing its controls', async () => {
+it('settles an action by replacing the message and removing its controls', async () => {
 	const stub = installFetchStub({
 		match: /discord\.com\/api/,
 		onRequest: ({ httpMethod, url, body }) => ({
@@ -148,7 +145,7 @@ it('settles an approval by replacing the message and removing its controls', asy
 	});
 
 	try {
-		await settleDiscordApprovalMessage({
+		await settleDiscordActionMessage({
 			apiUrl: API_URL,
 			botToken: BOT_TOKEN,
 			threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',

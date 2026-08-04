@@ -9,9 +9,11 @@ export interface CallbackPayload {
 	value: string;
 	kind?: 'approval';
 	groupId?: string;
+	label?: string;
 }
 
 export type CallbackMetadata = Pick<CallbackPayload, 'kind' | 'groupId'>;
+type CallbackStoreMetadata = CallbackMetadata & Pick<CallbackPayload, 'label'>;
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000;
 const KEY_PREFIX = 'agents:chat-callback';
@@ -33,7 +35,11 @@ export class CallbackStore {
 	) {}
 
 	/** Store a callback payload and return a short key (8 hex chars). */
-	async store(actionId: string, value: string, metadata: CallbackMetadata = {}): Promise<string> {
+	async store(
+		actionId: string,
+		value: string,
+		metadata: CallbackStoreMetadata = {},
+	): Promise<string> {
 		let key: string;
 		do {
 			key = randomBytes(4).toString('hex');

@@ -139,11 +139,9 @@ export class AgentChatBridge {
 			callbackStore: this.callbackStore,
 			deleteActionMessageBeforeResume:
 				this.integrationImpl?.deleteActionMessageBeforeResume ?? true,
-			formatApprovalDecisionMessage: (params) =>
-				this.integrationImpl?.formatApprovalDecisionMessage?.(params),
-			settleApprovalMessage: this.integrationImpl?.settleApprovalMessage?.bind(
-				this.integrationImpl,
-			),
+			formatActionDecisionMessage: (params) =>
+				this.integrationImpl?.formatActionDecisionMessage?.(params),
+			settleActionMessage: this.integrationImpl?.settleActionMessage?.bind(this.integrationImpl),
 			resolvePlatformThreadId: this.resolvePlatformThreadId.bind(this),
 			toAgentThreadId: this.toAgentThreadId.bind(this),
 			getPlatformAgentContext: this.getPlatformAgentContext.bind(this),
@@ -279,8 +277,11 @@ export class AgentChatBridge {
 	getShortenCallback(metadata?: CallbackMetadata): ShortenCallback | undefined {
 		if (!this.callbackStore) return undefined;
 		const store = this.callbackStore;
-		return async (actionId: string, value: string) => {
-			const key = await store.store(actionId, value, metadata);
+		return async (actionId: string, value: string, label?: string) => {
+			const key = await store.store(actionId, value, {
+				...metadata,
+				...(label !== undefined ? { label } : {}),
+			});
 			return { id: key, value: '' };
 		};
 	}
@@ -515,9 +516,10 @@ export class AgentChatBridge {
 
 		const cardPayload = buildSuspendCardPayload(suspendPayload);
 		if (!cardPayload) return 'skipped';
-		const callbackMetadata: CallbackMetadata | undefined = isApprovalSuspendPayload(suspendPayload)
-			? { kind: 'approval', groupId: JSON.stringify([runId, toolCallId]) }
-			: undefined;
+		const callbackMetadata: CallbackMetadata = {
+			groupId: JSON.stringify([runId, toolCallId]),
+			...(isApprovalSuspendPayload(suspendPayload) ? { kind: 'approval' } : {}),
+		};
 
 		try {
 			const card = await this.componentMapper.toCard(

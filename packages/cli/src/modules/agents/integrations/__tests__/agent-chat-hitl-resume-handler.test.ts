@@ -1,7 +1,26 @@
 import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
 
-it('settles an approval card in place before resuming the agent', async () => {
-	const settleApprovalMessage = vi.fn().mockResolvedValue(undefined);
+it.each([
+	{
+		name: 'approval',
+		callback: {
+			actionId: 'resume:run-1:tool-1:0',
+			value: JSON.stringify({ approved: true }),
+			kind: 'approval' as const,
+		},
+		content: '✅ Approved by Alice',
+	},
+	{
+		name: 'non-approval selection',
+		callback: {
+			actionId: 'resume:run-1:tool-1:0',
+			value: JSON.stringify({ type: 'button', value: 'continue' }),
+			label: 'Continue',
+		},
+		content: '✅ Continue selected by Alice',
+	},
+])('settles a $name card in place before resuming the agent', async ({ callback, content }) => {
+	const settleActionMessage = vi.fn().mockResolvedValue(undefined);
 	const deleteMessage = vi.fn().mockResolvedValue(undefined);
 	const resumeForChat = vi.fn(() => (async function* () {})());
 	const handler = new AgentChatHitlResumeHandler({
@@ -11,15 +30,14 @@ it('settles an approval card in place before resuming the agent', async () => {
 		agentService: { resumeForChat },
 		logger: { warn: vi.fn() } as never,
 		callbackStore: {
-			resolve: vi.fn().mockResolvedValue({
-				actionId: 'resume:run-1:tool-1:0',
-				value: JSON.stringify({ approved: true }),
-				kind: 'approval',
-			}),
+			resolve: vi.fn().mockResolvedValue(callback),
 		} as never,
 		deleteActionMessageBeforeResume: false,
-		formatApprovalDecisionMessage: () => '✅ Approved by Alice',
-		settleApprovalMessage,
+		formatActionDecisionMessage: ({ approved, selectedLabel, user }) =>
+			approved === true
+				? `✅ Approved by ${user.fullName}`
+				: `✅ ${selectedLabel} selected by ${user.fullName}`,
+		settleActionMessage,
 		resolvePlatformThreadId: () =>
 			'discord:800000000000000001:700000000000000001:600000000000000001',
 		toAgentThreadId: () => ({ id: 'agent-thread-1' }) as never,
@@ -40,14 +58,14 @@ it('settles an approval card in place before resuming the agent', async () => {
 	} as never);
 
 	expect(deleteMessage).not.toHaveBeenCalled();
-	expect(settleApprovalMessage).toHaveBeenCalledWith({
+	expect(settleActionMessage).toHaveBeenCalledWith({
 		agentId: 'agent-1',
 		integration: { type: 'discord', credentialId: 'cred-1' },
 		threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
 		messageId: 'message-1',
-		content: '✅ Approved by Alice',
+		content,
 	});
-	expect(settleApprovalMessage.mock.invocationCallOrder[0]).toBeLessThan(
+	expect(settleActionMessage.mock.invocationCallOrder[0]).toBeLessThan(
 		resumeForChat.mock.invocationCallOrder[0],
 	);
 });

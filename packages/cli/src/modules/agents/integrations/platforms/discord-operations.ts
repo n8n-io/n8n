@@ -152,11 +152,11 @@ export function resolveDiscordMessageTargetChannelId(threadId: string): string {
 }
 
 /**
- * Settle an approval card in place: replace content and clear embeds/components.
+ * Settle an action card in place: replace content and clear embeds/components.
  * The Chat SDK string edit path omits those fields, which Discord treats as
  * "leave unchanged" — so buttons would otherwise stick around after a decision.
  */
-export async function settleDiscordApprovalMessage(params: {
+export async function settleDiscordActionMessage(params: {
 	apiUrl: string;
 	botToken: string;
 	threadId: string;

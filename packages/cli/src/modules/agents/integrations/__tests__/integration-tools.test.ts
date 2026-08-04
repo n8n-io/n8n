@@ -893,7 +893,6 @@ describe('integration tools', () => {
 			}).success,
 		).toBe(true);
 		expect(schema.safeParse({ action: 'add_reaction', input: {} }).success).toBe(false);
-		expect(tool.description).toContain('add_reaction: input.emoji is required');
 	});
 
 	it('action tool schema accepts no-input actions without an input object', () => {

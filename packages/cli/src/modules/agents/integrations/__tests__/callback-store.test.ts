@@ -59,17 +59,15 @@ describe('CallbackStore', () => {
 		});
 	});
 
-	it('invalidates sibling approval keys when one group member is resolved', async () => {
+	it('invalidates sibling callbacks when one group member is resolved', async () => {
 		const cache = await createCache();
 		const lockService = createLockService();
 		const store = new CallbackStore(cache, lockService, 'agent-1:discord:cred-1');
 
 		const approveKey = await store.store('resume:run:tool:0', '{"approved":true}', {
-			kind: 'approval',
 			groupId: 'card-1',
 		});
 		const declineKey = await store.store('resume:run:tool:1', '{"approved":false}', {
-			kind: 'approval',
 			groupId: 'card-1',
 		});
 
