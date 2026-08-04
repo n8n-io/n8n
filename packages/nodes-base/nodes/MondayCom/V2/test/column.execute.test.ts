@@ -5,6 +5,7 @@ import {
 	assertRollupFunctionAllowed,
 	buildCustomColumnIdArgs,
 	formatColumnSchemaRow,
+	isPlainJsonObject,
 } from '../actions/column/column.execute';
 
 function makeContext(rawValue: unknown): IExecuteFunctions {
@@ -117,5 +118,19 @@ describe('buildCustomColumnIdArgs (Column Create)', () => {
 			arg: 'id: $customColumnId,',
 			variables: { customColumnId: 'my_status' },
 		});
+	});
+});
+
+describe('isPlainJsonObject (Settings / Defaults JSON)', () => {
+	it('accepts plain objects', () => {
+		expect(isPlainJsonObject({})).toBe(true);
+		expect(isPlainJsonObject({ labels: { '0': 'Todo' } })).toBe(true);
+	});
+
+	it('rejects arrays, null, and primitives', () => {
+		expect(isPlainJsonObject([])).toBe(false);
+		expect(isPlainJsonObject(null)).toBe(false);
+		expect(isPlainJsonObject('{}')).toBe(false);
+		expect(isPlainJsonObject(undefined)).toBe(false);
 	});
 });

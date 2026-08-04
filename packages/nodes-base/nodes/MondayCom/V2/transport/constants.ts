@@ -2,7 +2,7 @@
  * The monday.com API version this node is pinned to — the single source of
  * truth for every request (client header and credential test).
  *
- * Upgrade policy (see docs/DESIGN.md § API layer):
+ * Upgrade policy:
  * - monday releases quarterly (yyyy-01 / 04 / 07 / 10). Each version is
  *   "current" for one quarter, then supported in maintenance for ~1 year.
  * - Review this constant once per quarter against

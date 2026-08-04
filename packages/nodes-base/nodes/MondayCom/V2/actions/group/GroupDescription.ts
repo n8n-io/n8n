@@ -59,6 +59,32 @@ const GROUP_UPDATE_COLOR_OPTIONS = [
 	{ name: '🟤 Brown', value: 'brown', description: '#7f5347' },
 ];
 
+const GROUP_POSITION_OPTIONS = [
+	{ name: 'After Group', value: 'after' },
+	{ name: 'At Bottom', value: 'bottom' },
+	{ name: 'At Top', value: 'top' },
+	{ name: 'Before Group', value: 'before' },
+];
+
+/** Shared "Position: Relative To Group" picker; description varies by operation. */
+function positionRelativeToGroupField(relativeToDescription: string): INodeProperties {
+	return {
+		// Prefix keeps it next to Position; suffixing "Name or ID" would break that.
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Position: Relative To Group',
+		name: 'positionGroupId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoardGroups',
+			loadOptionsDependsOn: ['boardId.value'],
+		},
+		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options -- description is operation-specific; still ends with the required expression hint
+		description: `${relativeToDescription} Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>`,
+		displayOptions: { show: { groupPosition: ['after', 'before'] } },
+	};
+}
+
 export const groupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -129,31 +155,14 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Position',
 				name: 'groupPosition',
 				type: 'options',
-				options: [
-					{ name: 'After Group', value: 'after' },
-					{ name: 'At Bottom', value: 'bottom' },
-					{ name: 'At Top', value: 'top' },
-					{ name: 'Before Group', value: 'before' },
-				],
+				options: GROUP_POSITION_OPTIONS,
 				default: 'top',
 				description:
 					'Where to place the duplicated group on the board; left unset, monday puts it right below the original group. Placements other than "At Top" cost one extra repositioning call.',
 			},
-			{
-				// Prefix keeps it next to Position; suffixing "Name or ID" would break that.
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Position: Relative To Group',
-				name: 'positionGroupId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getBoardGroups',
-					loadOptionsDependsOn: ['boardId.value'],
-				},
-				default: '',
-				description:
-					'The existing group the duplicate is placed before or after (used with Position "After Group" / "Before Group"). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-				displayOptions: { show: { groupPosition: ['after', 'before'] } },
-			},
+			positionRelativeToGroupField(
+				'The existing group the duplicate is placed before or after (used with Position "After Group" / "Before Group").',
+			),
 		],
 	},
 
@@ -186,31 +195,14 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Position',
 				name: 'groupPosition',
 				type: 'options',
-				options: [
-					{ name: 'After Group', value: 'after' },
-					{ name: 'At Bottom', value: 'bottom' },
-					{ name: 'At Top', value: 'top' },
-					{ name: 'Before Group', value: 'before' },
-				],
+				options: GROUP_POSITION_OPTIONS,
 				default: 'top',
 				description:
 					'Where to place the new group on the board; left unset, monday puts it at the top',
 			},
-			{
-				// Prefix keeps it next to Position; suffixing "Name or ID" would break that.
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Position: Relative To Group',
-				name: 'positionGroupId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getBoardGroups',
-					loadOptionsDependsOn: ['boardId.value'],
-				},
-				default: '',
-				description:
-					'The existing group the new group is placed before or after (used with Position "After Group" / "Before Group"). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-				displayOptions: { show: { groupPosition: ['after', 'before'] } },
-			},
+			positionRelativeToGroupField(
+				'The existing group the new group is placed before or after (used with Position "After Group" / "Before Group").',
+			),
 		],
 	},
 	{
@@ -243,31 +235,14 @@ export const groupFields: INodeProperties[] = [
 				displayName: 'Position',
 				name: 'groupPosition',
 				type: 'options',
-				options: [
-					{ name: 'After Group', value: 'after' },
-					{ name: 'At Bottom', value: 'bottom' },
-					{ name: 'At Top', value: 'top' },
-					{ name: 'Before Group', value: 'before' },
-				],
+				options: GROUP_POSITION_OPTIONS,
 				default: 'top',
 				description:
 					'Where to move the group on the board. "At Top" / "At Bottom" cost one extra read to find the current first/last group.',
 			},
-			{
-				// Prefix keeps it next to Position; suffixing "Name or ID" would break that.
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Position: Relative To Group',
-				name: 'positionGroupId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getBoardGroups',
-					loadOptionsDependsOn: ['boardId.value'],
-				},
-				default: '',
-				description:
-					'The existing group this group is moved before or after (used with Position "After Group" / "Before Group"). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-				displayOptions: { show: { groupPosition: ['after', 'before'] } },
-			},
+			positionRelativeToGroupField(
+				'The existing group this group is moved before or after (used with Position "After Group" / "Before Group").',
+			),
 		],
 	},
 	{

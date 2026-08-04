@@ -18,6 +18,11 @@ import { validateRollupFunction } from '../../helpers/multiLevel';
 import type { MondayGraphQLClient } from '../../transport/MondayGraphQLClient';
 import { safeJsonParse } from '../item/item.execute';
 
+/** True for plain objects only — rejects null and arrays (`typeof [] === 'object'`). */
+export function isPlainJsonObject(value: unknown): value is IDataObject {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 /**
  * Shapes one Column: Get Many row — settings_str is parsed into a
  * `settings` object so expressions can address label maps etc. directly.
@@ -118,12 +123,12 @@ export async function updateColumn(
 			typeof options.settingsJson === 'string'
 				? safeJsonParse(options.settingsJson as string)
 				: options.settingsJson;
-		if (parsed === undefined || parsed === null || typeof parsed !== 'object') {
+		if (!isPlainJsonObject(parsed)) {
 			throw new NodeOperationError(this.getNode(), 'Settings (JSON) must be a valid JSON object', {
 				itemIndex,
 			});
 		}
-		settings = parsed as IDataObject;
+		settings = parsed;
 	}
 	const width = options.width as number | undefined;
 	const rollupFunction = (options.rollupFunction as string) || '';
@@ -512,7 +517,7 @@ export async function createColumn(
 	if (rawDefaultsInput && rawDefaultsInput !== '{}') {
 		const parsed =
 			typeof rawDefaultsInput === 'string' ? safeJsonParse(rawDefaultsInput) : rawDefaultsInput;
-		if (parsed === undefined || parsed === null || typeof parsed !== 'object') {
+		if (!isPlainJsonObject(parsed)) {
 			throw new NodeOperationError(this.getNode(), 'Defaults (JSON) must be a valid JSON object', {
 				itemIndex,
 			});

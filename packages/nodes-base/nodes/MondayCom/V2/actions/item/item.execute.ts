@@ -1269,7 +1269,7 @@ export async function getManyItems(
 	const includeCursor = options.includeCursor === true;
 	const includeSubitems = options.includeSubitems === true;
 
-	if (includeSubitems && options.sortBy) {
+	if (includeSubitems && options.sortBy && !startingCursor) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Sort By Column cannot be combined with Include Subitems — the API silently ignores sorting when subitems are included. Remove one of the two options.',
