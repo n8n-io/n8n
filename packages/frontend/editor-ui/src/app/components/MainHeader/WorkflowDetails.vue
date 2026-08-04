@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
-import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants';
@@ -491,7 +490,6 @@ onBeforeUnmount(() => {
 		</span>
 
 		<ConnectionTracker class="actions">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
 				:is-archived="isArchived"

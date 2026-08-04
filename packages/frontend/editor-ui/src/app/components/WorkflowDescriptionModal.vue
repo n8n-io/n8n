@@ -14,13 +14,17 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
+import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { onMounted } from 'vue';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		workflowId: string;
+		workflowName?: string;
 		workflowDescription?: string | null;
+		/** When provided (and tags are enabled), the modal also edits the workflow's tags. */
+		workflowTags?: string[];
 		onSave?: (description: string | null) => void;
 	};
 }>();
@@ -39,10 +43,25 @@ const descriptionValue = ref(props.data.workflowDescription ?? '');
 const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
 
+const tagIds = ref<string[]>([...(props.data.workflowTags ?? [])]);
+const showTags = computed(
+	() => props.data.workflowTags !== undefined && settingsStore.areTagsEnabled,
+);
+
+const modalTitle = computed(() => props.data.workflowName || i18n.baseText('generic.description'));
+
 const normalizedCurrentValue = computed(() => (descriptionValue.value ?? '').trim());
 const normalizedLastSaved = computed(() => (props.data.workflowDescription ?? '').trim());
 
-const canSave = computed(() => normalizedCurrentValue.value !== normalizedLastSaved.value);
+const tagsChanged = computed(() => {
+	if (!showTags.value) return false;
+	const initial = props.data.workflowTags ?? [];
+	return tagIds.value.length !== initial.length || tagIds.value.some((id) => !initial.includes(id));
+});
+
+const canSave = computed(
+	() => normalizedCurrentValue.value !== normalizedLastSaved.value || tagsChanged.value,
+);
 
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
@@ -78,6 +97,7 @@ async function saveWorkflowDescription(id: string, description: string | null) {
 	const updated = await workflowsStore.updateWorkflow(id, {
 		versionId: currentVersionId,
 		description,
+		...(showTags.value ? { tags: tagIds.value } : {}),
 		...(currentChecksum ? { expectedChecksum: currentChecksum } : {}),
 	});
 
@@ -85,12 +105,16 @@ async function saveWorkflowDescription(id: string, description: string | null) {
 		workflowsListStore.updateWorkflowInCache(id, {
 			description: updated.description,
 			versionId: updated.versionId,
+			...(showTags.value ? { tags: updated.tags } : {}),
 		});
 	}
 
 	if (isCurrentWorkflow) {
 		const workflowDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 		workflowDocStore.setDescription(updated.description ?? '');
+		if (showTags.value) {
+			workflowDocStore.setTags(tagIds.value);
+		}
 	}
 }
 
@@ -155,7 +179,7 @@ onMounted(() => {
 <template>
 	<Modal
 		:name="WORKFLOW_DESCRIPTION_MODAL_KEY"
-		:title="i18n.baseText('generic.description')"
+		:title="modalTitle"
 		width="500"
 		:class="$style.container"
 		:event-bus="modalBus"
@@ -166,15 +190,28 @@ onMounted(() => {
 				:class="$style['description-edit-content']"
 				data-test-id="workflow-description-edit-content"
 			>
-				<N8nText color="text-base" data-test-id="descriptionTooltip">{{ textareaTip }}</N8nText>
-				<N8nInput
-					ref="descriptionInput"
-					v-model="descriptionValue"
-					:rows="6"
-					data-test-id="workflow-description-input"
-					type="textarea"
-					@keydown="handleKeyDown"
-				/>
+				<div :class="$style.field">
+					<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.description') }}</N8nText>
+					<N8nInput
+						ref="descriptionInput"
+						v-model="descriptionValue"
+						:rows="6"
+						data-test-id="workflow-description-input"
+						type="textarea"
+						@keydown="handleKeyDown"
+					/>
+					<N8nText size="small" color="text-base" data-test-id="descriptionTooltip">
+						{{ textareaTip }}
+					</N8nText>
+				</div>
+				<div v-if="showTags" :class="$style.field">
+					<N8nText tag="label" :bold="true">{{ i18n.baseText('generic.tag_plural') }}</N8nText>
+					<WorkflowTagsDropdown
+						v-model="tagIds"
+						:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
+						data-test-id="workflow-tags-dropdown"
+					/>
+				</div>
 			</div>
 		</template>
 		<template #footer>
@@ -204,8 +241,14 @@ onMounted(() => {
 .description-edit-content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: var(--spacing--s);
+}
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 }
 
 .popover-footer {

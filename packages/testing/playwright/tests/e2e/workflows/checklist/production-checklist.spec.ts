@@ -17,16 +17,22 @@ test.describe(
 		}) => {
 			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 
-			await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
+			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();
+			await n8n.page.keyboard.press('Escape');
 
 			await n8n.canvas.publishWorkflow();
 			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
 			await n8n.workflowActivationModal.close();
 
-			await expect(n8n.canvas.getProductionChecklistButton()).toBeVisible();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 			await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
 			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
+
+			// The checklist reopens from the workflow menu
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.openProductionChecklist();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 		});
 
 		test('should display evaluations action when AI node exists and feature is enabled', async ({
@@ -99,7 +105,7 @@ test.describe(
 			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
 
 			await n8n.canvas.clickOutsideModal();
-			await n8n.canvas.clickProductionChecklistButton();
+			await n8n.canvas.openProductionChecklist();
 
 			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
 			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
@@ -138,7 +144,7 @@ test.describe(
 			await n8n.workflowSettingsModal.clickSave();
 			await expect(n8n.workflowSettingsModal.getModal()).toBeHidden();
 
-			await n8n.canvas.clickProductionChecklistButton();
+			await n8n.canvas.openProductionChecklist();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 
 			await expect(n8n.canvas.getProductionChecklistActionCompletedIcon()).toBeVisible();
@@ -156,7 +162,8 @@ test.describe(
 
 			await n8n.canvas.confirmIgnoreAllForAllWorkflows();
 
-			await expect(n8n.canvas.getProductionChecklistButton()).toBeHidden();
+			await n8n.canvas.clickWorkflowMenu();
+			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();
 		});
 	},
 );

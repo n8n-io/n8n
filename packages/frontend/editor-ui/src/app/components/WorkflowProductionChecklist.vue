@@ -29,6 +29,10 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowEvaluationState } from '@/features/ai/evaluation.ee/composables/useWorkflowEvaluationState';
 
+defineProps<{
+	hideTrigger?: boolean;
+}>();
+
 const i18n = useI18n();
 const router = useRouter();
 const evaluationStore = useEvaluationStore();
@@ -340,12 +344,21 @@ watch(
 onMounted(async () => {
 	await loadWorkflowSettings();
 });
+
+// Whether the checklist has anything to show (mirrors the popover's own
+// render conditions), so hosts can gate their entry point on it.
+const hasPendingActions = computed(() =>
+	availableActions.value.some((action) => !action.completed),
+);
+
+defineExpose({ open: openSuggestedActions, hasPendingActions });
 </script>
 
 <template>
 	<N8nSuggestedActions
 		v-if="availableActions.length > 0"
 		:open="isPopoverOpen"
+		:hide-trigger="hideTrigger"
 		:title="i18n.baseText('workflowProductionChecklist.title')"
 		:actions="availableActions"
 		:ignore-all-label="i18n.baseText('workflowProductionChecklist.turnOffWorkflowSuggestions')"

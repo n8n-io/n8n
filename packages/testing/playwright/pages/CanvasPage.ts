@@ -261,6 +261,7 @@ export class CanvasPage extends BasePage {
 	 */
 	async importWorkflow(fixtureKey: string, workflowName: string) {
 		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-import');
 
 		const [fileChooser] = await Promise.all([
 			this.page.waitForEvent('filechooser'),
@@ -284,6 +285,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickImportFromURL(): Promise<void> {
+		await this.clickByTestId('workflow-menu-item-import');
 		await this.clickByTestId('workflow-menu-item-import-from-url');
 	}
 
@@ -333,9 +335,21 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
 
+	/**
+	 * Opens the "Edit description and tags" modal from the workflow menu and
+	 * focuses its tags dropdown, ready for selecting or creating tags.
+	 */
 	async clickCreateTagButton(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
-		await this.clickByTestId('workflow-menu-item-add-tag');
+		await this.clickByTestId('workflow-menu-item-edit-description');
+		await this.clickByTestId('workflow-tags-dropdown');
+	}
+
+	/** Saves the "Edit description and tags" modal and waits for the workflow update. */
+	async saveDescriptionAndTagsModal(): Promise<void> {
+		const responsePromise = this.waitForSaveWorkflowCompleted();
+		await this.clickByTestId('workflow-description-save-button');
+		await responsePromise;
 	}
 
 	async clickNthTagPill(index: number): Promise<void> {
@@ -351,9 +365,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getTagPills(): Locator {
-		return this.page
-			.getByTestId('workflow-tags-container')
-			.locator('.el-tag:not(.count-container)');
+		return this.page.getByTestId('workflow-tags-dropdown').locator('.el-tag:not(.count-container)');
 	}
 
 	getSavedWorkflowTagPills(): Locator {
@@ -373,7 +385,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async typeInTagInput(text: string): Promise<void> {
-		const input = this.page.getByTestId('workflow-tags-container').locator('input').first();
+		const input = this.page.getByTestId('workflow-tags-dropdown').locator('input').first();
 		await input.fill(text);
 	}
 
@@ -446,8 +458,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	// Production Checklist methods
-	getProductionChecklistButton(): Locator {
-		return this.page.getByTestId('suggested-action-count');
+	getProductionChecklistMenuItem(): Locator {
+		return this.page.getByTestId('workflow-menu-item-production-checklist');
+	}
+
+	async openProductionChecklist(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+		await this.getProductionChecklistMenuItem().click();
 	}
 
 	getProductionChecklistPopover(): Locator {
@@ -476,10 +493,6 @@ export class CanvasPage extends BasePage {
 
 	getEvaluationsActionItem(): Locator {
 		return this.getProductionChecklistActionItem('Test reliability of AI steps');
-	}
-
-	async clickProductionChecklistButton(): Promise<void> {
-		await this.getProductionChecklistButton().click();
 	}
 
 	async clickProductionChecklistIgnoreAll(): Promise<void> {

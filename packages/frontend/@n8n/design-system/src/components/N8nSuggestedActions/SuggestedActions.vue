@@ -25,6 +25,8 @@ export interface SuggestedActionsProps {
 	ignoreAllLabel?: string;
 	popoverAlignment?: 'start' | 'end' | 'center';
 	notice?: string;
+	/** Render an invisible popover anchor instead of the count pill; opening is then fully controlled via `open`. */
+	hideTrigger?: boolean;
 }
 
 interface SuggestedActionsEmits {
@@ -74,7 +76,9 @@ const handleIgnoreClick = (actionId: string) => {
 		@update:open="$emit('update:open', $event)"
 	>
 		<template #trigger>
+			<span v-if="hideTrigger" :class="$style.hiddenTrigger" />
 			<div
+				v-else
 				:class="[$style.triggerContainer, open ? $style.activeTrigger : '']"
 				data-test-id="suggested-action-count"
 			>
@@ -154,6 +158,12 @@ const handleIgnoreClick = (actionId: string) => {
 	display: inline-block;
 	position: relative;
 	--tag--height: 24px;
+}
+
+.hiddenTrigger {
+	display: block;
+	width: 0;
+	height: 0;
 }
 
 .activeTrigger {
