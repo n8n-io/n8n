@@ -320,6 +320,36 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(3);
 		});
 
+		it('should kill a runner spawned by a relaunch that was in flight when stop began', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			let releaseGrantToken!: (token: string) => void;
+			auth.createGrantToken.mockImplementationOnce(
+				async () =>
+					await new Promise<string>((resolve) => {
+						releaseGrantToken = resolve;
+					}),
+			);
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(0);
+
+			const relaunchedChild = createChildProcess(43);
+			spawnMock.mockReturnValue(relaunchedChild);
+			const stopPromise = taskRunnerProcess.stop();
+			releaseGrantToken('grantToken');
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(relaunchedChild.kill).toHaveBeenCalled();
+			relaunchedChild.emit('exit', 0);
+			await stopPromise;
+
+			expect(taskRunnerProcess.isRunning).toBe(false);
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(spawnMock).toHaveBeenCalledTimes(2);
+		});
+
 		it('should stop retrying once shutdown begins', async () => {
 			const child = createChildProcess(42);
 			spawnMock.mockReturnValue(child);

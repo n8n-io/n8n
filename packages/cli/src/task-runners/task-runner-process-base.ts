@@ -32,6 +32,8 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 	protected _runPromise: Promise<void> | null = null;
 
+	private startPromise: Promise<void> | null = null;
+
 	protected isShuttingDown = false;
 
 	constructor(
@@ -74,6 +76,15 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		assert(!this.process, `${this.name} already running`);
 		this.isShuttingDown = false;
 
+		this.startPromise = this.spawnAndMonitor();
+		try {
+			await this.startPromise;
+		} finally {
+			this.startPromise = null;
+		}
+	}
+
+	private async spawnAndMonitor() {
 		const grantToken = await this.authService.createGrantToken();
 		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
 
@@ -86,6 +97,8 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	@OnShutdown()
 	async stop() {
 		this.isShuttingDown = true;
+
+		await this.startPromise?.catch(() => {});
 
 		if (this.process) {
 			this.process.kill();
