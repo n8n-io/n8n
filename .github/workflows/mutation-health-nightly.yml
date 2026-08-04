@@ -1,4 +1,5 @@
 name: 'Mutation Health (nightly)'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Mutation Health (mode={0}, top_n={1}, source_file={2})', inputs.mode, inputs.top_n, inputs.source_file) || '' }}"
 
 on:
   schedule:

@@ -51,7 +51,12 @@ test.describe(
 			// import pins the trigger's data, and the autosave that follows ~1.5s after
 			// routes straight back out of /debug.
 			await n8n.page.waitForURL(/\/debug/);
-			await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.EXECUTION_IMPORTED);
+			// The route change lands before the import fetches the execution, so give the
+			// toast the same headroom the runs get: CI runs one n8n instance for as many
+			// workers as there are cores.
+			await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.EXECUTION_IMPORTED, {
+				timeout: 10_000,
+			});
 		}
 
 		test('should enter debug mode for failed executions', async ({ n8n }) => {
@@ -64,8 +69,11 @@ test.describe(
 				{ timeout: 10_000 },
 			);
 			await importLastExecutionForDebugging(n8n);
-			// The execution's data is now pinned onto the editor's canvas
-			expect(await n8n.canvas.getPinnedNodeNames()).toContain(FAILING_WORKFLOW_TRIGGER);
+			// The execution's data is now pinned onto the editor's canvas. Asserted on the
+			// badge rather than a one-shot read of every pinned name: the autosave that
+			// follows the import re-renders the canvas, so a snapshot taken mid-render can
+			// miss the node that was just pinned.
+			await expect(n8n.canvas.getNodePinnedStatusIndicator(FAILING_WORKFLOW_TRIGGER)).toBeVisible();
 		});
 
 		test('should exit debug mode after successful execution', async ({ n8n }) => {
