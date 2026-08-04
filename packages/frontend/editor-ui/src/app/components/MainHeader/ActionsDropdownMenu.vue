@@ -228,7 +228,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		},
 	];
 
-	if (!props.isNewWorkflow && productionChecklistRef.value?.hasPendingActions) {
+	if (!props.isNewWorkflow && productionChecklistRef.value?.hasActions) {
 		workflowTools.push({
 			id: WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST,
 			label: locale.baseText('menuActions.productionChecklist'),

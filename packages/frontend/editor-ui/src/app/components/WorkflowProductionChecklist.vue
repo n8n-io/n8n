@@ -11,14 +11,12 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	VIEWS,
-	MODAL_CONFIRM,
 	EVALUATIONS_DOCS_URL,
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
 	TIME_SAVED_NODE_TYPE,
 	ERROR_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
-import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
@@ -40,7 +38,6 @@ const evaluationState = useWorkflowEvaluationState();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsCache = useWorkflowSettingsCache();
 const uiStore = useUIStore();
-const message = useMessage();
 const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
@@ -118,14 +115,9 @@ const availableActions = computed(() => {
 		moreInfoLink: string;
 		completed: boolean;
 	}> = [];
-	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Error workflow action
-	if (
-		hasPublishedVersion &&
-		!isErrorWorkflow.value &&
-		!suggestedActionSettings.errorWorkflow?.ignored
-	) {
+	if (hasPublishedVersion && !isErrorWorkflow.value) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),
@@ -136,12 +128,7 @@ const availableActions = computed(() => {
 	}
 
 	// Evaluations action
-	if (
-		hasPublishedVersion &&
-		hasAINode.value &&
-		evaluationStore.isEvaluationEnabled &&
-		!suggestedActionSettings.evaluations?.ignored
-	) {
+	if (hasPublishedVersion && hasAINode.value && evaluationStore.isEvaluationEnabled) {
 		actions.push({
 			id: 'evaluations',
 			title: i18n.baseText('workflowProductionChecklist.evaluations.title'),
@@ -152,7 +139,7 @@ const availableActions = computed(() => {
 	}
 
 	// Time saved action
-	if (hasPublishedVersion && !suggestedActionSettings.timeSaved?.ignored) {
+	if (hasPublishedVersion) {
 		actions.push({
 			id: 'timeSaved',
 			title: i18n.baseText('workflowProductionChecklist.timeSaved.title'),
@@ -186,11 +173,8 @@ const availableActions = computed(() => {
 
 		// Instance-level MCP access is disabled - show action to enable it
 		if (!isMcpAccessEnabled.value) {
-			// Only show to admins if not ignored
-			if (
-				!canToggleInstanceMCPAccess.value ||
-				suggestedActionSettings['instance-mcp-access']?.ignored
-			) {
+			// Only admins can toggle instance-level access
+			if (!canToggleInstanceMCPAccess.value) {
 				return null;
 			}
 
@@ -200,11 +184,6 @@ const availableActions = computed(() => {
 				description: i18n.baseText('mcp.productionChecklist.instance.description'),
 				completed: false,
 			};
-		}
-
-		// Workflow-level MCP access (instance-level is enabled)
-		if (suggestedActionSettings['workflow-mcp-access']?.ignored) {
-			return null;
 		}
 
 		return {
@@ -218,8 +197,7 @@ const availableActions = computed(() => {
 
 async function loadWorkflowSettings() {
 	if (workflowDocumentStore?.value?.workflowId) {
-		// todo add global config
-		cachedSettings.value = await workflowsCache.getMergedWorkflowSettings(
+		cachedSettings.value = await workflowsCache.getWorkflowSettings(
 			workflowDocumentStore?.value.workflowId,
 		);
 	}
@@ -248,51 +226,6 @@ async function handleActionClick(actionId: string) {
 			break;
 	}
 	isPopoverOpen.value = false;
-}
-
-function isValidAction(action: string): action is ActionType {
-	return [
-		'evaluations',
-		'errorWorkflow',
-		'timeSaved',
-		'workflow-mcp-access',
-		'instance-mcp-access',
-	].includes(action);
-}
-
-async function handleIgnoreClick(actionId: string) {
-	if (!isValidAction(actionId)) {
-		return;
-	}
-
-	await workflowsCache.ignoreSuggestedAction(
-		workflowDocumentStore?.value?.workflowId ?? '',
-		actionId,
-	);
-	await loadWorkflowSettings();
-
-	telemetry.track('user clicked ignore suggested action', {
-		actionId,
-	});
-}
-
-async function handleIgnoreAll() {
-	const ignoreAllConfirmed = await message.confirm(
-		i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.description'),
-		i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.title'),
-		{
-			confirmButtonText: i18n.baseText('workflowProductionChecklist.ignoreAllConfirmation.confirm'),
-		},
-	);
-
-	if (ignoreAllConfirmed === MODAL_CONFIRM) {
-		await workflowsCache.ignoreAllSuggestedActionsForAllWorkflows(
-			availableActions.value.map((action) => action.id),
-		);
-		await loadWorkflowSettings();
-
-		telemetry.track('user clicked ignore suggested actions for all workflows');
-	}
 }
 
 function openSuggestedActions() {
@@ -345,13 +278,11 @@ onMounted(async () => {
 	await loadWorkflowSettings();
 });
 
-// Whether the checklist has anything to show (mirrors the popover's own
-// render conditions), so hosts can gate their entry point on it.
-const hasPendingActions = computed(() =>
-	availableActions.value.some((action) => !action.completed),
-);
+// Whether the checklist has anything to show, so hosts can gate their entry
+// point on it. Completed actions still count: the checklist stays reachable.
+const hasActions = computed(() => availableActions.value.length > 0);
 
-defineExpose({ open: openSuggestedActions, hasPendingActions });
+defineExpose({ open: openSuggestedActions, hasActions });
 </script>
 
 <template>
@@ -361,14 +292,11 @@ defineExpose({ open: openSuggestedActions, hasPendingActions });
 		:hide-trigger="hideTrigger"
 		:title="i18n.baseText('workflowProductionChecklist.title')"
 		:actions="availableActions"
-		:ignore-all-label="i18n.baseText('workflowProductionChecklist.turnOffWorkflowSuggestions')"
 		:notice="
 			isProtectedEnvironment ? i18n.baseText('workflowProductionChecklist.readOnlyNotice') : ''
 		"
 		popover-alignment="end"
 		@action-click="handleActionClick"
-		@ignore-click="handleIgnoreClick"
-		@ignore-all="handleIgnoreAll"
 		@update:open="handlePopoverOpenChange"
 	/>
 </template>

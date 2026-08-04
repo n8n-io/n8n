@@ -92,7 +92,7 @@ test.describe(
 			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 		});
 
-		test('should allow ignoring individual actions', async ({ n8n }) => {
+		test('should keep the checklist available after closing it', async ({ n8n }) => {
 			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.publishWorkflow();
 			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
@@ -100,14 +100,12 @@ test.describe(
 
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 
-			await expect(n8n.canvas.getProductionChecklistActionItem().first()).toContainText('error');
-			await n8n.canvas.ignoreProductionChecklistAction();
-			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
+			// The close button only dismisses the popover; nothing is persisted
+			await n8n.canvas.closeProductionChecklist();
+			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
 
-			await n8n.canvas.clickOutsideModal();
 			await n8n.canvas.openProductionChecklist();
-
-			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
+			await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
 			await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 		});
 
@@ -148,22 +146,6 @@ test.describe(
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
 
 			await expect(n8n.canvas.getProductionChecklistActionCompletedIcon()).toBeVisible();
-		});
-
-		test('should allow ignoring all actions with confirmation', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			await n8n.canvas.publishWorkflow();
-			await expect(n8n.workflowActivationModal.getModal()).toBeVisible();
-			await n8n.workflowActivationModal.close();
-
-			await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-
-			await n8n.canvas.clickProductionChecklistIgnoreAll();
-
-			await n8n.canvas.confirmIgnoreAllForAllWorkflows();
-
-			await n8n.canvas.clickWorkflowMenu();
-			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeHidden();
 		});
 	},
 );

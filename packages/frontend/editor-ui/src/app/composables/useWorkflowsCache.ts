@@ -18,9 +18,6 @@ export interface UserEvaluationPreferences {
 }
 export interface WorkflowSettings {
 	firstActivatedAt?: number;
-	suggestedActions?: {
-		[K in ActionType]?: { ignored: boolean };
-	};
 	evaluationRuns?: UserEvaluationPreferences;
 }
 
@@ -41,22 +38,6 @@ export function useWorkflowSettingsCache() {
 		return jsonParse<WorkflowSettings>(cache.getItem(workflowId) ?? '', {
 			fallbackValue: {},
 		});
-	}
-
-	async function getMergedWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
-		const workflowSettings = await getWorkflowSettings(workflowId);
-
-		const cache = await getWorkflowsCache();
-		const globalPreferences = jsonParse<WorkflowSettings>(cache.getItem('*') ?? '', {
-			fallbackValue: {},
-		});
-
-		workflowSettings.suggestedActions = {
-			...(workflowSettings.suggestedActions ?? {}),
-			...(globalPreferences.suggestedActions ?? {}),
-		};
-
-		return workflowSettings;
 	}
 
 	async function upsertWorkflowSettings(
@@ -93,14 +74,6 @@ export function useWorkflowSettingsCache() {
 		}
 	}
 
-	async function ignoreSuggestedAction(workflowId: string, action: ActionType): Promise<void> {
-		await upsertWorkflowSettings(workflowId, {
-			suggestedActions: {
-				[action]: { ignored: true },
-			},
-		});
-	}
-
 	async function getEvaluationPreferences(workflowId: string): Promise<UserEvaluationPreferences> {
 		return (
 			(await getWorkflowSettings(workflowId))?.evaluationRuns ?? {
@@ -117,27 +90,10 @@ export function useWorkflowSettingsCache() {
 		await upsertWorkflowSettings(workflowId, { evaluationRuns });
 	}
 
-	async function ignoreAllSuggestedActionsForAllWorkflows(actionsToIgnore: ActionType[]) {
-		await upsertWorkflowSettings(
-			'*',
-			actionsToIgnore.reduce<WorkflowSettings>((accu, key) => {
-				accu.suggestedActions = accu.suggestedActions ?? {};
-				accu.suggestedActions[key] = {
-					ignored: true,
-				};
-
-				return accu;
-			}, {}),
-		);
-	}
-
 	return {
 		getWorkflowSettings,
-		getMergedWorkflowSettings,
 		upsertWorkflowSettings,
 		updateFirstActivatedAt,
-		ignoreSuggestedAction,
-		ignoreAllSuggestedActionsForAllWorkflows,
 		getEvaluationPreferences,
 		saveEvaluationPreferences,
 		isCacheLoading,
