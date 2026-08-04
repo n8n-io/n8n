@@ -847,9 +847,17 @@ describe('AgentCapabilitiesSection', () => {
 			await vi.waitFor(() => {
 				expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(2);
 			});
-			expect(
-				document.querySelectorAll('[data-testid="agent-capabilities-tool-menu-invalid-icon"]'),
-			).toHaveLength(1);
+
+			// The warning must sit on the invalid sub-tool (inbox_triage) and not on
+			// the valid one (send_follow_up) — a bare count would pass even if the
+			// per-sub-tool association were inverted.
+			// Labels render humanized: inbox_triage -> "Inbox triage", send_follow_up -> "Send follow up".
+			const menuItems = Array.from(document.querySelectorAll('[role="menuitem"]'));
+			const invalidItem = menuItems.find((el) => el.textContent?.includes('Inbox triage'));
+			const validItem = menuItems.find((el) => el.textContent?.includes('Send follow up'));
+			const iconSelector = '[data-testid="agent-capabilities-tool-menu-invalid-icon"]';
+			expect(invalidItem?.querySelector(iconSelector)).not.toBeNull();
+			expect(validItem?.querySelector(iconSelector)).toBeNull();
 
 			wrapper.unmount();
 		});
