@@ -6022,9 +6022,6 @@ importers:
       vue-component-type-helpers:
         specifier: ^2.2.10
         version: 2.2.12
-      vue-github-button:
-        specifier: ^3.1.3
-        version: 3.1.3
       vue-i18n:
         specifier: catalog:frontend
         version: 11.4.5(vue@3.5.26(typescript@6.0.2))
@@ -16640,9 +16637,6 @@ packages:
   getpass@0.1.7:
     resolution: {integrity: sha512-0fzj9JxOLfJ+XGLhR8ze3unN0KZCgZwiSSDz168VERjK8Wl8kVSdcu2kspd4s4wtAa1y/qrVRiAA0WclVsu0ng==}
 
-  github-buttons@2.29.1:
-    resolution: {integrity: sha512-TV3YgAKda5hPz75n7QXmGCsSzgVya1vvmBieebg3EB5ScmashTZ0FldViG1aU2d4V5rcAGrtQ7k5uAaCo0A4PA==}
-
   github-from-package@0.0.0:
     resolution: {integrity: sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==}
 
@@ -22477,8 +22471,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.3.8:
-    resolution: {integrity: sha512-troqCMmQodQDqUqn63NQaFi+CDSclSe7sc8VEBFqf5GFLqmGR2Ph3P2WEC7qwpRVyEWsTi/aAr4vyOe/B1hU3g==}
+  vue-component-type-helpers@3.3.9:
+    resolution: {integrity: sha512-3c/UfMe0SqyEfcGTyH7mfshHagJ9QTCbppCb0/uGpHZpFug7+If3GeGZN7I0YheKEExemx3xldQPoO7PQSOLQg==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -22501,9 +22495,6 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0
-
-  vue-github-button@3.1.3:
-    resolution: {integrity: sha512-ZdOnUuYJL/wUsxISsC96TARzCdf1twaWooZoI14+g4RHsJltPY+Agw6Ox6pjuMqMX0uhSK1JOMFUFNCQGlcZGA==}
 
   vue-i18n@11.4.5:
     resolution: {integrity: sha512-rm8YJ6RpjOrkcgS2GLrZwLvs/VbhxbTSuEspbyXDo233+fPK0OMFNLOj3fdQYVKdOgcpSfLW91JhbqgpkkcBWA==}
@@ -29400,7 +29391,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@6.0.2)
-      vue-component-type-helpers: 3.3.8
+      vue-component-type-helpers: 3.3.9
 
   '@stryker-mutator/api@9.6.1':
     dependencies:
@@ -35031,8 +35022,6 @@ snapshots:
   getpass@0.1.7:
     dependencies:
       assert-plus: 1.0.0
-
-  github-buttons@2.29.1: {}
 
   github-from-package@0.0.0: {}
 
@@ -42048,7 +42037,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.3.8: {}
+  vue-component-type-helpers@3.3.9: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@6.0.2)):
     dependencies:
@@ -42082,10 +42071,6 @@ snapshots:
       semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
-
-  vue-github-button@3.1.3:
-    dependencies:
-      github-buttons: 2.29.1
 
   vue-i18n@11.4.5(vue@3.5.26(@typescript/typescript6@6.0.2)):
     dependencies:
