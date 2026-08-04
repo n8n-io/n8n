@@ -312,7 +312,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.PRODUCTION_CHECKLIST: {
-			productionChecklistRef.value?.open();
+			// Defer until the dropdown has closed and restored focus to its trigger;
+			// opening in the same tick lets that focus restore land "outside" the
+			// popover, which would immediately dismiss it.
+			setTimeout(() => productionChecklistRef.value?.open(), 0);
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.VERSION_HISTORY: {
