@@ -282,6 +282,7 @@ describe('OauthService', () => {
 				'credential-id',
 				req.user,
 				['credential:update'],
+				{ includeInstanceCredentials: true },
 			);
 		});
 
@@ -302,6 +303,7 @@ describe('OauthService', () => {
 				'credential-id',
 				req.user,
 				['credential:connect'],
+				{ includeInstanceCredentials: true },
 			);
 		});
 	});
@@ -460,6 +462,20 @@ describe('OauthService', () => {
 
 			expect(result).toBeNull();
 		});
+
+		it('should restrict the lookup to project credentials when requested', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(null);
+
+			const result = await (service as any).getCredentialWithoutUser('1', {
+				onlyProjectCredentials: true,
+			});
+
+			expect(result).toBeNull();
+			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
+				id: '1',
+				usageScope: 'project',
+			});
+		});
 	});
 
 	describe('createCsrfState', () => {
@@ -531,6 +547,7 @@ describe('OauthService', () => {
 				'credential-id',
 				req.user,
 				['credential:update'],
+				{ includeInstanceCredentials: true },
 			);
 		});
 

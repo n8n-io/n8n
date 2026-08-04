@@ -21,6 +21,7 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 /**
  * Assigns a freshly generated id to the given node and returns it.
@@ -143,6 +144,8 @@ export function getParameterDisplayableOptions(
 
 	if (!nodeType || !Array.isArray(nodeType.properties)) return options;
 
+	const { check: envFeatureFlag } = useEnvFeatureFlag();
+
 	const nodeParameters =
 		NodeHelpers.getNodeParameters(
 			nodeType.properties,
@@ -154,6 +157,11 @@ export function getParameterDisplayableOptions(
 		) ?? node.parameters;
 
 	return options.filter((option) => {
+		// Options gated behind an env feature flag are hidden until the flag is enabled.
+		if (option.envFeatureFlag && !envFeatureFlag.value(option.envFeatureFlag)) {
+			return false;
+		}
+
 		if (!option.displayOptions && !option.disabledOptions) return true;
 
 		return NodeHelpers.displayParameter(
@@ -187,14 +195,14 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		'status',
 	];
 
-	// @ts-ignore
+	// @ts-expect-error populated field-by-field below
 	const nodeData: INodeUi = {
 		parameters: {},
 	};
 
 	for (const key in node) {
 		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
-			// @ts-ignore
+			// @ts-expect-error dynamic key copy
 			nodeData[key] = node[key];
 		}
 	}

@@ -25,6 +25,9 @@ export function useAiGateway() {
 	const isCredentialTypeSupported = (credentialType: string): boolean =>
 		aiGatewayStore.isCredentialTypeSupported(credentialType);
 
+	const canServeCredentialType = (credentialType: string): boolean =>
+		aiGatewayStore.canServeCredentialType(credentialType);
+
 	const isActionSupported = (
 		nodeName: string,
 		resource: string | undefined,
@@ -60,6 +63,7 @@ export function useAiGateway() {
 		fetchConfig,
 		fetchWallet,
 		isCredentialTypeSupported,
+		canServeCredentialType,
 		isActionSupported,
 		isActionOptionVisible,
 		isNodeTypeVersionSupported,

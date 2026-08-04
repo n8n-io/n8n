@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { filterTelegramHitlParameters } from './telegramHitlParameters';
 
+const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+};
+
 const chatApproval: INodeProperties = {
 	displayName: 'Approve Within Chat',
 	name: 'chatApproval',
@@ -10,11 +17,25 @@ const chatApproval: INodeProperties = {
 	default: false,
 };
 
-const chatApprovalOptions: INodeProperties = {
-	displayName: 'Chat Approval Options',
-	name: 'chatApprovalOptions',
-	type: 'collection',
-	default: {},
+const approverIds: INodeProperties = {
+	displayName: 'Restrict Who Can Approve',
+	name: 'approverIds',
+	type: 'string',
+	default: '',
+};
+
+const unauthorizedReplyText: INodeProperties = {
+	displayName: 'Unauthorized Reply',
+	name: 'unauthorizedReplyText',
+	type: 'string',
+	default: '',
+};
+
+const postDecisionBehavior: INodeProperties = {
+	displayName: 'After Decision',
+	name: 'postDecisionBehavior',
+	type: 'options',
+	default: 'showOutcome',
 };
 
 const chatId: INodeProperties = {
@@ -25,8 +46,15 @@ const chatId: INodeProperties = {
 };
 
 describe('filterTelegramHitlParameters', () => {
-	it('removes chatApproval and chatApprovalOptions', () => {
-		const result = filterTelegramHitlParameters([chatApproval, chatApprovalOptions, chatId]);
+	it('removes the advanced interactivity notice, chatApproval and the flat approval fields', () => {
+		const result = filterTelegramHitlParameters([
+			advancedInteractivityNotice,
+			chatApproval,
+			approverIds,
+			unauthorizedReplyText,
+			postDecisionBehavior,
+			chatId,
+		]);
 
 		expect(result).toEqual([chatId]);
 	});

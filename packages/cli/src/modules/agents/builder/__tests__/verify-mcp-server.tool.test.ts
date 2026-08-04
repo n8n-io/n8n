@@ -49,6 +49,17 @@ describe('buildVerifyMcpServerTool', () => {
 		buildMcpClientForServerMock.mockReset();
 	});
 
+	it('accepts a human-readable MCP server name', () => {
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = (
+			tool.inputSchema as unknown as {
+				safeParse: (input: unknown) => { success: boolean };
+			}
+		).safeParse({ name: 'Linear production (EU)', url: 'https://example.test/mcp' });
+
+		expect(result.success).toBe(true);
+	});
+
 	it('returns { ok: true, tools } with name and description on success', async () => {
 		const mcpClient = makeMcpClient({
 			listTools: vi.fn().mockResolvedValue([
@@ -70,6 +81,30 @@ describe('buildVerifyMcpServerTool', () => {
 				{ name: 'echo', description: 'Echo the input' },
 				{ name: 'add', description: 'Add two numbers' },
 			],
+		});
+	});
+
+	it('returns original unprefixed MCP tool names', async () => {
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn().mockResolvedValue([
+				{
+					name: 'Linear_Prod_list_issues',
+					mcpToolName: 'list_issues',
+					description: 'List issues',
+				},
+			]),
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const result = await tool.handler!(
+			{ name: 'Linear Prod', url: 'https://example.test/mcp' },
+			{} as never,
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			tools: [{ name: 'list_issues', description: 'List issues' }],
 		});
 	});
 

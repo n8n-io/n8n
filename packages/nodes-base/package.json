@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.32.0",
+  "version": "2.34.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -197,6 +197,7 @@
       "dist/credentials/HttpMultipleHeadersAuth.credentials.js",
       "dist/credentials/HttpCustomAuth.credentials.js",
       "dist/credentials/HttpQueryAuth.credentials.js",
+      "dist/credentials/HttpTemplatedCustomAuth.credentials.js",
       "dist/credentials/HttpSslAuth.credentials.js",
       "dist/credentials/HubspotApi.credentials.js",
       "dist/credentials/HubspotAppToken.credentials.js",
@@ -532,6 +533,7 @@
       "dist/nodes/Dropcontact/Dropcontact.node.js",
       "dist/nodes/EditImage/EditImage.node.js",
       "dist/nodes/E2eTest/E2eTest.node.js",
+      "dist/nodes/E2eTest/E2eTestPollingTrigger.node.js",
       "dist/nodes/Egoi/Egoi.node.js",
       "dist/nodes/Elastic/Elasticsearch/Elasticsearch.node.js",
       "dist/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.js",
@@ -934,6 +936,7 @@
     "@smithy/signature-v4": "5.3.5",
     "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
+    "@confluentinc/kafka-javascript": "catalog:",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@langchain/core": "catalog:",
     "@mozilla/readability": "catalog:",

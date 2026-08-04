@@ -1,8 +1,27 @@
 import { Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 
-import { toPackagesError } from './shared';
+import { toPackagesError } from './package-error';
 import { BaseCommand } from '../../base-command';
+import type { ExportPackageCounts, ExportPackageResult } from '../../client';
+
+/**
+ * Human-readable summary of an export, built from the real per-entity counts.
+ * Categories with a zero count are omitted so a workflow-only export never
+ * appends a spurious "0 folder(s)" and a folder export reports its bundled
+ * workflows.
+ */
+function describeExport(counts: ExportPackageCounts & { projects?: number }): string {
+	const parts: string[] = [];
+	if (counts.projects) parts.push(`${counts.projects} project(s)`);
+	if (counts.workflows) parts.push(`${counts.workflows} workflow(s)`);
+	if (counts.folders) parts.push(`${counts.folders} folder(s)`);
+	if (counts.credentials) parts.push(`${counts.credentials} credential(s)`);
+	if (counts.dataTables) parts.push(`${counts.dataTables} data table(s)`);
+	if (counts.variables) parts.push(`${counts.variables} variable(s)`);
+	if (counts.tags) parts.push(`${counts.tags} tag(s)`);
+	return parts.length > 0 ? parts.join(', ') : 'nothing';
+}
 
 export default class PackageExport extends BaseCommand {
 	static override description = 'Export workflows, folders, or projects as an n8n package (.n8np)';
@@ -14,6 +33,7 @@ export default class PackageExport extends BaseCommand {
 		'<%= config.bin %> package export --project-id=abc -o project.n8np',
 		'<%= config.bin %> package export -p abc -p def -o projects.n8np',
 		'<%= config.bin %> package export -w abc --include-variable-values=false -o export.n8np',
+		'<%= config.bin %> package export -w abc --include-tags=false -o export.n8np',
 	];
 
 	static override flags = {
@@ -25,7 +45,6 @@ export default class PackageExport extends BaseCommand {
 			aliases: ['workflow-id'],
 		}),
 		folderId: Flags.string({
-			char: 'f',
 			description: 'Folder ID to include with its nested folders (repeat for multiple)',
 			multiple: true,
 			aliases: ['folder-id'],
@@ -49,6 +68,12 @@ export default class PackageExport extends BaseCommand {
 			default: 'true',
 			aliases: ['include-variable-values'],
 		}),
+		includeTags: Flags.string({
+			description: 'Whether tags assigned to the exported workflows are bundled into the package',
+			options: ['true', 'false'],
+			default: 'true',
+			aliases: ['include-tags'],
+		}),
 		missingWorkflowDependencyPolicy: Flags.string({
 			options: ['fail', 'reference-only', 'include-in-package'],
 			default: 'fail',
@@ -64,6 +89,7 @@ export default class PackageExport extends BaseCommand {
 		const folderIds = flags.folderId ?? [];
 		const projectIds = flags.projectId ?? [];
 		const includeVariableValues = flags.includeVariableValues !== 'false';
+		const includeTags = flags.includeTags !== 'false';
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
@@ -76,31 +102,49 @@ export default class PackageExport extends BaseCommand {
 
 		await this.execute(async () => {
 			const client = this.getClient(flags);
-			let archive: Buffer;
+			let result: ExportPackageResult;
 			try {
-				archive = await client.exportPackage(
+				result = await client.exportPackage(
 					projectIds.length > 0
-						? { projectIds, includeVariableValues, missingWorkflowDependencyPolicy }
-						: { workflowIds, folderIds, includeVariableValues, missingWorkflowDependencyPolicy },
+						? { projectIds, includeVariableValues, includeTags, missingWorkflowDependencyPolicy }
+						: {
+								workflowIds,
+								folderIds,
+								includeVariableValues,
+								includeTags,
+								missingWorkflowDependencyPolicy,
+							},
 				);
 			} catch (error) {
 				throw toPackagesError(error);
 			}
-			fs.writeFileSync(flags.output, archive);
+			fs.writeFileSync(flags.output, result.archive);
+
+			const { counts } = result;
 
 			if (projectIds.length > 0) {
-				this.succeed(`Exported ${projectIds.length} project(s) to ${flags.output}`, flags, {
+				// Older servers omit counts; fall back to the requested project id count.
+				const summary = counts
+					? describeExport({ ...counts, projects: projectIds.length })
+					: `${projectIds.length} project(s)`;
+				this.succeed(`Exported ${summary} to ${flags.output}`, flags, {
 					output: flags.output,
 					projectIds,
+					...(counts ? { counts } : {}),
 				});
 				return;
 			}
 
-			this.succeed(
-				`Exported ${workflowIds.length} workflow(s) and ${folderIds.length} folder(s) to ${flags.output}`,
-				flags,
-				{ output: flags.output, workflowIds, folderIds },
-			);
+			// Older servers omit counts; fall back to the requested id counts.
+			const summary = counts
+				? describeExport(counts)
+				: `${workflowIds.length} workflow(s) and ${folderIds.length} folder(s)`;
+			this.succeed(`Exported ${summary} to ${flags.output}`, flags, {
+				output: flags.output,
+				workflowIds,
+				folderIds,
+				...(counts ? { counts } : {}),
+			});
 		});
 	}
 }

@@ -8,7 +8,7 @@ import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.ty
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
@@ -195,7 +195,8 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 const maybeCreateCredential = () => {
 	if (props.credentialId === 'create') {
 		if (projectPermissions.value.credential.create) {
-			uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
+			// Modal data persists across opens, so clear the instance-only preset.
+			uiStore.openModalWithData({ name: CREDENTIAL_SELECT_MODAL_KEY, data: {} });
 		} else {
 			void router.replace({ name: VIEWS.HOMEPAGE });
 		}

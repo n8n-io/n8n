@@ -40,7 +40,7 @@ vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: () => settingsStore,
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => usersStore,
 }));
 
@@ -48,11 +48,11 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => projectsStore,
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => telemetry,
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => toast,
 }));
 

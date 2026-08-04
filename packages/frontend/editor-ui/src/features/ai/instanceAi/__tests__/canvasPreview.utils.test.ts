@@ -364,7 +364,7 @@ describe('getLatestAgentArtifactResult', () => {
 		const builderChild = makeAgentNode({
 			agentId: 'builder-child',
 			role: 'agent-builder',
-			kind: 'builder',
+			kind: 'agent-builder',
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'New Agent' },
 		});
 		const orchestrator = makeAgentNode({

@@ -1,13 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+
+import { sleep } from '@n8n/utils/sleep';
 
 import { discordApiMultiPartRequest, discordApiRequest } from '../../../v2/transport/discord.api';
 import { handleRateLimitHeaders, requestApi } from '../../../v2/transport/helpers';
 import type { Mock, Mocked } from 'vitest';
-import type * as _importType0 from 'n8n-workflow';
 
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 

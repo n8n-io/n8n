@@ -10,7 +10,7 @@ import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgen
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
 import {
-	AGENT_MODEL_PROVIDER_DEFINITIONS,
+	getProviderCredentialTypes,
 	isAgentModelProvider,
 } from '@/features/agents/model-providers';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -108,9 +108,7 @@ const modelProvider = computed(() => {
 });
 
 const modelCredentialType = computed(() =>
-	modelProvider.value
-		? AGENT_MODEL_PROVIDER_DEFINITIONS[modelProvider.value].credentialTypes[0]
-		: null,
+	modelProvider.value ? getProviderCredentialTypes(modelProvider.value)[0] : null,
 );
 
 const modelName = computed(() => {

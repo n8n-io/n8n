@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { WorkflowReviewEligibleReviewer } from '../../workflow-review-eligible-reviewer';
 import {
 	type WorkflowReviewRequestSummary,
 	workflowReviewRequestStateSchema,
@@ -7,14 +8,15 @@ import {
 import { Z } from '../../zod-class';
 
 /**
- * Inbox list item — extends {@link WorkflowReviewRequestSummary} (the
- * workflow-scoped list payload used by the review-required toggle sync) with the
+ * Inbox list item — extends {@link WorkflowReviewRequestSummary} with the
  * cross-project fields the inbox needs.
  */
 export interface WorkflowReviewInboxItem extends WorkflowReviewRequestSummary {
 	projectId: string;
 	title: string;
 	workflowName: string | null;
+	requester: WorkflowReviewEligibleReviewer | null;
+	reviewers: WorkflowReviewEligibleReviewer[];
 }
 
 /**
@@ -35,5 +37,6 @@ export interface ListWorkflowReviewInboxResponse {
 }
 
 export interface GetWorkflowReviewInboxSummaryResponse {
-	hasAny: boolean;
+	open: number;
+	closed: number;
 }

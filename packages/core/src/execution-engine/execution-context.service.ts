@@ -25,12 +25,16 @@ export class ExecutionContextService {
 		private readonly cipher: Cipher,
 	) {}
 
+	async decryptCredentialContext(encrypted: string): Promise<ICredentialContext> {
+		const decrypted = await this.cipher.decryptV2(encrypted);
+		return toCredentialContext(decrypted);
+	}
+
 	async decryptExecutionContext(context: IExecutionContext): Promise<PlaintextExecutionContext> {
 		const { credentials: encCredentials, secureArtifacts: encSecureArtifacts, ...rest } = context;
 		const result: PlaintextExecutionContext = { ...rest };
 		if (encCredentials) {
-			const decrypted = await this.cipher.decryptV2(encCredentials);
-			result.credentials = toCredentialContext(decrypted);
+			result.credentials = await this.decryptCredentialContext(encCredentials);
 		}
 		if (encSecureArtifacts) {
 			const decrypted = await this.cipher.decryptV2(encSecureArtifacts);
@@ -50,6 +54,15 @@ export class ExecutionContextService {
 			version: 1,
 			identity: n8nAuthCookie,
 			metadata: { source: 'manual-execution' },
+		};
+		return await this.cipher.encryptV2(payload);
+	}
+
+	async buildTriggerIdentityCredentials(token: string, resource: string): Promise<string> {
+		const payload: ICredentialContext = {
+			version: 1,
+			identity: token,
+			metadata: { source: 'n8n-oauth', resource },
 		};
 		return await this.cipher.encryptV2(payload);
 	}

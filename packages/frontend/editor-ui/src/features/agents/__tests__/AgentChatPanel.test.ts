@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { computed, h, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -11,6 +11,7 @@ const loadHistoryMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
+const isCancellingMock = ref(false);
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -32,6 +33,17 @@ vi.mock('@n8n/design-system', () => ({
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nIconButton: { template: '<button />' },
+	N8nSendStopButton: {
+		name: 'N8nSendStopButton',
+		props: ['streaming', 'stopButtonTestId'],
+		emits: ['stop'],
+		template: '<button :data-test-id="stopButtonTestId" @click="$emit(\'stop\')" />',
+	},
+}));
+
+// Reads a Pinia store for notifications — irrelevant to panel behavior.
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: vi.fn() }),
 }));
 
 vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
@@ -56,6 +68,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: () => ({
 		messages: messagesMock,
 		isStreaming: isStreamingMock,
+		isCancelling: isCancellingMock,
 		messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
 		fatalError: fatalErrorMock,
 		loadHistory: loadHistoryMock,
@@ -88,6 +101,7 @@ describe('AgentChatPanel', () => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
 		isStreamingMock.value = false;
+		isCancellingMock.value = false;
 		fatalErrorMock.value = null;
 	});
 
@@ -125,22 +139,6 @@ describe('AgentChatPanel', () => {
 				input: {
 					card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
 				},
-			},
-		};
-	}
-
-	function resolvedInteractiveMessage(): ChatMessage {
-		return {
-			...openInteractiveMessage(),
-			status: 'success',
-			interactive: {
-				toolName: N8N_CHAT_ACTION_TOOL_NAME,
-				toolCallId: 'tc-1',
-				resolvedAt: 1,
-				input: {
-					card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
-				},
-				resolvedValue: { type: 'button', value: 'slack' },
 			},
 		};
 	}
@@ -191,6 +189,21 @@ describe('AgentChatPanel', () => {
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
 
+	it('keeps the draft while suspended-run cancellation is pending', async () => {
+		isCancellingMock.value = true;
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('keep this draft');
+		await flushPromises();
+
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		expect(chatInput.props('modelValue')).toBe('keep this draft');
+		expect(chatInput.props('disabled')).toBe(true);
+		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
 	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {
 		messagesMock.value = [openInteractiveMessage()];
 
@@ -200,64 +213,6 @@ describe('AgentChatPanel', () => {
 		// Input should be ENABLED so the user can cancel and steer
 		expect(chatInput.props('disabled')).toBe(false);
 		expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
-	});
-
-	it('disables above-input actions while an interactive question is unresolved', () => {
-		messagesMock.value = [openInteractiveMessage()];
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-			},
-			slots: {
-				'above-input': ({ disabled }) =>
-					h('div', {
-						'data-testid': 'above-input-actions',
-						'data-disabled': String(disabled),
-					}),
-			},
-		});
-
-		expect(wrapper.find('[data-testid="above-input-actions"]').attributes('data-disabled')).toBe(
-			'true',
-		);
-	});
-
-	it('keeps above-input actions enabled when the interactive card is resolved', () => {
-		messagesMock.value = [resolvedInteractiveMessage()];
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-			},
-			slots: {
-				'above-input': ({ disabled }) =>
-					h('div', {
-						'data-testid': 'above-input-actions',
-						'data-disabled': String(disabled),
-					}),
-			},
-		});
-
-		expect(wrapper.find('[data-testid="above-input-actions"]').attributes('data-disabled')).toBe(
-			'false',
-		);
 	});
 
 	it('calls cancelAndSteer (not sendMessage) when the user submits while an interactive question is open', async () => {
@@ -304,6 +259,43 @@ describe('AgentChatPanel', () => {
 
 		// Input should be enabled — the user can cancel and steer
 		expect(chatInput.props('disabled')).toBe(false);
+	});
+
+	it('shows send and stop controls while an interactive question is unresolved', async () => {
+		messagesMock.value = [openInteractiveMessage()];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('isStreaming')).toBe(false);
+		const stopButton = wrapper.find('[data-test-id="agent-chat-suspended-stop-button"]');
+		expect(stopButton.exists()).toBe(true);
+		await stopButton.trigger('click');
+		await flushPromises();
+		expect(stopGeneratingMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the stop control available for a non-card suspension', () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'external_action',
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						state: 'suspended',
+					},
+				],
+			},
+		];
+
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('isStreaming')).toBe(true);
 	});
 
 	it('does not apply a build-specific character limit', () => {

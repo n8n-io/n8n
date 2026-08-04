@@ -16,6 +16,7 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
+import { StaleResumeError } from '../state/run-state';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
@@ -75,6 +76,9 @@ const { embed, embedMany, generateText, streamText, jsonSchema } = aiModule as u
 	streamText: Mock;
 	jsonSchema: Mock;
 };
+
+const makeCancellationSpy = () =>
+	vi.fn<NonNullable<BuiltTool['onCancellation']>>().mockResolvedValue(undefined);
 
 /** Minimal successful generateText response. */
 function makeGenerateSuccess(text = 'OK') {
@@ -144,7 +148,7 @@ async function collectChunks(stream: ReadableStream<unknown>): Promise<StreamChu
 /** Minimal successful streamText response. */
 function makeStreamSuccess(text = 'Hello') {
 	return {
-		fullStream: makeChunkStream([{ type: 'text-delta', textDelta: text }]),
+		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text }]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 		response: Promise.resolve({
@@ -188,7 +192,7 @@ function makeStreamWithProviderTool(opts: {
 				};
 	const text = opts.text ?? 'done';
 	return {
-		fullStream: makeChunkStream([
+		stream: makeChunkStream([
 			{
 				type: 'tool-call',
 				toolCallId: opts.toolCallId,
@@ -197,7 +201,7 @@ function makeStreamWithProviderTool(opts: {
 				providerExecuted: true,
 			},
 			terminal,
-			{ type: 'text-delta', textDelta: text },
+			{ type: 'text-delta', id: 'text-1', text },
 		]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
@@ -349,27 +353,48 @@ describe('AgentRuntime — execution counters', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(15);
 	});
 
-	it('forwards onStepStart and onStepFinish to generateText and streamText', async () => {
+	it('forwards onStepStart and onStepEnd to generateText and streamText', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		streamText.mockReturnValue(makeStreamSuccess());
 		const onStepStart = vi.fn();
-		const onStepFinish = vi.fn();
+		const onStepEnd = vi.fn();
 
 		const { runtime } = createRuntime();
-		await runtime.generate('hi', { onStepStart, onStepFinish });
-		const streamResult = await runtime.stream('hi', { onStepStart, onStepFinish });
+		await runtime.generate('hi', { onStepStart, onStepEnd });
+		const streamResult = await runtime.stream('hi', { onStepStart, onStepEnd });
 		await collectChunks(streamResult.stream);
 
 		for (const call of generateText.mock.calls) {
 			const args = call[0] as Record<string, unknown>;
-			expect(args.experimental_onStepStart).toBe(onStepStart);
-			expect(args.onStepFinish).toBe(onStepFinish);
+			expect(args.onStepStart).toBe(onStepStart);
+			expect(args.onStepEnd).toBe(onStepEnd);
 		}
 		for (const call of streamText.mock.calls) {
 			const args = call[0] as Record<string, unknown>;
-			expect(args.experimental_onStepStart).toBe(onStepStart);
-			expect(args.onStepFinish).toBe(onStepFinish);
+			expect(args.onStepStart).toBe(onStepStart);
+			expect(args.onStepEnd).toBe(onStepEnd);
 		}
+	});
+
+	it('allows system-role messages in generateText and streamText history', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		streamText.mockReturnValue(makeStreamSuccess());
+		const input: Message[] = [
+			{ role: 'system', content: [{ type: 'text', text: 'Historical instruction' }] },
+			{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+		];
+
+		const { runtime } = createRuntime();
+		await runtime.generate(input);
+		const streamResult = await runtime.stream(input);
+		await collectChunks(streamResult.stream);
+
+		expect(generateText.mock.calls[0]?.[0]).toEqual(
+			expect.objectContaining({ allowSystemInMessages: true }),
+		);
+		expect(streamText.mock.calls[0]?.[0]).toEqual(
+			expect.objectContaining({ allowSystemInMessages: true }),
+		);
 	});
 
 	it('counts provider-executed tool calls when surfaced by the model', async () => {
@@ -454,6 +479,74 @@ describe('AgentRuntime — execution counters', () => {
 		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
 
 		expect(observedCtx?.suspendPayload).toEqual(suspendPayload);
+	});
+
+	it('persists dynamic suspension state privately and validates resume before claiming', async () => {
+		const continuation = { childRunId: 'child-run-1', taskPath: '/root/research_0' };
+		const dynamicResumeSchema = z.object({ decision: z.literal('continue') });
+		let observedCtx: InterruptibleToolContext | undefined;
+		const suspendTool: BuiltTool = {
+			name: 'dynamic_suspend',
+			description: 'Suspends with invocation-specific state',
+			inputSchema: z.object({}),
+			suspendSchema: z.object({ prompt: z.string() }),
+			resumeSchema: z.object({ fallback: z.string() }),
+			handler: async (_input, ctx) => {
+				const interruptibleCtx = ctx as InterruptibleToolContext;
+				if (!interruptibleCtx.resumeData) {
+					return await interruptibleCtx.suspend(
+						{ prompt: 'Continue the child run?' },
+						{ resumeSchema: dynamicResumeSchema, continuation },
+					);
+				}
+				observedCtx = interruptibleCtx;
+				return { resumed: true };
+			},
+		};
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([suspendTool], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-dynamic', 'dynamic_suspend', {}),
+		);
+
+		const first = await runtime.generate('start');
+		const publicSuspension = first.pendingSuspend?.[0];
+		expect(publicSuspension?.resumeSchema).toEqual(
+			expect.objectContaining({
+				type: 'object',
+				properties: { decision: expect.objectContaining({ const: 'continue' }) },
+				required: ['decision'],
+			}),
+		);
+		expect(publicSuspension).not.toHaveProperty('continuation');
+
+		const checkpoint = await checkpointStore.load(first.runId);
+		expect(checkpoint?.pendingToolCalls['tc-dynamic']).toEqual(
+			expect.objectContaining({
+				continuation,
+				resumeSchema: publicSuspension?.resumeSchema,
+			}),
+		);
+
+		await expect(
+			runtime.resume(
+				'generate',
+				{ fallback: 'accepted only by the static schema' },
+				{ runId: first.runId, toolCallId: 'tc-dynamic' },
+			),
+		).rejects.toThrow('Invalid resume payload');
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('resumed'));
+		await runtime.resume(
+			'generate',
+			{ decision: 'continue' },
+			{ runId: first.runId, toolCallId: 'tc-dynamic' },
+		);
+
+		expect(observedCtx?.continuation).toEqual(continuation);
+		expect(observedCtx?.resumeSchema).toEqual(publicSuspension?.resumeSchema);
 	});
 
 	it('keeps delegate_subagent output usage per tool call without adding it to generate result usage', async () => {
@@ -545,7 +638,7 @@ describe('AgentRuntime — execution counters', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -949,7 +1042,7 @@ describe('AgentRuntime — eager input persistence', () => {
 		// Same shape as the generate case, on the streaming path (the one Instance AI uses):
 		// the abort is handled by the StreamSession, which must persist the turn-so-far.
 		streamText.mockReturnValueOnce({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'on it...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'on it...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -985,7 +1078,7 @@ describe('AgentRuntime — eager input persistence', () => {
 		// The model streams two text deltas, then the stop lands — before the turn
 		// completes, so its `newMessages` are never built (finishReason/response reject).
 		streamText.mockReturnValueOnce({
-			fullStream: (async function* () {
+			stream: (async function* () {
 				yield { type: 'text-delta', id: 't1', text: 'Here is my ' };
 				yield { type: 'text-delta', id: 't1', text: 'partial answer' };
 				await Promise.resolve();
@@ -1020,7 +1113,7 @@ describe('AgentRuntime — eager input persistence', () => {
 		// fires as the stream closes — before the loop folds the turn into the list. The
 		// completed text must still be recovered (the clear is deferred until the fold).
 		streamText.mockReturnValueOnce({
-			fullStream: (async function* () {
+			stream: (async function* () {
 				yield { type: 'text-delta', id: 't1', text: 'Complete answer' };
 				await Promise.resolve();
 				controller.abort();
@@ -1131,7 +1224,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		// provider's `message_start` raw event already carried the input/cache +
 		// initial output tokens. The run must bill those.
 		streamText.mockReturnValue({
-			fullStream: (async function* () {
+			stream: (async function* () {
 				yield {
 					type: 'raw',
 					rawValue: {
@@ -1187,7 +1280,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		streamText
 			// Turn 1 completes with a tool call; its usage is folded into the total.
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -1207,7 +1300,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 			// Turn 2 aborts mid-stream after the provider reported its raw usage; the
 			// SDK promises reject so the only signal is the captured raw event.
 			.mockReturnValueOnce({
-				fullStream: (async function* () {
+				stream: (async function* () {
 					yield {
 						type: 'raw',
 						rawValue: {
@@ -1258,7 +1351,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		// Single turn: emits a raw usage event (captured) AND resolves its final
 		// usage. The raw capture must not be re-added on top of the folded total.
 		streamText.mockReturnValueOnce({
-			fullStream: makeChunkStream([
+			stream: makeChunkStream([
 				{
 					type: 'raw',
 					rawValue: {
@@ -1310,7 +1403,7 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 
 		streamText.mockReturnValue({
 			// Sync generator: `for await` consumes it fine and there's nothing to await.
-			fullStream: (function* () {
+			stream: (function* () {
 				yield {
 					type: 'raw',
 					rawValue: {
@@ -1339,19 +1432,19 @@ describe('AgentRuntime.stream() — usage billing on abort', () => {
 		expect(runtime.getState().status).toBe('cancelled');
 	});
 
-	it('requests includeRawChunks only when recoverUsageOnAbort is set', async () => {
+	it('requests raw chunks only when recoverUsageOnAbort is set', async () => {
 		streamText.mockReturnValue(makeStreamSuccess('ok'));
 
 		const off = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
 		await collectChunks((await off.runtime.stream('hello')).stream);
-		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('includeRawChunks');
+		expect(streamText.mock.calls.at(-1)?.[0]).not.toHaveProperty('include.rawChunks');
 
 		streamText.mockClear();
 		streamText.mockReturnValue(makeStreamSuccess('ok'));
 
 		const on = createRuntime(undefined, 'anthropic/claude-sonnet-4-6');
 		await collectChunks((await on.runtime.stream('hello', { recoverUsageOnAbort: true })).stream);
-		expect(streamText.mock.calls.at(-1)?.[0]).toMatchObject({ includeRawChunks: true });
+		expect(streamText.mock.calls.at(-1)?.[0]).toHaveProperty('include.rawChunks', true);
 	});
 });
 
@@ -1367,7 +1460,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('resolves (never rejects) when the LLM stream throws', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1381,7 +1474,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('yields an error chunk when the LLM stream throws', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1399,7 +1492,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('closes the stream cleanly (with a finish chunk) after an error', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1423,7 +1516,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('sets state to "failed" after a stream error', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1456,7 +1549,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		const streamError = new Error('transient');
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeErrorStream(streamError),
+				stream: makeErrorStream(streamError),
 				finishReason: silentReject(streamError),
 				usage: Promise.resolve(undefined),
 				response: silentReject(streamError),
@@ -1483,7 +1576,7 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 	it('never throws when consuming the stream after an error', async () => {
 		const streamError = new Error('stream broke');
 		streamText.mockReturnValue({
-			fullStream: makeErrorStream(streamError),
+			stream: makeErrorStream(streamError),
 			finishReason: silentReject(streamError),
 			usage: Promise.resolve(undefined),
 			response: silentReject(streamError),
@@ -1513,9 +1606,10 @@ describe('AgentRuntime.resume() — graceful error contract', () => {
 			{ approved: true },
 			{ runId: 'nonexistent-run-id', toolCallId: 'tc-1' },
 		);
-		await expect(streamPromise).rejects.toThrow(
-			'No suspended run found for runId: nonexistent-run-id',
-		);
+		await expect(streamPromise).rejects.toMatchObject({
+			name: 'StaleResumeError',
+			message: 'No suspended run found for runId: nonexistent-run-id',
+		});
 	});
 });
 
@@ -1578,6 +1672,7 @@ function makeMockTool(name: string, handler: (input: unknown) => Promise<unknown
 function makeSuspendingTool(
 	name: string,
 	handler: (input: unknown, ctx: InterruptibleToolContext) => Promise<unknown>,
+	onCancellation?: BuiltTool['onCancellation'],
 ): BuiltTool {
 	return {
 		name,
@@ -1586,6 +1681,7 @@ function makeSuspendingTool(
 		suspendSchema: z.object({ reason: z.string() }),
 		resumeSchema: z.object({ approved: z.boolean() }),
 		handler: async (input, ctx) => await handler(input, ctx as InterruptibleToolContext),
+		...(onCancellation ? { onCancellation } : {}),
 	};
 }
 
@@ -1617,6 +1713,7 @@ type ClaimingCheckpointStore = CheckpointStore & {
 function createRuntimeWithCheckpointStore(
 	tools: BuiltTool[],
 	checkpointStorage: CheckpointStore,
+	eventBus?: AgentEventBus,
 ): AgentRuntime {
 	return new AgentRuntime({
 		name: 'test',
@@ -1624,6 +1721,7 @@ function createRuntimeWithCheckpointStore(
 		instructions: 'You are a test assistant.',
 		tools,
 		checkpointStorage,
+		...(eventBus ? { eventBus } : {}),
 	});
 }
 
@@ -2018,6 +2116,29 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(state.pendingToolCalls['tc-3'].suspended).toBe(false);
 	});
 
+	it('validates resume data when targeting an unexecuted pending tool', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		expect(runtime.getState().pendingToolCalls['tc-2']).toMatchObject({ suspended: false });
+
+		await expect(
+			runtime.resume('generate', { approved: 'yes' }, { runId: first.runId, toolCallId: 'tc-2' }),
+		).rejects.toThrow('Invalid resume payload');
+		expect(handler).toHaveBeenCalledOnce();
+	});
+
 	it('pendingSuspend is an array of all suspended tools with preserved payloads', async () => {
 		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
 			return await ctx.suspend({ reason: 'needs approval' });
@@ -2244,11 +2365,16 @@ describe('AgentRuntime — concurrent tool execution', () => {
 	});
 
 	it('streams skipped sibling tool results when cancelling one of multiple suspensions', async () => {
-		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+		const handler = vi.fn(async (input, ctx: InterruptibleToolContext) => {
 			if (ctx.resumeData) return { approved: true };
-			return await ctx.suspend({ reason: 'needs approval' });
+			const value = (input as { value: string }).value;
+			return await ctx.suspend(
+				{ reason: 'needs approval' },
+				{ continuation: { cleanupKey: `cleanup-${value}` } },
+			);
 		});
-		const suspendTool = makeSuspendingTool('suspend_tool', handler);
+		const onCancellation = makeCancellationSpy();
+		const suspendTool = makeSuspendingTool('suspend_tool', handler, onCancellation);
 
 		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
 		generateText.mockResolvedValueOnce(
@@ -2269,6 +2395,15 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const chunks = await collectChunks(resumed.stream as ReadableStream<unknown>);
 
 		expect(handler).toHaveBeenCalledTimes(2);
+		expect(onCancellation).toHaveBeenCalledTimes(2);
+		expect(onCancellation.mock.calls.map(([toolInput]) => toolInput)).toEqual([
+			{ value: 'a' },
+			{ value: 'b' },
+		]);
+		expect(onCancellation.mock.calls.map(([, context]) => context.continuation)).toEqual([
+			{ cleanupKey: 'cleanup-a' },
+			{ cleanupKey: 'cleanup-b' },
+		]);
 		expect(chunks).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -2287,6 +2422,75 @@ describe('AgentRuntime — concurrent tool execution', () => {
 				}),
 			]),
 		);
+	});
+
+	it('does not run suspension cleanup for an unexecuted sibling', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			if (ctx.resumeData) return { approved: true };
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const onCancellation = makeCancellationSpy();
+		const suspendTool = makeSuspendingTool('suspend_tool', handler, onCancellation);
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tools');
+		const { runId } = first.pendingSuspend![0];
+		streamText.mockReturnValueOnce(makeStreamSuccess('Cancelled'));
+
+		const resumed = await runtime.resume('stream', createCancellation('Stop this action'), {
+			runId,
+			toolCallId: 'tc-1',
+		});
+		await collectChunks(resumed.stream as ReadableStream<unknown>);
+
+		expect(handler).toHaveBeenCalledOnce();
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'a' },
+			expect.objectContaining({ toolCallId: 'tc-1' }),
+		);
+	});
+
+	it('re-suspends when cancellation cleanup fails', async () => {
+		const handler = vi.fn(async (_input, ctx: InterruptibleToolContext) => {
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+		const cleanupError = new Error('checkpoint delete failed');
+		const suspendTool = {
+			...makeSuspendingTool('suspend_tool', handler),
+			onCancellation: vi
+				.fn<NonNullable<BuiltTool['onCancellation']>>()
+				.mockRejectedValue(cleanupError),
+		};
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+			]),
+		);
+
+		const first = await runtime.generate('run tool');
+		const resumed = await runtime.resume('generate', createCancellation('Stop this action'), {
+			runId: first.runId,
+			toolCallId: 'tc-1',
+		});
+
+		expect(resumed.pendingSuspend).toEqual([
+			expect.objectContaining({
+				runId: first.runId,
+				toolCallId: 'tc-1',
+				suspendPayload: { reason: 'needs approval' },
+			}),
+		]);
+		expect(resumed.getState().status).toBe('suspended');
 	});
 
 	it('bounded concurrency (2) batches respects the limit', async () => {
@@ -2692,15 +2896,22 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(state.pendingToolCalls['tc-2'].suspended).toBe(false);
 	});
 
-	it('tool-call-suspended chunks include resumeSchema when tool defines one', async () => {
+	it('tool-call-suspended chunks expose a dynamic resume schema without private continuation', async () => {
+		const dynamicResumeSchema = z.object({ decision: z.enum(['continue', 'stop']) });
 		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
-			return await ctx.suspend({ reason: 'needs approval' });
+			return await ctx.suspend(
+				{ reason: 'needs approval' },
+				{
+					resumeSchema: dynamicResumeSchema,
+					continuation: { childRunId: 'private-child-run' },
+				},
+			);
 		});
 
 		const { runtime } = createRuntimeWithTools([suspendTool], 1);
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -2731,8 +2942,16 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		>;
 		expect(suspendedChunks.length).toBe(1);
 		// resumeSchema should be a JSON Schema object (from zod-to-json-schema conversion)
-		expect(suspendedChunks[0].resumeSchema).toBeDefined();
-		expect(typeof suspendedChunks[0].resumeSchema).toBe('object');
+		expect(suspendedChunks[0].resumeSchema).toEqual(
+			expect.objectContaining({
+				type: 'object',
+				properties: {
+					decision: expect.objectContaining({ enum: ['continue', 'stop'] }),
+				},
+				required: ['decision'],
+			}),
+		);
+		expect(suspendedChunks[0]).not.toHaveProperty('continuation');
 	});
 
 	it('pendingSuspend entries include resumeSchema when tool defines one', async () => {
@@ -2763,7 +2982,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const { runtime } = createRuntimeWithTools([suspendTool], Infinity);
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -2812,7 +3031,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const { runtime } = createRuntimeWithTools([suspendTool], 1);
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -2887,7 +3106,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -3225,7 +3444,7 @@ describe('AgentRuntime.stream() — structured output', () => {
 		const expected = { answer: '5', score: 1 };
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([
+				stream: makeChunkStream([
 					{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'add', args: { a: 2, b: 3 } },
 				]),
 				finishReason: Promise.resolve('tool-calls'),
@@ -3891,7 +4110,7 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('surfaces a ZodError as a top-level error when consumer provides invalid resume data', async () => {
+	it('surfaces a persisted-schema error when consumer provides invalid resume data', async () => {
 		const tool = makeInterruptibleTool(); // has resumeSchema: z.object({ approved: z.boolean() })
 
 		generateText.mockResolvedValueOnce(
@@ -3916,7 +4135,7 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 			{ notApproved: 'wrong' },
 			{ runId, toolCallId },
 		);
-		await expect(resumeResultPromise).rejects.toThrow(/"message": "Required"/);
+		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
 	});
 });
 
@@ -4049,7 +4268,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 			.build();
 
 		streamText.mockReturnValue({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'checking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -4119,7 +4338,7 @@ describe('AgentRuntime — tool approval (HITL wrapper)', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'checking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -4295,7 +4514,7 @@ describe('external abort signal', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'checking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -4405,7 +4624,7 @@ describe('AgentRuntime — abort during a tool batch', () => {
 		toolCalls: Array<{ toolCallId: string; toolName: string; args: Record<string, unknown> }>,
 	) {
 		return {
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'calling tools...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'calling tools...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -4489,6 +4708,253 @@ describe('AgentRuntime — abort during a tool batch', () => {
 		expect(runtime.getState().status).toBe('cancelled');
 		expect(errorEvents).toHaveLength(0);
 		expect(secondHandler).not.toHaveBeenCalled();
+	});
+
+	it('cleans up a child that suspends after the parent abort race settles', async () => {
+		const bus = new AgentEventBus();
+		let releaseHandler!: () => void;
+		let markHandlerStarted!: () => void;
+		const handlerGate = new Promise<void>((resolve) => (releaseHandler = resolve));
+		const handlerStarted = new Promise<void>((resolve) => (markHandlerStarted = resolve));
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) => {
+				markHandlerStarted();
+				await handlerGate;
+				return await ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation: { childRunId: 'late-child-run' } },
+				);
+			},
+			onCancellation,
+		);
+		const { runtime } = createRuntimeWithTools([tool], 1, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const resultPromise = runtime.generate('go');
+		await handlerStarted;
+		bus.abort();
+		await expect(resultPromise).resolves.toMatchObject({ finishReason: 'error' });
+		releaseHandler();
+
+		await vi.waitFor(() =>
+			expect(onCancellation).toHaveBeenCalledWith(
+				{ value: 'a' },
+				expect.objectContaining({
+					continuation: { childRunId: 'late-child-run' },
+					suspendPayload: { reason: 'needs approval' },
+				}),
+			),
+		);
+	});
+
+	it('cleans up a repeated suspension when abort lands during schema validation', async () => {
+		const bus = new AgentEventBus();
+		let releaseParse!: () => void;
+		let markParseStarted!: () => void;
+		const parseGate = new Promise<void>((resolve) => (releaseParse = resolve));
+		const parseStarted = new Promise<void>((resolve) => (markParseStarted = resolve));
+		const onCancellation = makeCancellationSpy();
+		const tool: BuiltTool = {
+			name: 'suspend_tool',
+			description: 'Suspends twice',
+			inputSchema: z.object({ value: z.string().optional() }),
+			suspendSchema: z.object({ stage: z.string() }).superRefine(async ({ stage }) => {
+				if (stage !== 'second') return;
+				markParseStarted();
+				await parseGate;
+			}),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input, rawCtx) => {
+				const ctx = rawCtx as InterruptibleToolContext;
+				const stage = ctx.resumeData ? 'second' : 'first';
+				return await ctx.suspend({ stage }, { continuation: { childRunId: stage } });
+			},
+			onCancellation,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const first = await runtime.generate('go');
+		const resume = runtime.resume('generate', { approved: true }, first.pendingSuspend![0]);
+		await parseStarted;
+		bus.abort();
+		releaseParse();
+		const result = await resume;
+
+		expect(result.pendingSuspend).toBeUndefined();
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'a' },
+			expect.objectContaining({
+				continuation: { childRunId: 'second' },
+				suspendPayload: { stage: 'second' },
+			}),
+		);
+	});
+
+	it('cleans up a resumed child suspension when the parent aborts before re-suspending', async () => {
+		const bus = new AgentEventBus();
+		const continuation = { childRunId: 'child-run-on-resume' };
+		const resumeSchema = z.object({ approved: z.boolean() });
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) => {
+				if (!ctx.resumeData) {
+					return await ctx.suspend({ reason: 'needs approval' }, { continuation, resumeSchema });
+				}
+				bus.abort();
+				return await new Promise<never>(() => undefined);
+			},
+			onCancellation,
+		);
+		const { runtime } = createRuntimeWithTools([tool], 1, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const first = await runtime.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const result = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'a' },
+			expect.objectContaining({
+				cancellation: { message: 'Run aborted' },
+				continuation,
+				toolCallId: 'tc-1',
+				suspendPayload: { reason: 'needs approval' },
+				resumeSchema: expect.objectContaining({
+					type: 'object',
+					properties: { approved: expect.objectContaining({ type: 'boolean' }) },
+				}),
+			}),
+		);
+	});
+
+	it('cleans up suspended siblings when an unexecuted tool aborts during resume', async () => {
+		const bus = new AgentEventBus();
+		const onCancellation = makeCancellationSpy();
+		const suspendTool = makeSuspendingTool(
+			'suspend_tool',
+			async (rawInput, ctx) => {
+				if (ctx.resumeData) return { approved: true };
+				const { value } = rawInput as { value: string };
+				return await ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation: { childRunId: `child-${value}` } },
+				);
+			},
+			onCancellation,
+		);
+		const abortTool = makeMockTool('abort_tool', async () => {
+			bus.abort();
+			return await new Promise<never>(() => undefined);
+		});
+		const { runtime } = createRuntimeWithTools([suspendTool, abortTool], 2, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: { value: 'a' } },
+				{ toolCallId: 'tc-2', toolName: 'suspend_tool', args: { value: 'b' } },
+				{ toolCallId: 'tc-3', toolName: 'abort_tool', args: {} },
+			]),
+		);
+
+		const first = await runtime.generate('go');
+		const result = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: first.runId, toolCallId: 'tc-1' },
+		);
+
+		expect(result.pendingSuspend).toBeUndefined();
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ value: 'b' },
+			expect.objectContaining({
+				continuation: { childRunId: 'child-b' },
+				toolCallId: 'tc-2',
+			}),
+		);
+	});
+
+	it('rolls back a suspension when abort lands during checkpoint persistence', async () => {
+		const bus = new AgentEventBus();
+		let releaseSave!: () => void;
+		let markSaveStarted!: () => void;
+		const saveGate = new Promise<void>((resolve) => (releaseSave = resolve));
+		const saveStarted = new Promise<void>((resolve) => (markSaveStarted = resolve));
+		const checkpointStore: CheckpointStore = {
+			save: vi.fn(async () => {
+				markSaveStarted();
+				await saveGate;
+			}),
+			load: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		};
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) =>
+				await ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation: { childRunId: 'child-during-save' } },
+				),
+			onCancellation,
+		);
+		const runtime = createRuntimeWithCheckpointStore([tool], checkpointStore, bus);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const resultPromise = runtime.generate('go');
+		await saveStarted;
+		bus.abort();
+		releaseSave();
+		const result = await resultPromise;
+
+		expect(result.pendingSuspend).toBeUndefined();
+		expect(runtime.getState().status).toBe('cancelled');
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId);
+	});
+
+	it('cleans up child continuations when checkpoint persistence fails', async () => {
+		const persistenceError = new Error('checkpoint unavailable');
+		const checkpointStore: CheckpointStore = {
+			save: vi.fn(async () => await Promise.reject(persistenceError)),
+			load: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		};
+		const onCancellation = makeCancellationSpy();
+		const tool = makeSuspendingTool(
+			'suspend_tool',
+			async (_input, ctx) =>
+				await ctx.suspend(
+					{ reason: 'needs approval' },
+					{ continuation: { childRunId: 'child-on-save-error' } },
+				),
+			onCancellation,
+		);
+		const runtime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'suspend_tool', { value: 'a' }),
+		);
+
+		const result = await runtime.generate('go');
+
+		expect(result.error).toBe(persistenceError);
+		expect(onCancellation).toHaveBeenCalledOnce();
+		expect(checkpointStore.delete).toHaveBeenCalledWith(result.runId);
 	});
 });
 
@@ -4586,6 +5052,7 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 	it('claims the checkpoint after resume validation passes', async () => {
 		const checkpointStore = makeClaimingCheckpointStore();
 		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+		const onResumeClaimed = vi.fn();
 
 		generateText.mockResolvedValueOnce(
 			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
@@ -4594,7 +5061,11 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		const { runId, toolCallId } = first.pendingSuspend![0];
 
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
-		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId, toolCallId, onResumeClaimed },
+		);
 
 		expect(resumed.finishReason).toBe('stop');
 		expect(checkpointStore.claimForResume).toHaveBeenCalledTimes(1);
@@ -4602,6 +5073,60 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			runId,
 			expect.objectContaining({ status: 'suspended' }),
 		);
+		expect(onResumeClaimed).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not emit a runtime error when another resume wins the checkpoint claim', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const eventBus = new AgentEventBus();
+		const onResumeClaimed = vi.fn();
+		const errorEvents: AgentEventData[] = [];
+		eventBus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [makeApprovalTool()],
+			checkpointStorage: checkpointStore,
+			eventBus,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		checkpointStore.claimForResume.mockResolvedValueOnce(false);
+
+		await expect(
+			runtime.resume('stream', { approved: true }, { runId, toolCallId, onResumeClaimed }),
+		).rejects.toBeInstanceOf(StaleResumeError);
+		expect(errorEvents).toEqual([]);
+		expect(streamText).not.toHaveBeenCalled();
+		expect(onResumeClaimed).not.toHaveBeenCalled();
+	});
+
+	it('does not invoke the claim hook when checkpoint claiming fails', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+		const onResumeClaimed = vi.fn();
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		checkpointStore.claimForResume.mockRejectedValueOnce(new Error('checkpoint unavailable'));
+
+		const resumed = await runtime.resume(
+			'stream',
+			{ approved: true },
+			{ runId, toolCallId, onResumeClaimed },
+		);
+		await collectChunks(resumed.stream);
+
+		expect(onResumeClaimed).not.toHaveBeenCalled();
+		expect(streamText).not.toHaveBeenCalled();
 	});
 
 	it('does not claim the checkpoint when the resume payload is invalid', async () => {
@@ -4640,22 +5165,22 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Provider options merging
+// Generic reasoning
 // ---------------------------------------------------------------------------
 
-describe('provider options merging', () => {
+describe('reasoning', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should deep-merge thinking config with call-level providerOptions', async () => {
+	it('passes reasoning as a top-level generateText option without provider-specific settings', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			instructions: 'You are a test assistant.',
-			thinking: { budgetTokens: 10000 },
+			reasoning: 'high',
 		});
 
 		await runtime.generate('hello', {
@@ -4666,12 +5191,91 @@ describe('provider options merging', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBe('high');
 		expect((callArgs.providerOptions as Record<string, Record<string, unknown>>).anthropic).toEqual(
-			{
-				thinking: { type: 'enabled', budgetTokens: 10000 },
-				cacheControl: { type: 'ephemeral' },
-			},
+			{ cacheControl: { type: 'ephemeral' } },
 		);
+	});
+
+	it('passes reasoning as a top-level streamText option', async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			reasoning: 'low',
+		});
+
+		const result = await runtime.stream('hello');
+		await collectChunks(result.stream);
+
+		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBe('low');
+		expect(callArgs.providerOptions).toBeUndefined();
+	});
+});
+
+describe('provider-specific thinking', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('maps a fixed Anthropic thinking budget into providerOptions', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			thinking: { budgetTokens: 4096 },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBeUndefined();
+		expect(callArgs.providerOptions).toEqual({
+			anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } },
+		});
+	});
+
+	// Adaptive models return empty thinking blocks unless display is summarized,
+	// and the SDK's mapping of the reasoning level doesn't set it.
+	it('asks an adaptive Anthropic model for summarized thinking when reasoning is set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-5',
+			instructions: 'You are a test assistant.',
+			reasoning: 'medium',
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		// The level still goes through as the SDK's own option, which maps it to effort.
+		expect(callArgs.reasoning).toBe('medium');
+		expect(callArgs.providerOptions).toEqual({
+			anthropic: { thinking: { type: 'adaptive', display: 'summarized' } },
+		});
+	});
+
+	it('leaves a budget-thinking Anthropic model to the SDK when reasoning is set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			reasoning: 'medium',
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.reasoning).toBe('medium');
+		expect(callArgs.providerOptions).toBeUndefined();
 	});
 });
 
@@ -4686,7 +5290,7 @@ describe('tool systemInstruction merging', () => {
 
 	function getSystemMessageText(): string {
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system;
+		const systemMsg = callArgs.instructions;
 		if (Array.isArray(systemMsg)) {
 			return systemMsg.map((entry) => String((entry as { content: string }).content)).join('');
 		}
@@ -4819,10 +5423,10 @@ describe('tool systemInstruction merging', () => {
 		await runtime.generate('load the deferred capability');
 
 		const calls = generateText.mock.calls as Array<
-			[{ system: Array<{ content: string }> | { content: string } }]
+			[{ instructions: Array<{ content: string }> | { content: string } }]
 		>;
-		const beforeLoadSystem = calls[0][0].system;
-		const afterLoadSystem = calls[1][0].system;
+		const beforeLoadSystem = calls[0][0].instructions;
+		const afterLoadSystem = calls[1][0].instructions;
 
 		const beforeFirst = Array.isArray(beforeLoadSystem)
 			? beforeLoadSystem[0].content
@@ -4866,7 +5470,7 @@ describe('instruction providerOptions', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
+		const systemMsg = callArgs.instructions as Record<string, unknown>;
 		expect(systemMsg.role).toBe('system');
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -4896,7 +5500,7 @@ describe('promptCaching', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
+		const systemMsg = callArgs.instructions as Record<string, unknown>;
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
@@ -4924,14 +5528,14 @@ describe('promptCaching', () => {
 		expect(typeof openaiOpts.promptCacheKey).toBe('string');
 	});
 
-	it('merges thinking config with generated prompt caching and caller providerOptions for OpenAI', async () => {
+	it('keeps generic reasoning separate from prompt caching and caller providerOptions', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
 			name: 'test',
 			model: 'openai/gpt-5.1',
 			instructions: 'You are a test assistant.',
-			thinking: { reasoningEffort: 'high' },
+			reasoning: 'high',
 			promptCaching: { enabled: true },
 		});
 
@@ -4941,7 +5545,9 @@ describe('promptCaching', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
-		expect(openaiOpts.reasoningEffort).toBe('high');
+		expect(callArgs.reasoning).toBe('high');
+		expect(openaiOpts).not.toHaveProperty('reasoningEffort');
+		expect(openaiOpts).not.toHaveProperty('reasoningSummary');
 		expect(openaiOpts.promptCacheRetention).toBe('24h');
 		expect(typeof openaiOpts.promptCacheKey).toBe('string');
 		expect(openaiOpts.strictJsonSchema).toBe(false);
@@ -5297,10 +5903,10 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
-			system: { content: string };
+			instructions: { content: string };
 			tools: Record<string, unknown>;
 		};
-		const systemPrompt = callArgs.system?.content ?? '';
+		const systemPrompt = callArgs.instructions?.content ?? '';
 		expect(systemPrompt).not.toContain('<episodic_memory>');
 		expect(systemPrompt).not.toContain('Postgres');
 		expect(systemPrompt).not.toContain('SQLite');
@@ -5420,17 +6026,17 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const generateTextMock = generateText as MockedFunction<
 			(input: {
-				system: { content: string } | Array<{ content: string }>;
+				instructions: { content: string } | Array<{ content: string }>;
 				messages: Array<{
 					role: string;
 					content: unknown;
 				}>;
 			}) => unknown
 		>;
-		const [{ system, messages }] = generateTextMock.mock.calls[0];
-		const systemText = Array.isArray(system)
-			? system.map((entry) => entry.content).join('')
-			: system.content;
+		const [{ instructions, messages }] = generateTextMock.mock.calls[0];
+		const systemText = Array.isArray(instructions)
+			? instructions.map((entry) => entry.content).join('')
+			: instructions.content;
 		expect(systemText).toContain('Resource one memory.');
 		expect(systemText).toContain('Resource two memory.');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
@@ -5637,7 +6243,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		tracer: { startSpan: vi.fn() },
 	};
 
-	it('passes telemetry config into generateText as experimental_telemetry', async () => {
+	it('passes telemetry config into generateText as telemetry', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
@@ -5651,13 +6257,12 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry).toBeDefined();
-		expect(expTelemetry.isEnabled).toBe(true);
-		expect(expTelemetry.functionId).toBe('test-agent');
-		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
-		expect(expTelemetry.recordInputs).toBe(true);
-		expect(expTelemetry.recordOutputs).toBe(false);
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry).toBeDefined();
+		expect(telemetry.isEnabled).toBe(true);
+		expect(telemetry.functionId).toBe('test-agent');
+		expect(telemetry.recordInputs).toBe(true);
+		expect(telemetry.recordOutputs).toBe(false);
 	});
 
 	it('uses updated telemetry config for later runs', async () => {
@@ -5680,9 +6285,8 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry.functionId).toBe('updated-agent');
-		expect(expTelemetry.metadata).toEqual({ env: 'updated' });
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry.functionId).toBe('updated-agent');
 	});
 
 	it('wraps generate calls in a telemetry root span when the tracer supports active spans', async () => {
@@ -5741,6 +6345,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		const telemetry: BuiltTelemetry = {
 			...baseTelemetry,
 			runtimeRootSpanEnabled: false,
+			integrations: [{ onStart: vi.fn() }],
 			tracer,
 		};
 
@@ -5757,11 +6362,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.experimental_telemetry).toEqual(
+		expect(callArgs.telemetry).toEqual(
 			expect.objectContaining({
 				isEnabled: true,
 				functionId: 'test-agent',
-				tracer,
+				integrations: telemetry.integrations,
 			}),
 		);
 	});
@@ -5827,7 +6432,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(attributes['gen_ai.prompt']).toEqual(expect.stringContaining('"input_schema"'));
 	});
 
-	it('passes telemetry config into streamText as experimental_telemetry', async () => {
+	it('passes telemetry config into streamText as telemetry', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
 
 		const runtime = new AgentRuntime({
@@ -5842,11 +6447,10 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await collectChunks(stream);
 
 		const callArgs = streamText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry).toBeDefined();
-		expect(expTelemetry.isEnabled).toBe(true);
-		expect(expTelemetry.functionId).toBe('test-agent');
-		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry).toBeDefined();
+		expect(telemetry.isEnabled).toBe(true);
+		expect(telemetry.functionId).toBe('test-agent');
 	});
 
 	it('enables smoothStream by default on streamText', async () => {
@@ -5926,12 +6530,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const expTelemetry = callArgs.experimental_telemetry as Record<string, unknown>;
-		expect(expTelemetry).toBeDefined();
-		expect(expTelemetry.isEnabled).toBe(true);
+		const telemetry = callArgs.telemetry as Record<string, unknown>;
+		expect(telemetry).toBeDefined();
+		expect(telemetry.isEnabled).toBe(true);
 		// Inherited telemetry uses the child agent's name as functionId
-		expect(expTelemetry.functionId).toBe('child-agent');
-		expect(expTelemetry.tracer).toBe(baseTelemetry.tracer);
+		expect(telemetry.functionId).toBe('child-agent');
 	});
 
 	it('passes resolved telemetry to tool handlers via parentTelemetry', async () => {
@@ -6088,7 +6691,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(capturedTelemetry!.tracer).toBe(baseTelemetry.tracer);
 	});
 
-	it('does not include experimental_telemetry when telemetry is disabled', async () => {
+	it('does not include telemetry when telemetry is disabled', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
@@ -6102,7 +6705,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('hello');
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		expect(callArgs.experimental_telemetry).toBeUndefined();
+		expect(callArgs.telemetry).toBeUndefined();
 	});
 });
 
@@ -6133,6 +6736,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 	}
 
 	it('auto-bypass: does NOT call the tool handler on cancellation', async () => {
+		const onCancellation = makeCancellationSpy();
 		const handlerSpy = vi.fn().mockImplementation(async (_input: unknown, ctx: unknown) => {
 			const { suspend, resumeData } = ctx as InterruptibleToolContext;
 			if (!resumeData) {
@@ -6147,6 +6751,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 			suspendSchema: z.object({ prompt: z.string() }),
 			resumeSchema: z.object({ answer: z.string() }),
 			handler: handlerSpy,
+			onCancellation,
 		};
 
 		const { runtime } = createRuntimeWithTools([tool], 1);
@@ -6173,6 +6778,15 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 
 		// Handler should NOT have been called for the resume
 		expect(handlerSpy).not.toHaveBeenCalled();
+		expect(onCancellation).toHaveBeenCalledWith(
+			{ prompt: 'continue?' },
+			expect.objectContaining({
+				cancellation: { message: 'do something else instead' },
+				runId,
+				toolCallId,
+				suspendPayload: { prompt: 'What should I do?' },
+			}),
+		);
 		// The generation should have continued after cancellation
 		expect(resumed.finishReason).toBe('stop');
 	});
@@ -6211,7 +6825,7 @@ describe('AgentRuntime.resume() with createCancellation() — auto-bypass', () =
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -6397,7 +7011,7 @@ describe('AgentRuntime — toModelOutput error resilience', () => {
 
 		streamText
 			.mockReturnValueOnce({
-				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 				finishReason: Promise.resolve('tool-calls'),
 				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 				response: Promise.resolve({
@@ -6473,7 +7087,7 @@ describe('AgentRuntime — toModelOutput error resilience', () => {
 
 		// First stream: agent calls the tool and suspends
 		streamText.mockReturnValueOnce({
-			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'thinking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
 			response: Promise.resolve({
@@ -6544,7 +7158,7 @@ describe('AgentRuntime — empty model responses', () => {
 
 	function makeEmptyStream(finishReason: string, extraChunks: Array<Record<string, unknown>> = []) {
 		return {
-			fullStream: makeChunkStream(extraChunks),
+			stream: makeChunkStream(extraChunks),
 			finishReason: Promise.resolve(finishReason),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 0, totalTokens: 10 }),
 			response: Promise.resolve({ messages: [] }),
@@ -6605,7 +7219,7 @@ describe('AgentRuntime — empty model responses', () => {
 		await collectChunks(readableStream);
 
 		const args = streamText.mock.calls[0][0] as Record<string, unknown>;
-		expect(args.includeRawChunks).toBe(true);
+		expect(args).toHaveProperty('include.rawChunks', true);
 	});
 
 	it('stream: an empty response finishing with "stop" is not treated as an error', async () => {
@@ -6635,5 +7249,99 @@ describe('AgentRuntime — empty model responses', () => {
 
 		expect(result.finishReason).toBe('error');
 		expect(String((result.error as Error).message)).toContain('no output');
+	});
+});
+
+describe('AgentRuntime — MCP connection failure warnings', () => {
+	it('emits a warning chunk per recorded MCP failure before the LLM loop, then completes', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'mcp-warn',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			mcpConnectionFailures: [
+				{ server: 'dead', error: 'fetch failed' },
+				{ server: 'also_dead', error: 'boom' },
+			],
+		});
+
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		const warnings = chunks.filter((c) => c.type === 'warning') as Array<
+			StreamChunk & { type: 'warning'; message: string; server?: string; source?: string }
+		>;
+		expect(warnings).toHaveLength(2);
+		expect(warnings[0]).toMatchObject({
+			type: 'warning',
+			message: 'fetch failed',
+			source: 'mcp',
+			server: 'dead',
+			code: 'mcp_connection_failed',
+		});
+		expect(warnings[1]).toMatchObject({ type: 'warning', server: 'also_dead', message: 'boom' });
+
+		// The run still completes normally — warnings are non-fatal.
+		const finishChunk = chunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finishChunk).toBeDefined();
+		expect(finishChunk!.finishReason).not.toBe('error');
+	});
+
+	it('emits no warning chunks when there are no MCP connection failures', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		expect(chunks.filter((c) => c.type === 'warning')).toEqual([]);
+	});
+
+	it('injects a model-facing mcp-connection-status note into the system message when failures are set', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'mcp-note',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			mcpConnectionFailures: [{ server: 'dead', error: 'fetch failed' }],
+		});
+
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
+		const system = callArgs.instructions;
+		const systemText = Array.isArray(system)
+			? system.map((e) => String((e as { content: string }).content)).join('')
+			: String((system as { content: string }).content);
+
+		expect(systemText).toContain('<mcp-connection-status>');
+		expect(systemText).toContain('dead');
+		expect(systemText).toContain('fetch failed');
+		expect(systemText).toMatch(/If this affects the user's request/i);
+	});
+
+	it('omits the mcp-connection-status note from the system message when there are no failures', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
+		const system = callArgs.instructions;
+		const systemText = Array.isArray(system)
+			? system.map((e) => String((e as { content: string }).content)).join('')
+			: String((system as { content: string }).content);
+
+		expect(systemText).not.toContain('<mcp-connection-status>');
 	});
 });

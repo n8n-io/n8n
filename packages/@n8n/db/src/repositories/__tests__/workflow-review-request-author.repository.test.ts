@@ -32,4 +32,36 @@ describe('WorkflowReviewRequestAuthorRepository', () => {
 			expect(entityManager.save).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('addAuthorIfMissing', () => {
+		it('inserts the author when they have not been added yet', async () => {
+			(entityManager.create as Mock).mockImplementation(
+				(_target: unknown, entityLike: unknown) => entityLike as WorkflowReviewRequestAuthor,
+			);
+			const trx = mock<EntityManager>();
+			trx.existsBy.mockResolvedValue(false);
+			trx.save.mockImplementation(async (_target, entity) => entity);
+
+			await repo.addAuthorIfMissing({ workflowReviewRequestId: 'req-1', userId: 'user-1' }, trx);
+
+			expect(trx.existsBy).toHaveBeenCalledWith(WorkflowReviewRequestAuthor, {
+				workflowReviewRequestId: 'req-1',
+				userId: 'user-1',
+			});
+			expect(trx.save.mock.calls[0]?.[1]).toMatchObject({
+				workflowReviewRequestId: 'req-1',
+				userId: 'user-1',
+			});
+		});
+
+		it('is a no-op when the author row already exists', async () => {
+			const trx = mock<EntityManager>();
+			trx.existsBy.mockResolvedValue(true);
+
+			await repo.addAuthorIfMissing({ workflowReviewRequestId: 'req-1', userId: 'user-1' }, trx);
+
+			expect(trx.save).not.toHaveBeenCalled();
+			expect(entityManager.save).not.toHaveBeenCalled();
+		});
+	});
 });

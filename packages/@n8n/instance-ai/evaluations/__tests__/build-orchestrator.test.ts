@@ -2,8 +2,9 @@ import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import type { N8nClient } from '../clients/n8n-client';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
+import type { BuildResult } from '../harness/build-workflow';
+import { runWorkflowChecks } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { runWorkflowChecks, type BuildResult } from '../harness/runner';
 import {
 	createBuildOrchestrator,
 	type BuildOrchestratorDeps,
@@ -18,12 +19,19 @@ import type { WorkflowTestCase } from '../types';
 // against the behavior runWithLangSmith relied on while getOrBuild was a
 // closure — keep them green through the decomposition.
 
-vi.mock('../harness/runner', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('../harness/runner')>();
+vi.mock('../harness/agent-execution', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/agent-execution')>();
+	return {
+		...actual,
+		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
+	};
+});
+
+vi.mock('../harness/cleanup', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../harness/cleanup')>();
 	return {
 		...actual,
 		runWorkflowChecks: vi.fn().mockResolvedValue([]),
-		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
 	};
 });
 
@@ -122,6 +130,8 @@ function makeDeps(
 		buildExpectationsByKey: new Map(),
 		runDebugByThreadId: new Map(),
 		agentContextByKey: new Map(),
+		// The provider-outage backoff is minutes long in production — never slept here.
+		sleep: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	};
 }
@@ -204,6 +214,92 @@ describe('createBuildOrchestrator', () => {
 		expect(first.build.transportFailure).toBe(false);
 		expect(orchestrator.buildCache.size).toBe(1);
 		expect(orchestrator.orphanedBuilds).toHaveLength(0);
+	});
+
+	it('retries a provider outage after a backoff, on a healthy lane', async () => {
+		// TRUST-374: the lane is fine — the model provider is not. Unclassified, this
+		// failure reads as a builder verdict and is neither retried nor re-attributed.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const failing = vi
+			.fn()
+			.mockResolvedValue(
+				failedBuild(
+					'Agent error: Internal server error; No output generated. Check the stream for errors.',
+				),
+			);
+		const healthy = vi.fn().mockResolvedValue(okBuild());
+		const deps = makeDeps([makeLane(1, failing), makeLane(2, healthy)]);
+		const orchestrator = createBuildOrchestrator(deps);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(true);
+		expect(failing).toHaveBeenCalledTimes(1);
+		// An instant retry would just re-hit the same upstream.
+		expect(vi.mocked(deps.sleep!).mock.calls[0][0]).toBeGreaterThanOrEqual(30_000);
+	});
+
+	it('marks an unrecoverable provider outage as infra without rebuilding per scenario', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const providerError = 'Agent error: Overloaded; No output generated.';
+		const failing1 = vi.fn().mockResolvedValue(failedBuild(providerError));
+		const failing2 = vi.fn().mockResolvedValue(failedBuild(providerError));
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, failing1), makeLane(2, failing2)]),
+		);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(false);
+		expect(build.providerOutage).toBe(providerError);
+		// framework_issue, not build_failure — the builder never got to run.
+		expect(build.transportFailure).toBe(true);
+		expect(failing1.mock.calls.length + failing2.mock.calls.length).toBe(3);
+
+		// The retry budget is spent; a later scenario of the case must not pay it again.
+		await settleMicrotasks();
+		expect(orchestrator.buildCache.size).toBe(1);
+		await orchestrator.getOrBuild(0, 'case-a');
+		expect(failing1.mock.calls.length + failing2.mock.calls.length).toBe(3);
+	});
+
+	it('does not mistake the built workflow-s own upstream 5xx for a provider outage', async () => {
+		// A mocked API returning 500 to the workflow is a product signal, so it stays
+		// a cached build_failure verdict.
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const failing = vi.fn().mockResolvedValue(failedBuild('Tool errors: Stripe returned HTTP 500'));
+		const orchestrator = createBuildOrchestrator(makeDeps([makeLane(1, failing)]));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.providerOutage).toBeUndefined();
+		expect(build.transportFailure).toBe(false);
+		expect(failing).toHaveBeenCalledTimes(1);
+		await settleMicrotasks();
+		expect(orchestrator.buildCache.size).toBe(1);
+	});
+
+	it('records ungraded expectations when the build produced no agent output', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const providerError = 'Agent error: Overloaded; No output generated.';
+		const failing = vi.fn().mockResolvedValue(failedBuild(providerError));
+		const deps = makeDeps([makeLane(1, failing)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ outcomeExpectations: ['sends a digest'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		// Never handed to the judge, but still recorded — as incomplete.
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts).toHaveLength(1);
+		expect(verdicts?.[0].expectation).toBe('sends a digest');
+		expect(verdicts?.[0].pass).toBe(false);
+		expect(verdicts?.[0].incomplete).toBe(true);
+		expect(verdicts?.[0].reason).toContain('no agent output');
 	});
 
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {

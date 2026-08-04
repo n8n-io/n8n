@@ -2,9 +2,9 @@ import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import type { BuildResult } from '../harness/build-workflow';
+import { cleanupBuild } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { cleanupBuild } from '../harness/runner';
-import type { BuildResult } from '../harness/runner';
 
 /**
  * Locks in the cleanupBuild contract the CLI's per-case cleanup relies on:

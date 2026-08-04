@@ -10,8 +10,8 @@ import RunsSection from '../components/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '../evaluation.store';
 import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { N8nButton, N8nIcon, N8nPopover } from '@n8n/design-system';
 

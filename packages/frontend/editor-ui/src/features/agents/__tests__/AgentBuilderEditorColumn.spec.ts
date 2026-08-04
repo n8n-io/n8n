@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -8,12 +7,12 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) =>
 			({
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
-				'agents.builder.memory.episodicMemory.hint':
-					'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
 			})[key] ?? key,
 	}),
+	// The i18n singleton is used at module load by some transitively-imported utils.
+	i18n: { baseText: (key: string) => key },
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -65,7 +64,11 @@ vi.mock('@n8n/design-system/components/N8nOption', () => ({
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
-	default: { name: 'AgentAdvancedPanel', template: '<div />' },
+	default: {
+		name: 'AgentAdvancedPanel',
+		template: '<div />',
+		props: ['config', 'disabled', 'collapsible', 'projectId'],
+	},
 }));
 
 vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
@@ -85,7 +88,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
+		props: ['showModel', 'showInstructions', 'showInstructionsToolbar', 'instructionsMaxHeight'],
 	},
 }));
 
@@ -93,13 +96,9 @@ vi.mock('../components/AgentFilesPanel.vue', () => ({
 	default: {
 		name: 'AgentFilesPanel',
 		template: '<div data-testid="agent-files-panel" />',
-		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId', 'isPublished'],
+		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId'],
 		emits: ['upload-files', 'delete-file'],
 	},
-}));
-
-vi.mock('../components/AgentJsonEditor.vue', () => ({
-	default: { name: 'AgentJsonEditor', template: '<div />' },
 }));
 
 vi.mock('../components/AgentPanelHeader.vue', () => ({
@@ -175,7 +174,12 @@ async function mountColumn(
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
+					props: [
+						'showModel',
+						'showInstructions',
+						'showInstructionsToolbar',
+						'instructionsMaxHeight',
+					],
 				},
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
@@ -290,9 +294,6 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 
 		expect(wrapper.text()).toContain('Episodic Memory');
-		expect(wrapper.text()).toContain(
-			'Stores source-backed memories from previous conversations. Requires OpenAI credential.',
-		);
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
 	});
@@ -311,7 +312,9 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(true);
+		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
+		expect(advancedPanel.exists()).toBe(true);
+		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {
@@ -325,28 +328,29 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as channels, model, instructions, then capabilities', async () => {
+	it('orders the Agent tab as channels, capabilities, model, then instructions', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
 		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
-		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
 
 		expect(channels.exists()).toBe(true);
-		expect(model.exists()).toBe(true);
 		expect(capabilities.exists()).toBe(true);
+		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
 		expect(
-			channels.element.compareDocumentPosition(model.element) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(
-			model.element.compareDocumentPosition(instructions.element) &
+			channels.element.compareDocumentPosition(capabilities.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
-			instructions.element.compareDocumentPosition(capabilities.element) &
+			capabilities.element.compareDocumentPosition(model.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			model.element.compareDocumentPosition(instructions.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 	});
@@ -360,5 +364,6 @@ describe('AgentBuilderEditorColumn', () => {
 			.find((panel) => panel.props('showModel') === false);
 
 		expect(instructionsPanel?.props('showInstructionsToolbar')).toBe(true);
+		expect(instructionsPanel?.props('instructionsMaxHeight')).toBe('none');
 	});
 });

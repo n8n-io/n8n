@@ -32,7 +32,7 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 

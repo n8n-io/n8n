@@ -1,12 +1,12 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import request from 'supertest';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { createDataSource, WorkflowExecution } from '../../database';
 import type { WorkflowGraph } from '../../graph';
-import { InMemoryWorkQueue } from '../../queue';
+import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { startEngineServer } from '../../testing/start-engine-server';
 
 const sampleGraph: WorkflowGraph = {
@@ -17,7 +17,7 @@ const sampleGraph: WorkflowGraph = {
 describe('POST /api/workflow-executions (integration)', () => {
 	let container: StartedPostgreSqlContainer;
 	let dataSource: DataSource;
-	let workQueue: InMemoryWorkQueue;
+	let workQueue: WorkQueue<OrchestrationMessage>;
 	let url: string;
 	let stop: () => Promise<void>;
 
@@ -29,7 +29,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	}, 120_000);
 
 	beforeEach(async () => {
-		workQueue = new InMemoryWorkQueue();
+		workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 		({ url, stop } = await startEngineServer({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
@@ -67,7 +67,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.graph).toEqual(sampleGraph);
 		expect(row.triggerPayload).toEqual({ hello: 'world' });
 
-		expect(workQueue.messages).toEqual([{ type: 'execution:enqueued', executionId }]);
+		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
 	});
 
 	it('rejects an invalid body with 400', async () => {
