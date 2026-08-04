@@ -37,7 +37,10 @@ export async function downloadDiscordAttachment(attachmentUrl: string): Promise<
 		throw new Error('Invalid Discord attachment URL');
 	}
 
-	const response = await fetch(url, { redirect: 'error' });
+	const response = await fetch(url, {
+		redirect: 'error',
+		signal: AbortSignal.timeout(30_000),
+	});
 	if (!response.ok) {
 		throw new Error(`Discord attachment download failed with status ${response.status}`);
 	}
