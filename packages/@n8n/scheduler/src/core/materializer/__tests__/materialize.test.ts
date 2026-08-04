@@ -488,6 +488,170 @@ describe('materialize', () => {
 
 			expect(totalDiscarded(summary.misfires)).toBe(38);
 		});
+
+		it('reports how many catch-up runs the group dropped', async () => {
+			const tx = makeTx();
+			claimSiblings(tx);
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.groupedCatchUps).toBe(2);
+			expect(summary.ungroupedCatchUps).toBe(0);
+		});
+
+		it('reports a catch-up run of an owner with no sibling as ungrouped', async () => {
+			const tx = makeTx();
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					{ ...makeSibling(1), ownerKey: 'owner-a' },
+					{ ...makeSibling(2), ownerKey: 'owner-b' },
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.groupedCatchUps).toBe(0);
+			expect(summary.ungroupedCatchUps).toBe(2);
+		});
+
+		it('reports a group and an owner with no sibling side by side', async () => {
+			const tx = makeTx();
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					{ ...makeSibling(1), ownerKey: 'owner-a' },
+					{ ...makeSibling(2), ownerKey: 'owner-a' },
+					{ ...makeSibling(3), ownerKey: 'owner-b' },
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.groupedCatchUps).toBe(1);
+			expect(summary.ungroupedCatchUps).toBe(1);
+		});
+
+		it('records the surviving occurrences of a superseded sibling at their own instants', async () => {
+			const tx = makeTx();
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					{ ...makeSibling(1), nextRunAt: new Date('2025-12-31T23:58:00.000Z') },
+					{ ...makeSibling(2), nextRunAt: new Date('2025-12-31T23:58:05.000Z') },
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 7, created: [] });
+
+			await materialize(runnerWith(tx), { ...options, windowSeconds: 30 });
+
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+
+			const superseded = rows.filter((row) => row.jobId === 2);
+			expect(superseded.map((row) => row.scheduledFor)).toEqual([
+				new Date('2026-01-01T00:00:05.000Z'),
+				new Date('2026-01-01T00:00:15.000Z'),
+				new Date('2026-01-01T00:00:25.000Z'),
+			]);
+			for (const row of superseded) {
+				expect(row.runAt).toEqual(row.scheduledFor);
+			}
+
+			const winner = rows.filter((row) => row.jobId === 1);
+			expect(winner.map((row) => row.scheduledFor)).toEqual([
+				NOW,
+				new Date('2026-01-01T00:00:10.000Z'),
+				new Date('2026-01-01T00:00:20.000Z'),
+				new Date('2026-01-01T00:00:30.000Z'),
+			]);
+			expect(winner[0].runAt).toEqual(NOW);
+			for (const row of winner.slice(1)) {
+				expect(row.runAt).toEqual(row.scheduledFor);
+			}
+		});
+
+		it('counts a dropped catch-up run even when the member discarded no backlog', async () => {
+			const tx = makeTx();
+			const hourly = (id: number, nextRunAt: string): ScheduledJob => ({
+				...makeSibling(id),
+				intervalSeconds: 3600,
+				nextRunAt: new Date(nextRunAt),
+			});
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [hourly(1, '2025-12-31T23:58:00.000Z'), hourly(2, '2025-12-31T23:57:00.000Z')],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			const planned = tx.advanceJobs.mock.calls[0][0];
+			const dropped = planned.find(({ job }) => job.id === 2)!;
+			expect(dropped.plan.skippedOccurrences).toBe(0);
+			expect(dropped.plan.groupedCatchUps).toBe(1);
+
+			expect(summary.misfires).toEqual([
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.CoalesceOwner, discarded: 1 },
+			]);
+		});
+
+		it('counts dropped catch-up runs apart from a per-job policy discard in the same batch', async () => {
+			const tx = makeTx();
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					makeSibling(1),
+					makeSibling(2),
+					{ ...makeJob(3), nextRunAt: BEHIND },
+					{ ...makeSkipJob(4), nextRunAt: BEHIND },
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.misfires).toEqual([
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.CoalesceOwner, discarded: 25 },
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 12 },
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Skip, discarded: 13 },
+			]);
+		});
+
+		it('records a catch-up run for every sibling when none of their schedules has a further run', async () => {
+			const tx = makeTx();
+			const oneOff = (id: number, fireAt: string): ScheduledJob => ({
+				...makeSibling(id),
+				kind: 'one_off',
+				intervalSeconds: null,
+				fireAt: new Date(fireAt),
+				nextRunAt: new Date(fireAt),
+			});
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [
+					oneOff(1, '2025-12-31T23:58:00.000Z'),
+					oneOff(2, '2025-12-31T23:58:10.000Z'),
+					oneOff(3, '2025-12-31T23:58:20.000Z'),
+				],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 3, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.groupedCatchUps).toBe(0);
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+			expect(rows.map((row) => row.jobId)).toEqual([1, 2, 3]);
+			for (const row of rows) {
+				expect(row.runAt).toEqual(NOW);
+			}
+			expect(tx.retireSuperseded).toHaveBeenCalledWith([
+				{ jobId: 1, before: new Date('2025-12-31T23:58:00.000Z') },
+				{ jobId: 2, before: new Date('2025-12-31T23:58:10.000Z') },
+				{ jobId: 3, before: new Date('2025-12-31T23:58:20.000Z') },
+			]);
+		});
 	});
 
 	it('still defers and completes the pass when the plan-error reporter itself throws', async () => {

@@ -148,6 +148,71 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 		expect((claimed?.jobs ?? []).filter((job) => job.nodeId === nodeId)).toHaveLength(3);
 	});
 
+	it('does not complete a group for a claimed job that has a workflow but no node', async () => {
+		const nodeId = uuid();
+		const withoutNode = await createJob({
+			workflowId,
+			nodeId: null,
+			nextRunAt: secondsFromNow(-300),
+		});
+		await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-100) });
+
+		const claimed = await claim(1);
+
+		expect(claimed?.jobs.map((job) => job.id)).toEqual([withoutNode.id]);
+	});
+
+	it('does not complete a group for a claimed job that has a node but no workflow', async () => {
+		const nodeId = uuid();
+		const withoutWorkflow = await createJob({
+			workflowId: null,
+			nodeId,
+			nextRunAt: secondsFromNow(-300),
+		});
+		await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-100) });
+
+		const claimed = await claim(1);
+
+		expect(claimed?.jobs.map((job) => job.id)).toEqual([withoutWorkflow.id]);
+	});
+
+	it('returns more jobs than the limit allows when completing a group', async () => {
+		const nodeId = uuid();
+		for (const secondsBehind of [-400, -300, -200, -100]) {
+			await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(secondsBehind) });
+		}
+
+		const claimed = await claim(1);
+
+		expect(claimed?.jobs).toHaveLength(4);
+	});
+
+	it('adds nothing when the claim already holds every rule of the node', async () => {
+		const nodeId = uuid();
+		for (const secondsBehind of [-300, -200, -100]) {
+			await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(secondsBehind) });
+		}
+
+		const claimed = await claim(10);
+
+		expect(claimed?.jobs).toHaveLength(3);
+		expect(new Set(claimed?.jobs.map((job) => job.id)).size).toBe(3);
+	});
+
+	it('returns the merged batch of claimed and completed rows in ascending order', async () => {
+		const nodeId = uuid();
+		await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-400) });
+		await createJob({ nextRunAt: secondsFromNow(-350) });
+		await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-300) });
+		await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-50) });
+
+		const claimed = await claim(2);
+
+		expect(claimed?.jobs).toHaveLength(4);
+		const runTimes = (claimed?.jobs ?? []).map((job) => job.nextRunAt!.getTime());
+		expect(runTimes).toEqual([...runTimes].sort((a, b) => a - b));
+	});
+
 	it('returns undefined when nothing is due', async () => {
 		await createJob({ workflowId, nodeId: uuid(), nextRunAt: secondsFromNow(3600) });
 
