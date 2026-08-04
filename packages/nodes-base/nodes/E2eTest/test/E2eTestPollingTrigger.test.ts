@@ -50,6 +50,26 @@ describe('E2eTestPollingTrigger', () => {
 
 		expect(emittedJson(result)).toEqual([{ id: 1 }, { id: 2 }]);
 		expect(nodeStaticData).toEqual({ lastItemId: 2 });
+		expect(pollFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
+	});
+
+	it('should never emit an item with a non-numeric or missing id, on a first poll', async () => {
+		givenResponse({ items: [{ id: 1 }, { id: 'not-a-number' }, { foo: 'bar' }] });
+
+		const result = await trigger.poll.call(pollFunctions);
+
+		expect(emittedJson(result)).toEqual([{ id: 1 }]);
+		expect(nodeStaticData).toEqual({ lastItemId: 1 });
+	});
+
+	it('should never emit an item with a non-numeric or missing id, on a later poll', async () => {
+		givenCursor({ lastItemId: 2 });
+		givenResponse({ items: [{ id: 3 }, { id: 'not-a-number' }, { foo: 'bar' }] });
+
+		const result = await trigger.poll.call(pollFunctions);
+
+		expect(emittedJson(result)).toEqual([{ id: 3 }]);
+		expect(nodeStaticData).toEqual({ lastItemId: 3 });
 	});
 
 	it('should emit only the items above the cursor and advance it', async () => {
