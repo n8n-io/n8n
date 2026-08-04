@@ -48,6 +48,7 @@ const tablesToTruncate = [
 	'execution_entity',
 	'installed_nodes',
 	'installed_packages',
+	'poller_state',
 	'project',
 	'project_relation',
 	'role',
