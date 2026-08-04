@@ -8,14 +8,13 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import { AgentIntegrationManagementService } from './agent-integration-management.service';
-import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { AgentRepository } from './repositories/agent.repository';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentIntegrationsController {
@@ -24,7 +23,6 @@ export class AgentIntegrationsController {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
-		private readonly agentRunnableStateService: AgentRunnableStateService,
 	) {}
 
 	@Post('/:agentId/integrations/connect')
@@ -37,21 +35,14 @@ export class AgentIntegrationsController {
 		await this.integrationManagementService.validateConfig(req.body);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const { publishedAgent, draftValidation } = await this.integrationManagementService.connect({
+		const { savedAgent } = await this.integrationManagementService.connect({
 			agent,
 			user: req.user,
 			integration: req.body,
 		});
+		if (savedAgent.activeVersionId === null) return { status: 'configured' };
 
-		return {
-			status: 'connected',
-			agent: await this.agentRunnableStateService.addRunnableState(
-				publishedAgent,
-				agent.projectId,
-				req.user,
-				draftValidation,
-			),
-		};
+		return { status: 'connected' };
 	}
 
 	@Post('/:agentId/integrations/disconnect')
@@ -97,7 +88,12 @@ export class AgentIntegrationsController {
 				...('settings' in i ? { settings: i.settings } : {}),
 			}));
 		return {
-			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			status:
+				chatIntegrations.length === 0
+					? 'disconnected'
+					: agent.activeVersionId === null
+						? 'configured'
+						: 'connected',
 			integrations: chatIntegrations,
 		};
 	}

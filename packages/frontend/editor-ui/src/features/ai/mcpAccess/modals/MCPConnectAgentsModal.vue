@@ -7,6 +7,7 @@ import { N8nButton, N8nNotice } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 type SelectRef = InstanceType<typeof MCPAgentsSelect>;
 
@@ -29,7 +30,7 @@ const canSave = computed(() => selectedAgentIds.value.length > 0);
 
 const cancel = (close: () => void) => {
 	closedByAction.value = true;
-	telemetry.track('User dismissed mcp agents dialog');
+	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_MCP_AGENTS_DIALOG, {});
 	close();
 };
 
@@ -40,7 +41,7 @@ async function save(close: () => void) {
 	try {
 		await props.data.onEnableMcpAccess(selectedAgentIds.value);
 		closedByAction.value = true;
-		telemetry.track('User selected agent from list', {
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_SELECTED_AGENTS_FOR_MCP, {
 			agentIds: selectedAgentIds.value,
 			count: selectedAgentIds.value.length,
 		});
@@ -52,7 +53,7 @@ async function save(close: () => void) {
 
 function onModalClosed() {
 	if (!closedByAction.value) {
-		telemetry.track('User dismissed mcp agents dialog');
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_DISMISSED_MCP_AGENTS_DIALOG, {});
 	}
 }
 

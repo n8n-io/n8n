@@ -185,6 +185,7 @@ describe('AgentWorkflowExecutionService', () => {
 		expect(telemetry.trackAgentExecution).toHaveBeenCalledWith({
 			agent_id: agentId,
 			user_id: userId,
+			run_type: 'production',
 			message_count: 1,
 		});
 		expect(executionService.recordMessage).toHaveBeenCalledWith(

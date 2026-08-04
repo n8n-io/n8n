@@ -12,7 +12,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { Agent } from './entities/agent.entity';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
-import { AgentPublishService } from './agent-publish.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 
@@ -20,7 +19,6 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 export class AgentIntegrationManagementService {
 	constructor(
 		private readonly persistenceService: AgentIntegrationPersistenceService,
-		private readonly publishService: AgentPublishService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatService: ChatIntegrationService,
 		private readonly registry: ChatIntegrationRegistry,
@@ -38,11 +36,10 @@ export class AgentIntegrationManagementService {
 		agent: Agent;
 		user: User;
 		integration: unknown;
+		modifiedBy?: 'user' | 'mcp';
 	}): Promise<{
 		integration: AgentIntegrationConfig;
 		savedAgent: Agent;
-		publishedAgent: Agent;
-		draftValidation: Awaited<ReturnType<AgentPublishService['publishAgent']>>['draftValidation'];
 	}> {
 		const integration = await this.validateConfig(options.integration);
 		const implementation = this.registry.require(integration.type);
@@ -63,29 +60,25 @@ export class AgentIntegrationManagementService {
 			);
 		}
 
-		await this.chatService.validateBeforeConnect(
-			options.agent.id,
-			integration,
-			options.agent.projectId,
-		);
+		if (options.agent.activeVersionId !== null) {
+			await this.chatService.validateBeforeConnect(
+				options.agent.id,
+				integration,
+				options.agent.projectId,
+			);
+		}
 		const savedAgent = await this.persistenceService.saveCredentialIntegration(
 			options.agent,
 			integration,
-			{ broadcast: false },
+			{ user: options.user, modifiedBy: options.modifiedBy ?? 'user', broadcast: false },
 		);
-		const { agent: publishedAgent, draftValidation } = await this.publishService.publishAgent(
-			options.agent.id,
-			options.agent.projectId,
-			options.user,
-			'channel_connect',
-			undefined,
-			{ syncIntegrations: false, ignoreDraftIntegrations: true },
-		);
+		if (savedAgent.activeVersionId === null) return { integration, savedAgent };
+
 		await this.chatService.connect(options.agent.id, integration, options.agent.projectId, {
 			skipBeforeConnect: true,
 		});
 		await this.chatService.broadcastIntegrationChange(options.agent.id, integration, 'connect');
-		return { integration, savedAgent, publishedAgent, draftValidation };
+		return { integration, savedAgent };
 	}
 
 	async disconnect(options: {
@@ -93,6 +86,7 @@ export class AgentIntegrationManagementService {
 		user: User;
 		type: string;
 		credentialId: string;
+		modifiedBy?: 'user' | 'mcp';
 	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationRemovalWarning }> {
 		const persisted = (options.agent.integrations ?? []).find(
 			(item) => item.type === options.type && item.credentialId === options.credentialId,
@@ -123,7 +117,7 @@ export class AgentIntegrationManagementService {
 			options.agent,
 			options.type,
 			options.credentialId,
-			{ broadcast: false },
+			{ user: options.user, modifiedBy: options.modifiedBy ?? 'user', broadcast: false },
 		);
 		return { savedAgent, ...(warning ? { warning } : {}) };
 	}

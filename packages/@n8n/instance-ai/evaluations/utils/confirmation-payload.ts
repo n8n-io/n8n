@@ -8,6 +8,21 @@ import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { getNestedRecord } from './safe-extract';
 import type { CapturedEvent } from '../types';
 
+export interface InfrastructureResponseOptions {
+	/**
+	 * TRUST-349: when true, a standalone credential-request event is left
+	 * unhandled here (`undefined`) so the caller can route it to the LLM's
+	 * `choose_credential_setup_option` action instead of the default deferral.
+	 * Set only when a stage direction is still pending delivery — see
+	 * `UserProxyLlm.hasPendingStageDirection` in `user-proxy/index.ts`, the
+	 * same content-agnostic check domain access and plan review already use.
+	 * Absent/false reproduces today's behavior exactly, so every existing case
+	 * (and every other caller, e.g. `chat-loop.ts`'s `buildAutoApprovePayload`)
+	 * is unaffected.
+	 */
+	allowCredentialEngagement?: boolean;
+}
+
 /**
  * Handle confirmation events that carry no user-intent signal — domain access,
  * web search, resource decisions, standalone credential requests. The eval
@@ -17,6 +32,7 @@ import type { CapturedEvent } from '../types';
  */
 export function tryInfrastructureResponse(
 	event: CapturedEvent,
+	options?: InfrastructureResponseOptions,
 ): InstanceAiConfirmRequest | undefined {
 	const payload = getNestedRecord(event.data, 'payload') ?? {};
 
@@ -42,6 +58,7 @@ export function tryInfrastructureResponse(
 	// the setup wizard takes priority because it carries node parameters to
 	// fill (handled by the caller).
 	if (Array.isArray(payload.credentialRequests) && !Array.isArray(payload.setupRequests)) {
+		if (options?.allowCredentialEngagement) return undefined;
 		return { kind: 'credentialSelection', credentials: {} };
 	}
 

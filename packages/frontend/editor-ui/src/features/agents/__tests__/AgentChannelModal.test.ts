@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 	disconnect: vi.fn(),
 	fetchStatus: vi.fn(),
 	beforeSave: vi.fn(),
+	ensureAgentPersisted: vi.fn(),
 	showMessage: vi.fn(),
 	showError: vi.fn(),
 }));
@@ -21,6 +22,7 @@ const catalog = ref([
 		credentialTypes: ['exampleApi'],
 	},
 ]);
+const statuses = ref<Record<string, 'configured' | 'connected' | 'disconnected'>>({});
 const connectedCredentials = ref<Record<string, string>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
@@ -35,7 +37,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('../channels/registry', () => {
 	const platformView = {
-		props: ['modelValue', 'mode'],
+		props: ['modelValue', 'mode', 'isPublished'],
 		emits: ['update:modelValue', 'connect'],
 		setup: () => ({
 			currentSettings: { accessMode: 'all' },
@@ -43,7 +45,11 @@ vi.mock('../channels/registry', () => {
 			beforeSave: mocks.beforeSave,
 		}),
 		template: `
-			<div data-testid="platform-view" :data-mode="mode">
+			<div
+				data-testid="platform-view"
+				:data-mode="mode"
+				:data-published="isPublished"
+			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 			</div>
@@ -54,6 +60,7 @@ vi.mock('../channels/registry', () => {
 		setupComponent: platformView,
 		editComponent: platformView,
 		getConnectAction: () => ({ label: 'Connect example', icon: 'zap' }),
+		getConnectedDescription: () => 'Example connected',
 		presentDisconnectWarning: (warning: { code: string }) =>
 			warning.code === 'cleanup_incomplete'
 				? { title: 'Cleanup incomplete', message: 'Open provider settings' }
@@ -85,7 +92,9 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		loadingMap,
 		errorMessages: ref({}),
 		errorIsConflict: ref({}),
-		isConnected: (type: string) => Boolean(connectedCredentials.value[type]),
+		isConnected: (type: string) => statuses.value[type] === 'connected',
+		isConfigured: (type: string) =>
+			['configured', 'connected'].includes(statuses.value[type] ?? 'disconnected'),
 		connect: mocks.connect,
 		disconnect: mocks.disconnect,
 	}),
@@ -109,15 +118,15 @@ vi.mock('../composables/useAgentChannelSetup', () => ({
 	}),
 }));
 
-function mountModal(view: ChannelView = 'example_setup') {
+function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 	return mount(AgentChannelModal, {
 		props: {
 			open: true,
 			agentId: 'agent-1',
 			projectId: 'project-1',
 			view,
-			connectedChannels: Object.keys(connectedCredentials.value),
-			isPublished: false,
+			isPublished,
+			ensureAgentPersisted: mocks.ensureAgentPersisted,
 		},
 		global: {
 			stubs: {
@@ -139,10 +148,18 @@ function mountModal(view: ChannelView = 'example_setup') {
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
 				AgentChannelListItem: {
-					props: ['integration', 'connectAction'],
+					props: ['integration', 'configured', 'connected', 'connectAction'],
 					emits: ['setup'],
-					template:
-						'<li data-testid="channel-list-item" :data-action="connectAction.label"><button @click="$emit(\'setup\', integration.type)" /></li>',
+					template: `
+						<li
+							data-testid="channel-list-item"
+							:data-action="connectAction.label"
+							:data-configured="configured"
+							:data-connected="connected"
+						>
+							<button @click="$emit('setup', integration.type)" />
+						</li>
+					`,
 				},
 			},
 		},
@@ -152,16 +169,23 @@ function mountModal(view: ChannelView = 'example_setup') {
 describe('AgentChannelModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		statuses.value = {};
 		connectedCredentials.value = {};
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
+			statuses.value[type] = 'connected';
 			connectedCredentials.value[type] = credentialId;
 			return { status: 'connected' };
 		});
-		mocks.disconnect.mockResolvedValue({ status: 'disconnected' });
+		mocks.disconnect.mockImplementation(async (type: string) => {
+			statuses.value[type] = 'disconnected';
+			delete connectedCredentials.value[type];
+			return { status: 'disconnected' };
+		});
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.beforeSave.mockResolvedValue(undefined);
+		mocks.ensureAgentPersisted.mockResolvedValue(undefined);
 	});
 
 	it('uses registry metadata and setup rendering without platform checks', async () => {
@@ -175,20 +199,43 @@ describe('AgentChannelModal', () => {
 		expect(setup.get('[data-testid="platform-view"]').attributes('data-mode')).toBe('setup');
 	});
 
-	it('delegates beforeSave and settings to the platform view', async () => {
-		selectedCredentials.value.example = 'credential-new';
-		const wrapper = mountModal();
+	it('presents configured and connected as distinct list states', async () => {
+		statuses.value.example = 'configured';
+		const configured = mountModal('list');
+		await flushPromises();
+		expect(configured.get('[data-testid="channel-list-item"]').attributes()).toMatchObject({
+			'data-configured': 'true',
+			'data-connected': 'false',
+		});
 
+		statuses.value.example = 'connected';
+		await configured.vm.$nextTick();
+		expect(configured.get('[data-testid="channel-list-item"]').attributes('data-connected')).toBe(
+			'true',
+		);
+	});
+
+	it('forwards publication state and persists before platform save', async () => {
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup', true);
+
+		expect(wrapper.get('[data-testid="platform-view"]').attributes('data-published')).toBe('true');
 		await wrapper.get('[data-testid="connect-channel"]').trigger('click');
 		await flushPromises();
 
+		expect(mocks.ensureAgentPersisted).toHaveBeenCalledOnce();
 		expect(mocks.beforeSave).toHaveBeenCalledOnce();
 		expect(mocks.connect).toHaveBeenCalledWith('example', 'credential-new', {
 			accessMode: 'all',
 		});
+		expect(mocks.ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.connect.mock.invocationCallOrder[0],
+		);
+		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
 	});
 
 	it('connects a replacement before disconnecting the original credential', async () => {
+		statuses.value.example = 'connected';
 		connectedCredentials.value.example = 'credential-old';
 		const wrapper = mountModal('example_edit');
 		await flushPromises();
@@ -206,30 +253,8 @@ describe('AgentChannelModal', () => {
 		);
 	});
 
-	it('keeps the dialog locked while credential replacement is in flight', async () => {
-		connectedCredentials.value.example = 'credential-old';
-		let finishConnect = () => {};
-		mocks.connect.mockImplementationOnce(async () => {
-			loadingMap.value.example = true;
-			const result = await new Promise<{ status: string }>((resolve) => {
-				finishConnect = () => resolve({ status: 'connected' });
-			});
-			loadingMap.value.example = false;
-			return result;
-		});
-		const wrapper = mountModal('example_edit');
-		await flushPromises();
-		await wrapper.get('[data-testid="select-credential"]').trigger('click');
-		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
-
-		await wrapper.get('[data-testid="close-dialog"]').trigger('click');
-		expect(wrapper.emitted('update:open')).toBeUndefined();
-
-		finishConnect();
-		await flushPromises();
-	});
-
-	it('delegates generic disconnect warning presentation to the platform', async () => {
+	it('delegates disconnect warning presentation to the platform', async () => {
+		statuses.value.example = 'connected';
 		connectedCredentials.value.example = 'credential-old';
 		mocks.disconnect.mockResolvedValueOnce({
 			status: 'disconnected',
@@ -251,5 +276,6 @@ describe('AgentChannelModal', () => {
 			message: 'Open provider settings',
 			duration: 0,
 		});
+		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
 	});
 });

@@ -22,7 +22,6 @@ import {
 	stringProperty,
 } from './slack-setup.types';
 import { AgentIntegrationPersistenceService } from '../../../agent-integration-persistence.service';
-import { AgentPublishService } from '../../../agent-publish.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { ChatIntegrationService } from '../../chat-integration.service';
@@ -62,7 +61,6 @@ export class SlackMethodsService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly agentPublishService: AgentPublishService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
@@ -190,25 +188,25 @@ export class SlackMethodsService {
 		accessToken: string,
 		session: SlackAppSetupSession,
 	): Promise<string> {
-		const credential = await this.credentialsService.createManagedCredential(
-			{
-				name: this.credentialName(session.teamName, agent.name),
-				type: SLACK_CREDENTIAL_TYPE,
-				data: {
-					accessToken,
-					signatureSecret: session.signingSecret,
-					...(session.managerCredentialId
-						? {
-								managedAppId: session.appId,
-								teamId: session.teamId,
-								managerCredentialId: session.managerCredentialId,
-							}
-						: {}),
-				},
-				projectId: session.projectId,
+		const credentialData = {
+			name: this.credentialName(session.teamName, agent.name),
+			type: SLACK_CREDENTIAL_TYPE,
+			data: {
+				accessToken,
+				signatureSecret: session.signingSecret,
+				...(session.managerCredentialId
+					? {
+							managedAppId: session.appId,
+							teamId: session.teamId,
+							managerCredentialId: session.managerCredentialId,
+						}
+					: {}),
 			},
-			user,
-		);
+			projectId: session.projectId,
+		};
+		const credential = session.managerCredentialId
+			? await this.credentialsService.createManagedCredential(credentialData, user)
+			: await this.credentialsService.createUnmanagedCredential(credentialData, user);
 		const integration = {
 			type: 'slack',
 			credentialId: credential.id,
@@ -216,46 +214,22 @@ export class SlackMethodsService {
 		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
 			agent,
 			integration,
-			{ broadcast: false },
+			{ user, modifiedBy: 'user', broadcast: false },
 		);
+		if (savedAgent.activeVersionId === null) return credential.id;
 
-		try {
-			await this.agentPublishService.publishAgent(
-				session.agentId,
-				session.projectId,
-				user,
-				'slack_setup',
-				undefined,
-				{ syncIntegrations: false, ignoreDraftIntegrations: true },
+		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			session.agentId,
+			integration,
+			'connect',
+		);
+		if (session.managerCredentialId && session.teamId) {
+			await this.cacheService.delete(
+				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}`,
 			);
-			await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
-			await this.chatIntegrationService.broadcastIntegrationChange(
-				session.agentId,
-				integration,
-				'connect',
-			);
-			if (session.managerCredentialId && session.teamId) {
-				await this.cacheService.delete(
-					`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}`,
-				);
-			}
-			return credential.id;
-		} catch (error) {
-			await this.agentIntegrationPersistenceService.removeCredentialIntegration(
-				savedAgent,
-				'slack',
-				credential.id,
-				{ broadcast: false },
-			);
-			await this.credentialsService.delete(user, credential.id);
-			await this.agentPublishService
-				.publishAgent(session.agentId, session.projectId, user, 'slack_setup', undefined, {
-					syncIntegrations: false,
-					ignoreDraftIntegrations: true,
-				})
-				.catch(() => {});
-			throw error;
 		}
+		return credential.id;
 	}
 
 	private webhookUrl(projectId: string, agentId: string): string {

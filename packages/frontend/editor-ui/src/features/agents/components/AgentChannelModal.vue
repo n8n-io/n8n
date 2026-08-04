@@ -37,12 +37,15 @@ interface Props {
 	agentId: string;
 	projectId: string;
 	view: ChannelView;
-	connectedChannels: string[];
-	isPublished: boolean;
+	isPublished?: boolean;
 	simpleSetup?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	isPublished: false,
+	simpleSetup: false,
+});
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -63,6 +66,7 @@ const {
 	errorMessages,
 	errorIsConflict,
 	isConnected: isIntegrationConnected,
+	isConfigured: isIntegrationConfigured,
 	connect,
 	disconnect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
@@ -131,6 +135,8 @@ const runtimes: Record<string, AgentChannelRuntime> = Object.fromEntries(
 			credentialModalOpen,
 			fetchStatus,
 			isConnected: isIntegrationConnected,
+			isConfigured: isIntegrationConfigured,
+			ensureAgentPersisted: props.ensureAgentPersisted,
 		}),
 	]),
 );
@@ -141,6 +147,8 @@ const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unkno
 	credentialModalOpen,
 	fetchStatus,
 	isConnected: isIntegrationConnected,
+	isConfigured: isIntegrationConfigured,
+	ensureAgentPersisted: props.ensureAgentPersisted,
 });
 const runtimeFor = (type: string): AgentChannelRuntime => runtimes[type] ?? fallbackRuntime;
 const currentPlatform = computed(() =>
@@ -209,7 +217,11 @@ const headerText = computed(() => {
 });
 
 function isConnected(channelType: string): boolean {
-	return props.connectedChannels.includes(channelType) || isIntegrationConnected(channelType);
+	return isIntegrationConnected(channelType);
+}
+
+function isConfigured(channelType: string): boolean {
+	return isIntegrationConfigured(channelType);
 }
 
 function isLoading(channelType: string): boolean {
@@ -221,6 +233,7 @@ function hasError(channelType: string): boolean {
 }
 
 function integrationConnectedText(channelType: string): string {
+	if (!isIntegrationConnected(channelType)) return '';
 	return (
 		getAgentChannelPlatform(channelType).getConnectedDescription?.({
 			text: (key) => i18n.baseText(key),
@@ -300,6 +313,7 @@ async function saveChannelConfig() {
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelViewRef.value?.validationError) return;
+	await props.ensureAgentPersisted?.();
 	await channelViewRef.value?.beforeSave?.();
 	const pendingReplacement = pendingCredentialReplacement.value;
 	if (pendingReplacement?.channelType === channelType) {
@@ -347,7 +361,7 @@ async function handleDisconnected(channelType: string, credentialId?: string) {
 		credentialId ?? connectedCredentials.value[channelType] ?? '',
 	);
 	await fetchStatus([channelType]);
-	if (!isIntegrationConnected(channelType)) {
+	if (!isIntegrationConfigured(channelType)) {
 		emit('channel-disconnected', channelType);
 	}
 	emit('agent-changed');
@@ -476,6 +490,7 @@ watch(
 							v-for="integration in catalog"
 							:key="integration.type"
 							:integration="integration"
+							:configured="isConfigured(integration.type)"
 							:connected="isConnected(integration.type)"
 							:loading="listLoading"
 							:connect-action="connectAction(integration.type)"
@@ -502,7 +517,7 @@ watch(
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"
-						:connected="isConnected(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:connected-description="integrationConnectedText(currentIntegration.type)"
 						:error-message="
 							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''

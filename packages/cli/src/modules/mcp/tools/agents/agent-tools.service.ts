@@ -70,7 +70,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 
 const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
-	'Integrations are a published runtime surface, not editable config. Use update_agent_integration to connect or disconnect Slack, Telegram, or Linear.';
+	"Integrations can't be changed through config.replace or config.patch. Use update_agent_integration to configure or disconnect Slack, Telegram, or Linear. Configuration never publishes the Agent; an unpublished Agent's channel stays inactive until publish_agent is called.";
 
 /** LLM-facing follow-up guidance for the MCP builder surface. */
 const MCP_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -530,6 +530,7 @@ export class McpAgentToolsService {
 								projectId,
 								initialConfig,
 								user,
+								{ modifiedBy: 'mcp' },
 							);
 							configHash = getAgentConfigHash(result.config);
 							versionId = result.versionId;
@@ -680,7 +681,7 @@ export class McpAgentToolsService {
 							agentId,
 							projectId,
 							user,
-							'builder',
+							{ by: 'mcp', trigger: 'explicit' },
 							versionId,
 						);
 						return {
@@ -720,8 +721,19 @@ export class McpAgentToolsService {
 						const { projectId } = await this.resolveAgent(user, agentId);
 						await this.assertScope(user, projectId, 'agent:update');
 						const agent = versionId
-							? await this.agentPublishService.revertToVersion(agentId, projectId, versionId)
-							: await this.agentPublishService.revertToPublishedAgent(agentId, projectId);
+							? await this.agentPublishService.revertToVersion(
+									agentId,
+									projectId,
+									versionId,
+									user,
+									'mcp',
+								)
+							: await this.agentPublishService.revertToPublishedAgent(
+									agentId,
+									projectId,
+									user,
+									'mcp',
+								);
 						return {
 							ok: true,
 							agentId,
@@ -787,7 +799,7 @@ export class McpAgentToolsService {
 						agentId,
 						projectId,
 						user,
-						'builder',
+						'mcp',
 					);
 					return {
 						ok: true,
@@ -887,7 +899,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					'Connect or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch cannot touch them. Connecting publishes the current Agent draft, so only connect after explicit user confirmation.',
+					"Configure or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called.",
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
@@ -949,8 +961,8 @@ export class McpAgentToolsService {
 
 		// The hash covers the full persisted config (integrations included) so it
 		// stays consistent with mutate_agent and update_agent_integration, but the
-		// config exposed to the client omits integrations: they are a read-only
-		// runtime surface reported separately, not part of the editable config.
+		// config exposed to the client omits integrations: they are managed
+		// separately and reported in a read-only field.
 		const { integrations: _integrations, ...editableConfig } = config;
 
 		return {
@@ -990,8 +1002,8 @@ export class McpAgentToolsService {
 			versionId,
 		);
 		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
-		// Integrations are a read-only runtime surface, omitted from the config
-		// here for the same reason as in getAgentSnapshot.
+		// Integrations are managed separately and are not versioned, so omit any
+		// legacy snapshot field here for the same reason as in getAgentSnapshot.
 		const { integrations: _integrations, ...editableConfig } = version.schema;
 
 		return {
@@ -1052,6 +1064,7 @@ export class McpAgentToolsService {
 		projectId: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
 		const { agentId, operation } = input;
+		const telemetryContext = { user, modifiedBy: 'mcp' as const };
 		switch (operation.type) {
 			case 'config.replace': {
 				if (operation.config.integrations !== undefined) {
@@ -1065,7 +1078,7 @@ export class McpAgentToolsService {
 					projectId,
 					operation.config,
 					user,
-					{ clearOmittedOptionalFields: true },
+					{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 				);
 				return { config: result.config };
 			}
@@ -1090,6 +1103,7 @@ export class McpAgentToolsService {
 					user,
 					{
 						clearOmittedOptionalFields: true,
+						modifiedBy: 'mcp',
 					},
 				);
 				return { config: result.config };
@@ -1101,6 +1115,7 @@ export class McpAgentToolsService {
 						projectId,
 						operation.skillId,
 						operation.skill,
+						telemetryContext,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				} else {
@@ -1108,18 +1123,26 @@ export class McpAgentToolsService {
 						agentId,
 						projectId,
 						operation.skill,
+						telemetryContext,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				}
 			case 'skill.delete':
-				await this.agentSkillsService.deleteSkill(agentId, projectId, operation.skillId);
+				await this.agentSkillsService.deleteSkill(
+					agentId,
+					projectId,
+					operation.skillId,
+					telemetryContext,
+				);
 				return { resource: { type: 'skill', id: operation.skillId } };
 			case 'task.upsert':
 				if (operation.taskId) {
 					const result = await this.agentTaskService.update(
 						agentId,
+						projectId,
 						operation.taskId,
 						operation.task,
+						telemetryContext,
 					);
 					if (operation.enabled !== undefined) {
 						const updated = await this.setTaskEnabled(
@@ -1134,24 +1157,34 @@ export class McpAgentToolsService {
 					}
 					return { resource: { type: 'task', id: result.id } };
 				} else {
-					const result = await this.agentTaskService.create(agentId, {
-						...operation.task,
-						enabled: operation.enabled ?? true,
-					});
+					const result = await this.agentTaskService.create(
+						agentId,
+						projectId,
+						{
+							...operation.task,
+							enabled: operation.enabled ?? true,
+						},
+						telemetryContext,
+					);
 					return { resource: { type: 'task', id: result.id } };
 				}
 			case 'task.delete':
-				await this.agentTaskService.delete(agentId, operation.taskId);
+				await this.agentTaskService.delete(agentId, projectId, operation.taskId, telemetryContext);
 				return { resource: { type: 'task', id: operation.taskId } };
 			case 'customTool.upsert': {
 				const descriptor = await this.agentSecureRuntime.describeToolSecurely(operation.code);
+				const isAttached = (config.tools ?? []).some(
+					(tool) => tool.type === 'custom' && tool.id === descriptor.name,
+				);
 				const built = await this.agentCustomToolsService.buildCustomTool(
 					agentId,
 					projectId,
 					operation.code,
 					descriptor,
+					telemetryContext,
+					{ recordTelemetry: isAttached },
 				);
-				if ((config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
+				if (isAttached) {
 					return { resource: { type: 'customTool', id: built.id }, config };
 				}
 				const next = {
@@ -1159,11 +1192,18 @@ export class McpAgentToolsService {
 					tools: [...(config.tools ?? []), { type: 'custom' as const, id: built.id }],
 				};
 				await this.assertAccessibleCredentials(next, user, projectId);
-				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+					modifiedBy: 'mcp',
+				});
 				return { resource: { type: 'customTool', id: built.id }, config: result.config };
 			}
 			case 'customTool.delete':
-				await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, operation.toolId);
+				await this.agentCustomToolsService.deleteCustomTool(
+					agentId,
+					projectId,
+					operation.toolId,
+					telemetryContext,
+				);
 				return { resource: { type: 'customTool', id: operation.toolId } };
 		}
 	}
@@ -1255,7 +1295,9 @@ export class McpAgentToolsService {
 		if (!found) throw new UserError(`Task "${taskId}" is not attached to the Agent`);
 		const next = { ...config, tasks };
 		await this.assertAccessibleCredentials(next, user, projectId);
-		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+			modifiedBy: 'mcp',
+		});
 		return result.config;
 	}
 
@@ -1379,11 +1421,6 @@ export class McpAgentToolsService {
 		const agent = await this.resolveAgent(user, input.agentId);
 		const projectId = agent.projectId;
 		await this.assertScope(user, projectId, 'agent:update');
-		if (input.action === 'connect') {
-			// Connecting publishes the current draft, so it needs the publish
-			// scope on top of update (mirrors the builder's connect flow).
-			await this.assertScope(user, projectId, 'agent:publish');
-		}
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(user, input, agent)
 			: await this.connectIntegration(user, input, agent);
@@ -1395,6 +1432,7 @@ export class McpAgentToolsService {
 			user,
 			type: input.type,
 			credentialId: input.credentialId,
+			modifiedBy: 'mcp',
 		});
 		return {
 			ok: true,
@@ -1414,21 +1452,25 @@ export class McpAgentToolsService {
 			credentialId: input.credentialId,
 			...(input.settings ? { settings: input.settings } : {}),
 		};
-		const { savedAgent: saved, publishedAgent } = await this.integrationManagementService.connect({
+		const { savedAgent: saved } = await this.integrationManagementService.connect({
 			agent,
 			user,
 			integration: candidate,
+			modifiedBy: 'mcp',
 		});
-		return {
+		const result = {
 			ok: true,
 			agentId: input.agentId,
 			integration: { type: input.type, credentialId: input.credentialId },
-			connected: true,
-			published: true,
-			activeVersionId: publishedAgent.activeVersionId,
-			// Publishing with syncIntegrations:false touches neither schema nor
-			// integrations, so the entity saved above still hashes correctly.
+			configured: true,
+			published: saved.activeVersionId !== null,
+			activeVersionId: saved.activeVersionId,
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+		};
+		if (saved.activeVersionId === null) return { ...result, connected: false };
+		return {
+			...result,
+			connected: true,
 		};
 	}
 

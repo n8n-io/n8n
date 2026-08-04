@@ -32,6 +32,8 @@ export interface AgentChannelRuntimeContext {
 	credentialModalOpen: Readonly<Ref<boolean>>;
 	fetchStatus: (integrationTypes: string[]) => Promise<void>;
 	isConnected: (integrationType: string) => boolean;
+	isConfigured: (integrationType: string) => boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 }
 
 export interface AgentChannelRuntime {

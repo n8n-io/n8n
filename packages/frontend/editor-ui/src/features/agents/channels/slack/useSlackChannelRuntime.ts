@@ -153,7 +153,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 			trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
 			verifyConnected: async () => {
 				await context.fetchStatus(['slack']);
-				return context.isConnected('slack');
+				return context.isConfigured('slack');
 			},
 			timeoutMs: SLACK_APP_SETUP_TIMEOUT_MS,
 		});
@@ -165,6 +165,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		appConfigurationToken: string,
 		onConnected: () => void | Promise<void>,
 	): Promise<boolean> {
+		await context.ensureAgentPersisted?.();
 		const { installUrl } = await createSlackAgentApp(
 			rootStore.restApiContext,
 			context.projectId.value,
@@ -179,6 +180,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	}
 
 	async function connectManagerCredential(credentialId?: string): Promise<boolean> {
+		await context.ensureAgentPersisted?.();
 		let id = credentialId;
 		let createdCredentialId: string | undefined;
 		let authorizationStarted = false;
@@ -229,6 +231,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		workspaceId: string,
 		onConnected: () => void | Promise<void>,
 	): Promise<boolean> {
+		await context.ensureAgentPersisted?.();
 		const result = await installSlackManagedApp(
 			rootStore.restApiContext,
 			context.projectId.value,

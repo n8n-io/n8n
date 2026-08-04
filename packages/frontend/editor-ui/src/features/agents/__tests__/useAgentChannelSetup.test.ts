@@ -6,9 +6,9 @@ const { fetchCredentials, fetchProject, projectsStore } = vi.hoisted(() => ({
 	fetchCredentials: vi.fn(),
 	fetchProject: vi.fn(),
 	projectsStore: {
-		currentProject: null,
-		personalProject: null,
-		myProjects: [],
+		currentProject: null as { id: string; scopes?: string[] } | null,
+		personalProject: null as { id: string; scopes?: string[] } | null,
+		myProjects: [] as Array<{ id: string; scopes?: string[] }>,
 		fetchProject: vi.fn(),
 	},
 }));
@@ -51,6 +51,9 @@ const integrations = [
 describe('useAgentChannelSetup', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = null;
+		projectsStore.myProjects = [];
 		projectsStore.fetchProject = fetchProject;
 		fetchProject.mockResolvedValue({
 			id: 'project-1',
@@ -80,6 +83,21 @@ describe('useAgentChannelSetup', () => {
 			expect.objectContaining({ id: 'credential-1', name: 'Example credential' }),
 		]);
 		expect(setup.selectedCredentials.value.example).toBe('credential-1');
+	});
+
+	it('uses project scopes already available in the store', async () => {
+		projectsStore.myProjects = [{ id: 'project-1', scopes: ['credential:create'] }];
+		const setup = useAgentChannelSetup({
+			projectId: () => 'project-1',
+			currentIntegration: () => integrations[0],
+			connectedCredentials: () => ({}),
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+		});
+
+		await setup.loadChannelState(integrations);
+
+		expect(setup.credentialPermissions.value.create).toBe(true);
+		expect(fetchProject).not.toHaveBeenCalled();
 	});
 
 	it('fails closed when credentials and project permissions cannot load', async () => {

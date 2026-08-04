@@ -1072,7 +1072,7 @@ describe('FormTrigger, formWebhook', () => {
 			ctx.getNodeParameter.calledWith('responseMode').mockReturnValue('onReceived');
 			ctx.getNodeParameter.calledWith('authentication', 'none').mockReturnValue('n8nUserAuth');
 			ctx.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
-			ctx.getNodeWebhookUrl.mockReturnValue(resourceUrl);
+			ctx.getWebhookResourceUrl.mockReturnValue(resourceUrl);
 			ctx.getRequestObject.mockReturnValue(request as any);
 			ctx.getHeaderData.mockReturnValue(request.headers);
 			ctx.getResponseObject.mockReturnValue({

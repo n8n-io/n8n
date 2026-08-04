@@ -45,7 +45,11 @@ vi.mock('./api', () => ({
 	installSlackManagedApp: mocks.install,
 }));
 
-function createRuntime(selectedCredentialId = '', credentialModalOpen = ref(false)) {
+function createRuntime(
+	selectedCredentialId = '',
+	credentialModalOpen = ref(false),
+	ensureAgentPersisted = vi.fn().mockResolvedValue(undefined),
+) {
 	return useSlackChannelRuntime({
 		projectId: ref('project-1'),
 		agentId: ref('agent-1'),
@@ -53,6 +57,8 @@ function createRuntime(selectedCredentialId = '', credentialModalOpen = ref(fals
 		credentialModalOpen,
 		fetchStatus: vi.fn().mockResolvedValue(undefined),
 		isConnected: () => false,
+		isConfigured: () => false,
+		ensureAgentPersisted,
 	});
 }
 
@@ -162,11 +168,16 @@ describe('useSlackChannelRuntime', () => {
 
 	it('completes managed installation and refreshes Slack state', async () => {
 		const onConnected = vi.fn();
-		const runtime = createRuntime();
+		const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+		const runtime = createRuntime('', ref(false), ensureAgentPersisted);
 
 		await runtime.installManagedApp('manager', 'T1', onConnected);
 
+		expect(ensureAgentPersisted).toHaveBeenCalledOnce();
 		expect(mocks.install).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'manager', 'T1');
+		expect(ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.install.mock.invocationCallOrder[0],
+		);
 		expect(mocks.getSetup).toHaveBeenCalled();
 		expect(onConnected).toHaveBeenCalledOnce();
 	});

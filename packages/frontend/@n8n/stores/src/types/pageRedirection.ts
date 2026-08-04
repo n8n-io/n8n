@@ -39,7 +39,8 @@ export type CloudUpdateLinkSourceType =
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
 	| 'data-redaction'
-	| 'workflow-settings';
+	| 'workflow-settings'
+	| 'trial-welcome-modal';
 
 /** Campaign attribution for an upgrade link, sent as the `utm_campaign` query param. */
 export type UTMCampaign =

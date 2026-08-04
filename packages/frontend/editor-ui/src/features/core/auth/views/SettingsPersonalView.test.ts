@@ -3,7 +3,7 @@ import { waitFor } from '@testing-library/vue';
 import { waitAllPromises, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { AuthenticationMethod, ROLE } from '@n8n/api-types';

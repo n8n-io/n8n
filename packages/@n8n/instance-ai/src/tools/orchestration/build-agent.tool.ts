@@ -41,6 +41,7 @@ import { z } from 'zod';
 import {
 	getSessionAgentByRef,
 	normalizeAgentRef,
+	readPendingAgentTarget,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
@@ -92,22 +93,6 @@ function didUpdateConfig(workSummary: WorkSummary): boolean {
 	return workSummary.toolCalls.some(
 		(call) => call.succeeded && mutationToolNames.has(call.toolName),
 	);
-}
-
-/** One event per succeeded config-mutation call — parity with `Builder modified workflow`, which fires once per save. */
-function trackConfigMutations(
-	context: OrchestrationContext,
-	agentId: string,
-	workSummary: WorkSummary,
-): void {
-	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
-	for (const call of workSummary.toolCalls) {
-		if (!call.succeeded || !mutationToolNames.has(call.toolName)) continue;
-		context.trackTelemetry?.('Builder modified agent', {
-			thread_id: context.threadId,
-			agent_id: agentId,
-		});
-	}
 }
 
 function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): string {
@@ -170,9 +155,9 @@ const buildAgentInputSchema = z.object({
 			'Short stable key you choose once for an agent in this conversation and repeat on ' +
 				'every later call for that same agent (like a workflow source filePath). Prefer a ' +
 				'slug of the display name. A repeated key continues that agent; a fresh key creates ' +
-				'a new one. Omit on follow-ups for the current agent when neither switching nor ' +
-				'creating — the active target is used. When omitted on a create/switch call, the ' +
-				'key is derived from `name`.',
+				'a new one only when no agent is bound yet, or alongside `createNew`. Omit on ' +
+				'follow-ups for the current agent when neither switching nor creating — the active ' +
+				'target is used. When omitted on a create/switch call, the key is derived from `name`.',
 		),
 	name: z
 		.string()
@@ -190,6 +175,15 @@ const buildAgentInputSchema = z.object({
 				'`agentRef`. NEVER pass for a request to build a NEW agent. Agents the request merely ' +
 				'references — as sub-agents, delegation targets, or examples — are not the build ' +
 				'target: mention them in `message` instead.',
+		),
+	createNew: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set to true ONLY when the user explicitly wants an ADDITIONAL agent alongside the one ' +
+				'this conversation is already building. Leave unset otherwise: while a target is ' +
+				'bound, a fresh `agentRef`/`name` continues that agent instead of creating a second ' +
+				'one, so naming the agent for the first time cannot strand it behind a duplicate.',
 		),
 	workflowContext: z
 		.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() }))
@@ -465,7 +459,6 @@ async function runBuilderConsumeLoop(params: {
 	// the builder agent was constructed — scope check and existence check both
 	// passed — so a deferred agentId-path bind is now safe to persist.
 	await onSettled?.();
-	trackConfigMutations(context, target.agentId, result.workSummary);
 
 	if (result.status === 'cancelled') {
 		const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
@@ -676,7 +669,12 @@ async function handleResume(
 }
 
 type TargetResolution =
-	| { ok: true; target: AgentBuilderTarget; bindAfterTurn: boolean; mode: 'create' | 'edit' }
+	| {
+			ok: true;
+			target: AgentBuilderTarget;
+			bindAfterTurn: boolean;
+			mode: 'create' | 'edit' | 'continued';
+	  }
 	| { ok: false; error: string };
 
 const NO_TARGET_INPUT_ERROR =
@@ -699,6 +697,16 @@ async function resolveAgentNameSafely(
 	}
 }
 
+/**
+ * The id the frontend minted for an unsaved new-agent artifact on this thread,
+ * so the build persists the agent the user already has open rather than a
+ * second one beside it. Ignored when it belongs to a different project.
+ */
+async function pendingAgentIdFor(context: InstanceAiContext): Promise<string | undefined> {
+	const pending = await readPendingAgentTarget(context);
+	return pending && pending.projectId === context.projectId ? pending.agentId : undefined;
+}
+
 function agentRefConflictError(ref: string, boundAgentId: string, passedAgentId: string): string {
 	return (
 		`\`agentRef\` "${ref}" is already bound to agent ${boundAgentId} in this conversation, ` +
@@ -710,8 +718,11 @@ function agentRefConflictError(ref: string, boundAgentId: string, passedAgentId:
 /**
  * Resolve which agent this call should build/edit. Identity is keyed by
  * `slug(agentRef ?? name)` in the session registry — a repeated key continues,
- * an unknown key creates (with `name`) or adopts (with `agentId`). A bound
- * target stays active when neither key nor id is given.
+ * an unknown key adopts (with `agentId`) or, when no target is bound yet,
+ * creates (with `name`). A bound target stays active when neither key nor id
+ * is given, and also when an unknown key arrives without `createNew`: naming
+ * an agent is how the model addresses a new one, so treating that as a create
+ * would strand the agent the user already has open behind a duplicate.
  * agentId-path binds are always deferred (`bindAfterTurn: true`) — persisting
  * before the builder run settles would let a hallucinated/forbidden/missing
  * agentId permanently poison the thread (no unbind path exists). A create
@@ -804,7 +815,27 @@ async function resolveTargetForCall(
 		}
 
 		if (input.name) {
-			const created = await delegate.createAgent(input.name);
+			// Naming an agent is how the model addresses a new one, so on the first
+			// build request of a thread that already has a target — the artifact the
+			// user opened — an unrecognised key would strand that agent behind a
+			// duplicate. Continue the bound agent unless a second one was asked for
+			// explicitly. `name` is not applied here: the builder names the agent as
+			// part of the build, and overwriting would clobber a name the user chose.
+			if (boundTarget && !input.createNew) {
+				// Persisted after the turn so the key we hand back resolves on later
+				// calls — the tool reports this `agentRef`, and without registering it
+				// the model could not address the agent by it again.
+				return {
+					ok: true,
+					target: { ...boundTarget, ref: key },
+					bindAfterTurn: true,
+					mode: 'continued',
+				};
+			}
+			const created = await delegate.createAgent(
+				input.name,
+				await pendingAgentIdFor(domainContext),
+			);
 			const target: AgentBuilderTarget = {
 				agentId: created.agentId,
 				projectId: created.projectId,
@@ -859,11 +890,13 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'provide, ask the user or use a placeholder; do not route around that by calling ' +
 				'`build-agent`. ' +
 				'Address agents in this conversation with `agentRef` (a short stable key you choose, ' +
-				'like a workflow `filePath`). Pass `name` with a fresh key to create; repeat the same ' +
-				'key to continue. Calls with neither key nor `agentId` keep editing the current agent. ' +
-				'To build ANOTHER agent in the same conversation, use a different `agentRef` (and ' +
-				'`name`). To edit an agent that was not built here, pass `agentId` (optionally with ' +
-				'`agentRef`) once to adopt it. The builder can also publish or unpublish the target ' +
+				'like a workflow `filePath`). Pass `name` with a fresh key to create the first agent; ' +
+				'repeat the same key to continue. Calls with neither key nor `agentId` keep editing ' +
+				'the current agent, and so does a fresh key once an agent is bound — naming an agent ' +
+				'never silently creates a second one. To build ANOTHER agent in the same ' +
+				'conversation, pass `createNew: true` with a different `agentRef` and `name`. To edit ' +
+				'an agent that was not built here, pass `agentId` (optionally with `agentRef`) once ' +
+				'to adopt it. The builder can also publish or unpublish the target ' +
 				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
 				'forward that intent in `message`; never tell the user to open the agent editor and ' +
 				'click Publish. When the builder needs user input (a choice, a ' +

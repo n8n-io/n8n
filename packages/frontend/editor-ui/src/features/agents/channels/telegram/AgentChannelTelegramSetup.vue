@@ -25,7 +25,6 @@ const props = withDefaults(
 		loading?: boolean;
 		connected?: boolean;
 		connectedDescription?: string;
-		isPublished?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		savedSettings?: AgentIntegrationSettings;
@@ -39,7 +38,6 @@ const props = withDefaults(
 		loading: false,
 		connected: false,
 		connectedDescription: '',
-		isPublished: true,
 		errorMessage: '',
 		errorIsConflict: false,
 		savedSettings: undefined,
@@ -124,14 +122,6 @@ defineExpose({ credentialId, currentSettings, validationError });
 						>
 							{{ i18n.baseText('agents.builder.addTrigger.connect') }}
 						</N8nButton>
-						<N8nText
-							v-if="!isPublished"
-							:class="$style.publishNotice"
-							size="small"
-							data-testid="telegram-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-						</N8nText>
 					</div>
 				</div>
 			</template>
@@ -192,10 +182,6 @@ defineExpose({ credentialId, currentSettings, validationError });
 	flex-direction: column;
 	align-items: flex-start;
 	gap: var(--spacing--sm);
-}
-
-.publishNotice {
-	color: var(--text-color--subtler);
 }
 
 .errorText {

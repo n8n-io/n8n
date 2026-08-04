@@ -304,6 +304,8 @@ export interface StreamResult {
 export interface ResumeOptions {
 	runId: string;
 	toolCallId: string;
+	/** @internal Host lifecycle hook invoked after the checkpoint claim succeeds. */
+	onResumeClaimed?: () => void | Promise<void>;
 }
 
 export interface BuiltAgent {
@@ -383,6 +385,7 @@ export type PendingToolCall = {
 			suspended: true;
 			suspendPayload: unknown;
 			resumeSchema: JsonSchema7Type;
+			continuation?: JSONValue;
 			runId: string;
 	  }
 	| {
@@ -406,6 +409,8 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	/** Internal child runs must only be resumed through their suspended parent. */
+	delegated?: true;
 	/**
 	 * The host application's own run id (distinct from the agent-SDK runId that
 	 * keys checkpoints). Persisted with checkpoints so host-side recovery (e.g.

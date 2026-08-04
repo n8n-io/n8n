@@ -1,4 +1,5 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 export function useMcp() {
 	const telemetry = useTelemetry();
@@ -8,7 +9,7 @@ export function useMcp() {
 	};
 
 	const trackMcpAccessEnabledForAgent = (agentId: string) => {
-		telemetry.track('User gave MCP access to agent', { agent_id: agentId });
+		telemetry.track(TELEMETRY_EVENT.AGENTS.USER_GAVE_MCP_ACCESS_TO_AGENT, { agent_id: agentId });
 	};
 
 	const trackUserToggledMcpAccess = (enabled: boolean) => {

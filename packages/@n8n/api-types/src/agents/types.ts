@@ -42,7 +42,7 @@ export interface AgentIntegrationStatusEntry {
 }
 
 export interface AgentIntegrationStatusResponse {
-	status: 'connected' | 'disconnected';
+	status: 'configured' | 'connected' | 'disconnected';
 	integrations: AgentIntegrationStatusEntry[];
 }
 
@@ -246,6 +246,8 @@ export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
+	/** Client-visible suspend payload used to rebuild an interactive card after history reload. */
+	suspendPayload?: unknown;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */
