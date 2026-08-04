@@ -124,14 +124,29 @@ describe('StepCompletedHandler', () => {
 		});
 	});
 
-	it("asks readiness in one query, for the successors' own predecessors", async () => {
+	it("asks readiness in one query, for the successors' other predecessors", async () => {
 		const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' });
 		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, makeQueue());
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
-		// b's only successor is m, which sits behind both b and c
-		expect(stepStore.loadCompletedNodeIds).toHaveBeenCalledExactlyOnceWith('exec-1', ['b', 'c']);
+		// b's only successor is m, which sits behind both b and c — but b just
+		// completed, so only c is in question
+		expect(stepStore.loadCompletedNodeIds).toHaveBeenCalledExactlyOnceWith('exec-1', ['c']);
+	});
+
+	it('skips the readiness query when the completed node is every predecessor', async () => {
+		// a is the sole predecessor of both b and c, and a just completed
+		const stepStore = makeStepStore();
+		const handler = new StepCompletedHandler(makeExecutionStore(), stepStore, makeQueue());
+
+		await handler.handle(event);
+
+		expect(stepStore.loadCompletedNodeIds).not.toHaveBeenCalled();
+		expect(stepStore.createSteps).toHaveBeenCalledWith([
+			{ executionId: 'exec-1', nodeId: 'b', status: 'queued' },
+			{ executionId: 'exec-1', nodeId: 'c', status: 'queued' },
+		]);
 	});
 
 	it('rejects an event whose step belongs to another execution', async () => {
@@ -186,7 +201,7 @@ describe('StepCompletedHandler', () => {
 			stepId: 'step-b',
 			step: { id: 'step-b', nodeId: 'b' },
 			// m sits behind b and c; c hasn't completed
-			overrides: { loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set(['b'])) },
+			overrides: { loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set()) },
 		},
 		{
 			reason: 'the completed node has no successors',
