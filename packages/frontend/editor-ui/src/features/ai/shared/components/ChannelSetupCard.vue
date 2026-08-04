@@ -1,15 +1,12 @@
 <script lang="ts" setup>
 /**
  * Shared channel-setup body + orchestration for the `configure_channel`
- * builder tool. Single-sourced because the agents-chat builder
- * (`ConfigureChannelCard.vue`) and the AI assistant
- * (`InstanceAiChannelSetup.vue`) render the identical `AgentChannel*Setup`
- * flow for the identical suspend payload — only how each surface reports the
- * outcome differs (agents-chat resumes the tool call directly, instance AI
- * goes through its own confirm/resolve transport). This component owns the
- * body + composable wiring and emits a single `resolve` event; the two
- * surfaces are thin adapters around it that translate `resolve` into their
- * own transport call.
+ * builder tool, rendered by the AI assistant (`InstanceAiChannelSetup.vue`).
+ * Kept as its own component — rather than inlined into that consumer —
+ * because it owns non-trivial body + composable wiring
+ * (`AgentChannel*Setup`) for the tool's suspend payload and emits a single
+ * `resolve` event that the consumer translates into its own confirm/resolve
+ * transport call.
  */
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -18,6 +15,7 @@ import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
@@ -56,6 +54,7 @@ const {
 	errorMessages,
 	errorIsConflict,
 	isConnected: isIntegrationConnected,
+	isConfigured: isIntegrationConfigured,
 	connect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
@@ -84,7 +83,7 @@ const {
 	currentIntegration,
 	connectedCredentials,
 	fetchStatus,
-	isIntegrationConnected,
+	isIntegrationConfigured,
 });
 
 const integrationLabel = computed(() => currentIntegration.value?.label ?? props.integrationType);
@@ -95,6 +94,7 @@ const connectedDescriptionKeys = {
 } as const;
 
 const connectedDescription = computed(() => {
+	if (!isIntegrationConnected(props.integrationType)) return '';
 	const key =
 		connectedDescriptionKeys[props.integrationType as keyof typeof connectedDescriptionKeys];
 	return key ? i18n.baseText(key) : '';
@@ -102,7 +102,7 @@ const connectedDescription = computed(() => {
 
 const currentChannelCredentialId = computed(() => getChannelCredentialId(props.integrationType));
 const currentCredentials = computed(() => getCredentials(props.integrationType));
-const isConnected = computed(() => isIntegrationConnected(props.integrationType));
+const isConfigured = computed(() => isIntegrationConfigured(props.integrationType));
 const isLoading = computed(() => loadingMap.value[props.integrationType] ?? false);
 const errorMessage = computed(() => errorMessages.value[props.integrationType] ?? '');
 
@@ -135,6 +135,16 @@ function finish(approved: boolean) {
 	emit('resolve', { approved });
 }
 
+/**
+ * The configuration above persists the integration via REST immediately, but the
+ * builder's own `configUpdated` refresh only fires for config-mutation tools
+ * at end of turn — notify other surfaces (e.g. the agent artifact panel's
+ * Channels section) now so they don't stay stale until the run finishes.
+ */
+function notifyAgentUpdated() {
+	agentsEventBus.emit('agentUpdated', { agentId: props.agentId, source: 'channel-setup-card' });
+}
+
 function skipSetup() {
 	if (connectionInFlight.value) return;
 	finish(false);
@@ -148,9 +158,10 @@ async function saveChannelConfig() {
 	connectionInFlight.value = true;
 	try {
 		await connect(props.integrationType, credentialId, channelSetupRef.value?.currentSettings);
+		notifyAgentUpdated();
 		finish(true);
 	} catch {
-		// useAgentIntegrationStatus exposes the connection error to the setup component.
+		// useAgentIntegrationStatus exposes the configuration error to the setup component.
 	} finally {
 		connectionInFlight.value = false;
 	}
@@ -160,7 +171,10 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 	if (isBlocked() || connectionInFlight.value) return false;
 	connectionInFlight.value = true;
 	try {
-		return await runSlackAppSetup(appConfigurationToken, () => finish(true));
+		return await runSlackAppSetup(appConfigurationToken, () => {
+			notifyAgentUpdated();
+			finish(true);
+		});
 	} finally {
 		connectionInFlight.value = false;
 	}
@@ -204,9 +218,7 @@ watch(
 				v-if="integrationType === 'slack'"
 				ref="channelSetupRef"
 				v-model="selectedCredentials.slack"
-				mode="setup"
-				:connected="isConnected"
-				:is-published="false"
+				:connected="isConfigured"
 				:setup-slack-app="setupSlackApp"
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -234,12 +246,11 @@ watch(
 				:credential-permissions="credentialPermissions"
 				:credentials-loading="credentialsLoading"
 				:loading="isLoading"
-				:connected="isConnected"
+				:connected="isConfigured"
 				:connected-description="connectedDescription"
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[currentIntegration.type]"
 				:saved-settings="integrationSettings[currentIntegration.type]"
-				:is-published="false"
 				:agent-name="agent?.name ?? agentId"
 				:project-id="projectId"
 				:agent-id="agentId"
@@ -259,12 +270,11 @@ watch(
 				:credential-permissions="credentialPermissions"
 				:credentials-loading="credentialsLoading"
 				:loading="isLoading"
-				:connected="isConnected"
+				:connected="isConfigured"
 				:connected-description="connectedDescription"
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[currentIntegration.type]"
 				:saved-settings="integrationSettings[currentIntegration.type]"
-				:is-published="false"
 				:agent-name="agent?.name ?? agentId"
 				:project-id="projectId"
 				:agent-id="agentId"

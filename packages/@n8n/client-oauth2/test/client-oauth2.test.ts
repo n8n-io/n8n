@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { Agent as HttpsAgent } from 'https';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import nock from 'nock';
 
 import { ClientOAuth2, ResponseError } from '@/client-oauth2';
@@ -229,6 +231,145 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(ResponseError);
 			expect(result.message).toEqual('HTTP status 302');
 			expect(result.body).toEqual('Redirected');
+		});
+
+		describe('ignoreSSLIssues', () => {
+			const PROXY_ENV_VARS = ['HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy'] as const;
+			let savedProxyEnv: Record<string, string | undefined>;
+
+			beforeEach(() => {
+				savedProxyEnv = {};
+				for (const key of PROXY_ENV_VARS) {
+					savedProxyEnv[key] = process.env[key];
+					delete process.env[key];
+				}
+			});
+
+			afterEach(() => {
+				for (const key of PROXY_ENV_VARS) {
+					if (savedProxyEnv[key] === undefined) {
+						delete process.env[key];
+					} else {
+						process.env[key] = savedProxyEnv[key];
+					}
+				}
+				vi.restoreAllMocks();
+			});
+
+			const makeIgnoreSSLCall = async () =>
+				await client.accessTokenRequest({
+					url: config.accessTokenUri,
+					method: 'POST',
+					headers: {
+						Authorization: authHeader,
+						Accept: 'application/json',
+						'Content-Type': 'application/x-www-form-urlencoded',
+					},
+					body: {
+						refresh_token: 'test',
+						grant_type: 'refresh_token',
+					},
+					ignoreSSLIssues: true,
+				});
+
+			it('should use a plain https agent with relaxed TLS when no proxy is configured', async () => {
+				mockTokenResponse({
+					status: 200,
+					headers: { contentType: 'application/json' },
+					body: JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+				});
+
+				const axiosSpy = vi.spyOn(axios, 'request');
+
+				await makeIgnoreSSLCall();
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				const httpsAgent = requestConfig.httpsAgent as HttpsAgent;
+				expect(httpsAgent).toBeInstanceOf(HttpsAgent);
+				expect(httpsAgent).not.toBeInstanceOf(HttpsProxyAgent);
+				expect(httpsAgent.options.rejectUnauthorized).toBe(false);
+			});
+
+			it('should route through an https proxy agent with relaxed TLS when HTTPS_PROXY is set', async () => {
+				process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+
+				const axiosSpy = vi.spyOn(axios, 'request').mockResolvedValue({
+					status: 200,
+					headers: { contentType: 'application/json' },
+					data: JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+				});
+
+				await makeIgnoreSSLCall();
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				const httpsAgent = requestConfig.httpsAgent as HttpsProxyAgent<string>;
+				expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
+				expect(httpsAgent.connectOpts.rejectUnauthorized).toBe(false);
+				// The ignore-SSL branch must keep axios's own proxy handling disabled
+				// so routing stays with our agent, not double-proxied.
+				expect(requestConfig.proxy).toBe(false);
+			});
+
+			it('should honor NO_PROXY and use a plain relaxed-TLS agent even when HTTPS_PROXY is set', async () => {
+				process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+				process.env.NO_PROXY = new URL(config.baseUrl).hostname;
+
+				mockTokenResponse({
+					status: 200,
+					headers: { contentType: 'application/json' },
+					body: JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+				});
+
+				const axiosSpy = vi.spyOn(axios, 'request');
+
+				await makeIgnoreSSLCall();
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				const httpsAgent = requestConfig.httpsAgent as HttpsAgent;
+				expect(httpsAgent).toBeInstanceOf(HttpsAgent);
+				expect(httpsAgent).not.toBeInstanceOf(HttpsProxyAgent);
+				expect(httpsAgent.options.rejectUnauthorized).toBe(false);
+			});
+
+			it('should not set an httpsAgent when ignoreSSLIssues is false, leaving the global proxy agent in place', async () => {
+				process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+
+				mockTokenResponse({
+					status: 200,
+					headers: { contentType: 'application/json' },
+					body: JSON.stringify({
+						access_token: config.accessToken,
+						refresh_token: config.refreshToken,
+					}),
+				});
+
+				const axiosSpy = vi.spyOn(axios, 'request');
+
+				await client.accessTokenRequest({
+					url: config.accessTokenUri,
+					method: 'POST',
+					headers: {
+						authorization: authHeader,
+						accept: 'application/json',
+						contentType: 'application/x-www-form-urlencoded',
+					},
+					body: { refresh_token: 'test', grant_type: 'refresh_token' },
+					ignoreSSLIssues: false,
+				});
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				expect(requestConfig.httpsAgent).toBeUndefined();
+				expect(requestConfig.proxy).toBe(false);
+			});
 		});
 	});
 

@@ -14,7 +14,7 @@ import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
 
@@ -319,7 +319,7 @@ describe('ProjectHeader', () => {
 			await userEvent.click(getByTestId('add-resource-agent'));
 
 			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('button');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('button', expect.any(String));
 		});
 
 		it('tracks source=dropdown when the agent action is selected from the dropdown', async () => {
@@ -330,7 +330,7 @@ describe('ProjectHeader', () => {
 			await userEvent.click(getByTestId('action-agent'));
 
 			expect(trackClickedNewAgent).toHaveBeenCalledTimes(1);
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('dropdown', expect.any(String));
 		});
 	});
 

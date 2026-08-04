@@ -1,4 +1,5 @@
 name: 'Instance AI Evals: PR Gate'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Instance AI Evals: PR #{0} (tier={1})', inputs.pr, inputs.tier || 'pr') || '' }}"
 
 # The PR gate for Instance AI workflow evals. Auto-runs on PR open/reopen/ready
 # (non-draft, non-fork, path-filtered); manual dispatch re-runs a specific PR

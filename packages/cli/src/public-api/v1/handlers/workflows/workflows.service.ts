@@ -62,9 +62,20 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 
 export async function createWorkflow(
 	user: User,
-	body: WorkflowEntity & { projectId?: string },
+	body: WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
 ): Promise<WorkflowEntity> {
-	const { projectId, ...rest } = body;
+	const { projectId, parentFolderId, ...rest } = body;
+
+	// binaryMode and credentialResolverId are derived, internal settings rather
+	// than something users are expected to control programmatically; ignore any
+	// value sent so new workflows always get the default.
+	if (rest.settings?.binaryMode !== undefined) {
+		delete rest.settings.binaryMode;
+	}
+	if (rest.settings?.credentialResolverId !== undefined) {
+		delete rest.settings.credentialResolverId;
+	}
+
 	const workflow = createWorkflowEntityFromPayload(rest);
 
 	// A policy supplied via the API is explicit intent, so a below-floor value is
@@ -76,6 +87,8 @@ export async function createWorkflow(
 
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
+		// Both null and undefined mean "project root", resolve to undefined
+		parentFolderId: parentFolderId ?? undefined,
 		publicApi: true,
 		source: 'api',
 	});

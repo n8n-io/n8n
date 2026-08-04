@@ -16,7 +16,6 @@ export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
-export const PopOutWindowKey: InjectionKey<Ref<Window | undefined>> = Symbol('PopOutWindow');
 export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
@@ -31,6 +30,16 @@ export const ExecutionDataStoreKey: InjectionKey<
 // derived from it via injectWorkflowExecutionStateStore(), so a subtree's
 // document scope and execution scope can never diverge.
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
+/**
+ * Opts resource-locator dropdowns into teleporting to `<body>`. Defaults to
+ * `false` (stay in the local stacking context, e.g. inside the NDV dialog).
+ * Hosts that render parameters inside a scroll container overlaid by sticky
+ * elements (e.g. the Instance AI workflow setup card above the chat input)
+ * provide `true` so the dropdown isn't painted underneath those overlays.
+ */
+export const ResourceLocatorDropdownTeleportedKey: InjectionKey<boolean> = Symbol(
+	'ResourceLocatorDropdownTeleported',
+);
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**

@@ -21,6 +21,76 @@ function parseJsonFile<T>(path: string): T {
 	}
 }
 
+/**
+ * Strip line and block comments from JSONC, skipping anything inside string
+ * literals. turbo.json is JSONC (turborepo allows comments); a plain
+ * `JSON.parse` throws on it. Trailing commas are not stripped — turbo.json
+ * doesn't use them.
+ */
+export function stripJsonComments(text: string): string {
+	let out = '';
+	let inString = false;
+	let quote = '';
+	let inLineComment = false;
+	let inBlockComment = false;
+
+	for (let i = 0; i < text.length; i++) {
+		const char = text[i];
+		const next = text[i + 1];
+
+		if (inLineComment) {
+			if (char === '\n') {
+				inLineComment = false;
+				out += char;
+			}
+			continue;
+		}
+		if (inBlockComment) {
+			if (char === '*' && next === '/') {
+				inBlockComment = false;
+				i++;
+			}
+			continue;
+		}
+		if (inString) {
+			out += char;
+			if (char === '\\') {
+				out += next ?? '';
+				i++;
+			} else if (char === quote) {
+				inString = false;
+			}
+			continue;
+		}
+		if (char === '"' || char === "'") {
+			inString = true;
+			quote = char;
+			out += char;
+			continue;
+		}
+		if (char === '/' && next === '/') {
+			inLineComment = true;
+			i++;
+			continue;
+		}
+		if (char === '/' && next === '*') {
+			inBlockComment = true;
+			i++;
+			continue;
+		}
+		out += char;
+	}
+	return out;
+}
+
+export function parseJsoncFile<T>(path: string): T {
+	try {
+		return JSON.parse(stripJsonComments(readFileSync(path, 'utf-8'))) as T;
+	} catch (cause) {
+		throw new Error(`Failed to parse ${path}: ${(cause as Error).message}`);
+	}
+}
+
 export { findWorkspaceRoot } from './path-utils.js';
 
 interface WorkspacePackage {
@@ -87,7 +157,7 @@ interface TurboBinding {
 function loadTurboExtraInputs(rootDir: string, packages: WorkspacePackage[]): TurboBinding[] {
 	const turboFile = join(rootDir, 'turbo.json');
 	if (!existsSync(turboFile)) return [];
-	const parsed = parseJsonFile<{ tasks?: Record<string, { inputs?: string[] }> }>(turboFile);
+	const parsed = parseJsoncFile<{ tasks?: Record<string, { inputs?: string[] }> }>(turboFile);
 
 	const bindings: TurboBinding[] = [];
 	for (const [taskId, task] of Object.entries(parsed.tasks ?? {})) {

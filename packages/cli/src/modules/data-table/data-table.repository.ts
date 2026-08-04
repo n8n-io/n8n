@@ -55,6 +55,7 @@ export class DataTableRepository extends Repository<DataTable> {
 		name: string,
 		columns: DataTableCreateColumnSchema[],
 		trx?: EntityManager,
+		explicitId?: string,
 	) {
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
@@ -71,7 +72,12 @@ export class DataTableRepository extends Repository<DataTable> {
 				}
 			}
 
-			const dataTable = em.create(DataTable, { name, columns, projectId });
+			const dataTable = em.create(DataTable, {
+				...(explicitId === undefined ? {} : { id: explicitId }),
+				name,
+				columns,
+				projectId,
+			});
 
 			await em.insert(DataTable, dataTable);
 			const dataTableId = dataTable.id;

@@ -6,7 +6,7 @@
  * LangSmith, and verifies the full pipeline works end-to-end.
  *
  * Pipeline under test:
- *   Agent.generate() → AI SDK (generateText with experimental_telemetry)
+ *   Agent.generate() → AI SDK (generateText with telemetry)
  *     → OTel spans with ai.operationId → LangSmithOTLPSpanProcessor
  *     → LangSmithOTLPTraceExporter → HTTP POST → captured by local server
  */
@@ -176,7 +176,7 @@ describe('Telemetry → LangSmith integration', () => {
 				onStart: () => {
 					hookEvents.push('start');
 				},
-				onFinish: () => {
+				onEnd: () => {
 					hookEvents.push('finish');
 				},
 			})

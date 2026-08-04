@@ -51,6 +51,12 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
+function createBlockedPathError(node: INode): NodeOperationError {
+	return new NodeOperationError(node, 'Access to the file is not allowed.', {
+		level: 'warning',
+	});
+}
+
 async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
 	const pathStr = path.toString();
 
@@ -275,11 +281,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		const pathIdentity = await fsStat(resolvedFilePath);
 		// Check that the path is allowed.
 		if (isFilePathBlocked(resolvedFilePath)) {
-			const allowedPaths = getAllowedPaths();
-			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
-			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				level: 'warning',
-			});
+			throw createBlockedPathError(node);
 		}
 
 		try {
@@ -348,13 +350,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 
 		// Check that the path is allowed.
 		if (isFilePathBlocked(resolvedFilePath)) {
-			throw new NodeOperationError(
-				node,
-				`The file "${String(resolvedFilePath)}" is not writable.`,
-				{
-					level: 'warning',
-				},
-			);
+			throw createBlockedPathError(node);
 		}
 
 		const shouldTruncate = flag === undefined || (flag & constants.O_TRUNC) === constants.O_TRUNC;

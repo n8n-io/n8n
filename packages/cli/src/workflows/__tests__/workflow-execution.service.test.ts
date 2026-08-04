@@ -13,6 +13,7 @@ import {
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -417,8 +418,6 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			} as WorkflowRequest.ManualRunPayload;
 
-			// Not jest.spyOn/vi.spyOn: the mock proxy exposes mock methods
-			// directly, keeping this test agnostic of the test runner
 			nodeTypes.getByNameAndVersion.mockReturnValueOnce(
 				mock<INodeType>({ description: { group: [] } }),
 			);
@@ -1233,6 +1232,50 @@ describe('WorkflowExecutionService', () => {
 			// workflow separately (single query via the publication service).
 			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.get).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('executeChatWorkflow()', () => {
+		test('should emit empty project fields when the project lookup fails', async () => {
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('no project'));
+
+			const eventService = mock<EventService>();
+			const workflowRunnerMock = mock<WorkflowRunner>();
+			workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				mock(),
+				mock(),
+				mock(),
+				eventService,
+				ownershipService,
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({ id: 'workflow-id', name: 'Test Workflow' });
+
+			await service.executeChatWorkflow(user, workflowData, createRunExecutionData({}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-executed',
+				expect.objectContaining({ projectId: '', projectName: '' }),
+			);
+			expect(workflowRunnerMock.run).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: '', projectName: '' }),
+				undefined,
+				true,
+			);
 		});
 	});
 });

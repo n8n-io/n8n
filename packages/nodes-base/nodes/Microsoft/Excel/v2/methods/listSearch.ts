@@ -8,6 +8,9 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { getExcelCredentialType, microsoftApiRequest } from '../transport';
 
+// listSearch context throughout this file: the transport's trailing `0` is its
+// fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
+
 export async function searchWorkbooks(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -39,6 +42,8 @@ export async function searchWorkbooks(
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
+			undefined,
+			0,
 		);
 	} else {
 		response = await microsoftApiRequest.call(
@@ -50,6 +55,9 @@ export async function searchWorkbooks(
 				select: 'id,name,webUrl',
 				$top: 100,
 			},
+			undefined,
+			undefined,
+			0,
 		);
 	}
 
@@ -98,6 +106,9 @@ export async function getWorksheetsList(
 		{
 			select: 'id,name',
 		},
+		undefined,
+		undefined,
+		0,
 	);
 
 	return {
@@ -133,6 +144,10 @@ export async function getWorksheetTables(
 		'GET',
 		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
 		undefined,
+		undefined,
+		undefined,
+		undefined,
+		0,
 	);
 
 	const results: INodeListSearchItems[] = [];
@@ -149,6 +164,9 @@ export async function getWorksheetTables(
 			{
 				select: 'address',
 			},
+			undefined,
+			undefined,
+			0,
 		);
 
 		const [sheetName, sheetRange] = address.split('!' as string);

@@ -129,16 +129,315 @@ describe('resolveCredentials', () => {
 
 			// Managed marker persisted so the saved workflow runs zero-setup.
 			expect(json.nodes[0].credentials).toEqual({
-				slackApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
 			});
 			// Reported as resolved (connected) — the agent must not route it to setup.
 			expect(result.resolvedCredentialsByNode).toEqual({
-				Slack: [{ type: 'slackApi', id: null, name: 'n8n Connect', __aiGatewayManaged: true }],
+				Slack: [{ type: 'slackApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
 			});
 			// Still simulated during verification, but NOT flagged as needing a real credential.
 			expect(result.mockedNodeNames).toEqual(['Slack']);
 			expect(result.mockedCredentialsByNode).toEqual({});
 			expect(result.mockedCredentialTypes).toEqual([]);
+		});
+
+		it('switches the node auth to the attached n8n credits credential type', async () => {
+			// The LLM wrote the API-key credential slot but left auth at the OAuth2
+			// default; attaching n8n credits must switch auth so the slot is active.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'oAuth2' },
+						credentials: { pdfcoApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'pdfcoOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+						{ name: 'pdfcoApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+					],
+				});
+
+			await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+		});
+
+		it('falls back to a supported sibling type when the written slot type is not gateway-supported', async () => {
+			// The LLM wrote the slot matching the node's default auth (OAuth2), which
+			// n8n credits doesn't cover — the sibling API-key type is attached instead
+			// and auth is switched to it, rather than mocking the node into a setup card.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'oAuth2' },
+						credentials: { pdfcoOAuth2Api: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'pdfcoApi'),
+			);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'pdfcoOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+						{ name: 'pdfcoApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+					],
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.resolvedCredentialsByNode).toEqual({
+				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+			});
+			// Simulated during verification, but NOT flagged as needing a real credential.
+			expect(result.mockedNodeNames).toEqual(['PDF.co']);
+			expect(result.mockedCredentialsByNode).toEqual({});
+		});
+
+		it('attaches n8n credits to a supported sibling type for a credential-less node whose auth type is unsupported', async () => {
+			// No `credentials` key at all and auth left at the unsupported OAuth2
+			// default — the second pass switches auth to the supported sibling.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'oAuth2' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn(
+				async (type: string) => await Promise.resolve(type === 'pdfcoApi'),
+			);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{ name: 'pdfcoOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+						{ name: 'pdfcoApi', displayOptions: { show: { authentication: ['apiKey'] } } },
+					],
+				});
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKey' });
+			expect(result.resolvedCredentialsByNode).toEqual({
+				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+			});
+			expect(result.mockedNodeNames).toEqual(['PDF.co']);
+		});
+
+		it('does not rewrite a parameter that already activates the attached credential type', async () => {
+			// The credential is shown for several auth values and the node already
+			// uses the second one — attaching n8n credits must not flip it to the first.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { authentication: 'apiKeyLegacy' },
+						credentials: { pdfcoApi: undefined as unknown as { id: string; name: string } },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({
+					credentials: [
+						{
+							name: 'pdfcoApi',
+							displayOptions: { show: { authentication: ['apiKey', 'apiKeyLegacy'] } },
+						},
+					],
+				});
+
+			await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(json.nodes[0].parameters).toEqual({ authentication: 'apiKeyLegacy' });
+		});
+
+		it('attaches n8n credits to a credential-less node requiring a gateway-supported type', async () => {
+			// The LLM omitted the credential slot entirely — no `credentials` key at all.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({ credentials: [{ name: 'pdfcoApi' }] });
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			// Silently configured with n8n credits — no setup card will surface for it.
+			expect(json.nodes[0].credentials).toEqual({
+				pdfcoApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(result.resolvedCredentialsByNode).toEqual({
+				'PDF.co': [{ type: 'pdfcoApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+			});
+			expect(result.mockedNodeNames).toEqual(['PDF.co']);
+			expect(result.mockedCredentialsByNode).toEqual({});
+		});
+
+		it('auto-applies n8n credits to a credential-less default-parameter node when the type is covered', async () => {
+			// LlamaParse persists no explicit operation (relies on defaults). Auto-apply
+			// is gated on credential-type coverage only, so a covered type is applied
+			// without a setup card regardless of parameter shape.
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'Parse PDF (LlamaParse)',
+						type: '@llamaindex/n8n-nodes-llamacloud.llamaParsePlatform',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { tier: 'agentic', inputDataFieldName: 'document' },
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({ credentials: [{ name: 'llamaParseApi' }] });
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			expect(json.nodes[0].credentials).toEqual({
+				llamaParseApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+			expect(result.resolvedCredentialsByNode).toEqual({
+				'Parse PDF (LlamaParse)': [
+					{ type: 'llamaParseApi', id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				],
+			});
+		});
+
+		it('leaves a credential-less node alone when the required type is not gateway-supported', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(ctx.credentialService.list as Mock).mockResolvedValue([]);
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(false);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({ credentials: [{ name: 'pdfcoApi' }] });
+
+			const result = await resolveCredentials(json, undefined, ctx);
+
+			// Left untouched so the post-build setup card can collect a real credential.
+			expect(json.nodes[0].credentials).toBeUndefined();
+			expect(result.resolvedCredentialsByNode).toEqual({});
+			expect(result.mockedNodeNames).toEqual([]);
+		});
+
+		it('does not auto-attach n8n credits to a credential-less node when the user has a stored credential', async () => {
+			const json = makeWorkflow({
+				nodes: [
+					{
+						id: '1',
+						name: 'PDF.co',
+						type: 'n8n-nodes-base.pdfco',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+			const ctx = createMockContext();
+			(
+				ctx.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+			).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+			(ctx.nodeService as unknown as { getDescription: Mock }).getDescription = vi
+				.fn()
+				.mockResolvedValue({ credentials: [{ name: 'pdfcoApi' }] });
+			const credentialMap = makeCredentialMap([
+				{ id: 'cred-1', name: 'My PDF.co', type: 'pdfcoApi' },
+			]);
+
+			const result = await resolveCredentials(json, undefined, ctx, credentialMap);
+
+			// User has their own key — leave it for the setup card so they can pick it.
+			expect(json.nodes[0].credentials).toBeUndefined();
+			expect(result.resolvedCredentialsByNode).toEqual({});
 		});
 
 		it('prefers the sole stored credential over n8n Connect', async () => {
@@ -794,5 +1093,15 @@ describe('buildCredentialResolutionNote', () => {
 
 		expect(note).toContain('"OpenAI account" (openAiApi) on node "OpenAI Chat Model"');
 		expect(note).toContain('do not ask the user to connect or create them');
+	});
+
+	it('surfaces the n8n credits label and BYOK guidance for gateway-managed credentials', () => {
+		const note = buildCredentialResolutionNote({
+			Slack: [{ type: 'slackApi', id: null, name: 'n8n credits', __aiGatewayManaged: true }],
+		});
+
+		expect(note).toContain('n8n credits');
+		expect(note).not.toContain('n8n Connect');
+		expect(note).toContain('switch to their own key');
 	});
 });

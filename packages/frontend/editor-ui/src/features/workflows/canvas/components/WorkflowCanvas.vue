@@ -26,6 +26,10 @@ import {
 	mapGroupsToVueFlowNodes,
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import {
+	NodeGroupDescriptionVisibilityKey,
+	useCanvasNodeGroupDescriptionVisibility,
+} from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
@@ -98,10 +102,16 @@ const nodes = computed(() => {
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
 const nodeGroupView = useCanvasNodeGroupView({
-	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	workflowId: () => workflowDocumentStore.value.workflowId,
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	getGroupExpansionMode: () => props.groupExpansionMode,
+});
+
+const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
+	workflowId: () => workflowDocumentStore.value.workflowId,
+	getCurrentGroups: () => workflowDocumentStore.value.allGroups,
+	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 });
 
 // Keep the group view in sync with the currently displayed document
@@ -110,6 +120,7 @@ watch(
 	() => {
 		nodeGroupView.reinitialize();
 		applyGroupExpansion();
+		nodeGroupDescriptionVisibility.reinitialize();
 	},
 );
 
@@ -192,10 +203,12 @@ const mappedNodes = computed(() => [
 ]);
 
 provide(NodeGroupViewKey, nodeGroupView);
+provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
 // Collapse state for the context menu's expand/collapse item enablement —
 // the menu lives in the shared layer and can't reach this canvas' view state.
 provide(ContextMenuGroupViewKey, {
 	isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+	isDescriptionVisible: (id) => nodeGroupDescriptionVisibility.isVisible(id),
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636

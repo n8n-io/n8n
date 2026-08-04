@@ -654,8 +654,12 @@ async function handleSetupApply(
 
 		// Re-analyze to determine if any nodes still need setup.
 		// Filter by needsAction to distinguish "render this card" from
-		// "this still requires user intervention".
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
+		// "this still requires user intervention". Settled requests are kept so
+		// a just-applied credential whose test failed stays reportable below —
+		// a bound credential is settled for routing even when its test fails.
+		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
+			includeSettled: true,
+		});
 		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,

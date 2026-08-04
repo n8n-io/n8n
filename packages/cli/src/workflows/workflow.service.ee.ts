@@ -19,20 +19,26 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
-import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
+import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	jsonParse,
+	NodeOperationError,
+	PROJECT_ROOT,
+	UserError,
+	WorkflowActivationError,
+} from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -52,7 +58,6 @@ export class EnterpriseWorkflowService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly folderService: FolderService,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
@@ -263,15 +268,60 @@ export class EnterpriseWorkflowService {
 			return [];
 		}
 		return workflow.nodes.filter((node) => {
-			if (!node.credentials) return false;
-
-			const allUsedCredentials = Object.values(node.credentials);
-
-			const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
-			return allUsedCredentialIds.some(
-				(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
-			);
+			const usedCredentialIds = this.getCredentialIdsUsedByNode(node);
+			return usedCredentialIds.some((credId) => !userCredIds.includes(credId));
 		});
+	}
+
+	/**
+	 * Collect every credential id a node references. Besides the node's own
+	 * `credentials`, an Execute Sub-workflow node with an inline source embeds a
+	 * whole workflow — including its nodes' credentials — inside a single string
+	 * parameter, so those references are parsed out and returned as well.
+	 */
+	private getCredentialIdsUsedByNode(node: INode): string[] {
+		const credentialIds: string[] = [];
+
+		if (node.credentials) {
+			for (const nodeCred of Object.values(node.credentials)) {
+				const id = nodeCred.id?.toString();
+				if (id) credentialIds.push(id);
+			}
+		}
+
+		if (node.type === EXECUTE_WORKFLOW_NODE_TYPE) {
+			credentialIds.push(...this.getCredentialIdsFromInlineWorkflow(node.parameters?.workflowJson));
+		}
+
+		return credentialIds;
+	}
+
+	/**
+	 * Extract the credential ids referenced by the nodes of an inline sub-workflow
+	 * passed as the `workflowJson` parameter of an Execute Sub-workflow node.
+	 * Non-string or unparseable values reference no resolvable credentials and are
+	 * ignored (the node would fail at run time).
+	 */
+	private getCredentialIdsFromInlineWorkflow(workflowJson: unknown): string[] {
+		if (typeof workflowJson !== 'string') return [];
+
+		let parsed: Partial<IWorkflowBase>;
+		try {
+			parsed = jsonParse<Partial<IWorkflowBase>>(workflowJson);
+		} catch {
+			return [];
+		}
+		if (!parsed || !Array.isArray(parsed.nodes)) return [];
+
+		const credentialIds: string[] = [];
+		for (const subNode of parsed.nodes) {
+			if (!subNode?.credentials) continue;
+			for (const nodeCred of Object.values(subNode.credentials)) {
+				const id = nodeCred?.id?.toString();
+				if (id) credentialIds.push(id);
+			}
+		}
+		return credentialIds;
 	}
 
 	/**
@@ -314,6 +364,7 @@ export class EnterpriseWorkflowService {
 			where: {
 				id: In(Array.from(credentialIdToWorkflowIds.keys())),
 				isResolvable: true,
+				usageScope: 'project',
 			},
 			select: ['id'],
 		});
@@ -388,7 +439,7 @@ export class EnterpriseWorkflowService {
 
 		if (destinationParentFolderId) {
 			try {
-				parentFolder = await this.folderService.findFolderInProjectOrFail(
+				parentFolder = await this.folderRepository.findOneOrFailFolderInProject(
 					destinationParentFolderId,
 					destinationProjectId,
 				);
@@ -424,7 +475,11 @@ export class EnterpriseWorkflowService {
 	}
 
 	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
-		await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+		try {
+			await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
+		} catch {
+			throw new FolderNotFoundError(folderId);
+		}
 
 		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
 			user,

@@ -1,6 +1,12 @@
 import { Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import {
+	DEFAULT_CLOCK_SKEW_OPTIONS,
+	isClockSkewSignificant,
+	measureClockSkew,
+	type ClockSkewOptions,
+} from './clock-skew';
 import { InvalidLifecycleOptionsError } from './errors';
 import {
 	DEFAULT_EXECUTOR_OPTIONS,
@@ -9,9 +15,9 @@ import {
 	TaskHandlerRegistry,
 } from './executor';
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
-import { DEFAULT_LIFECYCLE_OPTIONS, Loop, PASS_TIMED_OUT } from './lifecycle';
+import { DEFAULT_LIFECYCLE_OPTIONS, pollLookaheadSeconds, Loop, PASS_TIMED_OUT } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
-import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
+import { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
 import { DEFAULT_REAPER_OPTIONS, reap } from './reaper';
 import type { ReaperOptions, ReaperTaskStore } from './reaper';
@@ -26,6 +32,13 @@ import { tracePass } from '../observability/pass-tracing';
 import { noopTracer, type Tracer } from '../observability/tracer';
 
 export type SchedulerEventLevel = 'debug' | 'info' | 'warn' | 'error';
+
+/**
+ * A task firing this far past its scheduled time is reported once, per fire. Kept
+ * well above normal sub-second dispatch jitter so the warning flags a genuinely
+ * late fire (a blocked event loop, a skewed clock) rather than routine load.
+ */
+export const DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS = 30;
 
 /**
  * A lifecycle milestone, incident or notable outcome the scheduler reports,
@@ -61,8 +74,27 @@ export interface SchedulerDeps {
 	reaper?: Partial<ReaperOptions>;
 	retention?: Partial<RetentionOptions>;
 
+	/** Tuning for the start-time clock-skew check (only used when {@link now} is set). */
+	clockSkew?: Partial<ClockSkewOptions>;
+
+	/**
+	 * Warn through {@link onEvent} when a task fires at least this many seconds after
+	 * its scheduled time (a blocked event loop or a skewed clock). Defaults to
+	 * {@link DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS}.
+	 */
+	dispatchLagWarnThresholdSeconds?: number;
+
 	/** Cadences of the loops `start` runs, one per pass. */
 	lifecycle?: Partial<LifecycleOptions>;
+
+	/**
+	 * Reads the current time from the clock the scheduler coordinates on, the same
+	 * clock due-ness and leases are judged against. Optional: when given, `start`
+	 * samples it once and reports a warning through {@link onEvent} if it differs
+	 * from this instance's own clock enough to fire tasks early or late. How the
+	 * time is read is the host's concern; left out, the check is skipped.
+	 */
+	now?: () => Promise<Date>;
 
 	onEvent?: (event: SchedulerEvent) => void;
 
@@ -105,6 +137,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	const reaperOptions = withDefaults(DEFAULT_REAPER_OPTIONS, deps.reaper);
 	const retentionOptions = withDefaults(DEFAULT_RETENTION_OPTIONS, deps.retention);
 	const lifecycleOptions = withDefaults(DEFAULT_LIFECYCLE_OPTIONS, deps.lifecycle);
+	const clockSkewOptions = withDefaults(DEFAULT_CLOCK_SKEW_OPTIONS, deps.clockSkew);
+	const dispatchLagWarnThresholdSeconds =
+		deps.dispatchLagWarnThresholdSeconds ?? DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS;
 
 	if (!(lifecycleOptions.jitterRatio >= 0 && lifecycleOptions.jitterRatio < 1)) {
 		throw new InvalidLifecycleOptionsError(
@@ -162,6 +197,34 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 	};
 	const described = (error: unknown) => ensureError(error).message;
 
+	// Derived, not caller-chosen: the materializer must record a job's occurrences
+	// early enough that the executor still has them in hand when it needs to fire.
+	// That spans two gaps: the materializer loop's own worst-case tick gap (so a job
+	// due between ticks is claimed, not noticed a tick late), plus the executor's
+	// lookahead (so the recorded task row exists before the executor pre-arms its
+	// timer). Drop the executor term and a boundary occurrence can land as late as
+	// its `nextRunAt`, leaving the executor no slack and firing it up to one executor
+	// tick late.
+	materializerOptions.lookaheadSeconds =
+		pollLookaheadSeconds(
+			lifecycleOptions.materializerIntervalSeconds,
+			lifecycleOptions.jitterRatio,
+		) + executorOptions.lookaheadSeconds;
+	if (materializerOptions.lookaheadSeconds > materializerOptions.windowSeconds) {
+		// The lookahead is meant to sit inside the window: claim a job a little before
+		// its window lapses so the next occurrences are planned ahead. A lookahead past
+		// the whole window means a job is re-claimed every poll with nothing new to
+		// record, degrading to no-lookahead materialization.
+		emit(
+			'warn',
+			'Scheduler materializer lookahead exceeds the window; jobs may be reclaimed with nothing to plan',
+			{
+				lookaheadSeconds: materializerOptions.lookaheadSeconds,
+				windowSeconds: materializerOptions.windowSeconds,
+			},
+		);
+	}
+
 	// Metrics are best-effort observability: a throwing sink (e.g. a broken
 	// exporter) must never break the pass that emitted, so every record is
 	// wrapped and its failure swallowed.
@@ -205,11 +268,18 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					error: described(error),
 				});
 			},
-			onDispatch: (taskType, lagSeconds) =>
+			onDispatch: (taskType, lagSeconds) => {
 				recordMetric(() => {
 					metrics.recordDispatch(taskType);
 					metrics.observeDispatchLagSeconds(taskType, lagSeconds);
-				}),
+				});
+				if (lagSeconds >= dispatchLagWarnThresholdSeconds) {
+					emit('warn', 'Scheduler fired a task later than its scheduled time', {
+						taskType,
+						lagSeconds: Math.round(lagSeconds),
+					});
+				}
+			},
 			onFire: (taskType, result) =>
 				recordMetric(() => {
 					metrics.recordFireOutcome(taskType, result);
@@ -264,7 +334,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					signal,
 				);
 				await traceCreatedTasks(tracer, summary.created);
-				recordMetric(() => metrics.recordMaterialized(summary.occurrences, summary.deferredJobs));
+				recordMetric(() => {
+					metrics.recordMaterialized(summary.occurrences, summary.deferredJobs);
+					metrics.recordMisfired(summary.misfires);
+					metrics.recordRetired(summary.retiredOccurrences);
+				});
 				return summary;
 			} catch (error) {
 				// `throwIfAborted` always throws `signal.reason` itself, so this only
@@ -275,7 +349,14 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					signal.reason !== PASS_TIMED_OUT &&
 					error === signal.reason
 				) {
-					return { claimedJobs: 0, occurrences: 0, created: [], deferredJobs: 0 };
+					return {
+						claimedJobs: 0,
+						occurrences: 0,
+						created: [],
+						deferredJobs: 0,
+						misfires: [],
+						retiredOccurrences: 0,
+					};
 				}
 				throw error;
 			}
@@ -284,6 +365,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			[SCHEDULER_ATTRIBUTES.claimedJobs]: summary.claimedJobs,
 			[SCHEDULER_ATTRIBUTES.occurrences]: summary.occurrences,
 			[SCHEDULER_ATTRIBUTES.deferredJobs]: summary.deferredJobs,
+			[SCHEDULER_ATTRIBUTES.skippedOccurrences]: totalDiscarded(summary.misfires),
+			[SCHEDULER_ATTRIBUTES.retiredOccurrences]: summary.retiredOccurrences,
 		}),
 	);
 
@@ -316,20 +399,35 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 							},
 						);
 					},
+					onRetireError: (error) => {
+						emit('error', 'Scheduler could not retire stale pending occurrences', {
+							error: described(error),
+						});
+					},
 					onDeadLetter: (task) => {
 						emit('warn', 'Scheduler dead-lettered a task; its last attempt lost its lease', {
 							...task,
 						});
 					},
+					onCompletedAfterDispatch: ({ taskId }) => {
+						emit(
+							'warn',
+							'Scheduler completed a task whose lease lapsed after dispatch; its effect had already happened',
+							{ taskId },
+						);
+					},
 				},
 				signal,
 			);
-			recordMetric(() => metrics.recordReaped(result.reclaimed, result.deadLettered));
+			recordMetric(() =>
+				metrics.recordReaped(result.reclaimed, result.deadLettered, result.missed),
+			);
 			return result;
 		},
 		(result) => ({
 			[SCHEDULER_ATTRIBUTES.reclaimed]: result.reclaimed,
 			[SCHEDULER_ATTRIBUTES.deadLettered]: result.deadLettered,
+			[SCHEDULER_ATTRIBUTES.missed]: result.missed,
 		}),
 	);
 
@@ -419,6 +517,27 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 		),
 	];
 
+	const checkClockSkew = async () => {
+		if (deps.now === undefined) return;
+		try {
+			const before = Date.now();
+			const referenceNow = await deps.now();
+			const after = Date.now();
+			const skew = measureClockSkew({ before, referenceNow: referenceNow.getTime(), after });
+			if (isClockSkewSignificant(skew, clockSkewOptions.warnThresholdMs)) {
+				emit(
+					'warn',
+					'Scheduler detected a clock difference between this instance and the clock it coordinates on; scheduled tasks may fire slightly early or late. Synchronise this instance clock (e.g. via NTP).',
+					{ offsetMs: Math.round(skew.offsetMs), roundTripMs: Math.round(skew.roundTripMs) },
+				);
+			}
+		} catch (error) {
+			emit('debug', 'Scheduler could not check the clock difference', {
+				error: described(error),
+			});
+		}
+	};
+
 	let started = false;
 	let stopping: Promise<void> | undefined;
 
@@ -444,6 +563,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					loop.start();
 				}
 				emit('info', 'Scheduler started', { hostId });
+				// Detached: the clock check reports through the event sink and must
+				// never delay the loops that are already running.
+				void checkClockSkew();
 			}
 		},
 

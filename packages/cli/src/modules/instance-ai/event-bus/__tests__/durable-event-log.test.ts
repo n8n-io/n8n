@@ -135,6 +135,15 @@ function toolCall(toolCallId: string, agentId = AGENT): InstanceAiEvent {
 	};
 }
 
+function toolInputStart(toolCallId: string, agentId = AGENT): InstanceAiEvent {
+	return {
+		type: 'tool-input-start',
+		runId: RUN,
+		agentId,
+		payload: { toolCallId, toolName: 'search-workflows' },
+	};
+}
+
 function runFinish(): InstanceAiEvent {
 	return { type: 'run-finish', runId: RUN, agentId: AGENT, payload: { status: 'completed' } };
 }
@@ -227,6 +236,7 @@ describe('DurableEventLog', () => {
 
 		const emitted = await publishAll(log, [
 			textDelta('AAA'),
+			toolInputStart('tc-1'),
 			toolCall('tc-1'),
 			{ type: 'status', runId: RUN, agentId: AGENT, payload: { message: 'working' } },
 			runFinish(),
@@ -236,17 +246,29 @@ describe('DurableEventLog', () => {
 		const live = emitted.filter((e) => e.live);
 		expect(live.map((e) => e.event.type)).toEqual([
 			'text-delta',
+			'tool-input-start',
 			'tool-call',
 			'status',
 			'run-finish',
 		]);
 		// Deltas and status carry no id; structural facts carry the DB seq.
+		// tool-input-start is DELIBERATELY structural: ephemeral would lose the
+		// pending call on a mid-stream refresh during a long arg stream, shrink
+		// replayed durations to exclude arg streaming, and leave no trace of a
+		// call killed mid-args. It also flushes open blocks (where tool-call
+		// used to), so the segment closes at arg-stream start.
 		expect(live[0].id).toBeUndefined();
-		expect(live[2].id).toBeUndefined();
+		expect(live[3].id).toBeUndefined();
 		expect(live[1].id).toBeDefined();
-		expect(live[3].id).toBeDefined();
-		// Persisted seqs are contiguous from 1.
-		expect(repo.rows.map((r) => r.seq)).toEqual([1, 2, 3]);
+		expect(live[2].id).toBeDefined();
+		expect(live[4].id).toBeDefined();
+		// Persisted seqs are contiguous from 1, the open block flushed first.
+		expect(repo.rows.map((r) => [r.seq, r.event.type])).toEqual([
+			[1, 'text-block'],
+			[2, 'tool-input-start'],
+			[3, 'tool-call'],
+			[4, 'run-finish'],
+		]);
 	});
 
 	it('continues the seq across a restart (fresh instance seeds from the DB)', async () => {
@@ -442,6 +464,57 @@ describe('DurableEventLog', () => {
 		await publishAll(log, [toolCall('tc-3')]);
 		expect(repo.rows.map((r) => r.seq)).toEqual([1]);
 	});
+	it('getOpenSegments reads the streamed-so-far segments synchronously and empties once they flush', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+
+		log.publish(THREAD, reasoningDelta('think'), () => {});
+		log.publish(THREAD, textDelta('1 2 3'), () => {});
+		log.publish(THREAD, textDelta(' 4 5'), () => {});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		// Synchronous read (no await): the SSE bootstrap depends on it running
+		// inside its one-tick tail.
+		expect(log.getOpenSegments(THREAD)).toEqual([
+			{ runId: RUN, agentId: AGENT, kind: 'reasoning', responseId: 'msg-1', text: 'think' },
+			{ runId: RUN, agentId: AGENT, kind: 'text', responseId: 'msg-1', text: '1 2 3 4 5' },
+		]);
+		expect(log.getOpenSegments('other-thread')).toEqual([]);
+
+		// A structural fact closes the agent's segments: no longer open.
+		await publishAll(log, [toolCall('tc-1')]);
+		expect(log.getOpenSegments(THREAD)).toEqual([]);
+	});
+
+	it('getOpenSegments excludes parts whose live frames the in-flight batch has not emitted yet', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+
+		// Established open segment: its delta frame is already emitted.
+		log.publish(THREAD, textDelta('1 2 3'), () => {});
+
+		// One batch mixing a fact for ANOTHER agent (keeps the segment open but
+		// forces a persist round trip) with a trailing delta for the streaming
+		// agent. While the append is in flight, the delta's text is buffered but
+		// its live frame is not out yet — a bootstrap running in that window must
+		// not serve it, or the client would receive it twice.
+		let releaseAppend!: () => void;
+		repo.gateNextAppend = new Promise((resolve) => (releaseAppend = resolve));
+		log.publish(THREAD, toolCall('tc-1', 'sub:run-1:builder'), () => {});
+		log.publish(THREAD, textDelta(' 4 5'), () => {});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(log.getOpenSegments(THREAD)).toEqual([
+			{ runId: RUN, agentId: AGENT, kind: 'text', responseId: 'msg-1', text: '1 2 3' },
+		]);
+
+		releaseAppend();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(log.getOpenSegments(THREAD)).toEqual([
+			{ runId: RUN, agentId: AGENT, kind: 'text', responseId: 'msg-1', text: '1 2 3 4 5' },
+		]);
+	});
+
 	it('idle flush persists trailing deltas that no structural fact ever follows', async () => {
 		// e.g. a terminal-outcome line published after run-finish, or a liveness
 		// timeout notice: without the idle flush these would never reach the log

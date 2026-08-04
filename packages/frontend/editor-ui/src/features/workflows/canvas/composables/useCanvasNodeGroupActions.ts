@@ -7,19 +7,15 @@ import { computed, toValue } from 'vue';
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import {
-	AddNodeGroupCommand,
-	RemoveNodeGroupCommand,
-	UpdateNodeGroupCommand,
-} from '@/app/models/history';
+import { AddNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
 import {
 	isCanvasGroupNode,
 	parseCanvasGroupNodeId,
 } from '@/features/workflows/canvas/canvas.types';
-
-function snapshotGroup(group: IWorkflowGroup): IWorkflowGroup {
-	return { ...group, nodeIds: [...group.nodeIds] };
-}
+import {
+	deleteGroupWithHistory,
+	snapshotGroup,
+} from '@/features/workflows/canvas/nodeGroups.utils';
 
 export function useCanvasNodeGroupActions(
 	selectedNodes: MaybeRefOrGetter<GraphNode[]>,
@@ -100,13 +96,24 @@ export function useCanvasNodeGroupActions(
 		);
 	}
 
+	function updateGroupDescription(id: string, description: string) {
+		if (isReadOnly.value) return;
+		const before = workflowDocumentStore.value.getGroupById(id);
+		if (!before) return;
+		const beforeSnapshot = snapshotGroup(before);
+		workflowDocumentStore.value.updateDescription(id, description);
+		const after = workflowDocumentStore.value.getGroupById(id);
+		if (!after || after.description === beforeSnapshot.description) return;
+		historyStore.pushCommandToUndo(
+			new UpdateNodeGroupCommand(beforeSnapshot, snapshotGroup(after), Date.now()),
+		);
+	}
+
 	function ungroup(id: string) {
 		if (isReadOnly.value) return;
 		const group = workflowDocumentStore.value.getGroupById(id);
 		if (!group) return;
-		const snapshot = snapshotGroup(group);
-		workflowDocumentStore.value.deleteGroup(id);
-		historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
+		deleteGroupWithHistory(group, workflowDocumentStore.value, historyStore);
 	}
 
 	return {
@@ -116,6 +123,7 @@ export function useCanvasNodeGroupActions(
 		groupNodes,
 		groupSelection,
 		renameGroup,
+		updateGroupDescription,
 		ungroup,
 	};
 }

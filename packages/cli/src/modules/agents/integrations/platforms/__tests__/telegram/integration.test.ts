@@ -39,6 +39,7 @@ const makeContext = (
 	projectId: 'proj-1',
 	credentialId: 'cred-1',
 	credential: { accessToken: 'bot-token' },
+	ingressEnabled: true,
 	webhookUrlFor: (platform) =>
 		`https://n8n.example.com/rest/projects/proj-1/agents/v2/agent-1/webhooks/${platform}`,
 	...overrides,
@@ -88,6 +89,21 @@ const makeIntegration = (
 		ssrfProtectionService,
 	};
 };
+
+describe('TelegramIntegration capabilities', () => {
+	it('advertises message editing with contextual targeting guidance', () => {
+		const { integration } = makeIntegration();
+
+		expect(integration.actions).toEqual(['respond', 'send_dm', 'edit_message']);
+		expect(integration.builderGuidance.capabilities).toContain(
+			'Edit existing messages in the current Telegram conversation.',
+		);
+		expect(integration.actionToolGuidance).toEqual([
+			'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
+			'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
+		]);
+	});
+});
 
 describe('TelegramIntegration.onBeforeConnect', () => {
 	let agentRepository: Mocked<AgentRepository>;
@@ -316,6 +332,30 @@ describe('TelegramIntegration secret token', () => {
 			mode: 'webhook',
 			secretToken: expected,
 		});
+	});
+
+	it('createAdapter uses polling for ingress-enabled local connections', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext());
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'polling' }),
+		);
+	});
+
+	it('createAdapter forces webhook mode for ingress-disabled local connections', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext({ ingressEnabled: false }));
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'webhook' }),
+		);
 	});
 
 	it('two service instances configured with the same encryption key produce identical secrets — the multi-main invariant', async () => {

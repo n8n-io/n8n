@@ -6,7 +6,11 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
-import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from './constants';
 import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
 import { isFromAIOnlyExpression } from './from-ai-parse-utils';
@@ -14,6 +18,7 @@ import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
 	IContextObject,
+	ICredentialsDisplayOptions,
 	INode,
 	INodeCredentialDescription,
 	INodeIssueObjectProperty,
@@ -565,6 +570,10 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
 		}
 
 		for (const displayRule of Object.values(displayOptions)) {
+			if (typeof displayRule !== 'object' || displayRule === null) {
+				continue;
+			}
+
 			for (const parameterName of Object.keys(displayRule)) {
 				if (!dependencies[name].includes(parameterName)) {
 					if (parameterName.charAt(0) === '@') {
@@ -1812,7 +1821,11 @@ export function isExecutable(
 }
 
 export function isNodeWithWorkflowSelector(node: INode) {
-	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
+	return [
+		EXECUTE_WORKFLOW_NODE_TYPE,
+		WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+		RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	].includes(node.type);
 }
 
 /**
@@ -2126,4 +2139,64 @@ export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType
 		}
 		return output.type === connectionType;
 	});
+}
+
+/**
+ * Parameters to write so a credential's `displayOptions.show` becomes satisfied,
+ * making it the active slot (e.g. `{ authentication: ['apiKey'] }` →
+ * `{ authentication: 'apiKey' }`). `@version` is excluded — it gates typeVersion,
+ * not a settable parameter. A `show` clause may accept several values; this
+ * returns only the first, so callers must not apply it to an already-active slot.
+ */
+export function getCredentialActivationParameters(
+	displayOptions: ICredentialsDisplayOptions | undefined,
+): INodeParameters {
+	const parameters: INodeParameters = {};
+	const show = displayOptions?.show;
+	if (!show) return parameters;
+
+	for (const [name, values] of Object.entries(show)) {
+		if (name === '@version') continue;
+		const value = values?.[0];
+		if (value !== undefined && value !== null) {
+			parameters[name] = value;
+		}
+	}
+	return parameters;
+}
+
+/**
+ * Pick the credential type a node should use for a managed (n8n-credits)
+ * credential and the parameters that activate it. Prefers `preferredType`, else
+ * the first supported declared type. An already-active candidate returns empty
+ * parameters, so a valid value (e.g. the second entry of a multi-value `show`
+ * clause) is never overwritten; candidates the node can't display (e.g.
+ * `@version`-gated) are skipped. Returns `undefined` when none qualifies.
+ */
+export function resolveSupportedCredentialActivation(
+	nodeTypeDescription: INodeTypeDescription,
+	node: Pick<INode, 'typeVersion' | 'parameters'>,
+	isSupported: (credentialType: string) => boolean,
+	preferredType?: string,
+): { credentialType: string; parameters: INodeParameters } | undefined {
+	const credentials = nodeTypeDescription.credentials ?? [];
+	const ordered = preferredType
+		? [
+				...credentials.filter((cred) => cred.name === preferredType),
+				...credentials.filter((cred) => cred.name !== preferredType),
+			]
+		: credentials;
+
+	for (const cred of ordered) {
+		if (!isSupported(cred.name)) continue;
+		if (displayParameter(node.parameters, cred, node, nodeTypeDescription)) {
+			return { credentialType: cred.name, parameters: {} };
+		}
+		const parameters = getCredentialActivationParameters(cred.displayOptions);
+		const activatedValues = { ...node.parameters, ...parameters };
+		if (displayParameter(activatedValues, cred, node, nodeTypeDescription)) {
+			return { credentialType: cred.name, parameters };
+		}
+	}
+	return undefined;
 }

@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 /**
  * Thin transport adapter around the shared `ChannelSetupCard` (body +
- * composable wiring lives there, identical to agents-chat's
- * `ConfigureChannelCard.vue`) — this surface only translates the shared
+ * composable wiring lives there) — this surface only translates the shared
  * `resolve` event into instance AI's own confirm transport
  * (`thread.confirmAction` + `thread.resolveConfirmation`, with the
  * MAX_CONFIRM_ATTEMPTS retry semantics this surface has always had).

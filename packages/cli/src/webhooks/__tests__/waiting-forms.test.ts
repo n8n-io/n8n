@@ -38,6 +38,7 @@ describe('WaitingForms', () => {
 		mock(),
 		mockInstanceSettings,
 		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {

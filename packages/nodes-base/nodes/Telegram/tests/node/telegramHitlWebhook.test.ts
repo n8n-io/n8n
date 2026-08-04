@@ -145,12 +145,11 @@ describe('telegramSendAndWaitWebhook', () => {
 
 	it('answers with an unauthorized alert, responds 200, and does not resume when the approver list rejects the sender', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody({ from: { id: 111 } }));
-		webhookFns.getNodeParameter.mockImplementation((name: unknown) => {
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
 			if (name === 'chatApproval') return true;
-			if (name === 'chatApprovalOptions') {
-				return { approverIds: '777, 888', unauthorizedReplyText: 'Nope.' };
-			}
-			return undefined;
+			if (name === 'approverIds') return '777, 888';
+			if (name === 'unauthorizedReplyText') return 'Nope.';
+			return fallback as never;
 		});
 		webhookFns.getHeaderData.mockReturnValue({
 			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
@@ -175,10 +174,10 @@ describe('telegramSendAndWaitWebhook', () => {
 
 	it('acknowledges, edits the message, and resumes with approved: true and the responder', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
-		webhookFns.getNodeParameter.mockImplementation((name: unknown) => {
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
 			if (name === 'chatApproval') return true;
-			if (name === 'chatApprovalOptions') return { postDecisionBehavior: 'showOutcome' };
-			return undefined;
+			if (name === 'postDecisionBehavior') return 'showOutcome';
+			return fallback as never;
 		});
 		webhookFns.getHeaderData.mockReturnValue({
 			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
@@ -223,10 +222,10 @@ describe('telegramSendAndWaitWebhook', () => {
 		webhookFns.getBodyData.mockReturnValue(
 			makeCallbackQueryBody({ data: buildHitlCallbackReference('42', 'd', TEST_HMAC_SECRET) }),
 		);
-		webhookFns.getNodeParameter.mockImplementation((name: unknown) => {
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
 			if (name === 'chatApproval') return true;
-			if (name === 'chatApprovalOptions') return { postDecisionBehavior: 'keepMessage' };
-			return undefined;
+			if (name === 'postDecisionBehavior') return 'keepMessage';
+			return fallback as never;
 		});
 		webhookFns.getHeaderData.mockReturnValue({
 			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
@@ -242,10 +241,10 @@ describe('telegramSendAndWaitWebhook', () => {
 
 	it('removes the buttons without an outcome message when postDecisionBehavior is removeButtons', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
-		webhookFns.getNodeParameter.mockImplementation((name: unknown) => {
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
 			if (name === 'chatApproval') return true;
-			if (name === 'chatApprovalOptions') return { postDecisionBehavior: 'removeButtons' };
-			return undefined;
+			if (name === 'postDecisionBehavior') return 'removeButtons';
+			return fallback as never;
 		});
 		webhookFns.getHeaderData.mockReturnValue({
 			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
@@ -265,12 +264,89 @@ describe('telegramSendAndWaitWebhook', () => {
 		);
 	});
 
+	it('emits an actioned telemetry event with authorized: true on an authorized approval', async () => {
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'chatApproval') return true;
+			if (name === 'postDecisionBehavior') return 'showOutcome';
+			return fallback as never;
+		});
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
+		});
+
+		await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(webhookFns.logHitlResponse).toHaveBeenCalledWith({ approved: true, authorized: true });
+	});
+
+	it('emits an actioned telemetry event with approved: false for a decline', async () => {
+		webhookFns.getBodyData.mockReturnValue(
+			makeCallbackQueryBody({ data: buildHitlCallbackReference('42', 'd', TEST_HMAC_SECRET) }),
+		);
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'chatApproval') return true;
+			if (name === 'postDecisionBehavior') return 'keepMessage';
+			return fallback as never;
+		});
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
+		});
+
+		await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(webhookFns.logHitlResponse).toHaveBeenCalledWith({ approved: false, authorized: true });
+	});
+
+	it('emits an actioned telemetry event with authorized: false when the approver list rejects the sender', async () => {
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody({ from: { id: 111 } }));
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'chatApproval') return true;
+			if (name === 'approverIds') return '777, 888';
+			return fallback as never;
+		});
+		webhookFns.getHeaderData.mockReturnValue({
+			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,
+		});
+		const status = vi.fn().mockReturnThis();
+		const send = vi.fn();
+		webhookFns.getResponseObject.mockReturnValue({ status, send } as never);
+
+		await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(webhookFns.logHitlResponse).toHaveBeenCalledWith({ approved: true, authorized: false });
+	});
+
+	it('emits no telemetry event when delegating to the shared handler (standard link button)', async () => {
+		(sendAndWaitWebhook as Mock).mockResolvedValue({ noWebhookResponse: true });
+		webhookFns.getBodyData.mockReturnValue({});
+		webhookFns.getNodeParameter.mockReturnValue(false);
+
+		await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(webhookFns.logHitlResponse).not.toHaveBeenCalled();
+	});
+
+	it('emits no telemetry event for an unrecognizable callback reference (400)', async () => {
+		webhookFns.getBodyData.mockReturnValue({ callback_query: { id: 'cbq-1', data: 'garbage' } });
+		webhookFns.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'chatApproval' ? true : undefined,
+		);
+		const status = vi.fn().mockReturnThis();
+		const send = vi.fn();
+		webhookFns.getResponseObject.mockReturnValue({ status, send } as never);
+
+		await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(webhookFns.logHitlResponse).not.toHaveBeenCalled();
+	});
+
 	it('does not edit the message when postDecisionBehavior is keepMessage', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
-		webhookFns.getNodeParameter.mockImplementation((name: unknown) => {
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
 			if (name === 'chatApproval') return true;
-			if (name === 'chatApprovalOptions') return { postDecisionBehavior: 'keepMessage' };
-			return undefined;
+			if (name === 'postDecisionBehavior') return 'keepMessage';
+			return fallback as never;
 		});
 		webhookFns.getHeaderData.mockReturnValue({
 			'x-telegram-bot-api-secret-token': VALID_SECRET_TOKEN,

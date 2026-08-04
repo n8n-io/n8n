@@ -1,6 +1,12 @@
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
-import { resolveAgentBuilderTarget, saveAgentBuilderTarget } from '../agent-target-binding';
+import {
+	getSessionAgentByRef,
+	normalizeAgentRef,
+	PENDING_AGENT_METADATA_KEY,
+	resolveAgentBuilderTarget,
+	saveAgentBuilderTarget,
+} from '../agent-target-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
 function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
@@ -12,7 +18,7 @@ function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
 		updatedAt: new Date(),
 	};
 	return {
-		getThread: vi.fn().mockResolvedValue(thread),
+		getThread: vi.fn<() => Promise<ThreadRecord>>().mockResolvedValue(thread),
 		patchThread: vi.fn().mockImplementation(
 			async (args: {
 				update: (current: ThreadRecord) => { metadata?: Record<string, unknown> };
@@ -34,17 +40,32 @@ function createContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCo
 	} as unknown as InstanceAiContext;
 }
 
-const TARGET = { agentId: 'agent-1', projectId: 'project-1' };
+const TARGET = { agentId: 'agent-1', projectId: 'project-1', ref: 'support-triage' };
+
+describe('normalizeAgentRef', () => {
+	it('slugifies casing, whitespace, and punctuation to the same key', () => {
+		expect(normalizeAgentRef('Support Triage')).toBe('support-triage');
+		expect(normalizeAgentRef('support_triage')).toBe('support-triage');
+		expect(normalizeAgentRef('  Support-Triage  ')).toBe('support-triage');
+	});
+
+	it('keeps non-Latin names addressable instead of slugifying them away', () => {
+		expect(normalizeAgentRef('支持代理')).toBe('支持代理');
+		expect(normalizeAgentRef('Служба поддержки')).toBe('служба-поддержки');
+	});
+});
 
 describe('agent-builder target binding', () => {
 	it('round-trips the target through thread metadata across contexts', async () => {
 		const threadMemory = createThreadMemory();
 		await saveAgentBuilderTarget(createContext({ threadMemory }), TARGET);
 
-		// A fresh context (next turn) resolves the persisted target and hydrates itself.
 		const nextTurn = createContext({ threadMemory });
-		await expect(resolveAgentBuilderTarget(nextTurn)).resolves.toEqual(TARGET);
-		expect(nextTurn.agentBuilderTarget).toEqual(TARGET);
+		await expect(resolveAgentBuilderTarget(nextTurn)).resolves.toEqual({
+			...TARGET,
+			ref: 'support-triage',
+		});
+		expect(nextTurn.agentBuilderTarget).toEqual({ ...TARGET, ref: 'support-triage' });
 	});
 
 	it('prefers the in-memory context target over the persisted binding', async () => {
@@ -83,11 +104,120 @@ describe('agent-builder target binding', () => {
 		expect(context.agentBuilderTarget).toBeUndefined();
 	});
 
+	it('clears the pending new-agent marker once a real agent binds, keeping other metadata', async () => {
+		const threadMemory = createThreadMemory({
+			[PENDING_AGENT_METADATA_KEY]: { projectId: 'project-1' },
+			someOtherKey: 'keep me',
+		});
+
+		await saveAgentBuilderTarget(createContext({ threadMemory }), TARGET);
+
+		const thread: ThreadRecord = await threadMemory.getThread();
+		expect(thread.metadata).not.toHaveProperty(PENDING_AGENT_METADATA_KEY);
+		expect(thread.metadata?.someOtherKey).toBe('keep me');
+	});
+
 	it('propagates a metadata write failure instead of claiming success', async () => {
 		const threadMemory = createThreadMemory();
 		threadMemory.patchThread.mockRejectedValue(new Error('storage unavailable'));
 		const context = createContext({ threadMemory });
 
 		await expect(saveAgentBuilderTarget(context, TARGET)).rejects.toThrow('storage unavailable');
+	});
+
+	describe('session agent registry', () => {
+		it('saves then resolves by ref', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Support Triage',
+				ref: 'support-triage',
+			});
+
+			await expect(
+				getSessionAgentByRef(createContext({ threadMemory }), 'Support_Triage'),
+			).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Support Triage',
+				ref: 'support-triage',
+			});
+		});
+
+		it('keeps the addressing ref when a later save changes only the display name', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+				ref: 'tracker',
+			});
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Renamed Tracker',
+			});
+
+			await expect(
+				getSessionAgentByRef(createContext({ threadMemory }), 'tracker'),
+			).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Renamed Tracker',
+				ref: 'tracker',
+			});
+		});
+
+		it('preserves the registered name when a later save for the same agent carries none', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+				ref: 'tracker',
+			});
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				ref: 'tracker',
+			});
+
+			await expect(
+				getSessionAgentByRef(createContext({ threadMemory }), 'tracker'),
+			).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+				ref: 'tracker',
+			});
+			await expect(resolveAgentBuilderTarget(createContext({ threadMemory }))).resolves.toEqual({
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'Tracker',
+				ref: 'tracker',
+			});
+		});
+
+		it('returns undefined for unknown refs, missing persistence, and malformed registries', async () => {
+			const threadMemory = createThreadMemory();
+			await saveAgentBuilderTarget(createContext({ threadMemory }), {
+				agentId: 'agent-1',
+				projectId: 'p',
+				name: 'First',
+				ref: 'first',
+			});
+			await expect(
+				getSessionAgentByRef(createContext({ threadMemory }), 'unknown'),
+			).resolves.toBeUndefined();
+
+			const noPersistence = createContext({ threadMemory: undefined, threadId: undefined });
+			await expect(getSessionAgentByRef(noPersistence, 'first')).resolves.toBeUndefined();
+
+			const malformed = createContext({
+				threadMemory: createThreadMemory({ instanceAiAgentBuilderTargets: 'garbage' }),
+			});
+			await expect(getSessionAgentByRef(malformed, 'first')).resolves.toBeUndefined();
+		});
 	});
 });

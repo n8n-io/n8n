@@ -1,24 +1,17 @@
-import {
-	type APPROVAL_TOOL_NAME,
-	type ASK_CREDENTIAL_TOOL_NAME,
-	type ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	type ASK_QUESTIONS_TOOL_NAME,
-	type CONFIGURE_CHANNEL_TOOL_NAME,
-	type N8N_CHAT_ACTION_TOOL_NAME,
-	type ChannelResumeData,
-	type ChannelSuspendPayload,
-	type CredentialResumeData,
-	type CredentialSuspendPayload,
-	type QuestionAnswer,
-	type QuestionsResumeData,
-	type QuestionsSuspendPayload,
-} from '@n8n/api-types';
+import { type APPROVAL_TOOL_NAME, type N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
 import type { ChatMessageStatus, ToolCallState } from './constants';
 
 export type { ChatMessageStatus, ToolCallState };
+
+export interface ThinkingSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
 
 export interface ToolCall {
 	tool: string;
@@ -27,6 +20,8 @@ export interface ToolCall {
 	output?: unknown;
 	canceled?: boolean;
 	state: ToolCallState;
+	/** Run id for a currently suspended call, used to cancel non-card HITL waits. */
+	runId?: string;
 	/** Epoch ms when the tool started executing (live: client clock; reload: recorded). */
 	startTime?: number;
 	/** Epoch ms when the tool settled. Absent while still running. */
@@ -38,11 +33,19 @@ export interface ToolCall {
 	 */
 	displaySummary?: string;
 	/**
-	 * Raw suspend payload from `tool-call-suspended` for non-builder tools
-	 * (e.g. `{ type: 'integration_action', ... }`). Builder interactive tools
-	 * instead overwrite `input` (their suspend payload IS the renderable input).
+	 * Raw suspend payload from `tool-call-suspended`. Kept separate from the
+	 * model-authored tool input because delegated tools can surface a nested
+	 * approval for a child tool.
 	 */
 	suspendPayload?: unknown;
+	/** Live progress of a delegated child, streamed while the delegation runs
+	 *  and restored from history when a `childTrace` was persisted on the
+	 *  parent's execution timeline. */
+	childProgress?: {
+		text: string;
+		reasoningSegments: ThinkingSegment[];
+		steps: Array<{ toolCallId: string; toolName: string; running: boolean }>;
+	};
 }
 
 interface InteractivePayloadBase {
@@ -73,34 +76,6 @@ export interface ApprovalResume {
 }
 
 /**
- * `ask_questions` / `ask_credential` / `configure_channel` each transform
- * the FE's resume payload into a distinct tool-output shape rather than
- * echoing it back verbatim. `resolvedValue` can therefore be EITHER shape
- * depending on where it came from:
- *
- * - the resume payload itself (optimistic UI update in `useAgentChatStream`'s
- *   `resume()`, applied before the backend confirms), or
- * - the real tool output (from a `tool-result` SSE event or persisted
- *   history) once the backend has actually run the tool's handler.
- *
- * Cards interpret `resolvedValue` defensively with type guards instead of
- * assuming one shape.
- */
-export type QuestionsResolvedValue =
-	| QuestionsResumeData
-	| { answered: boolean; answers?: Array<QuestionAnswer & { question?: string }> };
-
-export type CredentialResolvedValue =
-	| CredentialResumeData
-	| {
-			credentialId: string;
-			credentialName: string;
-			credentials?: Record<string, { id: string; name: string }>;
-	  };
-
-export type ChannelResolvedValue = ChannelResumeData | { connected: boolean };
-
-/**
  * Discriminated union describing the interactive card that a suspended tool call
  * renders in the chat. `toolName` is the discriminant.
  */
@@ -109,21 +84,6 @@ export type InteractivePayload =
 			toolName: typeof APPROVAL_TOOL_NAME;
 			input: ApprovalInput;
 			resolvedValue?: ApprovalResume;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof ASK_QUESTIONS_TOOL_NAME;
-			input: QuestionsSuspendPayload;
-			resolvedValue?: QuestionsResolvedValue;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof ASK_CREDENTIAL_TOOL_NAME | typeof ASK_EMBEDDING_CREDENTIAL_TOOL_NAME;
-			input: CredentialSuspendPayload;
-			resolvedValue?: CredentialResolvedValue;
-	  })
-	| (InteractivePayloadBase & {
-			toolName: typeof CONFIGURE_CHANNEL_TOOL_NAME;
-			input: ChannelSuspendPayload;
-			resolvedValue?: ChannelResolvedValue;
 	  })
 	| (InteractivePayloadBase & {
 			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;
@@ -137,16 +97,31 @@ export type ChatMessageRenderPart =
 	| { type: 'text'; text: string }
 	| { type: 'interactive'; toolCallId: string };
 
+export interface ChatMessageAttachment {
+	fileName: string;
+	mimeType: string;
+	sizeBytes?: number;
+	/** Server attachment id — set on history-loaded attachments; used to build the download URL. */
+	fileId?: string;
+	/** Local file backing the optimistic echo of a just-sent message (no fileId yet). */
+	file?: File;
+}
+
 export interface AgentsChatMessage {
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;
 	renderParts?: ChatMessageRenderPart[];
+	thinkingSegments?: ThinkingSegment[];
+	/** Legacy aggregate kept for messages created before timed segments were added. */
 	thinking?: string;
 	toolCalls?: ToolCall[];
 	status?: ChatMessageStatus;
 	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
+	attachments?: ChatMessageAttachment[];
+	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
+	executionId?: string;
 }
 
 export type ChatMessage = AgentsChatMessage;

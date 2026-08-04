@@ -87,6 +87,20 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.visibilitySource).toBe('root-text');
 	});
 
+	it('counts coalesced text-block facts as root text (durable-log reads carry no deltas)', () => {
+		const rootBlock: InstanceAiEvent = {
+			type: 'text-block',
+			runId,
+			agentId: rootAgentId,
+			responseId: 'resp-1',
+			payload: { text: 'hello' },
+		};
+		const decision = guard().evaluateTerminal([runStart(), rootBlock], 'completed');
+
+		expect(decision.action).toBe('none');
+		expect(decision.visibilitySource).toBe('root-text');
+	});
+
 	it('emits text fallback for silent completed runs with structured work counts only', () => {
 		const decision = guard().evaluateTerminal([runStart()], 'completed', {
 			workSummary: { totalToolCalls: 3, totalToolErrors: 1, toolCalls: [] },

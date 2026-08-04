@@ -13,6 +13,16 @@ import { errorMapper, normalizeFileSelector } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
+		displayName:
+			'The node can only access paths under /home/node/. Paths outside this directory (for example, /tmp/ or /data/) fail with an access error.',
+		name: 'cloudNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			showOnDeployment: 'cloud',
+		},
+	},
+	{
 		displayName: 'File(s) Selector',
 		name: 'fileSelector',
 		type: 'string',

@@ -21,7 +21,6 @@ import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import { AgentPublishService } from '../agent-publish.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationService } from './chat-integration.service';
@@ -60,6 +59,7 @@ const REQUIRED_BOT_SCOPES = [
 	'mpim:history',
 	'mpim:read',
 	'mpim:write',
+	'reactions:write',
 	'search:read.public',
 	'users:read',
 	'users:read.email',
@@ -134,7 +134,6 @@ export class SlackAppSetupService {
 		private readonly userRepository: UserRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly agentPublishService: AgentPublishService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
@@ -256,18 +255,17 @@ export class SlackAppSetupService {
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
 
-		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
-			broadcast: false,
-		});
-		await this.agentPublishService.publishAgent(
-			session.agentId,
-			session.projectId,
-			user,
-			undefined,
+		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+			agent,
+			integration,
 			{
-				syncIntegrations: false,
+				user,
+				modifiedBy: 'user',
+				broadcast: false,
 			},
 		);
+		if (savedAgent.activeVersionId === null) return;
+
 		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,
@@ -296,7 +294,7 @@ export class SlackAppSetupService {
 			},
 			features: {
 				app_home: {
-					home_tab_enabled: true,
+					home_tab_enabled: false,
 					messages_tab_enabled: true,
 					messages_tab_read_only_enabled: false,
 				},

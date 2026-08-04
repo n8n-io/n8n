@@ -118,20 +118,23 @@ export async function telegramSendAndWaitWebhook(
 	}
 
 	// --- authorization: reject a tap from outside the approver allow-list ---
-	const options = this.getNodeParameter('chatApprovalOptions', {}) as TelegramChatApprovalOptions;
 	const from = callbackQuery.from;
 	const callbackQueryId = callbackQuery.id ?? '';
 
-	const approverIds = (options.approverIds ?? '')
+	const approverIds = (this.getNodeParameter('approverIds', '') as string)
 		.split(',')
 		.map((id) => id.trim())
 		.filter(Boolean);
 
 	if (!isAuthorizedResponder(from, approverIds)) {
+		this.logHitlResponse({ approved: parsed.decision === 'a', authorized: false });
 		try {
 			await apiRequest.call(this, 'POST', 'answerCallbackQuery', {
 				callback_query_id: callbackQueryId,
-				text: options.unauthorizedReplyText ?? 'You are not authorized to respond to this request.',
+				text: this.getNodeParameter(
+					'unauthorizedReplyText',
+					'You are not authorized to respond to this request.',
+				) as string,
 				show_alert: true,
 			});
 		} catch {
@@ -156,7 +159,11 @@ export async function telegramSendAndWaitWebhook(
 	const chatId = callbackQuery.message?.chat?.id;
 	const messageId = callbackQuery.message?.message_id;
 	const approved = parsed.decision === 'a';
-	const postDecisionBehavior = options.postDecisionBehavior ?? 'showOutcome';
+	this.logHitlResponse({ approved, authorized: true });
+	const postDecisionBehavior = this.getNodeParameter(
+		'postDecisionBehavior',
+		'showOutcome',
+	) as TelegramChatApprovalOptions['postDecisionBehavior'];
 
 	if (chatId !== undefined && messageId !== undefined) {
 		await applyPostDecisionEdit(this, {

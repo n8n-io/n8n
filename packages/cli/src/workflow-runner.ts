@@ -12,6 +12,7 @@ import {
 	InstanceSettings,
 	StorageConfig,
 	WorkflowExecute,
+	WorkflowHasIssuesError,
 } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -44,6 +45,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
+import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
@@ -185,7 +187,7 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
-		restartExecutionId?: string,
+		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
 		// Establish the execution context before persisting to the DB.
@@ -233,7 +235,7 @@ export class WorkflowRunner {
 		}
 
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, restartExecutionId);
+		const executionId = await this.activeExecutions.add(data, existingExecution);
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);
@@ -280,10 +282,10 @@ export class WorkflowRunner {
 				data,
 				loadStaticData,
 				realtime,
-				restartExecutionId,
+				existingExecution?.executionId,
 			);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
+			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -479,6 +481,11 @@ export class WorkflowRunner {
 						),
 				);
 		} catch (error) {
+			if (error instanceof WorkflowHasIssuesError) {
+				await this.failExecution(data, executionId, error);
+				return;
+			}
+
 			await this.processError(
 				error,
 				new Date(),
@@ -519,7 +526,7 @@ export class WorkflowRunner {
 		};
 
 		if (!this.scalingService) {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			this.scalingService = Container.get(ScalingService);
 			await this.scalingService.setupQueue();
 		}
