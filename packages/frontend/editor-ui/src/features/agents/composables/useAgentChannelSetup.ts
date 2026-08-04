@@ -1,6 +1,7 @@
 import type {
 	AgentIntegrationSettings,
 	ChatIntegrationDescriptor,
+	SlackManagedAppSettings,
 	SlackManagedSetupState,
 } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -22,11 +23,14 @@ import type { AgentCredentialOption } from '../components/AgentCredentialSelect.
 import {
 	createSlackAgentApp,
 	createSlackManagerCredential,
+	getSlackManagedAppSettings,
 	getSlackManagedSetup,
 	installSlackManagedApp,
+	updateSlackManagedAppSettings,
 } from './useAgentApi';
 
 const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
+const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackManagerOAuth2Api';
 
 type ChannelSetupComponent = {
 	credentialId: string;
@@ -62,7 +66,11 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		managedSetupAvailable: false,
 		managerCredentials: [],
 	});
-	const managedSlackSetupLoading = ref(false);
+	const managedSlackSetupLoading = ref(true);
+	const managedSlackAppSettings = ref<SlackManagedAppSettings | null>(null);
+	const managedSlackAppSettingsLoading = ref(false);
+	const managedSlackAppSettingsError = ref(false);
+	let managedSlackSettingsRequestId = 0;
 
 	const projectId = computed(() => toValue(options.projectId));
 	const agentId = computed(() => toValue(options.agentId));
@@ -174,6 +182,67 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		}
 	}
 
+	function isManagedSlackCredential(credentialId: string): boolean {
+		return managedSlackSetup.value.managerCredentials.some((manager) =>
+			manager.workspaces.some((workspace) => workspace.botCredentialId === credentialId),
+		);
+	}
+
+	async function loadManagedSlackAppSettings(credentialId: string) {
+		const requestId = ++managedSlackSettingsRequestId;
+		if (!credentialId || !isManagedSlackCredential(credentialId)) {
+			managedSlackAppSettings.value = null;
+			managedSlackAppSettingsError.value = false;
+			return;
+		}
+
+		managedSlackAppSettingsLoading.value = true;
+		managedSlackAppSettingsError.value = false;
+		try {
+			const settings = await getSlackManagedAppSettings(
+				rootStore.restApiContext,
+				projectId.value,
+				agentId.value,
+				credentialId,
+			);
+			if (requestId === managedSlackSettingsRequestId) {
+				managedSlackAppSettings.value = settings;
+			}
+		} catch {
+			if (requestId === managedSlackSettingsRequestId) {
+				managedSlackAppSettings.value = null;
+				managedSlackAppSettingsError.value = true;
+			}
+		} finally {
+			if (requestId === managedSlackSettingsRequestId) {
+				managedSlackAppSettingsLoading.value = false;
+			}
+		}
+	}
+
+	async function saveManagedSlackAppSettings(
+		settings: Pick<
+			SlackManagedAppSettings,
+			'credentialId' | 'name' | 'description' | 'alwaysOnline'
+		>,
+	) {
+		managedSlackAppSettingsLoading.value = true;
+		managedSlackAppSettingsError.value = false;
+		try {
+			managedSlackAppSettings.value = await updateSlackManagedAppSettings(
+				rootStore.restApiContext,
+				projectId.value,
+				agentId.value,
+				settings,
+			);
+		} catch (error) {
+			managedSlackAppSettingsError.value = true;
+			throw error;
+		} finally {
+			managedSlackAppSettingsLoading.value = false;
+		}
+	}
+
 	function createCredential() {
 		const integration = currentIntegration.value;
 		const [primaryCredentialType] = integration?.credentialTypes ?? [];
@@ -259,6 +328,9 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 
 	async function connectSlackManagerCredential(credentialId?: string): Promise<boolean> {
 		let id = credentialId;
+		let createdCredentialId: string | undefined;
+		let createdCredentialAuthorizationStarted = false;
+		let connected = false;
 		if (!id) {
 			const created = await createSlackManagerCredential(
 				rootStore.restApiContext,
@@ -266,18 +338,39 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 				agentId.value,
 			);
 			id = created.id;
+			createdCredentialId = created.id;
 		}
 
-		credentialsStore.setCredentials([]);
-		const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
-			projectId: projectId.value,
-		});
-		const credential = credentials.find((item) => item.id === id && item.type === 'slackOAuth2Api');
-		if (!credential) throw new Error('Slack manager credential could not be loaded');
+		try {
+			credentialsStore.setCredentials([]);
+			const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+				projectId: projectId.value,
+			});
+			const credential = credentials.find(
+				(item) => item.id === id && item.type === SLACK_MANAGER_CREDENTIAL_TYPE,
+			);
+			if (!credential) throw new Error('Slack manager credential could not be loaded');
 
-		const connected = await credentialOAuth.authorize(credential);
-		if (connected) await loadManagedSlackSetup();
-		return connected;
+			if (createdCredentialId) {
+				createdCredentialAuthorizationStarted = true;
+				connected = await credentialOAuth.authorizeNewCredential(credential);
+			} else {
+				connected = await credentialOAuth.authorize(credential);
+			}
+			if (connected) await loadManagedSlackSetup();
+			return connected;
+		} finally {
+			if (createdCredentialId && !createdCredentialAuthorizationStarted) {
+				await credentialsStore.deleteCredential({ id: createdCredentialId });
+			}
+		}
+	}
+
+	function editSlackManagerCredential(credentialId: string) {
+		uiStore.openExistingCredential(credentialId, {
+			hideAskAssistant: true,
+			appendToBody: true,
+		});
 	}
 
 	async function installManagedSlack(
@@ -314,7 +407,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 				: currentIntegration.value
 					? [currentIntegration.value]
 					: [];
-		await fetchCredentials(integrations);
+		await Promise.all([fetchCredentials(integrations), loadManagedSlackSetup()]);
 		if (!type) return;
 
 		const before = credentialIdsBeforeNew.value[type];
@@ -328,10 +421,21 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		delete credentialIdsBeforeNew.value[type];
 	});
 
+	watch(
+		[() => selectedCredentials.value.slack ?? '', managedSlackSetup],
+		([credentialId]) => {
+			void loadManagedSlackAppSettings(credentialId);
+		},
+		{ deep: true },
+	);
+
 	return {
 		channelSetupRef,
 		managedSlackSetup,
 		managedSlackSetupLoading,
+		managedSlackAppSettings,
+		managedSlackAppSettingsLoading,
+		managedSlackAppSettingsError,
 		selectedCredentials,
 		credentialsLoading,
 		credentialPermissions,
@@ -343,7 +447,10 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		editCredential,
 		setupSlackApp,
 		loadManagedSlackSetup,
+		isManagedSlackCredential,
+		saveManagedSlackAppSettings,
 		connectSlackManagerCredential,
+		editSlackManagerCredential,
 		installManagedSlack,
 	};
 }

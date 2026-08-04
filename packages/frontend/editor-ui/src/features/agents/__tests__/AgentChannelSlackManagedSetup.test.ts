@@ -7,8 +7,9 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-function mountSetup(workspaceCount: number) {
+function mountSetup(workspaceCount: number, managerCredentialCount = 1) {
 	const connectManager = vi.fn().mockResolvedValue(true);
+	const editManager = vi.fn();
 	const installApp = vi.fn().mockResolvedValue(true);
 	const workspaces = Array.from({ length: workspaceCount }, (_, index) => ({
 		id: `T${index + 1}`,
@@ -19,20 +20,20 @@ function mountSetup(workspaceCount: number) {
 		props: {
 			setup: {
 				managedSetupAvailable: true,
-				managerCredentials: [
-					{
-						id: 'manager',
-						name: 'Slack manager',
-						connected: true,
-						reconnectRequired: false,
-						workspaces,
-					},
-				],
+				managerCredentials: Array.from({ length: managerCredentialCount }, (_, index) => ({
+					id: index === 0 ? 'manager' : `manager-${index + 1}`,
+					name: `Slack manager ${index + 1}`,
+					connected: true,
+					reconnectRequired: false,
+					workspaces,
+				})),
 			},
 			loading: false,
 			credentialPermissions: { create: true },
 			connectManager,
+			editManager,
 			installApp,
+			showManualSetup: true,
 		},
 		global: {
 			stubs: {
@@ -55,20 +56,28 @@ function mountSetup(workspaceCount: number) {
 					emits: ['click'],
 					template: '<button @click="$emit(\'click\')"><slot /></button>',
 				},
+				N8nIcon: { template: '<span />' },
+				N8nIconButton: {
+					emits: ['click'],
+					template: '<button @click="$emit(\'click\')" />',
+				},
+				N8nLink: {
+					emits: ['click'],
+					template: '<a @click="$emit(\'click\')"><slot /></a>',
+				},
 				N8nText: { template: '<span><slot /></span>' },
+				N8nTooltip: { template: '<div><slot /></div>' },
 			},
 		},
 	});
-	return { wrapper, connectManager, installApp };
+	return { wrapper, connectManager, editManager, installApp };
 }
 
 describe('AgentChannelSlackManagedSetup', () => {
-	it('shows a single workspace as static context and installs it', async () => {
+	it('selects the only workspace and installs it', async () => {
 		const { wrapper, installApp } = mountSetup(1);
 
-		expect(wrapper.get('[data-testid="slack-managed-workspace-static"]').text()).toBe(
-			'Workspace 1',
-		);
+		expect(wrapper.find('[data-testid="slack-managed-workspace-select"]').exists()).toBe(true);
 		await wrapper.get('[data-testid="slack-managed-install"]').trigger('click');
 
 		expect(installApp).toHaveBeenCalledWith('manager', 'T1');
@@ -78,7 +87,6 @@ describe('AgentChannelSlackManagedSetup', () => {
 		const { wrapper } = mountSetup(2);
 
 		expect(wrapper.find('[data-testid="slack-managed-workspace-select"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="slack-managed-workspace-static"]').exists()).toBe(false);
 	});
 
 	it('uses the credential dropdown new-credential action to connect another workspace', async () => {
@@ -87,5 +95,35 @@ describe('AgentChannelSlackManagedSetup', () => {
 		await wrapper.get('[data-testid="new-manager"]').trigger('click');
 
 		expect(connectManager).toHaveBeenCalledWith();
+	});
+
+	it('shows the Slack quick-connect button when no manager credential exists', async () => {
+		const { wrapper, connectManager } = mountSetup(0, 0);
+
+		expect(wrapper.find('[data-testid="slack-manager-credential-select"]').exists()).toBe(false);
+		const connectButton = wrapper.get('[data-testid="slack-manager-connect"]');
+		expect(connectButton.attributes('icon')).toBe('slack');
+		expect(connectButton.text()).toBe('agents.channels.slack.managed.connect.button');
+		await connectButton.trigger('click');
+
+		expect(connectManager).toHaveBeenCalledWith();
+	});
+
+	it('emits manual setup from the first step', async () => {
+		const { wrapper } = mountSetup(0, 0);
+
+		await wrapper.get('[data-testid="slack-managed-manual-setup"]').trigger('click');
+
+		expect(wrapper.emitted('manual-setup')).toHaveLength(1);
+	});
+
+	it('shows the credential selector and edit button when a manager credential exists', async () => {
+		const { wrapper, editManager } = mountSetup(1);
+
+		expect(wrapper.find('[data-testid="slack-manager-connect"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="select-manager"]').exists()).toBe(true);
+		await wrapper.get('[data-testid="slack-manager-edit"]').trigger('click');
+
+		expect(editManager).toHaveBeenCalledWith('manager');
 	});
 });

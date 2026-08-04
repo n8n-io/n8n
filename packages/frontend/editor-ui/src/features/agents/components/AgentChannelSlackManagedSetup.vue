@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import type { SlackManagedSetupState } from '@n8n/api-types';
-import { N8nButton, N8nOption, N8nSelect, N8nStepper, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nStepper,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
@@ -9,12 +18,21 @@ import CredentialsDropdown, {
 	type CredentialOption,
 } from '@/features/credentials/components/CredentialPicker/CredentialsDropdown.vue';
 
-const props = defineProps<{
-	setup: SlackManagedSetupState;
-	loading: boolean;
-	credentialPermissions: PermissionsRecord['credential'];
-	connectManager: (credentialId?: string) => Promise<boolean>;
-	installApp: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
+const props = withDefaults(
+	defineProps<{
+		setup: SlackManagedSetupState;
+		loading: boolean;
+		credentialPermissions: PermissionsRecord['credential'];
+		connectManager: (credentialId?: string) => Promise<boolean>;
+		editManager: (credentialId: string) => void;
+		installApp: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
+		showManualSetup?: boolean;
+	}>(),
+	{ showManualSetup: false },
+);
+
+const emit = defineEmits<{
+	'manual-setup': [];
 }>();
 
 const i18n = useI18n();
@@ -51,12 +69,14 @@ const managerConnected = computed(
 	() => selectedCredential.value?.connected === true && !selectedCredential.value.reconnectRequired,
 );
 const workspaces = computed(() => selectedCredential.value?.workspaces ?? []);
+const hasManagerCredentials = computed(() => props.setup.managerCredentials.length > 0);
 
 watch(
 	() => props.setup.managerCredentials,
 	(credentials) => {
 		if (!credentials.some(({ id }) => id === selectedCredentialId.value)) {
-			selectedCredentialId.value = credentials.find(({ connected }) => connected)?.id ?? '';
+			selectedCredentialId.value =
+				credentials.find(({ connected }) => connected)?.id ?? credentials[0]?.id ?? '';
 		}
 	},
 	{ immediate: true },
@@ -71,20 +91,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-async function connect() {
-	connecting.value = true;
-	error.value = null;
-	try {
-		// TODO: Check scopes for selected credential
-		const connected = await props.connectManager(selectedCredentialId.value || undefined);
-		if (!connected) error.value = 'connect';
-	} catch {
-		error.value = 'connect';
-	} finally {
-		connecting.value = false;
-	}
-}
 
 async function createCredential() {
 	connecting.value = true;
@@ -120,36 +126,62 @@ async function install() {
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
 					<template v-if="step.id === 'connect'">
-						<div :class="$style.actionRow">
-							<CredentialsDropdown
-								:credential-options="credentialOptions"
-								:selected-credential-id="selectedCredentialId || null"
-								:permissions="credentialPermissions"
-								:disabled="loading || connecting"
-								:loading="loading"
-								size="medium"
-								:placeholder="i18n.baseText('agents.channels.slack.managed.credential.placeholder')"
-								data-test-id="slack-manager-credential-select"
-								@credential-selected="selectedCredentialId = $event"
-								@new-credential="createCredential"
-							/>
+						<div :class="$style.connectRow">
 							<N8nButton
-								variant="subtle"
+								v-if="!hasManagerCredentials"
+								variant="outline"
+								size="large"
+								icon="slack"
 								:loading="connecting"
-								:disabled="loading || managerConnected || !selectedCredentialId"
+								:disabled="loading"
 								data-testid="slack-manager-connect"
-								@click="connect"
+								@click="createCredential"
 							>
-								{{
-									i18n.baseText(
-										selectedCredential?.reconnectRequired
-											? 'agents.channels.slack.managed.reconnect'
-											: managerConnected
-												? 'agents.channels.slack.managed.connected'
-												: 'generic.connect',
-									)
-								}}
+								{{ i18n.baseText('agents.channels.slack.managed.connect.button') }}
 							</N8nButton>
+							<div v-else :class="$style.actionRow">
+								<CredentialsDropdown
+									:credential-options="credentialOptions"
+									:selected-credential-id="selectedCredentialId || null"
+									:permissions="credentialPermissions"
+									:disabled="loading || connecting"
+									:loading="loading"
+									size="medium"
+									:placeholder="
+										i18n.baseText('agents.channels.slack.managed.credential.placeholder')
+									"
+									data-test-id="slack-manager-credential-select"
+									@credential-selected="selectedCredentialId = $event"
+									@new-credential="createCredential"
+								/>
+								<N8nTooltip :content="i18n.baseText('generic.edit')" placement="top">
+									<N8nIconButton
+										variant="ghost"
+										size="large"
+										icon-size="medium"
+										icon="pen"
+										:disabled="loading || connecting || !selectedCredentialId"
+										:aria-label="i18n.baseText('generic.edit')"
+										data-testid="slack-manager-edit"
+										@click="editManager(selectedCredentialId)"
+									/>
+								</N8nTooltip>
+							</div>
+							<N8nText
+								v-if="showManualSetup"
+								size="small"
+								color="text-light"
+								:class="{ [$style.manualLinkNewLine]: hasManagerCredentials }"
+							>
+								{{ i18n.baseText('agents.channels.slack.managed.manual.or') }}
+								<N8nLink
+									size="small"
+									data-testid="slack-managed-manual-setup"
+									@click="emit('manual-setup')"
+								>
+									{{ i18n.baseText('agents.channels.slack.managed.manual.link') }}
+								</N8nLink>
+							</N8nText>
 						</div>
 						<N8nText v-if="error === 'connect'" size="small" :class="$style.error">
 							{{ i18n.baseText('agents.channels.slack.managed.connect.error') }}
@@ -207,6 +239,18 @@ async function install() {
 	gap: var(--spacing--2xs);
 	padding-top: var(--spacing--xs);
 	min-width: 0;
+}
+
+.connectRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.manualLinkNewLine {
+	flex-basis: 100%;
 }
 
 .actionRow {

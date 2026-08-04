@@ -1,11 +1,10 @@
-import { randomBytes } from 'node:crypto';
-
 import type {
 	AgentIntegrationConfig,
 	CreateSlackManagerCredentialResponse,
 	CreateSlackAgentAppResponse,
 	InstallSlackManagedAppResponse,
 	SlackManagerCredentialSummary,
+	SlackManagedAppSettings,
 	SlackManagedSetupState,
 	SlackManagedWorkspaceSummary,
 	SlackAgentAppManifest,
@@ -19,10 +18,13 @@ import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
+import { randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
@@ -30,17 +32,21 @@ import { UrlService } from '@/services/url.service';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { AgentPublishService } from '../agent-publish.service';
+import { ChatIntegrationService } from './chat-integration.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
-import { ChatIntegrationService } from './chat-integration.service';
 
 const SLACK_APP_SETUP_CACHE_PREFIX = 'agents:slack-app-setup:';
 const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
 const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
 const SLACK_CREDENTIAL_TYPE = 'slackApi';
-const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackOAuth2Api';
-const REQUIRED_MANAGER_SCOPES = ['app_configurations:write', 'managed_apps:install'] as const;
+const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackManagerOAuth2Api';
+const REQUIRED_MANAGER_SCOPES = [
+	'app_configurations:read',
+	'app_configurations:write',
+	'managed_apps:install',
+] as const;
 const MANAGED_INSTALL_FALLBACK_ERRORS = new Set([
 	'installation_denied',
 	'app_approval_request_eligible',
@@ -112,11 +118,27 @@ interface InstallManagedSlackAppOptions extends GetManagedSetupStateOptions {
 	workspaceId: string;
 }
 
+interface GetManagedSlackAppSettingsOptions extends GetManagedSetupStateOptions {
+	credentialId: string;
+}
+
+interface UpdateManagedSlackAppSettingsOptions extends GetManagedSlackAppSettingsOptions {
+	name: string;
+	description: string;
+	alwaysOnline: boolean;
+}
+
 interface DeleteManagedSlackAppOptions {
 	projectId: string;
 	agentId: string;
 	credentialId: string;
 	user: User;
+}
+
+interface ManagedSlackAppDeletionWarning {
+	code: 'slack_app_not_deleted';
+	appId: string;
+	appConfigurationUrl: string;
 }
 
 interface SlackAppSetupSession {
@@ -130,6 +152,7 @@ interface SlackAppSetupSession {
 	redirectUrl: string;
 	managerCredentialId?: string;
 	teamId?: string;
+	teamName?: string;
 }
 
 interface ManagedSlackAppSession extends SlackAppSetupSession {
@@ -143,6 +166,14 @@ interface ManagerCredentialContext {
 	rawData: ICredentialDataDecryptedObject;
 	oauthTokenData: Record<string, unknown>;
 	accessToken: string;
+}
+
+interface ManagedBotCredentialContext {
+	credential: CredentialsEntity;
+	rawData: ICredentialDataDecryptedObject;
+	managedAppId: string;
+	managerCredentialId: string;
+	teamId: string;
 }
 
 function childRecord(
@@ -355,7 +386,7 @@ export class SlackAppSetupService {
 			{
 				name: 'Slack workspace manager',
 				type: SLACK_MANAGER_CREDENTIAL_TYPE,
-				data: { customScopes: true },
+				data: {},
 				projectId: options.projectId,
 			},
 			options.user,
@@ -390,11 +421,17 @@ export class SlackAppSetupService {
 			options.user,
 		);
 		const workspaces = await this.getWorkspacesFromContext(manager, agent, options.user);
-		if (!workspaces.some((workspace) => workspace.id === options.workspaceId)) {
+		const workspace = workspaces.find(({ id }) => id === options.workspaceId);
+		if (!workspace) {
 			throw new NotFoundError('Slack workspace is not available to this credential');
 		}
 
-		const { session, created } = await this.getOrCreateManagedAppSession(options, agent, manager);
+		const { session, created } = await this.getOrCreateManagedAppSession(
+			options,
+			agent,
+			manager,
+			workspace.name,
+		);
 		const response = await this.callManagerSlackApi(manager, 'apps.managedInstall', {
 			app_id: session.appId,
 			team_id: options.workspaceId,
@@ -439,7 +476,95 @@ export class SlackAppSetupService {
 		throw this.slackError('install the Slack app', response);
 	}
 
-	async deleteManagedAppForCredential(options: DeleteManagedSlackAppOptions): Promise<void> {
+	async getManagedAppSettings(
+		options: GetManagedSlackAppSettingsOptions,
+	): Promise<SlackManagedAppSettings> {
+		this.assertManagedSetupAvailable();
+		const bot = await this.getManagedBotCredentialContext(options);
+		const manager = await this.getManagerCredentialContext(
+			bot.managerCredentialId,
+			options.projectId,
+			options.user,
+		);
+		const manifest = await this.exportManagedAppManifest(manager, bot.managedAppId);
+		return this.managedAppSettingsFromManifest(options.credentialId, bot.managedAppId, manifest);
+	}
+
+	async updateManagedAppSettings(
+		options: UpdateManagedSlackAppSettingsOptions,
+	): Promise<SlackManagedAppSettings> {
+		this.assertManagedSetupAvailable();
+		const bot = await this.getManagedBotCredentialContext(options);
+		const manager = await this.getManagerCredentialContext(
+			bot.managerCredentialId,
+			options.projectId,
+			options.user,
+		);
+		const manifest = await this.exportManagedAppManifest(manager, bot.managedAppId);
+		const displayInformation = childRecord(manifest, 'display_information') ?? {};
+		const features = childRecord(manifest, 'features') ?? {};
+		const appHome = childRecord(features, 'app_home') ?? {};
+		const botUser = childRecord(features, 'bot_user') ?? {};
+		const updatedManifest = {
+			...manifest,
+			display_information: {
+				...displayInformation,
+				description: options.description,
+			},
+			features: {
+				...features,
+				app_home: {
+					...appHome,
+					home_tab_enabled: false,
+				},
+				bot_user: {
+					...botUser,
+					display_name: options.name,
+					always_online: options.alwaysOnline,
+				},
+			},
+		};
+
+		const updateResponse = await this.callManagerSlackApi(manager, 'apps.manifest.update', {
+			app_id: bot.managedAppId,
+			manifest: JSON.stringify(updatedManifest),
+		});
+		if (updateResponse.ok !== true) {
+			throw this.slackError('update the Slack app', updateResponse);
+		}
+
+		const installResponse = await this.callManagerSlackApi(manager, 'apps.managedInstall', {
+			app_id: bot.managedAppId,
+			team_id: bot.teamId,
+			bot_scopes: REQUIRED_BOT_SCOPES.join(','),
+		});
+		if (installResponse.ok !== true) {
+			throw this.slackError('reinstall the Slack app', installResponse);
+		}
+
+		const apiAccessTokens = childRecord(installResponse, 'api_access_tokens');
+		const botAccessToken = stringProperty(apiAccessTokens, 'bot_access_token');
+		if (botAccessToken?.startsWith('xoxb-')) {
+			const updatedData = { ...bot.rawData, accessToken: botAccessToken };
+			const encrypted = await this.credentialsService.createEncryptedData({
+				id: bot.credential.id,
+				name: bot.credential.name,
+				type: bot.credential.type,
+				data: updatedData,
+			});
+			await this.credentialsService.update(bot.credential.id, encrypted, updatedData);
+		}
+
+		return this.managedAppSettingsFromManifest(
+			options.credentialId,
+			bot.managedAppId,
+			updatedManifest,
+		);
+	}
+
+	async deleteManagedAppForCredential(
+		options: DeleteManagedSlackAppOptions,
+	): Promise<ManagedSlackAppDeletionWarning | undefined> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			options.credentialId,
 			options.user,
@@ -449,36 +574,52 @@ export class SlackAppSetupService {
 
 		const data = await this.credentialsService.decrypt(credential, true);
 		const managedAppId = typeof data.managedAppId === 'string' ? data.managedAppId : undefined;
-		if (!managedAppId) return;
 
 		const managerCredentialId =
 			typeof data.managerCredentialId === 'string' ? data.managerCredentialId : undefined;
-		if (!managerCredentialId) {
+		if (managedAppId && !managerCredentialId) {
 			throw new BadRequestError('The managed Slack app is missing its manager credential');
 		}
 
-		const manager = await this.getManagerCredentialContext(
-			managerCredentialId,
-			options.projectId,
-			options.user,
-		);
-		const response = await this.callManagerSlackApi(manager, 'apps.manifest.delete', {
-			app_id: managedAppId,
-		});
-		if (response.ok !== true && stringProperty(response, 'error') !== 'app_not_found') {
-			throw this.slackError('delete the Slack app', response);
+		let warning: ManagedSlackAppDeletionWarning | undefined;
+		if (managedAppId && managerCredentialId) {
+			try {
+				const manager = await this.getManagerCredentialContext(
+					managerCredentialId,
+					options.projectId,
+					options.user,
+				);
+				const response = await this.callManagerSlackApi(manager, 'apps.manifest.delete', {
+					app_id: managedAppId,
+				});
+				if (response.ok !== true && stringProperty(response, 'error') !== 'app_not_found') {
+					throw this.slackError('delete the Slack app', response);
+				}
+			} catch (error) {
+				if (!(error instanceof NotFoundError)) throw error;
+				warning = {
+					code: 'slack_app_not_deleted',
+					appId: managedAppId,
+					appConfigurationUrl: `https://api.slack.com/apps/${encodeURIComponent(managedAppId)}`,
+				};
+			}
+
+			if (typeof data.teamId === 'string') {
+				await this.cacheService.delete(
+					this.managedAppCacheKey({
+						projectId: options.projectId,
+						agentId: options.agentId,
+						managerCredentialId,
+						workspaceId: data.teamId,
+					}),
+				);
+			}
 		}
 
-		if (typeof data.teamId === 'string') {
-			await this.cacheService.delete(
-				this.managedAppCacheKey({
-					projectId: options.projectId,
-					agentId: options.agentId,
-					managerCredentialId,
-					workspaceId: data.teamId,
-				}),
-			);
+		if (credential.isManaged || managedAppId) {
+			await this.credentialsService.delete(options.user, credential.id);
 		}
+		return warning;
 	}
 
 	async completeInstall(options: CompleteSlackAppInstallOptions): Promise<void> {
@@ -517,7 +658,12 @@ export class SlackAppSetupService {
 			throw new BadRequestError('Slack did not return a Bot User OAuth Token');
 		}
 
-		await this.connectBotCredential(agent, user, accessToken, session);
+		const team = childRecord(tokenResponse, 'team');
+		const teamName = stringProperty(team, 'name');
+		await this.connectBotCredential(agent, user, accessToken, {
+			...session,
+			...(teamName ? { teamName } : {}),
+		});
 		if (session.managerCredentialId && session.teamId) {
 			await this.cacheService.delete(
 				this.managedAppCacheKey({
@@ -528,6 +674,77 @@ export class SlackAppSetupService {
 				}),
 			);
 		}
+	}
+
+	private async getManagedBotCredentialContext(
+		options: GetManagedSlackAppSettingsOptions,
+	): Promise<ManagedBotCredentialContext> {
+		const agent = await this.getAgent(options.agentId, options.projectId);
+		const integration = agent.integrations?.find(
+			(item) => item.type === 'slack' && item.credentialId === options.credentialId,
+		);
+		if (!integration) {
+			throw new NotFoundError('Managed Slack connection not found');
+		}
+
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			options.credentialId,
+			options.user,
+			['credential:read'],
+		);
+		if (!credential || credential.type !== SLACK_CREDENTIAL_TYPE) {
+			throw new NotFoundError(`Credential "${options.credentialId}" not found`);
+		}
+
+		const rawData = await this.credentialsService.decrypt(credential, true);
+		const managedAppId = stringProperty(rawData, 'managedAppId');
+		const managerCredentialId = stringProperty(rawData, 'managerCredentialId');
+		const teamId = stringProperty(rawData, 'teamId');
+		if (!managedAppId || !managerCredentialId || !teamId) {
+			throw new BadRequestError('The Slack connection is not managed by n8n');
+		}
+
+		return { credential, rawData, managedAppId, managerCredentialId, teamId };
+	}
+
+	private async exportManagedAppManifest(
+		manager: ManagerCredentialContext,
+		managedAppId: string,
+	): Promise<Record<string, unknown>> {
+		const response = await this.callManagerSlackApi(manager, 'apps.manifest.export', {
+			app_id: managedAppId,
+		});
+		if (response.ok !== true) {
+			throw this.slackError('load the Slack app settings', response);
+		}
+		const manifest = childRecord(response, 'manifest');
+		if (!manifest) {
+			throw new BadRequestError('Slack returned an incomplete app manifest');
+		}
+		return manifest;
+	}
+
+	private managedAppSettingsFromManifest(
+		credentialId: string,
+		appId: string,
+		manifest: Record<string, unknown>,
+	): SlackManagedAppSettings {
+		const displayInformation = childRecord(manifest, 'display_information');
+		const features = childRecord(manifest, 'features');
+		const botUser = features ? childRecord(features, 'bot_user') : undefined;
+		const name = stringProperty(botUser, 'display_name');
+		const description = stringProperty(displayInformation, 'description');
+		if (!name || !description || typeof botUser?.always_online !== 'boolean') {
+			throw new BadRequestError('Slack returned incomplete managed app settings');
+		}
+		return {
+			credentialId,
+			appId,
+			name,
+			description,
+			alwaysOnline: botUser.always_online,
+			appHomeUrl: `https://api.slack.com/apps/${encodeURIComponent(appId)}/app-home`,
+		};
 	}
 
 	private async getManagerCredentialContext(
@@ -674,12 +891,18 @@ export class SlackAppSetupService {
 		options: InstallManagedSlackAppOptions,
 		agent: Agent,
 		manager: ManagerCredentialContext,
+		workspaceName: string,
 	): Promise<{ session: ManagedSlackAppSession; created: boolean }> {
 		const key = this.managedAppCacheKey(options);
 		const cached = await this.cacheService.get<unknown>(key);
 		if (typeof cached === 'string') {
 			const session = await this.decryptManagedAppSession(cached);
-			if (session) return { session, created: false };
+			if (session) {
+				return {
+					session: { ...session, teamName: session.teamName ?? workspaceName },
+					created: false,
+				};
+			}
 		}
 
 		const redirectUrl = this.callbackUrl(options.projectId, options.agentId);
@@ -703,6 +926,7 @@ export class SlackAppSetupService {
 		if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
 			throw new BadRequestError('Slack returned an incomplete app setup response');
 		}
+		await this.setManagedAppIcon(manager, appId);
 
 		const session = {
 			projectId: options.projectId,
@@ -715,6 +939,7 @@ export class SlackAppSetupService {
 			redirectUrl,
 			managerCredentialId: options.managerCredentialId,
 			teamId: options.workspaceId,
+			teamName: workspaceName,
 			oauthAuthorizeUrl,
 		} satisfies ManagedSlackAppSession;
 		await this.cacheService.set(
@@ -795,9 +1020,9 @@ export class SlackAppSetupService {
 		accessToken: string,
 		session: SlackAppSetupSession,
 	): Promise<string> {
-		const credential = await this.credentialsService.createUnmanagedCredential(
+		const credential = await this.credentialsService.createManagedCredential(
 			{
-				name: this.credentialName(agent.name),
+				name: this.credentialName(session.teamName, agent.name),
 				type: SLACK_CREDENTIAL_TYPE,
 				data: {
 					accessToken,
@@ -881,7 +1106,7 @@ export class SlackAppSetupService {
 			},
 			features: {
 				app_home: {
-					home_tab_enabled: true,
+					home_tab_enabled: false,
 					messages_tab_enabled: true,
 					messages_tab_read_only_enabled: false,
 				},
@@ -991,8 +1216,9 @@ export class SlackAppSetupService {
 		return `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}`;
 	}
 
-	private credentialName(agentName: string): string {
-		return `Slack - ${agentName || DEFAULT_SLACK_APP_NAME}`.slice(0, 128);
+	private credentialName(workspaceName: string | undefined, agentName: string): string {
+		const parts = [workspaceName ?? 'Slack', agentName || DEFAULT_SLACK_APP_NAME].filter(Boolean);
+		return parts.join(' - ').slice(0, 128);
 	}
 
 	private sanitiseSlackAppName(raw: string): string {
@@ -1006,7 +1232,7 @@ export class SlackAppSetupService {
 
 	private async callSlackApi(
 		method: string,
-		params: Record<string, string>,
+		params: Record<string, string> | FormData,
 		headers: Record<string, string> = {},
 	): Promise<Record<string, unknown>> {
 		try {
@@ -1017,10 +1243,10 @@ export class SlackAppSetupService {
 				.request({
 					method: 'POST',
 					url: `https://slack.com/api/${method}`,
-					headers: {
-						...headers,
-						'Content-Type': 'application/x-www-form-urlencoded',
-					},
+					headers:
+						params instanceof FormData
+							? headers
+							: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
 					body: params,
 					returnFullResponse: true,
 					ignoreHttpStatusErrors: true, // Status errors are ignored because Slack signals failures in the JSON body
@@ -1032,6 +1258,25 @@ export class SlackAppSetupService {
 			return data;
 		} catch {
 			return { ok: false, error: 'slack_request_failed' };
+		}
+	}
+
+	private async setManagedAppIcon(
+		manager: ManagerCredentialContext,
+		managedAppId: string,
+	): Promise<void> {
+		const image = await readFile(join(__dirname, 'assets', 'n8n-bot-icon.png'));
+		const formData = new FormData();
+		formData.set('token', manager.accessToken);
+		formData.set('app_id', managedAppId);
+		formData.set(
+			'file',
+			new Blob([new Uint8Array(image)], { type: 'image/png' }),
+			'n8n-bot-icon.png',
+		);
+		const response = await this.callSlackApi('apps.icon.set', formData);
+		if (response.ok !== true) {
+			throw this.slackError('set the Slack app icon', response);
 		}
 	}
 

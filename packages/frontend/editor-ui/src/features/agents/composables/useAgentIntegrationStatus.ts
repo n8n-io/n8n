@@ -1,5 +1,9 @@
 import { ref, type Ref } from 'vue';
-import type { AgentIntegrationStatusEntry, AgentIntegrationSettings } from '@n8n/api-types';
+import type {
+	AgentDisconnectIntegrationResponse,
+	AgentIntegrationStatusEntry,
+	AgentIntegrationSettings,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -144,13 +148,23 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		}
 	}
 
-	async function disconnect(type: string, credId: string): Promise<void> {
+	async function disconnect(
+		type: string,
+		credId: string,
+	): Promise<AgentDisconnectIntegrationResponse> {
 		state.loadingMap.value[type] = true;
 		try {
-			await disconnectIntegration(rootStore.restApiContext, projectId, agentId, type, credId);
+			const result = await disconnectIntegration(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				type,
+				credId,
+			);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
+			return result;
 		} finally {
 			state.loadingMap.value[type] = false;
 		}

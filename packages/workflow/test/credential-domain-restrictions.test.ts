@@ -629,6 +629,14 @@ describe('injectDomainRestrictionFields', () => {
 			);
 			expect(properties).toHaveLength(1);
 		});
+
+		it('does not inject fields when hideDomainRestrictionFields is true', () => {
+			const result = injectDomainRestrictionFields(
+				baseCredential({ hideDomainRestrictionFields: true }),
+			);
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBe(dummyField);
+		});
 	});
 
 	describe('when injection is not required', () => {

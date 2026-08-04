@@ -46,6 +46,15 @@ export interface AgentIntegrationStatusResponse {
 	integrations: AgentIntegrationStatusEntry[];
 }
 
+export interface AgentDisconnectIntegrationResponse {
+	status: 'disconnected';
+	warning?: {
+		code: 'slack_app_not_deleted';
+		appId: string;
+		appConfigurationUrl: string;
+	};
+}
+
 export interface CreateSlackAgentAppResponse {
 	appId: string;
 	installUrl: string;
@@ -73,10 +82,19 @@ export interface SlackManagedSetupState {
 	managerCredentials: SlackManagerCredentialSummary[];
 }
 
+export interface SlackManagedAppSettings {
+	credentialId: string;
+	appId: string;
+	name: string;
+	description: string;
+	alwaysOnline: boolean;
+	appHomeUrl: string;
+}
+
 export interface CreateSlackManagerCredentialResponse {
 	id: string;
 	name: string;
-	type: 'slackOAuth2Api';
+	type: 'slackManagerOAuth2Api';
 	isResolvable: false;
 }
 

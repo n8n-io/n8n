@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nDropdownMenu, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
@@ -12,6 +12,7 @@ interface Props {
 	integration: ChatIntegrationDescriptor;
 	connected: boolean;
 	managedSlackSetup?: boolean;
+	loading?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -55,51 +56,65 @@ function handleConnectedAction(action: ChannelAction) {
 
 <template>
 	<li :class="$style.channelItem">
-		<div :class="$style.iconWrapper">
-			<N8nIcon
-				:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
-				:size="28"
-				:class="$style.channelIcon"
-			/>
-		</div>
-		<div :class="$style.content">
-			<N8nText :class="$style.name" size="medium" bold color="text-dark">
-				{{ integration.label }}
-			</N8nText>
-		</div>
+		<template v-if="loading">
+			<div :class="$style.iconWrapper">
+				<N8nLoading variant="circle" />
+			</div>
+			<div :class="$style.content">
+				<N8nLoading variant="text" :class="$style.nameSkeleton" />
+			</div>
+			<div :class="$style.channelActions">
+				<N8nLoading variant="rect" :class="$style.buttonSkeleton" />
+			</div>
+		</template>
 
-		<div :class="$style.channelActions">
-			<N8nDropdownMenu
-				v-if="connected"
-				:items="connectedActions"
-				placement="bottom-end"
-				:modal="false"
-				@select="handleConnectedAction"
-			>
-				<template #trigger>
-					<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
-						<div :class="$style.connectedDotContainer">
-							<span :class="[$style.connectedDot, $style.ping]" />
-							<span :class="$style.connectedDot" />
-						</div>
-						{{ i18n.baseText('agents.channels.modal.connected') }}
-					</N8nButton>
-				</template>
-			</N8nDropdownMenu>
-			<N8nButton
-				v-else
-				variant="subtle"
-				size="medium"
-				:icon="managedSlackSetup ? 'slack' : undefined"
-				@click="emit('setup', integration.type)"
-			>
-				{{
-					i18n.baseText(
-						managedSlackSetup ? 'agents.channels.slack.managed.addToSlack' : 'generic.connect',
-					)
-				}}
-			</N8nButton>
-		</div>
+		<template v-else>
+			<div :class="$style.iconWrapper">
+				<N8nIcon
+					:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
+					:size="28"
+					:class="$style.channelIcon"
+				/>
+			</div>
+			<div :class="$style.content">
+				<N8nText :class="$style.name" size="medium" bold color="text-dark">
+					{{ integration.label }}
+				</N8nText>
+			</div>
+
+			<div :class="$style.channelActions">
+				<N8nDropdownMenu
+					v-if="connected"
+					:items="connectedActions"
+					placement="bottom-end"
+					:modal="false"
+					@select="handleConnectedAction"
+				>
+					<template #trigger>
+						<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
+							<div :class="$style.connectedDotContainer">
+								<span :class="[$style.connectedDot, $style.ping]" />
+								<span :class="$style.connectedDot" />
+							</div>
+							{{ i18n.baseText('agents.channels.modal.connected') }}
+						</N8nButton>
+					</template>
+				</N8nDropdownMenu>
+				<N8nButton
+					v-else
+					variant="subtle"
+					size="medium"
+					:icon="managedSlackSetup ? 'slack' : undefined"
+					@click="emit('setup', integration.type)"
+				>
+					{{
+						i18n.baseText(
+							managedSlackSetup ? 'agents.channels.slack.managed.addToSlack' : 'generic.connect',
+						)
+					}}
+				</N8nButton>
+			</div>
+		</template>
 	</li>
 </template>
 
@@ -124,6 +139,22 @@ function handleConnectedAction(action: ChannelAction) {
 
 .channelIcon {
 	color: var(--icon-color--strong);
+}
+
+.nameSkeleton {
+	width: 30%;
+}
+
+.buttonSkeleton {
+	height: 32px;
+	width: 80px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	div {
+		height: 100%;
+	}
 }
 
 .content {

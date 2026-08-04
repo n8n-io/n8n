@@ -6,6 +6,7 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
+	N8nLink,
 	N8nStepper,
 	N8nText,
 } from '@n8n/design-system';
@@ -37,6 +38,7 @@ const props = withDefaults(
 		errorIsConflict?: boolean;
 		forceNewCredential?: boolean;
 		setupMode?: 'simple' | 'advanced';
+		showAutomaticSetup?: boolean;
 	}>(),
 	{
 		connected: false,
@@ -54,6 +56,7 @@ const props = withDefaults(
 		errorMessage: '',
 		errorIsConflict: false,
 		forceNewCredential: false,
+		showAutomaticSetup: false,
 	},
 );
 
@@ -61,6 +64,7 @@ const emit = defineEmits<{
 	create: [];
 	edit: [];
 	connect: [];
+	'automatic-setup': [];
 }>();
 
 const i18n = useI18n();
@@ -186,16 +190,28 @@ defineExpose({ credentialId, validationError: null });
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
 					<div v-if="step.id === 'create-token'" :class="$style.createTokenContainer">
-						<N8nButton
-							href="https://api.slack.com/apps"
-							target="_blank"
-							variant="subtle"
-							size="medium"
-							icon="slack"
-							data-testid="slack-app-configuration-token-link"
-						>
-							{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
-						</N8nButton>
+						<div :class="$style.dashboardRow">
+							<N8nButton
+								href="https://api.slack.com/apps"
+								target="_blank"
+								variant="subtle"
+								size="medium"
+								icon="slack"
+								data-testid="slack-app-configuration-token-link"
+							>
+								{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
+							</N8nButton>
+							<N8nText v-if="showAutomaticSetup" size="small" color="text-light">
+								{{ i18n.baseText('agents.channels.slack.managed.manual.or') }}
+								<N8nLink
+									size="small"
+									data-testid="slack-automatic-setup"
+									@click="emit('automatic-setup')"
+								>
+									{{ i18n.baseText('agents.channels.slack.manual.automatic.link') }}
+								</N8nLink>
+							</N8nText>
+						</div>
 						<AgentChannelSlackSetupSnapshots />
 					</div>
 
@@ -411,6 +427,12 @@ defineExpose({ credentialId, validationError: null });
 	gap: var(--spacing--sm);
 	width: 100%;
 	min-width: 0;
+}
+
+.dashboardRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .manualPanel {

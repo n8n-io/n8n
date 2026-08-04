@@ -10,13 +10,15 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import AgentChannelListItem from './AgentChannelListItem.vue';
+import AgentChannelSlackManagedSettings from './AgentChannelSlackManagedSettings.vue';
 import AgentChannelSlackManagedSetup from './AgentChannelSlackManagedSetup.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 import AgentChannelLinearSetup from './AgentChannelLinearSetup.vue';
@@ -53,6 +55,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const {
 	fetchStatus,
@@ -67,6 +70,7 @@ const {
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const currentView = ref<ChannelView>(props.view);
+const slackSetupMode = ref<'managed' | 'manual'>('managed');
 const credentialIdAtEditOpen = ref('');
 const pendingCredentialReplacement = ref<{
 	channelType: string;
@@ -103,6 +107,9 @@ const {
 	channelSetupRef,
 	managedSlackSetup,
 	managedSlackSetupLoading,
+	managedSlackAppSettings,
+	managedSlackAppSettingsLoading,
+	managedSlackAppSettingsError,
 	selectedCredentials,
 	credentialsLoading,
 	credentialPermissions,
@@ -112,8 +119,11 @@ const {
 	loadChannelState: loadSharedChannelState,
 	createCredential,
 	editCredential,
+	isManagedSlackCredential,
+	saveManagedSlackAppSettings,
 	setupSlackApp: runSlackAppSetup,
 	connectSlackManagerCredential,
+	editSlackManagerCredential,
 	installManagedSlack,
 } = useAgentChannelSetup({
 	projectId: () => props.projectId,
@@ -123,6 +133,8 @@ const {
 	fetchStatus,
 	isIntegrationConnected,
 });
+const managedSlackSettingsRef = ref<InstanceType<typeof AgentChannelSlackManagedSettings>>();
+const listLoading = computed(() => managedSlackSetupLoading.value);
 
 const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
 const isCredentialReplacementInProgress = computed(
@@ -158,12 +170,22 @@ const showFooterActions = computed(() => isEditMode.value && selectedChannelType
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
 );
+const selectedSlackCredentialIsManaged = computed(
+	() =>
+		selectedChannelType.value === 'slack' &&
+		isManagedSlackCredential(currentChannelCredentialId.value),
+);
 
 const canSaveChannelConfig = computed(() => {
-	const validationError = channelSetupRef.value?.validationError;
+	const validationError =
+		channelSetupRef.value?.validationError ??
+		(selectedSlackCredentialIsManaged.value
+			? managedSlackSettingsRef.value?.validationError
+			: null);
 	return (
 		selectedChannelType.value !== null &&
 		currentChannelCredentialId.value.length > 0 &&
+		!managedSlackAppSettingsLoading.value &&
 		!validationError
 	);
 });
@@ -207,6 +229,9 @@ function integrationConnectedText(channelType: string): string {
 }
 
 function goToSetup(channelType: string) {
+	if (channelType === 'slack') {
+		slackSetupMode.value = 'managed';
+	}
 	currentView.value = `${channelType}_setup` as ChannelView;
 }
 
@@ -271,6 +296,11 @@ async function saveChannelConfig() {
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelSetupRef.value?.validationError) return;
+	if (channelType === 'slack' && selectedSlackCredentialIsManaged.value) {
+		const settings = managedSlackSettingsRef.value?.currentSettings;
+		if (!settings || managedSlackSettingsRef.value?.validationError) return;
+		await saveManagedSlackAppSettings(settings);
+	}
 	const pendingReplacement = pendingCredentialReplacement.value;
 	if (pendingReplacement?.channelType === channelType) {
 		selectedCredentials.value[channelType] = pendingReplacement.replacementCredentialId;
@@ -323,23 +353,51 @@ async function installManagedSlackApp(
 async function handleDisconnected(channelType: string, credentialId?: string) {
 	// Draft channels (configured but missing a credential) have no connected
 	// credential — send '' so the backend removes the draft entry by type.
-	await disconnect(channelType, credentialId ?? connectedCredentials.value[channelType] ?? '');
+	const result = await disconnect(
+		channelType,
+		credentialId ?? connectedCredentials.value[channelType] ?? '',
+	);
 	await fetchStatus([channelType]);
 	if (!isIntegrationConnected(channelType)) {
 		emit('channel-disconnected', channelType);
 	}
 	emit('agent-changed');
+	return result;
 }
 
 async function removeCurrentChannel() {
 	const channelType = selectedChannelType.value;
 	if (!channelType || hasPendingCredentialReplacement.value || isLoading(channelType)) return;
 
-	await handleDisconnected(
-		channelType,
-		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
-	);
-	closeModal();
+	try {
+		const result = await handleDisconnected(
+			channelType,
+			credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+		);
+		if (result.warning?.code === 'slack_app_not_deleted') {
+			toast.showMessage({
+				type: 'warning',
+				title: i18n.baseText('agents.channels.modal.slackAppNotDeleted.title'),
+				message: h('span', [
+					i18n.baseText('agents.channels.modal.slackAppNotDeleted.message'),
+					' ',
+					h(
+						'a',
+						{
+							href: result.warning.appConfigurationUrl,
+							target: '_blank',
+							rel: 'noopener noreferrer',
+						},
+						i18n.baseText('agents.channels.modal.slackAppNotDeleted.link'),
+					),
+				]),
+				duration: 0,
+			});
+		}
+		closeModal();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.channels.modal.removeChannelError'));
+	}
 }
 
 async function loadChannelState() {
@@ -354,6 +412,7 @@ watch(
 	() => props.open,
 	(isOpen) => {
 		if (isOpen) {
+			slackSetupMode.value = 'managed';
 			void loadChannelState();
 			currentView.value = props.view;
 		} else {
@@ -432,6 +491,7 @@ watch(
 							:key="integration.type"
 							:integration="integration"
 							:connected="isConnected(integration.type)"
+							:loading="listLoading"
 							:managed-slack-setup="
 								integration.type === 'slack' && managedSlackSetup.managedSetupAvailable
 							"
@@ -444,12 +504,19 @@ watch(
 
 				<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
 					<AgentChannelSlackManagedSetup
-						v-if="selectedChannelType === 'slack' && managedSlackSetup.managedSetupAvailable"
+						v-if="
+							selectedChannelType === 'slack' &&
+							managedSlackSetup.managedSetupAvailable &&
+							slackSetupMode === 'managed'
+						"
 						:setup="managedSlackSetup"
 						:loading="managedSlackSetupLoading"
 						:credential-permissions="credentialPermissions"
 						:connect-manager="connectSlackManagerCredential"
+						:edit-manager="editSlackManagerCredential"
 						:install-app="installManagedSlackApp"
+						show-manual-setup
+						@manual-setup="slackSetupMode = 'manual'"
 					/>
 					<AgentChannelSlackSetup
 						v-else-if="selectedChannelType === 'slack'"
@@ -468,9 +535,13 @@ watch(
 						:error-message="hasError('slack') ? errorMessages.slack : ''"
 						:error-is-conflict="errorIsConflict.slack"
 						:setup-mode="simpleSetup ? 'simple' : 'advanced'"
+						:show-automatic-setup="
+							managedSlackSetup.managedSetupAvailable && slackSetupMode === 'manual'
+						"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
+						@automatic-setup="slackSetupMode = 'managed'"
 					/>
 					<AgentChannelLinearSetup
 						v-else-if="currentIntegration?.type === 'linear'"
@@ -542,6 +613,14 @@ watch(
 						:show-edit-button="!hasPendingCredentialReplacement"
 						@create="createCredential"
 						@edit="editCredential"
+					/>
+					<AgentChannelSlackManagedSettings
+						v-if="selectedSlackCredentialIsManaged"
+						ref="managedSlackSettingsRef"
+						:settings="managedSlackAppSettings"
+						:loading="managedSlackAppSettingsLoading"
+						:error="managedSlackAppSettingsError"
+						:disabled="hasPendingCredentialReplacement || isLoading('slack')"
 					/>
 					<N8nText
 						v-if="credentialReplacementError"
@@ -625,7 +704,10 @@ watch(
 						<N8nButton
 							variant="solid"
 							size="medium"
-							:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
+							:loading="
+								(selectedChannelType ? isLoading(selectedChannelType) : false) ||
+								managedSlackAppSettingsLoading
+							"
 							:disabled="
 								!canSaveChannelConfig ||
 								(selectedChannelType ? isLoading(selectedChannelType) : true)

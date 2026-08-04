@@ -2,6 +2,7 @@ import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentConfigValidationResponse,
+	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
@@ -17,6 +18,7 @@ import type {
 	CreateSlackManagerCredentialResponse,
 	CreateSlackAgentAppResponse,
 	InstallSlackManagedAppResponse,
+	SlackManagedAppSettings,
 	SlackManagedSetupState,
 	SlackAgentAppManifestResponse,
 	VectorStoreTestResult,
@@ -197,8 +199,8 @@ export const disconnectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
-): Promise<{ status: string }> => {
-	return await makeRestApiRequest(
+): Promise<AgentDisconnectIntegrationResponse> => {
+	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
@@ -364,6 +366,33 @@ export const installSlackManagedApp = async (
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/managed/install`,
 		{ managerCredentialId, workspaceId },
+	);
+};
+
+export const getSlackManagedAppSettings = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+): Promise<SlackManagedAppSettings> => {
+	return await makeRestApiRequest<SlackManagedAppSettings>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/managed/settings/${credentialId}`,
+	);
+};
+
+export const updateSlackManagedAppSettings = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	settings: Pick<SlackManagedAppSettings, 'credentialId' | 'name' | 'description' | 'alwaysOnline'>,
+): Promise<SlackManagedAppSettings> => {
+	return await makeRestApiRequest<SlackManagedAppSettings>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/managed/settings`,
+		settings,
 	);
 };
 

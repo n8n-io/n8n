@@ -91,6 +91,8 @@ describe('AgentIntegrationsController route access scopes', () => {
 		['getManagedSlackSetup', 'agent:read'],
 		['createManagedSlackCredential', 'agent:update'],
 		['installManagedSlackApp', 'agent:update'],
+		['getManagedSlackAppSettings', 'agent:read'],
+		['updateManagedSlackAppSettings', 'agent:update'],
 		['disconnectIntegration', 'agent:update'],
 		['integrationStatus', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -651,6 +653,51 @@ describe('AgentIntegrationsController integration credentials', () => {
 		);
 	});
 
+	it('returns a warning while still disconnecting when the managed Slack app remains', async () => {
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		slackAppSetupService.deleteManagedAppForCredential.mockResolvedValue({
+			code: 'slack_app_not_deleted',
+			appId: 'A123',
+			appConfigurationUrl: 'https://api.slack.com/apps/A123',
+		});
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const { controller } = makeController({
+			agentRepository,
+			slackAppSetupService,
+			chatIntegrationService,
+			agentIntegrationPersistenceService,
+		});
+
+		await expect(
+			controller.disconnectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'slack', credentialId: 'cred-slack' },
+			),
+		).resolves.toEqual({
+			status: 'disconnected',
+			warning: {
+				code: 'slack_app_not_deleted',
+				appId: 'A123',
+				appConfigurationUrl: 'https://api.slack.com/apps/A123',
+			},
+		});
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalled();
+		expect(agentIntegrationPersistenceService.removeCredentialIntegration).toHaveBeenCalled();
+	});
+
 	it('disconnects a draft integration entry with an empty credentialId', async () => {
 		const agentRepository = mock<AgentRepository>();
 		const agent = {
@@ -832,6 +879,44 @@ describe('AgentIntegrationsController integration credentials', () => {
 			status: 'connected',
 			appId: 'A123',
 			credentialId: 'bot-credential',
+		});
+	});
+
+	it('delegates managed Slack app settings updates', async () => {
+		const slackAppSetupService = mock<SlackAppSetupService>();
+		slackAppSetupService.updateManagedAppSettings.mockResolvedValue({
+			credentialId: 'bot-credential',
+			appId: 'A123',
+			name: 'Support Bot',
+			description: 'Handles support requests',
+			alwaysOnline: true,
+			appHomeUrl: 'https://api.slack.com/apps/A123/app-home',
+		});
+		const { controller } = makeController({ slackAppSetupService });
+
+		await controller.updateManagedSlackAppSettings(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+			} as never,
+			undefined as never,
+			'agent-1',
+			{
+				credentialId: 'bot-credential',
+				name: 'Support Bot',
+				description: 'Handles support requests',
+				alwaysOnline: true,
+			},
+		);
+
+		expect(slackAppSetupService.updateManagedAppSettings).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			user: { id: 'user-1' },
+			credentialId: 'bot-credential',
+			name: 'Support Bot',
+			description: 'Handles support requests',
+			alwaysOnline: true,
 		});
 	});
 

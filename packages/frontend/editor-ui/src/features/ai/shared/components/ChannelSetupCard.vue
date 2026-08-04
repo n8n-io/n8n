@@ -8,7 +8,7 @@
  * `resolve` event that the consumer translates into its own confirm/resolve
  * transport call.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
@@ -21,6 +21,7 @@ import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChan
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
 import AgentChannelLinearSetup from '@/features/agents/components/AgentChannelLinearSetup.vue';
+import AgentChannelSlackManagedSetup from '@/features/agents/components/AgentChannelSlackManagedSetup.vue';
 import AgentChannelSlackSetup from '@/features/agents/components/AgentChannelSlackSetup.vue';
 import AgentChannelTelegramSetup from '@/features/agents/components/AgentChannelTelegramSetup.vue';
 import type { AgentResource } from '@/features/agents/types';
@@ -67,6 +68,8 @@ const currentIntegration = computed<ChatIntegrationDescriptor | null>(() => {
 
 const {
 	channelSetupRef,
+	managedSlackSetup,
+	managedSlackSetupLoading,
 	selectedCredentials,
 	credentialsLoading,
 	credentialPermissions,
@@ -76,6 +79,9 @@ const {
 	createCredential,
 	editCredential,
 	setupSlackApp: runSlackAppSetup,
+	connectSlackManagerCredential,
+	editSlackManagerCredential,
+	installManagedSlack,
 } = useAgentChannelSetup({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
@@ -178,6 +184,32 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 	}
 }
 
+async function connectSlackManagerCredentialForSetup(credentialId?: string): Promise<boolean> {
+	if (isBlocked() || connectionInFlight.value) return false;
+	connectionInFlight.value = true;
+	try {
+		return await connectSlackManagerCredential(credentialId);
+	} finally {
+		connectionInFlight.value = false;
+	}
+}
+
+async function installManagedSlackApp(
+	managerCredentialId: string,
+	workspaceId: string,
+): Promise<boolean> {
+	if (isBlocked() || connectionInFlight.value) return false;
+	connectionInFlight.value = true;
+	try {
+		return await installManagedSlack(managerCredentialId, workspaceId, () => {
+			notifyAgentUpdated();
+			finish(true);
+		});
+	} finally {
+		connectionInFlight.value = false;
+	}
+}
+
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
 	await loadSharedChannelState(integrations);
@@ -212,8 +244,26 @@ watch(
 		</header>
 
 		<div :class="$style.bodyWrapper">
+			<div
+				v-if="integrationType === 'slack' && managedSlackSetupLoading"
+				:class="$style.setupSkeleton"
+				data-testid="slack-managed-setup-skeleton"
+			>
+				<N8nLoading variant="p" :rows="4" />
+			</div>
+
+			<AgentChannelSlackManagedSetup
+				v-else-if="integrationType === 'slack' && managedSlackSetup.managedSetupAvailable"
+				:setup="managedSlackSetup"
+				:loading="managedSlackSetupLoading || connectionInFlight"
+				:credential-permissions="credentialPermissions"
+				:connect-manager="connectSlackManagerCredentialForSetup"
+				:edit-manager="editSlackManagerCredential"
+				:install-app="installManagedSlackApp"
+			/>
+
 			<AgentChannelSlackSetup
-				v-if="integrationType === 'slack'"
+				v-else-if="integrationType === 'slack'"
 				ref="channelSetupRef"
 				v-model="selectedCredentials.slack"
 				:connected="isConnected"
@@ -335,6 +385,10 @@ watch(
 
 .bodyWrapper {
 	padding: 0 var(--spacing--sm);
+}
+
+.setupSkeleton {
+	padding-block: var(--spacing--xs);
 }
 
 .footer {

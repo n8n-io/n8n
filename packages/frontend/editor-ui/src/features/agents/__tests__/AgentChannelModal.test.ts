@@ -1,14 +1,23 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import type { SlackManagedSetupState } from '@n8n/api-types';
+import type { SlackManagedAppSettings, SlackManagedSetupState } from '@n8n/api-types';
 import { ref } from 'vue';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import AgentChannelModal from '../components/AgentChannelModal.vue';
 
+const { showErrorMock, showMessageMock } = vi.hoisted(() => ({
+	showErrorMock: vi.fn(),
+	showMessageMock: vi.fn(),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => key,
 	}),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 const catalog = ref([
@@ -29,6 +38,11 @@ const managedSlackSetup = ref<SlackManagedSetupState>({
 	managedSetupAvailable: false,
 	managerCredentials: [],
 });
+const managedSlackSetupLoading = ref(false);
+const managedSlackAppSettings = ref<SlackManagedAppSettings | null>(null);
+const managedSlackAppSettingsLoading = ref(false);
+const managedSlackAppSettingsError = ref(false);
+const saveManagedSlackAppSettingsMock = vi.fn();
 const fetchStatusMock = vi.fn().mockResolvedValue(undefined);
 const connectMock = vi.fn(
 	async (channelType: string, credentialId: string): Promise<{ status: string }> => {
@@ -42,6 +56,7 @@ const disconnectMock = vi
 		if (connectedCredentials.value[channelType] === credentialId) {
 			delete connectedCredentials.value[channelType];
 		}
+		return { status: 'disconnected' as const };
 	});
 const createCredentialMock = vi.fn();
 const editCredentialMock = vi.fn();
@@ -72,7 +87,10 @@ vi.mock('../composables/useAgentChannelSetup', () => ({
 	useAgentChannelSetup: () => ({
 		channelSetupRef: ref(),
 		managedSlackSetup,
-		managedSlackSetupLoading: ref(false),
+		managedSlackSetupLoading,
+		managedSlackAppSettings,
+		managedSlackAppSettingsLoading,
+		managedSlackAppSettingsError,
 		selectedCredentials,
 		credentialsLoading: ref(false),
 		credentialPermissions: ref({}),
@@ -94,19 +112,26 @@ vi.mock('../composables/useAgentChannelSetup', () => ({
 		}),
 		createCredential: createCredentialMock,
 		editCredential: editCredentialMock,
+		isManagedSlackCredential: (credentialId: string) =>
+			managedSlackSetup.value.managerCredentials.some((manager) =>
+				manager.workspaces.some((workspace) => workspace.botCredentialId === credentialId),
+			),
+		saveManagedSlackAppSettings: saveManagedSlackAppSettingsMock,
 		setupSlackApp: vi.fn(),
 		connectSlackManagerCredential: vi.fn(),
+		editSlackManagerCredential: vi.fn(),
 		installManagedSlack: vi.fn(),
 	}),
 }));
 
 const channelSetupStub = (testId: string) => ({
-	props: ['mode', 'loading'],
+	props: ['mode', 'loading', 'showAutomaticSetup'],
+	emits: ['automatic-setup'],
 	setup: () => ({
 		currentSettings: { accessMode: 'all' },
 		validationError: null,
 	}),
-	template: `<div data-testid="${testId}" :data-mode="mode" :data-loading="loading" />`,
+	template: `<div data-testid="${testId}" :data-mode="mode" :data-loading="loading"><button v-if="showAutomaticSetup" data-testid="switch-to-automatic" @click="$emit('automatic-setup')" /></div>`,
 });
 
 function mountModal(props: Record<string, unknown>) {
@@ -149,13 +174,29 @@ function mountModal(props: Record<string, unknown>) {
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
 				AgentChannelListItem: {
-					props: ['integration', 'managedSlackSetup'],
+					props: ['integration', 'managedSlackSetup', 'loading'],
 					emits: ['setup'],
 					template:
-						'<li data-testid="channel-list-item" :data-managed="managedSlackSetup"><button data-testid="setup-channel" @click="$emit(\'setup\', integration.type)" /></li>',
+						'<li data-testid="channel-list-item" :data-channel="integration.type" :data-managed="managedSlackSetup" :data-loading="loading"><button data-testid="setup-channel" @click="$emit(\'setup\', integration.type)" /></li>',
 				},
 				AgentChannelSlackManagedSetup: {
-					template: '<div data-testid="slack-managed-setup" />',
+					emits: ['manual-setup'],
+					template:
+						'<div data-testid="slack-managed-setup"><button data-testid="switch-to-manual" @click="$emit(\'manual-setup\')" /></div>',
+				},
+				AgentChannelSlackManagedSettings: {
+					props: ['settings'],
+					setup: () => ({
+						currentSettings: {
+							credentialId: 'slack-credential',
+							name: 'Support Bot',
+							description: 'Handles support requests',
+							alwaysOnline: true,
+						},
+						validationError: null,
+					}),
+					template:
+						'<div data-testid="slack-managed-settings" :data-credential-id="settings?.credentialId" />',
 				},
 				AgentChannelSlackSetup: channelSetupStub('slack-setup'),
 				AgentChannelLinearSetup: channelSetupStub('linear-setup'),
@@ -188,6 +229,13 @@ describe('AgentChannelModal', () => {
 			managedSetupAvailable: false,
 			managerCredentials: [],
 		};
+		managedSlackAppSettings.value = null;
+		managedSlackAppSettingsLoading.value = false;
+		managedSlackAppSettingsError.value = false;
+		saveManagedSlackAppSettingsMock.mockReset();
+		showErrorMock.mockReset();
+		showMessageMock.mockReset();
+		managedSlackSetupLoading.value = false;
 		vi.clearAllMocks();
 	});
 
@@ -195,6 +243,15 @@ describe('AgentChannelModal', () => {
 		const wrapper = mountModal({ view: 'list' });
 
 		expect(wrapper.findAll('[data-testid="channel-list-item"]')).toHaveLength(catalog.value.length);
+	});
+
+	it('shows every channel list item as loading until managed setup resolves', () => {
+		managedSlackSetupLoading.value = true;
+		const wrapper = mountModal({ view: 'list' });
+
+		for (const item of wrapper.findAll('[data-testid="channel-list-item"]')) {
+			expect(item.attributes('data-loading')).toBe('true');
+		}
 	});
 
 	it('renders the per-channel setup view for a setup view', () => {
@@ -222,6 +279,31 @@ describe('AgentChannelModal', () => {
 			.findAll('[data-testid="channel-list-item"]')
 			.find((item) => item.attributes('data-managed') === 'true');
 		await slackItem?.get('[data-testid="setup-channel"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="slack-setup"]').exists()).toBe(false);
+	});
+
+	it('switches managed Slack setup to manual and resets when reopened', async () => {
+		managedSlackSetup.value = {
+			managedSetupAvailable: true,
+			managerCredentials: [],
+		};
+		const wrapper = mountModal({ view: 'slack_setup' });
+		await flushPromises();
+
+		await wrapper.get('[data-testid="switch-to-manual"]').trigger('click');
+		expect(wrapper.find('[data-testid="slack-managed-setup"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="slack-setup"]').exists()).toBe(true);
+		await wrapper.get('[data-testid="switch-to-automatic"]').trigger('click');
+		expect(wrapper.find('[data-testid="slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="slack-setup"]').exists()).toBe(false);
+
+		await wrapper.get('[data-testid="switch-to-manual"]').trigger('click');
+
+		await wrapper.setProps({ open: false });
+		await wrapper.setProps({ open: true });
+		await flushPromises();
 
 		expect(wrapper.find('[data-testid="slack-managed-setup"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="slack-setup"]').exists()).toBe(false);
@@ -255,6 +337,69 @@ describe('AgentChannelModal', () => {
 		},
 	);
 
+	it('shows app settings only for a managed Slack credential and saves them before reconnecting', async () => {
+		connectedCredentials.value.slack = 'slack-credential';
+		managedSlackSetup.value = {
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [
+						{
+							id: 'T123',
+							name: 'Example workspace',
+							connected: true,
+							managedAppId: 'A123',
+							botCredentialId: 'slack-credential',
+						},
+					],
+				},
+			],
+		};
+		managedSlackAppSettings.value = {
+			credentialId: 'slack-credential',
+			appId: 'A123',
+			name: 'Support Bot',
+			description: 'Handles support requests',
+			alwaysOnline: true,
+			appHomeUrl: 'https://api.slack.com/apps/A123/app-home',
+		};
+		saveManagedSlackAppSettingsMock.mockResolvedValue(undefined);
+		const wrapper = mountModal({
+			view: 'slack_edit',
+			connectedChannels: ['slack'],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-managed-settings"]').exists()).toBe(true);
+		await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+		await flushPromises();
+
+		expect(saveManagedSlackAppSettingsMock).toHaveBeenCalledWith({
+			credentialId: 'slack-credential',
+			name: 'Support Bot',
+			description: 'Handles support requests',
+			alwaysOnline: true,
+		});
+		expect(saveManagedSlackAppSettingsMock.mock.invocationCallOrder[0]).toBeLessThan(
+			connectMock.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not show app settings for an unmanaged Slack credential', async () => {
+		connectedCredentials.value.slack = 'slack-credential';
+		const wrapper = mountModal({
+			view: 'slack_edit',
+			connectedChannels: ['slack'],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-managed-settings"]').exists()).toBe(false);
+	});
+
 	it.each(['slack', 'linear', 'telegram'])(
 		'removes the exact %s channel binding and closes the modal',
 		async (channelType) => {
@@ -278,10 +423,69 @@ describe('AgentChannelModal', () => {
 		},
 	);
 
+	it('shows a toast and keeps the modal open when removing a channel fails', async () => {
+		const error = new Error('Slack app could not be deleted');
+		connectedCredentials.value.slack = 'slack-credential';
+		disconnectMock.mockRejectedValueOnce(error);
+		const wrapper = mountModal({
+			view: 'slack_edit',
+			connectedChannels: ['slack'],
+		});
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.channels.modal.removeChannelError');
+		expect(wrapper.emitted('channel-disconnected')).toBeUndefined();
+		expect(wrapper.emitted('agent-changed')).toBeUndefined();
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-channel-modal"]').exists()).toBe(true);
+	});
+
+	it('warns with a Slack configuration link after partial managed app removal', async () => {
+		connectedCredentials.value.slack = 'slack-credential';
+		disconnectMock.mockImplementationOnce(async () => {
+			delete connectedCredentials.value.slack;
+			return {
+				status: 'disconnected',
+				warning: {
+					code: 'slack_app_not_deleted',
+					appId: 'A123',
+					appConfigurationUrl: 'https://api.slack.com/apps/A123',
+				},
+			} as const;
+		});
+		const wrapper = mountModal({
+			view: 'slack_edit',
+			connectedChannels: ['slack'],
+		});
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(showMessageMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'warning',
+				title: 'agents.channels.modal.slackAppNotDeleted.title',
+				duration: 0,
+			}),
+		);
+		const notification = showMessageMock.mock.calls[0]?.[0] as {
+			message: { children: Array<{ props?: { href?: string } }> };
+		};
+		expect(notification.message.children[2]?.props?.href).toBe('https://api.slack.com/apps/A123');
+		expect(wrapper.emitted('channel-disconnected')).toEqual([['slack']]);
+		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
+	});
+
 	it('keeps the channel listed when another binding of the same type remains', async () => {
 		connectedCredentials.value.linear = 'linear-credential';
 		disconnectMock.mockImplementationOnce(async () => {
 			connectedCredentials.value.linear = 'linear-credential-other';
+			return { status: 'disconnected' as const };
 		});
 		const wrapper = mountModal({
 			view: 'linear_edit',

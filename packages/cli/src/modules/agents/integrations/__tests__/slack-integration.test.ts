@@ -1,11 +1,59 @@
-import { SlackIntegration } from '../platforms/slack-integration';
+/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
+import { mock } from 'vitest-mock-extended';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+
+import type { Agent } from '../../entities/agent.entity';
+import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatInstance } from '../chat-integration.service';
+import { SlackIntegration } from '../platforms/slack-integration';
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;
+	const agentRepository = mock<AgentRepository>();
 
 	beforeEach(() => {
-		integration = new SlackIntegration();
+		agentRepository.findByIntegrationCredential.mockReset();
+		integration = new SlackIntegration(agentRepository);
+	});
+
+	it('allows a credential that is not connected to another agent', async () => {
+		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
+
+		await expect(
+			integration.onBeforeConnect({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				credentialId: 'credential-1',
+				credential: { accessToken: 'xoxb-token' },
+				webhookUrlFor: vi.fn(),
+			}),
+		).resolves.toBeUndefined();
+		expect(agentRepository.findByIntegrationCredential).toHaveBeenCalledWith(
+			'slack',
+			'credential-1',
+			'project-1',
+			'agent-1',
+		);
+	});
+
+	it('rejects a credential connected to another agent', async () => {
+		agentRepository.findByIntegrationCredential.mockResolvedValue([
+			{ id: 'agent-2', name: 'Other Agent' } as Agent,
+		]);
+
+		const result = integration.onBeforeConnect({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: 'credential-1',
+			credential: { accessToken: 'xoxb-token' },
+			webhookUrlFor: vi.fn(),
+		});
+
+		await expect(result).rejects.toThrow(ConflictError);
+		await expect(result).rejects.toThrow(
+			'Slack credential is already connected to agent "Other Agent"',
+		);
 	});
 
 	it('advertises Slack messaging and reaction actions', () => {

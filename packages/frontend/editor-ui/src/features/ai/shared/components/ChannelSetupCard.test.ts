@@ -24,6 +24,8 @@ const mocks = vi.hoisted(() => {
 		connect: vi.fn(),
 		getAgent: vi.fn(),
 		createSlackAgentApp: vi.fn(),
+		getSlackManagedSetup: vi.fn(),
+		installSlackManagedApp: vi.fn(),
 	};
 });
 
@@ -64,6 +66,8 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
 	createSlackAgentApp: mocks.createSlackAgentApp,
+	getSlackManagedSetup: mocks.getSlackManagedSetup,
+	installSlackManagedApp: mocks.installSlackManagedApp,
 }));
 
 vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
@@ -99,6 +103,22 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 				>Install Slack app</button>
 			</div>
 		`,
+	},
+}));
+
+vi.mock('@/features/agents/components/AgentChannelSlackManagedSetup.vue', () => ({
+	default: {
+		props: ['setup', 'installApp'],
+		setup(props: {
+			installApp?: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
+		}) {
+			async function install() {
+				await props.installApp?.('manager-credential', 'T123');
+			}
+			return { install };
+		},
+		template:
+			'<div data-testid="mock-slack-managed-setup"><button data-testid="mock-slack-managed-install" @click="install">Install</button></div>',
 	},
 }));
 
@@ -138,6 +158,15 @@ describe('ChannelSetupCard', () => {
 		mocks.connect.mockResolvedValue({ status: 'connected' });
 		mocks.getAgent.mockResolvedValue({ name: 'Agent', id: 'agent-1' });
 		mocks.createSlackAgentApp.mockResolvedValue({ installUrl: 'https://slack.com/oauth/install' });
+		mocks.getSlackManagedSetup.mockResolvedValue({
+			managedSetupAvailable: false,
+			managerCredentials: [],
+		});
+		mocks.installSlackManagedApp.mockResolvedValue({
+			status: 'connected',
+			appId: 'A123',
+			credentialId: 'slack-credential',
+		});
 	});
 
 	it('renders the setup UI for the requested integration type', async () => {
@@ -149,6 +178,30 @@ describe('ChannelSetupCard', () => {
 		);
 	});
 
+	it('renders a skeleton until managed Slack setup availability is known', async () => {
+		let resolveManagedSetup: (value: {
+			managedSetupAvailable: boolean;
+			managerCredentials: [];
+		}) => void = () => {};
+		mocks.getSlackManagedSetup.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveManagedSetup = resolve;
+			}),
+		);
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-managed-setup-skeleton"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(false);
+
+		resolveManagedSetup({ managedSetupAvailable: false, managerCredentials: [] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="slack-managed-setup-skeleton"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(true);
+	});
+
 	it('emits resolve({ approved: true }) after the channel connects', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
@@ -157,6 +210,38 @@ describe('ChannelSetupCard', () => {
 		await flushPromises();
 
 		expect(mocks.connect).toHaveBeenCalledWith('slack', 'cred-1', undefined);
+		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
+	});
+
+	it('uses managed Slack setup and resolves after the app installs', async () => {
+		mocks.getSlackManagedSetup.mockResolvedValueOnce({
+			managedSetupAvailable: true,
+			managerCredentials: [
+				{
+					id: 'manager-credential',
+					name: 'Slack manager',
+					connected: true,
+					reconnectRequired: false,
+					workspaces: [{ id: 'T123', name: 'Workspace', connected: false }],
+				},
+			],
+		});
+		const wrapper = mountCard();
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="mock-slack-managed-install"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.installSlackManagedApp).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			'manager-credential',
+			'T123',
+		);
 		expect(wrapper.emitted('resolve')).toEqual([[{ approved: true }]]);
 	});
 
