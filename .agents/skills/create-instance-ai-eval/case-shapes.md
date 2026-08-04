@@ -563,10 +563,14 @@ it on a dev instance, fetch both, scrub, paste. Things worth knowing:
   agent (`Support Bot` and `support-bot` both become `support-bot`), so a seed
   whose agent names differ only by case, spacing or punctuation is refused rather
   than silently dropping one from the registry.
-- **Credential ids don't survive**, so leave them out. An id from the instance you
-  authored on won't exist on the eval instance, and a dangling one is something the
-  agent may try to "fix" — which then grades as its behaviour. Declare credentials
-  the live turn should see in the case's `credentials[]` instead.
+- **A config carrying credential ids is refused** — at case load and at restore.
+  An id from the instance you authored on doesn't exist on the eval instance, and
+  a dangling one is something the agent may try to "fix", which then grades as its
+  behaviour. Strip them from a fetched config (an empty `credential` is fine, it's
+  what a draft agent has) and declare what the live turn should see in the case's
+  own `credentials[]`. Unlike a workflow's node credentials, these can't be removed
+  for you: `credential` is *required* on vector stores and episodic memory, so
+  dropping one would leave an agent that fails validation.
 - **Requires the agents module.** A seeded agent restore fails loudly (as a
   framework issue) on an instance where agents are disabled, rather than running
   the case unseeded.
