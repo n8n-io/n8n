@@ -1,17 +1,24 @@
-# Sourcing cases from real failures (LangTracer + LangSmith)
+# Sourcing cases from real conversations (LangTracer + LangSmith)
 
-The strongest cases encode a **real** failure, not an invented premise. Two
-connections help you find one and confirm it — and neither is usually the
-durable artifact. You author a synthetic case from what you learn (reach for
-`seed.mode: "replay"` only per [`case-shapes.md`](case-shapes.md)).
+The strongest cases encode a **real** failure, not an invented premise. But the
+case you keep is always one you **wrote**: a real thread tells you what to test,
+and you author the case — prompt, workflow, seed and all — from what you learned.
+That is what makes the committed fixture durable and free of anyone's personal
+data. The [scrub recipe](#scrubbing-a-real-workflow-into-a-synthetic-seed) below is
+that path, and it's the default.
 
-- **LangTracer — discover.** It ingests real Instance AI conversations and
-  clusters them into **capability-gap themes** ("what fails, at scale"), and
-  stores each analysed conversation. Use it to find high-frequency real failures
-  worth encoding, instead of guessing a failure mode.
-- **LangSmith — verify.** Eval runs and prod conversations land in LangSmith as
-  raw traces. When a finding or a flaky result is ambiguous, read the raw trace
-  to confirm exactly what happened — which tool calls fired, and their payloads.
+Replaying a thread at run time (`seed.mode: "replay"`) is a **secondary mode**: a
+local check that the failure is real, not something to commit. See
+[Replaying a thread first](#replaying-a-thread-first-the-secondary-mode).
+
+Two connections make either possible:
+
+- **LangTracer — discover.** It analyses Instance AI conversations and clusters
+  them into **capability-gap themes** ("what fails, at scale"). Use it to find
+  high-frequency real failures worth encoding, instead of guessing a failure mode.
+- **LangSmith — verify.** Eval runs and production conversations land in LangSmith
+  as traces. When a finding or a flaky result is ambiguous, read the trace to
+  confirm what happened — which tool calls fired, and their payloads.
 
 ## Connect the LangTracer MCP
 
@@ -204,6 +211,21 @@ You don't need to do these by hand:
   node definitions or recorded tool calls.
 
 Everything else in the seed is yours to check.
+
+### Replaying a thread first (the secondary mode)
+
+Scrubbing takes work, and sometimes you want to know the failure is real before you
+put that work in. That's what `seed.mode: "replay"` is for: give it a thread id and
+the harness rebuilds the conversation from its trace at run time, then drives the
+turn you care about. Nothing about the thread lands in the repo — the case holds only
+the id.
+
+Treat it as a local check, not a case. The trace it depends on ages out in about two
+weeks, so a committed replay case stops working; and it stands up someone's real
+conversation on the eval instance, which is exactly what scrubbing exists to avoid.
+So run it, confirm the failure, then scrub the workflow it hands you into a seeded
+case that will still be there next quarter. Details and limits in
+[`case-shapes.md`](case-shapes.md).
 
 ## Sourcing a regression baseline (successful builds)
 
