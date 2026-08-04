@@ -130,8 +130,7 @@ export async function cleanupBuild(
 
 	// Agent-anchored builds create a first-class Agent, and a seed may have restored
 	// one — delete both with the rest of the build's artifacts so no caller has to
-	// remember to. A seeded agent the live turn also touched appears in both, so
-	// dedupe rather than deleting it twice.
+	// remember to. A seeded agent the live turn also edited appears in both.
 	const agentRef = findAgentArtifactRef(build.artifactRefs);
 	const agentIds = new Set([...(agentRef ? [agentRef.id] : []), ...(build.createdAgentIds ?? [])]);
 	if (agentIds.size > 0) {

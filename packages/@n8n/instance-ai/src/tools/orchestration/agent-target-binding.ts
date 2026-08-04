@@ -120,12 +120,9 @@ export async function resolveAgentBuilderTarget(
 }
 
 /**
- * The thread metadata that binds a thread to an agent build target: the active
- * target plus its registry entry. Exported for eval thread seeding, which has no
- * `InstanceAiContext` to hand `saveAgentBuilderTarget` — without the binding a
- * seeded thread's next `build-agent` call has no target to continue and creates a
- * second agent beside the seeded one. Last target wins as the active one,
- * mirroring "most recently targeted".
+ * Same metadata `saveAgentBuilderTarget` writes, as a plain value — for eval
+ * thread seeding, which has no `InstanceAiContext` to hand it. Last target wins
+ * as the active one, mirroring "most recently targeted".
  */
 export function agentBuilderTargetMetadata(targets: AgentBuilderTarget[]): Record<string, unknown> {
 	const entries = targets.map((target) =>

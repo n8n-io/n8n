@@ -74,11 +74,9 @@ export class AgentsService {
 			availableInMCP?: boolean;
 			id?: string;
 			adoptUnconfiguredOnCollision?: boolean;
-			/** Ready-made config to create the agent with, instead of the empty draft
-			 *  below. Used by eval thread seeding, which recreates an already-built
-			 *  agent in one insert. */
+			/** Create with this config instead of the empty draft below, so eval thread
+			 *  seeding can recreate an already-built agent in one insert. */
 			schema?: AgentJsonConfig;
-			/** Skill bodies keyed by the ids `schema.skills[]` references. */
 			skills?: Record<string, AgentSkill>;
 		} = {},
 	): Promise<Agent> {

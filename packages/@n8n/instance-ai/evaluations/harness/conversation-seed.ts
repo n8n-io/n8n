@@ -128,10 +128,8 @@ export const ConversationSeedSchema = z.object({
 	workflows: z.array(SeedWorkflowSchema).default([]),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
 	dataTables: z.array(SeedDataTableSchema).default([]),
-	/** Agents the history built, recreated on restore (config + skill bodies) and
-	 *  bound to the thread, so the live turn edits one that already exists. Reuses
-	 *  the restore payload's own schema — an agent's config is validated by the
-	 *  product's schema, not a looser harness copy. */
+	/** Agents the history built, recreated (and bound to the thread) on restore, so
+	 *  the live turn edits one that already exists. */
 	agents: z.array(instanceAiEvalSeedAgentSchema).default([]),
 });
 
@@ -293,10 +291,9 @@ function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMe
  * iterations don't share (and clobber) one row, and a leftover workflow copy can't
  * be grounded on by name.
  *
- * Agents get the id pass only. An agent is addressed by id everywhere that
- * matters (the restored thread binding, `build-agent`'s `agentId`), so a
- * same-named copy can't misdirect the live turn — and its name appears inside
- * skill prose, where a blanket rename would rewrite instructions the case grades.
+ * Agents get the id pass only: they are addressed by id (the restored thread
+ * binding, `build-agent`'s `agentId`), and an agent's name appears inside skill
+ * prose, where a blanket rename would rewrite instructions the case grades.
  *
  * The workflow name rewrite is applied to `messages` ONLY, never inside
  * `workflows[].nodes`. Workflow names are short and human ("Batch loop"), so a
@@ -307,8 +304,8 @@ function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMe
 export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	if (seed.workflows.length === 0 && seed.agents.length === 0) return seed;
 
-	// One id space: a fresh id must miss every original id, workflow or agent, or a
-	// sequential replace could rewrite a not-yet-processed artifact's id.
+	// Workflows and agents share one id space: a fresh id must miss every original,
+	// or this sequential replace could rewrite a not-yet-processed artifact's id.
 	const originalIds = new Set([
 		...seed.workflows.map((workflow) => workflow.id),
 		...seed.agents.map((agent) => agent.id),
@@ -318,7 +315,9 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		workflows: seed.workflows,
 		agents: seed.agents,
 	});
-	for (const id of originalIds) {
+	// Longest first, for the same reason as the name rewrite below: replacing a
+	// shorter id that prefixes a longer one would corrupt the longer one.
+	for (const id of [...originalIds].sort((a, b) => b.length - a.length)) {
 		// Artifact ids are long random tokens; a short id would risk rewriting
 		// unrelated substrings, so refuse instead of corrupting the seed.
 		if (id.length < 8) {
@@ -367,20 +366,14 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	const renames = new Map(
 		remapped.workflows.map((workflow, index) => [workflow.name, workflows[index].name]),
 	);
-	// Undefined for an agent-only seed, which renames nothing — an empty alternation
-	// would match the empty string at every position instead.
-	const mentionRe =
-		renames.size === 0
-			? undefined
-			: new RegExp(
-					[...renames.keys()]
-						.sort((a, b) => b.length - a.length)
-						.map(escapeForRegExp)
-						.join('|'),
-					'g',
-				);
-	const rewrite = (s: string) =>
-		mentionRe ? s.replace(mentionRe, (match) => renames.get(match) ?? match) : s;
+	const mentionRe = new RegExp(
+		[...renames.keys()]
+			.sort((a, b) => b.length - a.length)
+			.map(escapeForRegExp)
+			.join('|'),
+		'g',
+	);
+	const rewrite = (s: string) => s.replace(mentionRe, (match) => renames.get(match) ?? match);
 	const messages = remapped.messages.map((message) => renameMentions(message, rewrite));
 
 	// Data table ids are remapped server-side on restore (id is generated, not

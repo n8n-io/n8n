@@ -224,35 +224,25 @@ describe('agent-builder target binding', () => {
 });
 
 describe('agentBuilderTargetMetadata', () => {
-	// The eval seed restore writes this metadata directly (it has no
-	// InstanceAiContext), so a thread restored from a seed resolves its agent the
-	// same way a thread that really built one does.
-	it('writes the active target and a registry keyed by the normalized ref', () => {
+	it('registers every target under its normalized ref, last one active', () => {
 		const metadata = agentBuilderTargetMetadata([
-			{ agentId: 'agent-1', projectId: 'project-1', name: 'Support Triage', ref: 'Support Triage' },
+			{ agentId: 'agent-1', projectId: 'p', ref: 'First Agent' },
+			{ agentId: 'agent-2', projectId: 'p', ref: 'Second Agent' },
 		]);
 
-		const entry = {
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			name: 'Support Triage',
-			ref: 'support-triage',
-		};
-		expect(metadata).toEqual({
-			instanceAiAgentBuilderTarget: entry,
-			instanceAiAgentBuilderTargets: { 'support-triage': entry },
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
+		expect(metadata.instanceAiAgentBuilderTargets).toEqual({
+			'first-agent': { agentId: 'agent-1', projectId: 'p', ref: 'first-agent' },
+			'second-agent': { agentId: 'agent-2', projectId: 'p', ref: 'second-agent' },
 		});
 	});
 
 	it('resolves through the same readers the product uses', async () => {
+		// The point of the export: a thread seeded with this metadata addresses its
+		// agent exactly as one that really built it does.
 		const threadMemory = createThreadMemory(
 			agentBuilderTargetMetadata([
-				{
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					name: 'Support Triage',
-					ref: 'Support Triage',
-				},
+				{ agentId: 'agent-1', projectId: 'p', name: 'Support Triage', ref: 'Support Triage' },
 			]),
 		);
 		const context = createContext({ threadMemory });
@@ -261,18 +251,5 @@ describe('agentBuilderTargetMetadata', () => {
 		await expect(getSessionAgentByRef(context, 'support triage')).resolves.toMatchObject({
 			agentId: 'agent-1',
 		});
-	});
-
-	it('makes the last target active and registers every one', () => {
-		const metadata = agentBuilderTargetMetadata([
-			{ agentId: 'agent-1', projectId: 'project-1', ref: 'first' },
-			{ agentId: 'agent-2', projectId: 'project-1', ref: 'second' },
-		]);
-
-		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
-		expect(Object.keys(metadata.instanceAiAgentBuilderTargets as object)).toEqual([
-			'first',
-			'second',
-		]);
 	});
 });

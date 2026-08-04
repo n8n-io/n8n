@@ -129,14 +129,11 @@ export class EvalThreadRestoreService {
 	}
 
 	/**
-	 * Recreate each seed agent at its pinned id in the thread's project, carrying
-	 * its config and skill bodies in the one insert (an agent is a single row —
-	 * skills live in a JSON column, so there is nothing to write to a filesystem).
-	 * Rolls back agents already created if a later one fails.
+	 * Recreate each seed agent, config and skill bodies in one insert — an agent is
+	 * a single row, so there are no skill files to write. Rolls back on failure.
 	 *
-	 * Unlike seed data tables, names are NOT uniquified: an agent is addressed by
-	 * id (the thread binding and `build-agent`'s `agentId`), so a same-named copy
-	 * can't misdirect the live turn the way a same-named workflow could.
+	 * Names are NOT uniquified as seed data tables' are: an agent is addressed by
+	 * id, so a same-named copy can't misdirect the live turn.
 	 */
 	async restoreAgents(agents: InstanceAiEvalSeedAgent[], projectId: string): Promise<string[]> {
 		if (agents.length === 0) return [];
@@ -145,7 +142,7 @@ export class EvalThreadRestoreService {
 		try {
 			for (const agent of agents) {
 				// `create` refuses a colliding id rather than overwriting, so a seed can
-				// never clobber an agent that already exists in this or another project.
+				// never clobber an agent that already exists.
 				await agentsService.create(projectId, agent.config.name, {
 					id: agent.id,
 					schema: agent.config,
@@ -160,8 +157,8 @@ export class EvalThreadRestoreService {
 		return created;
 	}
 
-	/** Best-effort delete (rollback of a failed restore). Resolves the service per
-	 *  id so a rollback can never throw over the failure that triggered it. */
+	/** Best-effort delete (rollback of a failed restore). Resolved per id so a
+	 *  rollback can never throw over the failure that triggered it. */
 	async deleteAgents(agentIds: string[], projectId: string): Promise<void> {
 		for (const id of agentIds) {
 			try {
@@ -172,8 +169,8 @@ export class EvalThreadRestoreService {
 		}
 	}
 
-	/** Resolved lazily: the agents module owns the entity, so resolving it eagerly
-	 *  would break every seeded restore on an instance where agents are disabled. */
+	/** Lazy: constructor-injecting this would break every seeded restore — workflows
+	 *  and data tables included — on an instance where the agents module is off. */
 	private agentsService(): AgentsService {
 		if (!Container.get(ModuleRegistry).isActive('agents')) {
 			throw new BadRequestError('Seeding an agent requires the agents module to be enabled');

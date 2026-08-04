@@ -1056,9 +1056,9 @@ export class InstanceAiController {
 				idMap,
 			);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId);
-			// Bind the thread to the seeded agents, as the conversation that built them
-			// would have. Without it `build-agent` has no target to continue on the next
-			// turn and creates a second agent beside the seeded one.
+			// Bind the thread as the conversation that built these agents would have:
+			// without it `build-agent` has no target to continue and creates a second
+			// agent beside the seeded one.
 			if (createdAgentIds.length > 0) {
 				await this.memoryService.updateThread(payload.threadId, {
 					metadata: agentBuilderTargetMetadata(
@@ -1091,7 +1091,7 @@ export class InstanceAiController {
 			restored,
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
-			agentIds: agents.map((agent) => agent.id),
+			agentIds: createdAgentIds,
 		};
 	}
 

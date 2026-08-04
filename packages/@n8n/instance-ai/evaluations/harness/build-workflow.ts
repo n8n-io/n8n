@@ -172,9 +172,8 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
-	/** Agents restored by a seed. Carried separately from `artifactRefs` because a
-	 *  live turn that never calls `build-agent` emits no ref, and the seeded agent
-	 *  would then leak into the shared eval project. */
+	/** Agents restored by a seed — tracked here, not just in `artifactRefs`, so one
+	 *  the live turn never touched still gets cleaned up. */
 	createdAgentIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
@@ -564,9 +563,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const threadWorkflowIds = [
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
-		// Same for a restored agent: the live turn may edit it without ever emitting
-		// its own `agent-spawned`, and the agent artifact is what the case grades.
-		// Live refs stay first — `findAgentArtifactRef` takes the first match.
+		// Same for a restored agent, without which a live turn that never calls
+		// `build-agent` would grade against no agent at all. Note this also makes a
+		// seeded agent enough to mark the case agent-anchored; live refs stay first,
+		// since `findAgentArtifactRef` takes the first match.
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
 		);

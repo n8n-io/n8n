@@ -443,17 +443,6 @@ describe('remapSeedArtifactIds', () => {
 		expect(remapped.agents[0].skills?.skill_1.instructions).toContain('Support Triage');
 	});
 
-	it('gives an agent a fresh id disjoint from a co-seeded workflow', () => {
-		const seed = makeAgentSeed();
-		seed.workflows = makeSeed().workflows;
-
-		const remapped = remapSeedArtifactIds(seed);
-
-		expect(remapped.agents[0].id).not.toBe(remapped.workflows[0].id);
-		expect(remapped.agents[0].id).not.toBe(AGENT_ID);
-		expect(remapped.workflows[0].id).not.toBe(WF_ID);
-	});
-
 	it('refuses to remap a dangerously short agent id', () => {
 		const seed = makeAgentSeed();
 		seed.agents[0].id = 'ag1';
@@ -461,18 +450,22 @@ describe('remapSeedArtifactIds', () => {
 	});
 
 	it('follows a seeded workflow id into an agent config that attaches it as a tool', () => {
-		// The restore creates workflows before agents, so the tool ref has to land on
-		// the SAME fresh id — otherwise the seeded agent points at a workflow that was
-		// never restored, and the case grades an agent with a dead tool.
+		// Both artifacts remap in one pass, so the tool ref has to land on the SAME
+		// fresh id — otherwise the seeded agent points at a workflow that was never
+		// restored, and the case grades an agent with a dead tool.
 		const seed = makeAgentSeed();
 		seed.workflows = makeSeed().workflows;
 		seed.agents[0].config.tools = [{ type: 'workflow', workflow: WF_ID, name: 'Look up a ticket' }];
 
 		const remapped = remapSeedArtifactIds(seed);
 
-		const tool = remapped.agents[0].config.tools?.[0];
-		expect(tool).toMatchObject({ type: 'workflow', workflow: remapped.workflows[0].id });
+		expect(remapped.agents[0].config.tools?.[0]).toMatchObject({
+			type: 'workflow',
+			workflow: remapped.workflows[0].id,
+		});
+		expect(remapped.agents[0].id).not.toBe(remapped.workflows[0].id);
 		expect(JSON.stringify(remapped)).not.toContain(WF_ID);
+		expect(JSON.stringify(remapped)).not.toContain(AGENT_ID);
 	});
 });
 

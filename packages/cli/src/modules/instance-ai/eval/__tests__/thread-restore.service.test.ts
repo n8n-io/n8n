@@ -1,6 +1,6 @@
 import { ModuleRegistry } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -256,8 +256,8 @@ describe('EvalThreadRestoreService', () => {
 	});
 
 	describe('restoreAgents', () => {
-		const agentsService = mock<AgentsService>();
-		const moduleRegistry = mock<ModuleRegistry>();
+		const agentsService = mockInstance(AgentsService);
+		const moduleRegistry = mockInstance(ModuleRegistry);
 
 		const seedAgent = (over: { id?: string; name?: string } = {}) => ({
 			id: over.id ?? 'agent-original',
@@ -273,14 +273,7 @@ describe('EvalThreadRestoreService', () => {
 		});
 
 		beforeEach(() => {
-			Container.set(ModuleRegistry, moduleRegistry);
-			Container.set(AgentsService, agentsService);
 			moduleRegistry.isActive.calledWith('agents').mockReturnValue(true);
-		});
-
-		afterEach(() => {
-			Container.reset(ModuleRegistry);
-			Container.reset(AgentsService);
 		});
 
 		it('creates the agent at its seeded id, carrying its config and skill bodies', async () => {
