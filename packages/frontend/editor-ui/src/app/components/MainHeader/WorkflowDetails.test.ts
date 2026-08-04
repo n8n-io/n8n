@@ -216,11 +216,11 @@ describe('WorkflowDetails', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders workflow name and tags', async () => {
+	it('renders workflow name', async () => {
 		vi.mocked(useRoute).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
 		} as unknown as ReturnType<typeof useRoute>);
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				...defaultProps,
 			},
@@ -229,8 +229,6 @@ describe('WorkflowDetails', () => {
 		const workflowNameInput = getByTestId('inline-edit-input');
 
 		expect(workflowNameInput).toHaveValue('Test Workflow');
-		expect(getByText('tag1')).toBeInTheDocument();
-		expect(getByText('tag2')).toBeInTheDocument();
 	});
 
 	it('opens share modal on share button click', async () => {

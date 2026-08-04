@@ -1,8 +1,6 @@
 <script lang="ts" setup>
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
-import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
-import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -11,7 +9,6 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
@@ -22,13 +19,11 @@ import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
-import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	computed,
 	inject,
 	onBeforeUnmount,
 	onMounted,
-	ref,
 	useCssModule,
 	useTemplateRef,
 	watch,
@@ -36,7 +31,6 @@ import {
 import { useRoute, useRouter } from 'vue-router';
 
 import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -53,7 +47,6 @@ const props = defineProps<{
 
 const $style = useCssModule();
 
-const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
@@ -67,26 +60,13 @@ const router = useRouter();
 const route = useRoute();
 
 const locale = useI18n();
-const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
-const isTagsEditEnabled = ref(false);
-const appliedTagIds = ref<string[]>([]);
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
-const tagsEventBus = createEventBus();
-
-const hasChanged = (prev: readonly string[], curr: readonly string[]) => {
-	if (prev.length !== curr.length) {
-		return true;
-	}
-
-	const set = new Set(prev);
-	return curr.reduce((acc, val) => acc || !set.has(val), false);
-};
 
 const isNewWorkflow = computed(() => {
 	return !workflowsStore.isWorkflowSaved[props.id];
@@ -100,13 +80,10 @@ const readOnly = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
 
-// For workflow name and tags editing: needs update permission and not archived
 const readOnlyActions = computed(() => {
 	if (isNewWorkflow.value) return readOnly.value;
 	return readOnly.value || props.isArchived || !workflowPermissions.value.update;
 });
-
-const workflowTagIds = computed(() => props.tags);
 
 const currentFolderForBreadcrumbs = computed(() => {
 	if (!isNewWorkflow.value && props.currentFolder) {
@@ -123,58 +100,9 @@ const currentFolderForBreadcrumbs = computed(() => {
 watch(
 	() => props.id,
 	() => {
-		isTagsEditEnabled.value = false;
 		renameInput.value?.forceCancel();
 	},
 );
-
-function onTagsEditEnable() {
-	if (readOnlyActions.value) {
-		return;
-	}
-
-	appliedTagIds.value = [...props.tags];
-	isTagsEditEnabled.value = true;
-
-	setTimeout(() => {
-		// allow name update to occur before disabling name edit
-		renameInput.value?.forceCancel();
-		tagsEventBus.emit('focus');
-	}, 0);
-}
-
-function onTagsBlur() {
-	const current = props.tags;
-	const tags = appliedTagIds.value;
-	if (!hasChanged(current, tags)) {
-		isTagsEditEnabled.value = false;
-
-		return;
-	}
-
-	if (readOnlyActions.value) {
-		isTagsEditEnabled.value = false;
-		return;
-	}
-
-	collaborationStore.requestWriteAccess();
-
-	if (workflowDocumentStore?.value) {
-		workflowDocumentStore.value.setTags(tags);
-	}
-	uiStore.markStateDirty('metadata');
-
-	telemetry.track('User edited workflow tags', {
-		workflow_id: props.id,
-		new_tag_count: tags.length,
-	});
-
-	isTagsEditEnabled.value = false;
-}
-
-function onTagsEditEsc() {
-	isTagsEditEnabled.value = false;
-}
 
 const renameInput = useTemplateRef('renameInput');
 function onNameToggle() {
@@ -399,7 +327,6 @@ onMounted(() => {
 	nodeViewEventBus.on('unarchiveWorkflow', handleUnarchiveWorkflow);
 	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.on('renameWorkflow', onNameToggle);
-	nodeViewEventBus.on('addTag', onTagsEditEnable);
 });
 
 onBeforeUnmount(() => {
@@ -408,7 +335,6 @@ onBeforeUnmount(() => {
 	nodeViewEventBus.off('unarchiveWorkflow', handleUnarchiveWorkflow);
 	nodeViewEventBus.off('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.off('renameWorkflow', onNameToggle);
-	nodeViewEventBus.off('addTag', onTagsEditEnable);
 });
 </script>
 
@@ -452,30 +378,7 @@ onBeforeUnmount(() => {
 			:tags="tags"
 			:current-folder="currentFolderForBreadcrumbs ?? undefined"
 		/>
-		<span class="tags" data-test-id="workflow-tags-container">
-			<template v-if="settingsStore.areTagsEnabled">
-				<WorkflowTagsDropdown
-					v-if="isTagsEditEnabled && !readOnlyActions"
-					ref="dropdown"
-					v-model="appliedTagIds"
-					:event-bus="tagsEventBus"
-					:placeholder="i18n.baseText('workflowDetails.chooseOrCreateATag')"
-					class="tags-edit"
-					data-test-id="workflow-tags-dropdown"
-					@blur="onTagsBlur"
-					@esc="onTagsEditEsc"
-				/>
-				<WorkflowTagsContainer
-					v-else-if="tags.length > 0"
-					:key="id"
-					:tag-ids="workflowTagIds"
-					:clickable="true"
-					:responsive="true"
-					data-test-id="workflow-tags"
-					@click="onTagsEditEnable"
-				/>
-			</template>
-
+		<span class="spacer">
 			<span :class="$style['header-controls']">
 				<N8nBadge
 					v-if="isArchived"
@@ -527,19 +430,13 @@ $--header-spacing: 20px;
 	min-width: 0;
 }
 
-.tags {
+.spacer {
 	display: flex;
 	align-items: center;
 	width: 100%;
 	flex: 1;
 	min-width: 0;
 	margin-right: $--header-spacing;
-}
-
-.tags-edit {
-	min-width: 100px;
-	width: 100%;
-	max-width: 460px;
 }
 
 .actions {

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule, useTemplateRef } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
@@ -275,24 +275,28 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	);
 });
 
+function openDescriptionAndTagsModal(): void {
+	const workflowId = getWorkflowId(props.id, route.params.workflowId);
+	if (!workflowId) return;
+
+	const workflowDescription =
+		workflowDocumentStore?.value?.description ??
+		workflowsListStore.getWorkflowById(workflowId).description;
+	uiStore.openModalWithData({
+		name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+		data: {
+			workflowId,
+			workflowName: props.name,
+			workflowDescription,
+			workflowTags: [...props.tags],
+		},
+	});
+}
+
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
 	switch (action) {
 		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
-			const workflowId = getWorkflowId(props.id, route.params.workflowId);
-			if (!workflowId) return;
-
-			const workflowDescription =
-				workflowDocumentStore?.value?.description ??
-				workflowsListStore.getWorkflowById(workflowId).description;
-			uiStore.openModalWithData({
-				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
-				data: {
-					workflowId,
-					workflowName: props.name,
-					workflowDescription,
-					workflowTags: [...props.tags],
-				},
-			});
+			openDescriptionAndTagsModal();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
@@ -461,6 +465,14 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 	}
 }
+
+onMounted(() => {
+	nodeViewEventBus.on('addTag', openDescriptionAndTagsModal);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('addTag', openDescriptionAndTagsModal);
+});
 
 defineExpose({
 	importFileRef,

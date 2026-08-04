@@ -252,11 +252,6 @@ export class CanvasPage extends BasePage {
 		await this.fillByTestId('inline-edit-input', name);
 	}
 
-	/**
-	 * Commits a name for a new workflow and waits for the resulting save, so
-	 * actions that need a persisted workflow (e.g. the description and tags
-	 * modal) become available.
-	 */
 	async saveNewWorkflow(name = 'Test Workflow'): Promise<void> {
 		const saved = this.waitForSaveWorkflowCompleted();
 		await this.setWorkflowName(name);
@@ -346,45 +341,29 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
 
-	/**
-	 * Opens the "Edit description and tags" modal from the workflow menu and
-	 * focuses its tags dropdown, ready for selecting or creating tags.
-	 */
-	async clickCreateTagButton(): Promise<void> {
+	async openDescriptionAndTagsModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-edit-description');
-		await this.clickByTestId('workflow-tags-dropdown');
+		await this.getWorkflowTagsDropdown().waitFor();
 	}
 
-	/** Saves the "Edit description and tags" modal and waits for the workflow update. */
+	async clickCreateTagButton(): Promise<void> {
+		await this.openDescriptionAndTagsModal();
+		await this.openTagsDropdownInModal();
+	}
+
+	async openTagsDropdownInModal(): Promise<void> {
+		await this.getWorkflowTagsDropdown().click();
+	}
+
 	async saveDescriptionAndTagsModal(): Promise<void> {
 		const responsePromise = this.waitForSaveWorkflowCompleted();
 		await this.clickByTestId('workflow-description-save-button');
 		await responsePromise;
 	}
 
-	async clickNthTagPill(index: number): Promise<void> {
-		await this.page.getByTestId('workflow-tags-container').locator('.el-tag').nth(index).click();
-	}
-
-	async clickWorkflowTagsArea(): Promise<void> {
-		await this.page.getByTestId('workflow-tags').click();
-	}
-
-	async clickWorkflowTagsContainer(): Promise<void> {
-		await this.page.getByTestId('workflow-tags-dropdown').click();
-	}
-
 	getTagPills(): Locator {
 		return this.page.getByTestId('workflow-tags-dropdown').locator('.el-tag:not(.count-container)');
-	}
-
-	getSavedWorkflowTagPills(): Locator {
-		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
-	}
-
-	getWorkflowTagsElement(): Locator {
-		return this.page.getByTestId('workflow-tags');
 	}
 
 	getWorkflowTagsDropdown(): Locator {
