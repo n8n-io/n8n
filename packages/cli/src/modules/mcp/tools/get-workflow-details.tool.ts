@@ -29,7 +29,7 @@ const inputSchema = {
 		.enum(['full', 'execution'])
 		.default('full')
 		.describe(
-			"Level of detail to return. 'full' (default) includes the complete workflow graph (nodes, connections, node groups, active version). 'execution' returns only the workflow metadata and trigger information needed to run it — prefer it when the goal is just to execute the workflow via execute_workflow.",
+			"Level of detail to return. 'full' (default) includes the complete workflow payload. 'execution' returns only the workflow metadata and trigger information needed to run it — prefer it when the goal is just to execute the workflow via execute_workflow.",
 		),
 } satisfies z.ZodRawShape;
 
