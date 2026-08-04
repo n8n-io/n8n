@@ -37,6 +37,7 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 .item {
 	--segment-control--item-height: calc(var(--input--height) - 2 * var(--segment-control--padding));
 
+	position: relative;
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -57,8 +58,6 @@ withDefaults(defineProps<SegmentControlItemProps>(), {
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
 	-webkit-tap-highlight-color: transparent;
-
-	position: relative;
 
 	&:focus {
 		outline: none;
