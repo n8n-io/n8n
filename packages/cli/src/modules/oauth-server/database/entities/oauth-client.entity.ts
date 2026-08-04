@@ -35,6 +35,16 @@ export class OAuthClient extends WithTimestamps {
 	@Column({ type: Boolean, default: false })
 	isCimd: boolean;
 
+	/**
+	 * RFC 7591 / SEP-837 `application_type`. Only `native` clients get RFC 8252
+	 * port-agnostic loopback redirect matching; `web` clients are matched
+	 * exactly, so a web client can't claim an arbitrary localhost port. Defaults
+	 * to `native` for rows registered before this field existed, preserving their
+	 * prior matching behavior.
+	 */
+	@Column({ type: String, default: 'native' })
+	applicationType: 'web' | 'native';
+
 	@OneToMany('AuthorizationCode', 'client')
 	authorizationCodes: AuthorizationCode[];
 

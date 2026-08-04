@@ -52,6 +52,7 @@ erDiagram
   varchar userId FK
 }
 "oauth_clients" {
+  varchar_255_ applicationType
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   datetime_3_ createdAt
