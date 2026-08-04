@@ -3,7 +3,7 @@
 The strongest cases encode a **real** failure, not an invented premise. Two
 connections help you find one and confirm it — and neither is usually the
 durable artifact. You author a synthetic case from what you learn (reach for
-`seedThread` only per [`case-shapes.md`](case-shapes.md)).
+`seed.mode: "replay"` only per [`case-shapes.md`](case-shapes.md)).
 
 - **LangTracer — discover.** It ingests real Instance AI conversations and
   clusters them into **capability-gap themes** ("what fails, at scale"), and
@@ -56,9 +56,9 @@ connected.)
 5. **Push it to a curated suite** (don't commit the JSON) with
    `eval:langtracer-push` — see
    [Push to a lang-tracer suite](SKILL.md#push-to-a-lang-tracer-suite). Exception:
-   seeded cases (`seedThread` / `conversationSeed` / `priorConversation`) can't be pushed —
-   the case-write API rejects every seeding mode, so the push lists them under
-   `skipped:`. And a `seedThread` case shouldn't be committed either — it dies when
+   seeded cases (any `seed` mode) can't be pushed — the case-write API has no
+   `seed` field, so the push lists them under
+   `skipped:`. And a `replay` case shouldn't be committed either — it dies when
    its trace is pruned or deleted — so it has no durable home; that's exactly why
    step 4 turns the confirmed failure into a durable synthetic case.
 

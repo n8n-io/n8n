@@ -29,6 +29,7 @@ import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
 import { type PinDataSource, usePinnedData } from '@/app/composables/usePinnedData';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
@@ -1352,6 +1353,7 @@ export function useCanvasOperations() {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name =
 			node.name ??
+			getN8nAgentsNodeName(nodeTypeDescription.name) ??
 			nodeHelpers.getDefaultNodeName(node) ??
 			(nodeTypeDescription.defaults.name as string);
 		const type = node.type ?? nodeTypeDescription.name;

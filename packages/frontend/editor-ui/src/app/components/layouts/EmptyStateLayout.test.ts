@@ -166,7 +166,7 @@ describe('EmptyStateLayout', () => {
 
 			await userEvent.click(getByTestId('build-agent-card'));
 
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('card');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('card', expect.any(String));
 		});
 	});
 

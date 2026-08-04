@@ -28,6 +28,12 @@ const showToast = vi.fn();
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showToast }),
+	// The factory replaces the whole module, so it has to name every export the
+	// real one has. Nothing here asserts on `setNotify` — its only caller,
+	// `toastNotifier`, is kept out of this graph by the mock below — so dropping
+	// this line looks safe and stays green. Loosen that mock and it is not:
+	// vitest fails every test with `No "setNotify" export is defined`.
+	setNotify: vi.fn(),
 }));
 
 vi.mock('@/app/init/toastNotifier', () => ({

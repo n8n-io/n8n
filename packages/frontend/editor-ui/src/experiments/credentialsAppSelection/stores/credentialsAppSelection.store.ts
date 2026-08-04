@@ -3,7 +3,7 @@ import { CREDENTIALS_APP_SELECTION_EXPERIMENT } from '@/app/constants';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';

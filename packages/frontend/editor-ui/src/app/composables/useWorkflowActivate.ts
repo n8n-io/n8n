@@ -1,4 +1,4 @@
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,

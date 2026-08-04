@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	addMissingAgentPersonalisation,
 	getRandomAgentPersonalisationGradient,
-} from '../agentPersonalisation';
+} from '../agent-personalisation';
 
 function sequenceRandom(values: number[]) {
 	let index = 0;
