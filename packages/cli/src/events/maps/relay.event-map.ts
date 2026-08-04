@@ -993,6 +993,11 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'runner-disconnected': {
+		reason: 'failed-heartbeat-check' | 'runner-unresponsive';
+		mode: 'internal' | 'external';
+	};
+
 	// #endregion
 
 	// #region queue

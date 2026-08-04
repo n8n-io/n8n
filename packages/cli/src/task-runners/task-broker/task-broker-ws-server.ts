@@ -8,6 +8,7 @@ import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import { WsStatusCodes } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
@@ -15,7 +16,10 @@ import type {
 	TaskBrokerServerInitRequest,
 	TaskBrokerServerInitResponse,
 } from '@/task-runners/task-broker/task-broker-types';
-import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
+import {
+	TaskRunnerLifecycleEvents,
+	type TaskRunnerLifecycleEventMap,
+} from '@/task-runners/task-runner-lifecycle-events';
 
 import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
@@ -53,11 +57,22 @@ export class TaskBrokerWsServer {
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 		private readonly globalConfig: GlobalConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	start() {
 		this.startHeartbeatChecks();
+		this.runnerLifecycleEvents.on('runner:unresponsive', this.onRunnerUnresponsive);
 	}
+
+	private readonly onRunnerUnresponsive = ({
+		runnerId,
+	}: TaskRunnerLifecycleEventMap['runner:unresponsive']) => {
+		void this.removeConnection(runnerId, {
+			reason: 'runner-unresponsive',
+			code: WsStatusCodes.CloseProtocolError,
+		});
+	};
 
 	private startHeartbeatChecks() {
 		const { heartbeatInterval } = this.taskRunnersConfig;
@@ -73,28 +88,30 @@ export class TaskBrokerWsServer {
 	}
 
 	private checkConnectionLiveness() {
-		let anyDead = false;
-
 		for (const [runnerId, connection] of this.runnerConnections) {
 			if (connection.isAlive) {
 				connection.isAlive = false;
 				connection.ping();
 			} else {
-				anyDead = true;
+				const taskTypes = this.taskBroker.getKnownRunners().get(runnerId)?.runner.taskTypes ?? [];
+
 				void this.removeConnection(runnerId, {
 					reason: 'failed-heartbeat-check',
 					code: WsStatusCodes.CloseProtocolError,
 					expectedConnection: connection,
 				});
-			}
-		}
 
-		if (anyDead) {
-			this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
+				this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check', {
+					runnerId,
+					taskTypes,
+				});
+			}
 		}
 	}
 
 	async stop() {
+		this.runnerLifecycleEvents.off('runner:unresponsive', this.onRunnerUnresponsive);
+
 		if (this.heartbeatTimer) {
 			clearInterval(this.heartbeatTimer);
 			this.heartbeatTimer = undefined;
@@ -194,6 +211,13 @@ export class TaskBrokerWsServer {
 			// Stop routing to the runner before the disconnect analysis, which may be slow.
 			this.runnerConnections.delete(id);
 			connection.close(code);
+
+			if (reason === 'failed-heartbeat-check' || reason === 'runner-unresponsive') {
+				this.eventService.emit('runner-disconnected', {
+					reason,
+					mode: this.taskRunnersConfig.mode,
+				});
+			}
 
 			const inFlightTaskIds = this.taskBroker.getInFlightTaskIds(id);
 

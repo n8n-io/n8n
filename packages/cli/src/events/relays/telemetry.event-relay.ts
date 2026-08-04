@@ -41,6 +41,7 @@ import { NodeTypes } from '@/node-types';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
@@ -213,6 +214,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
+			'runner-disconnected': (event) => this.runnerDisconnected(event),
 		});
 	}
 
@@ -1673,6 +1675,10 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private instanceStopped() {
 		this.telemetry.track('User instance stopped');
+	}
+
+	private runnerDisconnected({ reason, mode }: RelayEventMap['runner-disconnected']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
