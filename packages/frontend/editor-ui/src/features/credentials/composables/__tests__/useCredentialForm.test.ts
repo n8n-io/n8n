@@ -9,12 +9,17 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
 import { useCredentialForm } from '../useCredentialForm';
+import { probeCredential } from '../../credentials.api';
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({ displayParameter: () => true }),
+}));
+vi.mock('@/features/credentials/credentials.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	probeCredential: vi.fn(),
 }));
 
 const httpBasicAuth: ICredentialType = {
@@ -67,6 +72,20 @@ const skipManagedOAuth: ICredentialType = {
 	],
 };
 
+// The templated generic type: no static test definition — a persisted test
+// URL routes the modal's connection test through the auth probe instead.
+const templatedCustomAuth: ICredentialType = {
+	name: 'httpTemplatedCustomAuth',
+	displayName: 'Simplified Custom Auth',
+	properties: [
+		{ displayName: 'Template', name: 'template', type: 'json', required: true, default: '' },
+		{ displayName: 'Placeholders', name: 'placeholderDefs', type: 'json', default: '' },
+		{ displayName: 'Placeholder Values', name: 'placeholderValues', type: 'json', default: '' },
+		{ displayName: 'Test URL', name: 'testUrl', type: 'string', default: '' },
+		{ displayName: 'Documentation URL', name: 'docsUrl', type: 'string', default: '' },
+	],
+};
+
 // Plain per-auth-option types for a node with an auth selector.
 const alphaApi: ICredentialType = {
 	name: 'alphaApi',
@@ -85,6 +104,7 @@ const typesByName: Record<string, ICredentialType> = {
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
+	httpTemplatedCustomAuth: templatedCustomAuth,
 	alphaApi,
 	betaApi,
 };
@@ -181,6 +201,116 @@ describe('useCredentialForm', () => {
 			await form.initialize();
 
 			expect(form.useCustomOAuth.value).toBe(true);
+		});
+	});
+
+	describe('testCredential', () => {
+		it('routes a saved Templated Custom Auth credential through the auth probe', async () => {
+			vi.mocked(probeCredential).mockResolvedValue({ status: 'Error', message: 'Received 401' });
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'abc' }),
+				testUrl: 'https://fal.run/v1/models',
+			};
+
+			// A filled template + persisted http(s) test URL makes the credential probeable.
+			expect(form.isCredentialTestable.value).toBe(true);
+
+			await form.testCredential({
+				id: 'cred-9',
+				name: 'fal.ai API Key',
+				type: 'httpTemplatedCustomAuth',
+				data: form.credentialData.value as never,
+			});
+
+			expect(probeCredential).toHaveBeenCalledWith(expect.anything(), 'cred-9');
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+			expect(form.authError.value).toBe('Received 401');
+		});
+
+		it('surfaces a thrown probe as a test failure instead of wedging the flags', async () => {
+			vi.mocked(probeCredential).mockRejectedValue(
+				new Error('Request failed with status code 400'),
+			);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'abc' }),
+				testUrl: 'https://fal.run/v1/models',
+			};
+
+			await form.testCredential({
+				id: 'cred-9',
+				name: 'fal.ai API Key',
+				type: 'httpTemplatedCustomAuth',
+				data: form.credentialData.value as never,
+			});
+
+			expect(form.authError.value).toBe('Request failed with status code 400');
+			expect(form.testedSuccessfully.value).toBe(false);
+		});
+	});
+
+	describe('requiredPropertiesFilled', () => {
+		it('blocks save and test while a required placeholder has no value', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({}),
+				testUrl: 'https://fal.run/v1/models',
+			};
+
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+			expect(form.isCredentialTestable.value).toBe(false);
+
+			// an optional marker without a value doesn't block
+			form.credentialData.value = {
+				...form.credentialData.value,
+				placeholderDefs: JSON.stringify([{ name: 'api_key', title: 'Key', optional: true }]),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+
+			// the untouched redacted sentinel counts as filled
+			form.credentialData.value = {
+				...form.credentialData.value,
+				placeholderDefs: '',
+				placeholderValues: JSON.stringify({ api_key: '***' }),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+		});
+
+		it('blocks save while the template parses but has the wrong shape', async () => {
+			// the server resolver only accepts an object with object-valued
+			// headers/body/qs parts; anything else saves fine syntactically but
+			// can never resolve
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
+			await form.initialize();
+
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify([1, 2, 3]),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: 'Bearer x' }),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.credentialData.value = {
+				...form.credentialData.value,
+				template: JSON.stringify({ headers: { Authorization: 'Key {{api_key}}' } }),
+				placeholderValues: JSON.stringify({ api_key: 'abc' }),
+			};
+			expect(form.requiredPropertiesFilled.value).toBe(true);
 		});
 	});
 

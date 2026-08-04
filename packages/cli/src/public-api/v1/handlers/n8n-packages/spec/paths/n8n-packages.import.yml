@@ -206,36 +206,41 @@ post:
                 - do-nothing
                 - must-preexist
                 - create-stub
-              default: do-nothing
+                - create-with-value
+              default: create-with-value
               description: >
                 Controls what happens when a variable referenced by the package's
                 workflows is absent from the target project and the global scope
-                (lookup order: project, then global). `do-nothing` (default)
-                imports the workflows without creating the missing variable and
+                (lookup order: project, then global). `create-with-value` (default)
+                creates the variable with its package value and lists its name under
+                `variables.created`. When the package carries no value for it — values
+                were excluded at export, or the exported value was itself empty — it
+                creates an empty stub listed under `variables.stubbed`.
+                `do-nothing` imports without creating the variable and
                 lists its name under `variables.missing`. `must-preexist` rejects
                 the import unless every referenced variable already resolves.
                 `create-stub` creates each missing variable with an empty value at
                 the placement scope (see `variableParentPolicy`) and lists the
-                created names under `variables.stubbed`. Any `create-stub` import
-                that has variable requirements needs an API key carrying the
-                `variable:create` scope (owner/admin keys only) — this applies to
-                project placement too, not only `variableParentPolicy=global`.
+                created names under `variables.stubbed`. An import that actually
+                creates a variable requires a license that permits variables and, for
+                API key callers, the `variable:create` scope; a package whose
+                variables all already resolve creates nothing and needs neither.
             variableParentPolicy:
               type: string
               enum:
                 - project
                 - global
               description: >
-                Where `create-stub` creates missing variables for workflow/folder
-                packages. `project` — also the behaviour when the field is omitted —
-                creates them in the import target project (`projectId`, else the
-                caller's personal project). `global` creates them at the global
-                scope. The `variable:create` API key scope requirement described
-                under `variableMissingMode` applies to both placements. Must be
-                omitted for project packages, which reject it with a 400: their
-                placement follows the package layout, where a variable bundled
-                under a project is created in that project and one bundled at the
-                top level is created globally.
+                Where `create-with-value` and `create-stub` create missing variables
+                for workflow/folder packages. `project` — also the behaviour when the
+                field is omitted — creates them in the import target project
+                (`projectId`, else the caller's personal project). `global` creates
+                them at the global scope. The license and `variable:create`
+                requirements described under `variableMissingMode` apply to both
+                placements. Must be omitted for project packages, which reject it
+                with a 400: their placement follows the package layout, where a
+                variable bundled under a project is created in that project and one
+                bundled at the top level is created globally.
             tagMissingMode:
               type: string
               enum:
@@ -266,10 +271,12 @@ post:
                 import (not created, not renamed, not attached anywhere; the import
                 proceeds and lists them under `tags.skipped`). `fail` rejects the
                 import with a 409. `rename` renames a drifted target tag to the
-                package name and needs an API key carrying the `tag:update` scope
-                when the import would rename a tag; a name collision — including
-                a drifted tag whose package name is held by another tag — still
-                rejects the import (rename degrades to fail).
+                package name, and reconciles a name collision by re-keying the
+                existing tag to the package (source) id — its name, workflow and
+                folder taggings follow; both need an API key carrying the
+                `tag:update` scope when the import would rename or reconcile a
+                tag. A drifted tag whose package name is held by another tag
+                still rejects the import (rename degrades to fail).
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -478,12 +485,13 @@ post:
                   Resolution of the package's variable requirements. Names only —
                   values never travel in the response. For project packages these
                   arrays are package-level unions of per-destination outcomes and may
-                  overlap (a name matched in one project and stubbed in another appears
-                  in both `matched` and `stubbed`); classification under concurrent
+                  overlap (for example, a name may be created with a value in one project
+                  and stubbed in another); classification under concurrent
                   external writes is best-effort.
                 required:
                   - matched
                   - missing
+                  - created
                   - stubbed
                 properties:
                   matched:
@@ -501,14 +509,23 @@ post:
                       Variable names still unresolved after import. Under
                       `variableMissingMode=do-nothing` these are warnings — the import
                       still succeeds and nothing is created. A successful `create-stub`
-                      import normally leaves this empty.
+                      or `create-with-value` import normally leaves this empty.
+                  created:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names created with a package value under
+                      `variableMissingMode=create-with-value`. Empty stubs are listed
+                      under `stubbed`.
                   stubbed:
                     type: array
                     items:
                       type: string
                     description: >
                       Variable names created with an empty value by this import under
-                      `variableMissingMode=create-stub`. Empty for other modes.
+                      `variableMissingMode=create-stub`, or because `create-with-value`
+                      had no exported value. Empty for other outcomes.
               tags:
                 type: object
                 description: >
@@ -518,6 +535,7 @@ post:
                   - matched
                   - created
                   - renamed
+                  - reconciled
                   - skipped
                 properties:
                   matched:
@@ -541,6 +559,14 @@ post:
                     description: >
                       Target tags renamed to the package name under
                       `tagConflictPolicy=rename`; listed by their new name.
+                  reconciled:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Existing target tags re-keyed to the package (source) id on
+                      a name collision under `tagConflictPolicy=rename`; their
+                      name, workflow and folder taggings are kept.
                   skipped:
                     type: array
                     items:

@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import * as dynamicBannersApi from '@n8n/rest-api-client/api/dynamic-banners';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 let bannersStore: ReturnType<typeof useBannersStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;

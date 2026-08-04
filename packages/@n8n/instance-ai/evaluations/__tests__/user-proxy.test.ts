@@ -32,12 +32,20 @@ function fakeLogger(): EvalLogger {
 }
 
 /** Minimal fake satisfying only the two N8nClient methods credential creation uses. */
-function fakeCredentialClient(createdId: string): {
+function fakeCredentialClient(
+	createdId: string,
+	...furtherCreatedIds: string[]
+): {
 	client: N8nClient;
 	createCredential: ReturnType<typeof vi.fn>;
 	setThreadCredentialAllowlist: ReturnType<typeof vi.fn>;
 } {
-	const createCredential = vi.fn().mockResolvedValue({ id: createdId });
+	// Extra ids are handed out per call, for a card that creates more than one.
+	const createCredential = furtherCreatedIds.reduce(
+		(mock, id) => mock.mockResolvedValueOnce({ id }),
+		vi.fn().mockResolvedValueOnce({ id: createdId }),
+	);
+	createCredential.mockResolvedValue({ id: createdId });
 	const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
 	return {
 		client: { createCredential, setThreadCredentialAllowlist } as unknown as N8nClient,
@@ -921,6 +929,137 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		);
 
 		expect(createdCredentialIds.has('cred-fresh')).toBe(true);
+	});
+
+	it("workflows(action='setup'): registers the created credential for test bypass when the direction says it works", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+			workingCredentialTypes: ['slackApi'],
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now, with a token that works.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: ['cred-old'] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-works', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// The bypass must be registered in the SAME call that appends the new id, so
+		// it lands before the product runs the credential test on the resume.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-old', 'cred-fresh'],
+			['cred-fresh'],
+		);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
+	});
+
+	it("workflows(action='setup'): bypasses only the credential types the direction says work, on a two-credential card", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({
+				'Post To Slack': { slackApi: 'new' },
+				'Fetch Notion Pages': { notionApi: 'new' },
+			}),
+			// Slack works, Notion doesn't — the whole point of a per-type list.
+			workingCredentialTypes: ['slackApi'],
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient(
+			'cred-first',
+			'cred-second',
+		);
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Summarize Notion pages to Slack every morning.' },
+				{
+					role: 'user',
+					text: '[Set both credentials up now: the Slack token works, the Notion one is expired.]',
+				},
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-mixed-validity', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+				{
+					nodeId: 'n2',
+					nodeName: 'Fetch Notion Pages',
+					credentialType: 'notionApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// Assert against the ids the response actually assigned rather than the order
+		// the mock handed them out: the Slack slot's credential is registered for
+		// bypass and the Notion slot's is not, whichever was created first.
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind !== 'setupWorkflowApply') return;
+		const slackId = response.nodeCredentials?.['Post To Slack']?.slackApi;
+		const notionId = response.nodeCredentials?.['Fetch Notion Pages']?.notionApi;
+		expect(slackId).toBeDefined();
+		expect(notionId).toBeDefined();
+		expect(setThreadCredentialAllowlist.mock.calls.at(-1)?.[2]).toEqual([slackId]);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
+	});
+
+	it("workflows(action='setup'): leaves the credential test alone when the direction says nothing about validity", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Post To Slack': { slackApi: 'new' } }),
+		});
+		const { client, setThreadCredentialAllowlist } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Post to Slack every morning.' },
+				{ role: 'user', text: '[Set up the Slack credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-no-works', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Post To Slack',
+					credentialType: 'slackApi',
+					existingCredentials: [],
+				},
+			]),
+		);
+
+		// Two args, not three-with-undefined: the request must stay byte-identical
+		// to before for every case that doesn't opt into the bypass.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh']);
+		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
 	});
 
 	it("workflows(action='setup'): declines a zero-candidate credential slot when no credentialCreation is configured", async () => {

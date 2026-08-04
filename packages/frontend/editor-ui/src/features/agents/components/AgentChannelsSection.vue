@@ -15,9 +15,11 @@ const props = withDefaults(
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
-		isPublished: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
+		/** No agent row exists yet — nothing can be connected to it. */
+		agentUnsaved?: boolean;
+		ensureAgentPersisted?: () => Promise<void>;
 	}>(),
 	{
 		connectedTriggers: () => [],
@@ -95,7 +97,12 @@ const channelRows = computed(() =>
 
 async function loadChannelDetails() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
-	await fetchStatus(integrations.map(({ type }) => type));
+	// Connection status is per agent, so there is nothing to ask for until one
+	// exists. The catalog and credential list below are project-scoped and still
+	// load, so the channel picker works on an unsaved agent.
+	if (!props.agentUnsaved) {
+		await fetchStatus(integrations.map(({ type }) => type));
+	}
 
 	try {
 		credentialsStore.setCredentials([]);
@@ -213,9 +220,8 @@ const remainingChannelOptionLabels = computed(() => {
 			v-model:view="channelModalView"
 			:agent-id="agentId"
 			:project-id="projectId"
-			:connected-channels="connectedTriggers"
-			:is-published="isPublished"
 			:simple-setup="simpleChannelSetup"
+			:ensure-agent-persisted="ensureAgentPersisted"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"

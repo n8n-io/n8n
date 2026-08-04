@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -103,6 +103,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@confluentinc/kafka-javascript",
       "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
@@ -205,7 +206,8 @@
       "undici@6": "catalog:undici-v6",
       "undici@7": "catalog:undici-v7",
       "node-gyp>undici": "catalog:undici-v7",
-      "@babel/traverse": "^7.23.2"
+      "@babel/traverse": "^7.23.2",
+      "@vitest/browser@<4.1.10": "4.1.10"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",

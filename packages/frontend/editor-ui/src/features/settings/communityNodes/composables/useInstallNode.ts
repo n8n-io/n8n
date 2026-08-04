@@ -1,7 +1,7 @@
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { nextTick, ref } from 'vue';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';

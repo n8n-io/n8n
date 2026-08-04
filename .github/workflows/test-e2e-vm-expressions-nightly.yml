@@ -1,4 +1,5 @@
 name: 'Test: E2E VM Expressions Nightly'
+run-name: "Test: E2E VM Expressions (${{ inputs.branch || 'nightly' }})"
 
 on:
   schedule:
