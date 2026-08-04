@@ -18,7 +18,7 @@ type WorkflowParam = { workflowId: string };
  * which is the point: the catalog is for people who run workflows, not build
  * them, and it never hands out the graph.
  */
-@RestController('/catalog/workflows')
+@RestController('/catalog')
 export class CatalogController {
 	constructor(
 		private readonly catalogService: CatalogService,
@@ -30,13 +30,23 @@ export class CatalogController {
 	 * Scoped globally rather than per project: the listing spans every project
 	 * the person belongs to, and the per-workflow filtering happens in the query.
 	 */
-	@Get('/')
+	@Get('/workflows')
 	@GlobalScope('workflow:list')
 	async list(req: AuthenticatedRequest) {
 		return await this.catalogService.list(req.user);
 	}
 
-	@Post('/:workflowId/run')
+	/**
+	 * Scoped to executions the person started themselves, by the marker the run
+	 * service writes — not to the workflows they can reach.
+	 */
+	@Get('/runs')
+	@GlobalScope('workflow:list')
+	async listRuns(req: AuthenticatedRequest) {
+		return await this.catalogService.listRuns(req.user);
+	}
+
+	@Post('/workflows/:workflowId/run')
 	@ProjectScope('workflow:execute')
 	async run(req: AuthenticatedRequest<WorkflowParam>, _res: unknown, @Body payload: CatalogRunDto) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(

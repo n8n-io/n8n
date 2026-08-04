@@ -1,8 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { FieldValueOption } from 'n8n-workflow';
+import type { ExecutionStatus, FieldValueOption } from 'n8n-workflow';
 
+import { ExecutionService } from '@/executions/execution.service';
+import { CATALOG_RUN_USER_KEY } from '@/workflows/catalog-run.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowInputSchemaService } from '@/workflows/workflow-input-schema.service';
 
@@ -26,12 +28,31 @@ export type CatalogListing = {
 	truncated: boolean;
 };
 
+/** How many past runs one page of history returns. */
+export const CATALOG_RUNS_LIMIT = 50;
+
+export type CatalogRun = {
+	id: string;
+	workflowId: string;
+	workflowName?: string;
+	status: ExecutionStatus;
+	startedAt: Date | null;
+	stoppedAt?: Date;
+};
+
+export type CatalogRunListing = {
+	runs: CatalogRun[];
+	count: number;
+	estimated: boolean;
+};
+
 @Service()
 export class CatalogService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowInputSchemaService: WorkflowInputSchemaService,
+		private readonly executionService: ExecutionService,
 	) {}
 
 	/**
@@ -81,5 +102,38 @@ export class CatalogService {
 			workflows: described.filter((entry): entry is CatalogEntry => entry !== null),
 			truncated,
 		};
+	}
+
+	/**
+	 * A person's own catalog runs, most recent first.
+	 *
+	 * Scoped by the run marker rather than by workflow, so someone sharing a
+	 * workflow with colleagues sees only what they themselves started.
+	 */
+	async listRuns(user: User): Promise<CatalogRunListing> {
+		const sharingOptions = await this.executionService.buildSharingOptions('workflow:execute');
+
+		const { results, count, estimated } = await this.executionService.findRangeWithCount({
+			kind: 'range',
+			user,
+			sharingOptions,
+			metadata: [{ key: CATALOG_RUN_USER_KEY, value: user.id, exactMatch: true }],
+			range: { limit: CATALOG_RUNS_LIMIT },
+			order: { startedAt: 'DESC' },
+		});
+
+		// Projected down from the execution summary on purpose: it also carries
+		// `lastNodeExecuted`, per-node statuses and error details, which would
+		// hand node names to someone who cannot read the workflow.
+		const runs = results.map(({ id, workflowId, workflowName, status, startedAt, stoppedAt }) => ({
+			id,
+			workflowId,
+			workflowName,
+			status,
+			startedAt,
+			stoppedAt,
+		}));
+
+		return { runs, count, estimated };
 	}
 }
