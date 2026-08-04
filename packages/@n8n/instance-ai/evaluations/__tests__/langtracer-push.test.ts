@@ -111,6 +111,79 @@ describe('planPush', () => {
 		expect(plan.unchanged).toEqual([]);
 	});
 
+	// Shorthand is the shape case-shapes.md promotes, and the schema stamps a fresh
+	// `id`/`createdAt` on every parse. Comparing the envelope verbatim would classify
+	// the case `toUpdate` on EVERY push forever — churning the stored ids and leaving
+	// `--dry-run` permanently dirty. The identical-envelope test can't catch it,
+	// because there both sides share one envelope.
+	it('converges a shorthand-authored seed against its expanded stored export', () => {
+		const disk = inlineSeed({
+			messages: [
+				{
+					id: 'freshly-stamped-uuid',
+					createdAt: '2026-08-04T14:00:00.000Z',
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'built it' }],
+				},
+			],
+		});
+		const stored = inlineSeed({
+			messages: [
+				{
+					id: 'stored-uuid',
+					createdAt: '2026-06-29T09:00:00.000Z',
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'built it' }],
+				},
+			],
+		});
+
+		const plan = planPush(
+			[item('c', { seed: disk })],
+			{ 'c.json': body({ seed: stored }) },
+			{ c: 5 },
+		);
+
+		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+		expect(plan.toUpdate).toEqual([]);
+	});
+
+	it('still detects a real seed edit under a differing envelope', () => {
+		const disk = inlineSeed({
+			messages: [
+				{
+					id: 'a',
+					createdAt: '2026-08-04T14:00:00.000Z',
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'DIFFERENT text' }],
+				},
+			],
+		});
+		const stored = inlineSeed({
+			messages: [
+				{
+					id: 'b',
+					createdAt: '2026-06-29T09:00:00.000Z',
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'built it' }],
+				},
+			],
+		});
+
+		const plan = planPush(
+			[item('c', { seed: disk })],
+			{ 'c.json': body({ seed: stored }) },
+			{ c: 5 },
+		);
+
+		expect(plan.toUpdate.map((u) => u.id)).toEqual([5]);
+		expect(plan.unchanged).toEqual([]);
+	});
+
 	it('still reports an identically-seeded case as unchanged', () => {
 		const plan = planPush(
 			[item('c', { seed: inlineSeed() })],

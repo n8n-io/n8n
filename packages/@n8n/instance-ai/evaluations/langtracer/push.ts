@@ -121,9 +121,36 @@ function projectComparable(src: unknown): Record<string, unknown> {
 			out[key] = datasets;
 			continue;
 		}
+		// A seed authored with `{ role, text }` shorthand gets a fresh `id` (randomUUID)
+		// and `createdAt` (Date.now) stamped on EVERY schema parse, so comparing the
+		// envelope verbatim can never converge: the case would re-PATCH on every push
+		// forever, churning the stored ids and leaving `--dry-run` permanently dirty.
+		// Compare the authored content, not the per-parse envelope.
+		if (key === 'seed') {
+			out[key] = seedWithoutVolatileEnvelope(value);
+			continue;
+		}
 		out[key] = value;
 	}
 	return out;
+}
+
+/** Drop the per-parse message envelope (`id`, `createdAt`) from a seed so a
+ *  shorthand-authored disk case compares equal to its already-expanded stored
+ *  export. Everything the author actually wrote — role, content, workflows, data
+ *  tables — still compares, so a real seed edit is still detected. */
+function seedWithoutVolatileEnvelope(value: unknown): unknown {
+	if (value === null || typeof value !== 'object') return value;
+	const seed = value as Record<string, unknown>;
+	if (!Array.isArray(seed.messages)) return seed;
+	return {
+		...seed,
+		messages: seed.messages.map((message) => {
+			if (message === null || typeof message !== 'object') return message;
+			const { id, createdAt, ...rest } = message as Record<string, unknown>;
+			return rest;
+		}),
+	};
 }
 
 /** Stable JSON with sorted object keys, so field/scenario ordering never affects equality. */
