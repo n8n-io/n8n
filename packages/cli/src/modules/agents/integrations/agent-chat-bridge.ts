@@ -256,11 +256,6 @@ export class AgentChatBridge {
 		});
 	}
 
-	/** Release long-lived resources held by the bridge. */
-	dispose(): void {
-		this.callbackStore?.dispose();
-	}
-
 	private canUserAccess(author: Author): boolean {
 		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
 	}

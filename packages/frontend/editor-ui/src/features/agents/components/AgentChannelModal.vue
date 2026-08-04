@@ -38,6 +38,7 @@ interface Props {
 	open: boolean;
 	agentId: string;
 	projectId: string;
+	isPublished: boolean;
 	view: ChannelView;
 	ensureAgentPersisted?: () => Promise<void>;
 }
@@ -200,7 +201,6 @@ function hasError(channelType: string): boolean {
 const CONNECTED_TEXT_KEYS = {
 	telegram: 'agents.builder.addTrigger.connectedText.telegram',
 	linear: 'agents.builder.addTrigger.connectedText.linear',
-	discord: 'agents.builder.addTrigger.connectedText.discord',
 } as const;
 
 function integrationConnectedText(channelType: string): string {
@@ -511,15 +511,12 @@ watch(
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="isLoading(currentIntegration.type)"
-						:connected="isConnected(currentIntegration.type)"
-						:connected-description="integrationConnectedText(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:error-message="
 							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
 						"
 						:error-is-conflict="errorIsConflict[currentIntegration.type]"
-						:saved-settings="integrationSettings[currentIntegration.type]"
-						:is-published="isPublished"
-						:agent-name="agentId"
+						:is-published="props.isPublished"
 						:project-id="projectId"
 						:agent-id="agentId"
 						@create="createCredential"
@@ -597,9 +594,7 @@ watch(
 						:credential-permissions="credentialPermissions"
 						:credentials-loading="credentialsLoading"
 						:loading="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
-						:connected="isConnected(currentIntegration.type)"
-						:saved-settings="integrationSettings[currentIntegration.type]"
-						:agent-name="agentId"
+						:connected="isConfigured(currentIntegration.type)"
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>

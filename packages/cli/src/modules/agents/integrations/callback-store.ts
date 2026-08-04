@@ -80,12 +80,6 @@ export class CallbackStore {
 		});
 	}
 
-	/**
-	 * Retained for bridge lifecycle compatibility. Cache TTL owns expiry — there
-	 * is no local sweep timer to stop.
-	 */
-	dispose(): void {}
-
 	private entryCacheKey(key: string): string {
 		return `${KEY_PREFIX}:${this.scope}:entry:${key}`;
 	}

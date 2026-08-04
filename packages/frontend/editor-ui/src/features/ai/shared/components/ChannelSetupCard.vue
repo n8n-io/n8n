@@ -92,7 +92,6 @@ const integrationLabel = computed(() => currentIntegration.value?.label ?? props
 const connectedDescriptionKeys = {
 	telegram: 'agents.builder.addTrigger.connectedText.telegram',
 	linear: 'agents.builder.addTrigger.connectedText.linear',
-	discord: 'agents.builder.addTrigger.connectedText.discord',
 } as const;
 
 const connectedDescription = computed(() => {
@@ -296,13 +295,10 @@ watch(
 				:credential-permissions="credentialPermissions"
 				:credentials-loading="credentialsLoading"
 				:loading="isLoading"
-				:connected="isConnected"
-				:connected-description="connectedDescription"
+				:connected="isConfigured"
 				:error-message="errorMessage"
 				:error-is-conflict="errorIsConflict[currentIntegration.type]"
-				:saved-settings="integrationSettings[currentIntegration.type]"
 				:is-published="false"
-				:agent-name="agent?.name ?? agentId"
 				:project-id="projectId"
 				:agent-id="agentId"
 				:force-new-credential="true"

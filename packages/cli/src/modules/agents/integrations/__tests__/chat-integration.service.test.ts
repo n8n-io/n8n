@@ -429,8 +429,6 @@ describe('ChatIntegrationService', () => {
 			const service = buildService();
 			const shutdownA = vi.fn().mockResolvedValue(undefined);
 			const shutdownB = vi.fn().mockResolvedValue(undefined);
-			const disposeA = vi.fn();
-			const disposeB = vi.fn();
 
 			// Seed two connections via the private map.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -444,7 +442,6 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeA },
 			});
 			internal.connections.set('agent-2:telegram:cred-2', {
 				chat: {
@@ -455,15 +452,12 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeB },
 			});
 
 			await service.disconnectAll();
 
 			expect(shutdownA).toHaveBeenCalledTimes(1);
 			expect(shutdownB).toHaveBeenCalledTimes(1);
-			expect(disposeA).toHaveBeenCalledTimes(1);
-			expect(disposeB).toHaveBeenCalledTimes(1);
 			expect(internal.connections.size).toBe(0);
 		});
 
@@ -476,8 +470,6 @@ describe('ChatIntegrationService', () => {
 			const service = buildService();
 			const shutdownA = vi.fn().mockRejectedValue(new Error('boom'));
 			const shutdownB = vi.fn().mockResolvedValue(undefined);
-			const disposeA = vi.fn();
-			const disposeB = vi.fn();
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const internal = service as any;
@@ -490,7 +482,6 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeA },
 			});
 			internal.connections.set('agent-2:telegram:cred-2', {
 				chat: {
@@ -501,15 +492,12 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeB },
 			});
 
 			await expect(service.disconnectAll()).resolves.toBeUndefined();
 
 			expect(shutdownA).toHaveBeenCalledTimes(1);
 			expect(shutdownB).toHaveBeenCalledTimes(1);
-			expect(disposeA).toHaveBeenCalledTimes(1);
-			expect(disposeB).toHaveBeenCalledTimes(1);
 			expect(internal.connections.size).toBe(0);
 		});
 	});
@@ -751,7 +739,6 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		);
 		expect(service.getChatInstance('agent-1', slackIntegration)).toBe(liveChat);
 		expect(internal.outboundConnections.size).toBe(0);
-		expect(bridge.dispose).not.toHaveBeenCalled();
 	});
 });
 
@@ -765,7 +752,6 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 			onSubscribedMessage: Mock;
 			initialize: Mock;
 		};
-		bridge: { dispose: Mock };
 		context: AgentChatIntegrationContext;
 	};
 
@@ -783,7 +769,6 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 				onSubscribedMessage: vi.fn(),
 				initialize: vi.fn(),
 			},
-			bridge: { dispose: vi.fn() },
 			context: ctx,
 		};
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -824,11 +809,9 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 
 		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
 		expect(onBeforeDisconnect).toHaveBeenCalledWith(ctx);
-		// Order: external teardown → local shutdown → dispose
 		expect(onBeforeDisconnect.mock.invocationCallOrder[0]).toBeLessThan(
 			stub.chat.shutdown.mock.invocationCallOrder[0],
 		);
-		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect((service as any).connections.size).toBe(0);
 	});
@@ -851,7 +834,6 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 
 		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
 		expect(stub.chat.shutdown).toHaveBeenCalledTimes(1);
-		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect((service as any).connections.size).toBe(0);
 	});
@@ -1174,7 +1156,6 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(service as any).connections.set(`agent-1:discord:${credentialId}`, {
 				chat: { webhooks: { discord: handler } },
-				bridge: { dispose: vi.fn() },
 				context: {
 					agentId: 'agent-1',
 					projectId: 'project-1',

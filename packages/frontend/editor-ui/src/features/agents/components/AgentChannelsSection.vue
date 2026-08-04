@@ -15,6 +15,7 @@ const props = withDefaults(
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
+		isPublished?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
 		/** No agent row exists yet — nothing can be connected to it. */
@@ -24,6 +25,7 @@ const props = withDefaults(
 	{
 		connectedTriggers: () => [],
 		disabled: false,
+		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
 	},
@@ -220,6 +222,7 @@ const remainingChannelOptionLabels = computed(() => {
 			v-model:view="channelModalView"
 			:agent-id="agentId"
 			:project-id="projectId"
+			:is-published="isPublished"
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
 			@channel-connected="handleChannelConnected"

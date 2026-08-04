@@ -111,6 +111,20 @@ describe('DiscordIntegration', () => {
 		expect(integration.prepareInboundText('<@1234567890> hello', {})).toBe('<@1234567890> hello');
 	});
 
+	it('subscribes DMs and real threads, but not a parent channel after thread creation fails', () => {
+		const shouldSubscribe = (threadId: string) =>
+			integration.shouldSubscribeToNewMention({
+				thread: { id: threadId } as never,
+				message: {} as never,
+			});
+
+		expect(shouldSubscribe('discord:@me:400000000000000001')).toBe(true);
+		expect(
+			shouldSubscribe('discord:800000000000000001:700000000000000001:600000000000000001'),
+		).toBe(true);
+		expect(shouldSubscribe('discord:800000000000000001:700000000000000001')).toBe(false);
+	});
+
 	describe('onBeforeConnect', () => {
 		let stub: ReturnType<typeof installFetchStub>;
 		let applicationCalls: number;

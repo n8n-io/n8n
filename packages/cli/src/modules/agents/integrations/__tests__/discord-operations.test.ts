@@ -1,4 +1,7 @@
-import { searchDiscordChannels } from '../platforms/discord-operations';
+import {
+	searchDiscordChannels,
+	settleDiscordApprovalMessage,
+} from '../platforms/discord-operations';
 import { installFetchStub } from './helpers/replay-test-helpers';
 
 const API_URL = 'https://discord.com/api/v10';
@@ -130,4 +133,41 @@ describe('searchDiscordChannels', () => {
 
 		expect(result.resultCount).toBe(2);
 	});
+});
+
+it('settles an approval by replacing the message and removing its controls', async () => {
+	const stub = installFetchStub({
+		match: /discord\.com\/api/,
+		onRequest: ({ httpMethod, url, body }) => ({
+			apiCall: {
+				method: `${httpMethod} ${new URL(url).pathname.replace(/^\/api\/v\d+/, '')}`,
+				body,
+			},
+			responseBody: {},
+		}),
+	});
+
+	try {
+		await settleDiscordApprovalMessage({
+			apiUrl: API_URL,
+			botToken: BOT_TOKEN,
+			threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
+			messageId: '1000',
+			content: '✅ Approved by Alice',
+		});
+
+		expect(stub.apiCalls).toEqual([
+			{
+				method: 'PATCH /channels/600000000000000001/messages/1000',
+				body: {
+					content: '✅ Approved by Alice',
+					embeds: [],
+					components: [],
+					allowed_mentions: { parse: [] },
+				},
+			},
+		]);
+	} finally {
+		stub.restore();
+	}
 });
