@@ -27,6 +27,14 @@ interface MindeeV2UIParams {
 }
 
 /**
+ * Checks if a provided response is a valid node.
+ * @param value
+ */
+function isDataObject(value: unknown): value is IDataObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
  * Makes an authenticated HTTP request to the Mindee API
  * @param method - HTTP method.
  * @param url - The Mindee API's (complete) URL.
@@ -53,14 +61,24 @@ export async function mindeeApiRequest(
 		body,
 		qs,
 	};
+	Object.assign(options, option);
+
+	let response: unknown;
 	try {
-		Object.assign(options, option);
-		return await this.helpers.httpRequestWithAuthentication.call(this, 'mindeeV2Api', {
+		response = await this.helpers.httpRequestWithAuthentication.call(this, 'mindeeV2Api', {
 			...options,
 		});
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+
+	if (!isDataObject(response)) {
+		throw new NodeApiError(this.getNode(), {} as JsonObject, {
+			message: 'Mindee API returned a non-object response',
+		});
+	}
+
+	return response;
 }
 
 /**
@@ -95,7 +113,7 @@ export async function pollMindee(
 	await setTimeout(INITIAL_DELAY_MS);
 	let serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
 	if ('inference' in serverResponse) {
-		return [serverResponse as IDataObject];
+		return [serverResponse];
 	}
 	if (!('job' in serverResponse)) {
 		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject);

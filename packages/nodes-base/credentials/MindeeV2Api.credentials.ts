@@ -1,4 +1,5 @@
 import type {
+	Icon,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
@@ -9,7 +10,7 @@ export class MindeeV2Api implements ICredentialType {
 	name = 'mindeeV2Api';
 
 	displayName = 'Mindee API V2';
-
+	icon: Icon = 'file:icons/Mindee.svg';
 	documentationUrl = 'mindee';
 
 	properties: INodeProperties[] = [
@@ -26,10 +27,16 @@ export class MindeeV2Api implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
+		const apiKey = credentials.apiKey;
+		if (typeof apiKey !== 'string') {
+			throw new Error('Mindee API key must be a string');
+		}
 		requestOptions.headers = {
 			...(requestOptions.headers ?? {}),
-			Authorization: `${credentials.apiKey}`,
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Authorization: apiKey,
 		};
+		await Promise.resolve();
 		return requestOptions;
 	}
 }
