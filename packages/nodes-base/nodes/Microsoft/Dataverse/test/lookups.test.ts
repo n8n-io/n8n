@@ -5,6 +5,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import { dataverseApiRequest } from '../GenericFunctions';
 import {
 	applyLookupBindings,
+	bodyHasLookupCandidates,
 	resolveLookupFields,
 	type LookupFieldMap,
 } from '../operations/lookups';
@@ -233,6 +234,69 @@ describe('Microsoft Dataverse lookups', () => {
 			expect(() =>
 				applyLookupBindings(ctx, 0, { primarycontactid: 'not-a-guid' }, singleTarget),
 			).toThrow(/record GUID or a/);
+		});
+
+		it('rejects a malformed slash-prefixed reference with no key', () => {
+			// "/contacts" starts with a slash but has no "(id)" — must not be forwarded.
+			expect(() =>
+				applyLookupBindings(ctx, 0, { primarycontactid: '/contacts' }, singleTarget),
+			).toThrow(/record GUID or a/);
+		});
+
+		it('binds a matching-table reference for a single-target lookup', () => {
+			const out = applyLookupBindings(
+				ctx,
+				0,
+				{ primarycontactid: `/contacts(${guid})` },
+				singleTarget,
+			);
+
+			expect(out).toEqual({ 'primarycontactid@odata.bind': `/contacts(${guid})` });
+		});
+
+		it('rejects a reference to the wrong table for a single-target lookup', () => {
+			// The lookup only targets "contacts"; an "/accounts(...)" reference must fail
+			// node-side instead of forwarding a mismatched path to Dataverse.
+			expect(() =>
+				applyLookupBindings(ctx, 0, { primarycontactid: `/accounts(${guid})` }, singleTarget),
+			).toThrow(/does not match any related table/);
+		});
+	});
+
+	describe('bodyHasLookupCandidates', () => {
+		const guid = '00000000-0000-0000-0000-000000000001';
+
+		it('returns false for plain scalar values', () => {
+			expect(
+				bodyHasLookupCandidates({ name: 'Acme', revenue: 100, active: true, when: '2024-01-01' }),
+			).toBe(false);
+		});
+
+		it('returns true for a bare GUID value', () => {
+			expect(bodyHasLookupCandidates({ primarycontactid: guid })).toBe(true);
+		});
+
+		it('returns true for a reference-path value (with or without leading slash)', () => {
+			expect(bodyHasLookupCandidates({ customerid: `/accounts(${guid})` })).toBe(true);
+			expect(bodyHasLookupCandidates({ customerid: `accounts(${guid})` })).toBe(true);
+		});
+
+		it('returns true for a malformed slash-prefixed value so validation still runs', () => {
+			expect(bodyHasLookupCandidates({ primarycontactid: '/contacts' })).toBe(true);
+		});
+
+		it('returns true for a null value (potential disassociation)', () => {
+			expect(bodyHasLookupCandidates({ primarycontactid: null })).toBe(true);
+		});
+
+		it('ignores keys that already carry @odata.bind', () => {
+			expect(bodyHasLookupCandidates({ 'primarycontactid@odata.bind': `/contacts(${guid})` })).toBe(
+				false,
+			);
+		});
+
+		it('trims whitespace before matching a GUID', () => {
+			expect(bodyHasLookupCandidates({ primarycontactid: `  ${guid}  ` })).toBe(true);
 		});
 	});
 });

@@ -30,6 +30,9 @@ export interface LookupCandidate {
 /** Lookup logical name (lower-cased) → its writable navigation-property targets. */
 export type LookupFieldMap = Map<string, LookupCandidate[]>;
 
+/** Shared read-only empty map for the common "no lookup candidates" fast path. */
+export const EMPTY_LOOKUP_FIELDS: LookupFieldMap = new Map();
+
 interface RelationshipRow {
 	ReferencingAttribute?: string;
 	ReferencingEntityNavigationPropertyName?: string;
@@ -181,6 +184,37 @@ async function resolveEntitySets(
 }
 
 /**
+ * Cheap pre-check: does `body` contain any value that {@link applyLookupBindings}
+ * could need relationship metadata to translate? A candidate is a bare GUID, a
+ * value starting with `/` or matching an `entityset(id)` reference, or `null`
+ * (a disassociation). Plain scalars (names, numbers, booleans, dates) never are,
+ * and keys already carrying `@odata.bind` are handled without metadata.
+ *
+ * This lets a write op skip {@link resolveLookupFields} — and its up-to-three
+ * metadata GETs — for the common case of a body with no lookup-style values,
+ * so a plain create/update no longer requires the connected app to have
+ * metadata-read permission.
+ *
+ * The check is a deliberately broad over-approximation: it uses `startsWith('/')`
+ * so even a malformed reference (e.g. `/contacts` with no key) still resolves
+ * metadata and reaches {@link applyLookupBindings}'s node-side validation, rather
+ * than silently passing through as a plain field. False positives only cost a
+ * metadata lookup; a false negative would drop validation.
+ */
+export function bodyHasLookupCandidates(body: IDataObject): boolean {
+	for (const [key, value] of Object.entries(body)) {
+		if (key.includes('@odata.bind')) continue;
+		if (value === null) return true;
+		if (typeof value !== 'string') continue;
+		const raw = value.trim();
+		if (GUID_PATTERN.test(raw) || raw.startsWith('/') || ENTITYSET_PATH_PATTERN.test(raw)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * Rewrite any lookup columns in `body` to their `@odata.bind` navigation-property
  * form. Non-lookup fields and keys that already carry `@odata.bind` are passed
  * through untouched. Throws a {@link NodeOperationError} for values that can't be
@@ -252,11 +286,16 @@ function buildLookupBinding(
 		);
 	}
 
-	// Full reference form: "/contacts(<id>)" or "contacts(<id>)".
-	if (raw.startsWith('/') || ENTITYSET_PATH_PATTERN.test(raw)) {
+	// Full reference form: "/contacts(<id>)" or "contacts(<id>)". The pattern
+	// already allows an optional leading slash, so it also rejects a malformed
+	// slash-prefixed value like "/contacts" (no key) instead of forwarding it.
+	if (ENTITYSET_PATH_PATTERN.test(raw)) {
 		const path = raw.startsWith('/') ? raw : `/${raw}`;
 		const targetEntitySet = path.slice(1, path.indexOf('('));
-		const match = candidates.find((c) => c.targetEntitySet === targetEntitySet) ?? single;
+		// The reference's entity set must match one of the lookup's targets. Do NOT
+		// fall back to `single` here: a single-target lookup given a reference to the
+		// wrong table must fail node-side, not forward a mismatched path to Dataverse.
+		const match = candidates.find((c) => c.targetEntitySet === targetEntitySet);
 		if (!match) {
 			throw new NodeOperationError(
 				ctx.getNode(),

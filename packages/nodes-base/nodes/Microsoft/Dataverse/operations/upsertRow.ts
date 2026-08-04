@@ -1,7 +1,12 @@
 import type { IDataObject } from 'n8n-workflow';
 
 import { type DataverseHeaders } from '../GenericFunctions';
-import { applyLookupBindings, resolveLookupFields } from './lookups';
+import {
+	applyLookupBindings,
+	bodyHasLookupCandidates,
+	EMPTY_LOOKUP_FIELDS,
+	resolveLookupFields,
+} from './lookups';
 import {
 	assertNonEmptyBody,
 	assertNonEmptyRecordId,
@@ -118,10 +123,13 @@ export const upsertRow: OperationDefinition = {
 
 		const rawBody = parseItemInput(ctx, i);
 		// Validate before resolving lookup metadata so an empty Row Item fails fast
-		// without spending metadata requests. applyLookupBindings only rewrites keys,
-		// so a non-empty body can never become empty afterwards.
+		// without spending metadata requests. Lookup metadata is only resolved when the
+		// body actually carries a lookup-style value, so a plain write stays a single
+		// request and needs no metadata-read permission.
 		assertNonEmptyBody(ctx, i, rawBody, 'Create or Update');
-		const lookupFields = await resolveLookupFields(ctx, credentialType, entitySet);
+		const lookupFields = bodyHasLookupCandidates(rawBody)
+			? await resolveLookupFields(ctx, credentialType, entitySet)
+			: EMPTY_LOOKUP_FIELDS;
 		const body = applyLookupBindings(ctx, i, rawBody, lookupFields);
 		const options = ctx.getNodeParameter('upsertOptions', i, {}) as IDataObject;
 		const behavior = (options.behavior as string) ?? 'upsert';

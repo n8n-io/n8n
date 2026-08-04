@@ -15,12 +15,19 @@ vi.mock('../GenericFunctions', () => ({
 	dataverseApiRequestAllItems: vi.fn(),
 }));
 
-// Lookup translation is unit-tested in lookups.test.ts. Here we stub it to a
-// pass-through so the write-op assertions stay focused on request shape.
-vi.mock('../operations/lookups', () => ({
-	resolveLookupFields: vi.fn().mockResolvedValue(new Map()),
-	applyLookupBindings: vi.fn((_ctx: unknown, _i: number, body: unknown) => body),
-}));
+// Lookup translation is unit-tested in lookups.test.ts. Here we stub only the
+// network-bound resolve/apply pair to a pass-through so the write-op assertions
+// stay focused on request shape, while keeping the real `bodyHasLookupCandidates`
+// gate + `EMPTY_LOOKUP_FIELDS` so the "skip metadata for plain bodies" behavior
+// is exercised end-to-end.
+vi.mock('../operations/lookups', async (importActual) => {
+	const actual = await importActual<typeof import('../operations/lookups')>();
+	return {
+		...actual,
+		resolveLookupFields: vi.fn().mockResolvedValue(new Map()),
+		applyLookupBindings: vi.fn((_ctx: unknown, _i: number, body: unknown) => body),
+	};
+});
 
 const CREDENTIAL_TYPE = 'microsoftDataverseOAuth2Api';
 
@@ -81,17 +88,33 @@ describe('Microsoft Dataverse operations', () => {
 			expect(credType).toBe(CREDENTIAL_TYPE);
 		});
 
-		it('resolves lookup fields and translates the body before sending', async () => {
+		it('resolves lookup fields and translates the body when it carries a lookup-style value', async () => {
 			withParams({
 				entitySet: 'accounts',
 				inputMode: 'json',
-				fieldsJson: '{"name":"Acme"}',
+				fieldsJson: '{"primarycontactid":"00000000-0000-0000-0000-000000000001"}',
 				createOptions: {},
 			});
 
 			await createRow.execute(ctx, 0, CREDENTIAL_TYPE);
 
 			expect(resolveLookupFields).toHaveBeenCalledWith(ctx, CREDENTIAL_TYPE, 'accounts');
+			expect(applyLookupBindings).toHaveBeenCalled();
+		});
+
+		it('skips lookup metadata for a body with no lookup-style values', async () => {
+			withParams({
+				entitySet: 'accounts',
+				inputMode: 'json',
+				fieldsJson: '{"name":"Acme","revenue":100}',
+				createOptions: {},
+			});
+
+			await createRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			// No GUID / reference / null in the body → no metadata GETs, but the body
+			// still passes through applyLookupBindings (prototype-pollution sanitizing).
+			expect(resolveLookupFields).not.toHaveBeenCalled();
 			expect(applyLookupBindings).toHaveBeenCalled();
 		});
 
