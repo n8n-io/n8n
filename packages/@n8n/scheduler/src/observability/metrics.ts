@@ -22,7 +22,7 @@ export interface SchedulerMetrics {
 	recordMisfired(discarded: MisfireCount[]): void;
 	/** Already-recorded occurrences retired because a catch-up run superseded them. */
 	recordRetired(retired: number): void;
-	recordCatchUps(grouped: number, ungrouped: number): void;
+	recordCatchUps(grouped: number, retainedOwner: number): void;
 	/** Outcome of one reaper sweep. */
 	recordReaped(reclaimed: number, deadLettered: number, missed: number): void;
 	/**

@@ -67,9 +67,11 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 		expect(tx.recordOccurrences).not.toHaveBeenCalled();
 		expect(tx.advanceJobs).not.toHaveBeenCalled();
@@ -90,9 +92,11 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 
 		// One insert and one update for the whole batch, not a pair per job.
@@ -318,9 +322,11 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
 	});
@@ -358,9 +364,11 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 1,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 		expect(onPlanError).toHaveBeenCalledTimes(1);
 		expect(onPlanError).toHaveBeenCalledWith(bad, expect.anything());
@@ -489,17 +497,27 @@ describe('materialize', () => {
 			expect(totalDiscarded(summary.misfires)).toBe(38);
 		});
 
-		it('reports how many catch-up runs the group dropped', async () => {
+		it('leaves the dropped catch-up runs out of the skipped-occurrence count', async () => {
+			const tx = makeTx();
+			claimSiblings(tx);
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.skippedOccurrences).toBe(36);
+		});
+
+		it('reports how many catch-up runs the group dropped and kept', async () => {
 			const tx = makeTx();
 			claimSiblings(tx);
 
 			const summary = await materialize(runnerWith(tx), options);
 
 			expect(summary.groupedCatchUps).toBe(2);
-			expect(summary.ungroupedCatchUps).toBe(0);
+			expect(summary.retainedOwnerCatchUps).toBe(1);
+			expect(summary.multiMemberOwnerGroups).toBe(1);
 		});
 
-		it('reports a catch-up run of an owner with no sibling as ungrouped', async () => {
+		it('reports the catch-up run of an owner with no sibling as retained, in no group', async () => {
 			const tx = makeTx();
 			tx.claimDueJobs.mockResolvedValue({
 				now: NOW,
@@ -513,7 +531,8 @@ describe('materialize', () => {
 			const summary = await materialize(runnerWith(tx), options);
 
 			expect(summary.groupedCatchUps).toBe(0);
-			expect(summary.ungroupedCatchUps).toBe(2);
+			expect(summary.retainedOwnerCatchUps).toBe(2);
+			expect(summary.multiMemberOwnerGroups).toBe(0);
 		});
 
 		it('reports a group and an owner with no sibling side by side', async () => {
@@ -531,7 +550,26 @@ describe('materialize', () => {
 			const summary = await materialize(runnerWith(tx), options);
 
 			expect(summary.groupedCatchUps).toBe(1);
-			expect(summary.ungroupedCatchUps).toBe(1);
+			expect(summary.retainedOwnerCatchUps).toBe(2);
+			expect(summary.multiMemberOwnerGroups).toBe(1);
+		});
+
+		it('keeps a sibling catch-up run when its payload differs from the others', async () => {
+			const tx = makeTx();
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [makeSibling(1), makeSibling(2), { ...makeSibling(3), payload: { rule: 'other' } }],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(summary.groupedCatchUps).toBe(1);
+			expect(summary.retainedOwnerCatchUps).toBe(2);
+			expect(summary.multiMemberOwnerGroups).toBe(1);
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+			expect(rows).toHaveLength(2);
+			expect(rows.map(({ payload }) => payload)).toEqual([{}, { rule: 'other' }]);
 		});
 
 		it('records the surviving occurrences of a superseded sibling at their own instants', async () => {
@@ -679,9 +717,11 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 1,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);

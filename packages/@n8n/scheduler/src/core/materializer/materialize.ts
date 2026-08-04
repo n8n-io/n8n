@@ -1,7 +1,11 @@
 import { Time } from '@n8n/constants';
 
 import type { ScheduledJob } from '../types';
-import { coalesceSiblingCatchUps, countUngroupedOwnerCatchUps } from './coalesce-group';
+import {
+	coalesceSiblingCatchUps,
+	countMultiMemberOwnerGroups,
+	countRetainedOwnerCatchUps,
+} from './coalesce-group';
 import { countMisfires, type MisfireCount } from './misfire';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
@@ -35,10 +39,12 @@ export interface MaterializerSummary {
 	 * type and policy. Groups with nothing discarded are left out.
 	 */
 	misfires: MisfireCount[];
+	skippedOccurrences: number;
 	/** How many pending occurrences were retired because a catch-up run superseded them. */
 	retiredOccurrences: number;
 	groupedCatchUps: number;
-	ungroupedCatchUps: number;
+	multiMemberOwnerGroups: number;
+	retainedOwnerCatchUps: number;
 }
 
 /** Notified when a claimed job's schedule cannot be planned, before it is deferred. */
@@ -115,9 +121,11 @@ export async function materialize(
 				created: [],
 				deferredJobs: 0,
 				misfires: [],
+				skippedOccurrences: 0,
 				retiredOccurrences: 0,
 				groupedCatchUps: 0,
-				ungroupedCatchUps: 0,
+				multiMemberOwnerGroups: 0,
+				retainedOwnerCatchUps: 0,
 			};
 		}
 		const { occurrencesPlanned: jobsPlanned, numberOfJobsDeferred } = planOrDeferJobs(
@@ -146,11 +154,17 @@ export async function materialize(
 			created,
 			deferredJobs: numberOfJobsDeferred,
 			misfires: countMisfires(occurrencesPlanned),
+			skippedOccurrences: totalSkippedOccurrences(occurrencesPlanned),
 			retiredOccurrences,
 			groupedCatchUps: totalGroupedCatchUps(occurrencesPlanned),
-			ungroupedCatchUps: countUngroupedOwnerCatchUps(jobsPlanned),
+			multiMemberOwnerGroups: countMultiMemberOwnerGroups(jobsPlanned),
+			retainedOwnerCatchUps: countRetainedOwnerCatchUps(occurrencesPlanned),
 		};
 	});
+}
+
+function totalSkippedOccurrences(planned: PlannedJob[]): number {
+	return planned.reduce((total, { plan }) => total + plan.skippedOccurrences, 0);
 }
 
 function totalGroupedCatchUps(planned: PlannedJob[]): number {

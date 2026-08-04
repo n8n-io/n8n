@@ -221,23 +221,60 @@ gap: among the jobs sharing an owner that all have a catch-up run on the same
 planning pass, one wins (the latest missed instant; the lowest job id breaks a tie)
 and the rest drop theirs.
 
-Two consequences follow, and both are by design rather than oversights:
+Grouping happens per planning pass, over the rows that pass has in hand, and it is by
+design rather than an oversight that **the surviving catch-up carries one
+`scheduledFor`**: the most recent missed instant across the owner's jobs. So a node
+that mixes a fast rule with a slow one will always see the fast rule's instant win,
+and the slow rule's catch-up is structurally superseded. The owner is caught up once,
+at the freshest missed instant, not once per rule.
 
-- **The surviving catch-up carries one `scheduledFor`**: the most recent missed
-  instant across the owner's jobs. So a node that mixes a fast rule with a slow one
-  will always see the fast rule's instant win, and the slow rule's catch-up is
-  structurally superseded. The owner is caught up once, at the freshest missed
-  instant, not once per rule.
-- **The claim only covers the rows that were due when it ran.** A sibling that was
-  not yet due at that moment is not part of the group, so it catches up separately on
-  a later pass. Grouping is per planning pass, not a standing arrangement across
-  passes.
+Jobs group only when they agree on everything the surviving row carries into the
+recorded run: the owner, the task type, the payload, the attempt limit and the grace
+window. The Schedule Trigger writes the same values for every rule of a node, so its
+rules group; a provisioner whose sibling rows differ gets one catch-up run per
+distinct shape, which is not helpful but does not lose the difference.
 
-Both are observable: the planner counts the catch-up runs grouping collapsed away
-(`n8n_scheduler_catch_ups_grouped_total`) and the ones that stayed because their
-owner group held only a single claimable job at that moment
-(`n8n_scheduler_catch_ups_ungrouped_total`). The second is the size of the residual
-gap above.
+### The residual gaps
+
+Grouping is a best-effort collapse within one pass, not a guarantee of one fire per
+owner. Three cases still leave an owner with more than one catch-up run, and they are
+worth knowing before reading the counters:
+
+1. **A sibling that was not yet due.** The claim only covers the rows that were due
+   when it ran, so a sibling that was not yet due is not part of the group and catches
+   up separately on a later pass.
+2. **Two passes running at once.** A pass claims a batch of due jobs, then runs a
+   second query to pull in the rest of the same owners' due jobs, so a batch boundary
+   does not split an owner group. That narrows the window; it does not close it. On
+   Postgres both queries take their rows with `FOR UPDATE SKIP LOCKED`, so two
+   overlapping passes can each claim a different sibling of the same owner, and each
+   record a catch-up run for it. On SQLite the transactions serialise, so this case
+   does not arise there.
+3. **A backlog larger than `maxPerJob`.** The planner walks at most `maxPerJob`
+   instants per job per pass. A job whose missed backlog alone fills that cap has its
+   walk truncated before it reaches the newest missed instant, so the planner records
+   nothing for it on this pass and plans no catch-up run: the job is not in its owner
+   group at all, and it catches up on a later pass, apart from the siblings whose
+   backlog fitted. Concretely, after a long outage a node mixing a 1-minute rule with
+   an hourly rule can still fire twice: the hourly rule's backlog fits and catches up
+   immediately, while the 1-minute rule's does not and catches up once it has drained
+   enough to fit.
+
+Both counters the planner reports are counts of catch-up runs, and neither measures
+those residual gaps:
+
+- `n8n_scheduler_catch_ups_grouped_total`: catch-up runs grouping collapsed away
+  because a sibling in the same pass won the group.
+- `n8n_scheduler_catch_ups_retained_total`: catch-up runs recorded under
+  `coalesce_owner`, i.e. the ones grouping kept. Most owners hold a single job, so
+  this counts ordinary single-rule catch-ups too; it is the number of catch-up fires
+  the policy produced, not a count of missed grouping opportunities.
+
+Read the two together: `grouped` rising against `retained` is grouping doing work.
+Per-pass traces carry the same two numbers (`n8n.scheduler.grouped_catch_ups`,
+`n8n.scheduler.retained_owner_catch_ups`) plus
+`n8n.scheduler.multi_member_owner_groups`, how many owners in that pass had more than
+one overdue job, which is the population grouping could apply to at all.
 
 Poll triggers use `skip` on purpose: a poll asks "what changed since last time?", so
 replaying a missed poll adds nothing that the next poll will not pick up anyway. They

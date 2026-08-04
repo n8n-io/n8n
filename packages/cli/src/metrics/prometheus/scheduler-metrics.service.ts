@@ -36,7 +36,7 @@ export class PrometheusSchedulerMetricsService
 	private occurrencesMisfired!: promClient.Counter<'task_type' | 'policy'>;
 	private occurrencesRetired!: promClient.Counter;
 	private catchUpsGrouped!: promClient.Counter;
-	private catchUpsUngrouped!: promClient.Counter;
+	private catchUpsRetained!: promClient.Counter;
 	private occurrencesMissed!: promClient.Counter;
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
@@ -107,9 +107,9 @@ export class PrometheusSchedulerMetricsService
 			help: "Total number of catch-up runs collapsed away because a sibling job sharing the same owner won the group, under the 'coalesce_owner' misfire policy.",
 		});
 
-		this.catchUpsUngrouped = new promClient.Counter({
-			name: `${prefix}scheduler_catch_ups_ungrouped_total`,
-			help: "Total number of catch-up runs recorded under the 'coalesce_owner' misfire policy whose owner group held only one claimable job at that moment, so there was nothing to collapse them with.",
+		this.catchUpsRetained = new promClient.Counter({
+			name: `${prefix}scheduler_catch_ups_retained_total`,
+			help: "Total number of catch-up runs recorded under the 'coalesce_owner' misfire policy, i.e. the ones grouping kept. Most owners hold a single job, so this counts ordinary single-rule catch-ups too; compare it against scheduler_catch_ups_grouped_total rather than reading it alone.",
 		});
 
 		this.occurrencesMissed = new promClient.Counter({
@@ -145,7 +145,7 @@ export class PrometheusSchedulerMetricsService
 		this.jobsDeferred.inc(0);
 		this.occurrencesRetired.inc(0);
 		this.catchUpsGrouped.inc(0);
-		this.catchUpsUngrouped.inc(0);
+		this.catchUpsRetained.inc(0);
 		this.occurrencesMissed.inc(0);
 		this.tasksReclaimed.inc(0);
 		this.tasksDeadLettered.inc(0);
@@ -260,10 +260,10 @@ export class PrometheusSchedulerMetricsService
 		}
 	}
 
-	recordCatchUps(grouped: number, ungrouped: number) {
+	recordCatchUps(grouped: number, retainedOwner: number) {
 		if (this.initialized) {
 			this.catchUpsGrouped.inc(grouped);
-			this.catchUpsUngrouped.inc(ungrouped);
+			this.catchUpsRetained.inc(retainedOwner);
 		}
 	}
 

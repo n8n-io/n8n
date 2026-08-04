@@ -125,7 +125,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 					'n8n_scheduler_tasks_dead_lettered_total',
 					'n8n_scheduler_tasks_pruned_total',
 					'n8n_scheduler_catch_ups_grouped_total',
-					'n8n_scheduler_catch_ups_ungrouped_total',
+					'n8n_scheduler_catch_ups_retained_total',
 				]),
 			);
 
@@ -161,7 +161,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 				'n8n_scheduler_jobs_deferred_total',
 				'n8n_scheduler_occurrences_retired_total',
 				'n8n_scheduler_catch_ups_grouped_total',
-				'n8n_scheduler_catch_ups_ungrouped_total',
+				'n8n_scheduler_catch_ups_retained_total',
 				'n8n_scheduler_occurrences_missed_total',
 				'n8n_scheduler_tasks_reclaimed_total',
 				'n8n_scheduler_tasks_dead_lettered_total',
@@ -304,15 +304,15 @@ describe('PrometheusSchedulerMetricsService', () => {
 			expect(counterIncFor('n8n_scheduler_occurrences_missed_total')).toHaveBeenCalledWith(6);
 		});
 
-		it('counts grouped and ungrouped catch-up runs on their own counters', () => {
+		it('counts grouped and retained catch-up runs on their own counters', () => {
 			service.recordCatchUps(3, 1);
 
 			const grouped = counterIncFor('n8n_scheduler_catch_ups_grouped_total');
-			const ungrouped = counterIncFor('n8n_scheduler_catch_ups_ungrouped_total');
+			const retained = counterIncFor('n8n_scheduler_catch_ups_retained_total');
 			expect(grouped).toHaveBeenCalledWith(3);
 			expect(grouped).toHaveBeenCalledTimes(1);
-			expect(ungrouped).toHaveBeenCalledWith(1);
-			expect(ungrouped).toHaveBeenCalledTimes(1);
+			expect(retained).toHaveBeenCalledWith(1);
+			expect(retained).toHaveBeenCalledTimes(1);
 		});
 
 		it('increments the dead-lettered counter by one on the executor terminal-failure path', () => {

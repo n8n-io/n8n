@@ -416,7 +416,8 @@ describe('scheduler materialization', () => {
 				claimedJobs: 3,
 				occurrences: 1,
 				groupedCatchUps: 2,
-				ungroupedCatchUps: 0,
+				retainedOwnerCatchUps: 1,
+				multiMemberOwnerGroups: 1,
 				retiredOccurrences: 3,
 			});
 

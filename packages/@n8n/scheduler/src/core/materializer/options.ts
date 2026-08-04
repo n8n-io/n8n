@@ -29,8 +29,9 @@ export interface MaterializerOptions {
 	maxPerJob: number;
 
 	/**
-	 * The most jobs to claim in one pass,
-	 * bounding a single pass's transaction.
+	 * The most jobs to claim in one pass, bounding a single pass's transaction. A
+	 * storage layer that completes owner groups may claim up to a further `batchSize`
+	 * jobs on top, so a pass holds at most twice this many.
 	 */
 	batchSize: number;
 

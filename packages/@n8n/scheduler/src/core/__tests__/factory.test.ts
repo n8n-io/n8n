@@ -10,7 +10,7 @@ import { DEFAULT_EXECUTOR_OPTIONS } from '../executor';
 import { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from '../factory';
 import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
 import { DEFAULT_LIFECYCLE_OPTIONS, PASS_TIMED_OUT, pollLookaheadSeconds } from '../lifecycle';
-import { DEFAULT_MATERIALIZER_OPTIONS } from '../materializer';
+import { DEFAULT_MATERIALIZER_OPTIONS, totalDiscarded } from '../materializer';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
 import type { ExpiredLeaseRow } from '../reaper';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
@@ -402,9 +402,11 @@ describe('createScheduler materialize', () => {
 			created: [],
 			deferredJobs: 1,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
@@ -1107,9 +1109,11 @@ describe('createScheduler tracing', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Scheduler materialize', op: 'scheduler.materialize' }),
@@ -1121,7 +1125,7 @@ describe('createScheduler tracing', () => {
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
-	it('reports the grouped and ungrouped catch-up counts on the materialize span', async () => {
+	it('reports the grouped, retained and multi-member catch-up counts on the materialize span', async () => {
 		const { span, tracer } = makeTracer();
 		const { scheduler } = makeScheduler({
 			materializerTransaction: ownerGroupTransaction(),
@@ -1131,9 +1135,25 @@ describe('createScheduler tracing', () => {
 		const summary = await scheduler.materialize();
 
 		expect(summary.groupedCatchUps).toBe(1);
-		expect(summary.ungroupedCatchUps).toBe(2);
+		expect(summary.retainedOwnerCatchUps).toBe(3);
+		expect(summary.multiMemberOwnerGroups).toBe(1);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.groupedCatchUps, 1);
-		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.ungroupedCatchUps, 2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.retainedOwnerCatchUps, 3);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.multiMemberOwnerGroups, 1);
+	});
+
+	it('leaves the grouped catch-up run out of the span skipped-occurrence count', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({
+			materializerTransaction: ownerGroupTransaction(),
+			tracer,
+		});
+
+		const summary = await scheduler.materialize();
+
+		expect(summary.skippedOccurrences).toBe(40);
+		expect(totalDiscarded(summary.misfires)).toBe(41);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.skippedOccurrences, 40);
 	});
 
 	it('emits one creation span per newly recorded row', async () => {
@@ -1384,9 +1404,11 @@ describe('createScheduler tracing', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
+			skippedOccurrences: 0,
 			retiredOccurrences: 0,
 			groupedCatchUps: 0,
-			ungroupedCatchUps: 0,
+			multiMemberOwnerGroups: 0,
+			retainedOwnerCatchUps: 0,
 		});
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 		expect(span.setStatus).not.toHaveBeenCalledWith(
@@ -1469,7 +1491,7 @@ describe('createScheduler metrics', () => {
 		expect(metrics.recordMaterialized).toHaveBeenCalledWith(0, 1);
 	});
 
-	it('records the grouped and ungrouped catch-up counts from the pass summary', async () => {
+	it('records the grouped and retained catch-up counts from the pass summary', async () => {
 		const metrics = mock<SchedulerMetrics>();
 		const { scheduler } = makeScheduler({
 			materializerTransaction: ownerGroupTransaction(),
@@ -1478,7 +1500,7 @@ describe('createScheduler metrics', () => {
 
 		await scheduler.materialize();
 
-		expect(metrics.recordCatchUps).toHaveBeenCalledWith(1, 2);
+		expect(metrics.recordCatchUps).toHaveBeenCalledWith(1, 3);
 	});
 
 	it('records the reaper outcome from the sweep result', async () => {

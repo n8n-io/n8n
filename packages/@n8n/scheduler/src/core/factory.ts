@@ -17,7 +17,7 @@ import {
 import type { ExecutorOptions, ExecutorTaskStore } from './executor';
 import { DEFAULT_LIFECYCLE_OPTIONS, pollLookaheadSeconds, Loop, PASS_TIMED_OUT } from './lifecycle';
 import type { LifecycleOptions } from './lifecycle';
-import { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
+import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 import type { MaterializerOptions, RunInTransaction } from './materializer';
 import { DEFAULT_REAPER_OPTIONS, reap } from './reaper';
 import type { ReaperOptions, ReaperTaskStore } from './reaper';
@@ -338,7 +338,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					metrics.recordMaterialized(summary.occurrences, summary.deferredJobs);
 					metrics.recordMisfired(summary.misfires);
 					metrics.recordRetired(summary.retiredOccurrences);
-					metrics.recordCatchUps(summary.groupedCatchUps, summary.ungroupedCatchUps);
+					metrics.recordCatchUps(summary.groupedCatchUps, summary.retainedOwnerCatchUps);
 				});
 				return summary;
 			} catch (error) {
@@ -356,9 +356,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 						created: [],
 						deferredJobs: 0,
 						misfires: [],
+						skippedOccurrences: 0,
 						retiredOccurrences: 0,
 						groupedCatchUps: 0,
-						ungroupedCatchUps: 0,
+						multiMemberOwnerGroups: 0,
+						retainedOwnerCatchUps: 0,
 					};
 				}
 				throw error;
@@ -368,10 +370,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			[SCHEDULER_ATTRIBUTES.claimedJobs]: summary.claimedJobs,
 			[SCHEDULER_ATTRIBUTES.occurrences]: summary.occurrences,
 			[SCHEDULER_ATTRIBUTES.deferredJobs]: summary.deferredJobs,
-			[SCHEDULER_ATTRIBUTES.skippedOccurrences]: totalDiscarded(summary.misfires),
+			[SCHEDULER_ATTRIBUTES.skippedOccurrences]: summary.skippedOccurrences,
 			[SCHEDULER_ATTRIBUTES.retiredOccurrences]: summary.retiredOccurrences,
 			[SCHEDULER_ATTRIBUTES.groupedCatchUps]: summary.groupedCatchUps,
-			[SCHEDULER_ATTRIBUTES.ungroupedCatchUps]: summary.ungroupedCatchUps,
+			[SCHEDULER_ATTRIBUTES.multiMemberOwnerGroups]: summary.multiMemberOwnerGroups,
+			[SCHEDULER_ATTRIBUTES.retainedOwnerCatchUps]: summary.retainedOwnerCatchUps,
 		}),
 	);
 
