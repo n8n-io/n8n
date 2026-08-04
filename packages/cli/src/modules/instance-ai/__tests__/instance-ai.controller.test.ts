@@ -838,8 +838,6 @@ describe('InstanceAiController', () => {
 			});
 
 			it('should recreate the agent and bind the thread to it', async () => {
-				// Without the binding the next `build-agent` call has no target to continue
-				// and creates a second agent beside the seeded one.
 				const result = await controller.restoreEvalThread(req, res, agentPayload);
 
 				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith([seedAgent], 'project-1');

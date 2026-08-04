@@ -1827,8 +1827,8 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 	/** Workflows the history references; recreated (node credentials stripped). */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
-	/** Agents the history references; created at their pinned id and bound to the
-	 *  thread, so the next turn edits one instead of creating a second. */
+	/** Agents the history references; created at their pinned id, with the thread
+	 *  bound to them so the next turn continues one instead of resolving it again. */
 	agents: z.array(instanceAiEvalSeedAgentSchema).max(5).optional(),
 	/** Append a unique suffix to each seed data table's name (default true — safe
 	 *  for id-remapped seed workflows). False keeps the EXACT declared name so a

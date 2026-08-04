@@ -1,6 +1,5 @@
 import {
 	AgentJsonConfigSchema,
-	type AgentJsonConfig,
 	type InstanceAiEvalSeedAgent,
 	type InstanceAiEvalSeedDataTable,
 	type InstanceAiEvalSeedWorkflow,
@@ -37,7 +36,14 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
-/** Empty out every `credential` string and `credentials` map, at any depth. */
+/**
+ * Empty every `credential` string and `credentials` map, at any depth — the agent
+ * counterpart of stripping a seed workflow's node credentials. The ids address the
+ * instance the seed came from, and a seed captured from a real conversation would
+ * carry a real user's. Emptied rather than deleted: `credential` is a required
+ * FIELD on vector stores and episodic memory, and an empty value is what an
+ * unconfigured agent already carries.
+ */
 function blankCredentialValues(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(blankCredentialValues);
 	if (!isRecord(value)) return value;
@@ -156,12 +162,17 @@ export class EvalThreadRestoreService {
 		const created: string[] = [];
 		try {
 			for (const agent of agents) {
-				const config = this.blankAgentCredentials(agent);
+				const config = AgentJsonConfigSchema.safeParse(blankCredentialValues(agent.config));
+				if (!config.success) {
+					throw new BadRequestError(
+						`Seed agent ${agent.id} config became invalid after blanking its credentials`,
+					);
+				}
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
-				await agentsService.create(projectId, config.name, {
+				await agentsService.create(projectId, config.data.name, {
 					id: agent.id,
-					schema: config,
+					schema: config.data,
 					...(agent.skills ? { skills: agent.skills } : {}),
 				});
 				created.push(agent.id);
@@ -171,24 +182,6 @@ export class EvalThreadRestoreService {
 			throw error;
 		}
 		return created;
-	}
-
-	/**
-	 * Blank every credential id in a seeded agent's config — the agent counterpart
-	 * of stripping a seed workflow's node credentials. The ids belong to the
-	 * instance the seed came from, so here they address nothing, and a seed captured
-	 * from a real conversation would carry a real user's. Emptied rather than
-	 * deleted: `credential` is a required FIELD on vector stores and episodic
-	 * memory, and an empty value is what an unconfigured agent already carries.
-	 */
-	private blankAgentCredentials(agent: InstanceAiEvalSeedAgent): AgentJsonConfig {
-		const blanked = AgentJsonConfigSchema.safeParse(blankCredentialValues(agent.config));
-		if (!blanked.success) {
-			throw new BadRequestError(
-				`Seed agent ${agent.id} config became invalid after blanking its credentials`,
-			);
-		}
-		return blanked.data;
 	}
 
 	/** Best-effort delete (rollback of a failed restore). Resolved per id so a

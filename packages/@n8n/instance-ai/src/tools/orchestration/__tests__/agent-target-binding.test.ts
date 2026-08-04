@@ -248,26 +248,6 @@ describe('agentBuilderTargetMetadata', () => {
 		).toThrow(/both address as "support-bot"/);
 	});
 
-	it('allows the same agent to appear twice under one ref', () => {
-		expect(() =>
-			agentBuilderTargetMetadata([
-				{ agentId: 'agent-1', projectId: 'p', ref: 'Triage' },
-				{ agentId: 'agent-1', projectId: 'p', ref: 'triage' },
-			]),
-		).not.toThrow();
-	});
-
-	// Keeping the last entry would drop the other agent from the registry, and a
-	// later ref lookup would edit the survivor — silently the wrong agent.
-	it('refuses two seed agents whose names address as the same ref', () => {
-		expect(() =>
-			agentBuilderTargetMetadata([
-				{ agentId: 'agent-1', projectId: 'p', name: 'Support Bot', ref: 'Support Bot' },
-				{ agentId: 'agent-2', projectId: 'p', name: 'support-bot', ref: 'support-bot' },
-			]),
-		).toThrow(/support-bot/);
-	});
-
 	it('allows the same agent listed twice under one ref', () => {
 		const metadata = agentBuilderTargetMetadata([
 			{ agentId: 'agent-1', projectId: 'p', ref: 'Support Bot' },

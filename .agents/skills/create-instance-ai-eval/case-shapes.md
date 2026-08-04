@@ -538,10 +538,11 @@ live turn:
 it on a dev instance, fetch both, scrub, paste. Things worth knowing:
 
 - **The thread is bound to the seeded agent**, exactly as the conversation that
-  built it would have left it. So the live turn's `build-agent` call *continues*
-  that agent instead of creating a second one — which is the failure this slot
-  exists to prevent, and it grades as a silent false red (the judge sees an empty
-  new agent).
+  built it would have left it, so the live turn's `build-agent` call continues
+  that agent directly. Without the binding the call is rejected (`Unknown
+  agentRef`) and the model recovers from the agent id in its seeded history —
+  measured at 3/3 runs recovering correctly, but it burns a turn, and the
+  rejection message offers "create a new agent" as its first option.
 - **Names are not uniquified and leftovers are not evicted**, unlike seeded
   workflows. An agent is addressed by id, so a same-named copy can't misdirect the
   live turn; the name is also woven through skill prose, where a rename would
