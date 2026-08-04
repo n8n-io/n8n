@@ -33,9 +33,10 @@ provider, or the model.
   and N=10 × 4 turns **OOM-crashed twice**. Raising the limit to **1280 MB** made the
   same workload pass at **736–745 MB (58%)** across three runs, which quantifies the
   crash: idle alone is **495 MB**, load adds **~240 MB**, and a 640 MB pod was ~96 MB
-  short. **640 MB supports ~5 concurrent builders; 1280 MB handles 20 at 68%** (875 MB)
-  and projects to 30–40. Idle cost dominates at small sizes, and load scales
-  sub-linearly at ~14 MB per additional user — which matches the local estimate. Cloud looked flatter
+  short. **640 MB supports ~5 concurrent builders; 1280 MB handles 30 at 79%**
+  (1013 MB). Idle costs ~495 MB before any user arrives, and each additional
+  concurrent builder costs **~14 MB** — a figure that agrees across three
+  independent measurements. Cloud looked flatter
   than local above N=5 only because local's 664 MB exceeds the limit; that is the
   ceiling, not efficiency. See
   [Cloud validation](#cloud-validation--local-numbers-hold).
@@ -229,6 +230,40 @@ Two consequences, both worth fixing before running above N=20:
 It is also a genuine signal: under 20-way concurrency the server takes longer to
 settle a run than the driver's readiness check assumes.
 
+### Scaling to N=30
+
+| N | peak | % of 1280 MB | load above idle | delivered turns |
+| --: | --: | --: | --: | --- |
+| idle | 495 MB | 39% | — | — |
+| 10 | 736–745 MB | 58% | ~245 MB | full |
+| 20 | 805–875 MB | 63–68% | ~310–380 MB | 1 short turn / 4 missing builds |
+| 30 | **1013 MB** | **79%** | ~518 MB | **20 of 30 users lost a turn** |
+
+**30 concurrent builders do not OOM a 1280 MB instance** — 30/30 conversations, all
+30 workflows built, no restart.
+
+Marginal cost from N=10 to N=30: **(1013 − 740) / 20 = ~13.7 MB per additional
+user.** That now agrees three independent ways:
+
+| method | marginal MB/user |
+| --- | --: |
+| local endpoint estimator (N=1→10) | ~12 |
+| cloud N=10→20 | ~13.9 |
+| cloud N=10→30 | ~13.7 |
+
+**But the 409 throttling grows with N and biases these low.** At N=30 there were 23
+`409 "A run is already active for this thread"` rejections and **20 of 30 users
+delivered 3 turns instead of 4** — roughly 100 turns instead of 120, so ~17% less
+work than N=30 nominally implies. The median duration *fell* to 110 s (from
+129–150 s at N=20), which is the tell: conversations finished sooner because they
+did less. Treat peaks above N=20 as lower bounds and the marginal rate as
+approximate, not precise.
+
+Extrapolating at ~14 MB/user, 1280 MB has room for roughly 45–50 concurrent
+builders before the limit — but that is unvalidated, rests on a partly-throttled
+curve, and ignores the non-linearity seen elsewhere. **Measured and trustworthy:
+1280 MB handles 30 at 79%.**
+
 ### The budget, decomposed
 
 | quantity | measured |
@@ -256,7 +291,7 @@ Sizing guidance for cloud, measured:
 | limit | supported concurrent builders (4-turn conversations) | utilisation |
 | --- | --- | --- |
 | 640 MB | **~5** | ~94% at N=5 |
-| 1280 MB | **20 measured**, 30–40 projected | 68% at N=20 |
+| 1280 MB | **30 measured** | 79% at N=30 |
 
 Latency at N=10 × 4 turns across the three runs: median 128 / 137 / 143 s, max
 173 / 142 / 183 s. Drift within noise rather than a trend, and as everywhere else
