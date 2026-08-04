@@ -7,6 +7,8 @@ import type { KafkaCredentials } from '../../utils';
 export interface KafkaProducerOptions {
 	acks: number;
 	timeout: number;
+	// Must be set at construction: the library locks compression in when the producer is created.
+	compression?: KafkaJS.CompressionTypes;
 }
 
 export async function createKafkaProducer(
@@ -26,6 +28,7 @@ export async function createKafkaProducer(
 			acks: options.acks,
 			timeout: options.timeout,
 			allowAutoTopicCreation: true,
+			...(options.compression && { compression: options.compression }),
 		},
 	});
 }

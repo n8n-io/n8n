@@ -1,3 +1,5 @@
+import type { KafkaJS } from '@confluentinc/kafka-javascript';
+
 import type { KafkaCredentials } from '../../../utils';
 import { getKafkaLibrary } from '../../../v2/transport/client';
 import { createKafkaProducer } from '../../../v2/transport/producer';
@@ -39,6 +41,19 @@ describe('createKafkaProducer', () => {
 		const kafkaInstance = await lastKafkaInstance();
 		expect(kafkaInstance.producer).toHaveBeenCalledWith({
 			kafkaJS: { ...options, allowAutoTopicCreation: true },
+		});
+	});
+
+	it('applies the optional compression codec to the producer config', async () => {
+		await createKafkaProducer(credentials, {
+			acks: 1,
+			timeout: 30000,
+			compression: 'gzip' as KafkaJS.CompressionTypes,
+		});
+
+		const kafkaInstance = await lastKafkaInstance();
+		expect(kafkaInstance.producer).toHaveBeenCalledWith({
+			kafkaJS: { acks: 1, timeout: 30000, allowAutoTopicCreation: true, compression: 'gzip' },
 		});
 	});
 
