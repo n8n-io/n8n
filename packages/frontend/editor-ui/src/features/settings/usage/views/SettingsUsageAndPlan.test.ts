@@ -6,7 +6,7 @@ import { useUsageStore } from '../usage.store';
 import SettingsUsageAndPlan from './SettingsUsageAndPlan.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@n8n/composables/useToast';
 import { waitFor } from '@testing-library/vue';

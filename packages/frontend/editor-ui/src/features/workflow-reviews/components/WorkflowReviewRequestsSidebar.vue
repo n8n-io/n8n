@@ -14,7 +14,7 @@ import {
 	type UserStackGroups,
 } from '@n8n/design-system';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import WorkflowReviewStatusDot from './WorkflowReviewStatusDot.vue';
 
