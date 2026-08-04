@@ -11,8 +11,9 @@ import type { StepError, StepRecord, StepStore } from './step-store';
  * reports back to the orchestration worker with `step:completed`.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
- * is recorded as `failed` rather than left `running`, so the execution has a
- * legible outcome instead of stalling.
+ * makes the handler throw: before the claim the event is rejected with the
+ * step untouched, after it the step is left `running` for reconciliation
+ * (CAT-2938) or internal consistency checks (CAT-3930) to resolve.
  */
 export class StepReadyHandler {
 	constructor(

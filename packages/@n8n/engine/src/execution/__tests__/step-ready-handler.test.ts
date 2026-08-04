@@ -130,7 +130,6 @@ describe('StepReadyHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.loadStep).not.toHaveBeenCalled();
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -162,6 +161,7 @@ describe('StepReadyHandler', () => {
 			'step step-a belongs to execution exec-other, but the event claims exec-1',
 		);
 
+		expect(stepStore.claimStep).not.toHaveBeenCalled();
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
@@ -237,9 +237,8 @@ describe('StepReadyHandler', () => {
 	});
 
 	/**
-	 * Every way a step can fail before it runs has to land the same way: the error
-	 * on the step row and a `step:completed`, so the execution gets an outcome
-	 * instead of stalling on a step stuck in `running`.
+	 * Pre-claim validation failing means the event was rejected untouched: the
+	 * step stays `queued` for a redelivery (or a corrected event) to pick up.
 	 */
 	it.each([
 		{
@@ -250,6 +249,42 @@ describe('StepReadyHandler', () => {
 			deps: (): ExternalDependencies => ({}),
 			expected: { name: 'UnimplementedError', message: 'v1-node' },
 		},
+		{
+			reason: 'its node is absent from the execution graph',
+			stepId: 'step-a',
+			steps: () => makeStepStore({ nodeId: 'ghost' }),
+			execution: () => makeExecutionStore(),
+			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
+			expected: { name: 'UnexpectedError', message: 'ghost' },
+		},
+	])(
+		'throws without claiming the step when $reason',
+		async ({ stepId, steps, execution, deps, expected }) => {
+			const stepStore = steps();
+			const queue = makeQueue();
+			const executor = makeExecutor();
+			const handler = new StepReadyHandler(execution(), stepStore, queue, deps(executor));
+
+			await expect(handler.handle({ ...event, stepId })).rejects.toMatchObject({
+				name: expected.name,
+				message: expect.stringContaining(expected.message) as string,
+			});
+
+			expect(stepStore.claimStep).not.toHaveBeenCalled();
+			expect(executor.execute).not.toHaveBeenCalled();
+			expect(stepStore.completeStep).not.toHaveBeenCalled();
+			expect(stepStore.failStep).not.toHaveBeenCalled();
+			expect(queue.publish).not.toHaveBeenCalled();
+		},
+	);
+
+	/**
+	 * Input shapes we can't gather are only detected after the claim, so the
+	 * handler throws and leaves the step `running` — recording `failed` for a
+	 * step that never ran would be a lie. Reconciliation (CAT-2938) or internal
+	 * consistency checks (CAT-3930) will resolve these.
+	 */
+	it.each([
 		{
 			reason: 'more than one edge feeds it (fan-in)',
 			stepId: 'step-b',
@@ -312,36 +347,24 @@ describe('StepReadyHandler', () => {
 			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
 			expected: { name: 'UnexpectedError', message: 'no predecessor' },
 		},
-		{
-			reason: 'its node is absent from the execution graph',
-			stepId: 'step-a',
-			steps: () => makeStepStore({ nodeId: 'ghost' }),
-			execution: () => makeExecutionStore(),
-			deps: (executor: IStepExecutor): ExternalDependencies => ({ v1StepExecutor: executor }),
-			expected: { name: 'UnexpectedError', message: 'ghost' },
-		},
 	])(
-		'fails the step without running it, and reports completion, when $reason',
+		'throws after claiming the step, recording nothing, when $reason',
 		async ({ stepId, steps, execution, deps, expected }) => {
 			const stepStore = steps();
 			const queue = makeQueue();
 			const executor = makeExecutor();
 			const handler = new StepReadyHandler(execution(), stepStore, queue, deps(executor));
 
-			await handler.handle({ ...event, stepId });
-
-			expect(executor.execute).not.toHaveBeenCalled();
-			expect(stepStore.failStep).toHaveBeenCalledWith(stepId, {
+			await expect(handler.handle({ ...event, stepId })).rejects.toMatchObject({
 				name: expected.name,
 				message: expect.stringContaining(expected.message) as string,
-				stack: expect.any(String) as string,
 			});
+
+			expect(stepStore.claimStep).toHaveBeenCalledWith(stepId);
+			expect(executor.execute).not.toHaveBeenCalled();
 			expect(stepStore.completeStep).not.toHaveBeenCalled();
-			expect(queue.publish).toHaveBeenCalledWith({
-				type: 'step:completed',
-				executionId: 'exec-1',
-				stepId,
-			});
+			expect(stepStore.failStep).not.toHaveBeenCalled();
+			expect(queue.publish).not.toHaveBeenCalled();
 		},
 	);
 });
