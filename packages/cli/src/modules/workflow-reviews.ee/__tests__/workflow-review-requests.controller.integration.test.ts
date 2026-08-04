@@ -11,8 +11,8 @@ import {
 import type { Project, User } from '@n8n/db';
 import {
 	UserRepository,
-	WorkflowPublishHistoryRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -30,7 +30,7 @@ import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
-mockInstance(ActiveWorkflowManager);
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 
 const testServer = utils.setupTestServer({
@@ -557,20 +557,88 @@ describe('publishing a workflow under review', () => {
 		},
 	);
 
-	test('allows publication after the review is approved and closed', async () => {
+	test('publishes the pinned version automatically when the review is approved', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const request = await createOpenReview(workflow.id, versionId);
 
-		await ownerAgent
+		const response = await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
 			.send({ decision: 'approved' })
 			.expect(200);
 
+		expect(response.body.data.autoPublish).toEqual({ status: 'published' });
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBe(versionId);
+	});
+
+	test('keeps the approval and allows manual publish when auto-publish fails', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+
+		// Activation fails once — after the approval has already committed.
+		workflowValidationService.validateForActivation.mockReturnValueOnce({
+			isValid: false,
+			error: 'The workflow has issues',
+		});
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: { status: 'failed', message: 'The workflow has issues' },
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
+
+		// Retry path: the review is closed, so the regular publish flow is unblocked.
 		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
 
 		expect(
 			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
 		).toBe(versionId);
+	});
+
+	// R2 (P3): the previously covered case was a first publish, which fails safe.
+	// A replacement does not. See .claude/plans/reviews/LIGO-787_review.md
+	test('leaves an already published workflow deactivated when the approval publish fails at registration', async () => {
+		const { workflow, versionId: firstVersionId } = await createReviewableWorkflow();
+
+		// Publish once, so the approval below replaces a live version.
+		await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: firstVersionId })
+			.expect(200);
+
+		const secondVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: secondVersionId });
+		const request = await createOpenReview(workflow.id, secondVersionId);
+
+		// Fails at trigger registration — after the live version was removed, so
+		// activation rolls the row back to unpublished rather than restoring it.
+		activeWorkflowManager.add.mockRejectedValueOnce(new Error('Webhook path already taken'));
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: { status: 'failed', message: 'Webhook path already taken' },
+		});
+
+		// The workflow that was live before the approval is now unpublished — which
+		// is why the copy says so and the failure is logged at error level.
+		const updated = await workflowEntityRepository.findOneByOrFail({ id: workflow.id });
+		expect(updated.activeVersionId).toBeNull();
+		expect(updated.active).toBe(false);
 	});
 
 	test.each(['policy disabled', 'license unavailable'] as const)(
@@ -846,6 +914,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			workflowVersionId: 'version-1',
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			autoPublish: { status: 'published' },
 		});
 
 		// the service relies on `save` (not `update`) so @BeforeUpdate bumps
@@ -862,8 +931,26 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		expect(updated?.approvedAt).toBeInstanceOf(Date);
 	});
 
-	test('requests changes: the review stays open and unstamped', async () => {
-		const { request } = await seedRequest(owner);
+	test('approval publishes the pinned version under the reviewer identity', async () => {
+		const { request, workflow } = await seedRequest(owner);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBe('version-1');
+		// Publish history must record the approving reviewer, not the author.
+		const records = await publishHistoryRepository.findBy({ workflowId: workflow.id });
+		expect(records).toEqual([
+			expect.objectContaining({ event: 'activated', versionId: 'version-1', userId: member.id }),
+		]);
+	});
+
+	test('requests changes: the review stays open, unstamped and unpublished', async () => {
+		const { request, workflow } = await seedRequest(owner);
 
 		const response = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
@@ -874,6 +961,10 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			state: 'open',
 			decision: 'changes_requested',
 		});
+		expect(response.body.data.autoPublish).toBeUndefined();
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
 
 		const updated = await requestRepository.findById(request.id);
 		expect(updated).toMatchObject({

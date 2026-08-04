@@ -697,10 +697,6 @@ export type TargetNodeParameterContext = {
 	parameterPath: string;
 };
 
-// Relocated to `@n8n/stores/notifications.store` alongside the notifications
-// store; re-exported here for existing importers.
-export type { NotificationOptions } from '@n8n/stores/notifications.store';
-
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
 	| typeof TRIGGER_NODE_CREATOR_VIEW
@@ -874,11 +870,6 @@ export type NodeAuthenticationOption = {
 };
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-// The upgrade-CTA vocabulary moved to `@n8n/stores/types/pageRedirection`, alongside
-// the composable that consumes it; re-exported here so existing importers stay
-// unchanged.
-export type { CloudUpdateLinkSourceType, UTMCampaign } from '@n8n/stores/types/pageRedirection';
 
 export type AddedNode = {
 	type: string;

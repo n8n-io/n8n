@@ -266,10 +266,12 @@ post:
                 import (not created, not renamed, not attached anywhere; the import
                 proceeds and lists them under `tags.skipped`). `fail` rejects the
                 import with a 409. `rename` renames a drifted target tag to the
-                package name and needs an API key carrying the `tag:update` scope
-                when the import would rename a tag; a name collision — including
-                a drifted tag whose package name is held by another tag — still
-                rejects the import (rename degrades to fail).
+                package name, and reconciles a name collision by re-keying the
+                existing tag to the package (source) id — its name, workflow and
+                folder taggings follow; both need an API key carrying the
+                `tag:update` scope when the import would rename or reconcile a
+                tag. A drifted tag whose package name is held by another tag
+                still rejects the import (rename degrades to fail).
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -518,6 +520,7 @@ post:
                   - matched
                   - created
                   - renamed
+                  - reconciled
                   - skipped
                 properties:
                   matched:
@@ -541,6 +544,14 @@ post:
                     description: >
                       Target tags renamed to the package name under
                       `tagConflictPolicy=rename`; listed by their new name.
+                  reconciled:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Existing target tags re-keyed to the package (source) id on
+                      a name collision under `tagConflictPolicy=rename`; their
+                      name, workflow and folder taggings are kept.
                   skipped:
                     type: array
                     items:

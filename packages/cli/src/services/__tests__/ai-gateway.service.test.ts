@@ -910,6 +910,28 @@ describe('AiGatewayService', () => {
 			await expect(service.getCredentialTypeForProvider('xai')).resolves.toBeUndefined();
 		});
 
+		it('maps a provider whose gateway path slug differs from the provider id', async () => {
+			// The gateway's URL slugs are its own naming scheme and need not match n8n's
+			// provider ids (Moonshot serves Kimi under `/moonshot`). Mapping must key on
+			// the providerConfig credential type, not on the path.
+			requestMock.mockResolvedValueOnce(
+				ok({
+					nodes: [],
+					credentialTypes: ['openAiApi'],
+					providerConfig: {
+						openAiApi: {
+							gatewayPath: '/v1/gateway/a-different-slug/v1',
+							urlField: 'url',
+							apiKeyField: 'apiKey',
+						},
+					},
+				}),
+			);
+			const service = makeService();
+
+			await expect(service.getCredentialTypeForProvider('openai')).resolves.toBe('openAiApi');
+		});
+
 		it('returns undefined (without fetching config) when n8n Connect is unlicensed', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
 

@@ -137,6 +137,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: () => ({
 		isEnabled: aiGatewayState.isEnabled,
 		isCredentialTypeSupported: (type: string) => aiGatewayState.supportedTypes.has(type),
+		canServeCredentialType: (type: string) => aiGatewayState.supportedTypes.has(type),
 		balance: aiGatewayState.balance,
 		fetchWallet: aiGatewayState.fetchWallet,
 		fetchConfig: aiGatewayState.fetchConfig,
@@ -173,7 +174,6 @@ const modelsByProvider: AgentModelsByProvider = {
 async function mountSelector(
 	credentials: Record<string, string | null>,
 	extraProps: {
-		isManagedCredential?: boolean;
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
 	} = {},
@@ -380,8 +380,9 @@ describe('AgentModelSelector', () => {
 	});
 
 	it('shows n8n Connect (not "credentials missing") for a managed credential', async () => {
-		// No own credential for the provider, but the model uses the n8n Connect managed credential.
-		const wrapper = await mountSelector({ anthropic: null }, { isManagedCredential: true });
+		// No own credential for the provider, but the selection is the managed tag —
+		// derived from `credentials`, so every caller gets this without opting in.
+		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
 		const dropdown = getDropdown(wrapper);
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
@@ -512,7 +513,9 @@ describe('AgentModelSelector', () => {
 		const freeCreditsItem = getFreeOpenAiCreditsItem(wrapper);
 		const openAiChildLabels = openAiItem?.children?.map((item) => item.label) ?? [];
 
-		// Provider pill is driven by n8n Connect support (disabled here), not the OpenAI onboarding.
+		// Two independent offers: the badge marks free OpenAI credits, the pill marks
+		// n8n Connect. The gateway is disabled here, so only the badge shows.
+		expect(openAiItem?.data?.badgeLabel).toBe('free credits');
 		expect(openAiItem?.data?.actionPill).toBeUndefined();
 		expect(JSON.stringify(openAiItem?.children ?? [])).toContain('Use free OpenAI credits');
 		expect(openAiChildLabels.indexOf('Use free OpenAI credits')).toBeLessThan(

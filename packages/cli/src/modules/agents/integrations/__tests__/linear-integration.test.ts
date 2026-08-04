@@ -45,6 +45,7 @@ describe('LinearIntegration', () => {
 		projectId: 'project-1',
 		credentialId: 'credential-1',
 		credential,
+		ingressEnabled: true,
 		webhookUrlFor: () => 'https://example.test/webhook',
 	});
 

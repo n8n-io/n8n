@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import {
 	DATA_TABLE_CARD_ACTIONS,

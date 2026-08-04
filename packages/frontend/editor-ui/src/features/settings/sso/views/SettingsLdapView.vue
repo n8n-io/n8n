@@ -3,7 +3,7 @@ import type { CSSProperties } from 'vue';
 import { computed, onMounted, ref } from 'vue';
 import { capitalizeFirstLetter } from '@/app/utils/htmlUtils';
 import { convertToDisplayDate } from '@/app/utils/typesUtils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInput, IFormInputs } from '@/Interface';

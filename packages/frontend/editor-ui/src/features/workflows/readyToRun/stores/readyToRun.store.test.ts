@@ -29,7 +29,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
 	}),
@@ -97,7 +97,7 @@ const mockCurrentUser = {
 	},
 };
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		get currentUser() {
 			return mockCurrentUser.value;

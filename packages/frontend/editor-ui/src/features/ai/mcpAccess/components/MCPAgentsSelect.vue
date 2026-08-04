@@ -5,7 +5,7 @@ import { N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import type { Agent } from '@/features/agents/agent.types';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { sleep } from '@n8n/utils/sleep';
 
 defineProps<{

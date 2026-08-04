@@ -8,6 +8,9 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
+import { OperationalError } from 'n8n-workflow';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 import type {
 	SubAgentForegroundRunContext,
@@ -42,6 +45,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 		...(resolveInlineSubAgentProviderTools !== undefined
 			? { resolveInlineSubAgentProviderTools }
 			: {}),
+		shouldRetrySubAgentResumeError,
 		runSubAgent: async (request, helpers) => {
 			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
 				return await helpers.runInlineSubAgent(request);
@@ -80,6 +84,9 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				},
 				{
 					...runContext,
+					...(request.parentExecutionCounter !== undefined
+						? { executionCounter: request.parentExecutionCounter }
+						: {}),
 					...(request.parentAbortSignal !== undefined
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
@@ -90,7 +97,56 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 			return formatSubAgentToolOutput(result);
 		},
+		resumeSubAgent: async (request, helpers) => {
+			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+				return {
+					status: 'failed',
+					taskPath: request.taskPath,
+					answer: '',
+					error: 'Inline sub-agent resumes must be handled by the parent Agent runtime.',
+				};
+			}
+			if (request.childThreadId === undefined || request.resumeContext === undefined) {
+				return {
+					status: 'failed',
+					taskPath: request.taskPath,
+					answer: '',
+					error: 'Configured sub-agent checkpoint metadata is missing or invalid.',
+				};
+			}
+
+			const result = await runner.resumeForeground(request, {
+				...runContext,
+				...(request.parentExecutionCounter !== undefined
+					? { executionCounter: request.parentExecutionCounter }
+					: {}),
+				...(request.parentAbortSignal !== undefined
+					? { abortSignal: request.parentAbortSignal }
+					: {}),
+				...(request.parentTelemetry !== undefined ? { telemetry: request.parentTelemetry } : {}),
+				onChunk: helpers.emitChunk,
+			});
+
+			return formatSubAgentToolOutput(result);
+		},
+		cancelSubAgent: async (request) => {
+			if (request.subAgentId === INLINE_SUB_AGENT_ID) {
+				throw new Error(
+					'Inline sub-agent cancellation must be handled by the parent Agent runtime.',
+				);
+			}
+			if (request.resumeContext === undefined) {
+				throw new Error('Configured sub-agent checkpoint metadata is missing or invalid.');
+			}
+			await runner.cancelForeground(request);
+		},
 	});
+}
+
+function shouldRetrySubAgentResumeError(error: unknown): boolean {
+	if (error instanceof OperationalError) return true;
+	if (!(error instanceof ResponseError)) return false;
+	return [408, 425, 429, 502, 503, 504].includes(error.httpStatusCode);
 }
 
 function selectSubAgentSource(options: {
@@ -105,5 +161,15 @@ function selectSubAgentSource(options: {
 export function formatSubAgentToolOutput(
 	result: SubAgentForegroundResult,
 ): DelegateSubAgentToolOutput {
-	return generateResultToDelegateSubAgentOutput(result.taskPath, result.result, result.threadId);
+	const output = generateResultToDelegateSubAgentOutput(
+		result.taskPath,
+		result.result,
+		result.threadId,
+	);
+	return {
+		...output,
+		...(output.status === 'suspended' && result.resumeContext !== undefined
+			? { resumeContext: result.resumeContext }
+			: {}),
+	};
 }

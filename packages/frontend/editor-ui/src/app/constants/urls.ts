@@ -1,7 +1,3 @@
-// Moved to `@n8n/frontend-constants/urls` so `@n8n/stores` can reach it;
-// re-exported here so existing `@/app/constants` importers stay unchanged.
-export { N8N_PRICING_PAGE_URL } from '@n8n/frontend-constants/urls';
-
 export const DOCS_DOMAIN = 'docs.n8n.io';
 export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;

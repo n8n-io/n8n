@@ -7,7 +7,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import type { IInviteResponse } from '@n8n/stores/invitation.api';
 import InviteUsersModal from './InviteUsersModal.vue';
-import { useUsersStore } from '../users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 
@@ -35,7 +35,7 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: vi.fn(() => mockClipboard),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 

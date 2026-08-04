@@ -6,7 +6,7 @@ import type {
 	InstanceAiMcpConnectionToolResponse,
 	McpRegistryServerResponse,
 } from '@n8n/api-types';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import {
 	listenForCredentialChanges,

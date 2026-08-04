@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, watch, type Component } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';

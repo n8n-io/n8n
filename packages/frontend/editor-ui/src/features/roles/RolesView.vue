@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants/urls';
 import { useRolesStore } from '@n8n/stores/roles.store';

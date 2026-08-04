@@ -73,7 +73,7 @@ vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnPopover.vue', ()
 }));
 
 // Mock composables
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showSuccess: vi.fn(),

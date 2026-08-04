@@ -7,7 +7,7 @@ import Modal from './Modal.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, WORKFLOW_SHARE_MODAL_KEY } from '@/app/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

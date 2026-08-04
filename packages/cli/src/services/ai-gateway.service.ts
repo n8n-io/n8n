@@ -1,4 +1,8 @@
-import { AiGatewayConfigDto, type AiGatewayUsageResponse } from '@n8n/api-types';
+import {
+	AiGatewayConfigDto,
+	getAgentModelProviderCredentialTypes,
+	type AiGatewayUsageResponse,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -350,11 +354,9 @@ export class AiGatewayService {
 
 	/**
 	 * Resolves the n8n credential type the gateway serves for a model-provider
-	 * prefix (e.g. `openai` → `openAiApi`), by matching the provider slug in each
-	 * `providerConfig` entry's `gatewayPath` (the segment right after
-	 * `/v1/gateway/`). Returns `undefined` when n8n Connect is unlicensed or the
-	 * gateway does not serve that provider. This is the authoritative n8n Connect
-	 * provider → credential-type mapping and support gate.
+	 * prefix (e.g. `openai` → `openAiApi`). Returns `undefined` when n8n Connect
+	 * is unlicensed or the gateway does not serve that provider. This is the
+	 * authoritative n8n Connect provider → credential-type support gate.
 	 */
 	async getCredentialTypeForProvider(provider: string): Promise<string | undefined> {
 		if (!this.licenseState.isAiGatewayLicensed()) return undefined;
@@ -382,21 +384,22 @@ export class AiGatewayService {
 
 	/**
 	 * Matches a model-provider prefix (e.g. `openai`) to the n8n credential type
-	 * the gateway serves it under, by comparing the provider slug in each
-	 * `providerConfig` entry's `gatewayPath` (the segment right after
-	 * `/v1/gateway/`). Returns `undefined` when the gateway does not serve it.
+	 * the gateway serves it under: the provider's credential types, in preference
+	 * order, filtered to those the gateway holds a `providerConfig` entry for (the
+	 * same entry `getSyntheticCredential` needs to mint a credential). Returns
+	 * `undefined` when the gateway does not serve it.
+	 *
+	 * Deliberately not derived from `gatewayPath`: that made the mapping depend on
+	 * the gateway's URL slugs happening to equal n8n's own provider ids, which
+	 * they need not (e.g. Moonshot serves Kimi under the `moonshot` slug).
 	 */
 	private static matchCredentialTypeForProvider(
 		config: AiGatewayConfigDto,
 		provider: string,
 	): string | undefined {
-		const prefix = `${AiGatewayService.GATEWAY_PATH_PREFIX}/`;
-		for (const [credentialType, providerConfig] of Object.entries(config.providerConfig)) {
-			if (!providerConfig.gatewayPath.startsWith(prefix)) continue;
-			const slug = providerConfig.gatewayPath.slice(prefix.length).split('/')[0];
-			if (slug === provider) return credentialType;
-		}
-		return undefined;
+		return getAgentModelProviderCredentialTypes(provider).find(
+			(credentialType) => config.providerConfig[credentialType] !== undefined,
+		);
 	}
 
 	/**

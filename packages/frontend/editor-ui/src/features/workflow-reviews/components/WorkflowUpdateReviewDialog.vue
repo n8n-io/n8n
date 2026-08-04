@@ -11,7 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { updateWorkflowReviewRequestVersion } from '@/features/workflow-reviews/workflowReviews.api';

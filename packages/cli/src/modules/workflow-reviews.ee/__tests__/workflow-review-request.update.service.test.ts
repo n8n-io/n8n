@@ -28,6 +28,7 @@ import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
@@ -56,6 +57,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
+	const workflowService = mock<WorkflowService>();
 	const logger = mock<Logger>();
 	const tx = mock<EntityManager>();
 
@@ -75,6 +77,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		roleService,
 		dbLockService,
 		collaborationService,
+		workflowService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>
