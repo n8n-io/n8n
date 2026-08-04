@@ -919,7 +919,6 @@ onBeforeUnmount(() => {
 .publishButtonWrapper {
 	position: relative;
 	display: inline-flex;
-	margin-inline: var(--spacing--2xs);
 }
 
 .buttonGroup {

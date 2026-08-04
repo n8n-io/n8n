@@ -358,8 +358,6 @@ async function onWorkflowDeactivated() {
 	align-items: center;
 	font-size: 0.9em;
 	font-weight: var(--font-weight--regular);
-	overflow-x: auto;
-	overflow-y: hidden;
 }
 
 .github-button {

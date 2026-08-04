@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import BreakpointsObserver from '@/app/components/BreakpointsObserver.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import ConnectionTracker from '@/app/components/ConnectionTracker.vue';
 import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
@@ -43,14 +42,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-
-const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
-	XS: 150,
-	SM: 200,
-	MD: 250,
-	LG: 500,
-	XL: 1000,
-};
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -424,42 +415,34 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style.container">
-		<BreakpointsObserver
-			:value-x-s="15"
-			:value-s-m="25"
-			:value-m-d="50"
-			class="name-container"
-			data-test-id="canvas-breadcrumbs"
-		>
-			<template #default="{ bp }">
-				<FolderBreadcrumbs
-					:current-folder="currentFolderForBreadcrumbs"
-					:current-folder-as-link="true"
-					@item-selected="onBreadcrumbsItemSelected"
-				>
-					<template #append>
-						<span
-							v-if="projectsStore.currentProject ?? projectsStore.personalProject"
-							:class="$style['path-separator']"
-							>/</span
-						>
-						<N8nInlineTextEdit
-							ref="renameInput"
-							:key="id"
-							placeholder="Workflow name"
-							data-test-id="workflow-name-input"
-							class="name"
-							:model-value="name"
-							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
-							:read-only="readOnlyActions"
-							:disabled="readOnlyActions"
-							@update:model-value="onNameSubmit"
-						/>
-					</template>
-				</FolderBreadcrumbs>
-			</template>
-		</BreakpointsObserver>
+		<div class="name-container" data-test-id="canvas-breadcrumbs">
+			<FolderBreadcrumbs
+				:current-folder="currentFolderForBreadcrumbs"
+				:current-folder-as-link="true"
+				@item-selected="onBreadcrumbsItemSelected"
+			>
+				<template #append>
+					<span
+						v-if="projectsStore.currentProject ?? projectsStore.personalProject"
+						:class="$style['path-separator']"
+						>/</span
+					>
+					<N8nInlineTextEdit
+						ref="renameInput"
+						:key="id"
+						placeholder="Workflow name"
+						data-test-id="workflow-name-input"
+						class="name"
+						:model-value="name"
+						:max-length="MAX_WORKFLOW_NAME_LENGTH"
+						max-width="100%"
+						:read-only="readOnlyActions"
+						:disabled="readOnlyActions"
+						@update:model-value="onNameSubmit"
+					/>
+				</template>
+			</FolderBreadcrumbs>
+		</div>
 		<ActionsDropdownMenu
 			:id="id"
 			ref="actionsMenu"
@@ -524,9 +507,23 @@ $--header-spacing: 20px;
 
 .name-container {
 	margin-right: var(--spacing--sm);
+	// The header collapses from the left side only: everything on the name's
+	// ancestor chain must be allowed to shrink below its content width so the
+	// name can ellipsize instead of pushing the actions out of view.
+	min-width: 0;
 
 	:deep(.el-input) {
 		padding: 0;
+	}
+
+	:deep([data-test-id='folder-breadcrumbs'] > div) {
+		min-width: 0;
+	}
+
+	// The project breadcrumb stays rigid; the name gives way first. Below the
+	// container breakpoint the project is hidden entirely.
+	:deep([data-test-id='home-project']) {
+		flex-shrink: 0;
 	}
 }
 
@@ -534,6 +531,7 @@ $--header-spacing: 20px;
 	color: $custom-font-dark;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+	min-width: 0;
 }
 
 .tags {
@@ -541,6 +539,7 @@ $--header-spacing: 20px;
 	align-items: center;
 	width: 100%;
 	flex: 1;
+	min-width: 0;
 	margin-right: $--header-spacing;
 }
 
@@ -553,36 +552,11 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	flex-wrap: nowrap;
-}
-
-@include mixins.breakpoint('xs-only') {
-	.name {
-		:deep(input) {
-			min-width: 180px;
-		}
-	}
-}
-
-@media (max-width: 1390px) {
-	.name-container {
-		margin-right: var(--spacing--xs);
-	}
-
-	.actions {
-		gap: var(--spacing--xs);
-	}
-}
-
-@media (max-width: 1350px) {
-	.name-container {
-		margin-right: var(--spacing--2xs);
-	}
-
-	.actions {
-		gap: var(--spacing--2xs);
-	}
+	// The publish cluster never shrinks or scrolls out of view; the left side
+	// (path, then name) is what collapses when the header gets narrow.
+	flex-shrink: 0;
 }
 </style>
 
@@ -594,12 +568,29 @@ $--header-spacing: 20px;
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
+	// The header adapts to its own width (e.g. when a side panel squeezes the
+	// canvas), not the viewport, so collapsing is driven by a container query.
+	container-type: inline-size;
+	container-name: workflow-header;
 }
 
 .path-separator {
 	font-size: var(--font-size--xl);
 	color: var(--color--foreground);
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
+}
+
+// Single collapse point, from the left: below this width the project badge and
+// folder path are dropped, leaving the workflow name to ellipsize fluidly.
+@container workflow-header (max-width: 480px) {
+	.path-separator {
+		display: none;
+	}
+
+	.container :global([data-test-id='home-project']),
+	.container :global(.n8n-breadcrumbs) ul {
+		display: none;
+	}
 }
 
 .closeNodeViewDiscovery {
