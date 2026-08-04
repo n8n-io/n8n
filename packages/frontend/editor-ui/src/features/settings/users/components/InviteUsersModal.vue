@@ -8,7 +8,7 @@ import type { InvitableRoleName } from '../users.types';
 import { EnterpriseEditionFeature, VALID_EMAIL_REGEX } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '../users.constants';
 import { ROLE } from '@n8n/api-types';
-import { useUsersStore } from '../users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { copyInviteLink } from '../invite-link.utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';

@@ -287,15 +287,13 @@ export class AgentChatController {
 			projectId,
 			agentId,
 		});
-		let checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(agentId, threadId);
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
+			agentId,
+			threadId,
+		);
 		if (!history) {
 			if (checkpoint) return withOpenSuspensions([], checkpoint);
 			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
-		if (!checkpoint) {
-			checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(agentId, threadId, {
-				includeUnscoped: true,
-			});
 		}
 		return withOpenSuspensions(history, checkpoint, {
 			appendInactiveCheckpointMessages: false,

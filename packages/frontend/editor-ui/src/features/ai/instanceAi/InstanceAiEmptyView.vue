@@ -431,8 +431,9 @@ const CANVAS_NATURAL_HEIGHT_PX = 420;
 const PREVIEW_MIN_SCALE = 0.3;
 
 const previewScale = ref(1);
+const previewRemainingSpace = ref(CANVAS_NATURAL_HEIGHT_PX);
 
-useResizeObserver(emptyLayoutRef, () => {
+function updatePreviewScale() {
 	if (!emptyLayoutRef.value || !centeredInputRef.value) return;
 	const containerRect = emptyLayoutRef.value.getBoundingClientRect();
 	const inputRect = centeredInputRef.value.getBoundingClientRect();
@@ -440,15 +441,20 @@ useResizeObserver(emptyLayoutRef, () => {
 	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
 	const gap = parseFloat(layoutStyles.gap) || 0;
 	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
+	previewRemainingSpace.value = Math.max(0, remainingSpace);
 	previewScale.value = Math.max(0, Math.min(1, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
-});
+}
+
+useResizeObserver(emptyLayoutRef, updatePreviewScale);
+useResizeObserver(centeredInputRef, updatePreviewScale);
 
 const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
 
 const workflowPreviewWrapperStyle = computed(() => ({
 	transform: `scale(${previewScale.value})`,
 	transformOrigin: 'top center',
-	height: `${CANVAS_NATURAL_HEIGHT_PX * previewScale.value}px`,
+	height: `${previewRemainingSpace.value}px`,
+	'--workflow-preview-canvas-height': `${Math.max(CANVAS_NATURAL_HEIGHT_PX, previewRemainingSpace.value)}px`,
 }));
 
 useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });

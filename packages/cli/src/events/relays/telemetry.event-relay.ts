@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
+	DbConnection,
 	In,
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
@@ -96,6 +97,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly dbConnection: DbConnection,
 	) {
 		super(eventService);
 	}
@@ -1078,11 +1080,13 @@ export class TelemetryEventRelay extends EventRelay {
 			data_tables_required: counts.dataTables.requirements,
 			variables_matched: counts.variables.matched,
 			variables_missing: counts.variables.missing,
-			variables_created: counts.variables.created,
+			variables_with_value_created: counts.variables.created,
+			variables_stubs_created: counts.variables.stubbed,
 			variables_required: counts.variables.requirements,
 			tags_matched: counts.tags.matched,
 			tags_created: counts.tags.created,
 			tags_renamed: counts.tags.renamed,
+			tags_reconciled: counts.tags.reconciled,
 			tags_skipped: counts.tags.skipped,
 			tags_required: counts.tags.requirements,
 		});
@@ -1459,10 +1463,12 @@ export class TelemetryEventRelay extends EventRelay {
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+		const dbVersion = await this.dbConnection.getDbVersion();
 
 		const info = {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
+			db_version: dbVersion,
 			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
 			n8n_disable_production_main_process:
 				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
@@ -1544,6 +1550,7 @@ export class TelemetryEventRelay extends EventRelay {
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
 			db_type: this.globalConfig.database.type,
+			db_version: dbVersion,
 
 			// Location settings
 			timezone: this.globalConfig.generic.timezone,
@@ -1587,7 +1594,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 
 		this.telemetry.identify(info);
-		this.telemetry.track('Instance started', {
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
 			otel,

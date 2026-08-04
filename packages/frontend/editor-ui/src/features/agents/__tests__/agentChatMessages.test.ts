@@ -67,6 +67,23 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.resolvedAt).toBeDefined();
 		expect(result?.resolvedValue).toEqual({ approved: false });
 	});
+
+	it('does not show a declined nested approval as approved from the delegate result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delegate_subagent',
+			toolCallId: 'call-delegate-1',
+			input: { subAgentId: 'inline', taskName: 'Research API' },
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			output: { status: 'completed', answer: 'The request was declined.' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedValue).toBeUndefined();
+	});
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
@@ -611,19 +628,31 @@ describe('buildDisplayGroups — interactive payloads', () => {
 });
 
 describe('applyOpenSuspensions', () => {
-	it('stamps the runId onto a matching open interactive card', () => {
+	it('rebuilds a nested approval and leaves resolved cards closed', () => {
+		const delegateInput = {
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			goal: 'Research the requested API',
+			context: 'Use the configured research agent',
+		};
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/data' },
+		};
 		const chat: ChatMessage[] = [
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: 'tool_a', toolCallId: 'c-open', state: 'suspended' }],
-				interactive: {
-					toolName: APPROVAL_TOOL_NAME,
-					toolCallId: 'c-open',
-					input: { type: 'approval', toolName: 'tool_a', args: {} },
-				},
-				status: 'awaitingUser',
+				toolCalls: [
+					{
+						tool: 'delegate_subagent',
+						toolCallId: 'parent-tool-call-1',
+						input: delegateInput,
+						state: 'running',
+					},
+				],
 			},
 			{
 				id: 'm2',
@@ -641,10 +670,26 @@ describe('applyOpenSuspensions', () => {
 			},
 		];
 
-		const result = applyOpenSuspensions(chat, [{ toolCallId: 'c-open', runId: 'run-42' }]);
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'parent-tool-call-1',
+				runId: 'parent-run-1',
+				suspendPayload,
+			},
+		]);
 
-		expect(result[0].interactive?.runId).toBe('run-42');
-		// Resolved card not in the suspension list — runId stays undefined.
+		expect(result[0].toolCalls?.[0]).toMatchObject({
+			input: delegateInput,
+			suspendPayload,
+			state: 'suspended',
+			runId: 'parent-run-1',
+		});
+		expect(result[0].interactive).toMatchObject({
+			toolName: APPROVAL_TOOL_NAME,
+			input: suspendPayload,
+			runId: 'parent-run-1',
+		});
+		expect(result[0].status).toBe('awaitingUser');
 		expect(result[1].interactive?.runId).toBeUndefined();
 	});
 

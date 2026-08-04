@@ -41,7 +41,6 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
-	InstanceAiBuilderDelegate,
 	ModelConfig,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
@@ -59,7 +58,7 @@ import {
 	upsertEvaluationConfigSchema,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES, Time } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
@@ -88,7 +87,6 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
@@ -363,37 +361,13 @@ export class InstanceAiAdapterService {
 				: {}),
 			...(builderDelegateAdapter && projectId
 				? {
-						builderDelegate: this.withBuilderCreateTelemetry(
-							builderDelegateAdapter.createDelegate(
-								user,
-								projectId,
-								new AgentsCredentialProvider(this.credentialsService, projectId, user),
-							),
-							threadId,
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 						),
 					}
 				: {}),
-		};
-	}
-
-	/** Mirror of the workflow-adapter telemetry: track agent creation via the
-	 *  builder sub-agent at the delegate boundary, only in a thread context. */
-	private withBuilderCreateTelemetry(
-		delegate: InstanceAiBuilderDelegate,
-		threadId: string | undefined,
-	): InstanceAiBuilderDelegate {
-		if (!threadId) return delegate;
-		return {
-			...delegate,
-			createAgent: async (name) => {
-				const created = await delegate.createAgent(name);
-				this.telemetry.track(TELEMETRY_EVENT.AGENTS.BUILDER_CREATED_AGENT, {
-					thread_id: threadId,
-					agent_id: created.agentId,
-					project_id: created.projectId,
-				});
-				return created;
-			},
 		};
 	}
 
@@ -419,19 +393,14 @@ export class InstanceAiAdapterService {
 
 	/**
 	 * Fail-open read of the AI Gateway config. Returns null when the instance is
-	 * unlicensed for the gateway or the fetch fails for any reason. Every consumer
+	 * disabled or the fetch fails for any reason. Every consumer
 	 * (node annotations, credential list, verifier) treats a null as "gateway not
 	 * available", a valid degraded state. Backed by `AiGatewayService`'s own
 	 * process-wide cache (1h TTL), so repeated calls are cheap.
 	 */
 	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
-		// Gate on the AI Gateway license before touching the config. The FE path
-		// is gated by `@Licensed('feat:aiGateway')` on the controller; this adapter
-		// calls the service directly, so it must enforce the same license itself —
-		// otherwise unlicensed instances would surface n8n Connect (node metadata,
-		// managed credentials) and count it as available in telemetry.
-		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
 		try {
+			this.aiGatewayService.assertEnabled();
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch {
 			return null;
@@ -679,6 +648,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
@@ -858,6 +828,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
 					});
@@ -939,6 +910,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 					});
@@ -1269,6 +1241,7 @@ export class InstanceAiAdapterService {
 					if (!threadId) return;
 
 					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
