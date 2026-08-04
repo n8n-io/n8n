@@ -7,6 +7,8 @@ const PLATFORM = 'discord';
 /** Discord message content hard limit. */
 const DISCORD_MESSAGE_CONTENT_LIMIT = 2000;
 
+const DISCORD_ATTACHMENT_HOST = 'cdn.discordapp.com';
+
 /**
  * Guild channel types the agent can post into. Forums (15) are excluded: posting
  * there means opening a thread, which `send_channel_message` does not do.
@@ -22,6 +24,25 @@ const POSTABLE_CHANNEL_TYPES = new Set([
  * behind a fan-out of REST calls.
  */
 const MAX_GUILDS_SCANNED = 20;
+
+export async function downloadDiscordAttachment(attachmentUrl: string): Promise<Buffer> {
+	const url = new URL(attachmentUrl);
+	if (
+		url.protocol !== 'https:' ||
+		url.username ||
+		url.password ||
+		url.hostname !== DISCORD_ATTACHMENT_HOST ||
+		!url.pathname.startsWith('/attachments/')
+	) {
+		throw new Error('Invalid Discord attachment URL');
+	}
+
+	const response = await fetch(url, { redirect: 'error' });
+	if (!response.ok) {
+		throw new Error(`Discord attachment download failed with status ${response.status}`);
+	}
+	return Buffer.from(await response.arrayBuffer());
+}
 
 export const discordSearchChannelsSchema = z.object({
 	query: z.string().min(1),

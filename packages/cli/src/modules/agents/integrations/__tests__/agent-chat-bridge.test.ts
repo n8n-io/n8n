@@ -748,6 +748,7 @@ describe('AgentChatBridge — consumeStream', () => {
 		function makeBridge(
 			agentExecutor: ReturnType<typeof makeAgentExecutor>,
 			attachmentService: ReturnType<typeof makeAttachmentService>,
+			integration: AgentIntegrationConfig = streamingIntegration,
 		) {
 			const { bot, handlers } = makeBot();
 			new AgentChatBridge(
@@ -757,7 +758,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				streamingIntegration,
+				integration,
 				undefined,
 				attachmentService as never,
 			);
@@ -808,6 +809,60 @@ describe('AgentChatBridge — consumeStream', () => {
 					],
 				}),
 			);
+		});
+
+		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const handlers = makeBridge(agentExecutor, attachmentService, {
+				type: 'discord',
+				credentialId: 'cred-discord',
+			} as unknown as AgentIntegrationConfig);
+			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
+			const fetchMock = vi
+				.spyOn(globalThis, 'fetch')
+				.mockResolvedValue(new Response(new Uint8Array(pngBytes)));
+
+			try {
+				await handlers.mention!(makeThread(), {
+					text: 'what is this?',
+					author: { userId: 'u1', userName: 'user1' },
+					attachments: [
+						{
+							type: 'image',
+							url: attachmentUrl,
+							name: 'photo.png',
+							mimeType: 'image/png',
+						},
+						{
+							type: 'image',
+							url: 'http://127.0.0.1/internal.png',
+							name: 'internal.png',
+							mimeType: 'image/png',
+						},
+					],
+				});
+
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				expect(String(fetchMock.mock.calls[0]?.[0])).toBe(attachmentUrl);
+				expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+					expect.objectContaining({
+						source: 'discord',
+						fileName: 'photo.png',
+						mimeType: 'image/png',
+					}),
+				);
+				expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: 'what is this?\n[Attachment "internal.png" could not be processed]',
+						attachments: [
+							{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+						],
+					}),
+				);
+			} finally {
+				fetchMock.mockRestore();
+			}
 		});
 
 		it('deletes stored attachments when execution setup fails before the stream is consumed', async () => {

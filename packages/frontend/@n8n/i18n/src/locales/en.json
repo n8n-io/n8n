@@ -7928,7 +7928,7 @@
 	"agents.channels.modal.backToChannels": "Back to channels",
 	"agents.channels.modal.description": "Choose a channel to connect to your agent. Channels allow your agent to receive messages and respond to events.",
 	"agents.channels.modal.connectDescription": "Connect your {channel} account",
-	"agents.channels.modal.setupPlaceholder": "Setup view for {channel} will go here.",
+	"agents.channels.modal.setupLoadError": "Channel setup couldn't load. Try again.",
 	"agents.channels.modal.editPlaceholder": "Edit view for {channel} will go here.",
 	"agents.channels.modal.configured": "Configured",
 	"agents.channels.modal.connected": "Connected",

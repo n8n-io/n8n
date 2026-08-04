@@ -35,6 +35,7 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { ReplyExpectation } from './integration-tools';
+import { downloadDiscordAttachment } from './platforms/discord-operations';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -387,10 +388,10 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Download and persist inbound platform attachments (Slack/Telegram adapters
-	 * deliver them with authenticated `fetchData`). Oversize or failed downloads
-	 * degrade to a text note on the user turn — an attachment problem never
-	 * aborts the run. Returns stored refs plus the notes to append.
+	 * Download and persist inbound platform attachments. Slack/Telegram adapters
+	 * provide `fetchData`; Discord provides a signed CDN URL. Oversize or failed
+	 * downloads degrade to a text note on the user turn — an attachment problem
+	 * never aborts the run. Returns stored refs plus the notes to append.
 	 */
 	private async storeInboundAttachments(
 		inboundAttachments: Attachment[],
@@ -474,6 +475,9 @@ export class AgentChatBridge {
 		if (attachment.fetchData) return await attachment.fetchData();
 		if (Buffer.isBuffer(attachment.data)) return attachment.data;
 		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
+		if (this.integration.type === 'discord' && attachment.url) {
+			return await downloadDiscordAttachment(attachment.url);
+		}
 		return null;
 	}
 
