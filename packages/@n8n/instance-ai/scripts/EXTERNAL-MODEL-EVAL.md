@@ -72,10 +72,11 @@ No `LANGTRACER_*` variables.
 
 ## Run against the Kimi / dedicated router endpoint
 
-From the **repo root**:
+From the **repo root** (invoke the shell script directly — do **not** pass
+`--model` to `pnpm eval:instance-ai`):
 
 ```bash
-pnpm --filter @n8n/instance-ai eval:experiment -- \
+./packages/@n8n/instance-ai/scripts/run-eval-experiment.sh \
   --model custom/Kimi-K3 \
   --model-url 'https://YOUR-HOST/v1' \
   --suite model-comparison \
@@ -92,7 +93,7 @@ Replace `https://YOUR-HOST/v1` with the OpenAI-compatible base URL
 For the larger suite:
 
 ```bash
-pnpm --filter @n8n/instance-ai eval:experiment -- \
+./packages/@n8n/instance-ai/scripts/run-eval-experiment.sh \
   --model custom/Kimi-K3 \
   --model-url 'https://YOUR-HOST/v1' \
   --suite model-comparison-large \

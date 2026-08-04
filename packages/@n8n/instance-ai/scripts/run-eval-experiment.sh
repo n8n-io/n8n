@@ -318,27 +318,117 @@ cleanup() {
 # ---------------------------------------------------------------------------
 # Parse args
 # ---------------------------------------------------------------------------
+# Read `--flag value` or `--flag=value` into the named variable, then shift.
+# Usage: parse_opt VAR_NAME "$@" → sets VAR_NAME, updates positional params via return code:
+# we mutate caller's $@ by echoing how many to shift... simpler: set a global.
+OPT_SHIFTS=1
+parse_opt_value() {
+	local flag="$1"
+	local arg="$2"
+	local next="${3-}"
+	if [[ "$arg" == *=* ]]; then
+		OPT_VALUE="${arg#*=}"
+		OPT_SHIFTS=1
+	else
+		[[ -n "$next" ]] || die "Missing value for ${flag}"
+		OPT_VALUE="$next"
+		OPT_SHIFTS=2
+	fi
+}
+
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--model) MODEL="${2:-}"; shift 2 ;;
-		--model-url) MODEL_URL="${2:-}"; shift 2 ;;
-		--suite) SUITE="${2:-}"; shift 2 ;;
-		--workflow-dir) WORKFLOW_DIR="${2:-}"; shift 2 ;;
-		--tier) TIER="${2:-}"; shift 2 ;;
-		--filter) FILTER="${2:-}"; shift 2 ;;
-		--iterations) ITERATIONS="${2:-}"; shift 2 ;;
-		--experiment-name) EXPERIMENT_NAME="${2:-}"; shift 2 ;;
-		--sandbox-provider) SANDBOX_PROVIDER="${2:-}"; shift 2 ;;
-		--lanes) LANES="${2:-}"; shift 2 ;;
-		--concurrency) EVAL_CONCURRENCY="${2:-}"; shift 2 ;;
-		--vertex-project) VERTEX_PROJECT="${2:-}"; shift 2 ;;
-		--vertex-location) VERTEX_LOCATION="${2:-}"; shift 2 ;;
-		--start-port) START_PORT="${2:-}"; shift 2 ;;
-		--image) IMAGE="${2:-}"; shift 2 ;;
+		--model|--model=*)
+			parse_opt_value --model "$1" "${2-}"
+			MODEL="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--model-url|--model-url=*)
+			parse_opt_value --model-url "$1" "${2-}"
+			MODEL_URL="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--suite|--suite=*)
+			parse_opt_value --suite "$1" "${2-}"
+			SUITE="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--workflow-dir|--workflow-dir=*)
+			parse_opt_value --workflow-dir "$1" "${2-}"
+			WORKFLOW_DIR="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--tier|--tier=*)
+			parse_opt_value --tier "$1" "${2-}"
+			TIER="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--filter|--filter=*)
+			parse_opt_value --filter "$1" "${2-}"
+			FILTER="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--iterations|--iterations=*)
+			parse_opt_value --iterations "$1" "${2-}"
+			ITERATIONS="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--experiment-name|--experiment-name=*)
+			parse_opt_value --experiment-name "$1" "${2-}"
+			EXPERIMENT_NAME="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--sandbox-provider|--sandbox-provider=*)
+			parse_opt_value --sandbox-provider "$1" "${2-}"
+			SANDBOX_PROVIDER="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--lanes|--lanes=*)
+			parse_opt_value --lanes "$1" "${2-}"
+			LANES="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--concurrency|--concurrency=*)
+			parse_opt_value --concurrency "$1" "${2-}"
+			EVAL_CONCURRENCY="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--vertex-project|--vertex-project=*)
+			parse_opt_value --vertex-project "$1" "${2-}"
+			VERTEX_PROJECT="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--vertex-location|--vertex-location=*)
+			parse_opt_value --vertex-location "$1" "${2-}"
+			VERTEX_LOCATION="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--start-port|--start-port=*)
+			parse_opt_value --start-port "$1" "${2-}"
+			START_PORT="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--image|--image=*)
+			parse_opt_value --image "$1" "${2-}"
+			IMAGE="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
 		--build) BUILD_IMAGE=true; shift ;;
-		--env-file) ENV_FILE="${2:-}"; shift 2 ;;
-		--dataset) DATASET="${2:-}"; shift 2 ;;
-		--baseline-prefix) BASELINE_PREFIX="${2:-}"; shift 2 ;;
+		--env-file|--env-file=*)
+			parse_opt_value --env-file "$1" "${2-}"
+			ENV_FILE="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--dataset|--dataset=*)
+			parse_opt_value --dataset "$1" "${2-}"
+			DATASET="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
+		--baseline-prefix|--baseline-prefix=*)
+			parse_opt_value --baseline-prefix "$1" "${2-}"
+			BASELINE_PREFIX="$OPT_VALUE"
+			shift "$OPT_SHIFTS"
+			;;
 		--skip-eval) SKIP_EVAL=true; shift ;;
 		--keep-containers) KEEP_CONTAINERS=true; shift ;;
 		-h | --help) usage; exit 0 ;;
@@ -346,6 +436,10 @@ while [[ $# -gt 0 ]]; do
 			shift
 			EVAL_ARGS+=("$@")
 			break
+			;;
+		--*)
+			# Unknown --flags belong to this script, not eval:instance-ai.
+			die "Unknown flag: $1 (pass eval:instance-ai-only flags after -- )"
 			;;
 		*)
 			EVAL_ARGS+=("$1")
@@ -452,9 +546,24 @@ trap cleanup EXIT
 # ---------------------------------------------------------------------------
 # Sandbox service (n8n-sandbox only)
 # ---------------------------------------------------------------------------
+# Reclaim leftovers from an interrupted prior run (network 409, stale lanes).
+reclaim_eval_stack() {
+	log "reclaiming leftover eval containers / sandbox / network (if any)..."
+	local ids
+	ids="$(docker ps -aq --filter "name=n8n-eval-" 2>/dev/null || true)"
+	if [[ -n "$ids" ]]; then
+		# shellcheck disable=SC2086
+		docker rm -f $ids >/dev/null 2>&1 || true
+	fi
+	pnpm --filter n8n-containers services:clean >/dev/null 2>&1 || true
+	# Compose project label cleanup can leave the named network behind.
+	docker network rm "$NETWORK_NAME" >/dev/null 2>&1 || true
+}
+
 NETWORK_ARGS=()
 SANDBOX_ARGS=()
 if [[ "$SANDBOX_PROVIDER" == "n8n-sandbox" ]]; then
+	reclaim_eval_stack
 	log "starting sandbox service on network ${NETWORK_NAME}..."
 	pnpm --filter n8n-containers services --services sandbox --network "$NETWORK_NAME" --name n8n-svc-sandbox
 	SANDBOX_STARTED=true
