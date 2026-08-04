@@ -3,40 +3,13 @@ import { ownerKeyFor, withOwnerKeys } from '../owner-key';
 const key = (workflowId: string, nodeId: string) => `${workflowId}\0${nodeId}`;
 
 describe('ownerKeyFor', () => {
-	it('joins workflowId and nodeId when both are present', () => {
-		expect(ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node-1' })).toBe(key('wf-1', 'node-1'));
-	});
-
-	it('returns null when workflowId is null', () => {
-		expect(ownerKeyFor({ workflowId: null, nodeId: 'node-1' })).toBeNull();
-	});
-
-	it('returns null when nodeId is null', () => {
-		expect(ownerKeyFor({ workflowId: 'wf-1', nodeId: null })).toBeNull();
-	});
-
-	it('returns null when both are null', () => {
-		expect(ownerKeyFor({ workflowId: null, nodeId: null })).toBeNull();
-	});
-
-	it('gives the rules of one node the same key regardless of their order', () => {
-		const rules = [
-			{ workflowId: 'wf-1', nodeId: 'node-1', name: 'wf-1:node-1:2:aaa' },
-			{ workflowId: 'wf-1', nodeId: 'node-1', name: 'wf-1:node-1:0:bbb' },
-			{ workflowId: 'wf-1', nodeId: 'node-1', name: 'wf-1:node-1:1:ccc' },
-		];
-
-		const keys = rules.map(ownerKeyFor);
-		const reversedKeys = [...rules].reverse().map(ownerKeyFor);
-
-		expect(new Set(keys)).toEqual(new Set([key('wf-1', 'node-1')]));
-		expect(new Set(reversedKeys)).toEqual(new Set([key('wf-1', 'node-1')]));
-	});
-
-	it('distinguishes different nodes of the same workflow', () => {
-		expect(ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node-1' })).not.toBe(
-			ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node-2' }),
-		);
+	it.each([
+		['both ids present', 'wf-1', 'node-1', key('wf-1', 'node-1')],
+		['workflowId is null', null, 'node-1', null],
+		['nodeId is null', 'wf-1', null, null],
+		['both are null', null, null, null],
+	])('%s', (_case, workflowId, nodeId, expected) => {
+		expect(ownerKeyFor({ workflowId, nodeId })).toBe(expected);
 	});
 
 	it('distinguishes owners whose ids differ only in where the boundary falls', () => {

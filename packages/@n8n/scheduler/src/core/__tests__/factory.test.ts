@@ -1126,7 +1126,7 @@ describe('createScheduler tracing', () => {
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
 
-	it('reports the grouped, retained and multi-member catch-up counts on the materialize span', async () => {
+	it('reports the grouped, retained and multi-member catch-up counts on the materialize span, keeping the dropped run out of skipped occurrences but in the discarded total', async () => {
 		const { span, tracer } = makeTracer();
 		const { scheduler } = makeScheduler({
 			materializerTransaction: ownerGroupTransaction(),
@@ -1138,22 +1138,11 @@ describe('createScheduler tracing', () => {
 		expect(summary.groupedCatchUps).toBe(1);
 		expect(summary.retainedOwnerCatchUps).toBe(3);
 		expect(summary.multiMemberOwnerGroups).toBe(1);
+		expect(summary.skippedOccurrences).toBe(40);
+		expect(totalDiscarded(summary.misfires)).toBe(41);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.groupedCatchUps, 1);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.retainedOwnerCatchUps, 3);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.multiMemberOwnerGroups, 1);
-	});
-
-	it('leaves the grouped catch-up run out of the span skipped-occurrence count', async () => {
-		const { span, tracer } = makeTracer();
-		const { scheduler } = makeScheduler({
-			materializerTransaction: ownerGroupTransaction(),
-			tracer,
-		});
-
-		const summary = await scheduler.materialize();
-
-		expect(summary.skippedOccurrences).toBe(40);
-		expect(totalDiscarded(summary.misfires)).toBe(41);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.skippedOccurrences, 40);
 	});
 

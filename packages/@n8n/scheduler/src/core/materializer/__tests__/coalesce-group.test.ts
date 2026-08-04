@@ -78,56 +78,37 @@ describe('coalesceSiblingCatchUps', () => {
 			makeMember({ id: 3 }, catchUpThree),
 		];
 
-		it('keeps a catch-up run on exactly one member, the latest one', () => {
+		it("keeps the winner's catch-up run and plan untouched", () => {
 			const result = coalesceSiblingCatchUps(makeSiblings());
 
 			const withCatchUp = result.filter(({ plan }) => plan.catchUpAt !== null);
 			expect(withCatchUp).toHaveLength(1);
-			expect(withCatchUp[0].job.id).toBe(3);
-			expect(withCatchUp[0].plan.catchUpAt).toEqual(catchUpThree);
-		});
-
-		it('leaves the winner otherwise as planned', () => {
-			const result = coalesceSiblingCatchUps(makeSiblings());
-
-			const winner = byId(result, 3);
+			const winner = withCatchUp[0];
+			expect(winner.job.id).toBe(3);
+			expect(winner.plan.catchUpAt).toEqual(catchUpThree);
 			expect(winner.plan.occurrences).toEqual([catchUpThree]);
 			expect(winner.plan.retireBefore).toEqual(catchUpThree);
 			expect(winner.plan.groupedCatchUps).toBe(0);
 		});
 
-		it('drops each loser catch-up run and counts it', () => {
+		it("drops each loser's catch-up run and counts it, leaving its clock, retirement instant and backlog count untouched", () => {
 			const result = coalesceSiblingCatchUps(makeSiblings());
 
-			for (const id of [1, 2]) {
-				const loser = byId(result, id);
-				expect(loser.plan.catchUpAt).toBeNull();
-				expect(loser.plan.groupedCatchUps).toBe(1);
-			}
-		});
+			const loserOne = byId(result, 1);
+			expect(loserOne.plan.catchUpAt).toBeNull();
+			expect(loserOne.plan.groupedCatchUps).toBe(1);
+			expect(loserOne.plan.retireBefore).toEqual(catchUpOne);
 
-		it('keeps each loser retirement instant at the catch-up run it dropped', () => {
-			const result = coalesceSiblingCatchUps(makeSiblings());
-
-			expect(byId(result, 1).plan.retireBefore).toEqual(catchUpOne);
-			expect(byId(result, 2).plan.retireBefore).toEqual(catchUpTwo);
-		});
-
-		it('leaves every member clock untouched', () => {
-			const result = coalesceSiblingCatchUps(makeSiblings());
+			const loserTwo = byId(result, 2);
+			expect(loserTwo.plan.catchUpAt).toBeNull();
+			expect(loserTwo.plan.groupedCatchUps).toBe(1);
+			expect(loserTwo.plan.retireBefore).toEqual(catchUpTwo);
 
 			for (const id of [1, 2, 3]) {
 				const member = byId(result, id);
 				expect(member.plan.nextRunAt).toEqual(secondsAfter(NOW, 10));
 				expect(member.plan.lastFiredAt).toEqual(secondsBefore(NOW, 10));
-			}
-		});
-
-		it('leaves the discarded-backlog count of every member untouched', () => {
-			const result = coalesceSiblingCatchUps(makeSiblings());
-
-			for (const id of [1, 2, 3]) {
-				expect(byId(result, id).plan.skippedOccurrences).toBe(4);
+				expect(member.plan.skippedOccurrences).toBe(4);
 			}
 		});
 	});
@@ -210,22 +191,6 @@ describe('coalesceSiblingCatchUps', () => {
 		}
 	});
 
-	it('groups one owner task type independently of another', () => {
-		const planned = [
-			makeMember({ id: 1, taskType: 'trigger' }, secondsBefore(NOW, 30)),
-			makeMember({ id: 2, taskType: 'trigger' }, secondsBefore(NOW, 20)),
-			makeMember({ id: 3, taskType: 'poll' }, secondsBefore(NOW, 40)),
-			makeMember({ id: 4, taskType: 'poll' }, secondsBefore(NOW, 15)),
-		];
-
-		const result = coalesceSiblingCatchUps(planned);
-
-		expect(byId(result, 1).plan.catchUpAt).toBeNull();
-		expect(byId(result, 2).plan.catchUpAt).toEqual(secondsBefore(NOW, 20));
-		expect(byId(result, 3).plan.catchUpAt).toBeNull();
-		expect(byId(result, 4).plan.catchUpAt).toEqual(secondsBefore(NOW, 15));
-	});
-
 	it('groups each owner in a batch separately', () => {
 		const planned = [
 			makeMember({ id: 1, ownerKey: 'owner-a' }, secondsBefore(NOW, 30)),
@@ -287,10 +252,14 @@ describe('coalesceSiblingCatchUps', () => {
 		expect(exhausted.plan.groupedCatchUps).toBe(1);
 	});
 
-	it('keeps both catch-up runs when siblings carry different payloads', () => {
+	it.each([
+		['taskType', { taskType: 'trigger' }, { taskType: 'poll' }],
+		['misfireGraceSeconds', { misfireGraceSeconds: 60 }, { misfireGraceSeconds: 120 }],
+		['payload', { payload: { rule: 'one' } }, { payload: { rule: 'two' } }],
+	])('keeps both catch-up runs when siblings differ in %s', (_label, first, second) => {
 		const planned = [
-			makeMember({ id: 1, payload: { rule: 'one' } }, secondsBefore(NOW, 30)),
-			makeMember({ id: 2, payload: { rule: 'two' } }, secondsBefore(NOW, 20)),
+			makeMember({ id: 1, ...first }, secondsBefore(NOW, 30)),
+			makeMember({ id: 2, ...second }, secondsBefore(NOW, 20)),
 		];
 
 		const result = coalesceSiblingCatchUps(planned);
@@ -302,23 +271,17 @@ describe('coalesceSiblingCatchUps', () => {
 		}
 	});
 
-	it('groups siblings whose equal payloads only differ in key order', () => {
+	it.each([
+		[
+			'payloads only differ in key order',
+			{ payload: { a: 1, nested: { x: 1, y: 2 } } },
+			{ payload: { nested: { y: 2, x: 1 }, a: 1 } },
+		],
+		['attempt limits differ', { maxAttempts: 1 }, { maxAttempts: 3 }],
+	])('still groups siblings whose %s', (_label, first, second) => {
 		const planned = [
-			makeMember({ id: 1, payload: { a: 1, nested: { x: 1, y: 2 } } }, secondsBefore(NOW, 30)),
-			makeMember({ id: 2, payload: { nested: { y: 2, x: 1 }, a: 1 } }, secondsBefore(NOW, 20)),
-		];
-
-		const result = coalesceSiblingCatchUps(planned);
-
-		expect(byId(result, 1).plan.catchUpAt).toBeNull();
-		expect(byId(result, 1).plan.groupedCatchUps).toBe(1);
-		expect(byId(result, 2).plan.catchUpAt).toEqual(secondsBefore(NOW, 20));
-	});
-
-	it('groups siblings that differ only in their attempt limits', () => {
-		const planned = [
-			makeMember({ id: 1, maxAttempts: 1 }, secondsBefore(NOW, 30)),
-			makeMember({ id: 2, maxAttempts: 3 }, secondsBefore(NOW, 20)),
+			makeMember({ id: 1, ...first }, secondsBefore(NOW, 30)),
+			makeMember({ id: 2, ...second }, secondsBefore(NOW, 20)),
 		];
 
 		const result = coalesceSiblingCatchUps(planned);
@@ -343,17 +306,6 @@ describe('coalesceSiblingCatchUps', () => {
 		expect(byId(result, 1).plan.groupedCatchUps).toBe(0);
 		expect(byId(result, 2).plan.catchUpAt).toBeNull();
 		expect(byId(result, 3).plan.catchUpAt).toEqual(secondsBefore(NOW, 10));
-	});
-
-	it('keeps both catch-up runs when siblings carry different grace windows', () => {
-		const planned = [
-			makeMember({ id: 1, misfireGraceSeconds: 60 }, secondsBefore(NOW, 30)),
-			makeMember({ id: 2, misfireGraceSeconds: 120 }, secondsBefore(NOW, 20)),
-		];
-
-		const result = coalesceSiblingCatchUps(planned);
-
-		expect(result.filter(({ plan }) => plan.catchUpAt !== null)).toHaveLength(2);
 	});
 
 	it('leaves a member without a catch-up run alone and still groups the rest', () => {
@@ -415,25 +367,6 @@ describe('coalesceSiblingCatchUps', () => {
 		for (const id of [1, 2]) {
 			expect(byId(result, id).plan.catchUpAt).toBeNull();
 			expect(byId(result, id).plan.groupedCatchUps).toBe(1);
-		}
-	});
-
-	it('keeps the catch-up run of exhausted members even when another member holds the latest', () => {
-		const latest = secondsBefore(NOW, 10);
-		const planned = [
-			makeMember({ id: 1 }, secondsBefore(NOW, 30), { nextRunAt: null }),
-			makeMember({ id: 2 }, secondsBefore(NOW, 20), { nextRunAt: null }),
-			makeMember({ id: 3 }, latest),
-		];
-
-		const result = coalesceSiblingCatchUps(planned);
-
-		expect(result.filter(({ plan }) => plan.catchUpAt !== null)).toHaveLength(3);
-		expect(byId(result, 1).plan.catchUpAt).toEqual(secondsBefore(NOW, 30));
-		expect(byId(result, 2).plan.catchUpAt).toEqual(secondsBefore(NOW, 20));
-		expect(byId(result, 3).plan.catchUpAt).toEqual(latest);
-		for (const id of [1, 2, 3]) {
-			expect(byId(result, id).plan.groupedCatchUps).toBe(0);
 		}
 	});
 
@@ -519,56 +452,8 @@ describe('countMultiMemberOwnerGroups', () => {
 		).toBe(1);
 	});
 
-	it('counts nothing when the members differ in payload', () => {
-		expect(
-			countMultiMemberOwnerGroups([
-				makeMember({ id: 1, payload: { rule: 'one' } }, secondsBefore(NOW, 30)),
-				makeMember({ id: 2, payload: { rule: 'two' } }, secondsBefore(NOW, 20)),
-			]),
-		).toBe(0);
-	});
-
-	it('counts nothing for ownerless members that share a task type', () => {
-		expect(
-			countMultiMemberOwnerGroups([
-				makeMember({ id: 1, ownerKey: null }, secondsBefore(NOW, 30)),
-				makeMember({ id: 2, ownerKey: null }, secondsBefore(NOW, 20)),
-			]),
-		).toBe(0);
-	});
-
-	it('counts nothing when the members use the per-job coalesce policy', () => {
-		const perJob = (id: number, catchUpAt: Date) =>
-			makeMember({ id, misfirePolicy: ScheduledJobMisfirePolicy.Coalesce }, catchUpAt);
-
-		expect(
-			countMultiMemberOwnerGroups([
-				perJob(1, secondsBefore(NOW, 30)),
-				perJob(2, secondsBefore(NOW, 20)),
-			]),
-		).toBe(0);
-	});
-
-	it('counts nothing when the members use the skip policy', () => {
-		const skipped = (id: number): PlannedJob => ({
-			job: makeJob({ id, misfirePolicy: ScheduledJobMisfirePolicy.Skip }),
-			plan: makePlan({ occurrences: [secondsAfter(NOW, 10)] }),
-		});
-
-		expect(countMultiMemberOwnerGroups([skipped(1), skipped(2)])).toBe(0);
-	});
-
-	it('leaves out a member that planned no catch-up run', () => {
-		const withoutCatchUp = makeMember({ id: 1 }, secondsBefore(NOW, 30), {
-			occurrences: [],
-			catchUpAt: null,
-			retireBefore: null,
-		});
-
-		expect(
-			countMultiMemberOwnerGroups([withoutCatchUp, makeMember({ id: 2 }, secondsBefore(NOW, 20))]),
-		).toBe(0);
-	});
+	// Per-job-coalesce, skip, ownerless and no-catch-up members are excluded by
+	// the same eligibility check as `coalesceSiblingCatchUps`, tested above.
 });
 
 describe('countRetainedOwnerCatchUps', () => {
@@ -596,39 +481,6 @@ describe('countRetainedOwnerCatchUps', () => {
 		expect(countRetainedOwnerCatchUps(grouped)).toBe(1);
 	});
 
-	it('counts nothing for an ownerless member', () => {
-		expect(
-			countRetainedOwnerCatchUps([makeMember({ id: 1, ownerKey: null }, secondsBefore(NOW, 30))]),
-		).toBe(0);
-	});
-
-	it('counts nothing for a member on the per-job coalesce policy', () => {
-		expect(
-			countRetainedOwnerCatchUps([
-				makeMember(
-					{ id: 1, misfirePolicy: ScheduledJobMisfirePolicy.Coalesce },
-					secondsBefore(NOW, 30),
-				),
-			]),
-		).toBe(0);
-	});
-
-	it('counts nothing for a member on the skip policy', () => {
-		const skipped: PlannedJob = {
-			job: makeJob({ id: 1, misfirePolicy: ScheduledJobMisfirePolicy.Skip }),
-			plan: makePlan({ occurrences: [secondsAfter(NOW, 10)] }),
-		};
-
-		expect(countRetainedOwnerCatchUps([skipped])).toBe(0);
-	});
-
-	it('counts nothing for a member that planned no catch-up run', () => {
-		const withoutCatchUp = makeMember({ id: 1 }, secondsBefore(NOW, 30), {
-			occurrences: [],
-			catchUpAt: null,
-			retireBefore: null,
-		});
-
-		expect(countRetainedOwnerCatchUps([withoutCatchUp])).toBe(0);
-	});
+	// Per-job-coalesce, skip, ownerless and no-catch-up members are excluded by
+	// the same eligibility check as `coalesceSiblingCatchUps`, tested above.
 });

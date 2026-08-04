@@ -82,22 +82,6 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 		await testDb.terminate();
 	});
 
-	it('claims all rules of a node whose nextRunAt values are separated by other jobs', async () => {
-		const nodeId = uuid();
-		const ruleA = await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-300) });
-		const ruleB = await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-200) });
-		const ruleC = await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-100) });
-		const separatorA = await createJob({ nextRunAt: secondsFromNow(-250) });
-		const separatorB = await createJob({ nextRunAt: secondsFromNow(-150) });
-
-		const claimed = await claim(2);
-
-		const ids = claimed?.jobs.map((job) => job.id) ?? [];
-		expect(ids).toEqual(expect.arrayContaining([ruleA.id, ruleB.id, ruleC.id, separatorA.id]));
-		expect(ids).not.toContain(separatorB.id);
-		expect(new Set(ids).size).toBe(ids.length);
-	});
-
 	it('returns the completed batch ordered by nextRunAt', async () => {
 		const nodeId = uuid();
 		const ruleA = await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-300) });

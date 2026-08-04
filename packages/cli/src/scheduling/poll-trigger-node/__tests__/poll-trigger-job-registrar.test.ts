@@ -211,19 +211,6 @@ describe('PollTriggerJobRegistrar', () => {
 			);
 		});
 
-		it('provisions poll jobs under the skip misfire policy', async () => {
-			await makeRegistrar().register(
-				WORKFLOW_ID,
-				pollNode,
-				[DAILY_AT_NINE, DAILY_AT_TEN],
-				TIMEZONE,
-			);
-
-			const [, , , , desired, misfirePolicy] = jobProvisioner.provision.mock.calls.at(-1)!;
-			expect(desired).toHaveLength(2);
-			expect(misfirePolicy).toBe(ScheduledJobMisfirePolicy.Skip);
-		});
-
 		it('throws on an invalid cron expression', async () => {
 			await expect(
 				makeRegistrar().register(

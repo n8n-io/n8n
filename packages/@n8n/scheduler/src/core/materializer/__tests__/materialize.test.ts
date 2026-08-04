@@ -449,7 +449,7 @@ describe('materialize', () => {
 			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
 		};
 
-		it('records one catch-up run for the whole owner', async () => {
+		it('records one catch-up run for the whole owner, retires every sibling, and advances every clock', async () => {
 			const tx = makeTx();
 			claimSiblings(tx);
 
@@ -459,26 +459,12 @@ describe('materialize', () => {
 			const rows = tx.recordOccurrences.mock.calls[0][0];
 			expect(rows).toHaveLength(1);
 			expect(rows[0]).toMatchObject({ runAt: NOW, scheduledFor: NOW });
-		});
-
-		it('retires the superseded occurrences of every sibling', async () => {
-			const tx = makeTx();
-			claimSiblings(tx);
-
-			await materialize(runnerWith(tx), options);
 
 			expect(tx.retireSuperseded).toHaveBeenCalledWith([
 				{ jobId: 1, before: NOW },
 				{ jobId: 2, before: NOW },
 				{ jobId: 3, before: NOW },
 			]);
-		});
-
-		it('advances every sibling clock, holding none back', async () => {
-			const tx = makeTx();
-			claimSiblings(tx);
-
-			await materialize(runnerWith(tx), options);
 
 			const planned = tx.advanceJobs.mock.calls[0][0];
 			expect(planned).toHaveLength(3);
@@ -488,25 +474,7 @@ describe('materialize', () => {
 			}
 		});
 
-		it('counts the dropped catch-up runs towards the discarded total', async () => {
-			const tx = makeTx();
-			claimSiblings(tx);
-
-			const summary = await materialize(runnerWith(tx), options);
-
-			expect(totalDiscarded(summary.misfires)).toBe(38);
-		});
-
-		it('leaves the dropped catch-up runs out of the skipped-occurrence count', async () => {
-			const tx = makeTx();
-			claimSiblings(tx);
-
-			const summary = await materialize(runnerWith(tx), options);
-
-			expect(summary.skippedOccurrences).toBe(36);
-		});
-
-		it('reports how many catch-up runs the group dropped and kept', async () => {
+		it('reports the grouped, retained and multi-member catch-up counts on the summary, keeping the dropped runs out of skipped occurrences but in the discarded total', async () => {
 			const tx = makeTx();
 			claimSiblings(tx);
 
@@ -515,6 +483,8 @@ describe('materialize', () => {
 			expect(summary.groupedCatchUps).toBe(2);
 			expect(summary.retainedOwnerCatchUps).toBe(1);
 			expect(summary.multiMemberOwnerGroups).toBe(1);
+			expect(summary.skippedOccurrences).toBe(36);
+			expect(totalDiscarded(summary.misfires)).toBe(38);
 		});
 
 		it('completes the pass and records a catch-up run for a sibling whose payload cannot be serialised', async () => {
