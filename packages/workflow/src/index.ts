@@ -27,6 +27,8 @@ export * from './node-validation';
 export * from './node-grouping-validation';
 export * from './mcp-helpers';
 export * from './tool-helpers';
+export * from './workflow-inputs/constants';
+export * from './workflow-inputs/field-entries';
 export * from './trigger-identity';
 export * from './n8n-oauth2-auth';
 export * from './node-reference-parser-utils';

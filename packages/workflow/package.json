@@ -71,9 +71,9 @@
   "dependencies": {
     "@codemirror/autocomplete": "catalog:",
     "@n8n/errors": "workspace:*",
-    "@n8n/utils": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/tournament": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "ast-types": "0.16.1",
@@ -81,10 +81,12 @@
     "callsites": "catalog:",
     "esprima-next": "5.8.4",
     "form-data": "catalog:",
+    "generate-schema": "2.6.0",
     "jmespath": "0.16.0",
     "js-base64": "catalog:",
-    "jssha": "3.3.1",
     "json-schema": "catalog:",
+    "jsonrepair": "catalog:",
+    "jssha": "3.3.1",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "md5": "2.3.0",
@@ -93,8 +95,7 @@
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
     "uuid": "catalog:",
-    "xml2js": "catalog:",
-    "jsonrepair": "catalog:"
+    "xml2js": "catalog:"
   },
   "peerDependencies": {
     "zod": "catalog:"

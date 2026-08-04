@@ -7003,6 +7003,9 @@ importers:
       form-data:
         specifier: 4.0.6
         version: 4.0.6
+      generate-schema:
+        specifier: 2.6.0
+        version: 2.6.0
       jmespath:
         specifier: 0.16.0
         version: 0.16.0
