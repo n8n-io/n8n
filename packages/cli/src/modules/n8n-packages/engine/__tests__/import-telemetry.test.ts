@@ -50,6 +50,7 @@ const scope = (input: {
 		matched?: string[];
 		created?: string[];
 		renamed?: string[];
+		reconciled?: string[];
 		skipped?: string[];
 		requirementIds?: string[];
 	};
@@ -93,6 +94,11 @@ const scope = (input: {
 			matched: toTagRefs(tags.matched),
 			creations: toTagRefs(tags.created),
 			renames: (tags.renamed ?? []).map((id) => ({ id, from: 'old', to: `name-of-${id}` })),
+			reconciles: (tags.reconciled ?? []).map((id) => ({
+				id,
+				name: `name-of-${id}`,
+				oldId: `old-${id}`,
+			})),
 			dropped: toTagRefs(tags.skipped),
 			failures: [],
 		},
@@ -187,8 +193,9 @@ describe('emitPackageImportedEvent', () => {
 					tags: {
 						created: ['T2'],
 						renamed: ['T3'],
+						reconciled: ['T5'],
 						skipped: ['T4'],
-						requirementIds: ['T2', 'T3', 'T4'],
+						requirementIds: ['T2', 'T3', 'T4', 'T5'],
 					},
 				}),
 			],
@@ -213,7 +220,7 @@ describe('emitPackageImportedEvent', () => {
 			// scope 2's two missing requirements were created, so post-apply missing is 0.
 			variables: { matched: 1, missing: 0, created: 2, requirements: 3 },
 			// T2 and its requirement appear in both scopes but count once (unique tag ids).
-			tags: { matched: 1, created: 1, renamed: 1, skipped: 1, requirements: 4 },
+			tags: { matched: 1, created: 1, renamed: 1, reconciled: 1, skipped: 1, requirements: 5 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
 		expect(payload.options.variableMissingMode).toBe('create-stub');
