@@ -32,7 +32,6 @@ import type { AgentIntegrationPersistenceService } from '../agent-integration-pe
 import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
-import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
@@ -80,11 +79,6 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const telemetry = mock<Telemetry>();
-	const agentValidationService = mock<AgentValidationService>();
-	agentValidationService.validateAgentConfiguration.mockResolvedValue({
-		status: 'valid',
-		issues: [],
-	});
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -123,7 +117,6 @@ function makeService() {
 		mock<SsrfProtectionService>(),
 		mock<FreeAiCreditsService>(),
 		telemetry,
-		agentValidationService,
 	);
 
 	return {
@@ -133,7 +126,6 @@ function makeService() {
 		attachableWorkflowsService,
 		agentTaskService,
 		agentPublishService,
-		agentValidationService,
 		nodeTypes,
 		outboundHttp,
 		telemetry,
