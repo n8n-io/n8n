@@ -79,14 +79,21 @@ describe('CondtionalRouterLink', () => {
 	 * If a future vue-router promotes it to a real prop, this fails and we add it.
 	 */
 	it("declares exactly RouterLink's runtime props, with `to` optional", () => {
-		const routerLinkProps = Object.keys(
-			(RouterLink as unknown as { props: Record<string, unknown> }).props,
-		);
-		const ourProps = Object.keys(
-			(CondtionalRouterLink as unknown as { props: Record<string, unknown> }).props,
-		);
+		type PropsOf = { props: Record<string, { type?: unknown; required?: boolean }> };
+		const routerLinkProps = (RouterLink as unknown as PropsOf).props;
+		const ourProps = (CondtionalRouterLink as unknown as PropsOf).props;
 
-		expect(ourProps.sort()).toEqual(routerLinkProps.sort());
-		expect(routerLinkProps).not.toContain('viewTransition');
+		expect(Object.keys(ourProps).sort()).toEqual(Object.keys(routerLinkProps).sort());
+		expect(Object.keys(routerLinkProps)).not.toContain('viewTransition');
+
+		// `to` accepts the same shapes RouterLink accepts — the name matching is not
+		// enough on its own, since a collapsed prop would still carry the right key.
+		expect(ourProps.to.type).toEqual([String, Object]);
+		expect(routerLinkProps.to.type).toEqual([String, Object]);
+
+		// The one deliberate divergence, and the only one: RouterLink requires `to`,
+		// we do not, because without it this component renders an `<a>` or the slot.
+		expect(routerLinkProps.to.required).toBe(true);
+		expect(ourProps.to.required).toBeFalsy();
 	});
 });
