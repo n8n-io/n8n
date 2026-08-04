@@ -80,11 +80,15 @@ async function importPackage(params: ImportParams) {
 	});
 }
 
-async function exportWorkflowPackage(user: User, workflowId: string): Promise<Buffer> {
+async function exportWorkflowPackage(
+	user: User,
+	workflowId: string,
+	includeVariableValues = true,
+): Promise<Buffer> {
 	const { stream } = await service.exportPackage({
 		user,
 		workflowIds: [workflowId],
-		includeVariableValues: true,
+		includeVariableValues,
 	});
 	return await streamToBuffer(stream);
 }
@@ -121,7 +125,12 @@ describe('workflow package import — with variables', () => {
 
 			expect(result.workflows).toHaveLength(1);
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.variables).toEqual({ matched: [], missing: ['API_URL'], stubbed: [] });
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: ['API_URL'],
+				created: [],
+				stubbed: [],
+			});
 			expect(await variablesRepository.count()).toBe(variablesBefore);
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 			expect(await workflowRepository.count()).toBe(2);
@@ -148,7 +157,12 @@ describe('workflow package import — with variables', () => {
 				packageBuffer,
 			});
 
-			expect(result.variables).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+			expect(result.variables).toEqual({
+				matched: ['API_URL'],
+				missing: [],
+				created: [],
+				stubbed: [],
+			});
 			expect(await variablesRepository.count()).toBe(variablesBefore);
 			const targetVars = await variablesInProject(targetProject.id);
 			expect(targetVars).toHaveLength(1);
@@ -175,32 +189,14 @@ describe('workflow package import — with variables', () => {
 				packageBuffer,
 			});
 
-			expect(result.variables).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+			expect(result.variables).toEqual({
+				matched: ['API_URL'],
+				missing: [],
+				created: [],
+				stubbed: [],
+			});
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 			expect(await variablesRepository.count()).toBe(variablesBefore);
-		});
-
-		it('defaults to do-nothing when the caller does not override the mode', async () => {
-			const owner = await createOwner();
-			const sourceProject = await createTeamProject('Source', owner);
-			const targetProject = await createTeamProject('Target', owner);
-			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
-			const workflow = await buildWorkflowReferencingVariables({
-				name: 'Workflow with vars',
-				project: sourceProject,
-				variableNames: ['API_URL'],
-			});
-
-			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
-
-			const result = await importPackage({
-				user: owner,
-				projectId: targetProject.id,
-				packageBuffer,
-			});
-
-			expect(result.variables).toEqual({ matched: [], missing: ['API_URL'], stubbed: [] });
-			expect(await variablesInProject(targetProject.id)).toEqual([]);
 		});
 	});
 
@@ -226,7 +222,7 @@ describe('workflow package import — with variables', () => {
 
 			expect(result.workflows).toHaveLength(1);
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: [] });
+			expect(result.variables).toEqual({ matched: [], missing: [], created: [], stubbed: [] });
 		});
 
 		it('blocks the import and writes nothing when a referenced variable is unresolved', async () => {
@@ -285,7 +281,12 @@ describe('workflow package import — with variables', () => {
 
 			expect(result.workflows).toHaveLength(1);
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.variables).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+			expect(result.variables).toEqual({
+				matched: ['API_URL'],
+				missing: [],
+				created: [],
+				stubbed: [],
+			});
 			expect(await variablesRepository.count()).toBe(variablesBefore);
 		});
 
@@ -312,7 +313,12 @@ describe('workflow package import — with variables', () => {
 
 			expect(result.workflows).toHaveLength(1);
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.variables).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+			expect(result.variables).toEqual({
+				matched: ['API_URL'],
+				missing: [],
+				created: [],
+				stubbed: [],
+			});
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 			expect(await variablesRepository.count()).toBe(variablesBefore);
 		});
@@ -352,7 +358,12 @@ describe('workflow package import — with variables', () => {
 			});
 
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: [],
+				stubbed: ['API_URL'],
+			});
 			// The stub (empty value) lands in the target project; the source row is untouched.
 			const layout = await variableLayout();
 			expect(layout).toEqual(
@@ -385,7 +396,12 @@ describe('workflow package import — with variables', () => {
 				variableParentPolicy: 'global',
 			});
 
-			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: [],
+				stubbed: ['API_URL'],
+			});
 			// The stub is created at the global scope — nothing lands in the target project.
 			const layout = await variableLayout();
 			expect(layout).toEqual(
@@ -415,13 +431,53 @@ describe('workflow package import — with variables', () => {
 				variableMissingMode: 'create-stub',
 			});
 
-			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: [],
+				stubbed: ['API_URL'],
+			});
 			const personalProject = await getPersonalProject(owner);
 			const layout = await variableLayout();
 			expect(layout).toEqual(
 				expect.arrayContaining([
 					{ key: 'API_URL', scope: sourceProject.id, value: 'https://source.example.com' },
 					{ key: 'API_URL', scope: personalProject.id, value: '' },
+				]),
+			);
+			expect(layout).toHaveLength(2);
+		});
+
+		it('carries the package value into the personal project when no projectId is given', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+
+			const result = await importPackage({
+				user: owner,
+				packageBuffer,
+				variableMissingMode: 'create-with-value',
+			});
+
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: ['API_URL'],
+				stubbed: [],
+			});
+			const personalProject = await getPersonalProject(owner);
+			const layout = await variableLayout();
+			expect(layout).toEqual(
+				expect.arrayContaining([
+					{ key: 'API_URL', scope: sourceProject.id, value: 'https://source.example.com' },
+					{ key: 'API_URL', scope: personalProject.id, value: 'https://source.example.com' },
 				]),
 			);
 			expect(layout).toHaveLength(2);
@@ -527,9 +583,6 @@ describe('workflow package import — with variables', () => {
 			const sourceProject = await createTeamProject('Source', owner);
 			const targetProject = await createTeamProject('Target', owner);
 			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
-			// The variable already resolves in the target: the gate is requirement-based and
-			// applies regardless, mirroring the dataTable:create gate.
-			await createProjectVariable('API_URL', 'https://target.example.com', targetProject);
 			const workflow = await buildWorkflowReferencingVariables({
 				name: 'Workflow with vars',
 				project: sourceProject,
@@ -573,7 +626,12 @@ describe('workflow package import — with variables', () => {
 				variableMissingMode: 'create-stub',
 			});
 
-			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: [],
+				stubbed: ['API_URL'],
+			});
 			expect(await variablesInProject(targetProject.id)).toHaveLength(1);
 		});
 
@@ -599,7 +657,12 @@ describe('workflow package import — with variables', () => {
 				variableParentPolicy: 'project',
 			});
 
-			expect(result.variables).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+			expect(result.variables).toEqual({
+				matched: ['API_URL'],
+				missing: [],
+				created: [],
+				stubbed: [],
+			});
 			// No new rows, and the target's existing value is not overwritten by an empty stub.
 			const layout = await variableLayout();
 			expect(layout).toEqual(
@@ -706,18 +769,21 @@ describe('workflow package import — with variables', () => {
 			return await exportWorkflowPackage(owner, workflow.id);
 		}
 
-		it('rejects a create-stub import when variables are not licensed', async () => {
-			const owner = await createOwner();
+		async function unresolvablePackage(owner: User) {
 			const sourceProject = await createTeamProject('Source', owner);
-			const targetProject = await createTeamProject('Target', owner);
 			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
 			const workflow = await buildWorkflowReferencingVariables({
 				name: 'Workflow with vars',
 				project: sourceProject,
 				variableNames: ['API_URL'],
 			});
+			return await exportWorkflowPackage(owner, workflow.id);
+		}
 
-			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+		it('rejects a create-stub import when variables are not licensed', async () => {
+			const owner = await createOwner();
+			const targetProject = await createTeamProject('Target', owner);
+			const packageBuffer = await unresolvablePackage(owner);
 			const workflowsBefore = await workflowRepository.count();
 			licenseMocker.disable('feat:variables');
 
@@ -734,8 +800,8 @@ describe('workflow package import — with variables', () => {
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 		});
 
-		it.each(['do-nothing', 'must-preexist'] as const)(
-			'imports under %s without a variables licence, since neither mode creates anything',
+		it.each(['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'] as const)(
+			'imports under %s without a variables licence when nothing needs creating',
 			async (variableMissingMode) => {
 				const owner = await createOwner();
 				const targetProject = await createTeamProject('Target', owner);
@@ -750,7 +816,12 @@ describe('workflow package import — with variables', () => {
 				});
 
 				expect(result.workflows[0].status).toBe('created');
-				expect(result.variables).toEqual({ matched: ['API_URL'], missing: [], stubbed: [] });
+				expect(result.variables).toEqual({
+					matched: ['API_URL'],
+					missing: [],
+					created: [],
+					stubbed: [],
+				});
 			},
 		);
 
@@ -775,13 +846,13 @@ describe('workflow package import — with variables', () => {
 			});
 
 			expect(result.workflows[0].status).toBe('created');
-			expect(result.variables).toEqual({ matched: [], missing: [], stubbed: [] });
+			expect(result.variables).toEqual({ matched: [], missing: [], created: [], stubbed: [] });
 		});
 
 		it('names the licence, not the API key scope, when an unlicensed key also lacks variable:create', async () => {
 			const owner = await createOwner();
 			const targetProject = await createTeamProject('Target', owner);
-			const packageBuffer = await resolvablePackage(owner, targetProject);
+			const packageBuffer = await unresolvablePackage(owner);
 			licenseMocker.disable('feat:variables');
 
 			await expect(
@@ -793,6 +864,204 @@ describe('workflow package import — with variables', () => {
 					variableMissingMode: 'create-stub',
 				}),
 			).rejects.toThrow(/license does not allow variables/);
+		});
+	});
+
+	describe('create-with-value missing mode', () => {
+		beforeEach(() => {
+			licenseMocker.reset();
+			licenseMocker.enable('feat:variables');
+		});
+
+		async function variableLayout() {
+			const rows = await variablesRepository.find({ relations: { project: true } });
+			return rows.map((v) => ({ key: v.key, scope: v.project?.id ?? 'global', value: v.value }));
+		}
+
+		it('creates the missing variable with its package value in the target project', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer: await exportWorkflowPackage(owner, workflow.id),
+				variableMissingMode: 'create-with-value',
+				variableParentPolicy: 'project',
+			});
+
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: ['API_URL'],
+				stubbed: [],
+			});
+			expect(await variableLayout()).toEqual(
+				expect.arrayContaining([
+					{ key: 'API_URL', scope: sourceProject.id, value: 'https://source.example.com' },
+					{ key: 'API_URL', scope: targetProject.id, value: 'https://source.example.com' },
+				]),
+			);
+		});
+
+		it('creates the missing variable with its package value at global scope', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer: await exportWorkflowPackage(owner, workflow.id),
+				variableMissingMode: 'create-with-value',
+				variableParentPolicy: 'global',
+			});
+
+			expect(result.variables.created).toEqual(['API_URL']);
+			expect(await variableLayout()).toEqual(
+				expect.arrayContaining([
+					{ key: 'API_URL', scope: 'global', value: 'https://source.example.com' },
+				]),
+			);
+		});
+
+		it('falls back to an empty stub when the package excludes variable values', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer: await exportWorkflowPackage(owner, workflow.id, false),
+				variableMissingMode: 'create-with-value',
+			});
+
+			expect(result.variables).toEqual({
+				matched: [],
+				missing: [],
+				created: [],
+				stubbed: ['API_URL'],
+			});
+			expect(await variableLayout()).toEqual(
+				expect.arrayContaining([{ key: 'API_URL', scope: targetProject.id, value: '' }]),
+			);
+		});
+
+		it('does not overwrite a variable that already resolves in the target project', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			await createProjectVariable('API_URL', 'https://target.example.com', targetProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer: await exportWorkflowPackage(owner, workflow.id),
+				variableMissingMode: 'create-with-value',
+			});
+
+			expect(result.variables).toEqual({
+				matched: ['API_URL'],
+				missing: [],
+				created: [],
+				stubbed: [],
+			});
+			expect((await variablesInProject(targetProject.id))[0].value).toBe(
+				'https://target.example.com',
+			);
+		});
+
+		it('rejects the import when the API key lacks variable:create and a variable must be created', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'source', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			await expect(
+				importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer: await exportWorkflowPackage(owner, workflow.id),
+					apiKeyScopes: ['workflow:import'],
+					variableMissingMode: 'create-with-value',
+				}),
+			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+
+		it('does not require variable:create when every variable already resolves', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'source', sourceProject);
+			await createProjectVariable('API_URL', 'target', targetProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer: await exportWorkflowPackage(owner, workflow.id),
+				apiKeyScopes: ['workflow:import'],
+				variableMissingMode: 'create-with-value',
+			});
+
+			expect(result.variables).toMatchObject({ matched: ['API_URL'], created: [] });
+		});
+
+		it('allows do-nothing without variable:create as the non-creating escape hatch', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'source', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			await expect(
+				importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer: await exportWorkflowPackage(owner, workflow.id),
+					apiKeyScopes: ['workflow:import'],
+					variableMissingMode: 'do-nothing',
+				}),
+			).resolves.toMatchObject({ variables: { missing: ['API_URL'] } });
 		});
 	});
 });

@@ -453,9 +453,7 @@ describe('project package export — with folders / workflows', () => {
 		expect(entries.find((e) => e.name === `${variableEntry.target}/variable.json`)).toBeDefined();
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [
-				{ name: 'API_URL', value: 'https://team.example.com', usedByWorkflows: [workflow.id] },
-			],
+			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
 		});
 
 		const events = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
