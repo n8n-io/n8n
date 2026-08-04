@@ -115,6 +115,24 @@ describe('StepCompletedHandler', () => {
 		expect(stepStore.loadCompletedNodeIds).toHaveBeenCalledExactlyOnceWith('exec-1', ['b', 'c']);
 	});
 
+	it('rejects an event whose step belongs to another execution', async () => {
+		const stepStore = makeStepStore({ executionId: 'exec-2' });
+		const executionStore = makeExecutionStore();
+		const queue = makeQueue();
+		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+
+		await expect(handler.handle(event)).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('belongs to execution exec-2') as string,
+		});
+
+		// Node ids are workflow-scoped, so 'a' resolves against exec-1's graph too:
+		// unguarded, a sibling execution's step would plan and announce real work here.
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+	});
+
 	const notPlanned: Array<{
 		reason: string;
 		stepId: string;

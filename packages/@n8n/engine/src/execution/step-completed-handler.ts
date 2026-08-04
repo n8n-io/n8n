@@ -1,3 +1,4 @@
+import { UnexpectedError } from '../common';
 import { getPredecessorNodeIds, getSuccessorNodeIds } from '../graph';
 import type { StepCompletedEvent, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -12,6 +13,9 @@ import type { StepStore } from './step-store';
  * A successor is planned once, when every predecessor has completed — never
  * planned early and held back at run time — so a step row exists only for work
  * whose inputs are all available.
+ *
+ * An event whose step and execution disagree is rejected before anything is
+ * planned, leaving both executions untouched.
  */
 export class StepCompletedHandler {
 	constructor(
@@ -25,6 +29,16 @@ export class StepCompletedHandler {
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
 		]);
+
+		// The event pairs two independent ids, and node ids are workflow-scoped, so a
+		// step from a sibling execution would resolve against this graph and plan or
+		// finish work on the wrong execution. Same guard as the `step:ready` handler.
+		// TODO(CAT-3930): internal consistency errors need a story beyond throwing.
+		if (step.executionId !== event.executionId) {
+			throw new UnexpectedError(
+				`step ${step.id} belongs to execution ${step.executionId}, but the event claims ${event.executionId}`,
+			);
+		}
 
 		// A step that didn't complete ends its branch: no successor of it can have
 		// all of its inputs.
