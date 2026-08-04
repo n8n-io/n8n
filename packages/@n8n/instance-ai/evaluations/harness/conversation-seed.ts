@@ -158,12 +158,19 @@ function isShorthandTurn(
  * else passes through for the envelope schema to validate.
  *
  * Array-level rather than per-message because the stamped timestamps ascend by
- * position — slightly in the past, so seeded history always orders before the
+ * position — fixed and in the past, so seeded history always orders before the
  * live turn and a shorthand author cannot get the ordering wrong. A full
  * envelope keeps its own authored `createdAt`.
+ *
+ * The base is a CONSTANT, not `Date.now()`: the same case must expand to the same
+ * envelope on every parse, or the push diff (which compares `seed`) reads a fresh
+ * timestamp as an edit and re-PATCHes the case on every run forever. Only ordering
+ * depends on these values, and a fixed past epoch orders exactly as well.
  */
+const SHORTHAND_SEED_EPOCH_MS = Date.parse('2020-01-01T00:00:00.000Z');
+
 export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
-	const base = Date.now() - (messages.length + 1) * 1000;
+	const base = SHORTHAND_SEED_EPOCH_MS;
 	return messages.map((message, index) => {
 		if (!isShorthandTurn(message)) return message;
 		return {

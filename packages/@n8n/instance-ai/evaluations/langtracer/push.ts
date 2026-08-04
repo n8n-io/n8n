@@ -121,13 +121,14 @@ function projectComparable(src: unknown): Record<string, unknown> {
 			out[key] = datasets;
 			continue;
 		}
-		// A seed authored with `{ role, text }` shorthand gets a fresh `id` (randomUUID)
-		// and `createdAt` (Date.now) stamped on EVERY schema parse, so comparing the
-		// envelope verbatim can never converge: the case would re-PATCH on every push
-		// forever, churning the stored ids and leaving `--dry-run` permanently dirty.
-		// Compare the authored content, not the per-parse envelope.
+		// Shorthand expansion stamps a fresh `randomUUID()` per parse, so comparing
+		// message ids can never converge — the case would re-PATCH on every push
+		// forever. Ids carry no meaning to a case, so they're dropped here.
+		// `createdAt` is NOT dropped: restore ordering depends on it, so an authored
+		// envelope's timestamp edit must still register. Shorthand's own timestamps
+		// are deterministic (see SHORTHAND_SEED_EPOCH_MS), so they converge anyway.
 		if (key === 'seed') {
-			out[key] = seedWithoutVolatileEnvelope(value);
+			out[key] = seedWithoutMessageIds(value);
 			continue;
 		}
 		out[key] = value;
@@ -135,22 +136,21 @@ function projectComparable(src: unknown): Record<string, unknown> {
 	return out;
 }
 
-/** Drop the per-parse message envelope (`id`, `createdAt`) from a seed so a
- *  shorthand-authored disk case compares equal to its already-expanded stored
- *  export. Everything the author actually wrote — role, content, workflows, data
- *  tables — still compares, so a real seed edit is still detected. */
-function seedWithoutVolatileEnvelope(value: unknown): unknown {
+/** Drop message `id`s from a seed before comparing: shorthand expansion mints a
+ *  new one per parse, so keeping them would make a shorthand-authored case differ
+ *  from its stored export forever. Everything else the author wrote — role,
+ *  content, `createdAt`, workflows, data tables — still compares. */
+function seedWithoutMessageIds(value: unknown): unknown {
 	if (value === null || typeof value !== 'object') return value;
-	const seed = value as Record<string, unknown>;
-	if (!Array.isArray(seed.messages)) return seed;
-	return {
-		...seed,
-		messages: seed.messages.map((message) => {
-			if (message === null || typeof message !== 'object') return message;
-			const { id, createdAt, ...rest } = message as Record<string, unknown>;
-			return rest;
-		}),
-	};
+	const seed: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+	const messages: unknown = seed.messages;
+	if (!Array.isArray(messages)) return seed;
+	seed.messages = (messages as unknown[]).map((message) => {
+		if (message === null || typeof message !== 'object') return message;
+		const { id, ...rest } = message as Record<string, unknown>;
+		return rest;
+	});
+	return seed;
 }
 
 /** Stable JSON with sorted object keys, so field/scenario ordering never affects equality. */

@@ -117,11 +117,13 @@ describe('planPush', () => {
 	// `--dry-run` permanently dirty. The identical-envelope test can't catch it,
 	// because there both sides share one envelope.
 	it('converges a shorthand-authored seed against its expanded stored export', () => {
+		// Shorthand mints a fresh `id` per parse; its `createdAt` is deterministic, so
+		// the two sides differ only in the id.
 		const disk = inlineSeed({
 			messages: [
 				{
-					id: 'freshly-stamped-uuid',
-					createdAt: '2026-08-04T14:00:00.000Z',
+					id: 'freshly-minted-uuid',
+					createdAt: '2020-01-01T00:00:00.000Z',
 					role: 'assistant',
 					type: 'llm',
 					content: [{ type: 'text', text: 'built it' }],
@@ -132,7 +134,7 @@ describe('planPush', () => {
 			messages: [
 				{
 					id: 'stored-uuid',
-					createdAt: '2026-06-29T09:00:00.000Z',
+					createdAt: '2020-01-01T00:00:00.000Z',
 					role: 'assistant',
 					type: 'llm',
 					content: [{ type: 'text', text: 'built it' }],
@@ -150,12 +152,12 @@ describe('planPush', () => {
 		expect(plan.toUpdate).toEqual([]);
 	});
 
-	it('still detects a real seed edit under a differing envelope', () => {
+	it('still detects a real seed edit under a differing id', () => {
 		const disk = inlineSeed({
 			messages: [
 				{
 					id: 'a',
-					createdAt: '2026-08-04T14:00:00.000Z',
+					createdAt: '2026-06-29T09:00:00.000Z',
 					role: 'assistant',
 					type: 'llm',
 					content: [{ type: 'text', text: 'DIFFERENT text' }],
@@ -166,6 +168,43 @@ describe('planPush', () => {
 			messages: [
 				{
 					id: 'b',
+					createdAt: '2026-06-29T09:00:00.000Z',
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'built it' }],
+				},
+			],
+		});
+
+		const plan = planPush(
+			[item('c', { seed: disk })],
+			{ 'c.json': body({ seed: stored }) },
+			{ c: 5 },
+		);
+
+		expect(plan.toUpdate.map((u) => u.id)).toEqual([5]);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	// cubic's P2: `createdAt` drives restore ordering, so an authored envelope's
+	// timestamp edit changes what the agent sees and MUST reach the suite. Dropping
+	// it from the comparison alongside `id` would have hidden that.
+	it('detects an authored createdAt edit, which reorders the restored history', () => {
+		const disk = inlineSeed({
+			messages: [
+				{
+					id: 'same-id',
+					createdAt: '2026-07-01T12:00:00.000Z',
+					role: 'assistant',
+					type: 'llm',
+					content: [{ type: 'text', text: 'built it' }],
+				},
+			],
+		});
+		const stored = inlineSeed({
+			messages: [
+				{
+					id: 'same-id',
 					createdAt: '2026-06-29T09:00:00.000Z',
 					role: 'assistant',
 					type: 'llm',
