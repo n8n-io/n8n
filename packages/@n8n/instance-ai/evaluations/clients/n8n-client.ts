@@ -715,10 +715,15 @@ export class N8nClient {
 	 * GET /rest/projects/:projectId/data-tables
 	 */
 	async listDataTables(projectId: string): Promise<Array<{ id: string; name: string }>> {
+		// The list endpoint paginates: `{ data: { count, data: [...] } }`. Reading
+		// `result.data` as the array made this return [] for every project, silently —
+		// it has no error path, so every caller just saw "no tables".
 		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`)) as {
-			data: Array<{ id: string; name: string }>;
+			data?: { data?: Array<{ id: string; name: string }> } | Array<{ id: string; name: string }>;
 		};
-		return Array.isArray(result.data) ? result.data : [];
+		const payload = result.data;
+		if (Array.isArray(payload)) return payload;
+		return payload?.data ?? [];
 	}
 
 	/** List data table IDs for a project. */
