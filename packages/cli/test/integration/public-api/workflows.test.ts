@@ -707,13 +707,12 @@ describe('GET /workflows', () => {
 		}
 	});
 
-	test('should return workflows in creation order', async () => {
+	test('should return workflows ordered by id', async () => {
 		const first = await createWorkflowWithHistory({ name: 'First' }, member);
 		const second = await createWorkflowWithHistory({ name: 'Second' }, member);
 		const third = await createWorkflowWithHistory({ name: 'Third' }, member);
 
-		// Editing the middle workflow makes it the most recently updated, so an
-		// `updatedAt` sort (ASC or DESC) would move it. Creation order must be unaffected.
+		// Editing must not change id order (would move the row under updatedAt sort).
 		const editResponse = await authMemberAgent.put(`/workflows/${second.id}`).send({
 			name: 'Second (edited)',
 			nodes: second.nodes,
@@ -725,11 +724,9 @@ describe('GET /workflows', () => {
 		const response = await authMemberAgent.get('/workflows');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual([
-			first.id,
-			second.id,
-			third.id,
-		]);
+		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual(
+			[first.id, second.id, third.id].sort(),
+		);
 	});
 
 	test('should return share rows without the owning project', async () => {

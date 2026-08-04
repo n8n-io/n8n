@@ -245,14 +245,14 @@ describe('WorkflowFinderService', () => {
 			expect(second[2].select).not.toHaveProperty('shared');
 		});
 
-		it('sorts by creation order by default', async () => {
+		it('sorts by id by default for public-list compatibility', async () => {
 			const { service, workflowRepository } = setup();
 
 			await service.findWorkflowsForUser(user, ['workflow:read']);
 
 			const [, , options] = workflowRepository.getManyAndCountWithSharingSubquery.mock.calls[0];
 			assert(options);
-			expect(options.sortBy).toBe('createdAt:asc');
+			expect(options.sortBy).toBe('id:asc');
 		});
 
 		it('omits pinned data unless asked for it', async () => {

@@ -378,7 +378,7 @@ export class WorkflowFinderService {
 					...(parentFolderIds && { parentFolderIds }),
 				},
 				select,
-				sortBy: 'createdAt:asc',
+				sortBy: 'id:asc',
 				...(limit !== undefined && { skip: offset, take: limit }),
 			},
 		);
