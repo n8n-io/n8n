@@ -2288,7 +2288,9 @@ defineExpose({ enterEditMode });
 	flex-shrink: 0;
 
 	.compact & {
-		margin-bottom: var(--spacing--4xs);
+		height: auto;
+		border-bottom: none;
+		margin-bottom: 0;
 		padding: var(--spacing--2xs);
 		flex-shrink: 0;
 		flex-grow: 0;
