@@ -4,10 +4,11 @@ import { getLocalTimeZone, isToday } from '@internationalized/date';
 import type {
 	DateRange,
 	DateValue,
+	N8nDateRangePickerPreset,
 	N8nDateRangePickerProps,
 	N8nDateRangePickerRootEmits,
 } from '@n8n/design-system';
-import { N8nButton, N8nDateRangePicker, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nDateRangePicker } from '@n8n/design-system';
 import { computed, ref, shallowRef, watch } from 'vue';
 import { formatDateRange, getAdjustedDateRange } from '../insights.utils';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
@@ -144,6 +145,18 @@ function setPresetRange(days: number) {
 	open.value = false;
 }
 
+function onPresetSelect(value: string | number) {
+	const days = Number(value);
+	const preset = props.presets.find((item) => item.value === days);
+
+	if (preset?.disabled) {
+		showUpgradeModal();
+		return;
+	}
+
+	setPresetRange(days);
+}
+
 const formattedRange = computed(() => {
 	const { start, end } = props.modelValue;
 
@@ -157,38 +170,30 @@ function isActiveRange(presetValue: number) {
 
 	return props.modelValue.end.compare(props.modelValue.start) === presetValue;
 }
+
+const presetItems = computed<N8nDateRangePickerPreset[]>(() =>
+	props.presets.map((preset) => ({
+		value: preset.value,
+		label: preset.label,
+		active: isActiveRange(preset.value),
+		icon: preset.disabled ? 'lock' : undefined,
+	})),
+);
 </script>
 
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
-	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value>
+	<N8nDateRangePicker
+		v-model="range"
+		v-model:open="open"
+		:max-value
+		:min-value
+		:presets="presetItems"
+		@select="onPresetSelect"
+	>
 		<template #trigger>
 			<N8nButton variant="subtle" icon="calendar">{{ formattedRange }}</N8nButton>
-		</template>
-		<template #presets>
-			<N8nButton
-				v-for="preset in presets"
-				:key="preset.value"
-				:class="$style.PresetButton"
-				:variant="isActiveRange(preset.value) ? 'solid' : 'outline'"
-				size="small"
-				@click="preset.disabled ? showUpgradeModal() : setPresetRange(preset.value)"
-			>
-				{{ preset.label }}
-				<N8nIcon v-if="preset.disabled" icon="lock" :class="$style.LockIcon" />
-			</N8nButton>
 		</template>
 	</N8nDateRangePicker>
 	<InsightsUpgradeModal v-model="upgradeModal" />
 </template>
-
-<style module>
-.PresetButton {
-	--button--border-color: transparent;
-	text-align: left;
-	display: flex;
-}
-.LockIcon {
-	margin-left: auto;
-}
-</style>
