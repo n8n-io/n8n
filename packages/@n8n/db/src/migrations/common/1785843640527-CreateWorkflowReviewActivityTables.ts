@@ -33,9 +33,7 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 					.int.notNull.default(1)
 					.comment('Schema version of the `data` payload for this `type`'),
 				column('groupId').int.comment('Activity entry this one replies to; NULL means top-level'),
-				column('data').json.comment(
-					'Immutable per-type detail, ids only; user references belong in `createdById` so deletion nulls them',
-				),
+				column('data').json.comment('Detail per activity type'),
 				column('createdById').uuid,
 			)
 			.withCreatedAt.withForeignKey('workflowReviewRequestId', {

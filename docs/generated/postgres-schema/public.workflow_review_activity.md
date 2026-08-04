@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) |  |
-| data | json |  | true |  |  | Immutable per-type detail, ids only; user references belong in `createdById` so deletion nulls them |
+| data | json |  | true |  |  | Detail per activity type |
 | groupId | integer |  | true |  | [public.workflow_review_activity](public.workflow_review_activity.md) | Activity entry this one replies to; NULL means top-level |
 | id | integer |  | false | [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) |  |  |
 | type | varchar(64) |  | false |  |  | Feed entry kind; see WorkflowReviewActivityType in @n8n/db |
