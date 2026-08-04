@@ -36,16 +36,26 @@ function isSecretKey(key: string): boolean {
 // model, while markers and statics stay readable.
 const HINT_KEYS = new Set(['credentialHints', 'setupHint']);
 
-const TEMPLATE_MARKER = /\{\{\s*[\w.-]+\s*\}\}/;
+const TEMPLATE_MARKER = /\{\{\s*[\w.-]+\s*\}\}/g;
+
+// A secret-shaped key (a template's `Authorization`/`X-Api-Key` header) should
+// hold only `{{marker}}`s plus benign scaffolding: short scheme words (`Bearer`,
+// `Key`, vendor schemes like `SSWS`) and separators. Any other residue — even a
+// literal token sitting next to a valid marker — reads as a leaked secret.
+function isMarkerOnlyValue(value: string): boolean {
+	const staticParts = value.split(TEMPLATE_MARKER);
+	if (staticParts.length === 1) return false; // no marker at all
+	return staticParts
+		.flatMap((part) => part.split(/[\s:=,;]+/))
+		.every((word) => /^[A-Za-z]{0,12}$/.test(word));
+}
 
 function redactHintValue(value: unknown, depth: number, key?: string): unknown {
 	if (depth > 10 || value === null || value === undefined) return value;
 	if (typeof value === 'string') {
-		// A secret-shaped key (a template's `Authorization`/`X-Api-Key` header)
-		// should only ever hold a `{{marker}}`. A marker-less value there is a
-		// literal secret a malformed recipe leaked; content masking can't spot an
-		// arbitrary token, so redact wholesale.
-		if (key !== undefined && isSecretKey(key) && !TEMPLATE_MARKER.test(value)) {
+		// Content masking can't spot an arbitrary token, so anything beyond
+		// marker-plus-scaffolding under a secret-shaped key is redacted wholesale.
+		if (key !== undefined && isSecretKey(key) && !isMarkerOnlyValue(value)) {
 			return '[REDACTED]';
 		}
 		return redactSecretsInText(value);

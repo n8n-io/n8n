@@ -297,10 +297,10 @@ describe('redactSecrets — credential setup hints', () => {
 	it('redacts a bare literal under a secret-shaped header key', () => {
 		const input = {
 			setupHint: {
-				// malformed recipe: a literal key where a {{marker}} belongs. The bare
-				// token has no format the content masker can recognize, so key context
-				// must catch it.
-				template: { headers: { 'X-Api-Key': 'sk-live-abcdef123456' } },
+				// malformed recipe: a literal key where a {{marker}} belongs. The value
+				// deliberately matches no known token format (no sk-/xox/ghp prefix), so
+				// only the key-context branch can catch it.
+				template: { headers: { 'X-Api-Key': 'zTr4bQ9wXkPd2f' } },
 				placeholders: [{ name: 'api_key', title: 'API key' }],
 			},
 		};
@@ -309,6 +309,20 @@ describe('redactSecrets — credential setup hints', () => {
 			setupHint: { template: { headers: Record<string, string> } };
 		};
 		expect(result.setupHint.template.headers['X-Api-Key']).toBe('[REDACTED]');
+	});
+
+	it('redacts the whole value when a literal sits next to a valid marker', () => {
+		const input = {
+			setupHint: {
+				template: { headers: { Authorization: 'Key zTr4bQ9wXkPd2f {{api_key}}' } },
+				placeholders: [{ name: 'api_key', title: 'API key' }],
+			},
+		};
+
+		const result = redactSecrets(input) as {
+			setupHint: { template: { headers: { Authorization: string } } };
+		};
+		expect(result.setupHint.template.headers.Authorization).toBe('[REDACTED]');
 	});
 
 	it('keeps a marker under a secret-shaped header key readable', () => {
