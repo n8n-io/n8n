@@ -78,7 +78,7 @@ export function forcesBroad(file: string): boolean {
 }
 
 /** A package.json change classified by which dependency sections moved. */
-export type ManifestChangeKind = 'runtime' | 'devDep-only' | 'none';
+export type ManifestChangeKind = 'runtime' | 'devDep-only' | 'override' | 'none';
 
 type ManifestJson = Record<string, Record<string, string> | undefined>;
 /** package.json sections whose changes can reach the runtime bundle. */
@@ -115,18 +115,83 @@ function sectionChanged(before: ManifestJson, after: ManifestJson, section: stri
 	return changedKeysInSection(before, after, section).length > 0;
 }
 
+/** `pnpm.overrides` selectors changed between two manifests, as written. */
+function changedOverrideSelectors(before: ManifestJson, after: ManifestJson): string[] {
+	const b = (before.pnpm as { overrides?: Record<string, string> } | undefined)?.overrides ?? {};
+	const a = (after.pnpm as { overrides?: Record<string, string> } | undefined)?.overrides ?? {};
+	const changed: string[] = [];
+	for (const key of new Set([...Object.keys(b), ...Object.keys(a)])) {
+		if (b[key] !== a[key]) changed.push(key);
+	}
+	return changed;
+}
+
+const NPM_PACKAGE_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
+
+/**
+ * The package an override selector actually pins, or `null` when the selector
+ * can't be parsed with confidence (callers must then stay broad). pnpm
+ * selectors carry an optional parent path and an optional version range, e.g.
+ *   `@vitest/browser@<4.1.10` → `@vitest/browser`
+ *   `node-gyp>undici`         → `undici`   (the child is what gets overridden)
+ *   `@babel/traverse`         → `@babel/traverse`
+ */
+export function overrideTargetName(selector: string): string | null {
+	// `>` separates parent>child, but also appears inside version ranges
+	// (`pkg@>2`, `pkg@>=2`, `pkg@1||>2`) — a range `>` follows `@` or `|`, or
+	// touches whitespace, or is `>=`. Splitting there would fabricate a target.
+	let child = selector;
+	for (let i = selector.length - 1; i > 0; i--) {
+		if (selector[i] !== '>') continue;
+		const prev = selector[i - 1];
+		const next = selector[i + 1] ?? '';
+		if (prev === '@' || prev === '|' || next === '=' || /\s/.test(prev) || /\s/.test(next)) {
+			continue;
+		}
+		child = selector.slice(i + 1);
+		break;
+	}
+	child = child.trim();
+	// Strip a trailing version range. `> 0` keeps a leading scope `@` intact.
+	const at = child.lastIndexOf('@');
+	const name = at > 0 ? child.slice(0, at) : child;
+	return NPM_PACKAGE_NAME.test(name) ? name : null;
+}
+
+/**
+ * Packages whose `pnpm.overrides` pin was added, removed or changed. `null`
+ * when any changed selector fails to parse — the diff can't be attributed.
+ */
+export function changedOverrideTargets(before: string, after: string): string[] | null {
+	const selectors = changedOverrideSelectors(parseManifest(before), parseManifest(after));
+	const names = new Set<string>();
+	for (const selector of selectors) {
+		const name = overrideTargetName(selector);
+		if (name === null) return null;
+		names.add(name);
+	}
+	return [...names];
+}
+
 /**
  * Classify a package.json change by the dependency sections it touched:
  *  - `runtime`     — a runtime section (dependencies / optional / peer) moved, so
  *                    it can reach the bundle the E2E suite exercises.
+ *  - `override`    — a `pnpm.overrides` pin moved. An override targets a
+ *                    TRANSITIVE package, so the declared sections say nothing
+ *                    about whether it reaches the runtime bundle; it takes a
+ *                    runtime-closure check to tell (see {@link dropDevDepOnlyDeps}).
  *  - `devDep-only` — only devDependencies moved → cannot reach the runtime bundle.
  *  - `none`        — no dependency section moved (scripts / version / engines / …).
- * Unparseable content is treated as an empty manifest.
+ * Unparseable content is treated as an empty manifest. Checked most-impactful
+ * first, so a mixed devDep+override change classifies as `override` and still
+ * has to clear the closure check.
  */
 export function classifyManifestChange(before: string, after: string): ManifestChangeKind {
 	const b = parseManifest(before);
 	const a = parseManifest(after);
 	if (RUNTIME_SECTIONS.some((s) => sectionChanged(b, a, s))) return 'runtime';
+	if (changedOverrideSelectors(b, a).length > 0) return 'override';
 	return sectionChanged(b, a, 'devDependencies') ? 'devDep-only' : 'none';
 }
 
@@ -217,14 +282,24 @@ export function stripDependencyFiles(files: string[]): string[] {
  * bundle, so it must not force broad. `manifests` maps each changed package.json
  * path to its before/after content (the caller reads these from git).
  *
+ * A `pnpm.overrides` change is only droppable when `runtimeClosure` proves every
+ * overridden package sits outside the runtime dependency graph. The declared
+ * sections cannot answer this: an override targets a transitive package, so
+ * neither `dependencies` nor `devDependencies` mentions it. `fast-uri` and
+ * `@vitest/browser` are both absent from every runtime section, yet `fast-uri`
+ * is pulled by `ajv` (a runtime dep) and so does reach the bundle — without the
+ * closure the two are indistinguishable.
+ *
  * Conservative by construction — never drops without positive evidence:
  *  - any runtime-section change → keep everything (real dep change);
  *  - a changed package.json with no supplied diff → treated as runtime;
- *  - a lockfile change with no changed package.json at all (transitive bump) → kept.
+ *  - a lockfile change with no changed package.json at all (transitive bump) → kept;
+ *  - an override change with no closure supplied, or any target inside it → kept.
  */
 export function dropDevDepOnlyDeps(
 	files: string[],
 	manifests: Record<string, { before: string; after: string }>,
+	runtimeClosure?: ReadonlySet<string>,
 ): string[] {
 	const changedManifests = files.filter(isManifest);
 	if (changedManifests.length === 0) return files;
@@ -232,6 +307,20 @@ export function dropDevDepOnlyDeps(
 		manifests[f] ? classifyManifestChange(manifests[f].before, manifests[f].after) : 'runtime',
 	);
 	if (kinds.includes('runtime')) return files;
+
+	if (kinds.includes('override')) {
+		if (!runtimeClosure) return files;
+		const targets = new Set<string>();
+		for (const f of changedManifests) {
+			if (!manifests[f]) continue;
+			const names = changedOverrideTargets(manifests[f].before, manifests[f].after);
+			if (names === null) return files; // unattributable selector → keep
+			for (const name of names) targets.add(name);
+		}
+		if (targets.size === 0 || [...targets].some((t) => runtimeClosure.has(t))) return files;
+		return stripDependencyFiles(files);
+	}
+
 	if (!kinds.includes('devDep-only')) return files;
 	return stripDependencyFiles(files);
 }

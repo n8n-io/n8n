@@ -5,7 +5,13 @@ import {
 	changedRuntimeDepsFromManifests,
 	stripDependencyFiles,
 } from './changes.js';
-import { dependentDirs } from './dep-graph.js';
+import {
+	dependentDirs,
+	runtimeClosure,
+	snapshotKeyToName,
+	type LockfileImporters,
+	type LockfileSnapshots,
+} from './dep-graph.js';
 import type { ImpactMap } from './impact-map.js';
 import { DependencyGraphStrategy } from './select/dep-graph-strategy.js';
 
@@ -109,5 +115,76 @@ describe('DependencyGraphStrategy', () => {
 	it('contributes nothing when there are no changed deps', () => {
 		const r = new DependencyGraphStrategy(map, importers, []).resolve();
 		expect(r).toEqual({ specs: [], unmapped: [], mode: 'scoped' });
+	});
+});
+
+describe('snapshotKeyToName', () => {
+	it.each([
+		['ajv@8.18.0', 'ajv'],
+		['@scope/pkg@1.0.0', '@scope/pkg'],
+		// The peer suffix contains `@`s of its own — naming must strip it first,
+		// or the variant is never visited and the closure silently under-includes.
+		['@vitest/coverage-v8@4.1.9(vitest@4.1.9)', '@vitest/coverage-v8'],
+		['vite@5.0.0(sass@1.98.0)(terser@5.0.0)', 'vite'],
+		['plain-name', 'plain-name'],
+	])('%s → %s', (key, expected) => {
+		expect(snapshotKeyToName(key)).toBe(expected);
+	});
+});
+
+describe('runtimeClosure', () => {
+	// Mirrors the real workspace shape: cli links core (runtime), core declares
+	// ajv, ajv pulls fast-uri transitively. test-utils declares vitest as a real
+	// dependency but is only reachable via devDependencies — the exact shape that
+	// must stay OUT of the closure.
+	const importers: LockfileImporters = {
+		'packages/cli': {
+			dependencies: {
+				'n8n-core': { specifier: 'workspace:*', version: 'link:../core' },
+				axios: { specifier: '^1.0.0', version: '1.0.0' },
+			},
+			devDependencies: {
+				'test-utils': { specifier: 'workspace:*', version: 'link:../test-utils' },
+			},
+		},
+		'packages/core': {
+			dependencies: { ajv: { specifier: '^8.0.0', version: '8.18.0' } },
+		},
+		'packages/test-utils': {
+			dependencies: { vitest: { specifier: '^4.0.0', version: '4.1.9' } },
+		},
+	};
+	const snapshots: LockfileSnapshots = {
+		'ajv@8.18.0': { dependencies: { 'fast-uri': '3.1.3' } },
+		'fast-uri@3.1.3': {},
+		'axios@1.0.0': {},
+		'vitest@4.1.9': { dependencies: { '@vitest/browser': '4.1.9' } },
+		'@vitest/browser@4.1.9': {},
+	};
+	const opts = {
+		deployRoots: ['packages/cli'],
+		runtimeSections: ['dependencies', 'optionalDependencies'],
+	};
+
+	it('follows workspace link: edges from the deploy roots', () => {
+		const closure = runtimeClosure(importers, snapshots, opts);
+		expect(closure.has('ajv')).toBe(true);
+		expect(closure.has('axios')).toBe(true);
+	});
+	it('reaches a dep only present via a transitive snapshot edge (the fast-uri shape)', () => {
+		expect(runtimeClosure(importers, snapshots, opts).has('fast-uri')).toBe(true);
+	});
+	it('excludes deps of a workspace package reachable only via devDependencies (the vitest shape)', () => {
+		const closure = runtimeClosure(importers, snapshots, opts);
+		expect(closure.has('vitest')).toBe(false);
+		expect(closure.has('@vitest/browser')).toBe(false);
+	});
+	it('with empty snapshots the closure is just the declared external roots', () => {
+		expect([...runtimeClosure(importers, {}, opts)].sort()).toEqual(['ajv', 'axios']);
+	});
+	it('unknown deploy root → empty closure, no throw', () => {
+		expect(
+			runtimeClosure(importers, snapshots, { ...opts, deployRoots: ['packages/nope'] }).size,
+		).toBe(0);
 	});
 });

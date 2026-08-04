@@ -8,27 +8,46 @@
  * lockfile) returns `{}`, which makes the dep-graph selector contribute nothing
  * (the change then resolves through the coverage map alone — fail-open).
  */
-import { RUNTIME_SECTIONS } from '@n8n/test-impact';
+import {
+	RUNTIME_SECTIONS,
+	runtimeClosure,
+	type LockfileImporters,
+	type LockfileSnapshots,
+} from '@n8n/test-impact';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 
 import { getGitRoot } from '../utils/git-operations.js';
 
-type ImporterSections = Record<string, Record<string, unknown> | undefined>;
+type Lockfile = {
+	importers?: LockfileImporters;
+	snapshots?: LockfileSnapshots;
+};
 
-export function readLockfileImporters(): Record<string, string[]> {
+/**
+ * Seeds for the runtime closure: `packages/cli` is the `n8n` package — the
+ * server the E2E container runs — and the walk follows its workspace `link:`
+ * edges from there, so everything it pulls in at runtime is covered without
+ * listing it. See {@link runtimeClosure} for why this must not be "every
+ * importer".
+ */
+const DEPLOY_ROOTS = ['packages/cli'] as const;
+
+/** Parse the lockfile once, or `undefined` on any failure (fail-open). */
+function readLockfile(): Lockfile | undefined {
 	const lockPath = join(getGitRoot(process.cwd()), 'pnpm-lock.yaml');
-	if (!existsSync(lockPath)) return {};
-	let doc: { importers?: Record<string, ImporterSections> };
+	if (!existsSync(lockPath)) return undefined;
 	try {
-		doc = parse(readFileSync(lockPath, 'utf8')) as typeof doc;
+		return parse(readFileSync(lockPath, 'utf8')) as Lockfile;
 	} catch {
-		return {};
+		return undefined;
 	}
-	const importers = doc?.importers ?? {};
+}
+
+function importersFrom(doc: Lockfile): Record<string, string[]> {
 	const out: Record<string, string[]> = {};
-	for (const [dir, sections] of Object.entries(importers)) {
+	for (const [dir, sections] of Object.entries(doc.importers ?? {})) {
 		const names = new Set<string>();
 		for (const section of RUNTIME_SECTIONS) {
 			const deps = sections?.[section];
@@ -37,4 +56,24 @@ export function readLockfileImporters(): Record<string, string[]> {
 		out[dir] = [...names];
 	}
 	return out;
+}
+
+export function readLockfileImporters(): Record<string, string[]> {
+	const doc = readLockfile();
+	return doc ? importersFrom(doc) : {};
+}
+
+/**
+ * Every package name reachable from the workspace's declared runtime deps.
+ * Lets the selector tell a dev-only `pnpm.overrides` pin (droppable) from one
+ * that reaches the runtime bundle (must stay broad). `undefined` on any read
+ * failure, which keeps override changes broad.
+ */
+export function readRuntimeClosure(): ReadonlySet<string> | undefined {
+	const doc = readLockfile();
+	if (!doc?.snapshots || !doc.importers) return undefined;
+	return runtimeClosure(doc.importers, doc.snapshots, {
+		deployRoots: DEPLOY_ROOTS,
+		runtimeSections: RUNTIME_SECTIONS,
+	});
 }
