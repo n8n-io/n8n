@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nButton, N8nCopyInput, N8nText } from '@n8n/design-system';
-import N8nStepper from '@n8n/design-system/components/N8nStepper/Stepper.vue';
+import { N8nButton, N8nCopyInput, N8nStepper, N8nText } from '@n8n/design-system';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
