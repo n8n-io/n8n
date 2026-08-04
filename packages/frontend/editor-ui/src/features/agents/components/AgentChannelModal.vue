@@ -36,6 +36,7 @@ interface Props {
 	agentId: string;
 	projectId: string;
 	view: ChannelView;
+	ensureAgentPersisted?: () => Promise<void>;
 }
 
 const props = defineProps<Props>();
@@ -269,6 +270,7 @@ async function saveChannelConfig() {
 	const credentialId = currentChannelCredentialId.value;
 	if (!channelType || !credentialId) return;
 	if (channelSetupRef.value?.validationError) return;
+	await props.ensureAgentPersisted?.();
 	const pendingReplacement = pendingCredentialReplacement.value;
 	if (pendingReplacement?.channelType === channelType) {
 		selectedCredentials.value[channelType] = pendingReplacement.replacementCredentialId;
@@ -300,6 +302,7 @@ async function saveChannelConfig() {
 }
 
 async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
+	await props.ensureAgentPersisted?.();
 	return await runSlackAppSetup(appConfigurationToken, () => {
 		emit('channel-connected', 'slack');
 		emit('agent-changed');

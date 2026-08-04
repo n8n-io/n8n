@@ -40,6 +40,7 @@ const disconnectMock = vi
 	});
 const createCredentialMock = vi.fn();
 const editCredentialMock = vi.fn();
+const setupSlackAppMock = vi.fn().mockResolvedValue(true);
 const vueErrorHandlerMock = vi.fn();
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
@@ -88,12 +89,13 @@ vi.mock('../composables/useAgentChannelSetup', () => ({
 		}),
 		createCredential: createCredentialMock,
 		editCredential: editCredentialMock,
-		setupSlackApp: vi.fn(),
+		setupSlackApp: setupSlackAppMock,
 	}),
 }));
 
 const channelSetupStub = (testId: string) => ({
-	props: ['mode', 'loading', 'connectedDescription'],
+	props: ['mode', 'loading', 'connectedDescription', 'setupSlackApp'],
+	emits: ['connect'],
 	setup: () => ({
 		currentSettings: { accessMode: 'all' },
 		validationError: null,
@@ -103,7 +105,14 @@ const channelSetupStub = (testId: string) => ({
 		:data-mode="mode"
 		:data-loading="loading"
 		:data-connected-description="connectedDescription"
-	/>`,
+	>
+		<button
+			v-if="setupSlackApp"
+			data-testid="${testId}-automatic-setup"
+			@click="setupSlackApp('app-token')"
+		/>
+		<button data-testid="${testId}-connect" @click="$emit('connect')" />
+	</div>`,
 });
 
 function mountModal(props: Record<string, unknown>) {
@@ -199,6 +208,51 @@ describe('AgentChannelModal', () => {
 
 		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
 		expect(linearSetup.attributes('data-mode')).toBe('setup');
+	});
+
+	it('waits for a pending agent to persist before saving a channel configuration', async () => {
+		let finishPersisting = () => {};
+		const persisting = new Promise<void>((resolve) => {
+			finishPersisting = resolve;
+		});
+		selectedCredentials.value.linear = 'linear-credential';
+		const wrapper = mountModal({
+			view: 'linear_setup',
+			ensureAgentPersisted: async () => await persisting,
+		});
+
+		await wrapper.get('[data-testid="linear-setup-connect"]').trigger('click');
+		await flushPromises();
+
+		expect(connectMock).not.toHaveBeenCalled();
+
+		finishPersisting();
+		await flushPromises();
+
+		expect(connectMock).toHaveBeenCalledWith('linear', 'linear-credential', {
+			accessMode: 'all',
+		});
+	});
+
+	it('waits for a pending agent to persist before starting Slack app setup', async () => {
+		let finishPersisting = () => {};
+		const persisting = new Promise<void>((resolve) => {
+			finishPersisting = resolve;
+		});
+		const wrapper = mountModal({
+			view: 'slack_setup',
+			ensureAgentPersisted: async () => await persisting,
+		});
+
+		await wrapper.get('[data-testid="slack-setup-automatic-setup"]').trigger('click');
+		await flushPromises();
+
+		expect(setupSlackAppMock).not.toHaveBeenCalled();
+
+		finishPersisting();
+		await flushPromises();
+
+		expect(setupSlackAppMock).toHaveBeenCalledWith('app-token', expect.any(Function));
 	});
 
 	it('renders the per-channel edit view for an edit view', () => {

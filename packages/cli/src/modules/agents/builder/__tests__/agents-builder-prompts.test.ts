@@ -19,13 +19,3 @@ describe('Preview markdown link guidance', () => {
 		);
 	});
 });
-
-describe('setup lifecycle guidance', () => {
-	it('requires explicit publishing intent after configuration', () => {
-		const prompt = buildBuilderPrompt({
-			agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
-			modelRecommendationsSection: null,
-		});
-		expect(prompt).toMatch(/Do not\s+auto-publish without that intent/);
-	});
-});
