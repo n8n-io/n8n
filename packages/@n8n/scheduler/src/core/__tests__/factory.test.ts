@@ -54,6 +54,40 @@ function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	return { scheduler, taskStore, onEvent };
 }
 
+function ownerGroupTransaction(): RunInTransaction {
+	const overdue = (id: number, ownerKey: string): ScheduledJob => ({
+		id,
+		taskType: 'test-task',
+		payload: {},
+		kind: 'interval',
+		cronExpression: null,
+		timezone: null,
+		intervalSeconds: 60,
+		fireAt: null,
+		recurrenceUnit: null,
+		recurrenceSize: null,
+		nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+		lastFiredAt: null,
+		maxAttempts: 3,
+		misfirePolicy: ScheduledJobMisfirePolicy.CoalesceOwner,
+		misfireGraceSeconds: 60,
+		ownerKey,
+	});
+	const tx = mock<MaterializerTransaction>();
+	tx.retireSuperseded.mockResolvedValue(0);
+	tx.claimDueJobs.mockResolvedValue({
+		now: new Date('2026-01-01T00:10:00.000Z'),
+		jobs: [
+			overdue(1, 'owner-a'),
+			overdue(2, 'owner-a'),
+			overdue(3, 'owner-b'),
+			overdue(4, 'owner-c'),
+		],
+	});
+	tx.recordOccurrences.mockResolvedValue({ recorded: 0, created: [] });
+	return async (work) => await work(tx);
+}
+
 describe('createScheduler prune', () => {
 	it('maps the configured windows into the batches the store receives', async () => {
 		const { scheduler, taskStore } = makeScheduler();
@@ -369,6 +403,8 @@ describe('createScheduler materialize', () => {
 			deferredJobs: 1,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
@@ -1072,6 +1108,8 @@ describe('createScheduler tracing', () => {
 			deferredJobs: 0,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 		expect(tracer.startSpan).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Scheduler materialize', op: 'scheduler.materialize' }),
@@ -1081,6 +1119,21 @@ describe('createScheduler tracing', () => {
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.occurrences, 2);
 		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.deferredJobs, 0);
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it('reports the grouped and ungrouped catch-up counts on the materialize span', async () => {
+		const { span, tracer } = makeTracer();
+		const { scheduler } = makeScheduler({
+			materializerTransaction: ownerGroupTransaction(),
+			tracer,
+		});
+
+		const summary = await scheduler.materialize();
+
+		expect(summary.groupedCatchUps).toBe(1);
+		expect(summary.ungroupedCatchUps).toBe(2);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.groupedCatchUps, 1);
+		expect(span.setAttribute).toHaveBeenCalledWith(SCHEDULER_ATTRIBUTES.ungroupedCatchUps, 2);
 	});
 
 	it('emits one creation span per newly recorded row', async () => {
@@ -1332,6 +1385,8 @@ describe('createScheduler tracing', () => {
 			deferredJobs: 0,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 		expect(span.setStatus).not.toHaveBeenCalledWith(
@@ -1412,6 +1467,18 @@ describe('createScheduler metrics', () => {
 
 		// One corrupt job deferred, no occurrences recorded.
 		expect(metrics.recordMaterialized).toHaveBeenCalledWith(0, 1);
+	});
+
+	it('records the grouped and ungrouped catch-up counts from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler } = makeScheduler({
+			materializerTransaction: ownerGroupTransaction(),
+			metrics,
+		});
+
+		await scheduler.materialize();
+
+		expect(metrics.recordCatchUps).toHaveBeenCalledWith(1, 2);
 	});
 
 	it('records the reaper outcome from the sweep result', async () => {

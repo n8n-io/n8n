@@ -27,6 +27,16 @@ export function coalesceSiblingCatchUps(planned: PlannedJob[]): PlannedJob[] {
 	return planned.map((entry) => (losers.has(entry) ? dropCatchUp(entry) : entry));
 }
 
+export function countUngroupedOwnerCatchUps(planned: PlannedJob[]): number {
+	let ungrouped = 0;
+	for (const byTaskType of groupByOwnerAndTaskType(planned).values()) {
+		for (const members of byTaskType.values()) {
+			if (members.length === 1) ungrouped += 1;
+		}
+	}
+	return ungrouped;
+}
+
 function groupByOwnerAndTaskType(planned: PlannedJob[]): Map<string, Map<string, GroupMember[]>> {
 	const groups = new Map<string, Map<string, GroupMember[]>>();
 

@@ -1,7 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import type { ScheduledJob } from '../types';
-import { coalesceSiblingCatchUps } from './coalesce-group';
+import { coalesceSiblingCatchUps, countUngroupedOwnerCatchUps } from './coalesce-group';
 import { countMisfires, type MisfireCount } from './misfire';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
@@ -38,6 +38,7 @@ export interface MaterializerSummary {
 	/** How many pending occurrences were retired because a catch-up run superseded them. */
 	retiredOccurrences: number;
 	groupedCatchUps: number;
+	ungroupedCatchUps: number;
 }
 
 /** Notified when a claimed job's schedule cannot be planned, before it is deferred. */
@@ -116,6 +117,7 @@ export async function materialize(
 				misfires: [],
 				retiredOccurrences: 0,
 				groupedCatchUps: 0,
+				ungroupedCatchUps: 0,
 			};
 		}
 		const { occurrencesPlanned: jobsPlanned, numberOfJobsDeferred } = planOrDeferJobs(
@@ -146,6 +148,7 @@ export async function materialize(
 			misfires: countMisfires(occurrencesPlanned),
 			retiredOccurrences,
 			groupedCatchUps: totalGroupedCatchUps(occurrencesPlanned),
+			ungroupedCatchUps: countUngroupedOwnerCatchUps(jobsPlanned),
 		};
 	});
 }

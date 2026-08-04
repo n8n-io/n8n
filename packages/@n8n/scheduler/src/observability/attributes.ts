@@ -23,6 +23,8 @@ export const SCHEDULER_ATTRIBUTES = {
 	deferredJobs: 'n8n.scheduler.deferred_jobs',
 	skippedOccurrences: 'n8n.scheduler.skipped_occurrences',
 	retiredOccurrences: 'n8n.scheduler.retired_occurrences',
+	groupedCatchUps: 'n8n.scheduler.grouped_catch_ups',
+	ungroupedCatchUps: 'n8n.scheduler.ungrouped_catch_ups',
 	missed: 'n8n.scheduler.missed',
 	retentionDeleted: 'n8n.scheduler.retention_deleted',
 	retentionDrained: 'n8n.scheduler.retention_drained',

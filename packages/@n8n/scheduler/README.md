@@ -180,6 +180,69 @@ The filter looks only at the *previous* run, with no stored counter. So any serv
 in the cluster can compute the next run on its own, and a restart never loses the
 cadence.
 
+## Misfires and catch-up runs
+
+A **misfire** is a run that came due while nothing was there to fire it, and is now
+past its grace window. The usual cause is downtime: the servers were off, or too
+busy, over a stretch that a rule's schedule crossed several times. When the planner
+next claims that rule, it finds a backlog of instants that are all in the past. Each
+job carries a grace window (`misfireGraceSeconds`); while a due instant is still
+inside its window it is simply queued and run late, and no policy applies. Only once
+the oldest overdue instant is past its window does the job's **misfire policy**
+decide what happens to the backlog.
+
+There are three policies:
+
+| Policy | What it does |
+|---|---|
+| `skip` | Records nothing for the backlog. The missed instants are gone; the rule resumes from its next future instant. |
+| `coalesce` | Records one **catch-up run** for that job, standing in for the whole backlog, then resumes normally. |
+| `coalesce_owner` | Records one catch-up run for the whole **owner**, across all the jobs that share it. |
+
+A catch-up run is a normal task, queued at the most recent missed instant and made
+claimable immediately, so the work happens once rather than N times back to back.
+Whichever policy applies, the job's clock still advances past the whole backlog, and
+that advance commits with the same transaction, so no two servers can disagree about
+what a backlog produced.
+
+### What an "owner" is
+
+An **owner** is an opaque key supplied per job (`ownerKey`). The scheduler never
+interprets it: it only groups by equality. In n8n it identifies the thing that
+provisioned the rules, in practice a workflow's trigger node, which provisions one
+job per schedule rule it holds.
+
+### Why `coalesce_owner` exists
+
+A Schedule Trigger with N rules is N jobs. Per-job coalescing gives each of them its
+own catch-up run, so after downtime the node still fires N times in a row, which is
+exactly the pile-up coalescing was meant to prevent. `coalesce_owner` closes that
+gap: among the jobs sharing an owner that all have a catch-up run on the same
+planning pass, one wins (the latest missed instant; the lowest job id breaks a tie)
+and the rest drop theirs.
+
+Two consequences follow, and both are by design rather than oversights:
+
+- **The surviving catch-up carries one `scheduledFor`**: the most recent missed
+  instant across the owner's jobs. So a node that mixes a fast rule with a slow one
+  will always see the fast rule's instant win, and the slow rule's catch-up is
+  structurally superseded. The owner is caught up once, at the freshest missed
+  instant, not once per rule.
+- **The claim only covers the rows that were due when it ran.** A sibling that was
+  not yet due at that moment is not part of the group, so it catches up separately on
+  a later pass. Grouping is per planning pass, not a standing arrangement across
+  passes.
+
+Both are observable: the planner counts the catch-up runs grouping collapsed away
+(`n8n_scheduler_catch_ups_grouped_total`) and the ones that stayed because their
+owner group held only a single claimable job at that moment
+(`n8n_scheduler_catch_ups_ungrouped_total`). The second is the size of the residual
+gap above.
+
+Poll triggers use `skip` on purpose: a poll asks "what changed since last time?", so
+replaying a missed poll adds nothing that the next poll will not pick up anyway. They
+are unaffected by any of the coalescing behaviour described here.
+
 ## Durable and distributed
 
 Two properties describe the whole design, and everything else follows from them.

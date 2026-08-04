@@ -338,6 +338,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					metrics.recordMaterialized(summary.occurrences, summary.deferredJobs);
 					metrics.recordMisfired(summary.misfires);
 					metrics.recordRetired(summary.retiredOccurrences);
+					metrics.recordCatchUps(summary.groupedCatchUps, summary.ungroupedCatchUps);
 				});
 				return summary;
 			} catch (error) {
@@ -357,6 +358,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 						misfires: [],
 						retiredOccurrences: 0,
 						groupedCatchUps: 0,
+						ungroupedCatchUps: 0,
 					};
 				}
 				throw error;
@@ -368,6 +370,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			[SCHEDULER_ATTRIBUTES.deferredJobs]: summary.deferredJobs,
 			[SCHEDULER_ATTRIBUTES.skippedOccurrences]: totalDiscarded(summary.misfires),
 			[SCHEDULER_ATTRIBUTES.retiredOccurrences]: summary.retiredOccurrences,
+			[SCHEDULER_ATTRIBUTES.groupedCatchUps]: summary.groupedCatchUps,
+			[SCHEDULER_ATTRIBUTES.ungroupedCatchUps]: summary.ungroupedCatchUps,
 		}),
 	);
 

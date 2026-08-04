@@ -35,6 +35,8 @@ export class PrometheusSchedulerMetricsService
 	private jobsDeferred!: promClient.Counter;
 	private occurrencesMisfired!: promClient.Counter<'task_type' | 'policy'>;
 	private occurrencesRetired!: promClient.Counter;
+	private catchUpsGrouped!: promClient.Counter;
+	private catchUpsUngrouped!: promClient.Counter;
 	private occurrencesMissed!: promClient.Counter;
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
@@ -100,6 +102,16 @@ export class PrometheusSchedulerMetricsService
 			help: 'Total number of already-recorded occurrences retired because a catch-up run superseded them.',
 		});
 
+		this.catchUpsGrouped = new promClient.Counter({
+			name: `${prefix}scheduler_catch_ups_grouped_total`,
+			help: "Total number of catch-up runs collapsed away because a sibling job sharing the same owner won the group, under the 'coalesce_owner' misfire policy.",
+		});
+
+		this.catchUpsUngrouped = new promClient.Counter({
+			name: `${prefix}scheduler_catch_ups_ungrouped_total`,
+			help: "Total number of catch-up runs recorded under the 'coalesce_owner' misfire policy whose owner group held only one claimable job at that moment, so there was nothing to collapse them with.",
+		});
+
 		this.occurrencesMissed = new promClient.Counter({
 			name: `${prefix}scheduler_occurrences_missed_total`,
 			help: 'Total number of pending occurrences the reaper marked missed after they went past their deadline unclaimed.',
@@ -132,6 +144,8 @@ export class PrometheusSchedulerMetricsService
 		this.occurrencesMaterialized.inc(0);
 		this.jobsDeferred.inc(0);
 		this.occurrencesRetired.inc(0);
+		this.catchUpsGrouped.inc(0);
+		this.catchUpsUngrouped.inc(0);
 		this.occurrencesMissed.inc(0);
 		this.tasksReclaimed.inc(0);
 		this.tasksDeadLettered.inc(0);
@@ -243,6 +257,13 @@ export class PrometheusSchedulerMetricsService
 	recordRetired(retired: number) {
 		if (this.initialized) {
 			this.occurrencesRetired.inc(retired);
+		}
+	}
+
+	recordCatchUps(grouped: number, ungrouped: number) {
+		if (this.initialized) {
+			this.catchUpsGrouped.inc(grouped);
+			this.catchUpsUngrouped.inc(ungrouped);
 		}
 	}
 

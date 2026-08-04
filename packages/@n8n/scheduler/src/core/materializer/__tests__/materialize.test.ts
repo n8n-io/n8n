@@ -68,6 +68,8 @@ describe('materialize', () => {
 			deferredJobs: 0,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 		expect(tx.recordOccurrences).not.toHaveBeenCalled();
 		expect(tx.advanceJobs).not.toHaveBeenCalled();
@@ -89,6 +91,8 @@ describe('materialize', () => {
 			deferredJobs: 0,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 
 		// One insert and one update for the whole batch, not a pair per job.
@@ -315,6 +319,8 @@ describe('materialize', () => {
 			deferredJobs: 0,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
 	});
@@ -353,6 +359,8 @@ describe('materialize', () => {
 			deferredJobs: 1,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 		expect(onPlanError).toHaveBeenCalledTimes(1);
 		expect(onPlanError).toHaveBeenCalledWith(bad, expect.anything());
@@ -508,6 +516,8 @@ describe('materialize', () => {
 			deferredJobs: 1,
 			misfires: [],
 			retiredOccurrences: 0,
+			groupedCatchUps: 0,
+			ungroupedCatchUps: 0,
 		});
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
