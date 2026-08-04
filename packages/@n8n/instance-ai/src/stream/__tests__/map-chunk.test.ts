@@ -564,6 +564,13 @@ describe('mapAgentChunkToEvent', () => {
 			agentId,
 			payload: { content: 'Unknown error' },
 		});
+
+		expect(map({ type: 'error', error: null })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
 	});
 
 	it('maps an error with a cyclic cause chain', () => {
