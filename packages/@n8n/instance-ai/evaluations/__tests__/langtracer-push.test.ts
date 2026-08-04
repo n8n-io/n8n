@@ -1,5 +1,5 @@
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { planPush, toUpdatePatch } from '../langtracer/push';
+import { comparableDiff, planPush, toUpdatePatch } from '../langtracer/push';
 import type { LangTracerCreateCaseBody } from '../langtracer/to-exported';
 
 function item(fileSlug: string, overrides: Record<string, unknown> = {}): WorkflowTestCaseWithFile {
@@ -409,5 +409,44 @@ describe('toUpdatePatch', () => {
 		const seed = inlineSeed();
 		const patch = toUpdatePatch(createBody({ seed }));
 		expect(patch.seed).toEqual(seed);
+	});
+});
+
+// The post-write check the push runs after every create/update. A lang-tracer
+// deployment predating a field's support ignores the key and still answers 200
+// (`seed` needs #113, `attach` needs #119), so only re-reading the export can tell
+// you the suite holds what you authored.
+describe('comparableDiff (post-write verification)', () => {
+	it('reports nothing when the server stored everything', () => {
+		expect(
+			comparableDiff(body({ seed: inlineSeed() }), item('c', { seed: inlineSeed() }).testCase),
+		).toEqual([]);
+	});
+
+	it('names `seed` when a pre-#113 server dropped it', () => {
+		const written = item('c', { seed: inlineSeed() }).testCase;
+		expect(comparableDiff(body(), written)).toEqual(['seed']);
+	});
+
+	it('names `conversation` when a pre-#119 server dropped `attach`', () => {
+		const handoff = [{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } }];
+		const written = item('c', { conversation: handoff, seed: inlineSeed() }).testCase;
+		// What such a server gives back: the turn, minus the attachment.
+		const stored = body({ conversation: [{ role: 'user', text: '' }], seed: inlineSeed() });
+
+		expect(comparableDiff(stored, written)).toEqual(['conversation']);
+	});
+
+	it('names every dropped field, not just the first', () => {
+		const handoff = [{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } }];
+		const written = item('c', { conversation: handoff, seed: inlineSeed() }).testCase;
+		const stored = body({ conversation: [{ role: 'user', text: '' }] });
+
+		expect(comparableDiff(stored, written).sort()).toEqual(['conversation', 'seed']);
+	});
+
+	it('treats a case missing from the export as everything dropped', () => {
+		const written = item('c', { seed: inlineSeed() }).testCase;
+		expect(comparableDiff(undefined, written)).toContain('seed');
 	});
 });

@@ -3,6 +3,19 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
+/** Opens the rendering of a turn's out-of-band workflow attachment, e.g.
+ *  `[attached workflow: Batch loop]`. The editor hands the agent a resource
+ *  reference rather than text, so without this the faithful hand-off shape
+ *  (`text: ""` + `attach`) reaches judges and prompt-aware checks as an empty
+ *  message. Written by the harness into the recorded turn, and by
+ *  `conversationUserTurnsAsText` for paths with no captured transcript. */
+export const ATTACHED_WORKFLOW_PREFIX = '[attached workflow: ';
+
+/** Render a turn's attachment for a transcript/prompt, or '' when it has none. */
+export function attachedWorkflowNote(name: string | undefined): string {
+	return name ? `${ATTACHED_WORKFLOW_PREFIX}${name}]` : '';
+}
+
 /**
  * Human-readable prompt label for a test case. Authored cases use their first
  * turn; a `replay` seed carries no authored conversation, so fall back to the
@@ -47,7 +60,9 @@ export function conversationUserTurnsAsText(conversation: ConversationTurn[] | u
 	if (!conversation) return '';
 	const turns = conversation
 		.filter((t) => t.role === 'user')
-		.map((t) => t.text)
+		// Name an attachment, so a text-less hand-off isn't filtered out below and
+		// handed to the prompt-aware checks as an empty prompt.
+		.map((t) => [attachedWorkflowNote(t.attach?.workflow), t.text].filter(Boolean).join(' '))
 		.filter((text) => text.length > 0);
 
 	if (turns.length === 0) return '';

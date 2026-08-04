@@ -236,17 +236,25 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	)
 	// The chat API refuses a message that is empty with nothing attached, so catch it
 	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
-	.refine(
-		(c) => {
-			const opening = c.conversation?.[0];
-			if (opening === undefined) return true;
-			return opening.text.trim().length > 0 || opening.attach !== undefined;
-		},
-		{
-			message:
-				'an opening turn with empty text must carry `attach` — the chat API rejects a message that is empty with nothing attached',
-		},
-	)
+	// EVERY turn, not just the opening: a later empty turn hits the same 400. Only a
+	// non-replay opening may substitute `attach` for text — on a replay case
+	// `conversation[0]` continues the trace's live turn, and `attach` needs an inline
+	// seed to point at, so "add an attach" is advice a replay author can't follow.
+	.superRefine((c, ctx) => {
+		const isReplay = c.seed?.mode === 'replay';
+		(c.conversation ?? []).forEach((turn, index) => {
+			if (turn.text.trim().length > 0) return;
+			const openingMayAttach = index === 0 && !isReplay;
+			if (openingMayAttach && turn.attach !== undefined) return;
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['conversation', index, 'text'],
+				message: openingMayAttach
+					? 'an opening turn with empty text must carry `attach` — the chat API rejects a message that is empty with nothing attached'
+					: 'a conversation turn needs text — the chat API rejects an empty message, and only a non-replay opening turn may substitute `attach`',
+			});
+		});
+	})
 	.superRefine((c, ctx) => {
 		// Note: this message avoids double quotes — ZodError.message is a JSON.stringify of
 		// the issue list, which would otherwise backslash-escape them and break substring/regex

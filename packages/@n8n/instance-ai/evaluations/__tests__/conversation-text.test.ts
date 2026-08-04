@@ -88,6 +88,25 @@ describe('conversationUserTurnsAsText', () => {
 		const conversation: ConversationTurn[] = [{ role: 'assistant', text: 'hello' }];
 		expect(conversationUserTurnsAsText(conversation)).toBe('');
 	});
+
+	// The editor hands the agent a resource reference, not text, so the faithful
+	// hand-off is `text: '' + attach`. Filtered as empty, it would hand the
+	// prompt-aware checks (fulfills-user-request) an EMPTY prompt.
+	it('names an attached workflow so a text-less hand-off is not dropped', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { workflow: 'Batch loop' } },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe('[attached workflow: Batch loop]');
+	});
+
+	it('keeps both the attachment and the text when the user typed something', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: 'why is this failing?', attach: { workflow: 'Batch loop' } },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe(
+			'[attached workflow: Batch loop] why is this failing?',
+		);
+	});
 });
 
 describe('transcriptAsText', () => {

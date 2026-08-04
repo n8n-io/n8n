@@ -123,8 +123,18 @@ export const ConversationSeedSchema = z.object({
 	source: z.record(z.unknown()).optional(),
 	/** Native agent message log (user/assistant turns with resolved tool-call blocks). */
 	messages: z.array(SeedMessageSchema).min(1),
-	/** Workflows the history references, recreated on restore. */
-	workflows: z.array(SeedWorkflowSchema).default([]),
+	/** Workflows the history references, recreated on restore. Ids must be distinct:
+	 *  the restore index-aligns authored ids with their per-run remapped ones, and
+	 *  `remapSeedWorkflowIds` rewrites references by sequential `replaceAll` — a
+	 *  duplicate would collapse both to one entry and one fresh id, so an `attach`
+	 *  or a message reference would point at the wrong workflow. */
+	workflows: z
+		.array(SeedWorkflowSchema)
+		.default([])
+		.refine(
+			(workflows) => new Set(workflows.map((workflow) => workflow.id)).size === workflows.length,
+			{ message: 'seed workflow ids must be unique — references resolve by id' },
+		),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
 	dataTables: z.array(SeedDataTableSchema).default([]),
 });

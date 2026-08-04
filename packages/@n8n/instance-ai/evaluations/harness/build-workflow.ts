@@ -53,6 +53,7 @@ import type {
 } from '../types';
 import {
 	agentTurnsAsText,
+	attachedWorkflowNote,
 	failedBuildsPerTurn,
 	lastAgentText,
 	userTurnsAsText,
@@ -92,6 +93,10 @@ interface MultiTurnDriverConfig {
 	/** Appended to the FIRST sent message only (pre-seeded-table hint); the
 	 *  recorded turn and the proxy's conversation keep the clean prompt. */
 	openingMessageSuffix?: string;
+	/** What the RECORDED opening turn says, when it must differ from what's sent —
+	 *  an out-of-band attachment has to be named in the transcript the judge reads.
+	 *  Defaults to the sent text. */
+	recordedOpeningMessage?: string;
 	/** Ids already allowlisted for this thread (from pre-run `createDeclaredCredentials`
 	 *  seeding) — wires `UserProxyLlm.credentialCreation` so `manual` can create a
 	 *  real credential when a setup card shows zero existing candidates. Omitted
@@ -140,7 +145,7 @@ async function driveMultiTurnConversation(
 		return decision;
 	};
 
-	recordUserTurn(config.events, openingMessage);
+	recordUserTurn(config.events, config.recordedOpeningMessage ?? openingMessage);
 	await config.client.sendMessage(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
@@ -482,9 +487,28 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			attachedSeedWorkflow === undefined
 				? undefined
 				: seedWorkflowsBySeedId.get(attachedSeedWorkflow);
+		// The schema already refused an `attach` no seeded workflow declares, so a miss
+		// here means the restore/remap dropped it. Sending no attachment would silently
+		// downgrade a hand-off case to a find-it one and grade the wrong thing — the
+		// same failure class the schema refusals exist to prevent. Harness fault.
+		if (attachedSeedWorkflow !== undefined && restoredForAttach === undefined) {
+			seedingFailed = true;
+			throw new Error(
+				`The opening turn attaches seeded workflow "${attachedSeedWorkflow}", but the restore produced no workflow for that id — refusing to run the case unattached (it would silently become a find-it test).`,
+			);
+		}
 		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
 			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
 			: undefined;
+		// The API carries the attachment out of band, so the RECORDED turn — what the
+		// expectations judge and the prompt-aware checks read — would show the faithful
+		// `text: "" + attach` hand-off as a bare empty message: an anomaly to the judge,
+		// and `userTurnsAsText` drops empty strings, so fulfills-user-request would get
+		// an empty prompt. Name the hand-off in the transcript instead. Mirrors
+		// `openingMessageSuffix`, which diverges sent-vs-recorded the other way.
+		const recordedOpeningMessage = [attachedWorkflowNote(restoredForAttach?.name), openingMessage]
+			.filter(Boolean)
+			.join(' ');
 
 		let proxyDecisionStats: ProxyDecisionStats | undefined;
 		if (isMultiTurn) {
@@ -514,9 +538,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// (and the graded transcript) keeps the clean user prompt.
 				openingMessageSuffix: scenarioSeedTablesNote,
 				openingAttachments,
+				recordedOpeningMessage,
 			});
 		} else {
-			recordUserTurn(events, openingMessage);
+			recordUserTurn(events, recordedOpeningMessage);
 			await client.sendMessage(
 				threadId,
 				openingMessage + scenarioSeedTablesNote,

@@ -401,6 +401,50 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/opening turn with empty text must carry .attach./);
 	});
 
+	it('rejects an empty LATER turn too — the chat API 400s on it just the same', () => {
+		// The guard used to cover only turn 0, so this reached the API mid-run and
+		// surfaced as what reads like an infrastructure fault.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [
+					{ role: 'user', text: 'build a thing' },
+					{ role: 'user', text: '   ' },
+				],
+			}),
+		).toThrow(/a conversation turn needs text/);
+	});
+
+	it('does not tell a replay author to add an attach they cannot use', () => {
+		// On a replay case conversation[0] CONTINUES the trace's live turn, and `attach`
+		// needs an inline seed to point at — so the opening-turn advice is a dead end.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: '' }],
+				seed: { mode: 'replay', threadId: 'thread-1' },
+			}),
+		).toThrow(/a conversation turn needs text/);
+	});
+
+	it('rejects a seed declaring two workflows with the same id', () => {
+		// Restore index-aligns authored ids with remapped ones and rewrites references
+		// by id, so a duplicate would silently resolve to the wrong workflow.
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'build it' }],
+					workflows: [
+						{ id: 'wf12345678', name: 'First', nodes: [], connections: {} },
+						{ id: 'wf12345678', name: 'Second', nodes: [], connections: {} },
+					],
+				},
+			}),
+		).toThrow(/seed workflow ids must be unique/);
+	});
+
 	it('accepts an empty opening turn when a seeded workflow is attached', () => {
 		// The faithful hand-off shape: opened on a workflow, nothing typed.
 		expect(() =>

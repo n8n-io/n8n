@@ -91,9 +91,16 @@ export function planPush(
 /** Compare only the PATCH-able disk fields of an exported body against a disk case,
  *  after folding lang-tracer's export-only keys / legacy `buildExpectations`. */
 function sameComparableFields(existingRaw: unknown, diskTestCase: unknown): boolean {
+	return comparableDiff(existingRaw, diskTestCase).length === 0;
+}
+
+/** Which comparable fields differ between an exported body and a disk case. Same
+ *  rules as the create/update/unchanged split, so a post-write check can reuse them
+ *  to name exactly what a server failed to store. */
+export function comparableDiff(existingRaw: unknown, diskTestCase: unknown): string[] {
 	const existing = projectComparable(normalizeExportedCase(existingRaw));
 	const disk = projectComparable(diskTestCase);
-	return canonicalize(existing) === canonicalize(disk);
+	return COMPARED_KEYS.filter((key) => canonicalize(existing[key]) !== canonicalize(disk[key]));
 }
 
 function projectComparable(src: unknown): Record<string, unknown> {

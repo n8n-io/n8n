@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
 import { buildWorkflow } from '../harness/build-workflow';
+import { recordUserTurn } from '../harness/chat-loop';
 import type { ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
 
@@ -293,6 +294,59 @@ describe('buildWorkflow with an inline seed', () => {
 		];
 		expect(attachments?.[0].id).toBe(workflows[0].id);
 		expect(attachments?.[0].name).toBe(workflows[0].name);
+	});
+
+	// The API carries the attachment out of band, so the graded transcript would show a
+	// faithful hand-off (`text: ''` + attach) as a bare empty message: an anomaly to the
+	// judge, and an EMPTY prompt for the prompt-aware checks (userTurnsAsText drops
+	// empty strings). The recorded turn names it instead.
+	it('names the attached workflow in the RECORDED turn, so judges can see the hand-off', async () => {
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+		vi.mocked(recordUserTurn).mockClear();
+
+		await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			// No typed text — exactly the shape the docs promote.
+			conversation: [{ role: 'user' as const, text: '', attach: { workflow: SEED_WF_ID } }],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		const restoredWorkflows = (
+			restoreThread.mock.calls[0] as [string, unknown, Array<{ id: string; name: string }>]
+		)[2];
+		const [, recordedText] = vi.mocked(recordUserTurn).mock.calls[0];
+		const [, sentText] = sendMessage.mock.calls[0] as [string, string, unknown];
+
+		// The RESTORED (per-run) name, not the authored one — that's what exists on the
+		// instance and what the judge will see referenced.
+		expect(recordedText).toBe(`[attached workflow: ${restoredWorkflows[0].name}]`);
+		// The agent still gets the user's real (empty) text plus the attachment itself.
+		expect(sentText).toBe('');
+	});
+
+	it('fails loudly when the attached seed workflow is missing from the restore', async () => {
+		// The schema refuses an `attach` the seed does not declare, so a miss here means
+		// the restore/remap lost it. Running on would silently downgrade the case to a
+		// find-it test and grade the wrong thing.
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 1, workflowIds: ['restored-wf-1'], dataTableIds: [] });
+
+		const result = await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage: vi.fn().mockResolvedValue({ runId: 'r' }) }),
+			...baseConfig,
+			conversation: [
+				{ role: 'user' as const, text: 'why?', attach: { workflow: 'never-declared' } },
+			],
+			seed: { mode: 'inline' as const, ...inlineSeed() },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error).toMatch(/attaches seeded workflow "never-declared"/);
 	});
 
 	it('sends no attachments when the opening turn declares none', async () => {

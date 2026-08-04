@@ -871,11 +871,14 @@ names nothing, and a clarification the real user never saw scores as a failure.
 
 > **Pushing an `attach` case needs lang-tracer [#119](https://github.com/n8n-io/lang-tracer/pull/119) deployed.**
 > Carrying `attach` through import and case-write is that PR's job; a deployment
-> predating it stores the turn without the key, so the case comes back from the
-> suite as a hand-off with neither text nor attachment — refused at load in the
-> best case, and a quietly different test in the worst. Until it's live, keep such
-> a case on disk (`--source disk`) instead of pushing it. Round-trip coverage:
-> `langtracer-to-exported.test.ts`.
+> predating it stores the turn without the key, so the case would come back from
+> the suite as a hand-off with neither text nor attachment — a quietly different
+> test. **You don't have to remember this:** the push re-reads the suite export
+> after every write and fails if the server didn't store what it was sent, naming
+> the fields it dropped. The same check covers a `seed` against a deployment
+> predating [#113](https://github.com/n8n-io/lang-tracer/pull/113). Until the
+> server is upgraded, keep such a case on disk (`--source disk`).
+> Round-trip coverage: `langtracer-to-exported.test.ts`.
 
 #### How restore works (all paths)
 
