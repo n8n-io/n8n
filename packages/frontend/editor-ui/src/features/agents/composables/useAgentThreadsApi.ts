@@ -48,7 +48,6 @@ export interface AgentExecution {
 	threadId: string;
 	agentId: string;
 	status: AgentExecutionStatus;
-	runId: string | null;
 	createdAt: string;
 	startedAt: string | null;
 	stoppedAt: string | null;

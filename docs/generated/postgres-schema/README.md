@@ -15,9 +15,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_eval_rating](public.agent_eval_rating.md) | 8 |  | BASE TABLE |
 | [public.agent_eval_result](public.agent_eval_result.md) | 15 |  | BASE TABLE |
 | [public.agent_eval_run](public.agent_eval_run.md) | 14 |  | BASE TABLE |
-| [public.agent_execution](public.agent_execution.md) | 21 |  | BASE TABLE |
+| [public.agent_execution](public.agent_execution.md) | 20 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 17 |  | BASE TABLE |
-| [public.agent_execution_timeline_journal](public.agent_execution_timeline_journal.md) | 5 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
@@ -170,7 +169,6 @@ erDiagram
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
-"public.agent_execution_timeline_journal" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -429,7 +427,6 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
-  varchar_64_ runId
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
@@ -458,13 +455,6 @@ erDiagram
   double_precision totalCost
   integer totalDuration
   integer totalPromptTokens
-  timestamp_3__with_time_zone updatedAt
-}
-"public.agent_execution_timeline_journal" {
-  timestamp_3__with_time_zone createdAt
-  text event
-  varchar_36_ executionId FK
-  integer seq
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_files" {

@@ -261,7 +261,7 @@ export class ExecutionRecorder {
 
 	constructor(
 		registry?: ToolRegistry,
-		private readonly onTimelineEvent?: (event: TimelineEvent) => void,
+		private readonly onTimelineSnapshot?: (timeline: TimelineEvent[]) => void,
 	) {
 		this.registry = registry ?? new Map();
 	}
@@ -287,12 +287,10 @@ export class ExecutionRecorder {
 	/** Wall-clock when the first text-delta of the current segment arrived. */
 	private textStartTime: number | null = null;
 
-	private textSnapshotTimer?: NodeJS.Timeout;
-
 	/** Wall-clock when the current reasoning segment started. */
 	private reasoningStartTime: number | null = null;
 
-	private reasoningSnapshotTimer?: NodeJS.Timeout;
+	private timelineSnapshotTimer?: NodeJS.Timeout;
 
 	private _suspended = false;
 
@@ -312,7 +310,7 @@ export class ExecutionRecorder {
 				}
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
-				this.scheduleTextSnapshot();
+				this.scheduleTimelineSnapshot();
 				break;
 			case 'reasoning-start':
 				this.flushTextBuffer();
@@ -325,7 +323,7 @@ export class ExecutionRecorder {
 					this.reasoningStartTime = Date.now();
 				}
 				this.reasoningBuffer.push(chunk.delta);
-				this.scheduleReasoningSnapshot();
+				this.scheduleTimelineSnapshot();
 				break;
 			case 'reasoning-end':
 				this.flushReasoningBuffer();
@@ -428,8 +426,10 @@ export class ExecutionRecorder {
 
 	/** Flush accumulated text into a timeline event. */
 	private flushTextBuffer(): void {
-		if (this.textSnapshotTimer) clearTimeout(this.textSnapshotTimer);
-		this.textSnapshotTimer = undefined;
+		if (this.textStartTime !== null && this.timelineSnapshotTimer) {
+			clearTimeout(this.timelineSnapshotTimer);
+			this.timelineSnapshotTimer = undefined;
+		}
 		if (this.textBuffer.length === 0) return;
 		const content = this.textBuffer.join('');
 		if (content.trim()) {
@@ -449,8 +449,10 @@ export class ExecutionRecorder {
 
 	/** Flush accumulated reasoning without including it in `assistantResponse`. */
 	private flushReasoningBuffer(): void {
-		if (this.reasoningSnapshotTimer) clearTimeout(this.reasoningSnapshotTimer);
-		this.reasoningSnapshotTimer = undefined;
+		if (this.reasoningStartTime !== null && this.timelineSnapshotTimer) {
+			clearTimeout(this.timelineSnapshotTimer);
+			this.timelineSnapshotTimer = undefined;
+		}
 		if (this.reasoningBuffer.length === 0) {
 			this.reasoningStartTime = null;
 			return;
@@ -469,34 +471,28 @@ export class ExecutionRecorder {
 		this.reasoningStartTime = null;
 	}
 
-	private scheduleTextSnapshot(): void {
-		if (this.textSnapshotTimer) return;
-		this.textSnapshotTimer = setTimeout(() => {
-			this.textSnapshotTimer = undefined;
-			if (this.textStartTime === null || this.textBuffer.length === 0) return;
-			this.emitTimelineEvent({
-				type: 'text',
-				content: this.textBuffer.join(''),
-				timestamp: this.textStartTime,
-				endTime: Date.now(),
-			});
+	private scheduleTimelineSnapshot(): void {
+		if (this.timelineSnapshotTimer) return;
+		this.timelineSnapshotTimer = setTimeout(() => {
+			this.timelineSnapshotTimer = undefined;
+			const now = Date.now();
+			if (this.textStartTime !== null && this.textBuffer.length > 0) {
+				this.emitTimelineSnapshot({
+					type: 'text',
+					content: this.textBuffer.join(''),
+					timestamp: this.textStartTime,
+					endTime: now,
+				});
+			} else if (this.reasoningStartTime !== null && this.reasoningBuffer.length > 0) {
+				this.emitTimelineSnapshot({
+					type: 'reasoning',
+					content: this.reasoningBuffer.join(''),
+					timestamp: this.reasoningStartTime,
+					endTime: now,
+				});
+			}
 		}, TIMELINE_BLOCK_MAX_DURATION_MS);
-		this.textSnapshotTimer.unref();
-	}
-
-	private scheduleReasoningSnapshot(): void {
-		if (this.reasoningSnapshotTimer) return;
-		this.reasoningSnapshotTimer = setTimeout(() => {
-			this.reasoningSnapshotTimer = undefined;
-			if (this.reasoningStartTime === null || this.reasoningBuffer.length === 0) return;
-			this.emitTimelineEvent({
-				type: 'reasoning',
-				content: this.reasoningBuffer.join(''),
-				timestamp: this.reasoningStartTime,
-				endTime: Date.now(),
-			});
-		}, TIMELINE_BLOCK_MAX_DURATION_MS);
-		this.reasoningSnapshotTimer.unref();
+		this.timelineSnapshotTimer.unref();
 	}
 
 	/**
@@ -566,7 +562,7 @@ export class ExecutionRecorder {
 			entry.endTime = endTime;
 			entry.success = !isError;
 			if (entry.childTrace) settleChildTrace(entry.childTrace);
-			this.emitTimelineEvent(entry);
+			this.emitTimelineSnapshot();
 		}
 	}
 
@@ -625,7 +621,7 @@ export class ExecutionRecorder {
 					pendingTimeline.workflowExecutionId = execId;
 				}
 			}
-			this.emitTimelineEvent(pendingTimeline);
+			this.emitTimelineSnapshot();
 			return;
 		}
 
@@ -665,10 +661,12 @@ export class ExecutionRecorder {
 
 	private appendCompletedEvent(event: TimelineEvent): void {
 		this.timeline.push(event);
-		this.emitTimelineEvent(event);
+		this.emitTimelineSnapshot();
 	}
 
-	private emitTimelineEvent(event: TimelineEvent): void {
-		this.onTimelineEvent?.(structuredClone(event));
+	private emitTimelineSnapshot(activeEvent?: TimelineEvent): void {
+		if (!this.onTimelineSnapshot) return;
+		const timeline = activeEvent ? [...this.timeline, activeEvent] : this.timeline;
+		this.onTimelineSnapshot(structuredClone(timeline));
 	}
 }

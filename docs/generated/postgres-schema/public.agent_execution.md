@@ -11,10 +11,9 @@
 | duration | integer | 0 | false |  |  |  |
 | error | text |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.agent_execution_timeline_journal](public.agent_execution_timeline_journal.md) |  |  |
+| id | varchar(36) |  | false |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | integer |  | true |  |  |  |
-| runId | varchar(64) |  | true |  |  | Opaque run identifier assigned by the agent runtime |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
@@ -56,7 +55,6 @@
 ```mermaid
 erDiagram
 
-"public.agent_execution_timeline_journal" }o--|| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id) ON DELETE CASCADE"
 "public.agent_execution" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 
 "public.agent_execution" {
@@ -70,7 +68,6 @@ erDiagram
   varchar_36_ id
   varchar_255_ model
   integer promptTokens
-  varchar_64_ runId
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
@@ -81,13 +78,6 @@ erDiagram
   integer totalTokens
   timestamp_3__with_time_zone updatedAt
   text userMessage
-}
-"public.agent_execution_timeline_journal" {
-  timestamp_3__with_time_zone createdAt
-  text event
-  varchar_36_ executionId FK
-  integer seq
-  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_execution_threads" {
   varchar_36_ agentId FK

@@ -16,11 +16,22 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 	}
 
 	async findRunning(): Promise<AgentExecution[]> {
-		return await this.find({ where: { status: 'running' }, relations: { thread: true } });
+		return await this.find({ where: { status: 'running' } });
 	}
 
 	async touchRunning(executionId: string): Promise<void> {
 		await this.update({ id: executionId, status: 'running' }, { updatedAt: new Date() });
+	}
+
+	async updateTimelineIfRunning(
+		executionId: string,
+		timeline: AgentExecution['timeline'],
+	): Promise<boolean> {
+		const result = await this.update({ id: executionId, status: 'running' }, {
+			timeline,
+			updatedAt: new Date(),
+		} as QueryDeepPartialEntity<AgentExecution>);
+		return result.affected === 1;
 	}
 
 	async updateIfRunning(

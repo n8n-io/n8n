@@ -188,8 +188,8 @@ export class SubAgentForegroundRunner {
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
 		let executionId: string | undefined;
-		const recorder = new ExecutionRecorder(undefined, (event) => {
-			if (executionId) this.agentExecutionService.recordTimelineEvent(executionId, event);
+		const recorder = new ExecutionRecorder(undefined, (timeline) => {
+			if (executionId) this.agentExecutionService.recordTimelineSnapshot(executionId, timeline);
 		});
 		const startedAt = recorder.startedAt;
 		let recorded = false;
@@ -234,7 +234,6 @@ export class SubAgentForegroundRunner {
 							),
 						},
 					},
-					resultStream.runId,
 					startedAt,
 				);
 				executionId = currentExecutionId;
@@ -339,8 +338,9 @@ export class SubAgentForegroundRunner {
 			hitlStatus,
 		} = params;
 
+		if (!executionId) return;
 		try {
-			const recordParams = {
+			await this.agentExecutionService.finalizeExecution(executionId, {
 				threadId,
 				agentId: runtimeSource.sourceId,
 				agentName: runtimeSource.config.name,
@@ -357,12 +357,7 @@ export class SubAgentForegroundRunner {
 					runType,
 					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},
-			};
-			if (executionId) {
-				await this.agentExecutionService.finalizeExecution(executionId, recordParams);
-			} else {
-				await this.agentExecutionService.recordMessage(recordParams);
-			}
+			});
 		} catch (error) {
 			this.logger.warn('Failed to record subagent execution', {
 				agentId: runtimeSource.sourceId,

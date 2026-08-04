@@ -226,9 +226,9 @@ export class AgentWorkflowExecutionService {
 		} = params;
 
 		let agentExecutionId: string | undefined;
-		const recorder = new ExecutionRecorder(undefined, (event) => {
+		const recorder = new ExecutionRecorder(undefined, (timeline) => {
 			if (agentExecutionId) {
-				this.agentExecutionService.recordTimelineEvent(agentExecutionId, event);
+				this.agentExecutionService.recordTimelineSnapshot(agentExecutionId, timeline);
 			}
 		});
 		const startedAt = recorder.startedAt;
@@ -272,11 +272,7 @@ export class AgentWorkflowExecutionService {
 			});
 			if (recording) {
 				try {
-					const executionId = await this.agentExecutionService.startExecution(
-						recording,
-						resultStream.runId,
-						startedAt,
-					);
+					const executionId = await this.agentExecutionService.startExecution(recording, startedAt);
 					agentExecutionId = executionId;
 				} catch (error) {
 					this.logger.warn('Failed to start agent execution recording from workflow', {
@@ -446,31 +442,28 @@ export class AgentWorkflowExecutionService {
 			},
 		});
 
-		const recordParams = {
-			threadId,
-			agentId,
-			agentName: agentInstance.name,
-			projectId,
-			userMessage: message,
-			record: run.messageRecord,
-			source: AGENT_WORKFLOW_TRIGGER_TYPE,
-			telemetry: {
-				runType,
-				configuration: telemetryConfiguration,
-			},
-		};
-		try {
-			if (run.agentExecutionId) {
-				await this.agentExecutionService.finalizeExecution(run.agentExecutionId, recordParams);
-			} else {
-				await this.agentExecutionService.recordMessage(recordParams);
+		if (run.agentExecutionId) {
+			try {
+				await this.agentExecutionService.finalizeExecution(run.agentExecutionId, {
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: message,
+					record: run.messageRecord,
+					source: AGENT_WORKFLOW_TRIGGER_TYPE,
+					telemetry: {
+						runType,
+						configuration: telemetryConfiguration,
+					},
+				});
+			} catch (error) {
+				this.logger.warn('Failed to record agent execution from workflow', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
-		} catch (error) {
-			this.logger.warn('Failed to record agent execution from workflow', {
-				agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
 		}
 
 		return this.buildWorkflowResult({

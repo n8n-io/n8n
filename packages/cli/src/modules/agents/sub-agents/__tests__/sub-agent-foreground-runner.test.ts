@@ -122,6 +122,8 @@ describe('SubAgentForegroundRunner', () => {
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
+		agentExecutionService.startExecution.mockResolvedValue('agent-execution-1');
+		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
 		runner = new SubAgentForegroundRunner(
@@ -200,7 +202,6 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
 		expect(agentExecutionService.startExecution).toHaveBeenCalledWith(
 			expect.objectContaining({ threadId: result.threadId, source: 'subagent' }),
-			'child-run-1',
 			expect.any(Date),
 		);
 		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
@@ -217,10 +218,9 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
-		const startedAt = agentExecutionService.startExecution.mock.calls[0][2];
+		const startedAt = agentExecutionService.startExecution.mock.calls[0][1];
 		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
-		expect(agentExecutionService.recordMessage).not.toHaveBeenCalled();
 	});
 
 	it('records the child turn with the parent run type, not its own published state', async () => {
@@ -230,7 +230,8 @@ describe('SubAgentForegroundRunner', () => {
 			runType: 'test',
 		});
 
-		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				threadId: result.threadId,
 				agentId: 'agent-1',
@@ -320,7 +321,8 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
-		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				threadId: result.threadId,
 				agentId: 'agent-2',
@@ -386,7 +388,8 @@ describe('SubAgentForegroundRunner', () => {
 				],
 			},
 		});
-		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({ hitlStatus: 'suspended' }),
 		);
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
@@ -428,7 +431,8 @@ describe('SubAgentForegroundRunner', () => {
 			status: 'completed',
 			result: { runId: 'child-run-1', finishReason: 'stop' },
 		});
-		expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				threadId: 'child-thread-1',
 				agentId: 'agent-1',

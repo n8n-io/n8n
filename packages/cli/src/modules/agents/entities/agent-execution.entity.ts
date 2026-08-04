@@ -39,9 +39,6 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentExecutionStatus;
 
-	@Column({ type: 'varchar', length: 64, nullable: true })
-	runId: string | null;
-
 	@DateTimeColumn({ precision: 3, nullable: true })
 	startedAt: Date | null;
 

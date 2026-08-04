@@ -12,10 +12,6 @@ import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
-import {
-	AgentExecutionJournalService,
-	foldTimelineEvents,
-} from './agent-execution-journal.service';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
@@ -64,6 +60,8 @@ export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' 
 	source: string | null;
 }
 
+const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
+
 @Service()
 export class AgentExecutionService {
 	/** Batch size mirrors ExecutionPersistence.bulkDeletionBatchSize. */
@@ -73,6 +71,12 @@ export class AgentExecutionService {
 
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
 
+	private readonly pendingTimelineSnapshots = new Map<string, TimelineEvent[]>();
+
+	private readonly timelineSnapshotWrites = new Map<string, Promise<void>>();
+
+	private readonly executionsNeedingTitleSync = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentExecutionRepository: AgentExecutionRepository,
@@ -81,22 +85,16 @@ export class AgentExecutionService {
 		private readonly telemetry: Telemetry,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
-		private readonly agentExecutionJournalService: AgentExecutionJournalService,
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
-	async startExecution(
-		params: StartExecutionParams,
-		runId: string,
-		startedAt: Date,
-	): Promise<string> {
-		const { userMessage } = await this.prepareThread(params);
+	async startExecution(params: StartExecutionParams, startedAt: Date): Promise<string> {
+		const { userMessage, created } = await this.prepareThread(params);
 		const inserted = await this.agentExecutionRepository.save(
 			this.agentExecutionRepository.create({
 				threadId: params.threadId,
 				status: 'running',
-				runId,
 				startedAt,
 				stoppedAt: null,
 				duration: 0,
@@ -114,13 +112,14 @@ export class AgentExecutionService {
 				attachments: params.attachments?.length ? params.attachments : null,
 			}),
 		);
-		this.agentExecutionJournalService.registerLive(inserted.id);
+		if (created) this.executionsNeedingTitleSync.add(inserted.id);
 		this.startHeartbeat(inserted.id);
 		return inserted.id;
 	}
 
-	recordTimelineEvent(executionId: string, event: TimelineEvent): void {
-		this.agentExecutionJournalService.publish(executionId, event);
+	recordTimelineSnapshot(executionId: string, timeline: TimelineEvent[]): void {
+		this.pendingTimelineSnapshots.set(executionId, timeline);
+		this.ensureTimelineSnapshotWrite(executionId);
 	}
 
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
@@ -130,7 +129,6 @@ export class AgentExecutionService {
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		try {
-			await this.agentExecutionJournalService.flush(executionId);
 			if (storedAt !== 'db') {
 				await this.agentExecutionLogStore.write(
 					{ agentId: params.agentId, threadId: params.threadId, executionId },
@@ -156,27 +154,18 @@ export class AgentExecutionService {
 			if (!finalized) return executionId;
 
 			await this.completeRecordedExecution(params, executionId, status);
-			try {
-				await this.agentExecutionJournalService.delete(executionId);
-			} catch (error) {
-				this.errorReporter.error(error);
-				this.logger.warn('Failed to clean up an agent execution timeline journal', {
-					executionId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
 			return executionId;
 		} catch (error) {
 			this.errorReporter.error(error);
 			throw error;
 		} finally {
 			this.stopHeartbeat(executionId);
-			this.agentExecutionJournalService.unregisterLive(executionId);
+			this.executionsNeedingTitleSync.delete(executionId);
 		}
 	}
 
 	async finalizeInterruptedExecution(execution: AgentExecution): Promise<boolean> {
-		const timeline = await this.agentExecutionJournalService.getTimeline(execution.id);
+		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
@@ -189,7 +178,6 @@ export class AgentExecutionService {
 			storedAt: 'db',
 			error: 'Agent execution was interrupted by a process restart.',
 		});
-		if (finalized) await this.agentExecutionJournalService.delete(execution.id);
 		return finalized;
 	}
 
@@ -210,6 +198,46 @@ export class AgentExecutionService {
 		const timer = this.heartbeatTimers.get(executionId);
 		if (timer) clearInterval(timer);
 		this.heartbeatTimers.delete(executionId);
+	}
+
+	private ensureTimelineSnapshotWrite(executionId: string): void {
+		if (
+			this.timelineSnapshotWrites.has(executionId) ||
+			!this.pendingTimelineSnapshots.has(executionId)
+		) {
+			return;
+		}
+		const write = this.drainTimelineSnapshots(executionId).finally(() => {
+			this.timelineSnapshotWrites.delete(executionId);
+			this.ensureTimelineSnapshotWrite(executionId);
+		});
+		this.timelineSnapshotWrites.set(executionId, write);
+	}
+
+	private async drainTimelineSnapshots(executionId: string): Promise<void> {
+		while (true) {
+			const timeline = this.pendingTimelineSnapshots.get(executionId);
+			if (!timeline) return;
+			this.pendingTimelineSnapshots.delete(executionId);
+			try {
+				if (!(await this.agentExecutionRepository.updateTimelineIfRunning(executionId, timeline))) {
+					this.pendingTimelineSnapshots.delete(executionId);
+					return;
+				}
+			} catch (error) {
+				if (!this.pendingTimelineSnapshots.has(executionId)) {
+					this.pendingTimelineSnapshots.set(executionId, timeline);
+				}
+				this.logger.warn('Failed to persist an agent execution timeline snapshot; retrying', {
+					executionId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				await new Promise<void>((resolve) => {
+					const timer = setTimeout(resolve, TIMELINE_SNAPSHOT_RETRY_DELAY_MS);
+					timer.unref();
+				});
+			}
+		}
 	}
 
 	private async prepareThread(
@@ -235,7 +263,6 @@ export class AgentExecutionService {
 		params: RecordMessageParams,
 		executionId: string,
 		status: AgentExecution['status'],
-		syncTitle = true,
 	): Promise<void> {
 		const { threadId, agentId, record, hitlStatus } = params;
 		if (hitlStatus === 'resumed' && record.model) {
@@ -278,59 +305,9 @@ export class AgentExecutionService {
 			status,
 			duration: record.duration,
 		});
-		if (syncTitle) await this.syncTitleFromMemory(threadId, agentId);
-	}
-
-	/**
-	 * Record a single agent run within a thread.
-	 * Creates or updates the thread, then inserts one row into agent_execution.
-	 */
-	async recordMessage(params: RecordMessageParams): Promise<string> {
-		const { threadId, agentId, record, source, hitlStatus } = params;
-		const { userMessage, created } = await this.prepareThread(params);
-		const status = executionStatus(record);
-		const startedAt = new Date(record.startTime);
-		const stoppedAt = new Date(record.startTime + record.duration);
-		const storedAt: AgentExecution['storedAt'] =
-			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
-
-		const inserted = await this.agentExecutionRepository.save(
-			this.agentExecutionRepository.create({
-				threadId,
-				status,
-				startedAt,
-				stoppedAt,
-				duration: record.duration,
-				userMessage,
-				model: record.model,
-				promptTokens: record.usage?.promptTokens ?? null,
-				completionTokens: record.usage?.completionTokens ?? null,
-				totalTokens: record.usage?.totalTokens ?? null,
-				cost: record.totalCost,
-				timeline: storedAt === 'db' && record.timeline.length > 0 ? record.timeline : null,
-				storedAt,
-				error: record.error,
-				hitlStatus: hitlStatus ?? null,
-				source: source ?? null,
-				attachments: params.attachments?.length ? params.attachments : null,
-			}),
-		);
-
-		if (storedAt !== 'db') {
-			try {
-				await this.agentExecutionLogStore.write(
-					{ agentId, threadId, executionId: inserted.id },
-					{ timeline: record.timeline },
-					storedAt,
-				);
-			} catch (error) {
-				// Keep the row even without its blob; the read path treats a missing log as no timeline.
-				this.errorReporter.error(error);
-			}
+		if (this.executionsNeedingTitleSync.has(executionId)) {
+			await this.syncTitleFromMemory(threadId, agentId);
 		}
-
-		await this.completeRecordedExecution(params, inserted.id, status, created);
-		return inserted.id;
 	}
 
 	/**
@@ -480,16 +457,6 @@ export class AgentExecutionService {
 
 		const executions = await this.agentExecutionRepository.findByThreadIdOrdered(threadId);
 		await this.hydrateTimelines(agentId, threadId, executions);
-		for (const execution of executions) {
-			if (execution.timeline) execution.timeline = foldTimelineEvents(execution.timeline);
-		}
-		const running = executions.filter((execution) => execution.status === 'running');
-		const partialTimelines = await this.agentExecutionJournalService.getTimelines(
-			running.map((execution) => execution.id),
-		);
-		for (const execution of running) {
-			execution.timeline = partialTimelines.get(execution.id) ?? [];
-		}
 		return { thread, executions };
 	}
 

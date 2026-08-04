@@ -395,7 +395,6 @@ export class AgentExecutionOrchestratorService {
 			};
 			executionId = await this.tryStartExecution(
 				startParams,
-				resultStream.runId,
 				startedAt,
 				'Failed to start resumed agent execution recording',
 			);
@@ -651,7 +650,6 @@ export class AgentExecutionOrchestratorService {
 			};
 			executionId = await this.tryStartExecution(
 				startParams,
-				resultStream.runId,
 				startedAt,
 				'Failed to start agent execution recording',
 			);
@@ -706,20 +704,19 @@ export class AgentExecutionOrchestratorService {
 		toolRegistry: ToolRegistry,
 		getExecutionId: () => string | undefined,
 	): ExecutionRecorder {
-		return new ExecutionRecorder(toolRegistry, (event) => {
+		return new ExecutionRecorder(toolRegistry, (timeline) => {
 			const executionId = getExecutionId();
-			if (executionId) this.agentExecutionService.recordTimelineEvent(executionId, event);
+			if (executionId) this.agentExecutionService.recordTimelineSnapshot(executionId, timeline);
 		});
 	}
 
 	private async tryStartExecution(
 		params: StartExecutionParams,
-		runId: string,
 		startedAt: Date,
 		failureMessage: string,
 	): Promise<string | undefined> {
 		try {
-			return await this.agentExecutionService.startExecution(params, runId, startedAt);
+			return await this.agentExecutionService.startExecution(params, startedAt);
 		} catch (error) {
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,
@@ -737,10 +734,9 @@ export class AgentExecutionOrchestratorService {
 		failureMessage: string;
 	}): Promise<void> {
 		const { executionId, onExecutionRecorded, params, failureMessage } = args;
+		if (!executionId) return;
 		try {
-			const recordedId = executionId
-				? await this.agentExecutionService.finalizeExecution(executionId, params)
-				: await this.agentExecutionService.recordMessage(params);
+			const recordedId = await this.agentExecutionService.finalizeExecution(executionId, params);
 			onExecutionRecorded?.(recordedId);
 		} catch (error) {
 			this.logger.warn(failureMessage, {

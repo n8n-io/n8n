@@ -6,11 +6,10 @@ import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentExecutionJournalService } from '../agent-execution-journal.service';
-import { AgentExecutionService } from '../agent-execution.service';
+import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
-import type { MessageRecord } from '../execution-recorder';
+import type { MessageRecord, TimelineEvent } from '../execution-recorder';
 import type { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
@@ -62,7 +61,6 @@ describe('AgentExecutionService', () => {
 	let memoryBackend: Mocked<N8nMemoryImplementation>;
 	let telemetry: Mocked<Telemetry>;
 	let agentExecutionLogStore: Mocked<AgentExecutionLogStore>;
-	let agentExecutionJournalService: Mocked<AgentExecutionJournalService>;
 	let storageConfig: Mocked<StorageConfig>;
 	let errorReporter: Mocked<ErrorReporter>;
 	let agentChatAttachmentService: Mocked<AgentChatAttachmentService>;
@@ -71,13 +69,14 @@ describe('AgentExecutionService', () => {
 		vi.clearAllMocks();
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
+		agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+		agentExecutionRepository.updateTimelineIfRunning.mockResolvedValue(true);
 		agentExecutionThreadRepository = mock<AgentExecutionThreadRepository>();
 		n8nMemory = mock<N8nMemory>();
 		memoryBackend = mock<N8nMemoryImplementation>();
 		n8nMemory.getImplementation.mockReturnValue(memoryBackend);
 		telemetry = mock<Telemetry>();
 		agentExecutionLogStore = mock<AgentExecutionLogStore>();
-		agentExecutionJournalService = mock<AgentExecutionJournalService>();
 		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 		errorReporter = mock<ErrorReporter>();
 		agentChatAttachmentService = mock<AgentChatAttachmentService>();
@@ -90,11 +89,16 @@ describe('AgentExecutionService', () => {
 			telemetry,
 			agentChatAttachmentService,
 			agentExecutionLogStore,
-			agentExecutionJournalService,
 			storageConfig,
 			errorReporter,
 		);
 	});
+
+	async function recordExecution(params: RecordMessageParams): Promise<string> {
+		const { record, ...startParams } = params;
+		const executionId = await service.startExecution(startParams, new Date(record.startTime));
+		return await service.finalizeExecution(executionId, params);
+	}
 
 	describe('startExecution', () => {
 		it('keeps a running execution alive until it is finalized', async () => {
@@ -119,13 +123,12 @@ describe('AgentExecutionService', () => {
 						projectId: 'project-1',
 						userMessage: 'Run',
 					},
-					'runtime-run-1',
 					new Date(),
 				);
 				await vi.advanceTimersByTimeAsync(30_000);
 
 				expect(agentExecutionRepository.create).toHaveBeenCalledWith(
-					expect.objectContaining({ status: 'running', runId: 'runtime-run-1' }),
+					expect.objectContaining({ status: 'running' }),
 				);
 				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(executionId);
 
@@ -146,7 +149,36 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
-	describe('recordMessage', () => {
+	it('serializes timeline snapshot updates', async () => {
+		let releaseFirstWrite!: () => void;
+		agentExecutionRepository.updateTimelineIfRunning
+			.mockImplementationOnce(
+				async () =>
+					await new Promise<boolean>((resolve) => {
+						releaseFirstWrite = () => resolve(true);
+					}),
+			)
+			.mockResolvedValue(true);
+		const first: TimelineEvent[] = [{ type: 'text', content: 'First', timestamp: 1 }];
+		const second: TimelineEvent[] = [{ type: 'text', content: 'Second', timestamp: 1 }];
+
+		service.recordTimelineSnapshot('execution-1', first);
+		service.recordTimelineSnapshot('execution-1', second);
+		await vi.waitFor(() =>
+			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(1),
+		);
+		releaseFirstWrite();
+		await vi.waitFor(() =>
+			expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenCalledTimes(2),
+		);
+
+		expect(agentExecutionRepository.updateTimelineIfRunning).toHaveBeenLastCalledWith(
+			'execution-1',
+			second,
+		);
+	});
+
+	describe('execution lifecycle', () => {
 		it('writes the timeline to blob storage in non-db mode', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(
@@ -157,7 +189,6 @@ describe('AgentExecutionService', () => {
 				telemetry,
 				mock<AgentChatAttachmentService>(),
 				agentExecutionLogStore,
-				agentExecutionJournalService,
 				storageConfig,
 				errorReporter,
 			);
@@ -184,7 +215,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -193,7 +224,8 @@ describe('AgentExecutionService', () => {
 				record,
 			});
 
-			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
 				expect.objectContaining({ timeline: null, storedAt: 'fs' }),
 			);
 			expect(agentExecutionLogStore.write).toHaveBeenCalledWith(
@@ -213,7 +245,6 @@ describe('AgentExecutionService', () => {
 				telemetry,
 				mock<AgentChatAttachmentService>(),
 				agentExecutionLogStore,
-				agentExecutionJournalService,
 				storageConfig,
 				errorReporter,
 			);
@@ -242,7 +273,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionLogStore.write.mockRejectedValue(new Error('disk full'));
 
 			await expect(
-				service.recordMessage({
+				recordExecution({
 					threadId: 'thread-1',
 					agentId: 'agent-1',
 					agentName: 'Agent',
@@ -250,9 +281,9 @@ describe('AgentExecutionService', () => {
 					userMessage: 'Run',
 					record,
 				}),
-			).resolves.toBe('execution-1');
+			).rejects.toThrow('disk full');
 
-			expect(errorReporter.error).toHaveBeenCalledOnce();
+			expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
 		});
 
 		it('passes thread metadata when creating a subagent execution session', async () => {
@@ -272,7 +303,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.create.mockImplementation((entity) => entity as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -308,7 +339,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -346,7 +377,7 @@ describe('AgentExecutionService', () => {
 				updatedAt: new Date(),
 			});
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -368,7 +399,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -389,7 +420,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -458,7 +489,7 @@ describe('AgentExecutionService', () => {
 			});
 
 			await expect(
-				service.recordMessage({
+				recordExecution({
 					threadId: 'thread-1',
 					agentId: 'agent-1',
 					agentName: 'Agent',
@@ -500,7 +531,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -541,7 +572,7 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 
-			await service.recordMessage({
+			await recordExecution({
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 				agentName: 'Agent',
@@ -571,13 +602,12 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('finalizeExecution', () => {
-		it('finishes bookkeeping before best-effort journal cleanup', async () => {
+		it('makes the terminal timeline authoritative', async () => {
 			const record = makeMessageRecord({
 				finishReason: 'cancelled',
 				timeline: [{ type: 'text', content: 'Done', timestamp: 1, endTime: 2 }],
 			});
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
-			agentExecutionJournalService.delete.mockRejectedValueOnce(new Error('cleanup failed'));
 
 			await service.finalizeExecution('execution-1', {
 				threadId: 'thread-1',
@@ -607,19 +637,12 @@ describe('AgentExecutionService', () => {
 					storedAt: 'db',
 				}),
 			);
-			expect(agentExecutionRepository.updateIfRunning.mock.invocationCallOrder[0]).toBeLessThan(
-				agentExecutionJournalService.delete.mock.invocationCallOrder[0],
-			);
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ turn_status: 'failed' }),
 			);
-			expect(telemetry.trackAgentTurnFinished.mock.invocationCallOrder[0]).toBeLessThan(
-				agentExecutionJournalService.delete.mock.invocationCallOrder[0],
-			);
-			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error));
 		});
 
-		it('keeps a running execution and its journal when blob finalization fails', async () => {
+		it('preserves an interrupted execution inline without overwriting blob storage', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(
 				mockLogger(),
@@ -629,51 +652,17 @@ describe('AgentExecutionService', () => {
 				telemetry,
 				agentChatAttachmentService,
 				agentExecutionLogStore,
-				agentExecutionJournalService,
-				storageConfig,
-				errorReporter,
-			);
-			agentExecutionLogStore.write.mockRejectedValue(new Error('blob unavailable'));
-
-			await expect(
-				service.finalizeExecution('execution-1', {
-					threadId: 'thread-1',
-					agentId: 'agent-1',
-					agentName: 'Agent',
-					projectId: 'project-1',
-					userMessage: 'Run',
-					record: makeMessageRecord({
-						timeline: [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }],
-					}),
-				}),
-			).rejects.toThrow('blob unavailable');
-
-			expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
-			expect(agentExecutionJournalService.delete).not.toHaveBeenCalled();
-		});
-
-		it('compacts an abandoned journal into an interrupted execution', async () => {
-			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
-			service = new AgentExecutionService(
-				mockLogger(),
-				agentExecutionRepository,
-				agentExecutionThreadRepository,
-				n8nMemory,
-				telemetry,
-				agentChatAttachmentService,
-				agentExecutionLogStore,
-				agentExecutionJournalService,
 				storageConfig,
 				errorReporter,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
-			agentExecutionJournalService.getTimeline.mockResolvedValue([...partial]);
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
 			await service.finalizeInterruptedExecution({
 				id: 'execution-1',
 				threadId: 'thread-1',
 				startedAt: new Date(Date.now() - 100),
+				timeline: [...partial],
 				thread: makeThread(),
 			} as AgentExecution);
 
@@ -687,48 +676,32 @@ describe('AgentExecutionService', () => {
 				}),
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
-			expect(agentExecutionJournalService.delete).toHaveBeenCalledWith('execution-1');
 		});
 	});
 
 	describe('getThreadDetail', () => {
-		it('coalesces adjacent historical text chunks when returning a thread', async () => {
+		it('returns thread executions after ownership validation', async () => {
 			const thread = makeThread();
-			const executions = [
-				{
-					id: 'execution-1',
-					status: 'success',
-					storedAt: 'db',
-					timeline: [
-						{ type: 'text', content: 'Hello', timestamp: 1, endTime: 2 },
-						{ type: 'text', content: ' world', timestamp: 2, endTime: 3 },
-					],
-				},
-			] as AgentExecution[];
+			const executions = [{ id: 'execution-1', storedAt: 'db' }] as AgentExecution[];
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue(executions);
 
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 
-			expect(result?.executions[0]?.timeline).toEqual([
-				{ type: 'text', content: 'Hello world', timestamp: 1, endTime: 3 },
-			]);
+			expect(result).toEqual({ thread, executions });
 		});
 
-		it('returns journaled progress for running executions', async () => {
+		it('returns inline progress for running executions', async () => {
 			const thread = makeThread();
+			const partial = [{ type: 'text', content: 'Working', timestamp: 1, endTime: 2 }] as const;
 			const execution = {
 				id: 'execution-1',
 				status: 'running',
 				storedAt: 'db',
-				timeline: null,
+				timeline: [...partial],
 			} as AgentExecution;
-			const partial = [{ type: 'text', content: 'Working', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(thread);
 			agentExecutionRepository.findByThreadIdOrdered.mockResolvedValue([execution]);
-			agentExecutionJournalService.getTimelines.mockResolvedValue(
-				new Map([['execution-1', [...partial]]]),
-			);
 
 			const result = await service.getThreadDetail('thread-1', 'project-1', 'agent-1');
 

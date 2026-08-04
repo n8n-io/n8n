@@ -25,7 +25,12 @@ import type { FilterOption, TimelineItem } from '@/features/agents/session-timel
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput } from '@n8n/design-system';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { useActiveElement, useEventListener } from '@vueuse/core';
+import {
+	useActiveElement,
+	useDocumentVisibility,
+	useEventListener,
+	useTimeoutPoll,
+} from '@vueuse/core';
 
 const props = defineProps<{
 	projectId: string;
@@ -44,6 +49,7 @@ const i18n = useI18n();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const activeElement = useActiveElement();
+const documentVisibility = useDocumentVisibility();
 const THREAD_REFRESH_INTERVAL_MS = 5_000;
 
 const projectId = computed(() => props.projectId);
@@ -54,10 +60,7 @@ const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
-let loadThreadDetailRequestId = 0;
-let refreshThreadDetailRequestId = 0;
-let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-let pollingActive = true;
+let threadDetailRequestId = 0;
 
 const baseItems = computed<TimelineItem[]>(() =>
 	flattenExecutionsToTimelineItems(executions.value),
@@ -201,9 +204,8 @@ async function loadThreadDetail() {
 	const currentProjectId = props.projectId;
 	const currentAgentId = props.agentId;
 	const currentThreadId = props.threadId;
-	const requestId = ++loadThreadDetailRequestId;
-	refreshThreadDetailRequestId++;
-	stopThreadRefresh();
+	const requestId = ++threadDetailRequestId;
+	pause();
 
 	executions.value = [];
 	selectedFilters.value = new Set();
@@ -218,16 +220,16 @@ async function loadThreadDetail() {
 			currentAgentId,
 			currentThreadId,
 		);
-		if (requestId !== loadThreadDetailRequestId) return;
+		if (requestId !== threadDetailRequestId) return;
 		executions.value = result.executions;
 		emit('loaded', result);
 	} catch (error) {
-		if (requestId !== loadThreadDetailRequestId) return;
+		if (requestId !== threadDetailRequestId) return;
 		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	} finally {
-		if (requestId === loadThreadDetailRequestId) {
+		if (requestId === threadDetailRequestId) {
 			loading.value = false;
-			scheduleThreadRefresh();
+			if (documentVisibility.value === 'visible') resume();
 		}
 	}
 }
@@ -236,7 +238,7 @@ async function refreshThreadDetail() {
 	const currentProjectId = props.projectId;
 	const currentAgentId = props.agentId;
 	const currentThreadId = props.threadId;
-	const requestId = ++refreshThreadDetailRequestId;
+	const requestId = ++threadDetailRequestId;
 
 	try {
 		const result = await sessionsStore.getThreadDetail(
@@ -245,7 +247,7 @@ async function refreshThreadDetail() {
 			currentThreadId,
 		);
 		if (
-			requestId !== refreshThreadDetailRequestId ||
+			requestId !== threadDetailRequestId ||
 			currentProjectId !== props.projectId ||
 			currentAgentId !== props.agentId ||
 			currentThreadId !== props.threadId
@@ -264,32 +266,22 @@ async function refreshThreadDetail() {
 	}
 }
 
-function scheduleThreadRefresh() {
-	stopThreadRefresh();
-	if (!pollingActive) return;
-	refreshTimer = setTimeout(async () => {
-		refreshTimer = null;
-		if (!document.hidden) await refreshThreadDetail();
-		scheduleThreadRefresh();
-	}, THREAD_REFRESH_INTERVAL_MS);
-}
+const { pause, resume } = useTimeoutPoll(refreshThreadDetail, THREAD_REFRESH_INTERVAL_MS, {
+	immediate: false,
+});
 
-function stopThreadRefresh() {
-	if (refreshTimer) clearTimeout(refreshTimer);
-	refreshTimer = null;
-}
-
-useEventListener(document, 'visibilitychange', () => {
-	if (document.hidden || loading.value) return;
-	void refreshThreadDetail();
-	scheduleThreadRefresh();
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'hidden') {
+		pause();
+	} else if (!loading.value) {
+		void refreshThreadDetail().finally(() => {
+			if (documentVisibility.value === 'visible' && !loading.value) resume();
+		});
+	}
 });
 
 onBeforeUnmount(() => {
-	pollingActive = false;
-	stopThreadRefresh();
-	loadThreadDetailRequestId++;
-	refreshThreadDetailRequestId++;
+	threadDetailRequestId++;
 });
 
 watch([() => props.projectId, () => props.agentId, () => props.threadId], loadThreadDetail, {

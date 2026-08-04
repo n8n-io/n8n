@@ -15,9 +15,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_eval_rating](agent_eval_rating.md) | 8 |  | table |
 | [agent_eval_result](agent_eval_result.md) | 15 |  | table |
 | [agent_eval_run](agent_eval_run.md) | 14 |  | table |
-| [agent_execution](agent_execution.md) | 21 |  | table |
+| [agent_execution](agent_execution.md) | 20 |  | table |
 | [agent_execution_threads](agent_execution_threads.md) | 17 |  | table |
-| [agent_execution_timeline_journal](agent_execution_timeline_journal.md) | 5 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
@@ -153,7 +152,6 @@ erDiagram
 "agent_execution_threads" }o--o| "agent_history" : "FOREIGN KEY (taskVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_execution_timeline_journal" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -416,7 +414,6 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ model
   INTEGER promptTokens
-  varchar_64_ runId
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
@@ -445,13 +442,6 @@ erDiagram
   REAL totalCost
   INTEGER totalDuration
   INTEGER totalPromptTokens
-  datetime_3_ updatedAt
-}
-"agent_execution_timeline_journal" {
-  datetime_3_ createdAt
-  TEXT event
-  varchar_36_ executionId PK
-  INTEGER seq PK
   datetime_3_ updatedAt
 }
 "agent_files" {

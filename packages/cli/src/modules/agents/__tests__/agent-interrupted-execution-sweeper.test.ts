@@ -2,7 +2,6 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
-import type { AgentExecutionJournalService } from '../agent-execution-journal.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -10,20 +9,19 @@ import type { AgentExecutionRepository } from '../repositories/agent-execution.r
 describe('AgentInterruptedExecutionSweeper', () => {
 	it('terminalizes an abandoned running execution', async () => {
 		const repository = mock<AgentExecutionRepository>();
-		const journal = mock<AgentExecutionJournalService>();
 		const executionService = mock<AgentExecutionService>();
 		const execution = {
 			id: 'execution-1',
 			threadId: 'thread-1',
 			status: 'running',
 			startedAt: new Date(0),
+			updatedAt: new Date(0),
 		} as AgentExecution;
 		repository.findRunning.mockResolvedValue([execution]);
 		executionService.finalizeInterruptedExecution.mockResolvedValue(true);
 		const sweeper = new AgentInterruptedExecutionSweeper(
 			mockLogger(),
 			repository,
-			journal,
 			executionService,
 		);
 
@@ -34,7 +32,6 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 	it('leaves a recently active execution running in another process', async () => {
 		const repository = mock<AgentExecutionRepository>();
-		const journal = mock<AgentExecutionJournalService>();
 		const executionService = mock<AgentExecutionService>();
 		repository.findRunning.mockResolvedValue([
 			{
@@ -45,11 +42,9 @@ describe('AgentInterruptedExecutionSweeper', () => {
 				updatedAt: new Date(),
 			} as AgentExecution,
 		]);
-		journal.lastActivityAt.mockResolvedValue(null);
 		const sweeper = new AgentInterruptedExecutionSweeper(
 			mockLogger(),
 			repository,
-			journal,
 			executionService,
 		);
 

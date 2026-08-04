@@ -981,18 +981,18 @@ describe('ExecutionRecorder — durable timeline events', () => {
 	it('emits replacing live snapshots without splitting the final response', () => {
 		vi.useFakeTimers();
 		try {
-			const events: TimelineEvent[] = [];
-			const recorder = new ExecutionRecorder(undefined, (event) => events.push(event));
+			const snapshots: TimelineEvent[][] = [];
+			const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
 			recorder.record({ type: 'text-delta', id: 'text-1', delta: 'First' });
 			vi.advanceTimersByTime(5_000);
-			expect(events).toEqual([expect.objectContaining({ type: 'text', content: 'First' })]);
+			expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'First' })]]);
 
 			recorder.record({ type: 'text-delta', id: 'text-1', delta: ' second' });
 			vi.advanceTimersByTime(5_000);
 
-			expect(events).toEqual([
-				expect.objectContaining({ type: 'text', content: 'First' }),
-				expect.objectContaining({ type: 'text', content: 'First second' }),
+			expect(snapshots).toEqual([
+				[expect.objectContaining({ type: 'text', content: 'First' })],
+				[expect.objectContaining({ type: 'text', content: 'First second' })],
 			]);
 			const record = recorder.getMessageRecord();
 			expect(record.assistantResponse).toBe('First second');
@@ -1005,11 +1005,11 @@ describe('ExecutionRecorder — durable timeline events', () => {
 	});
 
 	it('emits completed text and tool snapshots without emitting token deltas or open tools', () => {
-		const events: TimelineEvent[] = [];
-		const recorder = new ExecutionRecorder(undefined, (event) => events.push(event));
+		const snapshots: TimelineEvent[][] = [];
+		const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
 
 		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Checking' });
-		expect(events).toEqual([]);
+		expect(snapshots).toEqual([]);
 
 		recorder.record({
 			type: 'tool-call',
@@ -1017,7 +1017,7 @@ describe('ExecutionRecorder — durable timeline events', () => {
 			toolName: 'lookup',
 			input: { id: 1 },
 		} as StreamChunk);
-		expect(events.map((event) => event.type)).toEqual(['text']);
+		expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'Checking' })]]);
 
 		recorder.record({
 			type: 'tool-execution-end',
@@ -1032,9 +1032,13 @@ describe('ExecutionRecorder — durable timeline events', () => {
 			output: { name: 'Ada' },
 		});
 
-		expect(events).toHaveLength(3);
-		expect(events[1]).toMatchObject({ type: 'tool-call', endTime: 20, output: undefined });
-		expect(events[2]).toMatchObject({
+		expect(snapshots).toHaveLength(3);
+		expect(snapshots[1]?.[1]).toMatchObject({
+			type: 'tool-call',
+			endTime: 20,
+			output: undefined,
+		});
+		expect(snapshots[2]?.[1]).toMatchObject({
 			type: 'tool-call',
 			endTime: 20,
 			output: { name: 'Ada' },

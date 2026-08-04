@@ -110,7 +110,8 @@ function makeService() {
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
 
-	executionService.recordMessage.mockResolvedValue('execution-1');
+	executionService.startExecution.mockResolvedValue('execution-1');
+	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
 	const service = new AgentWorkflowExecutionService(
@@ -205,10 +206,9 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
-		const startedAt = executionService.startExecution.mock.calls[0][2];
+		const startedAt = executionService.startExecution.mock.calls[0][1];
 		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
-		expect(executionService.recordMessage).not.toHaveBeenCalled();
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId,
@@ -478,7 +478,7 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(result.response).toBe('answer');
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
-			expect(executionService.recordMessage).not.toHaveBeenCalled();
+			expect(executionService.startExecution).not.toHaveBeenCalled();
 
 			// Thread-scoped persistence: stable across executions, so a reused
 			// session id continues the same conversation.
@@ -852,7 +852,8 @@ describe('AgentWorkflowExecutionService', () => {
 		await expect(execution).rejects.toThrow(OperationalError);
 		await expect(execution).rejects.toThrow("Couldn't get structured output matching the schema");
 		await expect(execution).rejects.not.toThrow('Check the stream');
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
 					error: expect.stringContaining("Couldn't get structured output matching the schema"),

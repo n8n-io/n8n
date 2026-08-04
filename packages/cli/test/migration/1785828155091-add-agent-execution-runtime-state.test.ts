@@ -9,13 +9,12 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddAgentExecutionTimelineJournal1785828155091';
+const MIGRATION_NAME = 'AddAgentExecutionRuntimeState1785828155091';
 
-describe('AddAgentExecutionTimelineJournal migration', () => {
+describe('AddAgentExecutionRuntimeState migration', () => {
 	let dataSource: DataSource;
 	let context: TestMigrationContext;
 	let executionId: string;
-	let threadId: string;
 
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
@@ -28,7 +27,7 @@ describe('AddAgentExecutionTimelineJournal migration', () => {
 		context = createTestMigrationContext(dataSource);
 		const projectId = randomUUID();
 		const agentId = randomUUID();
-		threadId = randomUUID();
+		const threadId = randomUUID();
 		executionId = randomUUID();
 		const now = new Date();
 		await context.runQuery(
@@ -71,21 +70,9 @@ describe('AddAgentExecutionTimelineJournal migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('preserves existing executions and durably journals every new execution status', async () => {
+	it('supports runtime statuses and indexes running execution scans', async () => {
 		const ctx = createTestMigrationContext(dataSource);
 		const executionTable = ctx.escape.tableName('agent_execution');
-		const journalTable = ctx.escape.tableName('agent_execution_timeline_journal');
-
-		const existing = await ctx.runQuery<Array<{ runId: string | null }>>(
-			`SELECT "runId" FROM ${executionTable} WHERE "id" = :id`,
-			{ id: executionId },
-		);
-		expect(existing).toEqual([{ runId: null }]);
-		expect(
-			(await ctx.queryRunner.getTable(`${ctx.tablePrefix}agent_execution`))?.indices.some(
-				(index) => index.columnNames[0] === 'status',
-			),
-		).toBe(true);
 
 		for (const status of ['running', 'cancelled', 'interrupted']) {
 			await expect(
@@ -95,54 +82,25 @@ describe('AddAgentExecutionTimelineJournal migration', () => {
 				}),
 			).resolves.not.toThrow();
 		}
-		await ctx.runQuery(
-			`INSERT INTO ${journalTable} ("executionId", "seq", "event", "createdAt", "updatedAt")
-			 VALUES (:executionId, 1, :event, :createdAt, :updatedAt)`,
-			{
-				executionId,
-				event: JSON.stringify({ type: 'text', content: 'Partial', timestamp: 1 }),
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			},
-		);
-		const events = await ctx.runQuery<Array<{ event: string }>>(
-			`SELECT "event" FROM ${journalTable} WHERE "executionId" = :executionId ORDER BY "seq"`,
-			{ executionId },
-		);
-		expect(events.map(({ event }) => JSON.parse(event))).toEqual([
-			{ type: 'text', content: 'Partial', timestamp: 1 },
-		]);
-		await ctx.runQuery(`DELETE FROM ${executionTable} WHERE "id" = :id`, { id: executionId });
 		expect(
-			await ctx.runQuery(`SELECT "seq" FROM ${journalTable} WHERE "executionId" = :executionId`, {
-				executionId,
-			}),
-		).toEqual([]);
-		const now = new Date();
-		await ctx.runQuery(
-			`INSERT INTO ${executionTable}
-			 ("id", "threadId", "status", "duration", "storedAt", "createdAt", "updatedAt")
-			 VALUES (:id, :threadId, 'interrupted', 0, 'db', :createdAt, :updatedAt)`,
-			{ id: executionId, threadId, createdAt: now, updatedAt: now },
-		);
+			(await ctx.queryRunner.getTable(`${ctx.tablePrefix}agent_execution`))?.indices.some(
+				(index) => index.columnNames[0] === 'status',
+			),
+		).toBe(true);
 		await ctx.queryRunner.release();
 	});
 
-	it('cascades journal cleanup and safely maps new statuses on rollback', async () => {
+	it('maps runtime-only statuses to error on rollback', async () => {
 		await dataSource.undoLastMigration({ transaction: 'each' });
 		const ctx = createTestMigrationContext(dataSource);
-		const executionTable = ctx.escape.tableName('agent_execution');
 		const row = await ctx.runQuery<Array<{ status: string }>>(
-			`SELECT "status" FROM ${executionTable} WHERE "id" = :id`,
+			`SELECT "status" FROM ${ctx.escape.tableName('agent_execution')} WHERE "id" = :id`,
 			{ id: executionId },
 		);
 		expect(row).toEqual([{ status: 'error' }]);
 		expect(
-			await ctx.queryRunner.hasTable(`${ctx.tablePrefix}agent_execution_timeline_journal`),
-		).toBe(false);
-		expect(
-			(await ctx.queryRunner.getTable(`${ctx.tablePrefix}agent_execution`))?.columns.some(
-				(column) => column.name === 'runId',
+			(await ctx.queryRunner.getTable(`${ctx.tablePrefix}agent_execution`))?.indices.some(
+				(index) => index.columnNames[0] === 'status',
 			),
 		).toBe(false);
 		await ctx.queryRunner.release();

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "runId" varchar(64), CONSTRAINT "CHK_agent_execution_storedAt" CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((("hitlStatus" IN ('suspended', 'resumed')))))), CONSTRAINT "CHK_agent_execution_status" CHECK ("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted')), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, CONSTRAINT "CHK_agent_execution_storedAt" CHECK (("storedAt" IN ('db', 'fs', 's3', 'az'))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((("hitlStatus" IN ('suspended', 'resumed')))))), CONSTRAINT "CHK_agent_execution_status" CHECK ("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted')), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -22,10 +22,9 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | duration | INTEGER | 0 | false |  |  |  |
 | error | TEXT |  | true |  |  |  |
 | hitlStatus | varchar(16) |  | true |  |  |  |
-| id | varchar(36) |  | false | [agent_execution_timeline_journal](agent_execution_timeline_journal.md) |  |  |
+| id | varchar(36) |  | false |  |  |  |
 | model | varchar(255) |  | true |  |  |  |
 | promptTokens | INTEGER |  | true |  |  |  |
-| runId | varchar(64) |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | datetime(3) |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
@@ -61,7 +60,6 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 ```mermaid
 erDiagram
 
-"agent_execution_timeline_journal" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_execution" {
@@ -75,7 +73,6 @@ erDiagram
   varchar_36_ id PK
   varchar_255_ model
   INTEGER promptTokens
-  varchar_64_ runId
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
@@ -86,13 +83,6 @@ erDiagram
   INTEGER totalTokens
   datetime_3_ updatedAt
   TEXT userMessage
-}
-"agent_execution_timeline_journal" {
-  datetime_3_ createdAt
-  TEXT event
-  varchar_36_ executionId PK
-  INTEGER seq PK
-  datetime_3_ updatedAt
 }
 "agent_execution_threads" {
   varchar_36_ agentId FK
