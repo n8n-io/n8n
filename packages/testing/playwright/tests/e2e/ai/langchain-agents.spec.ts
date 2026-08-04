@@ -32,15 +32,12 @@ async function addOpenAILanguageModelWithCredentials(
 	await n8n.ndv.clickBackToCanvasButton();
 }
 
-async function waitForWorkflowSuccess(n8n: n8nPage, timeout = 3000) {
-	await n8n.notifications.waitForNotificationAndClose('Workflow executed successfully', {
-		timeout,
-	});
-}
-
 async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
 	await n8n.canvas.logsPanel.sendManualChatMessage(message);
-	await waitForWorkflowSuccess(n8n);
+	// No execution-success toast is shown for a chat run started on an unsaved
+	// workflow, so the bot reply is the completion signal. The first message also
+	// has to register the chat webhook and save the workflow, hence the wide window.
+	await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible({ timeout: 15000 });
 }
 
 async function verifyChatMessages(n8n: n8nPage, expectedCount: number, inputMessage?: string) {

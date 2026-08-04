@@ -1313,7 +1313,9 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 		nodeCatalogService,
 	);
@@ -1669,7 +1671,9 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
@@ -1995,7 +1999,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
@@ -2801,7 +2807,9 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
@@ -3063,7 +3071,9 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
 	);
 
@@ -3518,11 +3528,16 @@ function createAdapterWithGatewayMock(
 	overrides?: {
 		credentialsService?: unknown;
 		telemetry?: unknown;
-		licensed?: boolean;
+		enabled?: boolean;
 		settingsService?: unknown;
 	},
 ): InstanceAiAdapterService {
-	const aiGatewayService = { getGatewayConfig };
+	const aiGatewayService = {
+		getGatewayConfig,
+		assertEnabled: vi.fn().mockImplementation(() => {
+			if (overrides?.enabled === false) throw new Error('n8n Connect is disabled');
+		}),
+	};
 	const args = Array.from(
 		{ length: 35 },
 		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
@@ -3553,9 +3568,7 @@ function createAdapterWithGatewayMock(
 		>[22];
 	}
 	args[25] = {
-		// Gateway exposure is gated on the AI Gateway license; default these
-		// gateway-focused fixtures to licensed so they exercise the enabled path.
-		isLicensed: vi.fn().mockReturnValue(overrides?.licensed ?? true),
+		isLicensed: vi.fn().mockReturnValue(true),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25];
 	args[29] = (overrides?.telemetry ?? {
 		track: vi.fn(),
@@ -3599,13 +3612,13 @@ describe('getGatewayConfigOrNull', () => {
 		await expect(callGet(adapter)).resolves.toBeNull();
 	});
 
-	it('returns null without calling the service when the AI Gateway license is absent', async () => {
+	it('returns null without calling the service when n8n Connect is disabled', async () => {
 		const getGatewayConfig = vi.fn().mockResolvedValue({
 			nodes: ['openAi'],
 			credentialTypes: ['openAiApi'],
 			providerConfig: {},
 		});
-		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { licensed: false });
+		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { enabled: false });
 
 		await expect(callGet(adapter)).resolves.toBeNull();
 		expect(getGatewayConfig).not.toHaveBeenCalled();

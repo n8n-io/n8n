@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
@@ -55,8 +56,9 @@ import type {
 	MissingNodeTypeMode,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-import { toImportBlockedError } from './import-blocked.error';
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
+import { toImportBlockedError } from './import-blocked.error';
+import { assertVariableCreationAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -116,9 +118,35 @@ export class ImportOrchestrator {
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly nodeTypes: NodeTypes,
+		private readonly licenseState: LicenseState,
 	) {}
 
-	async assertNotBlocked(plans: ImportPlan[]): Promise<void> {
+	/**
+	 * Gates variable creation in instance-to-project order so the broadest cause wins: licence and API
+	 * key scope, then each scope's create permission, then the quota. An unlicensed instance also reports
+	 * a zero quota, which would otherwise surface as a limit issue instead of the real cause.
+	 */
+	async assertNotBlocked(
+		plans: ImportPlan[],
+		options: { apiKeyScopes: string[] | undefined },
+	): Promise<void> {
+		const creations = plans.flatMap((plan) => plan.variablePlan.creations);
+
+		assertVariableCreationAllowed({
+			licenseState: this.licenseState,
+			apiKeyScopes: options.apiKeyScopes,
+			hasCreations: creations.length > 0,
+		});
+
+		for (const { input, variablePlan } of plans) {
+			if (variablePlan.creations.length === 0) continue;
+			await this.variableImporter.assertCanCreate(
+				input.context,
+				variablePlan.creations,
+				input.projectPendingCreation ?? false,
+			);
+		}
+
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
 		issues.push(
@@ -130,9 +158,7 @@ export class ImportOrchestrator {
 			).map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
 		);
 
-		const quotaFailure = await this.variableImporter.quotaFailure(
-			plans.flatMap((plan) => plan.variablePlan.creations),
-		);
+		const quotaFailure = await this.variableImporter.quotaFailure(creations);
 		if (quotaFailure) issues.push({ type: 'variable-limit-exceeded', ...quotaFailure });
 
 		if (issues.length > 0) throw toImportBlockedError(issues);
@@ -159,9 +185,7 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
-		const variablePlan = await this.variableImporter.plan(context, variableRequest, {
-			projectPendingCreation: input.projectPendingCreation,
-		});
+		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		// Tags plan after workflows: only tags referenced by non-skipped workflows gate or create.
 		const tagPlan = await this.tagImporter.plan(
