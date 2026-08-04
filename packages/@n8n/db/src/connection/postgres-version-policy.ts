@@ -1,3 +1,6 @@
+// n8n's database version policy covers Postgres only. SQLite has no policy:
+// the library ships bundled with n8n, so users never pick its version.
+
 /**
  * Oldest Postgres major inside the supported range. The range is the two
  * newest actively maintained majors, so anything newer than this is fine too.

@@ -105,7 +105,7 @@ export class DbConnection {
 		await this.connectWithRetry();
 
 		connectionState.connected = true;
-		await this.warnOnUnsupportedDbVersion();
+		await this.warnOnUnsupportedPostgresVersion();
 		this.monitor = new DbConnectionMonitor(
 			this.dataSource,
 			(connected) => (this.connectionState.connected = connected),
@@ -118,7 +118,12 @@ export class DbConnection {
 		this.monitor.start();
 	}
 
-	private async warnOnUnsupportedDbVersion() {
+	/**
+	 * Warns when the Postgres server is below the version policy range. Only
+	 * Postgres has a version policy: SQLite ships bundled with n8n, so users
+	 * never pick its version.
+	 */
+	private async warnOnUnsupportedPostgresVersion() {
 		if (this.options.type !== 'postgres') return;
 
 		try {
