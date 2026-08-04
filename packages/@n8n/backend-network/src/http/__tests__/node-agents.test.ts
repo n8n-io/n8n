@@ -68,6 +68,20 @@ describe('buildNodeAgents', () => {
 
 			expect(getAgentOptions(httpAgent).keepAlive).toBe(true);
 		});
+
+		it('proxy: explicit URL → keeps the target TLS options off the proxy connection', () => {
+			const agents = buildNodeAgents('https://proxy.internal:3128', 'disabled', {
+				servername: 'target.example.com',
+				ca: 'TARGET_CA',
+			});
+
+			for (const agent of [agents.httpAgent, agents.httpsAgent]) {
+				const { connectOpts } = agent as unknown as { connectOpts: Record<string, unknown> };
+				expect(connectOpts).toMatchObject({ host: 'proxy.internal', port: 3128 });
+				expect(connectOpts).not.toHaveProperty('servername');
+				expect(connectOpts).not.toHaveProperty('ca');
+			}
+		});
 	});
 
 	describe('rejects a caller-provided lookup (managed by the SSRF policy)', () => {
