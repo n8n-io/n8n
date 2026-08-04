@@ -215,6 +215,27 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 	});
 
+	it('records a null input for a tool-result with no matching tool-call', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime([
+			{ type: 'tool-result', toolCallId: 'tc-orphan', toolName: 'lookup', output: { ok: true } },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		const result = await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			projectId,
+		);
+
+		expect(result.toolCalls).toEqual([{ toolName: 'lookup', input: null, result: { ok: true } }]);
+	});
+
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
 		const { service, agentRepository, reconstructionService, agentRunTracingService } =
 			makeService();
@@ -327,6 +348,27 @@ describe('AgentWorkflowExecutionService', () => {
 			try {
 				await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
 
+				expect(withSpy).not.toHaveBeenCalled();
+				expect(runtime.agent.stream).toHaveBeenCalled();
+			} finally {
+				withSpy.mockRestore();
+			}
+		});
+
+		it('skips the context lookup entirely when no executionId is available', async () => {
+			const otelApi = await import('@opentelemetry/api');
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			const withSpy = vi.spyOn(otelApi.context, 'with');
+			try {
+				await service.executeForWorkflow(agentId, 'hello', '', 'thread-1', projectId);
+
+				expect(executionLevelTracer.getActiveContext).not.toHaveBeenCalled();
 				expect(withSpy).not.toHaveBeenCalled();
 				expect(runtime.agent.stream).toHaveBeenCalled();
 			} finally {
