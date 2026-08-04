@@ -26,11 +26,9 @@ type Lockfile = {
 };
 
 /**
- * Seeds for the runtime closure: `packages/cli` is the `n8n` package — the
- * server the E2E container runs — and the walk follows its workspace `link:`
- * edges from there, so everything it pulls in at runtime is covered without
- * listing it. See {@link runtimeClosure} for why this must not be "every
- * importer".
+ * Closure seed: `packages/cli` is the `n8n` package the E2E container runs;
+ * its workspace `link:` edges cover the rest. See {@link runtimeClosure} for
+ * why this must not be "every importer".
  */
 const DEPLOY_ROOTS = ['packages/cli'] as const;
 
@@ -64,10 +62,8 @@ export function readLockfileImporters(): Record<string, string[]> {
 }
 
 /**
- * Every package name reachable from the workspace's declared runtime deps.
- * Lets the selector tell a dev-only `pnpm.overrides` pin (droppable) from one
- * that reaches the runtime bundle (must stay broad). `undefined` on any read
- * failure, which keeps override changes broad.
+ * Runtime closure for classifying `pnpm.overrides` changes. `undefined` on any
+ * read failure, which keeps them broad.
  */
 export function readRuntimeClosure(): ReadonlySet<string> | undefined {
 	const doc = readLockfile();

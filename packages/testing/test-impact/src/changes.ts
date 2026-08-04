@@ -129,17 +129,13 @@ function changedOverrideSelectors(before: ManifestJson, after: ManifestJson): st
 const NPM_PACKAGE_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
 
 /**
- * The package an override selector actually pins, or `null` when the selector
- * can't be parsed with confidence (callers must then stay broad). pnpm
- * selectors carry an optional parent path and an optional version range, e.g.
- *   `@vitest/browser@<4.1.10` → `@vitest/browser`
- *   `node-gyp>undici`         → `undici`   (the child is what gets overridden)
- *   `@babel/traverse`         → `@babel/traverse`
+ * The package an override selector pins (`node-gyp>undici` → `undici`,
+ * `@vitest/browser@<4.1.10` → `@vitest/browser`), or `null` when the selector
+ * can't be parsed with confidence — callers must then stay broad.
  */
 export function overrideTargetName(selector: string): string | null {
-	// `>` separates parent>child, but also appears inside version ranges
-	// (`pkg@>2`, `pkg@>=2`, `pkg@1||>2`) — a range `>` follows `@` or `|`, or
-	// touches whitespace, or is `>=`. Splitting there would fabricate a target.
+	// A range `>` (`pkg@>2`, `pkg@1||>2`) follows `@` or `|`, touches whitespace,
+	// or is `>=` — never a parent>child separator.
 	let child = selector;
 	for (let i = selector.length - 1; i > 0; i--) {
 		if (selector[i] !== '>') continue;
@@ -152,7 +148,7 @@ export function overrideTargetName(selector: string): string | null {
 		break;
 	}
 	child = child.trim();
-	// Strip a trailing version range. `> 0` keeps a leading scope `@` intact.
+	// `> 0` keeps a leading scope `@` intact when stripping the version range.
 	const at = child.lastIndexOf('@');
 	const name = at > 0 ? child.slice(0, at) : child;
 	return NPM_PACKAGE_NAME.test(name) ? name : null;
@@ -177,15 +173,12 @@ export function changedOverrideTargets(before: string, after: string): string[] 
  * Classify a package.json change by the dependency sections it touched:
  *  - `runtime`     — a runtime section (dependencies / optional / peer) moved, so
  *                    it can reach the bundle the E2E suite exercises.
- *  - `override`    — a `pnpm.overrides` pin moved. An override targets a
- *                    TRANSITIVE package, so the declared sections say nothing
- *                    about whether it reaches the runtime bundle; it takes a
- *                    runtime-closure check to tell (see {@link dropDevDepOnlyDeps}).
+ *  - `override`    — a `pnpm.overrides` pin moved; whether it reaches the
+ *                    runtime bundle takes a closure check (see {@link dropDevDepOnlyDeps}).
  *  - `devDep-only` — only devDependencies moved → cannot reach the runtime bundle.
  *  - `none`        — no dependency section moved (scripts / version / engines / …).
  * Unparseable content is treated as an empty manifest. Checked most-impactful
- * first, so a mixed devDep+override change classifies as `override` and still
- * has to clear the closure check.
+ * first: a mixed devDep+override change classifies as `override`.
  */
 export function classifyManifestChange(before: string, after: string): ManifestChangeKind {
 	const b = parseManifest(before);
@@ -282,19 +275,16 @@ export function stripDependencyFiles(files: string[]): string[] {
  * bundle, so it must not force broad. `manifests` maps each changed package.json
  * path to its before/after content (the caller reads these from git).
  *
- * A `pnpm.overrides` change is only droppable when `runtimeClosure` proves every
- * overridden package sits outside the runtime dependency graph. The declared
- * sections cannot answer this: an override targets a transitive package, so
- * neither `dependencies` nor `devDependencies` mentions it. `fast-uri` and
- * `@vitest/browser` are both absent from every runtime section, yet `fast-uri`
- * is pulled by `ajv` (a runtime dep) and so does reach the bundle — without the
- * closure the two are indistinguishable.
+ * An override pins a TRANSITIVE package, which no declared section mentions —
+ * `fast-uri` (reaches runtime via `ajv`) and `@vitest/browser` (dev-only) look
+ * identical there. Only `runtimeClosure` membership can tell them apart.
  *
  * Conservative by construction — never drops without positive evidence:
  *  - any runtime-section change → keep everything (real dep change);
  *  - a changed package.json with no supplied diff → treated as runtime;
  *  - a lockfile change with no changed package.json at all (transitive bump) → kept;
- *  - an override change with no closure supplied, or any target inside it → kept.
+ *  - an override change with a missing/empty closure, an unparseable selector,
+ *    or any target inside the closure → kept.
  */
 export function dropDevDepOnlyDeps(
 	files: string[],
@@ -309,12 +299,13 @@ export function dropDevDepOnlyDeps(
 	if (kinds.includes('runtime')) return files;
 
 	if (kinds.includes('override')) {
-		if (!runtimeClosure) return files;
+		// An empty closure is a broken walk, not proof nothing reaches runtime.
+		if (!runtimeClosure || runtimeClosure.size === 0) return files;
 		const targets = new Set<string>();
 		for (const f of changedManifests) {
 			if (!manifests[f]) continue;
 			const names = changedOverrideTargets(manifests[f].before, manifests[f].after);
-			if (names === null) return files; // unattributable selector → keep
+			if (names === null) return files;
 			for (const name of names) targets.add(name);
 		}
 		if (targets.size === 0 || [...targets].some((t) => runtimeClosure.has(t))) return files;

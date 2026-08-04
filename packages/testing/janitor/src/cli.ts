@@ -731,9 +731,8 @@ function runSelect(options: CliOptions): void {
 		? changedRuntimeDepsFromManifests(manifests).length > 0
 		: false;
 	const lockfileImporters = runtimeDepsChanged ? readLockfileImporters() : undefined;
-	// A `pnpm.overrides` pin needs the runtime closure to tell a dev-only override
-	// from one that reaches the bundle. Skipped when a runtime dep also changed:
-	// that already forces broad, so the closure would be computed for nothing.
+	// The closure classifies override pins; a runtime-dep change already forces
+	// broad, so don't compute it then.
 	const overridesChanged =
 		!runtimeDepsChanged &&
 		Object.values(manifests ?? {}).some(({ before, after }) => {

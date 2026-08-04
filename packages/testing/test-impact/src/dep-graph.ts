@@ -41,6 +41,16 @@ export function snapshotKeyToName(key: string): string {
 	return at > 0 ? base.slice(0, at) : base;
 }
 
+/**
+ * Real package behind an aliased dependency value (`string-width@4.2.3`), or
+ * null for a plain version. Aliases resolve under the REAL package's snapshot
+ * key, so a walk following only the alias name never visits them.
+ */
+function aliasedDepName(value: string): string | null {
+	const name = snapshotKeyToName(value);
+	return name === value.replace(/\(.*$/, '') ? null : name;
+}
+
 /** A dependency entry in pnpm-lock.yaml's `importers`. */
 type ImporterEntry = { specifier?: string; version?: string } | string;
 /** pnpm-lock.yaml `importers`: workspace dir → dependency sections. */
@@ -72,14 +82,10 @@ function resolveLink(fromDir: string, target: string): string {
 }
 
 /**
- * External dependency names that the *deployed* workspace packages declare,
- * following workspace `link:` edges through RUNTIME sections only.
- *
- * Restricting to runtime edges is what keeps dev-only workspace packages out.
- * `@n8n/backend-test-utils` legitimately declares `vitest` in `dependencies`,
- * but every package depends on IT via `devDependencies` — so seeding from every
- * importer would drag the whole test-tooling tree (vitest → vite → sass →
- * immutable) into the runtime closure and make it useless.
+ * External dependency names the *deployed* workspace packages declare, following
+ * workspace `link:` edges through RUNTIME sections only. Runtime-only edges keep
+ * dev-only workspace packages out: `@n8n/backend-test-utils` declares `vitest`
+ * in `dependencies` but is itself reachable only via `devDependencies`.
  */
 function deployedExternalDeps(
 	importers: LockfileImporters,
@@ -98,8 +104,14 @@ function deployedExternalDeps(
 		for (const section of runtimeSections) {
 			for (const [name, entry] of Object.entries(sections[section] ?? {})) {
 				const link = workspaceLinkTarget(entry);
-				if (link === undefined) external.add(name);
-				else queue.push(resolveLink(dir, link));
+				if (link !== undefined) {
+					queue.push(resolveLink(dir, link));
+					continue;
+				}
+				external.add(name);
+				const version = typeof entry === 'string' ? entry : (entry?.version ?? '');
+				const real = aliasedDepName(version);
+				if (real !== null) external.add(real);
 			}
 		}
 	}
@@ -107,14 +119,10 @@ function deployedExternalDeps(
 }
 
 /**
- * Every package name transitively reachable from the deployed workspace
- * packages' runtime dependencies. A name OUTSIDE this set cannot reach the
- * runtime bundle the E2E suite exercises, so pinning it (via `pnpm.overrides`)
- * is safe to skip E2E for.
- *
- * Errs toward including: over-inclusion only costs a missed optimisation, while
- * under-inclusion would skip tests for a live runtime change. `deployRoots` are
- * the workspace dirs that actually ship.
+ * Every package name transitively reachable from the deploy roots' runtime
+ * dependencies — a name OUTSIDE this set cannot reach the bundle E2E exercises.
+ * Errs toward including: over-inclusion costs a missed optimisation,
+ * under-inclusion would skip tests for a live runtime change.
  */
 export function runtimeClosure(
 	importers: LockfileImporters,
@@ -138,8 +146,10 @@ export function runtimeClosure(
 		closure.add(name);
 		for (const key of variantsByName.get(name) ?? []) {
 			for (const section of runtimeSections) {
-				for (const dep of Object.keys(snapshots[key]?.[section] ?? {})) {
+				for (const [dep, version] of Object.entries(snapshots[key]?.[section] ?? {})) {
 					if (!closure.has(dep)) queue.push(dep);
+					const real = aliasedDepName(version);
+					if (real !== null && !closure.has(real)) queue.push(real);
 				}
 			}
 		}

@@ -122,8 +122,7 @@ describe('snapshotKeyToName', () => {
 	it.each([
 		['ajv@8.18.0', 'ajv'],
 		['@scope/pkg@1.0.0', '@scope/pkg'],
-		// The peer suffix contains `@`s of its own — naming must strip it first,
-		// or the variant is never visited and the closure silently under-includes.
+		// peer suffix carries `@`s — must not confuse the version separator
 		['@vitest/coverage-v8@4.1.9(vitest@4.1.9)', '@vitest/coverage-v8'],
 		['vite@5.0.0(sass@1.98.0)(terser@5.0.0)', 'vite'],
 		['plain-name', 'plain-name'],
@@ -133,10 +132,8 @@ describe('snapshotKeyToName', () => {
 });
 
 describe('runtimeClosure', () => {
-	// Mirrors the real workspace shape: cli links core (runtime), core declares
-	// ajv, ajv pulls fast-uri transitively. test-utils declares vitest as a real
-	// dependency but is only reachable via devDependencies — the exact shape that
-	// must stay OUT of the closure.
+	// cli links core (runtime) → ajv → fast-uri; test-utils declares vitest but
+	// is only reachable via devDependencies, so it must stay out.
 	const importers: LockfileImporters = {
 		'packages/cli': {
 			dependencies: {
@@ -181,6 +178,33 @@ describe('runtimeClosure', () => {
 	});
 	it('with empty snapshots the closure is just the declared external roots', () => {
 		expect([...runtimeClosure(importers, {}, opts)].sort()).toEqual(['ajv', 'axios']);
+	});
+	it('roots the real package behind an npm: alias in an importer (the zod-from-json-schema shape)', () => {
+		const aliased: LockfileImporters = {
+			'packages/cli': {
+				dependencies: {
+					'zod-v3': {
+						specifier: 'npm:zod-from-json-schema@^0.0.5',
+						version: 'zod-from-json-schema@0.0.5',
+					},
+				},
+			},
+		};
+		const snaps: LockfileSnapshots = {
+			'zod-from-json-schema@0.0.5': { dependencies: { zod: '3.25.76' } },
+		};
+		const closure = runtimeClosure(aliased, snaps, opts);
+		expect(closure.has('zod-from-json-schema')).toBe(true);
+		expect(closure.has('zod')).toBe(true);
+	});
+	it('follows an aliased dep inside a snapshot (the string-width-cjs shape)', () => {
+		const snaps: LockfileSnapshots = {
+			'ajv@8.18.0': { dependencies: { 'string-width-cjs': 'string-width@4.2.3' } },
+			'string-width@4.2.3': { dependencies: { 'emoji-regex': '8.0.0' } },
+		};
+		const closure = runtimeClosure(importers, snaps, opts);
+		expect(closure.has('string-width')).toBe(true);
+		expect(closure.has('emoji-regex')).toBe(true);
 	});
 	it('unknown deploy root → empty closure, no throw', () => {
 		expect(

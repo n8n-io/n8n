@@ -298,8 +298,6 @@ describe('selectTests — fail-open contract', () => {
 	});
 });
 
-// A pnpm.overrides pin targets a TRANSITIVE package, so only the runtime
-// closure can prove it unreachable from the shipped bundle. Unproven → broad.
 describe('selectTests — pnpm.overrides changes', () => {
 	let tempDir: string;
 

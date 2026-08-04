@@ -54,11 +54,9 @@ export interface SelectTestsInput {
 	 *  walked to its declaring packages and scoped via the map instead
 	 *  of forcing broad. */
 	lockfileImporters?: WorkspaceImporters;
-	/** Every package name transitively reachable from the workspace's declared
-	 *  runtime dependencies (see {@link runtimeClosure}). Required to classify a
-	 *  `pnpm.overrides` change: an override pins a transitive package, so only the
-	 *  closure can say whether it reaches the runtime bundle. Omitted → an
-	 *  override change stays broad. */
+	/** Package names reachable from the deployed packages' runtime deps (see
+	 *  `runtimeClosure` in dep-graph). Classifies `pnpm.overrides` changes;
+	 *  omitted → an override change stays broad. */
 	runtimeClosure?: ReadonlySet<string>;
 }
 
@@ -169,8 +167,8 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 		if (!/(^|\/)package\.json$/.test(f)) return false;
 		const manifest = input.manifests?.[f];
 		if (!manifest) return true;
-		// An `override` still present here failed the closure check (or had no
-		// closure to check against), so it is unproven → treat it like runtime.
+		// An `override` still present here failed the closure check → unproven,
+		// treat like runtime.
 		const kind = classifyManifestChange(manifest.before, manifest.after);
 		return kind === 'runtime' || kind === 'override';
 	});

@@ -247,6 +247,8 @@ describe('overrideTargetName', () => {
 		['pkg@>=2.0.0', 'pkg'],
 		['pkg@>2', 'pkg'],
 		['pkg@1||>2', 'pkg'],
+		['pkg@^1||>=2.0.0', 'pkg'],
+		['pkg@>=1||>=2', 'pkg'],
 		['a@1>b@>=2', 'b'],
 	])('%s → %s', (selector, expected) => {
 		expect(overrideTargetName(selector)).toBe(expected);
@@ -307,8 +309,6 @@ describe('dropDevDepOnlyDeps — overrides (safety-critical)', () => {
 	const overrideDiff = (target: string) => ({
 		'package.json': { before: ovr({}), after: ovr({ [`${target}@<2`]: '2.0.0' }) },
 	});
-	// fast-uri and @vitest/browser are both transitive (declared by no importer);
-	// only closure membership can tell them apart.
 	const closure = new Set(['ajv', 'fast-uri']);
 
 	it('drops when every override target is outside the runtime closure', () => {
@@ -319,6 +319,9 @@ describe('dropDevDepOnlyDeps — overrides (safety-critical)', () => {
 	});
 	it('KEEPS when no closure is supplied', () => {
 		expect(dropDevDepOnlyDeps(files, overrideDiff('@vitest/browser'), undefined)).toEqual(files);
+	});
+	it('KEEPS when the closure is empty (broken walk, not proof)', () => {
+		expect(dropDevDepOnlyDeps(files, overrideDiff('@vitest/browser'), new Set())).toEqual(files);
 	});
 	it('KEEPS when any one of several targets is inside the closure', () => {
 		const manifests = {
