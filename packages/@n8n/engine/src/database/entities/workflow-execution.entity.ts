@@ -7,17 +7,17 @@ import {
 	PrimaryColumn,
 	UpdateDateColumn,
 } from '@n8n/typeorm';
-import { nanoid } from 'nanoid';
 
 import type { JsonObject } from '../../common';
 import type { ExecutionMode, ExecutionStatus } from '../../execution/execution.types';
 import type { WorkflowGraph } from '../../graph';
+import { generateId } from '../generate-id';
 
 @Entity('workflow_execution')
 @Index('idx_workflow_execution_workflow_id', ['workflowId'])
 @Index('idx_workflow_execution_status', ['status'])
 export class WorkflowExecution {
-	@PrimaryColumn('varchar')
+	@PrimaryColumn('uuid')
 	id!: string;
 
 	@Column('varchar', { name: 'workflow_id' })
@@ -45,7 +45,7 @@ export class WorkflowExecution {
 	finishedAt!: Date | null;
 
 	@BeforeInsert()
-	generateId(): void {
-		if (!this.id) this.id = nanoid();
+	setId(): void {
+		if (!this.id) this.id = generateId();
 	}
 }

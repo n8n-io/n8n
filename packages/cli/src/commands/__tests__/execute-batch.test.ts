@@ -2,7 +2,13 @@ import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
+import {
+	WorkflowRepository,
+	DbConnection,
+	AuthRolesService,
+	BinaryDataRepository,
+	DeploymentKeyRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type SelectQueryBuilder } from '@n8n/typeorm';
 import type { IRun } from 'n8n-workflow';
@@ -47,6 +53,10 @@ dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
 mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 test('should start a task runner', async () => {
 	// arrange

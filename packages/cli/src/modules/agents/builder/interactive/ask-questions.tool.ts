@@ -9,9 +9,12 @@ import {
 	type QuestionsResumeData,
 	type QuestionsSuspendPayload,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import type { BuilderTrackFn } from '../builder-config-telemetry';
 
 const askQuestionsQuestionSchema = z.object({
 	id: z.string().optional().describe('Unique question identifier; defaults to q1, q2, ...'),
@@ -87,7 +90,7 @@ function usableAnswers(resumeData: QuestionsResumeData): QuestionAnswer[] | unde
 	return resumeData.answers;
 }
 
-export function buildAskQuestionsTool(): BuiltTool {
+export function buildAskQuestionsTool(deps: { track: BuilderTrackFn }): BuiltTool {
 	return new Tool(ASK_QUESTIONS_TOOL_NAME)
 		.description(
 			'Ask the user one or more questions in a single batched card; the run suspends until ' +
@@ -108,6 +111,10 @@ export function buildAskQuestionsTool(): BuiltTool {
 				const questions = withDefaultIds(input.questions);
 
 				if (ctx.resumeData === undefined || ctx.resumeData === null) {
+					deps.track(TELEMETRY_EVENT.AGENTS.BUILDER_ASKED_QUESTIONS, {
+						question_count: questions.length,
+						question_types: [...new Set(questions.map((q) => q.type))].sort(),
+					});
 					return await ctx.suspend({
 						requestId: nanoid(),
 						message: input.introMessage ?? 'The agent builder has questions',
@@ -119,6 +126,14 @@ export function buildAskQuestionsTool(): BuiltTool {
 				}
 
 				const answers = usableAnswers(ctx.resumeData);
+				const rawAnswers = ctx.resumeData.answers ?? [];
+				const skippedCount = rawAnswers.filter((answer) => answer.skipped === true).length;
+				deps.track(TELEMETRY_EVENT.AGENTS.USER_ANSWERED_BUILDER_QUESTIONS, {
+					outcome:
+						ctx.resumeData.approved === false ? 'dismissed' : answers ? 'answered' : 'skipped',
+					answered_count: rawAnswers.length - skippedCount,
+					skipped_count: skippedCount,
+				});
 				if (!answers) return { answered: false };
 
 				return { answered: true, answers: enrichAnswers(answers, questions) };

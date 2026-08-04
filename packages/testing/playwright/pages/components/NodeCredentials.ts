@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 import { FloatingUiHelper } from './FloatingUiHelper';
 
@@ -71,6 +71,20 @@ export class NodeCredentials {
 	/** Teleported option matching the given visible text */
 	getOptionByText(text: string): Locator {
 		return this.floatingUi.getVisiblePopper().getByText(text);
+	}
+
+	/**
+	 * Select an existing credential by name and wait for the picker to hold it.
+	 *
+	 * Prefer this over relying on the NDV's implicit auto-selection, which picks
+	 * the most recently updated credential of the type — in a parallel run that
+	 * is often one created by another spec.
+	 */
+	async selectByName(name: string): Promise<void> {
+		const combobox = this.getCombobox();
+		await combobox.click();
+		await this.getOptionByText(name).click();
+		await expect(combobox).toHaveValue(name);
 	}
 
 	/** `node-credentials-select-item-new` row inside the open dropdown */

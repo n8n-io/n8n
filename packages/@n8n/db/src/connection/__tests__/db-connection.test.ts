@@ -171,7 +171,7 @@ describe('DbConnection', () => {
 
 		beforeEach(() => {
 			Container.set(DbLockService, dbLockService);
-			dbLockService.withLock.mockImplementation(async (_lockId, fn) => await fn(tx));
+			dbLockService.withLock.mockImplementation(async (_lockId, fn) => await fn(tx, {}));
 			tx.query.mockResolvedValue([]);
 			vi.mocked(MigrationExecutor).mockImplementation(function () {
 				return migrationExecutor;
@@ -248,6 +248,80 @@ describe('DbConnection', () => {
 			expect(dbLockService.withLock).not.toHaveBeenCalled();
 			expect(dataSource.runMigrations).toHaveBeenCalledWith({ transaction: 'each' });
 			expect(sqliteConnection.connectionState.migrated).toBe(true);
+		});
+	});
+
+	describe('getDbVersion', () => {
+		const newConnection = (type: 'sqlite' | 'sqlite-pooled' | 'mysql') => {
+			connectionOptions.getOptions.mockReturnValue({
+				type,
+				database: ':memory:',
+				migrations,
+			} as DataSourceOptions);
+			// options are @Memoized and read in the constructor — re-instantiate
+			return new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				dbConnectionMetrics,
+			);
+		};
+
+		beforeEach(() => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+		});
+
+		it('should return the version the postgres driver resolved on connect', async () => {
+			dataSource.driver.version = '16.11';
+
+			await expect(dbConnection.getDbVersion()).resolves.toBe('16.11');
+			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+
+		it('should return null when the postgres driver has no version', async () => {
+			dataSource.driver.version = undefined;
+
+			await expect(dbConnection.getDbVersion()).resolves.toBeNull();
+		});
+
+		it.each(['sqlite', 'sqlite-pooled'] as const)(
+			'should query the sqlite library version on %s',
+			async (type) => {
+				dataSource.query.mockResolvedValue([{ version: '3.45.0' }]);
+
+				await expect(newConnection(type).getDbVersion()).resolves.toBe('3.45.0');
+				expect(dataSource.query).toHaveBeenCalledWith('SELECT sqlite_version() AS version');
+			},
+		);
+
+		it('should return null when the sqlite query returns no rows', async () => {
+			dataSource.query.mockResolvedValue([]);
+
+			await expect(newConnection('sqlite-pooled').getDbVersion()).resolves.toBeNull();
+		});
+
+		it('should return null when the query fails', async () => {
+			dataSource.query.mockRejectedValue(new Error('no such function: sqlite_version'));
+
+			await expect(newConnection('sqlite-pooled').getDbVersion()).resolves.toBeNull();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not determine database version: no such function: sqlite_version',
+			);
+		});
+
+		it('should return null for a database type n8n does not configure', async () => {
+			await expect(newConnection('mysql').getDbVersion()).resolves.toBeNull();
+			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+
+		it('should return null when the data source is not initialized', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = false;
+			dataSource.driver.version = '16.11';
+
+			await expect(dbConnection.getDbVersion()).resolves.toBeNull();
 		});
 	});
 

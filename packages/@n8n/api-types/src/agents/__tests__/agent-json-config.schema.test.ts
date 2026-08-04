@@ -1,6 +1,7 @@
 import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
+	formatAgentConfigZodError,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -8,6 +9,42 @@ const minimalConfig = {
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Help the user.',
 };
+
+describe('AgentJsonConfigSchema — model', () => {
+	it('accepts AWS Bedrock model names containing a version colon', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('AgentJsonConfigSchema — reasoning', () => {
+	it.each(['low', 'medium', 'high'] as const)(
+		'preserves generic %s reasoning effort',
+		(reasoning) => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				config: { reasoning },
+			});
+
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.data.config?.reasoning).toBe(reasoning);
+		},
+	);
+
+	it('rejects reasoning levels outside the agent config options', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { reasoning: 'max' },
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
 
 describe('AgentJsonConfigSchema — tools', () => {
 	describe('custom tool id field', () => {
@@ -540,5 +577,30 @@ describe('AgentJsonConfigSchema — model/credential coupling', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('formatAgentConfigZodError', () => {
+	it('formats an invalid MCP server name as path: message without a Zod JSON dump', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [
+				{
+					name: '   ',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+
+		const formatted = formatAgentConfigZodError(result.error);
+		expect(formatted).toContain('mcpServers.0.name');
+		expect(formatted).toContain('MCP server name cannot be blank');
+		expect(formatted).not.toContain('"validation": "regex"');
+		expect(result.error.issues[0]?.message).toBe('MCP server name cannot be blank');
 	});
 });

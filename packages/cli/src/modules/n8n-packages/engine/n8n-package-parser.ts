@@ -18,6 +18,10 @@ import { serializedDataTableSchema } from '../spec/serialized/data-table.schema'
 import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import { serializedFolderSchema, type SerializedFolder } from '../spec/serialized/folder.schema';
 import { serializedProjectSchema, type SerializedProject } from '../spec/serialized/project.schema';
+import {
+	serializedVariableSchema,
+	type SerializedVariable,
+} from '../spec/serialized/variable.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 /**
@@ -85,6 +89,18 @@ export class N8nPackageParser {
 		return projects;
 	}
 
+	/** Bundled variable files, keyed by manifest target. */
+	async getVariables(reader: PackageReader): Promise<Map<string, SerializedVariable>> {
+		const manifest = await this.getManifest(reader);
+		const variables = new Map<string, SerializedVariable>();
+
+		for (const entry of manifest.variables ?? []) {
+			variables.set(entry.target, await this.readVariable(reader, entry));
+		}
+
+		return variables;
+	}
+
 	private async readWorkflow(
 		reader: PackageReader,
 		entry: ManifestEntry,
@@ -113,6 +129,7 @@ export class N8nPackageParser {
 			sourceWorkflowId: entry.id,
 			sourcePublished: wire.isPublished,
 			parentFolderId,
+			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
 	}
 
@@ -203,7 +220,38 @@ export class N8nPackageParser {
 			name: project.name,
 			...(project.description !== undefined ? { description: project.description } : {}),
 			...(project.icon !== undefined ? { icon: project.icon } : {}),
+			...(project.customTelemetryTags !== undefined
+				? { customTelemetryTags: project.customTelemetryTags }
+				: {}),
 		};
+	}
+
+	private async readVariable(
+		reader: PackageReader,
+		entry: ManifestEntry,
+	): Promise<SerializedVariable> {
+		const path = `${entry.target}/variable.json`;
+		const wire = await this.readJson(reader, path, 'variable');
+
+		let variable: SerializedVariable;
+		try {
+			variable = serializedVariableSchema.parse(wire);
+		} catch (cause) {
+			if (cause instanceof ZodError) {
+				throw new UserError(`Package variable file at ${path} failed schema validation.`, {
+					cause,
+				});
+			}
+			throw cause;
+		}
+
+		if (variable.name !== entry.name) {
+			throw new UserError(
+				`Package variable at ${path} declares name "${variable.name}" but the manifest lists it as "${entry.name}".`,
+			);
+		}
+
+		return variable;
 	}
 
 	private async readJson<T = unknown>(

@@ -10,7 +10,7 @@ import type { EvalVersionsResponse, EvaluationCollectionRecord } from '../../eva
 
 import SetupCollectionWizard from './SetupCollectionWizard.vue';
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),

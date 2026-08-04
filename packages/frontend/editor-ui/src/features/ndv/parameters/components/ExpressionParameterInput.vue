@@ -9,7 +9,7 @@ import InlineExpressionEditorOutput from '@/features/shared/editors/components/I
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/app/types/expressions';
 import { startCompletion } from '@codemirror/autocomplete';

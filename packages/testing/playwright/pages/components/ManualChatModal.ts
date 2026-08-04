@@ -35,7 +35,9 @@ export class ManualChatModal {
 	}
 
 	getLatestBotMessage(): Locator {
-		return this.root.locator('.chat-messages-list .chat-message.chat-message-from-bot').last();
+		return this.root
+			.locator('.chat-messages-list .chat-message.chat-message-from-bot:not(.chat-message-typing)')
+			.last();
 	}
 
 	getApproveButton(): Locator {

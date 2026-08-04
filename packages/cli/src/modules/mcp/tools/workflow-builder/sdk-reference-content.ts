@@ -13,6 +13,7 @@ import {
 	WORKFLOW_PATTERNS_DETAILED,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
+	NODE_GROUPS_REFERENCE,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 // NOTE: CODING_GUIDELINES and DESIGN_GUIDANCE are MCP-only constants defined
@@ -57,6 +58,7 @@ export type SdkReferenceSection =
 	| 'import'
 	| 'guidelines'
 	| 'design'
+	| 'groups'
 	| 'all';
 
 const SDK_IMPORT_SECTION = `## SDK Import Statement\n\n\`\`\`javascript\n${SDK_IMPORT_STATEMENT}\n\`\`\``;
@@ -69,6 +71,10 @@ const CODING_GUIDELINES_SECTION = `## Coding Guidelines\n\n${CODING_GUIDELINES}`
 
 const DESIGN_GUIDANCE_SECTION = `## Design Guidance\n\n${DESIGN_GUIDANCE}`;
 
+// NODE_GROUPS_REFERENCE already carries its own `## Node groups` heading and is
+// shared verbatim with Instance AI, so it is served as-is (no extra wrapper).
+const GROUPS_SECTION = NODE_GROUPS_REFERENCE;
+
 const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	import: SDK_IMPORT_SECTION,
 	patterns: WORKFLOW_PATTERNS_SECTION,
@@ -78,12 +84,28 @@ const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	rules: WORKFLOW_RULES,
 	guidelines: CODING_GUIDELINES_SECTION,
 	design: DESIGN_GUIDANCE_SECTION,
+	groups: GROUPS_SECTION,
 };
 
 /**
  * Get the full SDK reference content or a filtered section.
+ *
+ * Node-group docs are gated behind `includeGroups` (fed from the
+ * `canvasGroupsEnabled` feature flag): when false, the groups section is omitted
+ * everywhere so the output is byte-identical to before the flag existed.
  */
-export function getSdkReferenceContent(section?: SdkReferenceSection): string {
+export function getSdkReferenceContent(
+	section?: SdkReferenceSection,
+	options: { includeGroups?: boolean } = {},
+): string {
+	const { includeGroups = false } = options;
+
+	// The groups section only exists when the flag is on; otherwise even an
+	// explicit request yields nothing.
+	if (section === 'groups') {
+		return includeGroups ? SECTIONS.groups : '';
+	}
+
 	if (section && section !== 'all' && section in SECTIONS) {
 		return SECTIONS[section];
 	}
@@ -106,5 +128,6 @@ export function getSdkReferenceContent(section?: SdkReferenceSection): string {
 		SECTIONS.guidelines,
 		'',
 		SECTIONS.design,
+		...(includeGroups ? ['', SECTIONS.groups] : []),
 	].join('\n');
 }

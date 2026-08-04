@@ -12,7 +12,7 @@ import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
 import { ProjectTypes } from '../projects.types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 type Props = {
 	showSettings?: boolean;
 	showExecutions?: boolean;

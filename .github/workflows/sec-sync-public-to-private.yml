@@ -7,6 +7,7 @@
 # Manual runs always sync (for conflict recovery after failed cherry-pick).
 
 name: 'Security: Sync from Public'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
 
 on:
   schedule:

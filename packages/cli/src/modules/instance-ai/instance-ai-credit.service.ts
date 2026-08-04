@@ -2,8 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { BuilderUsageItem, TraceStatus } from '@n8n/instance-ai';
+import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { sleep, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { Push } from '@/push';

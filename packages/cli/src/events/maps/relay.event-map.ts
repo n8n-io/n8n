@@ -24,7 +24,13 @@ import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-
 
 import type { AiEventMap } from './ai.event-map';
 
-export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai' | 'import';
+export type WorkflowActionSource =
+	| 'ui'
+	| 'api'
+	| 'n8n-mcp'
+	| 'n8n-ai'
+	| 'import'
+	| 'review-approval';
 
 export type UserLike = {
 	id: string;
@@ -1129,6 +1135,30 @@ export type RelayEventMap = {
 		separate: boolean;
 		backup: boolean;
 		workflowCount: number;
+	};
+
+	// #endregion
+
+	// #region MCP server
+
+	'mcp-oauth-completed': {
+		userId: string;
+		clientId: string;
+		clientName?: string;
+	};
+
+	'mcp-tool-called': {
+		user: UserLike;
+		toolName: string;
+		workflowId?: string;
+		status: 'success' | 'error';
+		errorMessage?: string;
+		clientName?: string;
+	};
+
+	'mcp-access-updated': {
+		user: UserLike;
+		enabled: boolean;
 	};
 
 	// #endregion

@@ -139,6 +139,16 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				},
 			},
 		},
+		// Permanent redirect from the removed `/settings/assistant/credentials` page.
+		{
+			path: 'assistant/credentials',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
 	],
 	projectTabs: {
 		overview: [],

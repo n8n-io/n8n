@@ -1,7 +1,7 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import type { JsonObject } from '../common';
 import type { WorkflowGraph } from '../graph';
-import type { WorkQueue } from '../queue';
+import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
 import type { ExecutionMode } from './execution.types';
 
@@ -20,7 +20,7 @@ export class StartExecutionService {
 	constructor(
 		private readonly admittance: AdmittanceService,
 		private readonly executionStore: ExecutionStore,
-		private readonly workQueue: WorkQueue,
+		private readonly workQueue: WorkQueue<OrchestrationMessage>,
 	) {}
 
 	async start(request: StartExecutionRequest): Promise<StartExecutionResult> {

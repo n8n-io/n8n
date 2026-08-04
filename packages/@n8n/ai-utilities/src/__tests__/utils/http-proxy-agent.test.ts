@@ -1,7 +1,7 @@
 import { Agent, ProxyAgent } from 'undici';
 import type { MockedFunction } from 'vitest';
 
-import { getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
+import { getNodeProxyAgent, getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
 
 // Mock the dependencies
 vi.mock('undici', () => ({
@@ -243,6 +243,38 @@ describe('getProxyAgent', () => {
 
 			// Since we can't easily re-import, we verify the mock was called with defaults
 			expect(Agent).toHaveBeenCalled();
+		});
+
+		it('should return an Agent instead of undefined when N8N_AI_TIMEOUT_MAX is set, even without a proxy or explicit timeout options', () => {
+			process.env.N8N_AI_TIMEOUT_MAX = '120000';
+
+			const agent = getProxyAgent('https://api.openai.com/v1');
+
+			// DEFAULT_TIMEOUT was captured from the env at module load time (before this test set it),
+			// so the value here reflects that capture, not '120000' — the module-reset test below
+			// covers the env value actually being picked up end to end.
+			expect(Agent).toHaveBeenCalled();
+			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
+			expect(ProxyAgent).not.toHaveBeenCalled();
+		});
+
+		it('should honor N8N_AI_TIMEOUT_MAX when there is no proxy and the caller passes no timeout options at all', async () => {
+			vi.resetModules();
+			process.env.N8N_AI_TIMEOUT_MAX = '120000';
+
+			const undici = await import('undici');
+			const { getProxyAgent: freshGetProxyAgent } = await import('../../utils/http-proxy-agent.js');
+
+			const agent = freshGetProxyAgent('https://api.openai.com/v1');
+
+			expect(undici.Agent).toHaveBeenCalledWith({
+				headersTimeout: 120000,
+				bodyTimeout: 120000,
+			});
+			expect(agent).toEqual({
+				type: 'Agent',
+				options: { headersTimeout: 120000, bodyTimeout: 120000 },
+			});
 		});
 	});
 
@@ -487,5 +519,37 @@ describe('proxyFetch', () => {
 			expect(result).toBe(errorResponse);
 			expect(result.status).toBe(404);
 		});
+	});
+});
+
+describe('getNodeProxyAgent', () => {
+	const originalEnv = { ...process.env };
+
+	beforeEach(() => {
+		process.env = { ...originalEnv };
+		delete process.env.HTTPS_PROXY;
+		delete process.env.https_proxy;
+		delete process.env.NO_PROXY;
+		delete process.env.no_proxy;
+	});
+
+	afterAll(() => {
+		process.env = originalEnv;
+	});
+
+	it('returns undefined when no proxy is configured', () => {
+		expect(getNodeProxyAgent('https://example.com')).toBeUndefined();
+	});
+
+	it('applies agent options (e.g. TCP keepalive) to the proxy agent', () => {
+		process.env.HTTPS_PROXY = 'http://proxy.example.com:8080';
+
+		const agent = getNodeProxyAgent('https://example.com', {
+			keepAlive: true,
+			keepAliveMsecs: 30_000,
+		});
+
+		expect(agent).toBeDefined();
+		expect(agent).toMatchObject({ keepAlive: true, keepAliveMsecs: 30_000 });
 	});
 });

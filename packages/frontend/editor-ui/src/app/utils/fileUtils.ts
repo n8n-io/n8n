@@ -1,4 +1,20 @@
-import type { BinaryFileType, IBinaryData } from 'n8n-workflow';
+import { fileTypeFromMimeType, type IBinaryData } from 'n8n-workflow';
+
+/** Matches `path.parse().ext`: a leading dot (`.env`) or no dot (`README`) means no extension. */
+function getFileExtension(fileName: string): string {
+	const dotIndex = fileName.lastIndexOf('.');
+	return dotIndex > 0 ? fileName.slice(dotIndex + 1) : '';
+}
+
+/** Display/download name for binary data; `fileName` usually already carries the extension. */
+export function getBinaryDataFileName({
+	fileName,
+	fileExtension,
+}: Pick<IBinaryData, 'fileName' | 'fileExtension'>): string {
+	const name = fileName ?? 'file';
+	if (name.includes('.') || !fileExtension) return name;
+	return `${name}.${fileExtension}`;
+}
 
 export async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
 	const reader = new FileReader();
@@ -9,8 +25,8 @@ export async function convertFileToBinaryData(file: File): Promise<IBinaryData> 
 				mimeType: file.type,
 				fileName: file.name,
 				fileSize: `${file.size} bytes`,
-				fileExtension: file.name.split('.').pop() ?? '',
-				fileType: file.type.split('/')[0] as BinaryFileType,
+				fileExtension: getFileExtension(file.name) || undefined,
+				fileType: fileTypeFromMimeType(file.type),
 			};
 			resolve(binaryData);
 		};

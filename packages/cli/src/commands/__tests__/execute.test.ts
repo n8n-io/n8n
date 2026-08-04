@@ -2,7 +2,13 @@ import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, Project } from '@n8n/db';
-import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
+import {
+	WorkflowRepository,
+	DbConnection,
+	AuthRolesService,
+	BinaryDataRepository,
+	DeploymentKeyRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -22,6 +28,7 @@ import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { BaseCommand } from '../base-command';
 import { Execute } from '../execute';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
@@ -46,6 +53,10 @@ dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
 mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 test('should start a task runner', async () => {
 	// arrange
@@ -92,4 +103,23 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+});
+
+test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
+	// arrange
+
+	deploymentKeyRepository.insertOrIgnore.mockClear();
+	deploymentKeyRepository.findActiveByType.mockRejectedValueOnce(new Error('permission denied'));
+
+	// minimal command: Execute.init() chains singletons that cannot init twice per process
+	class ReadOnlyCommand extends BaseCommand {}
+	const cmd = new ReadOnlyCommand();
+
+	// act
+
+	await cmd.init();
+
+	// assert
+
+	expect(deploymentKeyRepository.insertOrIgnore).not.toHaveBeenCalled();
 });

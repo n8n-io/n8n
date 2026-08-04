@@ -768,6 +768,8 @@ export async function getBase({
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
 		instanceBaseUrl: `${instanceBaseUrl}/`,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
+		formBaseUrl: urlBaseWebhook + globalConfig.endpoints.form,
+		formTestBaseUrl: urlBaseTestWebhook + globalConfig.endpoints.formTest,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
 		webhookTestBaseUrl: urlBaseTestWebhook + globalConfig.endpoints.webhookTest,

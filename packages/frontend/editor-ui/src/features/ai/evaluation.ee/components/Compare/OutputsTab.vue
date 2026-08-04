@@ -48,11 +48,14 @@ const selectedRow = computed(
 	() => props.caseRows.find((row) => row.index === props.selectedIndex) ?? props.caseRows[0],
 );
 
-function metricEntries(metrics: Record<string, number> | undefined) {
+function metricEntries(
+	metrics: Record<string, number> | undefined,
+	scales: Record<string, MetricScale> | undefined,
+) {
 	if (!metrics) return [];
 	return getUserDefinedMetricNames(metrics).map((key) => {
 		// Normalize by the metric's scale so a raw judge value never shows as a bare percent.
-		const normalized = normalizeMetricScore(key, metrics[key], props.metricScales?.[key]);
+		const normalized = normalizeMetricScore(key, metrics[key], scales?.[key]);
 		return {
 			key,
 			label: formatMetricLabel(key),
@@ -128,7 +131,10 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 
 					<footer :class="$style.metrics">
 						<span
-							v-for="metric in metricEntries(cell.metrics)"
+							v-for="metric in metricEntries(
+								cell.metrics,
+								versions[cell.versionIndex]?.metricScales ?? metricScales,
+							)"
 							:key="metric.key"
 							:class="$style.metric"
 						>

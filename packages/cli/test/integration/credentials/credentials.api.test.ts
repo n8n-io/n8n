@@ -197,6 +197,7 @@ describe('GET /credentials', () => {
 			expect(cred1.scopes).toEqual(
 				[
 					'credential:connect',
+					'credential:createEndUser',
 					'credential:move',
 					'credential:read',
 					'credential:update',
@@ -237,6 +238,7 @@ describe('GET /credentials', () => {
 			expect(cred2.scopes).toEqual(
 				[
 					'credential:connect',
+					'credential:createEndUser',
 					'credential:delete',
 					'credential:move',
 					'credential:read',
@@ -266,6 +268,7 @@ describe('GET /credentials', () => {
 					'credential:createEndUser',
 					'credential:delete',
 					'credential:list',
+					'credential:manageInstance',
 					'credential:move',
 					'credential:read',
 					'credential:share',
@@ -284,6 +287,7 @@ describe('GET /credentials', () => {
 					'credential:createEndUser',
 					'credential:delete',
 					'credential:list',
+					'credential:manageInstance',
 					'credential:move',
 					'credential:read',
 					'credential:share',
@@ -350,6 +354,7 @@ describe('GET /credentials', () => {
 		expect(ownedCred.scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:createEndUser',
 				'credential:move',
 				'credential:read',
 				'credential:update',
@@ -418,6 +423,7 @@ describe('GET /credentials', () => {
 				'credential:createEndUser',
 				'credential:delete',
 				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
 				'credential:share',
@@ -436,6 +442,7 @@ describe('GET /credentials', () => {
 				'credential:createEndUser',
 				'credential:delete',
 				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
 				'credential:share',
@@ -457,6 +464,7 @@ describe('GET /credentials', () => {
 				'credential:createEndUser',
 				'credential:delete',
 				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
 				'credential:share',
@@ -871,6 +879,7 @@ describe('POST /credentials', () => {
 		expect(scopes).toEqual(
 			[
 				'credential:connect',
+				'credential:createEndUser',
 				'credential:delete',
 				'credential:move',
 				'credential:read',
@@ -1263,6 +1272,7 @@ describe('PATCH /credentials/:id', () => {
 				'credential:createEndUser',
 				'credential:delete',
 				'credential:list',
+				'credential:manageInstance',
 				'credential:move',
 				'credential:read',
 				'credential:share',

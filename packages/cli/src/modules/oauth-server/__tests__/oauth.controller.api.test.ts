@@ -4,11 +4,11 @@ import type { User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
-
-import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
-import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
@@ -17,10 +17,12 @@ const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointG
 
 let owner: User;
 let mcpSettingsService: McpSettingsService;
+let supportedScopes: string[];
 
 beforeAll(async () => {
 	owner = await createOwner();
 	mcpSettingsService = Container.get(McpSettingsService);
+	supportedScopes = Container.get(ProtectedResourceRegistry).getAllScopes();
 });
 
 afterEach(async () => {
@@ -43,7 +45,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
 			authorization_response_iss_parameter_supported: true,
-			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
+			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
 		});
 	});
 
@@ -100,7 +102,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
+			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
 		});
 	});
 
@@ -134,7 +136,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.scopes_supported).toEqual(SUPPORTED_SCOPES);
+		expect(response.body.scopes_supported).toEqual(supportedScopes);
 	});
 
 	test('should be accessible without authentication', async () => {
@@ -155,7 +157,7 @@ describe('GET /.well-known/oauth-protected-resource (bare path)', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
+			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
 		});
 	});
 
@@ -435,6 +437,33 @@ describe('GET /mcp-oauth/authorize', () => {
 		expect(response.statusCode).not.toBe(403);
 		expect([302, 400, 401]).toContain(response.statusCode);
 	});
+
+	// RFC 9207: `iss` is required on every authorization response — including
+	// the SDK's own request-validation error redirects — because the metadata
+	// advertises `authorization_response_iss_parameter_supported`.
+	test('should include the iss parameter on error redirects', async () => {
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Error Redirect Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		});
+
+		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			client_id: registerResponse.body.client_id,
+			redirect_uri: 'https://example.com/callback',
+			response_type: 'code',
+			// missing code_challenge → SDK redirects back with an error
+		});
+
+		expect(response.statusCode).toBe(302);
+		const redirectUrl = new URL(response.headers.location);
+		expect(redirectUrl.origin + redirectUrl.pathname).toBe('https://example.com/callback');
+		expect(redirectUrl.searchParams.get('error')).toBe('invalid_request');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
+	});
 });
 
 describe('POST /mcp-oauth/token', () => {
@@ -635,13 +664,16 @@ describe('Full authorization-code flow (PKCE)', () => {
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: SUPPORTED_SCOPES });
+			.send({ approved: true, scopes: supportedScopes });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
 		const code = redirectUrl.searchParams.get('code');
 		expect(code).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('flow-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 
 		// 4. Token exchange
 		const tokenResponse = await testServer.restlessAgent
@@ -659,7 +691,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
-			scope: SUPPORTED_SCOPES.join(' '),
+			scope: supportedScopes.join(' '),
 		});
 		expect(tokenResponse.statusCode).toBe(200);
 
@@ -811,7 +843,7 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		authAgent.jar.setCookie(sessionCookie ?? '');
 		const consentResponse = await authAgent
 			.post('/consent/approve')
-			.send({ approved: true, scopes: SUPPORTED_SCOPES });
+			.send({ approved: true, scopes: supportedScopes });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
@@ -835,7 +867,7 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
-			scope: SUPPORTED_SCOPES.join(' '),
+			scope: supportedScopes.join(' '),
 		});
 	});
 });

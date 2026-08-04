@@ -1,11 +1,22 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { JSONSchema7 } from 'json-schema';
+import { createHash } from 'node:crypto';
 
 import type { McpCallToolResult, McpConnection } from './mcp-connection';
+import { sanitizeToolName } from '../../sdk/tool';
 import type { AgentMessage, ContentFile, ContentText } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 
 type McpContentBlock = McpCallToolResult['content'][number];
+
+const MAX_TOOL_NAME_LENGTH = 64;
+const TOOL_NAME_HASH_LENGTH = 8;
+
+type ToolNameCandidate = {
+	index: number;
+	normalizedName: string;
+	stableIdentity: string;
+};
 
 /**
  * Convert raw MCP tool definitions into BuiltTool instances.
@@ -14,11 +25,11 @@ type McpContentBlock = McpCallToolResult['content'][number];
  */
 export class McpToolResolver {
 	resolve(connection: McpConnection, tools: Tool[]): BuiltTool[] {
-		return tools.map((tool) => this.resolveTool(connection, tool));
+		return ensureUniqueMcpToolNames(tools.map((tool) => this.resolveTool(connection, tool)));
 	}
 
 	private resolveTool(connection: McpConnection, tool: Tool): BuiltTool {
-		const prefixedName = `${connection.name}_${tool.name}`;
+		const prefixedName = sanitizeToolName(`${connection.name}_${tool.name}`);
 		const originalName = tool.name;
 
 		const handler = async (
@@ -28,6 +39,7 @@ export class McpToolResolver {
 			const args = (input ?? {}) as Record<string, unknown>;
 			return await connection.callTool(originalName, args, {
 				abortSignal: ctx.abortSignal,
+				modelToolName: ctx.toolName ?? prefixedName,
 			});
 		};
 
@@ -43,10 +55,72 @@ export class McpToolResolver {
 			toMessage,
 			mcpTool: true,
 			mcpServerName: connection.name,
+			mcpToolName: originalName,
 		};
 
 		return builtTool;
 	}
+}
+
+export function ensureUniqueMcpToolNames(tools: BuiltTool[]): BuiltTool[] {
+	const candidates = tools.map<ToolNameCandidate>((tool, index) => {
+		const serverName = tool.mcpServerName;
+		const originalName = tool.mcpToolName;
+		const normalizedName =
+			serverName !== undefined && originalName !== undefined
+				? sanitizeToolName(`${serverName}_${originalName}`)
+				: sanitizeToolName(tool.name);
+		const stableIdentity = JSON.stringify([serverName ?? null, originalName ?? tool.name]);
+		return { index, stableIdentity, normalizedName };
+	});
+	const candidatesByName = new Map<string, ToolNameCandidate[]>();
+	for (const candidate of candidates) {
+		const group = candidatesByName.get(candidate.normalizedName);
+		if (group) {
+			group.push(candidate);
+		} else {
+			candidatesByName.set(candidate.normalizedName, [candidate]);
+		}
+	}
+	const resolvedNames = candidates.map(({ normalizedName }) => normalizedName);
+	const assignedNames = new Set(resolvedNames);
+
+	const collisionGroups = [...candidatesByName.entries()]
+		.filter(([, group]) => group.length > 1)
+		.sort(([left], [right]) => left.localeCompare(right));
+
+	for (const [normalizedName, group] of collisionGroups) {
+		const sortedGroup = [...group].sort((left, right) => {
+			const nameComparison = left.stableIdentity.localeCompare(right.stableIdentity);
+			return nameComparison !== 0 ? nameComparison : left.index - right.index;
+		});
+
+		for (const candidate of sortedGroup) {
+			let attempt = 0;
+			let uniqueName: string;
+			do {
+				uniqueName = appendStableSuffix(normalizedName, candidate.stableIdentity, attempt++);
+			} while (assignedNames.has(uniqueName));
+
+			resolvedNames[candidate.index] = uniqueName;
+			assignedNames.add(uniqueName);
+		}
+	}
+
+	return tools.map((tool, index) =>
+		tool.name === resolvedNames[index] ? tool : { ...tool, name: resolvedNames[index] },
+	);
+}
+
+function appendStableSuffix(name: string, stableIdentity: string, attempt: number): string {
+	const hashSource = attempt === 0 ? stableIdentity : `${stableIdentity}:${attempt}`;
+	const suffix = createHash('sha256')
+		.update(hashSource)
+		.digest('hex')
+		.slice(0, TOOL_NAME_HASH_LENGTH);
+	const prefixLength = MAX_TOOL_NAME_LENGTH - TOOL_NAME_HASH_LENGTH - 1;
+	const prefix = name.slice(0, prefixLength).replace(/[_-]+$/, '');
+	return `${prefix}_${suffix}`;
 }
 
 /**

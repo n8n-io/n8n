@@ -32,8 +32,8 @@ import { caseDisplayPrompt } from '../utils/conversation-text';
 /**
  * Sum per-build `claude` spend into run-level numbers, or undefined when no
  * MCP builds were recorded (so non-MCP runs add nothing to their outputs).
- * Last-attempt semantics (see McpBuildSpend): totals are a lower bound when
- * builds were retried.
+ * Each entry already sums every attempt of its build (see McpBuildSpend), so
+ * the totals are the run's true spend.
  */
 export function summarizeMcpBuildSpend(
 	spend: McpBuildSpend[] | undefined,
@@ -429,6 +429,20 @@ export function writeEvalResults(
 				passHatK: terminalRate(ea.passHatK),
 			})),
 			threadIds: tc.runs.map((run) => run.threadId ?? null),
+			// Per-iteration conversation transcript + build-failure reason — the
+			// LangTracer dispatcher ingests both (null when an iteration has none).
+			// Transcript content is redacted at capture (transcript-from-events).
+			transcriptPerRun: tc.runs.map((run) => run.transcript ?? null),
+			buildErrorPerRun: tc.runs.map((run) => run.buildError ?? null),
+			// `claude` build spend per iteration (--build-via-mcp only) — the
+			// dedupe-safe source for per-case cost (LangSmith feedback repeats the
+			// value on every row of a case's build).
+			...(tc.runs.some((run) => run.buildCostUsd !== undefined)
+				? {
+						buildCostUsdPerRun: tc.runs.map((run) => run.buildCostUsd ?? null),
+						buildTurnsPerRun: tc.runs.map((run) => run.buildTurns ?? null),
+					}
+				: {}),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
@@ -446,6 +460,9 @@ export function writeEvalResults(
 					score: sr.score,
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
+					// Who owns the failure, decided here rather than re-derived
+					// downstream from the category string (TRUST-375).
+					attribution: sr.attribution,
 					rootCause: sr.rootCause,
 					execErrors: sr.evalResult?.errors ?? sr.agentEvalResult?.errors ?? [],
 					evalResult: sr.evalResult,
