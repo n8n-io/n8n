@@ -1,4 +1,4 @@
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	LOCAL_STORAGE_EXPERIMENTAL_DISMISSED_SUGGESTED_WORKFLOWS,
