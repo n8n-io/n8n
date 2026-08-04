@@ -18,7 +18,7 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nSwitch,
 	N8nText,
 } from '@n8n/design-system';
@@ -344,7 +344,7 @@ const typeOptions = [
 									/>
 								</N8nInputLabel>
 								<div :class="$style.typePick">
-									<N8nRadioButtons
+									<N8nSegmentControl
 										size="small"
 										:model-value="defFor(name).type === 'plain' ? 'plain' : 'password'"
 										:options="typeOptions"

@@ -22,7 +22,7 @@ import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
-import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -345,9 +345,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
-			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+			<div :class="[$style.titleSection]">
 				<template v-if="hasAiMetadata">
-					<N8nRadioButtons
+					<N8nSegmentControl
 						v-model="outputMode"
 						data-test-id="ai-output-mode-select"
 						:options="outputTypes"
@@ -561,10 +561,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	> * {
 		margin-right: var(--spacing--2xs);
 	}
-}
-
-.titleSectionV2 {
-	padding-left: var(--spacing--4xs);
 }
 
 .title {

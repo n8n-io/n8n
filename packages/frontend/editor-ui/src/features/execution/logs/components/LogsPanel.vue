@@ -281,6 +281,8 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 }
 
 .container {
+	--logs-panel--header-height: var(--height--lg);
+
 	height: 100%;
 	display: flex;
 	flex-grow: 1;
