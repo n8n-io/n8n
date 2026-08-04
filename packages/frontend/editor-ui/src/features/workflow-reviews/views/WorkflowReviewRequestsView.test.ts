@@ -58,6 +58,15 @@ const renderComponent = createComponentRenderer(WorkflowReviewRequestsView, {
 						<button data-test-id="select-open-tab" @click="$emit('update:active-tab', 'open')" />
 					</div>`,
 			},
+			// The real tooltip renders its content in a popper on hover, which jsdom
+			// cannot exercise; expose the bindings as attributes instead.
+			N8nTooltip: {
+				props: ['disabled', 'content'],
+				template: `
+					<div data-test-id="workflow-review-decision-tooltip" :data-disabled="disabled" :data-content="content">
+						<slot />
+					</div>`,
+			},
 		},
 	},
 });
@@ -212,13 +221,16 @@ describe('WorkflowReviewRequestsView', () => {
 		store.showSidebar = true;
 		store.items = [createInboxItem()];
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent();
 		await waitAllPromises();
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('List review');
+		// The list item carries no eligibility data, so no decision actions yet
+		expect(queryByTestId('workflow-review-approve-button')).not.toBeInTheDocument();
 
 		store.detail = createDetail({ title: 'Detail review' });
 		await waitAllPromises();
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('Detail review');
+		expect(getByTestId('workflow-review-approve-button')).toBeInTheDocument();
 	});
 
 	it('hydrates the tab from the query before probing', async () => {
@@ -497,6 +509,72 @@ describe('WorkflowReviewRequestsView', () => {
 			expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
 		});
 
+		// Each button carries its own tooltip, so both must agree.
+		it('keeps the buttons enabled and the tooltips off when the viewer can decide', async () => {
+			const { getByTestId, getAllByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-approve-button')).not.toBeDisabled();
+			expect(getByTestId('workflow-review-request-changes-button')).not.toBeDisabled();
+			for (const tooltip of getAllByTestId('workflow-review-decision-tooltip')) {
+				expect(tooltip).toHaveAttribute('data-disabled', 'true');
+			}
+		});
+
+		it('disables the buttons and says why when the viewer contributed a version', async () => {
+			store.detail = createDetail({
+				viewerCanDecide: false,
+				viewerDecisionIneligibilityReason: 'author',
+			});
+
+			const { getByTestId, getAllByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
+			expect(getByTestId('workflow-review-request-changes-button')).toBeDisabled();
+			const tooltips = getAllByTestId('workflow-review-decision-tooltip');
+			expect(tooltips).toHaveLength(2);
+			for (const tooltip of tooltips) {
+				expect(tooltip).toHaveAttribute('data-disabled', 'false');
+				expect(tooltip).toHaveAttribute(
+					'data-content',
+					'You contributed a version to this review.',
+				);
+			}
+		});
+
+		it('falls back to the generic permission hint for any other reason', async () => {
+			store.detail = createDetail({
+				viewerCanDecide: false,
+				viewerDecisionIneligibilityReason: 'missing_publish_permission',
+			});
+
+			const { getByTestId, getAllByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByTestId('workflow-review-approve-button')).toBeDisabled();
+			for (const tooltip of getAllByTestId('workflow-review-decision-tooltip')) {
+				expect(tooltip).toHaveAttribute(
+					'data-content',
+					'Missing permissions to perform this action',
+				);
+			}
+		});
+
+		it('does not submit a decision for an ineligible viewer', async () => {
+			store.detail = createDetail({
+				viewerCanDecide: false,
+				viewerDecisionIneligibilityReason: 'author',
+			});
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			getByTestId('workflow-review-approve-button').click();
+			await waitAllPromises();
+
+			expect(store.decideOnReview).not.toHaveBeenCalled();
+		});
+
 		it('disables both buttons while a decision is in flight', async () => {
 			let resolveDecision!: () => void;
 			store.decideOnReview.mockImplementationOnce(
@@ -582,6 +660,8 @@ function createDetail(
 		...createInboxItem(),
 		description: null,
 		workflows: [],
+		viewerCanDecide: true,
+		viewerDecisionIneligibilityReason: null,
 		...overrides,
 	};
 }

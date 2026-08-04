@@ -1,4 +1,5 @@
 name: 'Instance AI Evals: Experiments'
+run-name: "Instance AI Evals: ${{ inputs.branch || 'master' }} (tier=${{ inputs.tier || 'all' }}, iterations=${{ inputs.iterations }}, model=${{ inputs.model || 'default' }}, experiment=${{ inputs['experiment-name'] || '-' }})"
 
 on:
   workflow_call:
