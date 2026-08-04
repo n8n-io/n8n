@@ -122,7 +122,7 @@ export class MemoryOrchestrator {
 		return {
 			ids: messages.map((m) => m.id),
 			operations: messages.map(() => 'query_memory'),
-			descriptions: ['conversation history'],
+			descriptions: messages.map(() => 'conversation history'),
 		};
 	}
 
