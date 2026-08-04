@@ -8,22 +8,37 @@ import type net from 'node:net';
 type ProxyConnectOpts = Parameters<HttpsProxyAgent<string>['connect']>[1];
 
 /**
- * Options that name the target host or authenticate to it: SNI plus the trust
- * material of a target-specific certificate setup.
- *
- * A proxy presents its own certificate on its own hostname, so these must never
- * reach the socket that carries the proxy handshake.
+ * How a socket is opened and pooled, as opposed to how the peer on the other end is
+ * authenticated. Every TLS option in a request describes the target, including the
+ * caller's willingness to accept a certificate it cannot verify, so a proxy borrows
+ * these and nothing else: it is a different peer, and its certificate is always
+ * verified against the proxy hostname. A private proxy CA is trusted through the
+ * process trust store (`NODE_EXTRA_CA_CERTS`), not through a per-request option.
  */
-const TARGET_TLS_OPTION_KEYS = [
-	'servername',
-	'ca',
-	'cert',
-	'key',
-	'pfx',
-	'passphrase',
-	'crl',
-	'checkServerIdentity',
+const CONNECTION_OPTION_KEYS = [
+	'keepAlive',
+	'keepAliveMsecs',
+	'keepAliveInitialDelay',
+	'maxSockets',
+	'maxTotalSockets',
+	'maxFreeSockets',
+	'scheduling',
+	'timeout',
+	'noDelay',
+	'family',
+	'hints',
+	'localAddress',
+	'localPort',
+	'lookup',
+	'autoSelectFamily',
+	'autoSelectFamilyAttemptTimeout',
 ] as const satisfies ReadonlyArray<keyof https.AgentOptions>;
+
+function pickKeys(agentOptions: https.AgentOptions, keys: readonly string[]): https.AgentOptions {
+	return Object.fromEntries(
+		Object.entries(agentOptions).filter(([key]) => keys.includes(key)),
+	) as https.AgentOptions;
+}
 
 function omitKeys(agentOptions: https.AgentOptions, keys: readonly string[]): https.AgentOptions {
 	return Object.fromEntries(
@@ -32,7 +47,7 @@ function omitKeys(agentOptions: https.AgentOptions, keys: readonly string[]): ht
 }
 
 function forProxyConnection(agentOptions: https.AgentOptions = {}): https.AgentOptions {
-	return omitKeys(agentOptions, TARGET_TLS_OPTION_KEYS);
+	return pickKeys(agentOptions, CONNECTION_OPTION_KEYS);
 }
 
 function forTunnelledConnection(agentOptions: https.AgentOptions = {}): https.AgentOptions {
@@ -56,7 +71,8 @@ class TunnellingHttpsProxyAgent extends HttpsProxyAgent<string> {
  * Creates the agent routing plain-HTTP targets through `proxyUrl`.
  * Such a target has no TLS session of its own, so its TLS options are dropped.
  *
- * @param agentOptions options describing the connection to the **target**
+ * @param agentOptions options describing the connection to the **target**; only its
+ * connection-management options reach the proxy
  */
 export function createProxiedHttpAgent(
 	proxyUrl: string,
@@ -69,7 +85,8 @@ export function createProxiedHttpAgent(
  * Creates the agent tunnelling HTTPS targets through `proxyUrl`, applying the
  * target's TLS options to the tunnelled session rather than to the proxy handshake.
  *
- * @param agentOptions options describing the connection to the **target**
+ * @param agentOptions options describing the connection to the **target**; only its
+ * connection-management options reach the proxy
  */
 export function createProxiedHttpsAgent(
 	proxyUrl: string,

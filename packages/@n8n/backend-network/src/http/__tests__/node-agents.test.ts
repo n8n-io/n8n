@@ -73,6 +73,7 @@ describe('buildNodeAgents', () => {
 			const agents = buildNodeAgents('https://proxy.internal:3128', 'disabled', {
 				servername: 'target.example.com',
 				ca: 'TARGET_CA',
+				rejectUnauthorized: false,
 			});
 
 			for (const agent of [agents.httpAgent, agents.httpsAgent]) {
@@ -80,6 +81,7 @@ describe('buildNodeAgents', () => {
 				expect(connectOpts).toMatchObject({ host: 'proxy.internal', port: 3128 });
 				expect(connectOpts).not.toHaveProperty('servername');
 				expect(connectOpts).not.toHaveProperty('ca');
+				expect(connectOpts).not.toHaveProperty('rejectUnauthorized');
 			}
 		});
 	});

@@ -36,14 +36,27 @@ describe('createProxiedHttpsAgent', () => {
 		expect(agent.connectOpts).not.toHaveProperty('passphrase');
 	});
 
-	it('keeps the request TLS relaxation on the connection to the proxy', () => {
+	it('verifies the proxy certificate even when the request opts out of verification', () => {
 		const agent = createProxiedHttpsAgent(PROXY_URL, {
 			...TARGET_TLS,
 			rejectUnauthorized: false,
 			secureOptions: 4,
 		});
 
-		expect(agent.connectOpts).toMatchObject({ rejectUnauthorized: false, secureOptions: 4 });
+		expect(agent.connectOpts).not.toHaveProperty('rejectUnauthorized');
+		expect(agent.connectOpts).not.toHaveProperty('secureOptions');
+	});
+
+	it('keeps a target TLS policy from reshaping the proxy handshake', () => {
+		const agent = createProxiedHttpsAgent(PROXY_URL, {
+			ciphers: 'TARGET_CIPHERS',
+			minVersion: 'TLSv1.1',
+			checkServerIdentity: () => undefined,
+		});
+
+		expect(agent.connectOpts).not.toHaveProperty('ciphers');
+		expect(agent.connectOpts).not.toHaveProperty('minVersion');
+		expect(agent.connectOpts).not.toHaveProperty('checkServerIdentity');
 	});
 
 	it('forwards pool and socket options to the connection to the proxy', () => {
