@@ -125,6 +125,8 @@ const saveDescription = async () => {
 		const id = props.data.workflowId;
 		const description = normalizedCurrentValue.value ?? null;
 
+		const tagsWereChanged = tagsChanged.value;
+
 		await saveWorkflowDescription(id, description);
 
 		props.data.onSave?.(description);
@@ -133,6 +135,13 @@ const saveDescription = async () => {
 			workflow_id: id,
 			description,
 		});
+
+		if (tagsWereChanged) {
+			telemetry.track('User edited workflow tags', {
+				workflow_id: id,
+				new_tag_count: tagIds.value.length,
+			});
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflow.description.error.title'));
 	} finally {
