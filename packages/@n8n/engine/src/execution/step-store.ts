@@ -47,9 +47,10 @@ export interface StepStore {
 	 * Persist new step records, batched so planning a fan-out costs a single round
 	 * trip. Returns the rows actually created.
 	 *
-	 * A node already planned for the execution is skipped rather than fatal, so a
-	 * concurrent planner that reached it first doesn't cost the caller its other
-	 * rows. The caller owns — and so announces — only what it gets back.
+	 * If a step for a given `(executionId, nodeId)` already exists, it is skipped
+	 * and not returned. This allows multiple planners to race to enqueue the same
+	 * node without erroring or duplicating work. We return the actually created rows
+	 * so the caller knows which step creations it needs to publish.
 	 */
 	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>>;
 
