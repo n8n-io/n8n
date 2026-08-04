@@ -240,10 +240,11 @@ describe('step execution (integration)', () => {
 			graph,
 			triggerPayload: null,
 		});
-		const [, { id: stepId }] = await stepStore.createSteps([
+		const created = await stepStore.createSteps([
 			{ executionId, nodeId: 'trigger', status: 'completed' },
 			{ executionId, nodeId: 'node-a', status: 'queued' },
 		]);
+		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
 		const event = { type: 'step:ready', executionId, stepId } as const;

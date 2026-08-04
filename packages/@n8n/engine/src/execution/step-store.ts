@@ -45,7 +45,7 @@ export class StepNotFoundError extends Error {
 export interface StepStore {
 	/**
 	 * Persist new step records, batched so planning a fan-out costs a single round
-	 * trip. Returns the rows actually created, in input order.
+	 * trip. Returns the rows actually created.
 	 *
 	 * A node already planned for the execution is skipped rather than fatal, so a
 	 * concurrent planner that reached it first doesn't cost the caller its other

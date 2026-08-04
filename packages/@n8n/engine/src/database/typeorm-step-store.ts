@@ -19,26 +19,24 @@ export class TypeOrmStepStore implements StepStore {
 	async createSteps(records: NewStepRecord[]): Promise<Array<{ id: string; nodeId: string }>> {
 		if (records.length === 0) return [];
 
-		// Ids are assigned here, not by the entity's insert hook, so the rows that
-		// survived the insert can be picked out of what RETURNING gives back.
+		// Ids are assigned here because the entity's insert hook only runs on class
+		// instances, and these are plain values.
 		const rows = records.map((record) => ({ ...record, id: generateId() }));
 
 		// `orIgnore` is the unique key doing its job: a node another planner already
-		// queued is skipped, leaving the rest of the batch to land.
+		// queued is skipped, leaving the rest of the batch to land. RETURNING emits
+		// exactly the rows that were inserted, keyed by database column name.
 		const result = await this.repo
 			.createQueryBuilder()
 			.insert()
-			// Copies, because TypeORM writes the RETURNING values back onto whatever
-			// it is given — which would overwrite the ids we are about to match on.
-			.values(rows.map((row) => ({ ...row })))
+			.values(rows)
 			.orIgnore()
-			.returning(['id'])
+			.returning(['id', 'nodeId'])
 			.execute();
 
-		// `raw` is the driver's untyped result; RETURNING was asked for `id` alone.
-		const inserted = new Set((result.raw as Array<{ id: string }>).map(({ id }) => id));
-
-		return rows.filter(({ id }) => inserted.has(id)).map(({ id, nodeId }) => ({ id, nodeId }));
+		return (result.raw as Array<{ id: string; node_id: string }>).map(
+			({ id, node_id: nodeId }) => ({ id, nodeId }),
+		);
 	}
 
 	async loadStep(id: string): Promise<StepRecord> {
