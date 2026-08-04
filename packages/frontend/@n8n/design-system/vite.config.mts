@@ -35,11 +35,6 @@ export default mergeConfig(
 				compiler: 'vue3',
 				autoInstall: true,
 			}),
-			// The plugin drives the emit, not a bare `vue-tsc -p` invocation. Invoked
-			// directly, vue-tsc exits 0 and silently writes nothing for any component
-			// whose inferred template context reaches a type it cannot name through
-			// pnpm's hashed paths — vue-router's global `ComponentCustomProperties`
-			// augmentation alone accounted for 54 skipped components (TS2883).
 			dts({
 				// `tsconfig.build.json` rather than `tsconfig.json`: the latter maps the
 				// sibling `@n8n/*` packages to their `src`, which pulls files outside
@@ -47,7 +42,7 @@ export default mergeConfig(
 				// another package's sources instead of its published types.
 				tsconfigPath: resolve(__dirname, 'tsconfig.build.json'),
 				// Per-file declarations, not a rollup: api-extractor cannot follow `.vue`
-				// module specifiers and leaves the imports dangling. Rejected in ADR-0002.
+				// module specifiers and leaves the imports dangling. 
 				rollupTypes: false,
 				entryRoot: resolve(__dirname, 'src'),
 			}),
