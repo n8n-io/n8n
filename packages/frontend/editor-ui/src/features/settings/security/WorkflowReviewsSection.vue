@@ -5,7 +5,7 @@ import { N8nAlertDialog, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = defineProps<{

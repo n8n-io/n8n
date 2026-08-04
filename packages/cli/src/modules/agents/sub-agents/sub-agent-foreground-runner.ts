@@ -1,29 +1,36 @@
 import {
 	assertSubAgentTaskPath,
-	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
 	deriveSubAgentTelemetry,
 	renderDelegateSubAgentPrompt,
 	type AgentExecutionCounter,
 	type AgentMessage,
 	type BuiltTelemetry,
 	type CredentialProvider,
+	type DelegateSubAgentCancelRequest,
+	type DelegateSubAgentResumeRequest,
 	type GenerateResult,
+	type JSONValue,
 	type SerializableAgentState,
 	type StreamChunk,
+	type StreamResult,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
 import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import type { AgentRunTelemetryType } from '@/interfaces';
 
 import { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
+import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
@@ -32,6 +39,13 @@ export interface SubAgentForegroundRunContext {
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
+	/**
+	 * Telemetry classification inherited from the delegating parent run. A
+	 * sub-agent always runs its own published snapshot, so classifying by that
+	 * alone would report `production` for every delegation — including ones made
+	 * while the parent is being tested in the builder preview.
+	 */
+	runType: AgentRunTelemetryType;
 	executionCounter?: AgentExecutionCounter;
 	/** Parent run's abort signal — cancelling the parent cancels this child. */
 	abortSignal?: AbortSignal;
@@ -61,15 +75,30 @@ export interface SubAgentForegroundResult {
 	taskPath: SubAgentTaskPath;
 	/** The child run's memory/session thread id, so callers can link or continue it. */
 	threadId: string;
-	status: 'completed' | 'failed';
+	status: 'completed' | 'failed' | 'suspended';
 	result: GenerateResult;
+	/** Opaque, checkpoint-safe host context required to reconstruct this child exactly. */
+	resumeContext?: JSONValue;
 }
+
+type ForegroundOperation = {
+	taskPath: SubAgentTaskPath;
+} & (
+	| { type: 'run'; request: SubAgentSpawnRequest }
+	| {
+			type: 'resume';
+			request: DelegateSubAgentResumeRequest;
+			source: { agentId: string; versionId: string };
+			threadId: string;
+	  }
+);
 
 @Service()
 export class SubAgentForegroundRunner {
 	constructor(
 		private readonly sourceResolver: SubAgentSourceResolver,
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly logger: Logger,
 	) {}
 
@@ -89,23 +118,52 @@ export class SubAgentForegroundRunner {
 		// validate the forwarded shape — don't recompute it or re-run the gates.
 		const taskPath = request.taskPath;
 		assertSubAgentTaskPath(taskPath);
+		return await this.executeForeground({ type: 'run', request, taskPath }, context);
+	}
 
-		const runtimeSource = await this.sourceResolver.resolveForRuntime(request.source, {
-			projectId: context.projectId,
-		});
+	async resumeForeground(
+		request: DelegateSubAgentResumeRequest,
+		context: SubAgentForegroundRunContext,
+	): Promise<SubAgentForegroundResult> {
+		assertSubAgentTaskPath(request.taskPath);
+		if (request.childThreadId === undefined || request.resumeContext === undefined) {
+			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
+		}
+		const pinnedSource = parseResumeContext(request.resumeContext, request.subAgentId);
+		return await this.executeForeground(
+			{
+				type: 'resume',
+				request,
+				taskPath: request.taskPath,
+				source: pinnedSource,
+				threadId: request.childThreadId,
+			},
+			context,
+		);
+	}
 
-		// A delegated run is a fresh conversation, so it gets an ordinary thread id
-		// (a uuid) — exactly like any other agent run, with no special structure.
-		// The parent linkage is persisted as columns on the session record
-		// (origin / parentThreadId / parentAgentId), never encoded into the id.
-		// The same id is shared by the SDK memory thread and the session record so
-		// title sync, recall, and deletion all resolve to the same thread, and it is
-		// returned on the result so a caller can re-supply it to continue the thread.
-		const threadId = uuid();
-		// Inherit the parent's episodic-memory scope. When the parent has none,
-		// isolate this run to its own thread rather than widening to the project.
-		const resourceId = request.parentResourceId ?? threadId;
+	async cancelForeground(request: DelegateSubAgentCancelRequest): Promise<void> {
+		assertSubAgentTaskPath(request.taskPath);
+		if (request.resumeContext === undefined) {
+			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
+		}
+		const pinnedSource = parseResumeContext(request.resumeContext, request.subAgentId);
+		await this.checkpointStorage.delete(request.childRunId, pinnedSource.agentId);
+	}
 
+	private async executeForeground(
+		operation: ForegroundOperation,
+		context: SubAgentForegroundRunContext,
+	): Promise<SubAgentForegroundResult> {
+		const runtimeSource = await this.sourceResolver.resolveForRuntime(
+			operation.type === 'run' ? operation.request.source : operation.source,
+			{ projectId: context.projectId },
+		);
+
+		// A delegated run uses the same fresh id for SDK memory and its session record.
+		const threadId = operation.type === 'run' ? uuid() : operation.threadId;
+		const resourceId =
+			operation.type === 'run' ? (operation.request.parentResourceId ?? threadId) : threadId;
 		const reconstructionService = await getReconstructionService();
 		const childConfig =
 			context.instrumentation?.transformDelegatedAgentConfig?.(runtimeSource.source.config, {
@@ -120,88 +178,71 @@ export class SubAgentForegroundRunner {
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
 			runtimeProfile: 'sub-agent',
+			runType: context.runType,
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
 			instrumentation: context.instrumentation,
 		});
 
-		// Abort the child when the parent run is cancelled.
-		const abortSignal = context.abortSignal;
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
-
-		const prompt = renderDelegateSubAgentPrompt(request);
+		const userMessage =
+			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
 		try {
-			const resultStream = await agent.stream(prompt, {
-				...(abortSignal !== undefined ? { abortSignal } : {}),
+			const executionOptions = {
+				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
 				...(telemetry !== undefined ? { telemetry } : {}),
-				persistence: {
-					resourceId,
-					threadId,
-				},
 				executionCounter: context.executionCounter,
-			});
-			const recorder = new ExecutionRecorder();
-			let structuredOutput: unknown;
-			let childSuspended = false;
-
-			for await (const value of streamAgentChunks(resultStream.stream)) {
-				recorder.record(value);
-				context.onChunk?.(value);
-				if (value.type === 'tool-call-suspended') {
-					childSuspended = true;
-				}
-				if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
-				}
-			}
-
-			const messageRecord = recorder.getMessageRecord();
+			};
+			const resultStream =
+				operation.type === 'run'
+					? await agent.stream(userMessage ?? '', {
+							...executionOptions,
+							persistence: {
+								resourceId,
+								threadId,
+								delegated: true,
+							},
+						})
+					: await agent.resume('stream', operation.request.resumeData, {
+							...executionOptions,
+							runId: operation.request.childRunId,
+							toolCallId: operation.request.childToolCallId,
+						});
+			const { messageRecord, result } = await consumeAgentStream(resultStream, context.onChunk);
+			const suspended = result.pendingSuspend !== undefined && result.pendingSuspend.length > 0;
+			const hitlStatus = suspended
+				? 'suspended'
+				: operation.type === 'resume'
+					? 'resumed'
+					: undefined;
 			await this.recordSubAgentExecution({
 				runtimeSource: runtimeSource.source,
 				projectId: context.projectId,
 				threadId,
-				parentThreadId: request.parentThreadId,
+				parentThreadId: operation.request.parentThreadId,
 				parentAgentId: context.parentAgentId,
-				taskPath,
-				prompt,
+				runType: context.runType,
+				taskPath: operation.taskPath,
+				userMessage,
 				record: messageRecord,
+				...(hitlStatus !== undefined ? { hitlStatus } : {}),
 			});
-			if (childSuspended) {
-				return {
-					taskPath,
-					threadId,
-					status: 'failed',
-					result: {
-						runId: resultStream.runId,
-						messages: [],
-						finishReason: 'error',
-						error: DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
-						getState: () => resultStream.getState(),
-					},
-				};
-			}
-
-			const result = buildGenerateResultFromRecord(
-				resultStream.runId,
-				messageRecord,
-				structuredOutput,
-				() => resultStream.getState(),
-			);
 
 			return {
-				taskPath,
+				taskPath: operation.taskPath,
 				threadId,
-				status:
-					result.finishReason === 'error' || result.error !== undefined ? 'failed' : 'completed',
+				status: suspended
+					? 'suspended'
+					: result.finishReason === 'error' || result.error !== undefined
+						? 'failed'
+						: 'completed',
 				result,
+				...(suspended ? { resumeContext: createResumeContext(runtimeSource.source) } : {}),
 			};
 		} finally {
-			// Each delegation builds its own child agent, so release it here:
-			// dispose the runtime's background tasks and disconnect any MCP
-			// transports instead of leaking them per delegated run.
 			await agent.close().catch((error) => {
-				this.logger.warn('Failed to close subagent after run', {
-					taskPath,
+				this.logger.warn(`Failed to close subagent after ${operation.type}`, {
+					taskPath: operation.taskPath,
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
@@ -215,9 +256,11 @@ export class SubAgentForegroundRunner {
 		threadId: string;
 		parentThreadId?: string;
 		parentAgentId?: string;
+		runType: AgentRunTelemetryType;
 		taskPath: SubAgentTaskPath;
-		prompt: string;
+		userMessage: string | null;
 		record: MessageRecord;
+		hitlStatus?: 'suspended' | 'resumed';
 	}): Promise<void> {
 		const {
 			runtimeSource,
@@ -225,9 +268,11 @@ export class SubAgentForegroundRunner {
 			threadId,
 			parentThreadId,
 			parentAgentId,
+			runType,
 			taskPath,
-			prompt,
+			userMessage,
 			record,
+			hitlStatus,
 		} = params;
 
 		try {
@@ -236,15 +281,16 @@ export class SubAgentForegroundRunner {
 				agentId: runtimeSource.sourceId,
 				agentName: runtimeSource.config.name,
 				projectId,
-				userMessage: prompt,
+				userMessage,
 				record,
+				...(hitlStatus !== undefined ? { hitlStatus } : {}),
 				source: 'subagent',
 				threadMetadata: {
 					...(parentThreadId !== undefined ? { parentThreadId } : {}),
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
 				},
 				telemetry: {
-					runType: 'production',
+					runType,
 					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},
 			});
@@ -271,11 +317,75 @@ async function getReconstructionService() {
 	return Container.get(AgentRuntimeReconstructionService);
 }
 
+async function consumeAgentStream(
+	resultStream: StreamResult,
+	onChunk?: (chunk: StreamChunk) => void,
+): Promise<{ messageRecord: MessageRecord; result: GenerateResult }> {
+	const recorder = new ExecutionRecorder();
+	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
+	let structuredOutput: unknown;
+
+	for await (const value of streamAgentChunks(resultStream.stream)) {
+		recorder.record(value);
+		onChunk?.(value);
+		if (value.type === 'tool-call-suspended') {
+			pendingSuspend.push({
+				runId: value.runId,
+				toolCallId: value.toolCallId,
+				toolName: value.toolName,
+				input: value.input,
+				suspendPayload: value.suspendPayload,
+				...(value.resumeSchema !== undefined ? { resumeSchema: value.resumeSchema } : {}),
+			});
+		}
+		if (value.type === 'finish' && value.structuredOutput !== undefined) {
+			structuredOutput = value.structuredOutput;
+		}
+	}
+
+	const messageRecord = recorder.getMessageRecord();
+	return {
+		messageRecord,
+		result: buildGenerateResultFromRecord(
+			resultStream.runId,
+			messageRecord,
+			structuredOutput,
+			() => resultStream.getState(),
+			pendingSuspend,
+		),
+	};
+}
+
+function createResumeContext(runtimeSource: ResolvedSubAgentSource): JSONValue {
+	if (runtimeSource.versionId === undefined) {
+		throw new UnexpectedError('Resolved sub-agent source is missing its published version');
+	}
+	return { agentId: runtimeSource.sourceId, versionId: runtimeSource.versionId };
+}
+
+function parseResumeContext(
+	resumeContext: JSONValue,
+	subAgentId: string,
+): { agentId: string; versionId: string } {
+	if (
+		!isRecord(resumeContext) ||
+		typeof resumeContext.agentId !== 'string' ||
+		resumeContext.agentId.length === 0 ||
+		resumeContext.agentId !== subAgentId ||
+		typeof resumeContext.versionId !== 'string' ||
+		resumeContext.versionId.length === 0
+	) {
+		throw new UserError('Configured sub-agent resume context is missing or invalid');
+	}
+	return { agentId: resumeContext.agentId, versionId: resumeContext.versionId };
+}
+
 function buildGenerateResultFromRecord(
 	runId: string,
 	record: MessageRecord,
 	structuredOutput: unknown,
 	getState: () => SerializableAgentState,
+	pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [],
 ): GenerateResult {
 	const messages = createAssistantMessages(record.assistantResponse);
 	const finishReason = toKnownFinishReason(record.finishReason);
@@ -294,6 +404,7 @@ function buildGenerateResultFromRecord(
 			: {}),
 		...(structuredOutput !== undefined ? { structuredOutput } : {}),
 		...(record.error !== null ? { error: record.error } : {}),
+		...(pendingSuspend.length > 0 ? { pendingSuspend } : {}),
 		getState,
 	};
 	return result;

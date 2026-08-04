@@ -1,6 +1,6 @@
 import { effectScope } from 'vue';
 import { i18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import {
 	listenForCredentialChanges,

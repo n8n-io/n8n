@@ -22,7 +22,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 8 |  | BASE TABLE |
-| [public.agents](public.agents.md) | 12 |  | BASE TABLE |
+| [public.agents](public.agents.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
 | [public.agents_memory_entry_cursors](public.agents_memory_entry_cursors.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
@@ -516,6 +516,7 @@ erDiagram
   varchar_128_ name
   varchar_255_ projectId FK
   json schema
+  timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
   timestamp_3__with_time_zone updatedAt

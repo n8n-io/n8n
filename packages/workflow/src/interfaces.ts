@@ -240,8 +240,8 @@ export abstract class ICredentialsHelper {
 		credentials: ICredentialDataDecryptedObject,
 		typeName: string,
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
-		workflow: Workflow,
-		node: INode,
+		workflow?: Workflow,
+		node?: INode,
 	): Promise<IHttpRequestOptions>;
 
 	abstract preAuthentication(
@@ -1531,7 +1531,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	/** Always the production endpoint, whichever endpoint the request arrived on. */
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
+	/**
+	 * The endpoint actually being served (`/webhook-test/…` on a test run), which
+	 * identifies the webhook as an OAuth protected resource. Minting and verifying a
+	 * token both derive the resource from it, so it must track the endpoint served.
+	 */
+	getWebhookResourceUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;
@@ -1860,6 +1867,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
+	resolveCredentialJsonLeaves?: boolean; // Supported by: json (credential fields only) — resolves expressions in JSON leaf values
 	ignoreCredentialExpressionResolveError?: boolean; // Supported by credentials fields outside execution contexts
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color

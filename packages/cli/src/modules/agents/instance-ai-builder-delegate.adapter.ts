@@ -110,9 +110,12 @@ export class InstanceAiBuilderDelegateAdapterService {
 		};
 
 		return {
-			createAgent: async (name) => {
+			createAgent: async (name, id) => {
 				await assertProjectScope('agent:create');
-				const agent = await this.agentsService.create(projectId, name);
+				const agent = await this.agentsService.create(projectId, name, {
+					id,
+					adoptUnconfiguredOnCollision: true,
+				});
 				return { agentId: agent.id, projectId };
 			},
 

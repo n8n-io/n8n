@@ -63,8 +63,6 @@ function makeService() {
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	chatIntegrationRegistry.get.mockReturnValue(undefined);
 	const aiGatewayService = mock<AiGatewayService>();
-	aiGatewayService.getCredentialTypeForProvider.mockResolvedValue(undefined);
-
 	return {
 		service: new AgentValidationService(
 			agentRepository,

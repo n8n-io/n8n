@@ -2,11 +2,11 @@ import type { UpdateWorkflowReviewRequestVersionDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type {
 	DbLockService,
-	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -27,7 +27,9 @@ import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
+import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
@@ -44,16 +46,18 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const userRepository = mock<UserRepository>();
-	const projectRelationRepository = mock<ProjectRelationRepository>();
+	const decisionEligibilityService = mock<WorkflowReviewDecisionEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
+	const workflowService = mock<WorkflowService>();
 	const logger = mock<Logger>();
 	const tx = mock<EntityManager>();
 
@@ -63,15 +67,17 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		workflowFinderService,
 		workflowHistoryService,
 		sharedWorkflowRepository,
+		publishHistoryRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
 		reviewerRepository,
 		userRepository,
-		projectRelationRepository,
+		decisionEligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
+		workflowService,
 	);
 
 	const openRequest = (overrides: Partial<WorkflowReviewRequest> = {}) =>

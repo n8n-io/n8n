@@ -4,7 +4,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';

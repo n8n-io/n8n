@@ -73,7 +73,7 @@ import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/
 import { isVNode, nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowsApi from '@/app/api/workflows';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -157,7 +157,7 @@ vi.mock('@n8n/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	const showToast = vi.fn();
@@ -4781,6 +4781,38 @@ describe('useCanvasOperations', () => {
 				'n8n-nodes-community.notInstalled',
 			);
 			expect(node).toBeDefined();
+		});
+
+		it('should name a new Message an Agent node AI Agent V2 when inline agents are enabled', () => {
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('AI Agent V2');
+		});
+
+		it('should keep the shipped Message an Agent name when inline agents are disabled', () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(null);
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('Message an Agent');
 		});
 	});
 

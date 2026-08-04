@@ -15,7 +15,14 @@ import { UserError } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import {
+	AgentModificationTelemetryService,
+	diffAgentConfigParts,
+	isUnconfiguredAgent,
+	type AgentActor,
+} from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
@@ -39,6 +46,8 @@ export class AgentConfigService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly setupCompletionService: AgentSetupCompletionService,
+		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
 
 	/**
@@ -111,8 +120,8 @@ export class AgentConfigService {
 		agentId: string,
 		projectId: string,
 		config: unknown,
-		user?: User,
-		options?: { clearOmittedOptionalFields?: boolean },
+		user: User,
+		options: { clearOmittedOptionalFields?: boolean; modifiedBy: AgentActor },
 	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
@@ -210,6 +219,14 @@ export class AgentConfigService {
 			clearOmittedOptionalFields(nextSchema, validatedConfig);
 		}
 
+		// Diffed against what is about to be written, before `entity` is mutated.
+		const changedParts = diffAgentConfigParts(
+			previousSchema,
+			nextSchema,
+			previousIntegrations,
+			nextIntegrations,
+		);
+
 		entity.schema = nextSchema;
 		entity.name = validatedConfig.name;
 		entity.integrations = nextIntegrations;
@@ -237,8 +254,27 @@ export class AgentConfigService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
+		// Gate evaluated against the state about to be written; the marker is
+		// claimed and reported only once that write succeeded.
+		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
+			entity,
+			projectId,
+			credentialProvider,
+			user,
+		);
+
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
+
+		this.modificationTelemetry.record({
+			agent: saved,
+			projectId,
+			user,
+			by: options.modifiedBy,
+			changedParts,
+			wasUnconfigured: isUnconfiguredAgent(previousSchema, previousIntegrations),
+		});
+		await emitSetupCompleted?.();
 
 		if (tasksProvided) {
 			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));

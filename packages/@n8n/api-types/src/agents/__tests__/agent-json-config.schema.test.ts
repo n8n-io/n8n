@@ -10,6 +10,17 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
+describe('AgentJsonConfigSchema — model', () => {
+	it('accepts AWS Bedrock model names containing a version colon', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+		});
+
+		expect(result.success).toBe(true);
+	});
+});
+
 describe('AgentJsonConfigSchema — reasoning', () => {
 	it.each(['low', 'medium', 'high'] as const)(
 		'preserves generic %s reasoning effort',

@@ -12,7 +12,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import WorkflowsView from '@/app/views/WorkflowsView.vue';
@@ -53,7 +53,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 }));
 
 const mockShowError = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mockShowError }),
 }));
 

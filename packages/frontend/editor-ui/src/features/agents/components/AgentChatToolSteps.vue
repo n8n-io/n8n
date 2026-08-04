@@ -148,6 +148,12 @@ function childToolCalls(steps: NonNullable<ToolCall['childProgress']>['steps']):
 	}));
 }
 
+/** Traces recorded before empty segments were dropped can still carry reasoning
+ *  the provider never revealed, which would render as blank rows. */
+function childReasoningSegments(childProgress: NonNullable<ToolCall['childProgress']>) {
+	return childProgress.reasoningSegments.filter((segment) => segment.content.length > 0);
+}
+
 function formatToolData(value: unknown): string {
 	if (typeof value === 'string') return value;
 	return JSON.stringify(value, null, 2) ?? String(value);
@@ -229,7 +235,7 @@ function hasActiveToolCall(): boolean {
 								:project-id="projectId"
 							/>
 							<AiReasoningBlock
-								v-for="segment in tc.childProgress.reasoningSegments"
+								v-for="segment in childReasoningSegments(tc.childProgress)"
 								:key="segment.id"
 								:entry="segment"
 								:streaming="segment.endTime === undefined"
@@ -299,7 +305,7 @@ function hasActiveToolCall(): boolean {
 								:project-id="projectId"
 							/>
 							<AiReasoningBlock
-								v-for="segment in tc.childProgress.reasoningSegments"
+								v-for="segment in childReasoningSegments(tc.childProgress)"
 								:key="segment.id"
 								:entry="segment"
 								:streaming="segment.endTime === undefined"

@@ -64,7 +64,11 @@ vi.mock('@n8n/design-system/components/N8nOption', () => ({
 }));
 
 vi.mock('../components/AgentAdvancedPanel.vue', () => ({
-	default: { name: 'AgentAdvancedPanel', template: '<div />' },
+	default: {
+		name: 'AgentAdvancedPanel',
+		template: '<div />',
+		props: ['config', 'disabled', 'collapsible', 'projectId'],
+	},
 }));
 
 vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
@@ -308,7 +312,9 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(true);
+		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
+		expect(advancedPanel.exists()).toBe(true);
+		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {

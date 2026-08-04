@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';

@@ -6,13 +6,46 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createUserProxyAgent, type UserProxyAgent } from './agent';
 import { tryDeterministicConfirmationResponse } from './deterministic';
 import { buildConfirmationPrompt, buildFollowUpPrompt } from './prompts';
-import { encodeConfirmationDecision, type Decision, type SetupWizardParseContext } from './tools';
+import {
+	encodeConfirmationDecision,
+	type Decision,
+	type SetupWizardParseContext,
+	type CredentialSetupParseContext,
+	type CreateCredentialFn,
+} from './tools';
+import type { N8nClient } from '../../clients/n8n-client';
+import { createOneCredential } from '../../credentials/seeder';
 import { buildAutoApprovePayload } from '../../harness/chat-loop';
 import type { NextMessageDecision } from '../../harness/chat-loop';
 import type { EvalLogger } from '../../harness/logger';
 import type { CapturedEvent, ConversationTurn } from '../../types';
 import { getEventPayload } from '../confirmation-payload';
 import { getNestedRecord, getString } from '../safe-extract';
+
+/**
+ * Lets `manual` create a real credential (TRUST-349) when a setup card shows
+ * zero existing candidates for the resolved type — "user fills the New
+ * Credential modal". Omit for cases that don't exercise credential-setup
+ * engagement; `manual` then declines with zero candidates instead of crashing.
+ */
+export interface CredentialCreationConfig {
+	client: N8nClient;
+	threadId: string;
+	/** Ids already allowlisted for this thread (from pre-run seeding via
+	 *  `createDeclaredCredentials`) — required because
+	 *  `setThreadCredentialAllowlist` REPLACES the whole list, so a mid-run
+	 *  creation must include these or it clobbers the case's declared set. */
+	allowlistedCredentialIds: string[];
+	/** Run-level registry newly-created ids are added to for end-of-run cleanup. */
+	createdCredentialIds?: Set<string>;
+	/** Shared with the same `Map` passed to `createDeclaredCredentials` for this
+	 *  build's pre-run seeding, so a mid-run-created credential's display name
+	 *  gets the right `#2`/`#3` suffix instead of silently colliding with a
+	 *  declared credential of the same default name (e.g. two "[eval] Slack"
+	 *  credentials with no way to tell which one an agent picked). Defaults to
+	 *  a fresh, unshared `Map` if omitted. */
+	nameCounts?: Map<string, number>;
+}
 
 /**
  * What category of response the proxy sent for a confirmation event.
@@ -33,7 +66,11 @@ export type ProxyDecisionCategory =
 	| 'deterministic'
 	| 'repeat'
 	| 'fallback-no-decision'
-	| 'fallback-unencoded';
+	| 'fallback-unencoded'
+	/** A created credential was registered as passing its connection test. Counted
+	 *  so a case relying on that can assert the bypass fired instead of trusting a
+	 *  green — the agent-visible result is deliberately indistinguishable. */
+	| 'credential-test-bypassed';
 
 export type ProxyDecisionStats = Partial<Record<ProxyDecisionCategory, number>>;
 
@@ -54,6 +91,9 @@ export interface UserProxyConfig {
 	logger?: EvalLogger;
 	/** Test seam — inject a fake agent. */
 	agent?: UserProxyAgent;
+	/** Wire this in to let `manual` create a real credential when a setup card
+	 *  shows zero existing candidates — see `CredentialCreationConfig`. */
+	credentialCreation?: CredentialCreationConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,12 +119,28 @@ export class UserProxyLlm {
 	private readonly sentScriptUserTurnIndexes = new Set<number>();
 	private readonly decisionStats: ProxyDecisionStats = {};
 
+	private readonly credentialCreation?: CredentialCreationConfig;
+	/** Mutable running copy of `credentialCreation.allowlistedCredentialIds` —
+	 *  grows as `createCredential` mints new ones, since the allowlist endpoint
+	 *  replaces the whole list rather than appending. */
+	private allowlistedCredentialIds: string[];
+	/** Ids the backend should resolve as passing their connection test — grows as
+	 *  the proxy creates credentials a stage direction described as working. */
+	private bypassCredentialTestIds: string[] = [];
+	/** Defaults to a fresh Map when the caller doesn't share one from pre-run
+	 *  seeding — see `CredentialCreationConfig.nameCounts`. */
+	private readonly createdCredentialNameCounts: Map<string, number>;
+
 	constructor(config: UserProxyConfig) {
 		this.script = config.conversation;
 		this.messageBudget = config.messageBudget ?? DEFAULT_MESSAGE_BUDGET;
 		this.logger = config.logger;
 		this.agent =
 			config.agent ?? createUserProxyAgent({ modelId: config.modelId, logger: config.logger });
+		this.credentialCreation = config.credentialCreation;
+		this.allowlistedCredentialIds = config.credentialCreation?.allowlistedCredentialIds ?? [];
+		this.createdCredentialNameCounts =
+			config.credentialCreation?.nameCounts ?? new Map<string, number>();
 		// Seed with the opener — the harness has already sent it.
 		const opener = this.script[0];
 		this.actualTranscript = opener ? [{ role: opener.role, text: opener.text }] : [];
@@ -130,7 +186,9 @@ export class UserProxyLlm {
 			return this.responseByRequestId.get(requestId) ?? buildAutoApprovePayload(event);
 		}
 
-		const det = tryDeterministicConfirmationResponse(event);
+		const det = tryDeterministicConfirmationResponse(event, {
+			allowCredentialEngagement: this.hasPendingStageDirection(),
+		});
 		if (det && !this.deferAccessGateToScript(event)) {
 			this.bumpStat('deterministic');
 			return this.rememberResponse(requestId, det);
@@ -150,13 +208,15 @@ export class UserProxyLlm {
 			return this.rememberResponse(requestId, this.fallbackConfirmationResponse(event));
 		}
 
-		const encoded = encodeConfirmationDecision(
+		const encoded = await encodeConfirmationDecision(
 			decision,
 			(raw, parseError) =>
 				this.logger?.warn(
-					`[user-proxy] nodeParametersJson failed to parse (${String(parseError)}); raw=${raw.slice(0, 200)}`,
+					`[user-proxy] action=${decision.action} failed to encode (${String(parseError)}); raw=${raw.slice(0, 200)}`,
 				),
 			extractSetupWizardParseContext(event),
+			extractCredentialSetupContext(event),
+			this.credentialCreation ? this.createCredential : undefined,
 		);
 		if (!encoded) {
 			this.logger?.warn(
@@ -173,6 +233,52 @@ export class UserProxyLlm {
 	private bumpStat(category: ProxyDecisionCategory): void {
 		this.decisionStats[category] = (this.decisionStats[category] ?? 0) + 1;
 	}
+
+	/**
+	 * Creates a real credential for `manual`'s "zero existing candidates"
+	 * case, registers it for cleanup, and updates the thread's allowlist so
+	 * both this and any later turn can see it. Arrow field (not a method) so
+	 * it stays correctly bound when passed as a bare `CreateCredentialFn`.
+	 */
+	private createCredential: CreateCredentialFn = async (credentialType, options) => {
+		if (!this.credentialCreation) {
+			// encodeConfirmationDecision only receives this function at all when
+			// `this.credentialCreation` is set (see respondToConfirmation) — a
+			// throw here means that invariant broke, not a normal runtime failure.
+			throw new Error('createCredential invoked without a credentialCreation config');
+		}
+		const { client, threadId, createdCredentialIds } = this.credentialCreation;
+		const created = await createOneCredential(
+			client,
+			credentialType,
+			undefined,
+			this.createdCredentialNameCounts,
+			{ logger: this.logger },
+		);
+		createdCredentialIds?.add(created.id);
+		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
+		// A "works" credential still carries a placeholder token, so its real
+		// connection test would fail and the setup card would refuse to apply it.
+		// Registering the bypass here — in the allowlist call the creation already
+		// makes — keeps it strictly before the confirmation response is sent, which
+		// is when the product runs that test. Keep this ordering if you refactor.
+		if (options?.works === true) {
+			this.bypassCredentialTestIds = [...this.bypassCredentialTestIds, created.id];
+			this.bumpStat('credential-test-bypassed');
+		}
+		// Call with two args in the default case so the request stays byte-identical
+		// to before for every case that doesn't opt into the bypass.
+		if (this.bypassCredentialTestIds.length > 0) {
+			await client.setThreadCredentialAllowlist(
+				threadId,
+				this.allowlistedCredentialIds,
+				this.bypassCredentialTestIds,
+			);
+		} else {
+			await client.setThreadCredentialAllowlist(threadId, this.allowlistedCredentialIds);
+		}
+		return created;
+	};
 
 	/** Counts of proxy decisions by category. Read after the build completes. */
 	getDecisionStats(): Readonly<ProxyDecisionStats> {
@@ -267,6 +373,25 @@ export class UserProxyLlm {
 	private deferAccessGateToScript(event: CapturedEvent): boolean {
 		const payload = getEventPayload(event);
 		if (!payload.domainAccess && !payload.webSearch) return false;
+		return this.hasPendingStageDirection();
+	}
+
+	/**
+	 * Any stage direction still pending delivery — the one signal the harness
+	 * uses everywhere to decide "consult the model instead of taking the
+	 * deterministic default" (domain access, web search, plan review, and — as
+	 * of TRUST-349 — credential-setup engagement below). Deliberately content-
+	 * agnostic: a keyword-scoped variant was tried and rejected after a corpus
+	 * audit found it both under- and over-fires (a note saying "don't provide
+	 * the API key, fill it in yourself later" matched on "API key"/"credential"
+	 * despite asking for the opposite of engagement — a word match can't tell
+	 * what a note means, but the model reading the actual text can). The
+	 * system prompt already instructs the model to keep deferring unless a
+	 * pending note says otherwise, so routing every pending-direction case
+	 * through it is the same bet already made for domain access and plan
+	 * review, not a new one.
+	 */
+	private hasPendingStageDirection(): boolean {
 		return this.remainingUserScriptTurns().some((turn) => hasStageDirection(turn.text));
 	}
 
@@ -355,33 +480,85 @@ function extractRequestId(event: CapturedEvent): string | undefined {
 	return getString(event.data, 'requestId');
 }
 
+/**
+ * Workflow setup wizard shows one `setupRequests[]` entry per (node,
+ * credentialType) combo, plus a separate param-only entry — so a node needing
+ * both a credential and parameter fixes can appear across multiple entries.
+ * Group by node name/id and merge each field in as encountered.
+ */
 function extractSetupWizardParseContext(event: CapturedEvent): SetupWizardParseContext | undefined {
 	const payload = getEventPayload(event);
 	if (!Array.isArray(payload.setupRequests)) return undefined;
 
-	const nodes = payload.setupRequests.flatMap((item) => {
-		if (!isRecord(item)) return [];
+	const byNodeName = new Map<string, SetupWizardParseContext['nodes'][number]>();
+
+	for (const item of payload.setupRequests) {
+		if (!isRecord(item)) continue;
 		const node = isRecord(item.node) ? item.node : undefined;
 		const nodeName = (node ? getString(node, 'name') : undefined) ?? getString(item, 'nodeName');
-		if (!nodeName) return [];
+		if (!nodeName) continue;
 
 		const nodeId = (node ? getString(node, 'id') : undefined) ?? getString(item, 'nodeId');
+		const existing = byNodeName.get(nodeName) ?? {
+			nodeName,
+			parameterNames: [],
+			credentialRequests: [],
+		};
+		// A node can appear across multiple setupRequests[] entries (one per
+		// credential type, plus a param-only one); backfill nodeId from
+		// whichever entry actually carries it, not just the first one seen.
+		if (nodeId && !existing.nodeId) existing.nodeId = nodeId;
+
 		const parameterNames = [
+			...existing.parameterNames,
 			...extractParameterNames(item, 'editableParameters'),
 			...extractParameterNames(item, 'parameterRequests'),
 			...extractParameterIssueNames(item),
 		];
+		existing.parameterNames = [...new Set(parameterNames)];
 
-		return [
-			{
-				...(nodeId ? { nodeId } : {}),
-				nodeName,
-				parameterNames: [...new Set(parameterNames)],
-			},
-		];
+		const credentialType = getString(item, 'credentialType');
+		if (credentialType) {
+			existing.credentialRequests = [
+				...existing.credentialRequests,
+				{ credentialType, existingCredentials: extractExistingCredentials(item) },
+			];
+		}
+
+		byNodeName.set(nodeName, existing);
+	}
+
+	const nodes = [...byNodeName.values()];
+	return nodes.length > 0 ? { nodes } : undefined;
+}
+
+function extractCredentialSetupContext(
+	event: CapturedEvent,
+): CredentialSetupParseContext | undefined {
+	const payload = getEventPayload(event);
+	if (!Array.isArray(payload.credentialRequests)) return undefined;
+
+	const requests = payload.credentialRequests.flatMap((item) => {
+		if (!isRecord(item)) return [];
+		const credentialType = getString(item, 'credentialType');
+		if (!credentialType) return [];
+
+		return [{ credentialType, existingCredentials: extractExistingCredentials(item) }];
 	});
 
-	return nodes.length > 0 ? { nodes } : undefined;
+	return requests.length > 0 ? { requests } : undefined;
+}
+
+function extractExistingCredentials(
+	item: Record<string, unknown>,
+): Array<{ id: string; name: string }> {
+	if (!Array.isArray(item.existingCredentials)) return [];
+	return item.existingCredentials.flatMap((cred) => {
+		if (!isRecord(cred)) return [];
+		const id = getString(cred, 'id');
+		const name = getString(cred, 'name');
+		return id && name ? [{ id, name }] : [];
+	});
 }
 
 function extractParameterNames(item: Record<string, unknown>, key: string): string[] {

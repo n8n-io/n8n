@@ -16,11 +16,9 @@ export function applyForwardedChildChunk(
 		case 'text-delta':
 			trace.text += chunk.delta;
 			break;
-		case 'reasoning-start':
-			if (!trace.reasoningSegments.some((s) => s.id === chunk.id)) {
-				trace.reasoningSegments.push({ id: chunk.id, content: '', startTime: now });
-			}
-			break;
+		// `reasoning-start` intentionally creates nothing: models that keep their
+		// reasoning encrypted (OpenAI, Claude Sonnet 5) emit the lifecycle without
+		// ever sending a delta, so a segment opened here would stay empty forever.
 		case 'reasoning-delta': {
 			let segment = trace.reasoningSegments.find((s) => s.id === chunk.id);
 			if (!segment) {
