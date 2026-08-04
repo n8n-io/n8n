@@ -4,21 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAgentEvalsStore } from './agentEvals.store';
 import type { AgentEvalDatasetRecord } from './agentEvals.types';
 
-const { getDatasets, createDataset, updateDataset, deleteDataset, generateDraftCases } = vi.hoisted(
-	() => ({
-		getDatasets: vi.fn(),
-		createDataset: vi.fn(),
-		updateDataset: vi.fn(),
-		deleteDataset: vi.fn(),
-		generateDraftCases: vi.fn(),
-	}),
-);
+const { getDatasets, generateDraftCases } = vi.hoisted(() => ({
+	getDatasets: vi.fn(),
+	generateDraftCases: vi.fn(),
+}));
 
 vi.mock('./agentEvals.api', () => ({
 	getDatasets,
-	createDataset,
-	updateDataset,
-	deleteDataset,
 	generateDraftCases,
 }));
 
@@ -86,52 +78,11 @@ describe('useAgentEvalsStore', () => {
 			await expect(store.fetchDatasets(PROJECT_ID, AGENT_ID)).rejects.toThrow('boom');
 
 			expect(store.isLoadingDatasets(AGENT_ID)).toBe(false);
-			expect(store.isBusy).toBe(false);
-		});
-	});
-
-	describe('dataset mutations', () => {
-		it('appends a created dataset to the cache', async () => {
-			getDatasets.mockResolvedValue([dataset('d1')]);
-			createDataset.mockResolvedValue(dataset('d2'));
-			const store = useAgentEvalsStore();
-			await store.fetchDatasets(PROJECT_ID, AGENT_ID);
-
-			await store.createDataset(PROJECT_ID, AGENT_ID, {
-				name: 'new',
-				agentId: AGENT_ID,
-				datasetSource: 'data_table',
-				datasetRef: { dataTableId: 'dt-1' },
-			});
-
-			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1', 'd2']);
-		});
-
-		it('replaces the updated dataset in place', async () => {
-			getDatasets.mockResolvedValue([dataset('d1'), dataset('d2')]);
-			updateDataset.mockResolvedValue(dataset('d1', 'renamed'));
-			const store = useAgentEvalsStore();
-			await store.fetchDatasets(PROJECT_ID, AGENT_ID);
-
-			await store.updateDataset(PROJECT_ID, AGENT_ID, 'd1', { name: 'renamed' });
-
-			expect(store.getDatasets(AGENT_ID).map((d) => d.name)).toEqual(['renamed', 'dataset-d2']);
-		});
-
-		it('drops the deleted dataset from the cache', async () => {
-			getDatasets.mockResolvedValue([dataset('d1'), dataset('d2')]);
-			deleteDataset.mockResolvedValue({ success: true });
-			const store = useAgentEvalsStore();
-			await store.fetchDatasets(PROJECT_ID, AGENT_ID);
-
-			await store.deleteDataset(PROJECT_ID, AGENT_ID, 'd1');
-
-			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d2']);
 		});
 	});
 
 	describe('generateDraftCases', () => {
-		it('refreshes the dataset cache from the dataset the server created', async () => {
+		it('re-reads the dataset list once the server has persisted the drafts', async () => {
 			generateDraftCases.mockResolvedValue({
 				datasetId: 'd1',
 				dataTableId: 'dt-1',
@@ -149,6 +100,9 @@ describe('useAgentEvalsStore', () => {
 				{ count: 3 },
 			);
 			expect(result.cases).toHaveLength(1);
+			// The generate response carries drafts, not the dataset row, so the
+			// cache has to come from the follow-up read.
+			expect(getDatasets).toHaveBeenCalledTimes(1);
 			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1']);
 		});
 

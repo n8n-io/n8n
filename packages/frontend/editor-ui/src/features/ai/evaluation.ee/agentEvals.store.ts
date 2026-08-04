@@ -1,16 +1,11 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as agentEvalsApi from './agentEvals.api';
-import type {
-	AgentEvalDatasetRecord,
-	CreateAgentEvalDatasetDto,
-	GenerateDraftCasesOptions,
-	UpdateAgentEvalDatasetPayload,
-} from './agentEvals.types';
+import type { AgentEvalDatasetRecord, GenerateDraftCasesOptions } from './agentEvals.types';
 
 /**
  * Client state for an agent's eval datasets.
@@ -39,12 +34,6 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	const isGeneratingCases = (agentId: string) => generatingCases.value[agentId] === true;
 
-	const isBusy = computed(
-		() =>
-			Object.values(loadingDatasets.value).some(Boolean) ||
-			Object.values(generatingCases.value).some(Boolean),
-	);
-
 	const setDatasets = (agentId: string, datasets: AgentEvalDatasetRecord[]) => {
 		datasetsByAgentId.value = { ...datasetsByAgentId.value, [agentId]: datasets };
 	};
@@ -64,51 +53,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
-	const createDataset = async (
-		projectId: string,
-		agentId: string,
-		payload: CreateAgentEvalDatasetDto,
-	) => {
-		const created = await agentEvalsApi.createDataset(
-			rootStore.restApiContext,
-			projectId,
-			agentId,
-			payload,
-		);
-		setDatasets(agentId, [...getDatasets(agentId), created]);
-		return created;
-	};
-
-	const updateDataset = async (
-		projectId: string,
-		agentId: string,
-		datasetId: string,
-		payload: UpdateAgentEvalDatasetPayload,
-	) => {
-		const updated = await agentEvalsApi.updateDataset(
-			rootStore.restApiContext,
-			projectId,
-			agentId,
-			datasetId,
-			payload,
-		);
-		setDatasets(
-			agentId,
-			getDatasets(agentId).map((dataset) => (dataset.id === datasetId ? updated : dataset)),
-		);
-		return updated;
-	};
-
-	const deleteDataset = async (projectId: string, agentId: string, datasetId: string) => {
-		await agentEvalsApi.deleteDataset(rootStore.restApiContext, projectId, agentId, datasetId);
-		setDatasets(
-			agentId,
-			getDatasets(agentId).filter((dataset) => dataset.id !== datasetId),
-		);
-	};
-
-	// The server persists the drafts as a new dataset, so the local cache is
-	// refreshed from the response rather than re-fetching the list.
+	// Generation persists a new dataset server-side, so the list is re-fetched
+	// rather than patched from the response: the response carries the drafts, not
+	// the dataset row, and re-reading keeps the cache authoritative.
 	const generateDraftCases = async (
 		projectId: string,
 		agentId: string,
@@ -134,11 +81,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		isLoaded,
 		isLoadingDatasets,
 		isGeneratingCases,
-		isBusy,
 		fetchDatasets,
-		createDataset,
-		updateDataset,
-		deleteDataset,
 		generateDraftCases,
 	};
 });

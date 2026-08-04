@@ -79,6 +79,7 @@ const emit = defineEmits<{
 	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
+	'generate-eval-cases': [];
 }>();
 
 const i18n = useI18n();
@@ -261,7 +262,7 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'evals'"
 					data-testid="agent-evals-tab-content"
 				>
-					<AgentEvalsSection :disabled="childrenDisabled" />
+					<AgentEvalsSection :disabled="childrenDisabled" @generate="emit('generate-eval-cases')" />
 				</AgentBuilderTabPanel>
 			</div>
 		</div>

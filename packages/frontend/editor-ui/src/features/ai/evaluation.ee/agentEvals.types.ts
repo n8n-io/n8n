@@ -6,11 +6,8 @@
 // them yet.
 
 export type {
-	AgentEvalColumnMapping,
 	AgentEvalDatasetRecord,
 	AgentEvalDraftCase,
-	CreateAgentEvalDatasetDto,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
-	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
