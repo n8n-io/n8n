@@ -11,7 +11,7 @@ import type {
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
-import type { ConversationSeed } from './harness/conversation-seed';
+import type { CaseSeed } from './harness/schema';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -212,7 +212,7 @@ export interface WorkflowTestCase {
 	/**
 	 * Hand-authored conversation that drives the build (≥1 turn, first `user`).
 	 * One user turn → auto-approve single-prompt build; more → multi-turn proxy.
-	 * Required unless `seedThread` is set, in which case it's optional and
+	 * Required unless `seed.mode` is `replay`, in which case it's optional and
 	 * continues after the trace's live turn (`[<live turn>, ...conversation]`).
 	 */
 	conversation?: ConversationTurn[];
@@ -239,18 +239,12 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
-	/** Prior messages + the workflows they reference, restored before the live turn.
-	 *  Mutually exclusive with the other seeds. */
-	conversationSeed?: ConversationSeed;
-	/** Prose turns seeded as plain-text history (no tool calls/workflows).
-	 *  Mutually exclusive with the other seeds. */
-	priorConversation?: ConversationTurn[];
-	/** Reproduce a real conversation from its LangSmith trace at run time: restore
-	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
-	 *  and send that live. Commits only the thread id (workspace auto-discovered;
-	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
-	 *  turn, so `conversation` is optional. Transient (~14d). */
-	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
+	/** History restored before the live turn, in one slot so the modes can't
+	 *  overlap: `mode: 'inline'` carries the messages (and the workflows/tables
+	 *  they reference) in the case body; `mode: 'replay'` reconstructs them from a
+	 *  LangSmith trace at run time and supplies the live turn itself, which is why
+	 *  `conversation` is optional for it. See `harness/schema.ts`. */
+	seed?: CaseSeed;
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }

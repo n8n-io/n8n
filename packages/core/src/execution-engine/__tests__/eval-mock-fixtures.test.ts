@@ -1,6 +1,7 @@
 import { fileTypeFromBuffer } from 'file-type';
+import { inflateSync } from 'node:zlib';
 
-import { synthesizeBinaryFixture } from '../eval-mock-fixtures';
+import { buildPdfWithText, evalCanvasPng, synthesizeBinaryFixture } from '../eval-mock-fixtures';
 
 describe('eval-mock-fixtures', () => {
 	describe('synthesizeBinaryFixture', () => {
@@ -206,6 +207,58 @@ describe('eval-mock-fixtures', () => {
 				const sniffed = await fileTypeFromBuffer(buf);
 				expect(sniffed?.mime).toBe('application/zip');
 			});
+		});
+	});
+
+	describe('evalCanvasPng', () => {
+		it('produces a sniffable 512×512 PNG with a full pixel raster', async () => {
+			const png = evalCanvasPng();
+			expect((await fileTypeFromBuffer(png))?.mime).toBe('image/png');
+			// IHDR width/height sit at fixed offsets after the 8-byte signature.
+			expect(png.readUInt32BE(16)).toBe(512);
+			expect(png.readUInt32BE(20)).toBe(512);
+			// IDAT payload inflates to 512 scanlines of (filter byte + 512 px).
+			const idatOffset = png.indexOf('IDAT');
+			const idatLength = png.readUInt32BE(idatOffset - 4);
+			const raster = inflateSync(png.subarray(idatOffset + 4, idatOffset + 4 + idatLength));
+			expect(raster.length).toBe(512 * 513);
+		});
+
+		it('returns the cached buffer on repeat calls', () => {
+			expect(evalCanvasPng()).toBe(evalCanvasPng());
+		});
+	});
+
+	describe('buildPdfWithText', () => {
+		it('embeds each line as an escaped text run in a %PDF...%%EOF document', () => {
+			const pdf = buildPdfWithText('Line one\nTotal (net) 50% \\ done').toString('latin1');
+			expect(pdf.startsWith('%PDF-1.4')).toBe(true);
+			expect(pdf.trimEnd().endsWith('%%EOF')).toBe(true);
+			expect(pdf).toContain('(Line one) Tj');
+			expect(pdf).toContain('(Total \\(net\\) 50% \\\\ done) Tj');
+		});
+
+		it('computes xref offsets that point at the object headers', () => {
+			const pdf = buildPdfWithText('anything').toString('latin1');
+			const offsets = [...pdf.matchAll(/^(\d{10}) 00000 n /gm)].map((m) => Number(m[1]));
+			expect(offsets).toHaveLength(5);
+			offsets.forEach((offset, index) => {
+				expect(pdf.slice(offset, offset + `${String(index + 1)} 0 obj`.length)).toBe(
+					`${String(index + 1)} 0 obj`,
+				);
+			});
+			const startxref = Number(/startxref\n(\d+)/.exec(pdf)?.[1]);
+			expect(pdf.slice(startxref, startxref + 4)).toBe('xref');
+		});
+
+		it('replaces non-ASCII characters and skips blank lines', () => {
+			const pdf = buildPdfWithText('café £100\n\n  \nnext').toString('latin1');
+			expect(pdf).toContain('(caf? ?100) Tj');
+			expect(pdf).toContain('(next) Tj');
+		});
+
+		it('falls back to a stub line for empty text', () => {
+			expect(buildPdfWithText(' \n \n').toString('latin1')).toContain('(Mock PDF document) Tj');
 		});
 	});
 });

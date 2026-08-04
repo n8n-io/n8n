@@ -58,7 +58,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
@@ -82,7 +82,7 @@ vi.mock('@/features/core/folders/composables/useParentFolder', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: vi.fn(),
 	})),

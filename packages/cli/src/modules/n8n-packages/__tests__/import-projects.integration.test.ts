@@ -1,21 +1,32 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import {
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	TagRepository,
 	VariablesRepository,
 	WorkflowRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { createTag } from '@test-integration/db/tags';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
@@ -26,10 +37,14 @@ import type { ImportPackageRequest } from '../n8n-packages.types';
 import {
 	buildEntityPackageBuffer,
 	credentialRequirementsFromWorkflows,
+	type PackageVariableEntry,
 	serializedFolder,
 	serializedProject,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	serializedWorkflowWithSubWorkflow,
+	subWorkflowRefOf,
+	workflowRequirementsFromWorkflows,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
 
@@ -54,12 +69,17 @@ async function importProjects(
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
+		tagMissingMode: 'create',
+		tagConflictPolicy: 'skip',
 		...overrides,
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }
 
 const licenseMocker = new LicenseMocker();
+
+// Publishing tests exercise the real publish path; mock the trigger infra it touches.
+mockInstance(ActiveWorkflowManager);
 
 async function findProject(id: string) {
 	return await Container.get(ProjectRepository).findOne({ where: { id } });
@@ -105,6 +125,8 @@ afterAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate([
+		'WorkflowTagMapping',
+		'TagEntity',
 		'Folder',
 		'Project',
 		'ProjectRelation',
@@ -327,6 +349,154 @@ describe('project shell import', () => {
 		expect((await findWorkflow(wfb.localId))?.parentFolder?.id).toBe('FB');
 	});
 
+	it('creates a tag shared across two projects exactly once and attaches it in both', async () => {
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['TAG1'] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: ['TAG1'] }),
+				},
+			],
+			manifestExtras: {
+				requirements: {
+					tags: [{ id: 'TAG1', name: 'shared', usedByWorkflows: ['WFA', 'WFB'] }],
+				},
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		expect(result.tags).toEqual({
+			matched: [],
+			created: ['shared'],
+			renamed: [],
+			reconciled: [],
+			skipped: [],
+		});
+		expect(await Container.get(TagRepository).find()).toEqual([
+			expect.objectContaining({ id: 'TAG1', name: 'shared' }),
+		]);
+		const mappings = await Container.get(WorkflowTagMappingRepository).find();
+		expect(mappings.map(({ workflowId, tagId }) => ({ workflowId, tagId }))).toEqual(
+			expect.arrayContaining(
+				result.workflows.map(({ localId }) => ({ workflowId: localId, tagId: 'TAG1' })),
+			),
+		);
+		expect(mappings).toHaveLength(2);
+	});
+
+	it('reconciles a collided tag shared across two projects exactly once', async () => {
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['TAG1'] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: ['TAG1'] }),
+				},
+			],
+			manifestExtras: {
+				requirements: {
+					tags: [{ id: 'TAG1', name: 'prod', usedByWorkflows: ['WFA', 'WFB'] }],
+				},
+			},
+		});
+		await createTag({ name: 'prod' });
+
+		const result = await importProjects(owner, packageBuffer, undefined, {
+			tagConflictPolicy: 'rename',
+		});
+
+		expect(result.tags).toEqual({
+			matched: [],
+			created: [],
+			renamed: [],
+			reconciled: ['prod'],
+			skipped: [],
+		});
+		expect(await Container.get(TagRepository).find()).toEqual([
+			expect.objectContaining({ id: 'TAG1', name: 'prod' }),
+		]);
+		const mappings = await Container.get(WorkflowTagMappingRepository).find();
+		expect(mappings.map(({ workflowId, tagId }) => ({ workflowId, tagId }))).toEqual(
+			expect.arrayContaining(
+				result.workflows.map(({ localId }) => ({ workflowId: localId, tagId: 'TAG1' })),
+			),
+		);
+		expect(mappings).toHaveLength(2);
+	});
+
+	it('blocks a package whose projects reconcile and rename the same target tag', async () => {
+		// Each project only resolves the tags its own workflows use, so neither project
+		// sees that the other one also wants to change this same tag; only a check across
+		// the whole package can catch the two projects disagreeing on what should happen to it.
+		await createTag({ id: 'H', name: 'prod' });
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', tagIds: ['X'] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', tagIds: ['H'] }),
+				},
+			],
+			manifestExtras: {
+				requirements: {
+					tags: [
+						{ id: 'X', name: 'prod', usedByWorkflows: ['WFA'] },
+						{ id: 'H', name: 'staging', usedByWorkflows: ['WFB'] },
+					],
+				},
+			},
+		});
+
+		let caught: unknown;
+		await importProjects(owner, packageBuffer, undefined, { tagConflictPolicy: 'rename' }).catch(
+			(error: unknown) => (caught = error),
+		);
+
+		expect(caught).toBeInstanceOf(ConflictError);
+		expect(caught).toMatchObject({
+			meta: {
+				issues: [
+					expect.objectContaining({
+						type: 'tag-unresolved',
+						kind: 'name-collision',
+						sourceId: 'X',
+						name: 'prod',
+						existingTagId: 'H',
+						usedByWorkflows: ['WFA'],
+					}),
+				],
+			},
+		});
+		expect(await findProject('P1')).toBeNull();
+		expect(await findProject('P2')).toBeNull();
+		expect(await Container.get(TagRepository).find()).toEqual([
+			expect.objectContaining({ id: 'H', name: 'prod' }),
+		]);
+	});
+
 	it('reuses the project and folder and updates the workflow on re-import', async () => {
 		const pkg = async () =>
 			await buildEntityPackageBuffer({
@@ -547,6 +717,7 @@ describe('project shell import', () => {
 		const twoProjectPackage = async (
 			opts: {
 				catalog?: Array<{ id: string; name: string; target: string }>;
+				variables?: PackageVariableEntry[];
 				requirements?: Array<{ name: string; usedByWorkflows: string[] }>;
 			} = {},
 		) =>
@@ -565,6 +736,7 @@ describe('project shell import', () => {
 						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
 					},
 				],
+				variables: opts.variables,
 				manifestExtras: {
 					...(opts.catalog ? { variables: opts.catalog } : {}),
 					...(opts.requirements ? { requirements: { variables: opts.requirements } } : {}),
@@ -612,6 +784,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: ['GLOBAL_URL'],
 					missing: ['ABSENT_VAR'],
+					created: [],
 					stubbed: [],
 				});
 				// do-nothing mode does not create variables.
@@ -632,6 +805,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: ['API_URL'],
 					missing: ['API_URL'],
+					created: [],
 					stubbed: [],
 				});
 			});
@@ -718,6 +892,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: [],
 					missing: [],
+					created: [],
 					stubbed: expect.arrayContaining(['GLOBAL_VAR', 'PROJECT_VAR']),
 				});
 				expect(result.variables.stubbed).toHaveLength(2);
@@ -745,7 +920,13 @@ describe('project shell import', () => {
 					variableMissingMode: 'create-stub',
 				});
 
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['GLOBAL_VAR'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['GLOBAL_VAR'],
+				});
+
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -777,7 +958,12 @@ describe('project shell import', () => {
 				});
 
 				// A name-only requirement (no bundled entry) falls back to each consuming project.
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['API_URL'],
+				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -790,13 +976,14 @@ describe('project shell import', () => {
 				);
 				expect(layout).toHaveLength(2);
 
-				// The name is stubbed once in the summary but is two rows, so telemetry counts 2.
+				// Telemetry counts rows, so the one stubbed name reported by the summary counts
+				// twice here — once per project that received a variable.
 				const importedEvents = emitSpy.mock.calls.filter(
 					([name]) => name === 'n8n-package-imported',
 				);
 				expect(importedEvents).toHaveLength(1);
 				const payload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
-				expect(payload.counts.variables.created).toBe(2);
+				expect(payload.counts.variables).toMatchObject({ created: 0, stubbed: 2 });
 			});
 
 			it('creates one row per project when both bundle the same name', async () => {
@@ -813,7 +1000,12 @@ describe('project shell import', () => {
 				});
 
 				// Each project's own entry wins for its own scope, so neither borrows the other's.
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['API_URL'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['API_URL'],
+				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -857,7 +1049,12 @@ describe('project shell import', () => {
 					variableMissingMode: 'create-stub',
 				});
 
-				expect(result.variables).toEqual({ matched: [], missing: [], stubbed: ['THEIRS'] });
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: ['THEIRS'],
+				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
 				});
@@ -889,6 +1086,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: [],
 					missing: [],
+					created: [],
 					stubbed: expect.arrayContaining(['API_URL', 'SHARED_URL']),
 				});
 				expect(result.variables.stubbed).toHaveLength(2);
@@ -925,6 +1123,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: [],
 					missing: [],
+					created: [],
 					stubbed: ['SHARED_URL'],
 				});
 				const created = await Container.get(VariablesRepository).find({
@@ -951,6 +1150,7 @@ describe('project shell import', () => {
 				expect(result.variables).toEqual({
 					matched: ['API_URL'],
 					missing: [],
+					created: [],
 					stubbed: ['API_URL'],
 				});
 				const rows = await Container.get(VariablesRepository).find({
@@ -992,9 +1192,6 @@ describe('project shell import', () => {
 			});
 
 			it('rejects the import when the API key lacks the variable:create scope', async () => {
-				// The gate is requirement-based: it applies even though the variable already matches.
-				await createVariable('GLOBAL_VAR', 'https://global.example.com');
-
 				await expect(
 					importProjects(
 						owner,
@@ -1041,6 +1238,102 @@ describe('project shell import', () => {
 				expect(await Container.get(VariablesRepository).count()).toBe(0);
 			});
 		});
+
+		describe('create-with-value missing mode', () => {
+			beforeEach(() => {
+				licenseMocker.enable('feat:variables');
+			});
+
+			it('preserves different per-project values for the same variable name', async () => {
+				const packageBuffer = await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'projects/brie/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: 'https://brie.example.com' },
+						},
+						{
+							id: 'v2',
+							target: 'projects/stilton/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: 'https://stilton.example.com' },
+						},
+					],
+					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: ['API_URL'],
+					stubbed: [],
+				});
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(
+					rows.map(({ key, value, project }) => ({ key, value, projectId: project?.id })),
+				).toEqual(
+					expect.arrayContaining([
+						{ key: 'API_URL', value: 'https://brie.example.com', projectId: 'P1' },
+						{ key: 'API_URL', value: 'https://stilton.example.com', projectId: 'P2' },
+					]),
+				);
+				expect(rows).toHaveLength(2);
+			});
+
+			it('creates a top-level bundled variable globally with its value', async () => {
+				const packageBuffer = await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'variables/shared_url',
+							variable: { name: 'SHARED_URL', type: 'string', value: 'https://shared.example.com' },
+						},
+					],
+					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables.created).toEqual(['SHARED_URL']);
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
+					{ key: 'SHARED_URL', value: 'https://shared.example.com', project: null },
+				]);
+			});
+
+			it('reports a name as both created and stubbed when only one project carries a value', async () => {
+				const packageBuffer = await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'projects/brie/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: 'https://brie.example.com' },
+						},
+					],
+					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: ['API_URL'],
+					stubbed: ['API_URL'],
+				});
+			});
+		});
 	});
 
 	it('emits a single n8n-package-imported event aggregating every project in the package', async () => {
@@ -1076,6 +1369,93 @@ describe('project shell import', () => {
 		} finally {
 			emitSpy.mockRestore();
 		}
+	});
+
+	it('rewrites a sub-workflow reference that points into another project under the `new` policy', async () => {
+		// Project brie's workflow calls a sub-workflow that lives in project stilton.
+		const parent = serializedWorkflowWithSubWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			subWorkflowId: 'BRIE',
+		});
+		const subWorkflow = serializedWorkflow({ id: 'BRIE', name: 'Sub-workflow' });
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{ target: 'projects/brie/workflows/parent', workflow: parent },
+				{ target: 'projects/stilton/workflows/sub', workflow: subWorkflow },
+			],
+			manifestExtras: {
+				requirements: { workflows: workflowRequirementsFromWorkflows([parent, subWorkflow]) },
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer);
+
+		const importedParent = result.workflows.find((w) => w.sourceWorkflowId === 'CHEDDAR')!;
+		const importedSub = result.workflows.find((w) => w.sourceWorkflowId === 'BRIE')!;
+
+		// Each workflow landed in its own project with a freshly-minted id...
+		expect(importedParent.projectId).toBe('P1');
+		expect(importedSub.projectId).toBe('P2');
+		expect(importedSub.localId).not.toBe('BRIE');
+		// ...and the cross-project reference resolves to the sub-workflow's imported id.
+		expect(subWorkflowRefOf((await findWorkflow(importedParent.localId))!)).toBe(
+			importedSub.localId,
+		);
+	});
+
+	it('publishes a parent whose sub-workflow lives in a project written after it', async () => {
+		// Activation rejects a parent whose sub-workflow is not yet published. The calling project is
+		// listed first here, so only a publish phase that runs after every project is written — and
+		// orders dependencies first — can get both published.
+		const scheduleTrigger = {
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const parentBase = serializedWorkflowWithSubWorkflow({
+			id: 'CHEDDAR',
+			name: 'Parent',
+			subWorkflowId: 'BRIE',
+		});
+		const parent = { ...parentBase, nodes: [scheduleTrigger, ...parentBase.nodes] };
+		const subWorkflow = serializedWorkflow({
+			id: 'BRIE',
+			name: 'Sub-workflow',
+			nodes: [scheduleTrigger],
+		});
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{ target: 'projects/brie/workflows/parent', workflow: parent },
+				{ target: 'projects/stilton/workflows/sub', workflow: subWorkflow },
+			],
+			manifestExtras: {
+				requirements: { workflows: workflowRequirementsFromWorkflows([parent, subWorkflow]) },
+			},
+		});
+
+		const result = await importProjects(owner, packageBuffer, undefined, {
+			workflowPublishingPolicy: 'publish-all',
+		});
+
+		const summaryFor = (sourceWorkflowId: string) =>
+			result.workflows.find((entry) => entry.sourceWorkflowId === sourceWorkflowId);
+
+		expect(summaryFor('BRIE')?.publishing).toEqual({ state: 'published' });
+		expect(summaryFor('CHEDDAR')?.publishing).toEqual({ state: 'published' });
 	});
 });
 

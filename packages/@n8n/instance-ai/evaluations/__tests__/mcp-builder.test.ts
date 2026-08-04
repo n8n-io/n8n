@@ -133,23 +133,32 @@ describe('unsupportedMcpBuildSetupFields', () => {
 		expect(unsupportedMcpBuildSetupFields(testCase({ messageBudget: 6 }))).toEqual([]);
 	});
 
-	it.each<[string, Partial<WorkflowTestCase>]>([
-		['credentials', { credentials: [{ type: 'slackApi' }] }],
+	// One `seed` entry covers every mode: the classification keys off the slot, not
+	// the mode, so a new arm needs no edit here.
+	it.each<[string, string, Partial<WorkflowTestCase>]>([
+		['credentials', 'credentials', { credentials: [{ type: 'slackApi' }] }],
 		[
-			'conversationSeed',
+			'an inline seed',
+			'seed',
 			{
-				conversationSeed: {
+				seed: {
+					mode: 'inline',
 					messages: [
-						{ id: 'm1', type: 'llm', role: 'user', content: [{ type: 'text', text: 'build it' }] },
+						{
+							id: 'm1',
+							type: 'llm',
+							role: 'user',
+							createdAt: '2026-06-29T09:00:00.000Z',
+							content: [{ type: 'text', text: 'build it' }],
+						},
 					],
 					workflows: [],
 					dataTables: [],
 				},
 			},
 		],
-		['priorConversation', { priorConversation: [user('We already agreed on #alerts')] }],
-		['seedThread', { seedThread: { threadId: 't1' } }],
-	])('flags %s', (field, overrides) => {
+		['a replay seed', 'seed', { seed: { mode: 'replay', threadId: 't1' } }],
+	])('flags %s', (_label, field, overrides) => {
 		expect(unsupportedMcpBuildSetupFields(testCase(overrides))).toEqual([field]);
 	});
 
@@ -158,10 +167,10 @@ describe('unsupportedMcpBuildSetupFields', () => {
 			unsupportedMcpBuildSetupFields(
 				testCase({
 					credentials: [{ type: 'slackApi' }],
-					priorConversation: [user('prelude')],
+					seed: { mode: 'replay', threadId: 't1' },
 				}),
 			),
-		).toEqual(['credentials', 'priorConversation']);
+		).toEqual(['credentials', 'seed']);
 	});
 });
 

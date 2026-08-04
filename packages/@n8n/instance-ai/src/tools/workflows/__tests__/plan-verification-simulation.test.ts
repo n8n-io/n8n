@@ -428,3 +428,70 @@ describe('planVerificationSimulation — wait-gate halt verdicts', () => {
 		).toBeUndefined();
 	});
 });
+
+describe('planVerificationSimulation — wait-gate scripts', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGenerateFixtures.mockResolvedValue({});
+	});
+
+	it('derives a decision script for a halted send-and-wait gate', async () => {
+		mockClassify.mockResolvedValue([
+			{
+				nodeName: 'Email Approval',
+				verdict: 'simulate',
+				reason: 'Credentials are not configured for this node',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		]);
+
+		const workflow = {
+			name: 'approval loop',
+			nodes: [
+				{
+					id: 'id-0',
+					name: 'Every day',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'id-1',
+					name: 'Email Approval',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2,
+					position: [100, 0],
+					parameters: { operation: 'sendAndWait', responseType: 'approval' },
+				},
+				{
+					id: 'id-2',
+					name: 'Revise',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				'Every day': { main: [[{ node: 'Email Approval', type: 'main', index: 0 }]] },
+				'Email Approval': { main: [[{ node: 'Revise', type: 'main', index: 0 }]] },
+				Revise: { main: [[{ node: 'Email Approval', type: 'main', index: 0 }]] },
+			},
+		} as unknown as WorkflowJSON;
+
+		const { nodeSimulationPlan, waitGateScripts } = await planVerificationSimulation({
+			workflow,
+			workflowId: 'wf-1',
+		});
+
+		expect(nodeSimulationPlan?.find((v) => v.nodeName === 'Email Approval')?.haltBranch).toBe(true);
+		expect(waitGateScripts).toHaveLength(1);
+		expect(waitGateScripts?.[0]).toMatchObject({
+			nodeName: 'Email Approval',
+			cutEdge: { source: 'Revise', target: 'Email Approval' },
+		});
+		expect(waitGateScripts?.[0].decisions.map((d) => d.label)).toEqual(['approve', 'decline']);
+	});
+});

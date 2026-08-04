@@ -144,6 +144,15 @@ describe('N8nClient packages', () => {
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
 		});
+
+		it('includes includeTags=false in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeTags: false });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
+		});
 	});
 
 	describe('importPackage', () => {
@@ -253,7 +262,7 @@ describe('N8nClient packages', () => {
 		});
 
 		describe('variableMissingMode', () => {
-			it.each(['do-nothing', 'must-preexist', 'create-stub'])(
+			it.each(['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'])(
 				'sends %s when provided',
 				async (policy) => {
 					fetchMock.mockResolvedValue(
@@ -261,7 +270,7 @@ describe('N8nClient packages', () => {
 							workflows: [],
 							bindings: {},
 							credentials: { matched: [], stubbed: [] },
-							variables: { matched: [], missing: [], stubbed: [] },
+							variables: { matched: [], missing: [], created: [], stubbed: [] },
 						}),
 					);
 
@@ -286,7 +295,7 @@ describe('N8nClient packages', () => {
 						workflows: [],
 						bindings: {},
 						credentials: { matched: [], stubbed: [] },
-						variables: { matched: [], missing: [], stubbed: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [] },
 					}),
 				);
 

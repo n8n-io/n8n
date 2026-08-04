@@ -29,6 +29,8 @@ import {
 	nodeIssuesToString,
 	findDisplayedProperty,
 	isTriggerNodeType,
+	getCredentialActivationParameters,
+	resolveSupportedCredentialActivation,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -7583,6 +7585,116 @@ describe('NodeHelpers', () => {
 			expect(result).toEqual({
 				parameters: { reqField: ['Parameter "Required Field" is required.'] },
 			});
+		});
+	});
+
+	describe('getCredentialActivationParameters', () => {
+		it('returns the parameter values that activate the credential', () => {
+			expect(getCredentialActivationParameters({ show: { authentication: ['apiKey'] } })).toEqual({
+				authentication: 'apiKey',
+			});
+		});
+
+		it('returns an empty object when the credential has no display condition', () => {
+			expect(getCredentialActivationParameters(undefined)).toEqual({});
+		});
+
+		it('excludes the @version key (not a settable parameter)', () => {
+			expect(
+				getCredentialActivationParameters({
+					show: { '@version': [2], authentication: ['apiKey'] },
+				}),
+			).toEqual({ authentication: 'apiKey' });
+		});
+	});
+
+	describe('resolveSupportedCredentialActivation', () => {
+		const multiAuthNodeType: INodeTypeDescription = {
+			displayName: 'Service',
+			name: 'service',
+			group: ['transform'],
+			version: 1,
+			description: '',
+			defaults: { name: 'Service' },
+			inputs: [],
+			outputs: [],
+			properties: [],
+			credentials: [
+				{ name: 'serviceOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+				{ name: 'serviceApiKey', displayOptions: { show: { authentication: ['apiKey'] } } },
+			],
+		};
+
+		const node = { typeVersion: 1, parameters: { authentication: 'oAuth2' } };
+
+		it('resolves a supported sibling when the current auth type is unsupported', () => {
+			expect(
+				resolveSupportedCredentialActivation(
+					multiAuthNodeType,
+					node,
+					(type) => type === 'serviceApiKey',
+				),
+			).toEqual({ credentialType: 'serviceApiKey', parameters: { authentication: 'apiKey' } });
+		});
+
+		it('keeps the preferred type with no parameter changes when it is already active', () => {
+			expect(
+				resolveSupportedCredentialActivation(
+					multiAuthNodeType,
+					node,
+					() => true,
+					'serviceOAuth2Api',
+				),
+			).toEqual({ credentialType: 'serviceOAuth2Api', parameters: {} });
+		});
+
+		it('does not rewrite a parameter that already satisfies a multi-value show clause', () => {
+			const multiValueNodeType: INodeTypeDescription = {
+				...multiAuthNodeType,
+				credentials: [
+					{
+						name: 'serviceApiKey',
+						displayOptions: { show: { authentication: ['apiKey', 'apiKeyLegacy'] } },
+					},
+				],
+			};
+
+			expect(
+				resolveSupportedCredentialActivation(
+					multiValueNodeType,
+					{ typeVersion: 1, parameters: { authentication: 'apiKeyLegacy' } },
+					() => true,
+				),
+			).toEqual({ credentialType: 'serviceApiKey', parameters: {} });
+		});
+
+		it('returns undefined when no declared credential type is supported', () => {
+			expect(
+				resolveSupportedCredentialActivation(multiAuthNodeType, node, () => false),
+			).toBeUndefined();
+		});
+
+		it('skips a supported credential the node version cannot show', () => {
+			const versionGatedNodeType: INodeTypeDescription = {
+				...multiAuthNodeType,
+				credentials: [
+					{
+						name: 'serviceApiKey',
+						displayOptions: { show: { '@version': [2], authentication: ['apiKey'] } },
+					},
+				],
+			};
+
+			expect(
+				resolveSupportedCredentialActivation(versionGatedNodeType, node, () => true),
+			).toBeUndefined();
+			expect(
+				resolveSupportedCredentialActivation(
+					versionGatedNodeType,
+					{ ...node, typeVersion: 2 },
+					() => true,
+				),
+			).toEqual({ credentialType: 'serviceApiKey', parameters: { authentication: 'apiKey' } });
 		});
 	});
 });

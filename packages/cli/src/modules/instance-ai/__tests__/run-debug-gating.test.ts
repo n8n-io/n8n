@@ -18,6 +18,7 @@ type RunDebugGatingInternals = {
 		runId: string,
 		agentRunId: string,
 		toolCallId: string,
+		signal: AbortSignal,
 	) => Record<string, unknown>;
 	getRunDebug: (runId: string) => ReturnType<RunDebugBuffer['get']>;
 };
@@ -50,6 +51,7 @@ describe('InstanceAiService run debug gating', () => {
 			runId,
 			'agent-run-1',
 			'tool-call-1',
+			signal,
 		);
 
 		expect(streamOptions.onStepStart).toBeUndefined();
@@ -62,6 +64,10 @@ describe('InstanceAiService run debug gating', () => {
 		// Both terminal paths opt into raw-usage recovery so stopped/errored runs bill.
 		expect(streamOptions.recoverUsageOnAbort).toBe(true);
 		expect(resumeOptions.recoverUsageOnAbort).toBe(true);
+		// Both paths must carry the run's signal, or a stop cannot reach the agent
+		// loop and its sub-agents (AGENT-453).
+		expect(streamOptions.abortSignal).toBe(signal);
+		expect(resumeOptions.abortSignal).toBe(signal);
 		// Both paths must carry the request-level Anthropic cache directive; without it
 		// on resume, HITL turns reprocess the whole conversation uncached (INS-759).
 		const cacheDirective = { anthropic: { cacheControl: { type: 'ephemeral' } } };
@@ -84,6 +90,7 @@ describe('InstanceAiService run debug gating', () => {
 			runId,
 			'agent-run-1',
 			'tool-call-1',
+			signal,
 		);
 
 		expect(typeof streamOptions.onStepStart).toBe('function');

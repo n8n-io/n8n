@@ -43,6 +43,7 @@ const DEFAULT_OIDC_CONFIG: OidcConfigDto = {
 	prompt: 'select_account',
 	authenticationContextClassReference: [],
 	additionalScopes: '',
+	rpInitiatedLogoutEnabled: false,
 };
 
 type OidcRuntimeConfig = Pick<
@@ -53,6 +54,7 @@ type OidcRuntimeConfig = Pick<
 	| 'prompt'
 	| 'authenticationContextClassReference'
 	| 'additionalScopes'
+	| 'rpInitiatedLogoutEnabled'
 > & {
 	discoveryEndpoint: URL;
 };
@@ -428,6 +430,11 @@ export class OidcService {
 	 * `end_session_endpoint`, in which case sign-out is local to n8n only.
 	 */
 	async generateEndSessionUrl(idToken: string): Promise<URL | undefined> {
+		// RP-Initiated Logout is opt-in: when disabled, sign-out stays local to n8n.
+		if (!this.oidcConfig.rpInitiatedLogoutEnabled) {
+			return undefined;
+		}
+
 		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 

@@ -2,6 +2,8 @@ import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AGENT_MODEL_STRING_REGEX } from './model-providers';
+import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
  * so validation stays in sync with the JSON config schema.
@@ -15,18 +17,15 @@ import {
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
-export const AgentModelSchema = z
-	.string()
-	.min(1)
-	.regex(
-		/**
-		 * [a-z0-9-]+: Provider name (e.g. "anthropic")
-		 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
-		 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
-		 */
-		/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
-		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
-	);
+export const AgentModelSchema = z.string().min(1).regex(
+	/**
+	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
+	 * (?:[a-z0-9._:-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+	 * [a-z0-9._:-]+: Model name (e.g. "claude-sonnet-4-5")
+	 */
+	AGENT_MODEL_STRING_REGEX,
+	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+);
 
 const CredentialIdSchema = z.string().trim();
 const EpisodicMemoryCredentialSchema = z.union([
@@ -69,12 +68,6 @@ const MemoryConfigSchema = z.object({
 	storage: z.enum(['n8n']),
 	observationalMemory: ObservationalMemoryConfigSchema.optional(),
 	episodicMemory: EpisodicMemoryConfigSchema.optional(),
-});
-
-const ThinkingConfigSchema = z.object({
-	provider: z.enum(['anthropic', 'openai']),
-	budgetTokens: z.number().int().optional(),
-	reasoningEffort: z.string().optional(),
 });
 
 // Mandatory for supporting providers (the user cannot disable it). Anthropic
@@ -389,7 +382,7 @@ const CustomToolJsonConfigSchema = z.object({
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
-		workflow: z.string().min(1),
+		workflow: z.string().min(1).describe("The workflow's display name (not its ID)."),
 		name: z.string().optional(),
 		description: z.string().optional(),
 		requireApproval: z.boolean().optional(),
@@ -483,7 +476,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 	config: z
 		.object({
-			thinking: ThinkingConfigSchema.optional(),
+			reasoning: z.enum(AGENT_REASONING_LEVELS).optional(),
 			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),

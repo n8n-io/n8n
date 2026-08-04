@@ -1,4 +1,5 @@
 import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
@@ -126,7 +127,7 @@ export type UserCalledMCPToolEventPayload = {
 		success: boolean;
 		data?: unknown;
 		error?: string | Record<string, unknown>;
-		error_reason?: WorkflowNotFoundReason;
+		error_reason?: WorkflowNotFoundReason | WorkflowPublishBlockedReason;
 	};
 };
 

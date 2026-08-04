@@ -1083,7 +1083,7 @@ describe('WorkflowBuilder plugin integration', () => {
 	});
 
 	describe('Phase 11.2: missingTriggerValidator plugin', () => {
-		it('validateWorkflow returns warning when no trigger node exists', () => {
+		it('validateWorkflow returns informational when no trigger node exists', () => {
 			// Nodes map with only non-trigger nodes
 			const nodesMap = new Map();
 			nodesMap.set('Set', {
@@ -1102,7 +1102,7 @@ describe('WorkflowBuilder plugin integration', () => {
 
 			expect(issues.length).toBe(1);
 			expect(issues[0].code).toBe('MISSING_TRIGGER');
-			expect(issues[0].severity).toBe('warning');
+			expect(issues[0].severity).toBe('informational');
 		});
 
 		it('validateWorkflow returns empty array when trigger node exists', () => {

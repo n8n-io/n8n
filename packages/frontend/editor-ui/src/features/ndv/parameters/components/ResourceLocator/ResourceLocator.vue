@@ -44,7 +44,7 @@ import {
 	watch,
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computedAsync, onClickOutside, type VueInstance } from '@vueuse/core';
 import {
 	buildValueFromOverride,

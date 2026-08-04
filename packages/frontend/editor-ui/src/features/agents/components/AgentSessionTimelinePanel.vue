@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import type {
 	AgentExecution,
@@ -277,7 +277,12 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 			</div>
 			<Transition name="session-detail-panel">
 				<div v-if="selectedItem" :class="$style.detailPanel">
-					<SessionDetailPanel :item="selectedItem" @close="selectTimelineItem(null)" />
+					<SessionDetailPanel
+						:item="selectedItem"
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						@close="selectTimelineItem(null)"
+					/>
 				</div>
 			</Transition>
 		</div>

@@ -19,6 +19,8 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'dataTableSchemaConflictPolicy',
 	'variableMissingMode',
 	'variableParentPolicy',
+	'tagMissingMode',
+	'tagConflictPolicy',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -102,6 +104,11 @@ export class ImportPackageRequestDto extends Z.class({
 	dataTableMatchingMode: optionalEnum(['by-id'], 'by-id'),
 	dataTableMissingMode: optionalEnum(['create', 'must-preexist', 'do-nothing'], 'create'),
 	dataTableSchemaConflictPolicy: optionalEnum(['keep-existing', 'fail'], 'keep-existing'),
-	variableMissingMode: optionalEnum(['do-nothing', 'must-preexist', 'create-stub'], 'do-nothing'),
+	variableMissingMode: optionalEnum(
+		['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
+		'create-with-value',
+	),
 	variableParentPolicy: optionalEnumNoDefault(['project', 'global']),
+	tagMissingMode: optionalEnum(['create', 'do-nothing'], 'create'),
+	tagConflictPolicy: optionalEnum(['skip', 'fail', 'rename'], 'skip'),
 }) {}

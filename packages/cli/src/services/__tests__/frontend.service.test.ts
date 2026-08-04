@@ -236,6 +236,25 @@ describe('FrontendService', () => {
 		process.env = originalEnv;
 	});
 
+	describe('credentials overwrite reload handler', () => {
+		it('registers a reload handler that regenerates types', async () => {
+			const { service } = createMockService();
+
+			expect(credentialsOverwrites.registerReloadHandler).toHaveBeenCalledWith(
+				expect.any(Function),
+			);
+
+			// The registered handler is what CredentialsOverwrites invokes after a
+			// reload; it must regenerate the credential types.
+			const handler = vi.mocked(credentialsOverwrites.registerReloadHandler).mock.calls[0][0];
+			const generateTypesSpy = vi.spyOn(service, 'generateTypes').mockResolvedValue();
+
+			await handler();
+
+			expect(generateTypesSpy).toHaveBeenCalled();
+		});
+	});
+
 	describe('getSettings', () => {
 		it('should return frontend settings', async () => {
 			const { service } = createMockService();

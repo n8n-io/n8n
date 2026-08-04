@@ -132,7 +132,7 @@ describe('scheduler across two mains over one database', () => {
 
 		// main-b's reaper reclaims the expired lease back to pending, bumping the
 		// fencing epoch so main-a can no longer act on it.
-		expect(await mainB.reap()).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(await mainB.reap()).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 
 		// Reclaim pushes `runAt` out by the retry backoff; fast-forward past it so
 		// the recovered occurrence is due for the next claim.
@@ -189,7 +189,7 @@ describe('scheduler across two mains over one database', () => {
 			}),
 		);
 
-		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 1, missed: 0 });
 
 		// Never dispatched: the handler never ran on either main.
 		expect(executedA).toHaveLength(0);
@@ -201,7 +201,7 @@ describe('scheduler across two mains over one database', () => {
 		expect(done.errorMessage).toMatch(/lease expired/i);
 
 		// Terminal: a further sweep has nothing to do, and neither main re-claims it.
-		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 		expect(await mainA.execute()).toEqual([]);
 		expect(await mainB.execute()).toEqual([]);
 	}, 15_000);
@@ -230,7 +230,7 @@ describe('scheduler across two mains over one database', () => {
 		);
 
 		// A completion is a success, not a dead-letter: neither reclaimed nor dead-lettered.
-		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 0 });
+		expect(await mainB.reap()).toEqual({ reclaimed: 0, deadLettered: 0, missed: 0 });
 
 		// Not re-run: the effect already happened.
 		expect(executedA).toHaveLength(0);

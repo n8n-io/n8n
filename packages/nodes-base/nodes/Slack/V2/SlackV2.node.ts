@@ -26,6 +26,7 @@ import { fileFields, fileOperations } from './FileDescription';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
+	formatUserLabel,
 	getMessageContent,
 	getTarget,
 	createSendAndWaitMessageBody,
@@ -64,7 +65,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
+			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6],
 			defaults: {
 				name: 'Slack',
 			},
@@ -245,6 +246,7 @@ export class SlackV2 implements INodeType {
 				const { data: users, cursor } = await slackApiRequestAllItemsWithRateLimit<{
 					id: string;
 					name: string;
+					real_name?: string;
 				}>(this, 'members', 'GET', '/users.list', {}, qs, {
 					onFail: 'stop',
 					maxRetries: 2,
@@ -252,9 +254,10 @@ export class SlackV2 implements INodeType {
 				});
 				const results: INodeListSearchItems[] = users
 					.map((c) => ({
-						name: c.name,
+						name: formatUserLabel(c),
 						value: c.id,
 					}))
+					// the label carries both real name and handle, so either matches the filter
 					.filter(
 						(c) =>
 							!filter ||
@@ -277,9 +280,10 @@ export class SlackV2 implements INodeType {
 				const { data: users } = await slackApiRequestAllItemsWithRateLimit<{
 					id: string;
 					name: string;
+					real_name?: string;
 				}>(this, 'members', 'GET', '/users.list', {}, { limit: 200 }, { onFail: 'stop' });
 				for (const user of users) {
-					const userName = user.name;
+					const userName = formatUserLabel(user);
 					const userId = user.id;
 					returnData.push({
 						name: userName,
@@ -287,11 +291,12 @@ export class SlackV2 implements INodeType {
 					});
 				}
 
+				// case-insensitive, so lowercase handle fallbacks aren't sorted below every real name
 				returnData.sort((a, b) => {
-					if (a.name < b.name) {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
 					}
-					if (a.name > b.name) {
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
 						return 1;
 					}
 					return 0;

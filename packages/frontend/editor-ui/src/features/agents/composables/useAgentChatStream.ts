@@ -1,13 +1,16 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { useToast } from '@/app/composables/useToast';
+import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	cancelAgentChatRun,
 	clearTestChatMessages,
@@ -26,7 +29,8 @@ import {
 	setMessageInteractives,
 	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
-import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
+import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
@@ -60,6 +64,11 @@ type ResumePayload =
 			cancelled: true;
 			text: string;
 	  };
+
+function getApprovalDecision(value: unknown): boolean | undefined {
+	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
+	return value.approved;
+}
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
@@ -174,6 +183,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		current?: ChatMessage;
 		/** Tracks any messages we minted so we can flip `streaming → success` on done. */
 		minted: Set<ChatMessage>;
+		reasoningStartedAt: Map<string, number>;
+		openReasoning: Map<string, ThinkingSegment>;
 	}
 
 	/**
@@ -187,7 +198,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			id: crypto.randomUUID(),
 			role: 'assistant',
 			content: '',
-			thinking: '',
 			toolCalls: [],
 			status: CHAT_MESSAGE_STATUS.STREAMING,
 		});
@@ -195,6 +205,34 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		session.current = msg;
 		session.minted.add(msg);
 		return msg;
+	}
+
+	function ensureReasoningSegment(session: StreamSession, id: string): ThinkingSegment {
+		const existing = session.openReasoning.get(id);
+		if (existing) return existing;
+
+		const msg = ensureCurrent(session);
+		const segment = reactive<ThinkingSegment>({
+			id,
+			content: '',
+			startTime: session.reasoningStartedAt.get(id) ?? Date.now(),
+		});
+		msg.thinkingSegments = [...(msg.thinkingSegments ?? []), segment];
+		session.openReasoning.set(id, segment);
+		return segment;
+	}
+
+	function settleReasoning(session: StreamSession, id: string, endTime = Date.now()): void {
+		const segment = session.openReasoning.get(id);
+		if (segment) segment.endTime = endTime;
+		session.openReasoning.delete(id);
+		session.reasoningStartedAt.delete(id);
+	}
+
+	function settleOpenReasoning(session: StreamSession): void {
+		const endTime = Date.now();
+		for (const id of session.openReasoning.keys()) settleReasoning(session, id, endTime);
+		session.reasoningStartedAt.clear();
 	}
 
 	/**
@@ -270,7 +308,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
-			if (!msg.content && !msg.thinking && (msg.toolCalls?.length ?? 0) === 0) {
+			if (
+				!msg.content &&
+				(msg.toolCalls?.length ?? 0) === 0 &&
+				getMessageThinkingSegments(msg).length === 0
+			) {
 				messages.value = messages.value.filter((m) => m !== msg);
 				session.minted.delete(msg);
 			}
@@ -298,6 +340,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function markStreamInterrupted(session: StreamSession): void {
+		settleOpenReasoning(session);
 		dropOrphanMintedBubbles(session);
 		markInFlightStateFailed(session);
 		messages.value.push(
@@ -305,7 +348,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				id: crypto.randomUUID(),
 				role: 'assistant',
 				content: locale.baseText('agents.chat.streamInterrupted'),
-				thinking: '',
 				toolCalls: [],
 				status: CHAT_MESSAGE_STATUS.ERROR,
 			}),
@@ -326,8 +368,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			case 'text-start':
 			case 'text-end':
+				break;
 			case 'reasoning-start':
-			case 'reasoning-end':
+				session.reasoningStartedAt.set(event.id, Date.now());
 				break;
 			case 'text-delta': {
 				const msg = ensureCurrent(session);
@@ -336,9 +379,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'reasoning-delta': {
 				const msg = ensureCurrent(session);
+				const segment = ensureReasoningSegment(session, event.id);
+				segment.content += event.delta;
 				msg.thinking = (msg.thinking ?? '') + event.delta;
 				break;
 			}
+			case 'reasoning-end':
+				settleReasoning(session, event.id);
+				break;
 			case 'tool-input-start': {
 				const msg = ensureCurrent(session);
 				if (msg.content && !msg.content.endsWith('\n')) msg.content += '\n';
@@ -436,13 +484,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
-					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the matching card so it flips to its
-					// resolved (disabled) state immediately. Display-only n8n chat
-					// cards never suspend, so they are also born here when the tool
-					// settles.
+					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc);
-					if (updated) upsertMessageInteractive(found.msg, updated);
+					if (updated && currentInteractive?.resolvedAt === undefined) {
+						upsertMessageInteractive(found.msg, updated);
+					}
 					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
@@ -450,9 +496,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
-				// The approval tool suspends with its renderable input; integration
-				// actions suspend with a sidecar — keep the card-bearing tool input
-				// and store the sidecar separately.
+				// Keep the model-authored tool input intact. A delegated tool can
+				// suspend with a nested approval payload that renders a different tool.
 				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
@@ -460,12 +505,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
+					tc.canceled = false;
+					tc.output = undefined;
+					tc.endTime = undefined;
+					tc.displaySummary = undefined;
 					tc.runId = payload.runId;
-					if (suspendIsRenderableInput) {
-						tc.input = payload.input;
-					} else {
-						tc.suspendPayload = payload.input;
-					}
+					tc.suspendPayload = payload.input;
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
@@ -491,6 +536,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.terminalEventReceived = true;
 				break;
 			}
+			case 'subagent-chunk': {
+				const found = findToolCallById(event.parentToolCallId);
+				if (!found) break;
+				found.tc.childProgress ??= emptyChildTrace();
+				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
+				break;
+			}
 			case 'message':
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
@@ -507,6 +559,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			}
 			case 'error': {
 				session.errorEmitted = true;
+				settleOpenReasoning(session);
 				dropOrphanMintedBubbles(session);
 				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
@@ -517,7 +570,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							id: crypto.randomUUID(),
 							role: 'assistant',
 							content: event.message,
-							thinking: '',
 							toolCalls: [],
 							status: CHAT_MESSAGE_STATUS.ERROR,
 						}),
@@ -527,6 +579,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'done':
+				settleOpenReasoning(session);
 				if (event.executionId) {
 					for (const msg of session.minted) {
 						msg.executionId = event.executionId;
@@ -575,6 +628,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	function finalizeStream(session: StreamSession): void {
+		settleOpenReasoning(session);
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
@@ -588,6 +642,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			errorEmitted: false,
 			terminalEventReceived: false,
 			minted: new Set(),
+			reasoningStartedAt: new Map(),
+			openReasoning: new Map(),
 		};
 
 		isStreaming.value = true;
@@ -660,12 +716,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 	}
 
-	async function streamChat(message: string): Promise<void> {
+	async function streamChat(message: string, files?: File[]): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
 		if (params.continueSessionId?.value) {
 			body.sessionId = params.continueSessionId.value;
+		}
+		if (files?.length) {
+			body.attachments = await Promise.all(
+				files.map(async (file) => {
+					const encoded = await convertFileToBinaryData(file);
+					// Browsers report an empty type for unrecognized extensions; the
+					// backend requires a non-empty mime type and sniffs the real one.
+					return {
+						fileName: file.name,
+						mimeType: file.type || 'application/octet-stream',
+						data: encoded.data,
+					};
+				}),
+			);
 		}
 		await postAndConsume(url, body);
 	}
@@ -724,6 +794,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated?.toolName === APPROVAL_TOOL_NAME) {
+					const approved = getApprovalDecision(payload.resumeData);
+					if (approved !== undefined) updated.resolvedValue = { approved };
+				}
 				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
 			markMessageSuccessIfSettled(found.msg);
@@ -789,9 +863,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 	}
 
-	async function sendMessage(text: string): Promise<void> {
+	async function sendMessage(text: string, files?: File[]): Promise<void> {
 		const trimmed = text.trim();
-		if (!trimmed || isStreaming.value || isCancelling.value) return;
+		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		warnings.value = [];
@@ -800,8 +874,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			...(files?.length && {
+				attachments: files.map((file) => ({
+					fileName: file.name,
+					mimeType: file.type || 'application/octet-stream',
+					sizeBytes: file.size,
+					file,
+				})),
+			}),
 		});
-		await streamChat(trimmed);
+		await streamChat(trimmed, files);
 	}
 
 	function dismissFatalError(): void {

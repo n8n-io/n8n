@@ -34,14 +34,16 @@ const sectionTitle = computed(
 );
 
 /**
- * Most recent timeline entry that SubagentStepTimeline can render (text or
- * tool call), shown as a peek while collapsed and active.
+ * Most recent timeline entry that SubagentStepTimeline can render (text,
+ * tool call, or reasoning), shown as a peek while collapsed and active.
  */
 const peekEntries = computed(() => {
 	const entries = props.agentNode.timeline;
 	for (let i = entries.length - 1; i >= 0; i--) {
 		const entry = entries[i];
-		if (entry.type === 'text' || entry.type === 'tool-call') return [entry];
+		if (entry.type === 'text' || entry.type === 'tool-call' || entry.type === 'reasoning') {
+			return [entry];
+		}
 	}
 	return [];
 });

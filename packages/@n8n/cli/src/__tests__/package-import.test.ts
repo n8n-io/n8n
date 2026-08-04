@@ -27,6 +27,8 @@ interface ImportFlags {
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
 	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
 	bindings?: string;
 }
 
@@ -72,8 +74,10 @@ describe('package import command', () => {
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'create-stub',
+			variableMissingMode: 'create-with-value',
 			variableParentPolicy: 'global',
+			tagMissingMode: 'do-nothing',
+			tagConflictPolicy: 'rename',
 			bindings: '{}',
 		});
 
@@ -97,8 +101,10 @@ describe('package import command', () => {
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'create-stub',
+			variableMissingMode: 'create-with-value',
 			variableParentPolicy: 'global',
+			tagMissingMode: 'do-nothing',
+			tagConflictPolicy: 'rename',
 			bindings: '{}',
 		});
 	});
@@ -113,6 +119,18 @@ describe('package import command', () => {
 			'unpublish-all',
 		]);
 		expect(flag.default).toBeUndefined();
+	});
+
+	it('defines the tag flags with kebab aliases, server option lists, and no client-side default', () => {
+		const missingMode = PackageImport.flags.tagMissingMode;
+		expect(missingMode.aliases).toEqual(['tag-missing-mode']);
+		expect(missingMode.options).toEqual(['create', 'do-nothing']);
+		expect(missingMode.default).toBeUndefined();
+
+		const conflictPolicy = PackageImport.flags.tagConflictPolicy;
+		expect(conflictPolicy.aliases).toEqual(['tag-conflict-policy']);
+		expect(conflictPolicy.options).toEqual(['skip', 'fail', 'rename']);
+		expect(conflictPolicy.default).toBeUndefined();
 	});
 
 	// Real oclif parsing exercises the flag default and alias resolution, which

@@ -23,7 +23,7 @@ export function isIntegrationActionSuspendPayload(value: unknown): boolean {
 	);
 }
 
-function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
+export function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
 	return (
 		isRecord(value) &&
 		value.type === 'approval' &&
