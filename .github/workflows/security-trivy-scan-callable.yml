@@ -51,6 +51,16 @@ jobs:
           exit-code: '0'
           trivy-config: 'security/trivy.yaml'
 
+      - name: Upload Trivy results
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          # Both callers scan different images against the same reusable workflow,
+          # so scope the artifact name to the caller job to keep it unique.
+          name: trivy-results-${{ github.job }}
+          path: trivy-results.json
+          retention-days: 14
+
       - name: Calculate vulnerability counts
         id: process_results
         run: |
