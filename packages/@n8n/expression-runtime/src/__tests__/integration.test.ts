@@ -3,14 +3,15 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
 import { TimeoutError, MemoryLimitError } from '../types';
+import { createBridge, engineName } from './test-bridge';
 
-describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
+describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	let evaluator: ExpressionEvaluator;
 	const caller = {};
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 1024,
 		});
 		await evaluator.initialize();
@@ -310,6 +311,14 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 			expect(result).toBeInstanceOf(Date);
 		});
+	});
+
+	it('should enumerate keys that collide with internal marker strings', () => {
+		const data = { $json: { __NaN__: 'a', other: 'b' } };
+
+		expect(evaluator.evaluate('{{ Object.keys($json).sort().join(",") }}', data, caller)).toBe(
+			'__NaN__,other',
+		);
 	});
 
 	it('should throw on invalid timezone', async () => {
@@ -620,6 +629,24 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		};
 
 		expect(evaluator.evaluate('{{ $json.nested }}', data, caller)).toBe('inner');
+	});
+
+	it('should preserve the outer data bindings after a re-entrant execute() call', () => {
+		const data = {
+			$json: {
+				get nested() {
+					// Re-enters execute() on the same bridge with different data.
+					// The outer evaluation must keep resolving against its own data
+					// after the nested call returns.
+					return evaluator.evaluate('{{ "inner" }}', { $json: { val: 1 } }, caller);
+				},
+				other: 'OUTER_VALUE',
+			},
+		};
+
+		expect(evaluator.evaluate('{{ $json.nested + "|" + $json.other }}', data, caller)).toBe(
+			'inner|OUTER_VALUE',
+		);
 	});
 });
 

@@ -2,19 +2,20 @@ import z from 'zod';
 
 import { Config, Env } from '../decorators';
 
-const expressionEngineSchema = z.enum(['legacy', 'vm']);
+const expressionEngineSchema = z.enum(['legacy', 'vm', 'quickjs']);
 
 @Config
 export class ExpressionEngineConfig {
 	/**
 	 * Which expression engine to use.
 	 * - `legacy` runs expressions without isolation.
-	 * - `vm` runs expressions in a V8 isolate.
+	 * - `vm` runs expressions in a V8 isolate (isolated-vm).
+	 * - `quickjs` runs expressions in a QuickJS WASM sandbox.
 	 *
-	 * `vm` is currently **experimental**. Use at your own risk.
+	 * `vm` and `quickjs` are currently **experimental**. Use at your own risk.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
-	engine: 'legacy' | 'vm' = 'legacy';
+	engine: 'legacy' | 'vm' | 'quickjs' = 'legacy';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')
