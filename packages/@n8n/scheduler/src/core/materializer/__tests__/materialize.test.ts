@@ -2,7 +2,7 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ScheduledJob } from '../../types';
-import { materialize, type MaterializerOptions } from '../materialize';
+import { materialize, totalDiscarded, type MaterializerOptions } from '../materialize';
 import type { RunInTransaction, MaterializerTransaction } from '../transaction';
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
@@ -413,6 +413,73 @@ describe('materialize', () => {
 		expect(tx.advanceJobs).not.toHaveBeenCalled();
 		// No reporting about rows the rollback is about to undo.
 		expect(onSkippedDuplicates).not.toHaveBeenCalled();
+	});
+
+	describe('siblings sharing an owner under the owner-wide coalesce policy', () => {
+		const BEHIND = new Date('2025-12-31T23:58:00.000Z');
+
+		const makeSibling = (id: number): ScheduledJob => ({
+			...makeJob(id),
+			misfirePolicy: ScheduledJobMisfirePolicy.CoalesceOwner,
+			ownerKey: 'owner-a',
+			nextRunAt: BEHIND,
+		});
+
+		const claimSiblings = (tx: MockProxy<MaterializerTransaction>) => {
+			tx.claimDueJobs.mockResolvedValue({
+				now: NOW,
+				jobs: [makeSibling(1), makeSibling(2), makeSibling(3)],
+			});
+			tx.recordOccurrences.mockResolvedValue({ recorded: 1, created: [] });
+		};
+
+		it('records one catch-up run for the whole owner', async () => {
+			const tx = makeTx();
+			claimSiblings(tx);
+
+			await materialize(runnerWith(tx), options);
+
+			expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
+			const rows = tx.recordOccurrences.mock.calls[0][0];
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ runAt: NOW, scheduledFor: NOW });
+		});
+
+		it('retires the superseded occurrences of every sibling', async () => {
+			const tx = makeTx();
+			claimSiblings(tx);
+
+			await materialize(runnerWith(tx), options);
+
+			expect(tx.retireSuperseded).toHaveBeenCalledWith([
+				{ jobId: 1, before: NOW },
+				{ jobId: 2, before: NOW },
+				{ jobId: 3, before: NOW },
+			]);
+		});
+
+		it('advances every sibling clock, holding none back', async () => {
+			const tx = makeTx();
+			claimSiblings(tx);
+
+			await materialize(runnerWith(tx), options);
+
+			const planned = tx.advanceJobs.mock.calls[0][0];
+			expect(planned).toHaveLength(3);
+			for (const { plan } of planned) {
+				expect(plan.nextRunAt).toEqual(new Date('2026-01-01T00:00:10.000Z'));
+				expect(plan.lastFiredAt).toEqual(NOW);
+			}
+		});
+
+		it('counts the dropped catch-up runs towards the discarded total', async () => {
+			const tx = makeTx();
+			claimSiblings(tx);
+
+			const summary = await materialize(runnerWith(tx), options);
+
+			expect(totalDiscarded(summary.misfires)).toBe(38);
+		});
 	});
 
 	it('still defers and completes the pass when the plan-error reporter itself throws', async () => {
