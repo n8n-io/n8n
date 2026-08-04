@@ -1,4 +1,5 @@
 name: Security - Scan Docker Image With Trivy
+run-name: 'Trivy scan of ${{ inputs.image_ref }}'
 
 on:
   workflow_dispatch:

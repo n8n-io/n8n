@@ -1,4 +1,5 @@
 name: 'Test: E2E Helm Chart'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Test: E2E Helm Chart (mode={0}, branch={1}, chart={2})', inputs.mode, inputs.branch || 'default', inputs['helm-chart-ref']) || '' }}"
 
 on:
   pull_request:
