@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	assertRollupFunctionAllowed,
+	buildCustomColumnIdArgs,
 	formatColumnSchemaRow,
 } from '../actions/column/column.execute';
 
@@ -100,5 +101,21 @@ describe('assertRollupFunctionAllowed (Column Create/Update pre-flight)', () => 
 
 	it('is a no-op when no rollup function is set (Board Default)', () => {
 		expect(() => assertRollupFunctionAllowed(node, 0, 'text', '')).not.toThrow();
+	});
+});
+
+describe('buildCustomColumnIdArgs (Column Create)', () => {
+	it('omits the argument and its variable when Column ID is unset', () => {
+		// The API rejects an explicit `id: null`, and GraphQL rejects a declared
+		// but unused variable, so both have to disappear together.
+		expect(buildCustomColumnIdArgs('')).toEqual({ varDef: '', arg: '', variables: {} });
+	});
+
+	it('declares the variable and passes the argument when Column ID is set', () => {
+		expect(buildCustomColumnIdArgs('my_status')).toEqual({
+			varDef: ', $customColumnId: String',
+			arg: 'id: $customColumnId,',
+			variables: { customColumnId: 'my_status' },
+		});
 	});
 });

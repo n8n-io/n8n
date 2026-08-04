@@ -453,6 +453,26 @@ async function resolveColumnPosition(
 }
 
 /**
+ * The custom-column-ID argument for the create mutations. The API rejects an
+ * explicit `id: null` ("The specified ID ... cannot be empty", verified live),
+ * so the argument and its variable are omitted entirely when the user left
+ * Column ID unset — GraphQL also forbids declaring an unused variable.
+ * Exported for unit tests.
+ */
+export function buildCustomColumnIdArgs(customColumnId: string): {
+	varDef: string;
+	arg: string;
+	variables: Record<string, string>;
+} {
+	if (!customColumnId) return { varDef: '', arg: '', variables: {} };
+	return {
+		varDef: ', $customColumnId: String',
+		arg: 'id: $customColumnId,',
+		variables: { customColumnId },
+	};
+}
+
+/**
  * Column: Add to Board. Status and dropdown label builders go through the
  * typed create_status_column / create_dropdown_column mutations (name, color,
  * is_done, selection limits); every other type compiles its Type Settings
@@ -500,12 +520,13 @@ export async function createColumn(
 		rawDefaults = parsed as Record<string, unknown>;
 	}
 
+	const customId = buildCustomColumnIdArgs(customColumnId);
 	const baseVariables = {
 		boardId,
 		title,
 		description,
 		afterColumnId: afterColumnId ?? null,
-		customColumnId: customColumnId || null,
+		...customId.variables,
 	};
 
 	// Rollup (multi-level boards): sent as the capabilities argument. Only
@@ -521,10 +542,10 @@ export async function createColumn(
 		const defaults = buildStatusColumnDefaults(rows);
 		if (defaults || capabilities) {
 			const data = await client.execute(
-				`mutation ($boardId: ID!, $customColumnId: String, $title: String!, $description: String, $afterColumnId: ID, $defaults: CreateStatusColumnSettingsInput, $capabilities: StatusColumnCapabilitiesInput) {
+				`mutation ($boardId: ID!${customId.varDef}, $title: String!, $description: String, $afterColumnId: ID, $defaults: CreateStatusColumnSettingsInput, $capabilities: StatusColumnCapabilitiesInput) {
 					create_status_column(
 						board_id: $boardId,
-						id: $customColumnId,
+						${customId.arg}
 						title: $title,
 						description: $description,
 						after_column_id: $afterColumnId,
@@ -548,10 +569,10 @@ export async function createColumn(
 		});
 		if (defaults) {
 			const data = await client.execute(
-				`mutation ($boardId: ID!, $customColumnId: String, $title: String!, $description: String, $afterColumnId: ID, $defaults: CreateDropdownColumnSettingsInput) {
+				`mutation ($boardId: ID!${customId.varDef}, $title: String!, $description: String, $afterColumnId: ID, $defaults: CreateDropdownColumnSettingsInput) {
 					create_dropdown_column(
 						board_id: $boardId,
-						id: $customColumnId,
+						${customId.arg}
 						title: $title,
 						description: $description,
 						after_column_id: $afterColumnId,
@@ -570,10 +591,10 @@ export async function createColumn(
 	let data: IDataObject;
 	try {
 		data = await client.execute(
-			`mutation ($boardId: ID!, $customColumnId: String, $title: String!, $columnType: ColumnType!, $description: String, $afterColumnId: ID, $defaults: JSON, $capabilities: ColumnCapabilitiesInput) {
+			`mutation ($boardId: ID!${customId.varDef}, $title: String!, $columnType: ColumnType!, $description: String, $afterColumnId: ID, $defaults: JSON, $capabilities: ColumnCapabilitiesInput) {
 				create_column(
 					board_id: $boardId,
-					id: $customColumnId,
+					${customId.arg}
 					title: $title,
 					column_type: $columnType,
 					description: $description,
