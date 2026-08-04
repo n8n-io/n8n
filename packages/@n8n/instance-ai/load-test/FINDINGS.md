@@ -136,6 +136,27 @@ finding that concurrency shows up as slow outliers, not uniform slowdown.
 
 ### OOM confirmed at N=10 — and it is non-deterministic
 
+### The workable ceiling is 5 concurrent builders
+
+Every cloud run on the 640 MB instance:
+
+| N | turns | outcome |
+| --: | --: | --- |
+| 1 | 2 | pass |
+| 5 | 2 | pass — peak 604 MB (**94%**) |
+| **5** | **4** | **pass** — 5/5, all `runs=4/4`, full-length conversations |
+| 10 | 2 | pass — peak 622 MB (**97%**), 18 MB margin |
+| 10 | 4 | **OOM, 2 of 2 attempts** (32–45 s in, during turn 1) |
+
+**5 concurrent builders is the workable ceiling, and it holds for realistic
+multi-turn conversations** — the N=5 4-turn run completed all four turns for all
+five users with zero `/healthz` failures, despite local projecting 627–639 MB
+against the 640 MB limit.
+
+Latency at N=5/4-turn stayed tight: median 134 s, max 146 s. Compare N=10/2-turn,
+where the median was 83 s but the max stretched to 132 s — five users barely
+contend, ten do.
+
 Three N=10 attempts on the 640 MB instance:
 
 | run | turns | pre-warmed | outcome |
@@ -146,6 +167,7 @@ Three N=10 attempts on the 640 MB instance:
 
 ```
 run 3:  load started 12:47:55.8Z    healthz 502/503 from 12:48:28Z  (32 s)
+        all 10 conversations then hung until the 900 s timeout, reported 0/10
 ```
 
 Both crashes happened **during turn 1**, before any workflow was created (the
@@ -173,18 +195,36 @@ What this shows:
 Practical consequence: **do not size for N=10 on 640 MB**, and treat a margin in
 the tens of MB as inside this workload's variance.
 
-### Harness gap: the driver dies with the server
+### Harness behaviour on a server OOM
 
-In both crashes the driver process vanished leaving no report — the log stops at
-`[phase] load` and cleanup never ran, orphaning 10 threads each time (swept
-manually). The harness is supposed to survive a failing target: `runVirtualUser`
-catches per-user errors and `Promise.allSettled` isolates them, so a report should
-still have been written with 10 failed conversations.
+The harness survives the target dying and reports correctly — both crashed runs
+ended with:
 
-Worth fixing before the harness is used for OOM testing in anger, along with
-folding the `/healthz` restart poll into the tool itself — the built-in OOM
-detector reads `n8n_process_start_time_seconds` and so cannot work in
-`--no-metrics` mode, which is exactly the mode cloud requires.
+```
+[WARN] [u0..u9] conversation failed: Run timed out after 900000ms
+       conversations completed  0 / 10
+       Report written
+```
+
+**But it only notices when the per-conversation timeout expires.** When the server
+dies the SSE streams simply go silent, so every conversation hangs for the full
+`--timeout-ms` — 15 minutes here — before failing. During that window the log sits
+at `[phase] load` with no output, which looks indistinguishable from a healthy
+long-running build. (That fooled the author of this document into believing the
+driver had been killed, and into manually sweeping the threads mid-hang — which is
+why those runs show 10 cleanup failures: `deleteThread` then 404'd on threads that
+were already gone.)
+
+Two things worth improving before the harness is used for OOM testing in anger:
+
+- **Fail fast when the target is unreachable.** A liveness check during the load
+  phase would turn a 15-minute hang into a prompt, correctly-labelled failure. Use
+  a short `--timeout-ms` in the meantime.
+- **Detect restarts without `/metrics`.** The built-in detector reads
+  `n8n_process_start_time_seconds`, so it cannot fire in `--no-metrics` mode —
+  which is exactly the mode cloud requires; note `server restarted mid-run` read
+  `no` for both crashes. Polling `/healthz` (done manually here) should be folded
+  into the tool.
 
 ### Starter-plan headroom
 
