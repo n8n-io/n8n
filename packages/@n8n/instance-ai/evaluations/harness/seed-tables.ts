@@ -76,7 +76,11 @@ export function buildSeededTablesNote(tables: InstanceAiEvalSeedDataTable[]): st
 	if (tables.length === 0) return '';
 	const lines = tables.map((table) => {
 		const columns = table.columns.map((column) => `${column.name}: ${column.type}`).join(', ');
-		return `- "${table.name}" (columns: ${columns})`;
+		// The request calls it `Orders`; what exists is `Orders [seed …]`. Say so, or the
+		// agent reasonably concludes its table is missing and creates a duplicate.
+		const base = SEED_NAME_RE.exec(table.name)?.[1];
+		const alias = base === undefined ? '' : ` — the request refers to this table as "${base}"`;
+		return `- "${table.name}" (columns: ${columns})${alias}`;
 	});
 	return `\n\nThe following data table(s) already exist in this workspace — reuse them (look them up with the Data Table node's list/schema) instead of creating new ones:\n${lines.join('\n')}`;
 }
