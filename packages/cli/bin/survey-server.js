@@ -16,7 +16,8 @@ const DEFAULT_QUESTIONS = [
 // Reuses the n8n database via the same env vars (DB_TYPE, DB_POSTGRESDB_*).
 // Tiny adapter: query(sql, params) -> rows, with `?` placeholders in both dialects.
 let query;
-if (process.env.DB_TYPE === 'postgresdb') {
+const isPg = process.env.DB_TYPE === 'postgresdb';
+if (isPg) {
 	const { Pool } = require('pg');
 	const pool = new Pool({
 		host: process.env.DB_POSTGRESDB_HOST || 'localhost',
@@ -90,6 +91,16 @@ app.post('/api/vote', async (req, res) => {
 	) {
 		return res.status(400).json({ error: 'invalid vote' });
 	}
+	const prev = Number(req.body?.prev);
+	if (Number.isInteger(prev) && prev >= 1 && prev <= 5) {
+		// reassign: drop one anonymous row matching the client's remembered old vote.
+		// ponytail: nothing stops a client lying about `prev` — fine for an anonymous demo poll.
+		const rowid = isPg ? 'ctid' : 'rowid';
+		await query(
+			`DELETE FROM survey_votes WHERE ${rowid} = (SELECT ${rowid} FROM survey_votes WHERE question_idx = ? AND score = ? LIMIT 1)`,
+			[q, prev],
+		);
+	}
 	await query('INSERT INTO survey_votes (question_idx, score) VALUES (?, ?)', [q, score]);
 	res.json({ ok: true });
 });
@@ -127,21 +138,21 @@ const PAGE = `<!doctype html>
 		--fill: 0%; background: linear-gradient(to top, #ffcfc7 var(--fill), #fafafa var(--fill)); }
 	.opt:hover { border-color: #ff6d5a; }
 	.opt.mine { border-color: #ff6d5a; box-shadow: inset 0 0 0 1px #ff6d5a; }
-	.opt:disabled { cursor: default; opacity: .8; }
 	.opt .n { display: block; font-size: 20px; font-weight: 700; min-height: 24px; }
 	.opt .label { display: block; font-size: 11px; color: #888; min-height: 14px; }
 	.scale { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-top: 6px; }
 </style></head>
-<body><div class="wrap"><h1>Quick survey</h1><p>Pick an option &mdash; live counts appear once you've voted.</p><div id="qs"></div></div>
+<body><div class="wrap"><h1>Quick survey</h1><p>Pick an option &mdash; live counts appear once you've voted. Click another option to change your vote.</p><div id="qs"></div></div>
 <script>
 const qs = document.getElementById('qs');
 let gen = 0;
 function voteKey(i) { return 'survey-vote-' + gen + '-' + i; }
 function myVote(i) { return localStorage.getItem(voteKey(i)); }
 async function vote(i, score) {
-	if (myVote(i)) return;
+	const prev = Number(myVote(i)) || undefined;
+	if (prev === score) return;
 	localStorage.setItem(voteKey(i), score);
-	await fetch('/api/vote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: i, score }) });
+	await fetch('/api/vote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: i, score, prev }) });
 	refresh();
 }
 async function refresh() {
@@ -184,7 +195,6 @@ async function refresh() {
 			const pct = voted && total ? Math.round((counts[i][s - 1] / total) * 100) : 0;
 			b.style.setProperty('--fill', pct + '%');
 			b.classList.toggle('mine', myVote(i) === String(s));
-			b.disabled = voted;
 		}
 	});
 }
