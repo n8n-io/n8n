@@ -39,6 +39,7 @@ import {
 	type ObservationLogTaskLockHandle,
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
+	stripHydratedFileData,
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
@@ -283,7 +284,8 @@ export class N8nMemoryImpl
 		// the column is preserved on conflict; updatedAt is set manually because
 		// the @BeforeUpdate hook does not fire during upsert.
 		const now = new Date();
-		const entities = args.messages.map((dbMsg) => {
+		const entities = args.messages.map((message) => {
+			const dbMsg = stripHydratedFileData(message);
 			const role = 'role' in dbMsg ? (dbMsg.role as string) : 'custom';
 			const type = 'type' in dbMsg ? (dbMsg.type as string) : null;
 			return {

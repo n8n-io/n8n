@@ -71,6 +71,7 @@ export class ModuleRegistry {
 		'n8n-packages',
 		'runtime-credentials',
 		'mcp-registry',
+		'workflow-reviews',
 	];
 
 	private readonly activeModules: string[] = [];

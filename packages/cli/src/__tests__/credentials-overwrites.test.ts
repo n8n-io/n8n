@@ -630,16 +630,15 @@ describe('CredentialsOverwrites', () => {
 				settingsRepository.findByKey.mockResolvedValue(settingData);
 				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService to avoid circular dependency issues
-				const mockReloadFrontendService = vi.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				const mockReloadHandler = vi.fn();
+				pubsubCredentialsOverwrites.registerReloadHandler(mockReloadHandler);
 
 				await pubsubCredentialsOverwrites.reloadOverwriteCredentials();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
 				expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 				expect(pubsubCredentialsOverwrites.getAll()).toEqual(overwriteData);
-				expect(mockReloadFrontendService).toHaveBeenCalled();
+				expect(mockReloadHandler).toHaveBeenCalled();
 			});
 
 			it('should handle database loading errors gracefully', async () => {
@@ -698,9 +697,7 @@ describe('CredentialsOverwrites', () => {
 				});
 				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService
-				const mockReloadFrontendService = vi.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				pubsubCredentialsOverwrites.registerReloadHandler(vi.fn());
 
 				// Start first reload
 				const firstReload = pubsubCredentialsOverwrites.reloadOverwriteCredentials();
@@ -757,9 +754,7 @@ describe('CredentialsOverwrites', () => {
 				settingsRepository.findByKey.mockResolvedValue(settingData);
 				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService
-				const mockReloadFrontendService = vi.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				pubsubCredentialsOverwrites.registerReloadHandler(vi.fn());
 
 				await expect(
 					pubsubCredentialsOverwrites.reloadOverwriteCredentials(),
@@ -875,33 +870,29 @@ describe('CredentialsOverwrites', () => {
 			vi.restoreAllMocks();
 		});
 
-		describe('reloadFrontendService via setData', () => {
+		describe('reload handler via setData', () => {
+			let reloadHandler: Mock;
+
 			beforeEach(() => {
-				// Mock the reloadFrontendService method directly to test through setData
-				vi.spyOn(frontendCredentialsOverwrites as any, 'reloadFrontendService').mockResolvedValue(
-					undefined,
-				);
+				reloadHandler = vi.fn().mockResolvedValue(undefined);
+				frontendCredentialsOverwrites.registerReloadHandler(reloadHandler);
 			});
 
-			it('should call reloadFrontendService when reloadFrontend is true', async () => {
+			it('should call the reload handler when reloadFrontend is true', async () => {
 				const testData = { test: { username: 'frontendUser' } };
-				const reloadSpy = frontendCredentialsOverwrites['reloadFrontendService'] as Mock;
 
 				await frontendCredentialsOverwrites.setData(testData, false, true);
 
-				// Verify reloadFrontendService was called
-				expect(reloadSpy).toHaveBeenCalledTimes(1);
+				expect(reloadHandler).toHaveBeenCalledTimes(1);
 				expect(frontendCredentialsOverwrites.getAll()).toEqual(testData);
 			});
 
-			it('should skip reloadFrontendService when reloadFrontend is false', async () => {
+			it('should skip the reload handler when reloadFrontend is false', async () => {
 				const testData = { test: { username: 'noReloadUser' } };
-				const reloadSpy = frontendCredentialsOverwrites['reloadFrontendService'] as Mock;
 
 				await frontendCredentialsOverwrites.setData(testData, false, false);
 
-				// Verify reloadFrontendService was NOT called
-				expect(reloadSpy).not.toHaveBeenCalled();
+				expect(reloadHandler).not.toHaveBeenCalled();
 				expect(frontendCredentialsOverwrites.getAll()).toEqual(testData);
 			});
 

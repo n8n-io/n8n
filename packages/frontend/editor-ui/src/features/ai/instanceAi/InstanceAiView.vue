@@ -6,7 +6,7 @@ import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceAiStore } from './instanceAi.store';

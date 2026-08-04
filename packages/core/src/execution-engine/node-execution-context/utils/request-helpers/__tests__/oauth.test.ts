@@ -58,6 +58,10 @@ describe('refreshOAuth2Token', () => {
 		} as unknown as ICredentialDataDecryptedObject);
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	test('should refresh the OAuth2 token with pkce grant type', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
@@ -99,6 +103,54 @@ describe('refreshOAuth2Token', () => {
 			}),
 			mockAdditionalData,
 		);
+	});
+
+	test('should store an absolute expiry when refreshed token has expires_in', async () => {
+		const now = 1_700_000_000_000;
+		const dateNow = vi.spyOn(Date, 'now').mockReturnValue(now);
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			clientSecret: undefined,
+			grantType: 'pkce',
+		});
+		nock(baseUrl)
+			.post('/token', {
+				client_id: 'test-client-id',
+				grant_type: 'refresh_token',
+				refresh_token: 'old-refresh-token',
+			})
+			.reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+				expires_in: '3600',
+			});
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+			expires_in: '3600',
+			n8n_expires_at: String(now + 3_600_000),
+		});
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					n8n_expires_at: String(now + 3_600_000),
+				}),
+			}),
+			mockAdditionalData,
+		);
+		dateNow.mockRestore();
 	});
 
 	test('should refresh the OAuth2 token with client credentials grant type', async () => {
@@ -176,6 +228,7 @@ describe('refreshOAuth2Token', () => {
 		expect(result).toEqual({
 			access_token: 'new-token',
 			refresh_token: 'new-refresh-token',
+			resource: 'https://mcp.example.com/',
 		});
 		expect(
 			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,

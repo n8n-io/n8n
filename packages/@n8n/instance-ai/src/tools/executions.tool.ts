@@ -202,6 +202,7 @@ async function handleRun(
 	input: Extract<Input, { action: 'run' }>,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
 ) {
 	if (context.permissions?.runWorkflow === 'blocked') {
 		return {
@@ -292,6 +293,7 @@ async function handleRun(
 	// Approved or always_allow — execute
 	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
+		abortSignal,
 	});
 }
 
@@ -347,7 +349,7 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					return await handleRun(context, input, ctx.resumeData, ctx.suspend);
+					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
 				case 'debug':
 					return await handleDebug(context, input);

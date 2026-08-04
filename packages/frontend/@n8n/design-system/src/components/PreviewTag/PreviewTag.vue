@@ -4,15 +4,16 @@ import { useI18n } from '../../composables/useI18n';
 withDefaults(
 	defineProps<{
 		size?: 'small' | 'medium';
+		text?: string;
 	}>(),
-	{ size: 'small' },
+	{ size: 'small', text: undefined },
 );
 
 const { t } = useI18n();
 </script>
 
 <template>
-	<div :class="[$style.preview, $style[size]]">{{ t('previewTag.preview') }}</div>
+	<div :class="[$style.preview, $style[size]]">{{ text ?? t('previewTag.preview') }}</div>
 </template>
 
 <style lang="scss" module>

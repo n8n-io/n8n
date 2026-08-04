@@ -26,20 +26,19 @@ describe('EnterpriseWorkflowService', () => {
 		mockInstance(Telemetry);
 
 		service = new EnterpriseWorkflowService(
-			mock(),
+			mock(), // logger
 			Container.get(SharedWorkflowRepository),
 			Container.get(WorkflowRepository),
 			Container.get(CredentialsRepository),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
-			mock(),
+			mock(), // credentialsService
+			mock(), // ownershipService
+			mock(), // projectService
+			mock(), // activeWorkflowManager
+			mock(), // credentialsFinderService
+			mock(), // enterpriseCredentialsService
+			mock(), // workflowFinderService
+			mock(), // folderRepository
+			mock(), // workflowPublishHistoryRepository
 		);
 	});
 
@@ -104,6 +103,14 @@ describe('EnterpriseWorkflowService', () => {
 				addNodeWithTwoCreds: true,
 			});
 			const previousWorkflowVersion = getWorkflow({ addNodeWithOneCred: true });
+			expect(() => {
+				service.validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
+			}).toThrow();
+		});
+
+		it('Should throw error saving a workflow adding an Execute Sub-workflow node whose inline JSON uses an inaccessible credential', () => {
+			const newWorkflowVersion = getWorkflow({ addNodeWithInlineSubworkflowCred: true });
+			const previousWorkflowVersion = getWorkflow();
 			expect(() => {
 				service.validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
 			}).toThrow();
@@ -187,6 +194,20 @@ describe('EnterpriseWorkflowService', () => {
 			const workflow = getWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
 			const nodesWithInaccessibleCreds = service.getNodesWithInaccessibleCreds(workflow, []);
 			expect(nodesWithInaccessibleCreds).toHaveLength(2);
+		});
+
+		test('Should flag an Execute Sub-workflow node referencing an inaccessible credential inside its inline workflow JSON', () => {
+			const workflow = getWorkflow({ addNodeWithInlineSubworkflowCred: true });
+			const nodesWithInaccessibleCreds = service.getNodesWithInaccessibleCreds(workflow, []);
+			expect(nodesWithInaccessibleCreds).toHaveLength(1);
+		});
+
+		test('Should not flag an Execute Sub-workflow node when the inline credential is accessible', () => {
+			const workflow = getWorkflow({ addNodeWithInlineSubworkflowCred: true });
+			const nodesWithInaccessibleCreds = service.getNodesWithInaccessibleCreds(workflow, [
+				FIRST_CREDENTIAL_ID,
+			]);
+			expect(nodesWithInaccessibleCreds).toHaveLength(0);
 		});
 	});
 });

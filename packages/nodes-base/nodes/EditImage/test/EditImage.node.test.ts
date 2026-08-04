@@ -615,6 +615,41 @@ describe('EditImage Node', () => {
 			expect(result[0][0].binary?.data?.fileExtension).toBe('jpeg');
 		});
 
+		it.each([
+			['unsupported string', 'pdf'],
+			['non-string value', 123],
+		])('should reject an %s format', async (_, format) => {
+			const testBuffer = createTestBuffer();
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: {
+							data: testBuffer.toString('base64'),
+							mimeType: 'image/png',
+							fileExtension: 'png',
+							fileName: 'test.png',
+						},
+					},
+				},
+			];
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'blur';
+				if (paramName === 'dataPropertyName') return 'data';
+				if (paramName === 'blur') return 5;
+				if (paramName === 'sigma') return 2;
+				if (paramName === 'options') return { format };
+				return {};
+			});
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+
+			await expect(editImageNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				`Invalid image format: ${format}`,
+			);
+			expect(mockGmInstance.setFormat).not.toHaveBeenCalled();
+		});
+
 		it('should apply custom fileName option', async () => {
 			const testBuffer = createTestBuffer();
 			const items: INodeExecutionData[] = [

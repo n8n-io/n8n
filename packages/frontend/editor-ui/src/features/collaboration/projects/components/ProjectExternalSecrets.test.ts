@@ -117,7 +117,7 @@ vi.mock(
 	}),
 );
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
@@ -431,7 +431,7 @@ describe('ProjectExternalSecrets', () => {
 
 	describe('Error Handling', () => {
 		it('should show error toast when API call fails', async () => {
-			const { useToast } = await import('@/app/composables/useToast');
+			const { useToast } = await import('@n8n/composables/useToast');
 			const showErrorSpy = vi.fn();
 			vi.mocked(useToast).mockReturnValue({
 				showError: showErrorSpy,

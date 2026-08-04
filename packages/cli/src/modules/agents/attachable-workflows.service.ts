@@ -16,7 +16,6 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	'n8n-nodes-base.manualTrigger': 'manual',
 	'n8n-nodes-base.executeWorkflowTrigger': 'executeWorkflow',
 	'n8n-nodes-base.chatTrigger': 'chat',
-	'n8n-nodes-base.scheduleTrigger': 'schedule',
 	'n8n-nodes-base.formTrigger': 'form',
 };
 
@@ -36,11 +35,10 @@ export class AttachableWorkflowsService {
 	constructor(private readonly workflowFinderService: WorkflowFinderService) {}
 
 	async list(user: User, projectId: string, searchTerm = ''): Promise<AttachableWorkflow[]> {
-		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+		const { workflows } = await this.workflowFinderService.findWorkflowsForUser(
 			user,
 			['workflow:read'],
-			undefined,
-			projectId,
+			{ filters: { projectId } },
 		);
 		const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 

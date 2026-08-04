@@ -2515,7 +2515,7 @@ describe('getStatus', () => {
 		describe('git as source of truth', () => {
 			it('should mark local-only data table as deleted during pull', async () => {
 				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const localDataTable = {
 					id: 'dt-local-only',
@@ -2551,7 +2551,7 @@ describe('getStatus', () => {
 
 			it('should mark remote-only data table as deleted during push', async () => {
 				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteDataTable = {
 					id: 'dt-remote-only',
@@ -2587,7 +2587,7 @@ describe('getStatus', () => {
 
 			it('should not treat same-named tables in different projects as a collision during pull', async () => {
 				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteDataTable = {
 					id: 'dt-remote',
@@ -2635,7 +2635,7 @@ describe('getStatus', () => {
 
 			it('should offer a remote-only table as a deletion during push even when a same-named local table exists in another project', async () => {
 				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteFromInstanceA = {
 					id: 'dt-instance-a',
@@ -2683,7 +2683,7 @@ describe('getStatus', () => {
 
 			it('should emit a single modified entry for a name collision during pull', async () => {
 				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteDataTable = {
 					id: 'dt-remote',
@@ -2733,7 +2733,7 @@ describe('getStatus', () => {
 			it('should emit a single modified entry for a personal-project name collision during pull', async () => {
 				// ARRANGE — the owner email resolves to the same local personal
 				// project the colliding table lives in
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteDataTable = {
 					id: 'dt-remote',
@@ -2780,7 +2780,7 @@ describe('getStatus', () => {
 
 			it('should carry the incoming id on a collision entry regardless of preferLocalVersion', async () => {
 				// ARRANGE
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteDataTable = {
 					id: 'dt-remote',
@@ -2828,7 +2828,7 @@ describe('getStatus', () => {
 			it('should detect a collision even when another project has a same-named remote table', async () => {
 				// ARRANGE — the other-project table is listed last so a name-only
 				// lookup would mask the real same-project collision
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteSameProject = {
 					id: 'dt-remote-a',
@@ -2886,7 +2886,7 @@ describe('getStatus', () => {
 
 			it('should keep the created + conflict entry pair for a name collision during push', async () => {
 				// ARRANGE — the single-entry collision shape applies to pull only
-				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+				const user = globalAdminUserWithId;
 
 				const remoteDataTable = {
 					id: 'dt-remote',
