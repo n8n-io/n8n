@@ -589,7 +589,10 @@ export class TaskBroker {
 		if (!task) return;
 
 		if (this.taskRunnersConfig.mode === 'internal') {
-			this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task');
+			this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
+				runnerId: task.runnerId,
+				taskTypes: this.knownRunners.get(task.runnerId)?.runner.taskTypes ?? [],
+			});
 		} else if (this.taskRunnersConfig.mode === 'external') {
 			await this.messageRunner(task.runnerId, {
 				type: 'broker:taskcancel',

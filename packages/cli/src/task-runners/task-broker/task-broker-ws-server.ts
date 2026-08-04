@@ -88,24 +88,24 @@ export class TaskBrokerWsServer {
 	}
 
 	private checkConnectionLiveness() {
-		let anyDead = false;
-
 		for (const [runnerId, connection] of this.runnerConnections) {
 			if (connection.isAlive) {
 				connection.isAlive = false;
 				connection.ping();
 			} else {
-				anyDead = true;
+				const taskTypes = this.taskBroker.getKnownRunners().get(runnerId)?.runner.taskTypes ?? [];
+
 				void this.removeConnection(runnerId, {
 					reason: 'failed-heartbeat-check',
 					code: WsStatusCodes.CloseProtocolError,
 					expectedConnection: connection,
 				});
-			}
-		}
 
-		if (anyDead) {
-			this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
+				this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check', {
+					runnerId,
+					taskTypes,
+				});
+			}
 		}
 	}
 

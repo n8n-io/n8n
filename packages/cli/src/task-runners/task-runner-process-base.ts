@@ -51,26 +51,31 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 		super();
 		this.logger = logger.scoped(loggerScope);
 
-		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
-			this.logger.warn('Task runner failed heartbeat check, restarting...');
-			void this.forceRestart();
+		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', ({ taskTypes }) => {
+			this.restartIfOwnRunner(taskTypes, 'failed heartbeat check');
 		});
 
-		this.runnerLifecycleEvents.on('runner:timed-out-during-task', () => {
-			this.logger.warn('Task runner timed out during task, restarting...');
-			void this.forceRestart();
+		this.runnerLifecycleEvents.on('runner:timed-out-during-task', ({ taskTypes }) => {
+			this.restartIfOwnRunner(taskTypes, 'timed out during task');
 		});
 
-		// Internal mode runs one process per task type,
-		// so the task type is what says which process to restart.
-		// The runner ID cannot: runners mint their own,
-		// so it is never tied to a process n8n spawned.
 		this.runnerLifecycleEvents.on('runner:unresponsive', ({ taskTypes }) => {
-			if (taskTypes.includes(this.taskType)) {
-				this.logger.warn('Task runner was reported unresponsive, restarting...');
-				void this.forceRestart();
-			}
+			this.restartIfOwnRunner(taskTypes, 'was reported unresponsive');
 		});
+	}
+
+	/**
+	 * Force-restarts this process if the reported runner is the one it spawned.
+	 *
+	 * Internal mode runs one process per task type, so the task type is what says
+	 * which process to restart.
+	 * The runner ID cannot: runners mint their own, so it is never tied to a process n8n spawned.
+	 */
+	private restartIfOwnRunner(taskTypes: string[], cause: string) {
+		if (taskTypes.includes(this.taskType)) {
+			this.logger.warn(`Task runner ${cause}, restarting...`);
+			void this.forceRestart();
+		}
 	}
 
 	get isRunning() {

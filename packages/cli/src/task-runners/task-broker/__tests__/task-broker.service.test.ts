@@ -1172,7 +1172,8 @@ describe('TaskBroker', () => {
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
-			const runner = mock<TaskRunner>({ id: runnerId });
+			// a literal rather than a mock: `mock` proxies the array, breaking deep equality
+			const runner: TaskRunner = { id: runnerId, taskTypes: ['test'], lastSeen: new Date() };
 			const runnerCallback = vi.fn();
 			const requesterCallback = vi.fn();
 
@@ -1189,7 +1190,10 @@ describe('TaskBroker', () => {
 
 			await Promise.resolve();
 
-			expect(runnerLifecycleEvents.emit).toHaveBeenCalledWith('runner:timed-out-during-task');
+			expect(runnerLifecycleEvents.emit).toHaveBeenCalledWith('runner:timed-out-during-task', {
+				runnerId,
+				taskTypes: ['test'],
+			});
 
 			await Promise.resolve();
 

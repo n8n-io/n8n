@@ -453,7 +453,7 @@ describe('TaskRunnerProcess', () => {
 		});
 	});
 
-	describe('restart on unresponsive report', () => {
+	describe('restart on runner report', () => {
 		let runnerLifecycleEvents: TaskRunnerLifecycleEvents;
 
 		beforeEach(() => {
@@ -473,25 +473,38 @@ describe('TaskRunnerProcess', () => {
 			vi.useRealTimers();
 		});
 
-		const reportUnresponsive = (taskTypes: string[]) => {
-			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'runner1', taskTypes });
+		const RESTART_EVENTS = [
+			'runner:failed-heartbeat-check',
+			'runner:timed-out-during-task',
+			'runner:unresponsive',
+		] as const;
+
+		const report = (event: (typeof RESTART_EVENTS)[number], taskTypes: string[]) => {
+			runnerLifecycleEvents.emit(event, { runnerId: 'runner1', taskTypes });
 		};
 
-		it('should force-kill and relaunch a runner of its own task type', async () => {
-			const child = createChildProcess(42);
-			spawnMock.mockReturnValue(child);
-			await taskRunnerProcess.start();
+		const reportUnresponsive = (taskTypes: string[]) => {
+			report('runner:unresponsive', taskTypes);
+		};
 
-			reportUnresponsive(['javascript']);
+		it.each(RESTART_EVENTS)(
+			'should force-kill and relaunch on %s for a runner of its own task type',
+			async (event) => {
+				const child = createChildProcess(42);
+				spawnMock.mockReturnValue(child);
+				await taskRunnerProcess.start();
 
-			// a runner with a blocked event loop never exits on its own
-			expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+				report(event, ['javascript']);
 
-			child.emit('exit', null);
-			await vi.advanceTimersByTimeAsync(0);
+				// a runner with a blocked event loop never exits on its own
+				expect(child.kill).toHaveBeenCalledWith('SIGKILL');
 
-			expect(spawnMock).toHaveBeenCalledTimes(2);
-		});
+				child.emit('exit', null);
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(spawnMock).toHaveBeenCalledTimes(2);
+			},
+		);
 
 		it('should ignore a report once shutdown has begun', async () => {
 			const child = createChildProcess(42);
@@ -510,12 +523,12 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(1);
 		});
 
-		it('should ignore a report for a runner of another task type', async () => {
+		it.each(RESTART_EVENTS)('should ignore %s for a runner of another task type', async (event) => {
 			const child = createChildProcess(42);
 			spawnMock.mockReturnValue(child);
 			await taskRunnerProcess.start();
 
-			reportUnresponsive(['python']);
+			report(event, ['python']);
 
 			expect(child.kill).not.toHaveBeenCalled();
 			expect(spawnMock).toHaveBeenCalledTimes(1);

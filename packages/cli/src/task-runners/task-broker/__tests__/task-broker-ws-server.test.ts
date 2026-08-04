@@ -26,8 +26,18 @@ const mockWs = (readyState = WS_OPEN, isAlive = true) => {
 	return ws;
 };
 
+type KnownRunner = NonNullable<ReturnType<ReturnType<TaskBroker['getKnownRunners']>['get']>>;
+
+const mockTaskBroker = (runners: Array<{ id: string; taskTypes: string[] }> = []) => {
+	const taskBroker = mock<TaskBroker>();
+	taskBroker.getKnownRunners.mockReturnValue(
+		new Map(runners.map((runner) => [runner.id, { runner } as KnownRunner])),
+	);
+	return taskBroker;
+};
+
 const createServer = ({
-	taskBroker = mock<TaskBroker>(),
+	taskBroker = mockTaskBroker(),
 	disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>(),
 	heartbeatInterval = 30,
 	runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>(),
@@ -229,9 +239,12 @@ describe('TaskBrokerWsServer', () => {
 	describe('heartbeat timer', () => {
 		const DEAD = false;
 
-		const runHeartbeatCheck = async (...connections: WebSocket[]) => {
+		const runHeartbeatCheck = async (
+			connections: WebSocket[],
+			options: Parameters<typeof createServer>[0] = {},
+		) => {
 			vi.useFakeTimers();
-			const server = createServer();
+			const server = createServer(options);
 
 			connections.forEach((ws, i) => server.runnerConnections.set(`runner-${i}`, ws));
 
@@ -271,7 +284,7 @@ describe('TaskBrokerWsServer', () => {
 		it('should close connection with protocol error code when heartbeat check fails', async () => {
 			const ws = mockWs(WS_OPEN, DEAD);
 
-			await runHeartbeatCheck(ws);
+			await runHeartbeatCheck([ws]);
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 		});
@@ -280,7 +293,7 @@ describe('TaskBrokerWsServer', () => {
 			const deadWs1 = mockWs(WS_OPEN, DEAD);
 			const deadWs2 = mockWs(WS_OPEN, DEAD);
 
-			await runHeartbeatCheck(deadWs1, deadWs2);
+			await runHeartbeatCheck([deadWs1, deadWs2]);
 
 			expect(deadWs1.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 			expect(deadWs2.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
@@ -289,11 +302,29 @@ describe('TaskBrokerWsServer', () => {
 		it('should keep pinging live connections listed after a dead one', async () => {
 			const liveWs = mockWs();
 
-			await runHeartbeatCheck(mockWs(WS_OPEN, DEAD), liveWs);
+			await runHeartbeatCheck([mockWs(WS_OPEN, DEAD), liveWs]);
 
 			expect(liveWs.ping).toHaveBeenCalled();
 			expect(liveWs.isAlive).toBe(false);
 			expect(liveWs.close).not.toHaveBeenCalled();
+		});
+
+		it('should report the dead runner with its task types', async () => {
+			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+			const taskBroker = mockTaskBroker([
+				{ id: 'runner-0', taskTypes: ['python'] },
+				{ id: 'runner-1', taskTypes: ['javascript'] },
+			]);
+
+			await runHeartbeatCheck([mockWs(WS_OPEN, DEAD), mockWs()], {
+				taskBroker,
+				runnerLifecycleEvents,
+			});
+
+			expect(runnerLifecycleEvents.emit).toHaveBeenCalledExactlyOnceWith(
+				'runner:failed-heartbeat-check',
+				{ runnerId: 'runner-0', taskTypes: ['python'] },
+			);
 		});
 	});
 

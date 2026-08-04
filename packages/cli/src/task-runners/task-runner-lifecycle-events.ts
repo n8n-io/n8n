@@ -1,10 +1,12 @@
 import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
+type RunnerIdentity = { runnerId: string; taskTypes: string[] };
+
 export type TaskRunnerLifecycleEventMap = {
-	'runner:failed-heartbeat-check': never;
-	'runner:timed-out-during-task': never;
-	'runner:unresponsive': { runnerId: string; taskTypes: string[] };
+	'runner:failed-heartbeat-check': RunnerIdentity;
+	'runner:timed-out-during-task': RunnerIdentity;
+	'runner:unresponsive': RunnerIdentity;
 };
 
 @Service()
