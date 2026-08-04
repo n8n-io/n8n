@@ -550,14 +550,14 @@ describe('TaskRunnerProcess', () => {
 		});
 
 		it('should ignore a report for the runner it replaced', async () => {
-			const child = createChildProcess(42);
-			spawnMock.mockReturnValue(child);
+			const replaced = createChildProcess(42);
+			const relaunched = createChildProcess(43);
+			spawnMock.mockReturnValueOnce(replaced).mockReturnValueOnce(relaunched);
 			await taskRunnerProcess.start();
 			const replacedRunnerId = assignedRunnerId(0);
 
-			child.emit('exit', null);
+			replaced.emit('exit', null);
 			await vi.advanceTimersByTimeAsync(0);
-			const relaunched = spawnMock.mock.results[1].value as ChildProcess;
 
 			reportUnresponsive(replacedRunnerId);
 
