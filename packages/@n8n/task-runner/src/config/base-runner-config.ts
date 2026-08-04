@@ -20,6 +20,13 @@ export class BaseRunnerConfig {
 	@Env('N8N_RUNNERS_GRANT_TOKEN')
 	grantToken: string = '';
 
+	/**
+	 * ID to identify as to the task broker. Empty to self-assign one, which is the
+	 * default in `external` mode, where no one else knows this runner beforehand.
+	 */
+	@Env('N8N_RUNNERS_ID')
+	runnerId: string = '';
+
 	@Env('N8N_RUNNERS_MAX_PAYLOAD')
 	maxPayloadSize: number = 1024 * 1024 * 1024;
 

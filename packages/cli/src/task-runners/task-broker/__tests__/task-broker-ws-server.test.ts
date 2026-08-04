@@ -26,18 +26,8 @@ const mockWs = (readyState = WS_OPEN, isAlive = true) => {
 	return ws;
 };
 
-type KnownRunner = NonNullable<ReturnType<ReturnType<TaskBroker['getKnownRunners']>['get']>>;
-
-const mockTaskBroker = (runners: Array<{ id: string; taskTypes: string[] }> = []) => {
-	const taskBroker = mock<TaskBroker>();
-	taskBroker.getKnownRunners.mockReturnValue(
-		new Map(runners.map((runner) => [runner.id, { runner } as KnownRunner])),
-	);
-	return taskBroker;
-};
-
 const createServer = ({
-	taskBroker = mockTaskBroker(),
+	taskBroker = mock<TaskBroker>(),
 	disconnectAnalyzer = mock<DefaultTaskRunnerDisconnectAnalyzer>(),
 	heartbeatInterval = 30,
 	runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>(),
@@ -309,21 +299,14 @@ describe('TaskBrokerWsServer', () => {
 			expect(liveWs.close).not.toHaveBeenCalled();
 		});
 
-		it('should report the dead runner with its task types', async () => {
+		it('should report only the dead runner', async () => {
 			const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
-			const taskBroker = mockTaskBroker([
-				{ id: 'runner-0', taskTypes: ['python'] },
-				{ id: 'runner-1', taskTypes: ['javascript'] },
-			]);
 
-			await runHeartbeatCheck([mockWs(WS_OPEN, DEAD), mockWs()], {
-				taskBroker,
-				runnerLifecycleEvents,
-			});
+			await runHeartbeatCheck([mockWs(WS_OPEN, DEAD), mockWs()], { runnerLifecycleEvents });
 
 			expect(runnerLifecycleEvents.emit).toHaveBeenCalledExactlyOnceWith(
 				'runner:failed-heartbeat-check',
-				{ runnerId: 'runner-0', taskTypes: ['python'] },
+				{ runnerId: 'runner-0' },
 			);
 		});
 	});
@@ -337,10 +320,7 @@ describe('TaskBrokerWsServer', () => {
 			server.runnerConnections.set('test-runner', ws);
 			server.start();
 
-			runnerLifecycleEvents.emit('runner:unresponsive', {
-				runnerId: 'test-runner',
-				taskTypes: ['javascript'],
-			});
+			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
 
 			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
 			expect(disconnectAnalyzer.toDisconnectError).toHaveBeenCalledWith(
@@ -358,10 +338,7 @@ describe('TaskBrokerWsServer', () => {
 
 			const ws = mockWs();
 			server.runnerConnections.set('test-runner', ws);
-			runnerLifecycleEvents.emit('runner:unresponsive', {
-				runnerId: 'test-runner',
-				taskTypes: ['javascript'],
-			});
+			runnerLifecycleEvents.emit('runner:unresponsive', { runnerId: 'test-runner' });
 
 			expect(ws.close).not.toHaveBeenCalled();
 		});

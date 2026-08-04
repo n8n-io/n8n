@@ -479,22 +479,28 @@ describe('TaskRunnerProcess', () => {
 			'runner:unresponsive',
 		] as const;
 
-		const report = (event: (typeof RESTART_EVENTS)[number], taskTypes: string[]) => {
-			runnerLifecycleEvents.emit(event, { runnerId: 'runner1', taskTypes });
+		/** ID the runner in the nth spawned process was told to identify as. */
+		const assignedRunnerId = (spawnIndex: number) => {
+			const { env } = spawnMock.mock.calls[spawnIndex][2] as SpawnOptions;
+			return env!.N8N_RUNNERS_ID as string;
 		};
 
-		const reportUnresponsive = (taskTypes: string[]) => {
-			report('runner:unresponsive', taskTypes);
+		const report = (event: (typeof RESTART_EVENTS)[number], runnerId: string) => {
+			runnerLifecycleEvents.emit(event, { runnerId });
+		};
+
+		const reportUnresponsive = (runnerId: string) => {
+			report('runner:unresponsive', runnerId);
 		};
 
 		it.each(RESTART_EVENTS)(
-			'should force-kill and relaunch on %s for a runner of its own task type',
+			'should force-kill and relaunch on %s the runner it spawned',
 			async (event) => {
 				const child = createChildProcess(42);
 				spawnMock.mockReturnValue(child);
 				await taskRunnerProcess.start();
 
-				report(event, ['javascript']);
+				report(event, assignedRunnerId(0));
 
 				// a runner with a blocked event loop never exits on its own
 				expect(child.kill).toHaveBeenCalledWith('SIGKILL');
@@ -512,7 +518,7 @@ describe('TaskRunnerProcess', () => {
 			await taskRunnerProcess.start();
 
 			const stopPromise = taskRunnerProcess.stop();
-			reportUnresponsive(['javascript']);
+			reportUnresponsive(assignedRunnerId(0));
 
 			expect(child.kill).not.toHaveBeenCalledWith('SIGKILL');
 
@@ -523,15 +529,31 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(1);
 		});
 
-		it.each(RESTART_EVENTS)('should ignore %s for a runner of another task type', async (event) => {
+		it.each(RESTART_EVENTS)('should ignore %s for another runner', async (event) => {
 			const child = createChildProcess(42);
 			spawnMock.mockReturnValue(child);
 			await taskRunnerProcess.start();
 
-			report(event, ['python']);
+			report(event, 'someone-elses-runner');
 
 			expect(child.kill).not.toHaveBeenCalled();
 			expect(spawnMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('should ignore a report for the runner it replaced', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+			const replacedRunnerId = assignedRunnerId(0);
+
+			child.emit('exit', null);
+			await vi.advanceTimersByTimeAsync(0);
+			const relaunched = spawnMock.mock.results[1].value as ChildProcess;
+
+			reportUnresponsive(replacedRunnerId);
+
+			expect(relaunched.kill).not.toHaveBeenCalled();
+			expect(assignedRunnerId(1)).not.toBe(replacedRunnerId);
 		});
 	});
 

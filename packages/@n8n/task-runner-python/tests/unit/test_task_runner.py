@@ -14,6 +14,7 @@ class TestTaskRunnerConnectionRetry:
     def config(self):
         return TaskRunnerConfig(
             grant_token="test-token",
+            runner_id="",
             task_broker_uri="http://127.0.0.1:5679",
             max_concurrency=5,
             max_payload_size=1024 * 1024,
@@ -78,6 +79,7 @@ class TestTaskRunnerDrain:
     def config(self):
         return TaskRunnerConfig(
             grant_token="test-token",
+            runner_id="",
             task_broker_uri="http://127.0.0.1:5679",
             max_concurrency=5,
             max_payload_size=1024 * 1024,

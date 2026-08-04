@@ -16,6 +16,7 @@ describe('TestRunner', () => {
 	const newTestRunner = (opts: Partial<TaskRunnerOpts> = {}) =>
 		new TestRunner({
 			taskType: 'test-task',
+			runnerId: '',
 			maxConcurrency: 5,
 			idleTimeout: 60,
 			grantToken: 'test-token',
