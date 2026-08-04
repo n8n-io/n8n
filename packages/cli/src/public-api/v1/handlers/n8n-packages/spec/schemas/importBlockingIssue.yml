@@ -193,11 +193,13 @@ oneOf:
       the target instance. `kind` distinguishes the cause: `rename-drift` (the
       same-id target tag carries a different name — under `tagConflictPolicy=fail`,
       or `rename` when the package name is held by another tag), `name-collision`
-      (the id is free but the name belongs to a different tag, under
-      `tagMissingMode=create` with `tagConflictPolicy=fail` or `rename`),
-      `invalid-name` / `invalid-id` (the package tag's name or id cannot be
-      written on this instance), or `permission-denied` (the importing user lacks
-      the global `tag:create` / `tag:update` scope the plan needs).
+      (the id is free but the name belongs to a different tag under
+      `tagMissingMode=create` with `tagConflictPolicy=fail`; also raised when two
+      package tags collide with each other, or when the target tag a reconcile
+      would re-key is claimed by another package tag), `invalid-name` /
+      `invalid-id` (the package tag's name or id cannot be written on this
+      instance), or `permission-denied` (the importing user lacks the global
+      `tag:create` / `tag:update` scope the plan needs).
     required:
       - type
       - kind
@@ -230,9 +232,10 @@ oneOf:
       existingTagId:
         type: string
         description: >
-          Id of the different target tag currently holding the wanted name, when
-          one exists. Absent when two package tags collide with each other rather
-          than with a target tag.
+          Id of the contested target tag — the different tag currently holding
+          the wanted name, or the target tag a blocked reconcile would re-key.
+          Absent when two package tags collide with each other rather than over
+          a target tag.
       existingName:
         type: string
         description: 'For `rename-drift`: the current name of the same-id target tag.'
@@ -240,7 +243,9 @@ oneOf:
         type: array
         items:
           type: string
-        description: Package workflow ids (non-skipped) that reference the tag.
+        description: >
+          Package workflow ids (non-skipped) that reference the source tag — not
+          workflows attached to the contested target tag.
   - type: object
     description: >
       A variable reference that could not be resolved in the target project or the
@@ -263,7 +268,7 @@ oneOf:
           type: string
   - type: object
     description: >
-      Creating the package's variable stubs under `variableMissingMode=create-stub`
+      Creating the package's variables under `create-stub` or `create-with-value`
       would exceed the instance variable quota (`quota:maxVariables`). Reported once
       for the whole import; nothing is created.
     required:

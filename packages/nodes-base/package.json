@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -936,6 +936,7 @@
     "@smithy/signature-v4": "5.3.5",
     "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
+    "@confluentinc/kafka-javascript": "catalog:",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@langchain/core": "catalog:",
     "@mozilla/readability": "catalog:",

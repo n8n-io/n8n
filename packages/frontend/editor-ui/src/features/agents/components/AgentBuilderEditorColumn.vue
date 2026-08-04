@@ -47,6 +47,7 @@ const props = defineProps<{
 	artifactMode?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
@@ -116,10 +117,10 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:agent-id="agentId"
 						:project-id="projectId"
-						:is-published="Boolean(agent?.activeVersionId)"
 						:validation-issues="configValidationIssues ?? []"
 						:simple-channel-setup="artifactMode"
 						:agent-unsaved="agentUnsaved"
+						:ensure-agent-persisted="ensureAgentPersisted"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
 						@agent-changed="emit('agent-changed')"

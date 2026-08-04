@@ -40,6 +40,7 @@ const disconnectMock = vi
 	});
 const createCredentialMock = vi.fn();
 const editCredentialMock = vi.fn();
+const setupSlackAppMock = vi.fn().mockResolvedValue(true);
 const vueErrorHandlerMock = vi.fn();
 
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
@@ -57,7 +58,8 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		loadingMap,
 		errorMessages: ref({}),
 		errorIsConflict: ref({}),
-		isConnected: (channelType: string) => Boolean(connectedCredentials.value[channelType]),
+		isConnected: () => false,
+		isConfigured: (channelType: string) => Boolean(connectedCredentials.value[channelType]),
 		connect: connectMock,
 		disconnect: disconnectMock,
 	}),
@@ -87,17 +89,30 @@ vi.mock('../composables/useAgentChannelSetup', () => ({
 		}),
 		createCredential: createCredentialMock,
 		editCredential: editCredentialMock,
-		setupSlackApp: vi.fn(),
+		setupSlackApp: setupSlackAppMock,
 	}),
 }));
 
 const channelSetupStub = (testId: string) => ({
-	props: ['mode', 'loading'],
+	props: ['mode', 'loading', 'connectedDescription', 'setupSlackApp'],
+	emits: ['connect'],
 	setup: () => ({
 		currentSettings: { accessMode: 'all' },
 		validationError: null,
 	}),
-	template: `<div data-testid="${testId}" :data-mode="mode" :data-loading="loading" />`,
+	template: `<div
+		data-testid="${testId}"
+		:data-mode="mode"
+		:data-loading="loading"
+		:data-connected-description="connectedDescription"
+	>
+		<button
+			v-if="setupSlackApp"
+			data-testid="${testId}-automatic-setup"
+			@click="setupSlackApp('app-token')"
+		/>
+		<button data-testid="${testId}-connect" @click="$emit('connect')" />
+	</div>`,
 });
 
 function mountModal(props: Record<string, unknown>) {
@@ -107,8 +122,6 @@ function mountModal(props: Record<string, unknown>) {
 			agentId: 'agent-1',
 			projectId: 'project-1',
 			view: 'linear_setup',
-			connectedChannels: [],
-			isPublished: false,
 			...props,
 		},
 		global: {
@@ -139,7 +152,11 @@ function mountModal(props: Record<string, unknown>) {
 				},
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
-				AgentChannelListItem: { template: '<li data-testid="channel-list-item" />' },
+				AgentChannelListItem: {
+					props: ['configured', 'connected'],
+					template:
+						'<li data-testid="channel-list-item" :data-configured="configured" :data-connected="connected" />',
+				},
 				AgentChannelSlackSetup: channelSetupStub('slack-setup'),
 				AgentChannelLinearSetup: channelSetupStub('linear-setup'),
 				AgentChannelTelegramSetup: channelSetupStub('telegram-setup'),
@@ -176,11 +193,66 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.findAll('[data-testid="channel-list-item"]')).toHaveLength(catalog.value.length);
 	});
 
+	it('does not describe a configured draft channel as connected', async () => {
+		connectedCredentials.value.linear = 'linear-credential';
+		const wrapper = mountModal({ view: 'linear_setup' });
+		await flushPromises();
+
+		expect(
+			wrapper.get('[data-testid="linear-setup"]').attributes('data-connected-description'),
+		).toBe('');
+	});
+
 	it('renders the per-channel setup view for a setup view', () => {
 		const wrapper = mountModal({ view: 'linear_setup' });
 
 		const linearSetup = wrapper.find('[data-testid="linear-setup"]');
 		expect(linearSetup.attributes('data-mode')).toBe('setup');
+	});
+
+	it('waits for a pending agent to persist before saving a channel configuration', async () => {
+		let finishPersisting = () => {};
+		const persisting = new Promise<void>((resolve) => {
+			finishPersisting = resolve;
+		});
+		selectedCredentials.value.linear = 'linear-credential';
+		const wrapper = mountModal({
+			view: 'linear_setup',
+			ensureAgentPersisted: async () => await persisting,
+		});
+
+		await wrapper.get('[data-testid="linear-setup-connect"]').trigger('click');
+		await flushPromises();
+
+		expect(connectMock).not.toHaveBeenCalled();
+
+		finishPersisting();
+		await flushPromises();
+
+		expect(connectMock).toHaveBeenCalledWith('linear', 'linear-credential', {
+			accessMode: 'all',
+		});
+	});
+
+	it('waits for a pending agent to persist before starting Slack app setup', async () => {
+		let finishPersisting = () => {};
+		const persisting = new Promise<void>((resolve) => {
+			finishPersisting = resolve;
+		});
+		const wrapper = mountModal({
+			view: 'slack_setup',
+			ensureAgentPersisted: async () => await persisting,
+		});
+
+		await wrapper.get('[data-testid="slack-setup-automatic-setup"]').trigger('click');
+		await flushPromises();
+
+		expect(setupSlackAppMock).not.toHaveBeenCalled();
+
+		finishPersisting();
+		await flushPromises();
+
+		expect(setupSlackAppMock).toHaveBeenCalledWith('app-token', expect.any(Function));
 	});
 
 	it('renders the per-channel edit view for an edit view', () => {
@@ -196,7 +268,6 @@ describe('AgentChannelModal', () => {
 			connectedCredentials.value[channelType] = `${channelType}-credential`;
 			const wrapper = mountModal({
 				view: `${channelType}_edit`,
-				connectedChannels: [channelType],
 			});
 			await flushPromises();
 
@@ -217,7 +288,6 @@ describe('AgentChannelModal', () => {
 			connectedCredentials.value[channelType] = `${channelType}-credential`;
 			const wrapper = mountModal({
 				view: `${channelType}_edit`,
-				connectedChannels: [channelType],
 			});
 			await flushPromises();
 
@@ -241,7 +311,6 @@ describe('AgentChannelModal', () => {
 		});
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -258,7 +327,6 @@ describe('AgentChannelModal', () => {
 		connectedCredentials.value.linear = 'linear-credential';
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -292,7 +360,6 @@ describe('AgentChannelModal', () => {
 		});
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -324,7 +391,6 @@ describe('AgentChannelModal', () => {
 		});
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -347,7 +413,6 @@ describe('AgentChannelModal', () => {
 		connectedCredentials.value.linear = 'linear-credential';
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -368,7 +433,6 @@ describe('AgentChannelModal', () => {
 		connectMock.mockRejectedValueOnce(new Error('Failed to connect replacement credential'));
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -394,7 +458,6 @@ describe('AgentChannelModal', () => {
 		disconnectMock.mockRejectedValueOnce(new Error('Failed to detach original credential'));
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -428,7 +491,6 @@ describe('AgentChannelModal', () => {
 		disconnectMock.mockRejectedValueOnce(new Error('Failed to detach original credential'));
 		const wrapper = mountModal({
 			view: 'linear_edit',
-			connectedChannels: ['linear'],
 		});
 		await flushPromises();
 
@@ -460,7 +522,6 @@ describe('AgentChannelModal', () => {
 		connectedCredentials.value.telegram = 'telegram-credential';
 		const wrapper = mountModal({
 			view: 'telegram_edit',
-			connectedChannels: ['telegram'],
 		});
 		await flushPromises();
 

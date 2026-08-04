@@ -1416,6 +1416,7 @@ describe('McpAgentToolsService', () => {
 		};
 
 		beforeEach(() => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: 'v1' }));
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				{ id: 'cred-1', type: 'slackApi', name: 'Slack cred' },
 			] as never);
@@ -1424,14 +1425,18 @@ describe('McpAgentToolsService', () => {
 				displayLabel: 'Slack',
 			} as never);
 			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
-				agentEntity({ integrations: [{ type: 'slack', credentialId: 'cred-1' }] }),
+				agentEntity({
+					activeVersionId: 'v1',
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				}),
 			);
-			agentPublishService.publishAgent.mockResolvedValue({
-				agent: agentEntity({ activeVersionId: 'v2' }),
-			});
 		});
 
-		it('persists the integration, publishes the draft, and connects the channel', async () => {
+		it('persists and connects the channel without publishing for a published Agent', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
+			);
+
 			const result = await callTool('update_agent_integration', input);
 
 			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
@@ -1439,14 +1444,13 @@ describe('McpAgentToolsService', () => {
 				{ type: 'slack', credentialId: 'cred-1' },
 				{ user, modifiedBy: 'mcp', broadcast: false },
 			);
-			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
-				'agent-1',
-				'project-1',
-				user,
-				{ by: 'mcp', trigger: 'channel_connect' },
-				undefined,
-				{ syncIntegrations: false, ignoreDraftIntegrations: true },
-			);
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
+				projectId: 'project-1',
+			});
+			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
+				projectId: 'project-1',
+			});
 			expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 				'agent-1',
 				{ type: 'slack', credentialId: 'cred-1' },
@@ -1459,25 +1463,39 @@ describe('McpAgentToolsService', () => {
 			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
+				configured: true,
 				connected: true,
 				published: true,
-				activeVersionId: 'v2',
+				activeVersionId: 'v1',
 			});
 		});
 
-		it('denies connect without the agent:publish scope even when update is allowed', async () => {
-			userHasScopesMock.mockImplementation(
-				async (_user: unknown, scopes: string[]) => !scopes.includes('agent:publish'),
+		it('persists without publishing, connecting, or broadcasting for an unpublished Agent', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: null }));
+			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
+				agentEntity({
+					activeVersionId: null,
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				}),
 			);
 
 			const result = await callTool('update_agent_integration', input);
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:publish'], false, {
-				projectId: 'project-1',
-			});
-			expect(result.isError).toBe(true);
-			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'agent-1' }),
+				{ type: 'slack', credentialId: 'cred-1' },
+				{ user, modifiedBy: 'mcp', broadcast: false },
+			);
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(chatIntegrationService.connect).not.toHaveBeenCalled();
+			expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				configured: true,
+				connected: false,
+				published: false,
+				activeVersionId: null,
+			});
 		});
 
 		it('requires settings for telegram integrations', async () => {

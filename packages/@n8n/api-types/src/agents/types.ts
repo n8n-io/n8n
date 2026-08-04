@@ -42,7 +42,7 @@ export interface AgentIntegrationStatusEntry {
 }
 
 export interface AgentIntegrationStatusResponse {
-	status: 'connected' | 'disconnected';
+	status: 'configured' | 'connected' | 'disconnected';
 	integrations: AgentIntegrationStatusEntry[];
 }
 
