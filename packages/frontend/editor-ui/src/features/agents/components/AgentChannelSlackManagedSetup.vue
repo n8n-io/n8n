@@ -42,9 +42,7 @@ const selectedCredentialId = ref('');
 const selectedWorkspaceId = ref('');
 const connecting = ref(false);
 const installing = ref(false);
-const error = ref<'connect' | 'install' | 'service_limits_exceeded' | null>(
-	'service_limits_exceeded',
-);
+const error = ref<'connect' | 'install' | 'service_limits_exceeded' | null>(null);
 
 const steps = computed(() => [
 	{
