@@ -31,7 +31,7 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { probeCredential } from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';

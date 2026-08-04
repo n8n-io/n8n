@@ -6,7 +6,7 @@ import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow'
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
