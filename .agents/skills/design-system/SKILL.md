@@ -95,7 +95,7 @@ High-churn reminders (agents often skip these when they only live in AGENTS.md):
 ### Markup & accessibility
 
 - Prefer the exact ARIA / keyboard patterns already present in Tree.
-- Apply the high-churn reminders above (`data-test-id`, no `as` / `!`, i18n).
+- Apply the high-churn reminders above (no `as` / `!`, i18n).
 
 ### Styling
 
