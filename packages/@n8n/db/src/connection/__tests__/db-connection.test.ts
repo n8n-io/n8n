@@ -128,6 +128,18 @@ describe('DbConnection', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
+		it('should complete startup even when the version check throws', async () => {
+			dataSource.initialize.mockResolvedValue(dataSource);
+			// getDbVersion never rejects today; pin that a future regression cannot abort startup
+			vi.spyOn(dbConnection, 'getDbVersion').mockRejectedValue(new Error('boom'));
+
+			await dbConnection.init();
+
+			expect(dbConnection.connectionState.connected).toBe(true);
+			expect(monitor.start).toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith('Could not check database version: boom');
+		});
+
 		it('should not warn about the version on sqlite', async () => {
 			connectionOptions.getOptions.mockReturnValue({ type: 'sqlite', database: ':memory:' });
 			// options are @Memoized and read in the constructor — re-instantiate
