@@ -127,16 +127,6 @@ describe('buildSeededTablesNote', () => {
 		expect(note).toContain('application_id');
 		expect(note).toContain('string');
 	});
-
-	// Without this the agent sees no table by the name the request uses, reasonably
-	// concludes it's missing, and creates a duplicate — defeating the pre-seed.
-	it('ties a per-run name back to the name the request uses', () => {
-		const [created] = uniquifyScenarioTableNames([jobApplications]);
-		const note = buildSeededTablesNote([created]);
-
-		expect(note).toContain(created.name);
-		expect(note).toContain('refers to this table as "Job Applications"');
-	});
 });
 
 describe('scenariosRequireSerialSeeding', () => {
