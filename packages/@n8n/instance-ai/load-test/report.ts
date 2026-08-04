@@ -322,6 +322,18 @@ export function formatHumanSummary(report: LoadTestReport): string {
 			`  cleanup                       ${run.cleanup.threadsDeleted} threads, ${run.cleanup.workflowsDeleted} workflows, ${run.cleanup.dataTablesDeleted} data tables, ${run.cleanup.failures.length} failures`,
 		);
 
+		// With no /metrics the phase boundaries ARE the deliverable — print them so
+		// they can be pasted straight into a Grafana time range.
+		if (run.readings.baseline?.sampleCount === 0 && run.phaseTimestamps.length > 0) {
+			lines.push(
+				'',
+				'Phase boundaries (UTC) — memory not sampled; use these in Grafana',
+				...run.phaseTimestamps.map(
+					(p) => `  ${p.phase.padEnd(20)} ${p.startedAt}  ->  ${p.endedAt}`,
+				),
+			);
+		}
+
 		for (const note of run.notes) lines.push(`  ! ${note}`);
 	}
 

@@ -332,7 +332,17 @@ async function runLevel(options: RunLevelOptions): Promise<RunLevelReport> {
 	// Phase 4 — post-load-idle: conversations done, SSE STILL OPEN, threads
 	// still alive. This is the reading that answers "what is retained".
 	sampler.setPhase('post-load-idle');
-	if (!(await sampler.waitForIdle(IDLE_WAIT_MS))) {
+	const threadsIdle = async (): Promise<boolean> => {
+		const statuses = await Promise.all(
+			virtualUsers.map(
+				async (vu) => await vu.user.client.getThreadStatus(vu.threadId).catch(() => undefined),
+			),
+		);
+		// An unreachable thread counts as idle: it can't be holding a live run, and
+		// blocking on it would stall the phase boundary.
+		return statuses.every((status) => !status?.hasActiveRun);
+	};
+	if (!(await sampler.waitForIdle(IDLE_WAIT_MS, threadsIdle))) {
 		notes.push('runs had not gone idle before post-load-idle was measured');
 	}
 	await measure('post-load-idle');
@@ -563,6 +573,14 @@ function printPreflight(
 	logger.info(
 		`Stabilize:    ${capabilities.gc ? 'forced-gc (local)' : `min-of-window (${args.quietWindowMs}ms quiet window)`}`,
 	);
+
+	if (!capabilities.metrics) {
+		logger.warn(
+			'No /metrics: memory will NOT be measured (phase timestamps are recorded so the ' +
+				'numbers can be read off Grafana), and the --max-cost-usd kill-switch is inert ' +
+				'because spend is read from metrics. --max-turns and --max-wall-clock still apply.',
+		);
+	}
 
 	if (args.dryRun) {
 		logger.info('Mode:         DRY RUN — no messages sent, zero LLM spend');

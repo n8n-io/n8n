@@ -297,6 +297,12 @@ export class Sampler {
 	 */
 	async stabilize(phase: string): Promise<StabilizedReading> {
 		this.setPhase(phase);
+
+		// Nothing to sample (e.g. --no-metrics against a cloud instance whose
+		// /metrics is firewalled): record the phase boundary and move on. Waiting
+		// out a quiet window here would burn minutes per phase collecting nulls.
+		if (!this.options.capabilities.metrics) return emptyReading(phase);
+
 		return this.options.capabilities.gc
 			? await this.stabilizeWithGc(phase)
 			: await this.stabilizeWithQuietWindow(phase);
@@ -424,15 +430,31 @@ export class Sampler {
 	 * present, otherwise requires active_runs to read 0 on consecutive scrapes
 	 * (one zero can land between a finish and a resume).
 	 */
-	async waitForIdle(timeoutMs: number): Promise<boolean> {
+	async waitForIdle(
+		timeoutMs: number,
+		/**
+		 * Fallback idleness check, used when neither /test/idle nor metrics are
+		 * available — which is the case on a production-mode cloud instance with
+		 * /metrics firewalled. The caller supplies one that polls each thread's
+		 * own status endpoint, which is authenticated and always present.
+		 */
+		threadsIdleProbe?: () => Promise<boolean>,
+	): Promise<boolean> {
 		const deadline = Date.now() + timeoutMs;
 		let zeroStreak = 0;
+
+		const canUseMetrics = this.options.capabilities.metrics;
+		if (!this.options.capabilities.idleProbe && !canUseMetrics && !threadsIdleProbe) {
+			// No signal at all — don't sit out the whole timeout pretending to wait.
+			this.options.logger.verbose('No idleness signal available; skipping the idle wait');
+			return true;
+		}
 
 		while (Date.now() < deadline) {
 			if (this.options.capabilities.idleProbe) {
 				const body = await fetchJson(`${this.options.baseUrl}/rest/instance-ai/test/idle`);
 				if (parseBody(body, IdleBody)?.idle === true) return true;
-			} else {
+			} else if (canUseMetrics) {
 				const sample = await this.sample();
 				if (sample.activeRuns === 0) {
 					zeroStreak++;
@@ -440,6 +462,8 @@ export class Sampler {
 				} else {
 					zeroStreak = 0;
 				}
+			} else if (threadsIdleProbe) {
+				if (await threadsIdleProbe()) return true;
 			}
 			await delay(this.options.sampleIntervalMs);
 		}
@@ -539,6 +563,25 @@ function parseBody<T>(body: unknown, schema: z.ZodType<T>): T | undefined {
 // ---------------------------------------------------------------------------
 // Numeric helpers
 // ---------------------------------------------------------------------------
+
+/** Phase-boundary marker with no measurements — used when /metrics is absent. */
+function emptyReading(phase: string): StabilizedReading {
+	return {
+		phase,
+		method: 'min-of-window',
+		heapUsedMB: null,
+		heapTotalMB: null,
+		rssMB: null,
+		pssMB: null,
+		externalMB: null,
+		nonHeapOverheadMB: null,
+		sampleCount: 0,
+		naturalGcCount: null,
+		waitedMs: 0,
+		timedOut: false,
+		at: new Date().toISOString(),
+	};
+}
 
 function toMB(bytes: number | null): number | null {
 	return bytes === null ? null : round2(bytes / BYTES_PER_MB);
