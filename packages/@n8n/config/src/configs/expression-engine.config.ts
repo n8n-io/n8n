@@ -8,13 +8,11 @@ const expressionEngineSchema = z.enum(['legacy', 'vm']);
 export class ExpressionEngineConfig {
 	/**
 	 * Which expression engine to use.
-	 * - `legacy` runs expressions without isolation.
-	 * - `vm` runs expressions in a V8 isolate.
-	 *
-	 * `vm` is currently **experimental**. Use at your own risk.
+	 * - `vm` (default) runs expressions in a V8 isolate.
+	 * - `legacy` runs expressions without isolation. Less secure and soon to be deprecated.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
-	engine: 'legacy' | 'vm' = 'legacy';
+	engine: 'legacy' | 'vm' = 'vm';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')
