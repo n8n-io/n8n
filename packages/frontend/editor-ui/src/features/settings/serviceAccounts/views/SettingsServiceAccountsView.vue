@@ -250,16 +250,21 @@ const openCreateModal = () => uiStore.openModal(CREATE_SERVICE_ACCOUNT_MODAL_KEY
 					{{ i18n.baseText('settings.serviceAccounts.description') }}
 				</N8nText>
 			</template>
-			<template #actions>
-				<N8nButton
-					v-if="canCreate && hasAny"
-					:label="i18n.baseText('settings.serviceAccounts.create')"
-					size="large"
-					data-test-id="create-service-account-button"
-					@click="openCreateModal"
-				/>
-			</template>
 		</N8nSettingsPageHeader>
+
+		<!--
+			The create action sits above the table, as on the API keys page. It cannot live
+			in the header: N8nSettingsPageHeader has no `actions` slot, so a button passed
+			there renders nowhere and the only way to create one would be the empty state.
+		-->
+		<div v-if="hasAny && canCreate" :class="$style.toolbar">
+			<N8nButton
+				:label="i18n.baseText('settings.serviceAccounts.create')"
+				size="medium"
+				data-test-id="create-service-account-button"
+				@click="openCreateModal"
+			/>
+		</div>
 
 		<ServiceAccountsTable
 			v-if="hasAny"
@@ -310,3 +315,12 @@ const openCreateModal = () => uiStore.openModal(CREATE_SERVICE_ACCOUNT_MODAL_KEY
 		/>
 	</N8nSettingsLayout>
 </template>
+
+<style lang="scss" module>
+.toolbar {
+	display: flex;
+	justify-content: flex-end;
+	width: 100%;
+	margin-bottom: var(--spacing--sm);
+}
+</style>

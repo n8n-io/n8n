@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { v4 as uuidv4 } from 'uuid';
 
 import { ServiceAccountCredential } from '../entities';
 import { BaseRepository } from './base-repository';
@@ -19,7 +20,10 @@ export class ServiceAccountCredentialRepository extends BaseRepository<ServiceAc
 	}
 
 	async insertCredential(cred: NewServiceAccountCredential, ctx: OperationContext): Promise<void> {
-		await this.managerFor(ctx).insert(ServiceAccountCredential, cred);
+		// The `id` column has no DB-side default, and TypeORM only auto-generates
+		// uuids for drivers that report no native support (sqlite), so Postgres
+		// would insert NULL. Generate it here, as `chat_hub_agents` does.
+		await this.managerFor(ctx).insert(ServiceAccountCredential, { id: uuidv4(), ...cred });
 	}
 
 	async findByClientId(

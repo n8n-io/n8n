@@ -97,6 +97,23 @@ describe('SettingsServiceAccountsView', () => {
 		expect(screen.queryByTestId('service-accounts-empty-state')).not.toBeInTheDocument();
 	});
 
+	it('keeps the create action available once accounts exist', async () => {
+		await renderView(makeList([serviceAccount]));
+
+		// Regressed once: the button lived only in the empty state and in a header
+		// slot that does not exist, so a second account could never be created.
+		expect(screen.getByTestId('create-service-account-button')).toBeInTheDocument();
+	});
+
+	it('hides the create action alongside the table without serviceAccount:create', async () => {
+		grantedScopes.value = ['serviceAccount:list'];
+
+		await renderView(makeList([serviceAccount]));
+
+		expect(screen.getByTestId('service-accounts-table')).toBeInTheDocument();
+		expect(screen.queryByTestId('create-service-account-button')).not.toBeInTheDocument();
+	});
+
 	it('marks a disabled service account', async () => {
 		await renderView(makeList([{ ...serviceAccount, disabled: true }]));
 
