@@ -62,14 +62,15 @@ export class E2eTestPollingTrigger implements INodeType {
 		const items = body.items ?? [];
 		if (items.length === 0) return null;
 
-		const cursor = await this.getCursor();
-		const lastItemId = typeof cursor?.lastItemId === 'number' ? cursor.lastItemId : null;
+		const nodeStaticData = this.getWorkflowStaticData('node');
+		const lastItemId =
+			typeof nodeStaticData.lastItemId === 'number' ? nodeStaticData.lastItemId : null;
 
 		const newItems =
 			lastItemId === null ? items : items.filter((item) => Number(item.id) > lastItemId);
 
-		// Staged even when nothing new is emitted below, so the advance still persists.
-		this.setCursor({ lastItemId: highestItemId(items, lastItemId ?? 0) });
+		// Set even when nothing new is emitted below, so the advance still persists.
+		nodeStaticData.lastItemId = highestItemId(items, lastItemId ?? 0);
 
 		if (newItems.length === 0) return null;
 
