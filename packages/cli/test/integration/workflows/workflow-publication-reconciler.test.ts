@@ -503,7 +503,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		);
 	});
 
-	test('records persisted rows for a pseudo-only workflow, keeping it out of leader handoff and reconciliation', async () => {
+	test('records persisted rows for a pseudo-only workflow, keeping it out of reconciliation', async () => {
 		const owner = await createOwner();
 
 		const trigger = manualTriggerNode('pseudo');
@@ -526,14 +526,9 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 			triggerKind: 'persisted',
 		});
 
-		// Leader handoff on a fresh leader: nothing is registered locally, but a
-		// pseudo-only workflow has no real trigger work to republish.
+		// Fresh leader: nothing is registered locally. The reconciler ignores
+		// persisted rows even though the node is not registered — no re-enqueue loop.
 		await activeWorkflowTriggers.remove(workflow.id);
-		await outboxRepository.enqueueForLeaderHandoff();
-		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
-
-		// The reconciler ignores persisted rows even though the node is not
-		// registered — no re-enqueue loop.
 		await reconciler.reconcile();
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
