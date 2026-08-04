@@ -134,7 +134,7 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-${includeGroups ? `${NODE_GROUPS_REFERENCE}\n` : ''}## Forbidden constructs
+${includeGroups ? `${NODE_GROUPS_REFERENCE}\n\n` : ''}## Forbidden constructs
 
 ${renderForbiddenLines()}
 
