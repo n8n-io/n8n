@@ -31,8 +31,6 @@ export type TaskRunnerProcessEventMap = {
 export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProcessEventMap> {
 	protected readonly name: string;
 
-	protected readonly loggerScope: LogScope;
-
 	protected readonly taskType: string;
 
 	protected process: ChildProcess | null = null;
@@ -44,13 +42,14 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	protected isShuttingDown = false;
 
 	constructor(
+		loggerScope: LogScope,
 		protected readonly logger: Logger,
 		protected readonly runnerConfig: TaskRunnersConfig,
 		protected readonly authService: TaskBrokerAuthService,
 		protected readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		super();
-		this.logger = logger.scoped(this.loggerScope);
+		this.logger = logger.scoped(loggerScope);
 
 		this.runnerLifecycleEvents.on('runner:failed-heartbeat-check', () => {
 			this.logger.warn('Task runner failed heartbeat check, restarting...');

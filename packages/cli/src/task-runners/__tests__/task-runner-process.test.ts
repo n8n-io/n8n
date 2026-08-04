@@ -29,9 +29,11 @@ describe('TaskRunnerProcess', () => {
 				stderr: { pipe: vi.fn() },
 			}),
 		);
+		logger.scoped.mockReturnValue(logger);
 	});
 
 	const logger = mockInstance(Logger);
+	logger.scoped.mockReturnValue(logger);
 	const runnerConfig = mockInstance(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
 	runnerConfig.insecureMode = false;
@@ -77,6 +79,12 @@ describe('TaskRunnerProcess', () => {
 				'runner:timed-out-during-task',
 				expect.any(Function),
 			);
+		});
+
+		it('should scope the logger to the runner', () => {
+			new JsTaskRunnerProcess(logger, runnerConfig, authService, mock());
+
+			expect(logger.scoped).toHaveBeenCalledWith('task-runner-js');
 		});
 
 		it('should register listener for `runner:unresponsive` event', () => {

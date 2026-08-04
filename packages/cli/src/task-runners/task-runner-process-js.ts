@@ -18,19 +18,17 @@ import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-p
 export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 	protected readonly name = 'runner:js';
 
-	protected readonly loggerScope = 'task-runner-js';
-
 	protected readonly taskType = 'javascript';
 
 	private oomDetector: NodeProcessOomDetector | null = null;
 
 	constructor(
-		readonly logger: Logger,
-		readonly runnerConfig: TaskRunnersConfig,
-		readonly authService: TaskBrokerAuthService,
-		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		logger: Logger,
+		runnerConfig: TaskRunnersConfig,
+		authService: TaskBrokerAuthService,
+		runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super(logger, runnerConfig, authService, runnerLifecycleEvents);
+		super('task-runner-js', logger, runnerConfig, authService, runnerLifecycleEvents);
 
 		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
 	}
