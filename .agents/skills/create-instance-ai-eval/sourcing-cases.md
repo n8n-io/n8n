@@ -93,9 +93,13 @@ Identifying data hides in more places than the obvious ones:
   `Acme Corp`.
 - **The earlier messages you seed alongside it** — someone's own wording, their name,
   their employer, links they pasted. Write those turns yourself, in a user's voice.
-- **Recorded tool calls, if you keep any** — the builder's own code and the results it
-  got back contain everything above. Keep only the calls the story needs, and only the
-  parts of their output that matter.
+- **Recorded tool calls, if you keep any.** Measured on a real thread, this is where
+  the leaks actually were — the workflow was clean, while the outputs of
+  `workflows[list]` / `get` / `get-as-code` and `data-tables[list]` carried a live
+  credential id, the project id, the person's entire workflow inventory, table schemas
+  down to every column name, and a webhook id. Each `toolCallId` also carries the
+  source run id. Read the messages: a regex pass over that seed caught one category out
+  of about eight.
 
 Provenance is the one thing worth keeping: note the source thread id in the case's
 `description` so anyone can find the original later. An id points at the conversation
@@ -163,10 +167,13 @@ the reference to another node and the parameter names don't.
 "headerParameters": { "parameters": [{ "name": "X-Api-Key", "value": "sk_test_placeholder" }] }
 ```
 
-**Trim as you go.** The seed is one field on the case, with a 256KB ceiling: drop
-`load_skill` bodies and any tool output the story doesn't need. If you keep a
-build-workflow call, its `output.workflowId` has to match a workflow the seed
-declares — see [`case-shapes.md`](case-shapes.md).
+**Trim as you go.** The seed is one field on the case, with a 256KB ceiling —
+`load_skill` bodies alone can account for most of it. Trimming has a rule of its own:
+**keep the shape here too.** Filtering a list output changes what the agent believes
+exists, and a `{ "note": "…" }` where a result belongs invents a shape no tool ever
+returns. Shortening the text inside a block is fine; to get rid of a call, drop the
+whole tool-call block. If you keep a build-workflow call, its `output.workflowId` has
+to match a workflow the seed declares — see [`case-shapes.md`](case-shapes.md).
 
 ### Three easy mistakes
 
