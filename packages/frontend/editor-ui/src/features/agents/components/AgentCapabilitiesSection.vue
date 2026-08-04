@@ -841,9 +841,7 @@ function openExistingSubAgentModal(subAgent: {
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: var(--spacing--3xs);
-	max-width: 100%;
 	min-width: 0;
-
 	/** Truncates chip to stop overly-long labels **/
 	max-width: min(var(--spacing--5xl), 100%);
 
