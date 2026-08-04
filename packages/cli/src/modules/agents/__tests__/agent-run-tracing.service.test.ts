@@ -158,7 +158,7 @@ describe('AgentRunTracingService', () => {
 		await service.build({ ...baseMetadata, source: 'slack', executionId: 'exec-1' });
 	});
 
-	it('marks workflow-sourced runs as rootAnchored: false so they nest under the node span, but leaves other sources anchored', async () => {
+	it('marks workflow-sourced runs as rootAnchored: false only when a parent context was found, and leaves other sources anchored', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
 		const service = new AgentRunTracingService(agentsConfig);
 
@@ -166,8 +166,17 @@ describe('AgentRunTracingService', () => {
 			...baseMetadata,
 			source: 'workflow',
 			executionId: 'exec-1',
+			hasParentContext: true,
 		});
 		expect(workflowBuilt?.rootAnchored).toBe(false);
+
+		const workflowBuiltWithoutParent = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			executionId: 'exec-1',
+			hasParentContext: false,
+		});
+		expect(workflowBuiltWithoutParent?.rootAnchored).toBeUndefined();
 
 		const slackBuilt = await service.build({ ...baseMetadata, source: 'slack' });
 		expect(slackBuilt?.rootAnchored).toBeUndefined();

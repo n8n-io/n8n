@@ -234,6 +234,14 @@ export class AgentWorkflowExecutionService {
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
 		let streamError: Error | undefined;
 
+		// Nest the agent's root span under the calling node's OTel span (rather
+		// than a disconnected root trace) by running inside its active context.
+		// Falls back to running unwrapped when no such span is tracked (e.g. otel
+		// disabled) — `context.with` needs an actual parent context to nest under.
+		const parentCtx = tracing.executionId
+			? this.executionLevelTracer.getActiveContext(tracing.executionId, tracing.nodeName)
+			: undefined;
+
 		const run = async (): Promise<void> => {
 			try {
 				// No model_id here: BuiltAgent (unlike the cached-runtime RuntimeAgent
@@ -249,6 +257,7 @@ export class AgentWorkflowExecutionService {
 					executionId: tracing.executionId,
 					workflowId: tracing.workflowId,
 					nodeId: tracing.nodeId,
+					hasParentContext: parentCtx !== undefined,
 				});
 
 				const resultStream = await agentInstance.stream(message, {
@@ -293,13 +302,6 @@ export class AgentWorkflowExecutionService {
 			}
 		};
 
-		// Nest the agent's root span under the calling node's OTel span (rather
-		// than a disconnected root trace) by running inside its active context.
-		// Falls back to running unwrapped when no such span is tracked (e.g. otel
-		// disabled) — `context.with` needs an actual parent context to nest under.
-		const parentCtx = tracing.executionId
-			? this.executionLevelTracer.getActiveContext(tracing.executionId, tracing.nodeName)
-			: undefined;
 		if (parentCtx) {
 			await context.with(parentCtx, run);
 		} else {

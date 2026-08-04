@@ -86,6 +86,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 					executionId,
 					workflowId: 'wf-1',
 					nodeId: node.id,
+					hasParentContext: true,
 				});
 				expect(built?.rootAnchored).toBe(false);
 

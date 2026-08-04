@@ -851,12 +851,15 @@ describe('ExecutionLevelTracer', () => {
 			expect(nodeSpanId).toBe(finishedNodeSpan.spanContext().spanId);
 		});
 
-		it('falls back to the workflow span when no node name is given or found', () => {
+		it('falls back to the workflow span when no node name is given, or when the given node name is not found', () => {
 			tracer.startWorkflow({ executionId: 'exec-ctx-wf', workflow: defaultWorkflow });
 
 			const activeContext = tracer.getActiveContext('exec-ctx-wf');
 			expect(activeContext).toBeDefined();
 			const spanId = trace.getSpan(activeContext!)?.spanContext().spanId;
+
+			const fallbackContext = tracer.getActiveContext('exec-ctx-wf', 'UnknownNode');
+			expect(trace.getSpan(fallbackContext!)?.spanContext().spanId).toBe(spanId);
 
 			tracer.endWorkflow({
 				executionId: 'exec-ctx-wf',
