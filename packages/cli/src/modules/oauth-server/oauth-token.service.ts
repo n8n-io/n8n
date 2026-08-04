@@ -48,6 +48,22 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
 	}
 
+	async generateAccessTokenOnly(
+		userId: string,
+		clientId: string,
+		resource: string | undefined,
+		scopes: string[],
+	): Promise<{ accessToken: string }> {
+		const { accessToken } = this.generateTokenPair(userId, clientId, resource, scopes);
+		// Persist the access token: verification checks the token row exists, so an
+		// unsaved token would be rejected. No refresh token is issued for
+		// client_credentials (RFC 6749 §4.4.3).
+		await this.txRunner.run({}, async (ctx) => {
+			await this.accessTokenRepository.insertToken({ token: accessToken, clientId, userId }, ctx);
+		});
+		return { accessToken };
+	}
+
 	generateTokenPair(
 		userId: string,
 		clientId: string,

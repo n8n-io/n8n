@@ -145,6 +145,8 @@ export {
 	type ListApiKeysSortOption,
 } from './api-keys/list-api-keys-query.dto';
 
+export { CreateServiceAccountCredentialRequestDto } from './service-account-credentials/create-service-account-credential-request.dto';
+
 export { CreateFolderDto } from './folders/create-folder.dto';
 export { UpdateFolderDto } from './folders/update-folder.dto';
 export { DeleteFolderDto } from './folders/delete-folder.dto';

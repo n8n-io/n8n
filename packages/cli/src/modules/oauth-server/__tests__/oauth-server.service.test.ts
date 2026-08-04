@@ -5,6 +5,7 @@ import {
 import { Logger, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import type { ServiceAccountCredentialRepository } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -15,6 +16,7 @@ import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { UrlService } from '@/services/url.service';
+import type { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
@@ -42,6 +44,8 @@ let eventService: Mocked<EventService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
 const urlServiceMock = mock<UrlService>();
+const serviceAccountCredentialRepositoryMock = mock<ServiceAccountCredentialRepository>();
+const passwordUtilityMock = mock<PasswordUtility>();
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -80,6 +84,8 @@ describe('OAuthServerService', () => {
 			mailer,
 			urlServiceMock,
 			eventService,
+			serviceAccountCredentialRepositoryMock,
+			passwordUtilityMock,
 		);
 	});
 
@@ -185,6 +191,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					serviceAccountCredentialRepositoryMock,
+					passwordUtilityMock,
 				);
 			});
 
@@ -254,6 +262,8 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
+					serviceAccountCredentialRepositoryMock,
+					passwordUtilityMock,
 				);
 
 				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
@@ -849,6 +859,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				eventService,
+				serviceAccountCredentialRepositoryMock,
+				passwordUtilityMock,
 			);
 
 			const client = {
@@ -1402,6 +1414,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				mock<EventService>(),
+				serviceAccountCredentialRepositoryMock,
+				passwordUtilityMock,
 			);
 
 			expect(
@@ -1450,6 +1464,8 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlService,
 				mock<EventService>(),
+				serviceAccountCredentialRepositoryMock,
+				passwordUtilityMock,
 			);
 		};
 
