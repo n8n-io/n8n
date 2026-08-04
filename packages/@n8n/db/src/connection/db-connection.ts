@@ -59,17 +59,30 @@ export class DbConnection {
 		return readPoolStats(this.dataSource);
 	}
 
+	/**
+	 * Version of the database backing this connection, as a dotted version
+	 * string: the Postgres server version (e.g. `17.6`, not the full
+	 * `version()` banner) or the SQLite library version (e.g. `3.44.2`).
+	 * `null` when it cannot be determined, e.g. the connection is not up.
+	 */
 	async getDbVersion(): Promise<string | null> {
 		if (!this.dataSource.isInitialized) return null;
 
 		try {
-			if (this.options.type === 'postgres') return this.dataSource.driver.version ?? null;
+			switch (this.options.type) {
+				case 'postgres':
+					return this.dataSource.driver.version ?? null;
+				case 'sqlite':
+				case 'sqlite-pooled': {
+					const rows = await this.dataSource.query<Array<{ version: string }>>(
+						'SELECT sqlite_version() AS version',
+					);
 
-			const rows = await this.dataSource.query<Array<{ version: string }>>(
-				'SELECT sqlite_version() AS version',
-			);
-
-			return rows[0]?.version ?? null;
+					return rows[0]?.version ?? null;
+				}
+				default:
+					return null;
+			}
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.warn(`Could not determine database version: ${error.message}`);

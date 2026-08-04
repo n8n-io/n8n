@@ -252,12 +252,12 @@ describe('DbConnection', () => {
 	});
 
 	describe('getDbVersion', () => {
-		const newSqliteConnection = () => {
+		const newConnection = (type: 'sqlite' | 'sqlite-pooled' | 'mysql') => {
 			connectionOptions.getOptions.mockReturnValue({
-				type: 'sqlite',
+				type,
 				database: ':memory:',
 				migrations,
-			});
+			} as DataSourceOptions);
 			// options are @Memoized and read in the constructor — re-instantiate
 			return new DbConnection(
 				errorReporter,
@@ -286,26 +286,34 @@ describe('DbConnection', () => {
 			await expect(dbConnection.getDbVersion()).resolves.toBeNull();
 		});
 
-		it('should query the sqlite library version', async () => {
-			dataSource.query.mockResolvedValue([{ version: '3.45.0' }]);
+		it.each(['sqlite', 'sqlite-pooled'] as const)(
+			'should query the sqlite library version on %s',
+			async (type) => {
+				dataSource.query.mockResolvedValue([{ version: '3.45.0' }]);
 
-			await expect(newSqliteConnection().getDbVersion()).resolves.toBe('3.45.0');
-			expect(dataSource.query).toHaveBeenCalledWith('SELECT sqlite_version() AS version');
-		});
+				await expect(newConnection(type).getDbVersion()).resolves.toBe('3.45.0');
+				expect(dataSource.query).toHaveBeenCalledWith('SELECT sqlite_version() AS version');
+			},
+		);
 
 		it('should return null when the sqlite query returns no rows', async () => {
 			dataSource.query.mockResolvedValue([]);
 
-			await expect(newSqliteConnection().getDbVersion()).resolves.toBeNull();
+			await expect(newConnection('sqlite-pooled').getDbVersion()).resolves.toBeNull();
 		});
 
 		it('should return null when the query fails', async () => {
 			dataSource.query.mockRejectedValue(new Error('no such function: sqlite_version'));
 
-			await expect(newSqliteConnection().getDbVersion()).resolves.toBeNull();
+			await expect(newConnection('sqlite-pooled').getDbVersion()).resolves.toBeNull();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Could not determine database version: no such function: sqlite_version',
 			);
+		});
+
+		it('should return null for a database type n8n does not configure', async () => {
+			await expect(newConnection('mysql').getDbVersion()).resolves.toBeNull();
+			expect(dataSource.query).not.toHaveBeenCalled();
 		});
 
 		it('should return null when the data source is not initialized', async () => {
