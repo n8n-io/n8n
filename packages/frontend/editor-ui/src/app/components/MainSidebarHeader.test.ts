@@ -113,18 +113,24 @@ describe('MainSidebarHeader', () => {
 		expect(emitted('collapse')).toHaveLength(1);
 	});
 
-	test.each([
-		[false, true],
-		[true, false],
-	])('renders command bar button when canvasOnly is %s: %s', (canvasOnly, shouldRender) => {
-		settingsStore.settings = { ...defaultSettings, canvasOnly };
+	it('renders the command bar button by default', () => {
+		const { queryByRole } = createComponentRenderer(MainSidebarHeader, {
+			pinia,
+			props: { isCollapsed: false, hideCreate: true },
+		})();
+
+		expect(queryByRole('button', { name: 'Open command palette' })).toBeInTheDocument();
+	});
+
+	it('hides the command bar button in canvas-only mode', () => {
+		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
 
 		const { queryByRole } = createComponentRenderer(MainSidebarHeader, {
 			pinia,
 			props: { isCollapsed: false, hideCreate: true },
 		})();
 
-		expect(queryByRole('button', { name: 'Open command palette' }) !== null).toBe(shouldRender);
+		expect(queryByRole('button', { name: 'Open command palette' })).not.toBeInTheDocument();
 	});
 
 	it('emits "openCommandBar" with the click event when command bar button is clicked', async () => {

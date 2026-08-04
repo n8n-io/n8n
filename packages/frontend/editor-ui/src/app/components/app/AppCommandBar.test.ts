@@ -1,5 +1,4 @@
 import { computed, reactive, ref } from 'vue';
-import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -46,15 +45,17 @@ describe('AppCommandBar', () => {
 		settingsStore.settings = defaultSettings;
 	});
 
-	it('hides the command bar when canvas-only mode arrives after mount', async () => {
+	it('renders the command bar by default', () => {
 		const { queryByTestId } = renderComponent({ pinia });
 
 		expect(queryByTestId('command-bar-stub')).toBeInTheDocument();
+	});
 
+	it('does not render the command bar in canvas-only mode', () => {
 		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
 
-		await waitFor(() => {
-			expect(queryByTestId('command-bar-stub')).not.toBeInTheDocument();
-		});
+		const { queryByTestId } = renderComponent({ pinia });
+
+		expect(queryByTestId('command-bar-stub')).not.toBeInTheDocument();
 	});
 });

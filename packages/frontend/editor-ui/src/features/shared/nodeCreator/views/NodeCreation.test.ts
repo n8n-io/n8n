@@ -107,17 +107,23 @@ describe('NodeCreation', () => {
 		expect(emitted('addNodes')).toEqual([[addedNodesAndConnections]]);
 	});
 
-	test.each([
-		[false, true],
-		[true, false],
-	])('renders command bar button when canvasOnly is %s: %s', (canvasOnly, shouldRender) => {
-		settingsStore.settings = { ...defaultSettings, canvasOnly };
+	it('renders the command bar button by default', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
+		});
+
+		expect(queryByTestId('command-bar-button')).toBeInTheDocument();
+	});
+
+	it('hides the command bar button in canvas-only mode', () => {
+		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
 
 		const { queryByTestId } = renderComponent({
 			pinia,
 			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
 		});
 
-		expect(queryByTestId('command-bar-button') !== null).toBe(shouldRender);
+		expect(queryByTestId('command-bar-button')).not.toBeInTheDocument();
 	});
 });
