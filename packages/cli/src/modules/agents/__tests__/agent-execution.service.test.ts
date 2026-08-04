@@ -235,7 +235,7 @@ describe('AgentExecutionService', () => {
 			);
 		});
 
-		it('keeps the execution row when the blob write fails', async () => {
+		it('stores the finalized execution in the database when the blob write fails', async () => {
 			storageConfig = mock<StorageConfig>({ modeTag: 'fs' });
 			service = new AgentExecutionService(
 				mockLogger(),
@@ -272,18 +272,23 @@ describe('AgentExecutionService', () => {
 			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
 			agentExecutionLogStore.write.mockRejectedValue(new Error('disk full'));
 
-			await expect(
-				recordExecution({
-					threadId: 'thread-1',
-					agentId: 'agent-1',
-					agentName: 'Agent',
-					projectId: 'project-1',
-					userMessage: 'Run',
-					record,
-				}),
-			).rejects.toThrow('disk full');
+			await recordExecution({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record,
+			});
 
-			expect(agentExecutionRepository.updateIfRunning).not.toHaveBeenCalled();
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({
+					status: 'success',
+					timeline: record.timeline,
+					storedAt: 'db',
+				}),
+			);
 		});
 
 		it('passes thread metadata when creating a subagent execution session', async () => {

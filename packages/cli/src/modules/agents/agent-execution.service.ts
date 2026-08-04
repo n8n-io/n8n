@@ -125,16 +125,21 @@ export class AgentExecutionService {
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
 		const { record, hitlStatus } = params;
 		const status = executionStatus(record);
-		const storedAt: AgentExecution['storedAt'] =
+		let storedAt: AgentExecution['storedAt'] =
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		try {
 			if (storedAt !== 'db') {
-				await this.agentExecutionLogStore.write(
-					{ agentId: params.agentId, threadId: params.threadId, executionId },
-					{ timeline: record.timeline },
-					storedAt,
-				);
+				try {
+					await this.agentExecutionLogStore.write(
+						{ agentId: params.agentId, threadId: params.threadId, executionId },
+						{ timeline: record.timeline },
+						storedAt,
+					);
+				} catch (error) {
+					this.errorReporter.error(error);
+					storedAt = 'db';
+				}
 			}
 
 			const finalized = await this.agentExecutionRepository.updateIfRunning(executionId, {
