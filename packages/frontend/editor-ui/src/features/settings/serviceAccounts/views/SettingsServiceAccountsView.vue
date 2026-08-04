@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ServiceAccount } from '@n8n/api-types';
+import { ROLE, type ServiceAccount } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -19,6 +19,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import ActAsServiceAccountDialog from '../components/ActAsServiceAccountDialog.vue';
+import CreateServiceAccountCredentialModal from '../components/CreateServiceAccountCredentialModal.vue';
 import CreateServiceAccountModal from '../components/CreateServiceAccountModal.vue';
 import DeleteServiceAccountDialog from '../components/DeleteServiceAccountDialog.vue';
 import ServiceAccountsTable from '../components/ServiceAccountsTable.vue';
@@ -43,6 +44,7 @@ const submitting = ref(false);
 const updatingRoleId = ref<string | null>(null);
 const actAsTarget = ref<ServiceAccount | null>(null);
 const deleteTarget = ref<ServiceAccount | null>(null);
+const credentialTarget = ref<ServiceAccount | null>(null);
 
 // `state`/`isLoading` are already unwrapped — pinia's `reactive()` on the store's
 // return value deep-unwraps the refs `useAsyncState` hands back.
@@ -62,6 +64,9 @@ const canUpdate = computed(() =>
 const canImpersonate = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'serviceAccount:impersonate' } }),
 );
+const canManageCredentials = computed(() =>
+	hasPermission(['role'], { role: [ROLE.Owner, ROLE.Admin] }),
+);
 
 const actions = computed<Array<UserAction<ServiceAccount>>>(() => [
 	{
@@ -80,6 +85,11 @@ const actions = computed<Array<UserAction<ServiceAccount>>>(() => [
 		label: i18n.baseText('settings.serviceAccounts.actions.enable'),
 		value: SERVICE_ACCOUNT_ACTIONS.ENABLE,
 		guard: (row) => canUpdate.value && Boolean(row.disabled),
+	},
+	{
+		label: i18n.baseText('settings.serviceAccounts.actions.createCredential'),
+		value: SERVICE_ACCOUNT_ACTIONS.CREATE_CREDENTIAL,
+		guard: () => canManageCredentials.value,
 	},
 	{
 		label: i18n.baseText('settings.serviceAccounts.actions.delete'),
@@ -188,6 +198,9 @@ const onAction = async ({ action, userId }: { action: string; userId: string }) 
 		case SERVICE_ACCOUNT_ACTIONS.DELETE:
 			deleteTarget.value = serviceAccount;
 			break;
+		case SERVICE_ACCOUNT_ACTIONS.CREATE_CREDENTIAL:
+			credentialTarget.value = serviceAccount;
+			break;
 	}
 };
 
@@ -289,6 +302,11 @@ const openCreateModal = () => uiStore.openModal(CREATE_SERVICE_ACCOUNT_MODAL_KEY
 			@confirm="onConfirmDelete"
 			@cancel="deleteTarget = null"
 			@update:open="!$event && (deleteTarget = null)"
+		/>
+		<CreateServiceAccountCredentialModal
+			:service-account="credentialTarget"
+			:open="credentialTarget !== null"
+			@update:open="!$event && (credentialTarget = null)"
 		/>
 	</N8nSettingsLayout>
 </template>
