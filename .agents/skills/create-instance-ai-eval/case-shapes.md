@@ -394,8 +394,10 @@ costs keep it a last resort, not a default:
   instance. The most sensitive parts are removed first — data-table row values are
   kept out and redacted from the history, node credentials stripped — but that pass
   can't be assumed exhaustive, so treat what comes back as potentially personal data
-  and follow your team's data-handling policy. Scrubbing it into an `inline` seed is
-  how that concern goes away for good.
+  and follow your team's data-handling policy. Cleanup deletes the thread, workflows
+  and tables when the build finishes, though it is best-effort: a crashed run can
+  leave them on the instance. Scrubbing the workflow into an `inline` seed is how the
+  whole concern goes away for good.
 - **Transience.** It depends on LangSmith trace retention (~14 days); the case
   stops running once the source trace ages out (tag it `seeded`, keep it out of
   `full`/`pr`).

@@ -87,11 +87,19 @@ Identifying data hides in more places than the obvious ones:
   credential, so nothing strips it for you.
 - **Free text inside the workflow** — sticky notes and node notes, string literals in
   a Code node, sample rows in a Set node. Sample rows are often real records.
+- **The workflow's own name**, which often carries a company or a person
+  ("Acme lead sync", "Chase invoices — Dana"). This repo is public, so a real
+  customer's name must not appear anywhere in a case; use a placeholder like
+  `Acme Corp`.
 - **The earlier messages you seed alongside it** — someone's own wording, their name,
   their employer, links they pasted. Write those turns yourself, in a user's voice.
 - **Recorded tool calls, if you keep any** — the builder's own code and the results it
   got back contain everything above. Keep only the calls the story needs, and only the
   parts of their output that matter.
+
+Provenance is the one thing worth keeping: note the source thread id in the case's
+`description` so anyone can find the original later. An id points at the conversation
+without carrying any of it.
 
 ### Which version of the workflow to start from
 
@@ -113,9 +121,11 @@ ended the thread in.
   `workflows[get]` call whose input mentions that id.
 - **Nothing was stored.** Older threads pre-date this being kept at all, and the read
   says so in a `note` rather than returning an empty list. An empty answer never means
-  "there was no workflow". Write the stand-in yourself: the simplest set of nodes that
-  can still show the problem. There's then no original to compare against, so the
-  before-you-ship checks are the only safety net left.
+  "there was no workflow". Two ways out: replay the thread locally and take the
+  workflow the harness rebuilds from the trace (see below), or write the stand-in
+  yourself — the simplest set of nodes that can still show the problem. Hand-authored,
+  there's no original to compare against, so the before-you-ship checks are the only
+  safety net left.
 
 ### What to keep, and what to replace
 
@@ -139,6 +149,19 @@ That's not only about readability:
   Anything under 8 characters is rejected outright, and a short id that squeaks
   through is exactly how you end up rewriting unrelated text that happens to contain
   it.
+
+On one node that comes out as: the host, the id and the key change; the expression,
+the reference to another node and the parameter names don't.
+
+```jsonc
+// before
+"url": "=https://acme-internal.example/v2/orders/{{ $('Get order').item.json.orderId }}",
+"headerParameters": { "parameters": [{ "name": "X-Api-Key", "value": "sk_live_9f2c8b…" }] }
+
+// after
+"url": "=https://api.example.com/v2/orders/{{ $('Get order').item.json.orderId }}",
+"headerParameters": { "parameters": [{ "name": "X-Api-Key", "value": "sk_test_placeholder" }] }
+```
 
 **Trim as you go.** The seed is one field on the case, with a 256KB ceiling: drop
 `load_skill` bodies and any tool output the story doesn't need. If you keep a
