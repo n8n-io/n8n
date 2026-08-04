@@ -4,21 +4,26 @@ import {
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import {
+	AgentModificationTelemetryService,
+	diffAgentConfigParts,
+	isUnconfiguredAgent,
+	type AgentActor,
+} from './agent-modification-telemetry.service';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 
-export interface SaveCredentialIntegrationOptions {
-	broadcast?: boolean;
-}
-
-export interface RemoveCredentialIntegrationOptions {
+export interface CredentialIntegrationMutationContext {
+	user: User;
+	modifiedBy: AgentActor;
 	broadcast?: boolean;
 }
 
@@ -29,6 +34,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
 
 	/**
@@ -58,7 +64,7 @@ export class AgentIntegrationPersistenceService {
 	async saveCredentialIntegration(
 		agent: Agent,
 		integration: AgentIntegrationConfig,
-		options: SaveCredentialIntegrationOptions = {},
+		context: CredentialIntegrationMutationContext,
 	): Promise<Agent> {
 		const parseResult = AgentIntegrationSchema.safeParse(integration);
 		if (!parseResult.success) {
@@ -71,10 +77,14 @@ export class AgentIntegrationPersistenceService {
 			throw new UserError('Credential integration requires a credential ID.');
 		}
 
+		const previousSchema = agent.schema ?? null;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+
 		// Drop a same-type draft entry (empty credentialId, written by the builder
 		// before setup completes) so connecting a real credential replaces it
 		// instead of leaving both the draft and the connected entry behind.
-		const existing = (agent.integrations ?? []).filter(
+		const existing = previousIntegrations.filter(
 			(i) => !(i.type === type && isDraftIntegration(i)),
 		);
 		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
@@ -90,7 +100,14 @@ export class AgentIntegrationPersistenceService {
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
-		if (options.broadcast !== false) {
+		await this.recordIntegrationMutation(
+			result,
+			previousSchema,
+			previousIntegrations,
+			context,
+			wasUnconfigured,
+		);
+		if (context.broadcast !== false) {
 			await this.chatIntegrationService.broadcastIntegrationChange(
 				agent.id,
 				integration,
@@ -107,19 +124,31 @@ export class AgentIntegrationPersistenceService {
 		agent: Agent,
 		type: string,
 		credentialId: string,
-		options: RemoveCredentialIntegrationOptions = {},
+		context: CredentialIntegrationMutationContext,
 	): Promise<Agent> {
 		if (!agent.integrations?.length) return agent;
 		const integration = agent.integrations.find(
 			(i) => i.type === type && i.credentialId === credentialId,
 		);
 		if (!integration) return agent;
+
+		const previousSchema = agent.schema ?? null;
+		const previousIntegrations = agent.integrations ?? [];
+		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+
 		agent.integrations = agent.integrations.filter((i) => i !== integration);
 
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		const result = await this.agentRepository.save(agent);
-		if (options.broadcast !== false) {
+		await this.recordIntegrationMutation(
+			result,
+			previousSchema,
+			previousIntegrations,
+			context,
+			wasUnconfigured,
+		);
+		if (context.broadcast !== false) {
 			await this.chatIntegrationService.broadcastIntegrationChange(
 				agent.id,
 				integration,
@@ -127,5 +156,27 @@ export class AgentIntegrationPersistenceService {
 			);
 		}
 		return result;
+	}
+
+	private async recordIntegrationMutation(
+		agent: Agent,
+		previousSchema: Agent['schema'],
+		previousIntegrations: AgentIntegrationConfig[],
+		context: CredentialIntegrationMutationContext,
+		wasUnconfigured: boolean,
+	): Promise<void> {
+		this.modificationTelemetry.record({
+			agent,
+			projectId: agent.projectId,
+			user: context.user,
+			by: context.modifiedBy,
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations ?? [],
+			),
+			wasUnconfigured,
+		});
 	}
 }

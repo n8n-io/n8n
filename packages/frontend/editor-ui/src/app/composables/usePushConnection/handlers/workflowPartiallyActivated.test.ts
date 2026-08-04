@@ -57,7 +57,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => mockUIStore,
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => mockToast,
 }));
 

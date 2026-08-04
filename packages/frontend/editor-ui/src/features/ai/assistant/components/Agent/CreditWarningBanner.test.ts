@@ -16,7 +16,7 @@ vi.mock('@n8n/i18n', () => {
 });
 
 let mockUserIsTrialing = false;
-vi.mock('@/app/stores/cloudPlan.store', () => ({
+vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	useCloudPlanStore: vi.fn(() => ({
 		get userIsTrialing() {
 			return mockUserIsTrialing;

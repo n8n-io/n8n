@@ -1,3 +1,4 @@
+import type { JsonValue } from '../common';
 import type { StepStatus } from './execution.types';
 
 /** A new step to persist. `id` and timestamps are assigned by the store. */
@@ -7,8 +8,84 @@ export interface NewStepRecord {
 	status: StepStatus;
 }
 
+/** The error that failed a step, as persisted on its row. */
+export interface StepError {
+	name: string;
+	message: string;
+	stack?: string;
+	/**
+	 * Step-type-specific error detail, persisted without inspection — the engine
+	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
+	 * to hand structured detail across the seam; they only throw today.
+	 */
+	details?: JsonValue;
+}
+
+/** A step record. */
+export interface StepRecord {
+	id: string;
+	executionId: string;
+	nodeId: string;
+	status: StepStatus;
+	/** Outputs of a completed step; `null` until it completes. */
+	outputs: JsonValue | null;
+	/** The error that failed the step; `null` unless it failed. */
+	error: StepError | null;
+}
+
+/** Thrown by `loadStep` when no step exists for the given id. */
+export class StepNotFoundError extends Error {
+	constructor(readonly stepId: string) {
+		super(`Step not found: ${stepId}`);
+		this.name = 'StepNotFoundError';
+	}
+}
+
 /** Persistence interface for step records. */
 export interface StepStore {
-	/** Persist a new step record; returns its generated id. */
-	createStep(record: NewStepRecord): Promise<{ id: string }>;
+	/**
+	 * Persist new step records; returns their generated ids, in input order.
+	 * Batched rather than one-per-call so planning a fan-out costs a single
+	 * round trip and cannot half-persist.
+	 */
+	createSteps(records: NewStepRecord[]): Promise<Array<{ id: string }>>;
+
+	/** Load a single step by id. Throws `StepNotFoundError` if absent. */
+	loadStep(id: string): Promise<StepRecord>;
+
+	/**
+	 * Claim a queued step for execution (`queued → running`). A compare-and-set,
+	 * so it returns `true` for at most one caller and duplicate/redelivered
+	 * events are handled idempotently.
+	 *
+	 * Transitions are exposed one named method at a time rather than as a generic
+	 * `(from, to)` pair, so the interface can't express a transition the
+	 * lifecycle doesn't allow.
+	 */
+	claimStep(id: string): Promise<boolean>;
+
+	/**
+	 * Record a successful run: persist `outputs` and mark the step completed.
+	 * A compare-and-set on `running`, so it returns `false` if the caller no
+	 * longer holds the claim — the outcome and the status are written together,
+	 * so they can't be observed apart.
+	 */
+	completeStep(id: string, outputs: JsonValue): Promise<boolean>;
+
+	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
+	failStep(id: string, error: StepError): Promise<boolean>;
+
+	/**
+	 * Outputs of the given nodes' *completed* steps within an execution, keyed by
+	 * node id. A node whose step is absent or hasn't completed maps to `null`.
+	 *
+	 * This is for gathering a step's inputs, so it deliberately can't answer
+	 * "have all predecessors completed?" — the two are indistinguishable from a
+	 * `null` here. Readiness belongs to whoever plans the next step
+	 * (TODO(CAT-2871)), and will need its own method.
+	 */
+	loadStepOutputs(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, JsonValue | null>>;
 }

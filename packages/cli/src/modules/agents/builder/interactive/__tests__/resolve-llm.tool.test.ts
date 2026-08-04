@@ -814,6 +814,23 @@ describe('resolve_llm tool', () => {
 			expect(result).toMatchObject({ ok: false, reason: 'unsupported_provider' });
 		});
 
+		it('does not accept a lone managed entry for a provider the gateway does not serve', async () => {
+			// Only OpenAI is managed, so the tag can only mean OpenAI. Asking for Anthropic
+			// with that tag must not silently resolve to OpenAI.
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async (provider) => provider === 'openai',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!(
+				{ provider: 'anthropic', credentialId: AI_GATEWAY_MANAGED_TAG },
+				{},
+			);
+
+			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_credential' });
+		});
+
 		it('stays ambiguous when the provider is valid but matches no repeated managed entry', async () => {
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),

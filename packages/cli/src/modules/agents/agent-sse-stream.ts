@@ -225,6 +225,16 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			if (sseMessage) ctx.send({ type: 'message', message: sseMessage });
 			return { suspended: false };
 		}
+		case 'subagent-chunk': {
+			if (chunk.parentToolCallId === undefined) return { suspended: false };
+			ctx.send({
+				type: 'subagent-chunk',
+				parentToolCallId: chunk.parentToolCallId,
+				taskPath: chunk.taskPath,
+				chunk: chunk.chunk,
+			});
+			return { suspended: false };
+		}
 		case 'error': {
 			const errMsg = stringifyError(chunk.error);
 			ctx.send({ type: 'error', message: errMsg });

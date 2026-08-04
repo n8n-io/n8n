@@ -269,7 +269,7 @@ describe('leader stepdown (integration)', () => {
 		deactivator = Container.get(PublishedWorkflowTriggerDeactivator);
 	});
 
-	test('teardown waits for an in-flight record before deactivating triggers', async () => {
+	test('teardown skips a workflow with an in-flight record; the sweep converges after release', async () => {
 		const owner = await createOwner();
 		const trigger = scheduleNode('running');
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
@@ -288,17 +288,20 @@ describe('leader stepdown (integration)', () => {
 				}),
 		);
 
-		const teardown = deactivator.deactivateAllNonWebhookTriggers();
-		await new Promise((resolve) => setImmediate(resolve));
+		// The instance was demoted; the stepdown teardown must neither wait on the
+		// held lock nor tear the workflow down without it — it skips.
+		Container.get(InstanceSettings).markAsFollower();
+		await deactivator.deactivateAllNonWebhookTriggers();
 
-		// Teardown is blocked on the lock, so the trigger is still running.
 		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(true);
 
 		releaseHolder();
 		await holder;
-		await teardown;
 
-		// Once the in-flight record released the lock, teardown deactivated it.
+		// The follower sweep converges once the lock is released.
+		const removed = await deactivator.sweepGhostTriggers();
+
+		expect(removed).toBe(1);
 		expect(activeWorkflowTriggers.isActive(workflow.id)).toBe(false);
 	});
 });

@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@n8n/instance-ai', () => ({
 	createSandbox: vi.fn(),
@@ -49,7 +50,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		...overrides.backgroundTasks,
 	};
 	const settingsService: InstanceAiSandboxSettings = {
-		resolveDaytonaConfig: vi.fn(async () => ({})),
+		resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
 		resolveN8nSandboxConfig: vi.fn(async () => ({})),
 		...overrides.settingsService,
 	};
@@ -109,6 +110,22 @@ describe('InstanceAiSandboxService', () => {
 				provider: 'daytona',
 				daytonaApiUrl: 'https://admin.daytona',
 				daytonaApiKey: 'admin-key',
+			});
+		});
+
+		it('fails with a setup error in direct mode when no Daytona API key is configured', async () => {
+			const resolveDaytonaConfig = vi.fn(async () => ({}));
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				settingsService: { resolveDaytonaConfig },
+				aiService: { isProxyEnabled: vi.fn(() => false) },
+			});
+
+			const resolution = service.resolveSandboxConfig(fakeUser);
+			await expect(resolution).rejects.toBeInstanceOf(OperationalError);
+			await expect(resolution).rejects.toMatchObject({
+				message: expect.stringContaining('no API key is configured'),
+				shouldReport: false,
 			});
 		});
 

@@ -385,6 +385,7 @@ describe('AgentExecutionService', () => {
 				},
 				latency_ms: 123,
 				cost: 25,
+				token_count: 15,
 				tool_call_count: 1,
 			});
 		});

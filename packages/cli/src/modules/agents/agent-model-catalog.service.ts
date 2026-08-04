@@ -1,5 +1,6 @@
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	getAgentModelProviderCredentialTypes,
 	type AgentCatalogModel,
 	type AgentProviderModelsResponse,
 } from '@n8n/api-types';
@@ -10,17 +11,13 @@ import { Service } from '@n8n/di';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
-import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 
 /** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
 const GOOGLE_MODEL_ID_PREFIX = 'models/';
 
 function getProviderCredentialType(provider: string): string | undefined {
 	if (!isModelDiscoveryProvider(provider)) return undefined;
-	for (const [credentialType, entry] of Object.entries(LLM_PROVIDER_DEFAULTS)) {
-		if (entry.provider === provider) return credentialType;
-	}
-	return undefined;
+	return getAgentModelProviderCredentialTypes(provider)[0];
 }
 
 function normalizeLiveModelValue(provider: string, value: string): string {
@@ -93,10 +90,11 @@ export class AgentModelCatalogService {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			// Managed slot: the gateway allowlist is the contract, so don't fall back
-			// to the static catalog (it may list models the gateway won't serve). A
-			// verified empty list shows nothing rather than un-served models.
+			// to the static catalog (it may list models the gateway won't serve).
+			// Flagged unavailable so the picker distinguishes a failed lookup from a
+			// gateway that genuinely allows nothing.
 			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
-				return { provider, verified: true, models: [] };
+				return { provider, verified: true, unavailable: true, models: [] };
 			}
 			return { provider, verified: false, models: Object.values(catalogModels) };
 		}
@@ -117,7 +115,6 @@ export class AgentModelCatalogService {
 						: {
 								id,
 								name: normalizeLiveModelValue(provider, live.name) || id,
-								reasoning: false,
 								toolCall: true,
 							};
 				}),
@@ -154,7 +151,6 @@ export class AgentModelCatalogService {
 				return {
 					id,
 					name: normalizeLiveModelValue(provider, live.name) || id,
-					reasoning: false,
 					toolCall: true,
 				};
 			}),

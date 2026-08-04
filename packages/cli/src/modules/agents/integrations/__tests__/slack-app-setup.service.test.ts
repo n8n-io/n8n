@@ -170,7 +170,7 @@ describe('SlackAppSetupService', () => {
 			'https://hooks.example/rest/projects/project-1/agents/v2/agent-1/integrations/slack/oauth/callback';
 		expect(manifest.oauth_config.redirect_urls).toEqual([callbackUrl]);
 		expect(manifest.features.app_home).toEqual({
-			home_tab_enabled: true,
+			home_tab_enabled: false,
 			messages_tab_enabled: true,
 			messages_tab_read_only_enabled: false,
 		});
@@ -271,7 +271,7 @@ describe('SlackAppSetupService', () => {
 
 		expect(result.manifest.display_information.name).toBe('Support Agent');
 		expect(result.manifest.features.app_home).toEqual({
-			home_tab_enabled: true,
+			home_tab_enabled: false,
 			messages_tab_enabled: true,
 			messages_tab_read_only_enabled: false,
 		});
@@ -360,6 +360,8 @@ describe('SlackAppSetupService', () => {
 			agent,
 			integration,
 			{
+				user,
+				modifiedBy: 'user',
 				broadcast: false,
 			},
 		);
@@ -367,7 +369,7 @@ describe('SlackAppSetupService', () => {
 			'agent-1',
 			'project-1',
 			user,
-			'slack_setup',
+			{ by: 'user', trigger: 'slack_setup' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -422,6 +424,8 @@ describe('SlackAppSetupService', () => {
 			unpublishedAgent,
 			integration,
 			{
+				user,
+				modifiedBy: 'user',
 				broadcast: false,
 			},
 		);
@@ -429,7 +433,7 @@ describe('SlackAppSetupService', () => {
 			'agent-1',
 			'project-1',
 			user,
-			'slack_setup',
+			{ by: 'user', trigger: 'slack_setup' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);

@@ -670,6 +670,19 @@ describe('CredentialsService', () => {
 				expect(result.json).toEqual(JSON.stringify({ port: '***', timeout: '***' }, null, 2));
 			});
 
+			it('should keep expression leaf values visible', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"token": "={{ $secrets.vault.replicate }}", "key": "abc"}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify({ token: '={{ $secrets.vault.replicate }}', key: '***' }, null, 2),
+				);
+			});
+
 			it('should redact boolean leaf values', () => {
 				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
 
@@ -3819,6 +3832,88 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
 			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('probeById', () => {
+		const storedCredential = mock<CredentialsEntity>({
+			id: 'cred-id',
+			name: 'Templated cred',
+			type: 'httpTemplatedCustomAuth',
+		});
+
+		const mockDecryptedData = (data: ICredentialDataDecryptedObject) =>
+			vi.spyOn(service, 'decrypt').mockResolvedValue(data);
+
+		it('should throw when the credential is not accessible to the user', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await expect(service.probeById(memberUser, 'cred-id')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'cred-id',
+				memberUser,
+				['credential:read'],
+			);
+		});
+
+		it('should throw when the credential has no test URL', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ template: '{}' });
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential has no test URL to probe',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
+		it('should refuse an expression test URL instead of resolving it', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ testUrl: '={{ $vars.url }}' });
+
+			await expect(service.probeById(ownerUser, 'cred-id')).rejects.toThrow(
+				'The credential has no test URL to probe',
+			);
+			expect(credentialsTester.probeCredentialAuth).not.toHaveBeenCalled();
+		});
+
+		it('should probe the persisted test URL with parsed accepted status codes', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			const data: ICredentialDataDecryptedObject = {
+				testUrl: 'https://api.example.com/me',
+				acceptedStatusCodes: '[401]',
+			};
+			mockDecryptedData(data);
+			const verdict = { status: 'OK' as const, message: 'Connection successful!' };
+			credentialsTester.probeCredentialAuth.mockResolvedValue(verdict);
+
+			await expect(service.probeById(ownerUser, 'cred-id')).resolves.toEqual(verdict);
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				ownerUser.id,
+				'httpTemplatedCustomAuth',
+				{ id: 'cred-id', name: 'Templated cred', type: 'httpTemplatedCustomAuth', data },
+				'https://api.example.com/me',
+				{ acceptedStatusCodes: [401] },
+			);
+		});
+
+		it('should ignore malformed accepted status codes', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			mockDecryptedData({ testUrl: 'https://api.example.com/me', acceptedStatusCodes: 'nope' });
+			credentialsTester.probeCredentialAuth.mockResolvedValue({
+				status: 'OK',
+				message: 'Connection successful!',
+			});
+
+			await service.probeById(ownerUser, 'cred-id');
+			expect(credentialsTester.probeCredentialAuth).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				{ acceptedStatusCodes: undefined },
+			);
 		});
 	});
 

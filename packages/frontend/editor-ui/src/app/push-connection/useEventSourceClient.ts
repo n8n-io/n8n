@@ -22,7 +22,11 @@ export const useEventSourceClient = (options: UseEventSourceClientOptions) => {
 	const onConnectionLost = () => {
 		console.warn('[EventSourceClient] Connection lost');
 		isConnected.value = false;
-		reconnectTimer.scheduleReconnect();
+		// The browser retries transient failures itself (readyState stays CONNECTING);
+		// only a terminal failure needs our timer.
+		if (eventSource.value?.readyState === EventSource.CLOSED) {
+			reconnectTimer.scheduleReconnect();
+		}
 	};
 
 	const onMessage = (event: MessageEvent) => {
@@ -46,7 +50,8 @@ export const useEventSourceClient = (options: UseEventSourceClientOptions) => {
 		eventSource.value = new EventSource(options.url, { withCredentials: true });
 		eventSource.value.addEventListener('open', onConnected);
 		eventSource.value.addEventListener('message', onMessage);
-		eventSource.value.addEventListener('close', onConnectionLost);
+		// `EventSource` has no `close` event; a failure surfaces as `error`
+		eventSource.value.addEventListener('error', onConnectionLost);
 	};
 
 	const reconnectTimer = useReconnectTimer({

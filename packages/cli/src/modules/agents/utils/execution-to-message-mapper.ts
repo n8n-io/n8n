@@ -82,6 +82,7 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 		input: event.input,
 		...(event.startTime > 0 ? { startTime: event.startTime } : {}),
 		...(event.endTime > 0 ? { endTime: event.endTime } : {}),
+		...(event.childTrace ? { childTrace: event.childTrace } : {}),
 	};
 
 	if (state === undefined) return base;

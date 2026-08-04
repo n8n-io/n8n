@@ -64,8 +64,10 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	BuiltTool,
 	BuiltProviderTool,
 } from './sdk/tool';
@@ -182,6 +184,8 @@ export type {
 	AgentEventData,
 	AgentEventHandler,
 	AgentMiddleware,
+	ForwardedChildChunk,
+	SubAgentChunkPayload,
 } from './runtime/event';
 
 export type {

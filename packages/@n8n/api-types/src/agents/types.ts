@@ -190,6 +190,27 @@ export interface AgentCapabilitySummary {
 	tasks: AgentCapabilityTask[];
 }
 
+export interface PersistedChildTraceSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
+
+export interface PersistedChildTraceStep {
+	toolCallId: string;
+	toolName: string;
+	running: boolean;
+}
+
+/** A delegated child's trace, captured from forwarded chunks and persisted on
+ *  the parent's `delegate_subagent` tool call. */
+export interface PersistedChildTrace {
+	text: string;
+	reasoningSegments: PersistedChildTraceSegment[];
+	steps: PersistedChildTraceStep[];
+}
+
 export interface AgentPersistedMessageContentPart {
 	type: 'text' | 'reasoning' | 'tool-call' | 'file' | (string & {});
 	text?: string;
@@ -209,6 +230,8 @@ export interface AgentPersistedMessageContentPart {
 	fileName?: string;
 	mimeType?: string;
 	sizeBytes?: number;
+	/** Live trace of a delegated child, present only on `delegate_subagent` parts. */
+	childTrace?: PersistedChildTrace;
 }
 
 export interface AgentPersistedMessageDto {
@@ -250,6 +273,8 @@ export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
+	/** Client-visible suspend payload used to rebuild an interactive card after history reload. */
+	suspendPayload?: unknown;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */

@@ -306,6 +306,8 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			integration,
 			{
+				user: { id: 'user-1' },
+				modifiedBy: 'user',
 				broadcast: false,
 			},
 		);
@@ -313,7 +315,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
-			'channel_connect',
+			{ by: 'user', trigger: 'channel_connect' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -420,6 +422,8 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			integration,
 			{
+				user: { id: 'user-1' },
+				modifiedBy: 'user',
 				broadcast: false,
 			},
 		);
@@ -427,7 +431,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			'project-1',
 			{ id: 'user-1' },
-			'channel_connect',
+			{ by: 'user', trigger: 'channel_connect' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -630,7 +634,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			'slack',
 			'cred-slack',
-			{ broadcast: false },
+			{ user: { id: 'user-1' }, modifiedBy: 'user', broadcast: false },
 		);
 		expect(chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0]).toBeLessThan(
 			agentIntegrationPersistenceService.removeCredentialIntegration.mock.invocationCallOrder[0],
@@ -675,7 +679,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agent,
 			'slack',
 			'',
-			{ broadcast: false },
+			{ user: { id: 'user-1' }, modifiedBy: 'user', broadcast: false },
 		);
 	});
 

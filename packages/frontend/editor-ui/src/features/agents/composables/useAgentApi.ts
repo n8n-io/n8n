@@ -36,6 +36,7 @@ export type ListAgentsOptions = {
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
+		availableInMCP?: boolean;
 	};
 };
 
@@ -98,12 +99,15 @@ export const createAgent = async (
 	context: IRestApiContext,
 	projectId: string,
 	name: string,
+	/** Creates the agent under an already-minted id, so a surface that referenced
+	 *  it while unsaved keeps pointing at the same agent. */
+	options: { id?: string } = {},
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
-		{ name },
+		{ name, ...(options.id ? { id: options.id } : {}) },
 	);
 };
 

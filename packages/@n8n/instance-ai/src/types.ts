@@ -388,6 +388,13 @@ export interface InstanceAiExecutionService {
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 			/**
+			 * Marks the run as a build verification rather than a run the user asked
+			 * for. Verification uses a production execution mode so triggers behave
+			 * realistically, which would otherwise make a failed attempt dispatch the
+			 * workflow's error workflow as if production had broken.
+			 */
+			isVerificationRun?: boolean;
+			/**
 			 * Connections removed from this run's ephemeral workflow copy (the saved
 			 * workflow is untouched). Used to sever a loop edge so scripted wait-gate
 			 * verification passes are acyclic.
@@ -923,7 +930,9 @@ export interface BuilderOpenSuspension {
  * builder's questions survive a process restart.
  */
 export interface InstanceAiBuilderDelegate {
-	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
+	/** `id` creates the agent under an id the frontend already minted for its
+	 *  unsaved artifact, so the chat and the editor converge on one agent. */
+	createAgent(name: string, id?: string): Promise<{ agentId: string; projectId: string }>;
 	streamBuild(
 		agentId: string,
 		message: string,

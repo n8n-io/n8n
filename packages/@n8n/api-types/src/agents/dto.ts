@@ -26,6 +26,7 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
+		availableInMCP: z.boolean().optional(),
 	})
 	.strict();
 
@@ -66,8 +67,29 @@ export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),
 }) {}
 
+/**
+ * Target selector for bulk-toggling agents' MCP availability. Exactly one of
+ * `agentIds`, `projectId`, or `allAgents` must be provided (mirrors the
+ * workflows equivalent, `UpdateWorkflowsAvailabilityDto`).
+ */
+export class UpdateAgentsMcpAvailabilityDto extends Z.class({
+	availableInMCP: z.boolean(),
+	agentIds: z.array(z.string().min(1)).min(1).max(100).optional(),
+	projectId: z.string().min(1).optional(),
+	allAgents: z.literal(true).optional(),
+}) {}
+
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
+	/**
+	 * Client-minted agent id, so a surface can reference the agent (an artifact
+	 * tab, a thread binding) before it decides to persist it. Must match the
+	 * nanoid shape the entity would otherwise generate.
+	 */
+	id: z
+		.string()
+		.regex(/^[0-9A-Za-z]{16}$/)
+		.optional(),
 }) {}
 
 export class UpdateAgentConfigDto extends Z.class({

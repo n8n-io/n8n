@@ -4,7 +4,7 @@
  * Serializes workflows to n8n's standard JSON format.
  */
 
-import { deepCopy, normalizeNodeShape } from 'n8n-workflow';
+import { deepCopy, normalizeGroupDescription, normalizeNodeShape } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { foldLegacyErrorConnections } from '../../../types/base';
@@ -280,14 +280,20 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 		if (ctx.nodeGroups && ctx.nodeGroups.length > 0) {
 			const emittedIds = new Set(nodes.map((node) => node.id));
 
-			json.nodeGroups = ctx.nodeGroups.map((group) => ({
-				id:
+			json.nodeGroups = ctx.nodeGroups.map((group) => {
+				const description = normalizeGroupDescription(group.description);
+				const id =
 					group.id ??
 					ctx.existingGroupIdsByName?.get(group.name) ??
-					generateDeterministicGroupId(ctx.workflowId, group.name),
-				name: group.name,
-				nodeIds: group.memberIds.filter((id) => emittedIds.has(id)),
-			}));
+					generateDeterministicGroupId(ctx.workflowId, group.name);
+
+				return {
+					id,
+					name: group.name,
+					nodeIds: group.memberIds.filter((memberId) => emittedIds.has(memberId)),
+					...(description ? { description } : {}),
+				};
+			});
 		}
 
 		return json;

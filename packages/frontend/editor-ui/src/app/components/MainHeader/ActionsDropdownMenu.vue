@@ -2,7 +2,7 @@
 import { computed, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -32,7 +32,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';

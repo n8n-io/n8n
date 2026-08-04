@@ -6,6 +6,13 @@ import type { ChatMessageStatus, ToolCallState } from './constants';
 
 export type { ChatMessageStatus, ToolCallState };
 
+export interface ThinkingSegment {
+	id: string;
+	content: string;
+	startTime?: number;
+	endTime?: number;
+}
+
 export interface ToolCall {
 	tool: string;
 	toolCallId: string;
@@ -26,12 +33,19 @@ export interface ToolCall {
 	 */
 	displaySummary?: string;
 	/**
-	 * Raw suspend payload from `tool-call-suspended` for tools other than
-	 * `approval` (e.g. `{ type: 'integration_action', ... }`). The approval
-	 * tool instead overwrites `input` (its suspend payload IS the renderable
-	 * input).
+	 * Raw suspend payload from `tool-call-suspended`. Kept separate from the
+	 * model-authored tool input because delegated tools can surface a nested
+	 * approval for a child tool.
 	 */
 	suspendPayload?: unknown;
+	/** Live progress of a delegated child, streamed while the delegation runs
+	 *  and restored from history when a `childTrace` was persisted on the
+	 *  parent's execution timeline. */
+	childProgress?: {
+		text: string;
+		reasoningSegments: ThinkingSegment[];
+		steps: Array<{ toolCallId: string; toolName: string; running: boolean }>;
+	};
 }
 
 interface InteractivePayloadBase {
@@ -91,13 +105,6 @@ export interface ChatMessageAttachment {
 	fileId?: string;
 	/** Local file backing the optimistic echo of a just-sent message (no fileId yet). */
 	file?: File;
-}
-
-export interface ThinkingSegment {
-	id: string;
-	content: string;
-	startTime?: number;
-	endTime?: number;
 }
 
 export interface AgentsChatMessage {

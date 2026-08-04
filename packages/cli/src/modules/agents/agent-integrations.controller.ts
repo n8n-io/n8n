@@ -76,13 +76,15 @@ export class AgentIntegrationsController {
 		}
 
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
+			user: req.user,
+			modifiedBy: 'user',
 			broadcast: false,
 		});
 		const { agent: publishedAgent, draftValidation } = await this.agentPublishService.publishAgent(
 			agentId,
 			agent.projectId,
 			req.user,
-			'channel_connect',
+			{ by: 'user', trigger: 'channel_connect' },
 			undefined,
 			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
@@ -201,7 +203,7 @@ export class AgentIntegrationsController {
 			agent,
 			type,
 			credentialId,
-			{ broadcast: false },
+			{ user: req.user, modifiedBy: 'user', broadcast: false },
 		);
 
 		return { status: 'disconnected' };
