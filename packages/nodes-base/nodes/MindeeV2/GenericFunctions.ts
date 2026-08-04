@@ -43,9 +43,9 @@ export async function mindeeApiRequest(
 	url: string,
 	body: IDataObject | FormData = {},
 	qs: IDataObject = {},
-	headers = {} as IDataObject,
-	option = {},
-): Promise<any> {
+	headers: IDataObject = {},
+	option: Partial<IHttpRequestOptions> = {},
+): Promise<IDataObject> {
 	const options: IHttpRequestOptions = {
 		headers,
 		method,
@@ -54,11 +54,7 @@ export async function mindeeApiRequest(
 		qs,
 	};
 	try {
-		options.qs = qs;
-		options.body = body;
-		if (Object.keys(option).length !== 0) {
-			Object.assign(options, option);
-		}
+		Object.assign(options, option);
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'mindeeV2Api', {
 			...options,
 		});

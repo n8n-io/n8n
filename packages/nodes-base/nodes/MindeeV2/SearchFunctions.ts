@@ -15,6 +15,7 @@ export async function getModels(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	const modelFilter = this.getCurrentNodeParameter('operation', { extractValue: true });
 	const page = paginationToken ? +paginationToken : 1;
 	const res = await mindeeApiRequest.call(
 		this,
@@ -23,6 +24,7 @@ export async function getModels(
 		{},
 		{
 			name: filter,
+			model_type: modelFilter,
 			page,
 			per_page: PER_PAGE,
 		},

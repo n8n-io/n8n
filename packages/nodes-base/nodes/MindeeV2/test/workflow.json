@@ -11,7 +11,171 @@
 		},
 		{
 			"parameters": {
-				"operation": "fileEnqueueAndPoll",
+				"operation": "extraction",
+				"modelId": {
+					"__rl": true,
+					"value": "87654321-4321-4321-4321-CBA987654321",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mindeeV2",
+			"typeVersion": 1,
+			"position": [176, -80],
+			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
+			"name": "Upload a document and get the result",
+			"credentials": {
+				"mindeeV2Api": {
+					"id": "testIdMindeeAPI",
+					"name": "Mindee V2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://example.com/invoice.pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [-96, -80],
+			"id": "bce47f07-632b-431a-b0b7-b0bc5bb09325",
+			"name": "HTTP Request"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-304, -80],
+			"id": "4a06b4dc-9dcc-44ec-93b5-b14349a406b8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "classification",
+				"modelId": {
+					"__rl": true,
+					"value": "87654321-4321-4321-4321-CBA987654321",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mindeeV2",
+			"typeVersion": 1,
+			"position": [176, -80],
+			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
+			"name": "Upload a document and get the result",
+			"credentials": {
+				"mindeeV2Api": {
+					"id": "testIdMindeeAPI",
+					"name": "Mindee V2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://example.com/invoice.pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [-96, -80],
+			"id": "bce47f07-632b-431a-b0b7-b0bc5bb09325",
+			"name": "HTTP Request"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-304, -80],
+			"id": "4a06b4dc-9dcc-44ec-93b5-b14349a406b8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "crop",
+				"modelId": {
+					"__rl": true,
+					"value": "87654321-4321-4321-4321-CBA987654321",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mindeeV2",
+			"typeVersion": 1,
+			"position": [176, -80],
+			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
+			"name": "Upload a document and get the result",
+			"credentials": {
+				"mindeeV2Api": {
+					"id": "testIdMindeeAPI",
+					"name": "Mindee V2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://example.com/invoice.pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [-96, -80],
+			"id": "bce47f07-632b-431a-b0b7-b0bc5bb09325",
+			"name": "HTTP Request"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-304, -80],
+			"id": "4a06b4dc-9dcc-44ec-93b5-b14349a406b8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "ocr",
+				"modelId": {
+					"__rl": true,
+					"value": "87654321-4321-4321-4321-CBA987654321",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mindeeV2",
+			"typeVersion": 1,
+			"position": [176, -80],
+			"id": "117a1394-59f6-458f-aea0-e0ebf73bcbec",
+			"name": "Upload a document and get the result",
+			"credentials": {
+				"mindeeV2Api": {
+					"id": "testIdMindeeAPI",
+					"name": "Mindee V2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"url": "https://example.com/invoice.pdf",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [-96, -80],
+			"id": "bce47f07-632b-431a-b0b7-b0bc5bb09325",
+			"name": "HTTP Request"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-304, -80],
+			"id": "4a06b4dc-9dcc-44ec-93b5-b14349a406b8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "split",
 				"modelId": {
 					"__rl": true,
 					"value": "87654321-4321-4321-4321-CBA987654321",

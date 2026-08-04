@@ -26,7 +26,10 @@ export class MindeeV2Api implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		requestOptions.headers!.Authorization = `${credentials.apiKey}`;
+		requestOptions.headers = {
+			...(requestOptions.headers ?? {}),
+			Authorization: `${credentials.apiKey}`,
+		};
 		return requestOptions;
 	}
 }
