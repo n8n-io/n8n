@@ -113,8 +113,15 @@ Rules:
 ${renderRulesLines()}
 `;
 
-/** Full reference, materialized into the knowledge base for on-demand reading. */
-export const SDK_LANGUAGE_REFERENCE = `# Workflow SDK language reference
+/**
+ * Render the full language reference. The node-groups section is included by
+ * default (Instance AI's knowledge base); the MCP SDK reference passes its
+ * `canvasGroupsEnabled` flag state as `includeGroups`.
+ */
+export function buildSdkLanguageReference(options: { includeGroups?: boolean } = {}): string {
+	const { includeGroups = true } = options;
+
+	return `# Workflow SDK language reference
 
 SDK builder code is a **restricted subset of TypeScript**, not a Code node and
 not arbitrary JavaScript. It is parsed by an AST interpreter that builds a static
@@ -127,9 +134,7 @@ ${renderMethodLines()}
 
 ${SAFE_METHODS_SENTENCE}
 
-${NODE_GROUPS_REFERENCE}
-
-## Forbidden constructs
+${includeGroups ? `${NODE_GROUPS_REFERENCE}\n\n` : ''}## Forbidden constructs
 
 ${renderForbiddenLines()}
 
@@ -153,3 +158,11 @@ regex), do it in one of these:
 - Use an **n8n expression** via \`expr('{{ ... }}')\` for per-item values.
 - Use a **Code node** for multi-step aggregation or transformation.
 `;
+}
+
+/**
+ * Full reference including groups docs. Materialized into Instance AI's
+ * knowledge base for on-demand reading; the MCP SDK reference embeds the
+ * groups-gated variant via `buildSdkLanguageReference` instead.
+ */
+export const SDK_LANGUAGE_REFERENCE = buildSdkLanguageReference();
