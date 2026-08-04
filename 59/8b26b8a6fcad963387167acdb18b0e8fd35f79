@@ -1,0 +1,31 @@
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  h_5d40c27a8fdfd1 122
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_e6454ae550915c::t_304aa8e2d8d26a 123,133-137
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  h_5d40c27a8fdfd1 20,27,219
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  h_5d40c27a8fdfd1 41,47,62
+  s_e6454ae550915c::t_ceabcd1fedc3e2 43,46,49-52,54,70-72,84,96-98,106-107,117-118,128-129,139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "598b26b8a6fcad963387167acdb18b0e8fd35f79",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

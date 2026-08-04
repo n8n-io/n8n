@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_328da3b84f84b7::t_e2f89d67c9971a 782
+  s_328da3b84f84b7::t_d6f036f43608b4 234-235
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.test.ts
+  s_328da3b84f84b7::t_c34949154a096e 228,230-235,237-243,245-253
+  s_328da3b84f84b7::t_ce5e8c765256b4 236,244
+  s_328da3b84f84b7::t_7d055b5e5f2d9a 63-64
+  s_328da3b84f84b7::t_1ba14b6d462b44 139,150-154
+  s_328da3b84f84b7::t_ec2f41d46a6113 39
+  s_328da3b84f84b7::t_8477e3d93e02a5 155
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_328da3b84f84b7::t_45c3580b0f6cf9 1252-1256,1263,1265-1283
+  s_328da3b84f84b7::t_33b80ff4bda6e4 1251
+  s_328da3b84f84b7::t_7c4e9c3a922129 1262
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_328da3b84f84b7::t_2d571f24a4d018 4557
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_328da3b84f84b7::t_f3c7114fd1508c 3
+  s_328da3b84f84b7::t_fe0750034fc003 58-69,72-74,76-78,80-114,116
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_328da3b84f84b7::t_795d2299bd70e1 515-517,521-522,524
+  s_328da3b84f84b7::t_ae4f64a4cf0b53 492,538
+  s_328da3b84f84b7::t_e46b538be07161 544-599
+  s_328da3b84f84b7::t_9947f7197079b8 19,420-421,432
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_328da3b84f84b7::t_8dfde8484367cd 28
+  s_328da3b84f84b7::t_0999d80bcc1a68 112,116,118-122,125,132-137,146-166,168-169,174,177,179-200,202-203,208-213
+packages/@n8n/db/src/repositories/index.ts
+  s_328da3b84f84b7::t_3370d7f38f72a7 82
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_328da3b84f84b7::t_3ce3d985d23ec9 35
+  s_328da3b84f84b7::t_32b72963d029b0 106
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewStatusBanner.vue
+  s_328da3b84f84b7::t_71d4bbcc1a8b05 148-157,160
+  s_328da3b84f84b7::t_d3337ce14e7816 119-120
+  s_328da3b84f84b7::t_286637f5b15777 204,206,214,216-218,220-228,230
+  s_328da3b84f84b7::t_41101eab7eb920 32,34-35
+  s_328da3b84f84b7::t_d0fb4a540d0992 161
+  s_328da3b84f84b7::t_511149b507cb48 22
+  s_328da3b84f84b7::t_ad7566b70640a5 3
+  s_328da3b84f84b7::t_0f448372d248eb 33
+  s_328da3b84f84b7::t_5d57d34eb524ef 162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "74e8fce196b2ccd4da5bdf65419620f69c019537",
+  "prompts": {},
+  "sessions": {
+    "s_328da3b84f84b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c61b28d7-5fa8-45e2-b039-2fafd20c8615",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+packages/frontend/editor-ui/src/Interface.ts
+  s_704a1a6a42be24::t_f65cd6ff13cc7f 690
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_704a1a6a42be24::t_0b77921d5c6b15 79-84
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_704a1a6a42be24::t_a99bf482ab083f 366-368,372-374,382
+  s_704a1a6a42be24::t_a72799bacccbe3 35
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_704a1a6a42be24::t_b42723e838ae32 97
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_704a1a6a42be24::t_85f11b8e462df2 965-968
+  s_704a1a6a42be24::t_fd551a06a268dd 317-320
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_704a1a6a42be24::t_347a68d862d3e9 765
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_704a1a6a42be24::t_347a68d862d3e9 1124,1129-1132,1145-1146,1151
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_704a1a6a42be24::t_9149d6acb50df7 393-409
+  s_704a1a6a42be24::t_f992dea17eeace 186-189
+  s_704a1a6a42be24::t_d6f5328d64bcca 392
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_704a1a6a42be24::t_10bac7c5bf633f 479
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_704a1a6a42be24::t_f56e3174f778a9 138-149
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_704a1a6a42be24::t_9ca8f05187676a 130
+  s_704a1a6a42be24::t_b5784712f40992 94-98
+  s_704a1a6a42be24::t_cbddf5520b718b 80-81
+packages/frontend/editor-ui/src/app/composables/useInstanceAiEditorCapability.ts
+  s_704a1a6a42be24::t_9e6782f6492cd6 26-29
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_704a1a6a42be24::t_347a68d862d3e9 86,103,206
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_704a1a6a42be24::t_34b4c5519b1544 277
+  s_704a1a6a42be24::t_3565f60cca2201 264-266
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_704a1a6a42be24::t_4a646b34a27888 1096-1098
+packages/@n8n/instance-ai/skills/credential-recipe-research/SKILL.md
+  s_704a1a6a42be24::t_689d642b55619a 34-60
+  s_704a1a6a42be24::t_aba717b5eb9c9b 84
+  s_704a1a6a42be24::t_eebdba0283a819 5-9
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_704a1a6a42be24::t_0799f03f9d46e5 324,328-329
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_704a1a6a42be24::t_599c1ce6970098 71-77
+  s_5159244c8229c4::t_430f8655236321 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e43e1c71f5aa3dc95d8a8b1876cb7127c7375aaf",
+  "prompts": {},
+  "sessions": {
+    "s_5159244c8229c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "837c8037-401a-46c7-a0ab-c25c84986ad2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

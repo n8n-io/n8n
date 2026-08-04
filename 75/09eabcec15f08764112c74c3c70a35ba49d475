@@ -1,0 +1,33 @@
+packages/cli/src/modules/n8n-packages/entities/folder/folder-conflict-policy.ts
+  s_ce38e707b3774d::t_677d8d91eb70b2 25
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_ce38e707b3774d::t_677d8d91eb70b2 10,46,151
+  s_ce38e707b3774d::t_ea4d57aaf5cdf6 9,11,18,24,48,50,53,61,67,70,77,79,83,91,96,99,106,108-112,119,124-128,138,140-144,146,152,155-156,162,164,174,176,187,190,196,199,203,205-209
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_ce38e707b3774d::t_677d8d91eb70b2 8,274
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-conflict-policy.test.ts
+  s_ce38e707b3774d::t_677d8d91eb70b2 1,17,19-21
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ce38e707b3774d::t_d1c12a9b0b8240 43-44,57,166,168-172,269
+  s_ce38e707b3774d::t_677d8d91eb70b2 23,99,116,160-162,188,201,293,304,321
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_ce38e707b3774d::t_a1e9dcb9056a31 9-14,17-20,23,31-38,42,44-45,47,53-59,64,69-70,73-76,82,90-95,97-100,111-125,131-132,134-142
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_ce38e707b3774d::t_7a7747a7bd8c23 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7509eabcec15f08764112c74c3c70a35ba49d475",
+  "prompts": {},
+  "sessions": {
+    "s_ce38e707b3774d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f3d3be-4e23-4ead-99eb-53993886261e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/cli/src/scaling/scaling.service.ts
+  ai_agent 10-11,34,52,357-358,361,501
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  ai_agent 18,91,127,396,434,467,503,653-654,656-683,685,687-690,692-697,703-705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b40e2eb2e5b7fe6722e9ed2d0052a4b200d21061",
+  "prompts": {}
+}

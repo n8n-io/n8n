@@ -1,0 +1,63 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_66be2eb681ad3c::t_40d687139f1ec8 14,17
+  s_66be2eb681ad3c::t_e8e63f499193bb 69-70
+  s_66be2eb681ad3c::t_5050c1712db642 125-126
+  s_66be2eb681ad3c::t_938b55e3341454 349-385
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 98-99,101-105,107-109,145-146
+  s_66be2eb681ad3c::t_2328eb86702348 100
+  s_46457fdbb606db::t_33452e47d13bee 106
+packages/@n8n/cli/docs/commands/package.md
+  s_81f9da72a79c26::t_868ff9cf14ffca 20
+  s_81f9da72a79c26::t_825726dffdd788 30
+  ai_agent 71-72,79
+  s_66be2eb681ad3c::t_2328eb86702348 80-81
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_66be2eb681ad3c::t_4a07ceeb3d511a 7-9,18-29,33,39-41,44-46,48,50-56,60,77,109-129,136-142,62-63,73,75,86,99-100
+  s_66be2eb681ad3c::t_8815ce3530ece3 76,130-135,59,85
+  s_66be2eb681ad3c::t_d09aa2dfc5d51c 1-6,10-17
+  s_66be2eb681ad3c::t_513d7982f6399f 30-32,34
+  s_66be2eb681ad3c::t_55b3b94fd748b1 35-38
+  s_66be2eb681ad3c::t_de5fad5f9455f1 42-43,47,49,57-58,61,64-72,74,78-84,87-98,101-108
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_66be2eb681ad3c::t_73aace70922557 239-248,251-269,271-272
+  s_66be2eb681ad3c::t_c061b5814e25f3 288
+  s_66be2eb681ad3c::t_dc360211046e4b 512-551
+  s_66be2eb681ad3c::t_a42e272181b935 576-578
+  ai_agent 14-15
+  s_66be2eb681ad3c::t_6eb23e1e1d4054 249-250
+  s_66be2eb681ad3c::t_3d4659c9fac8f3 270
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_81f9da72a79c26::t_8832729411fb62 1,12,20-21,26
+  s_81f9da72a79c26::t_0131cd5a54461f 2-6,9-11,13-15,17-19,22-25,27-65,69,71,73,83,86,93,98,100-111,113-125,127-130,132-133,136-147,149-167,169-189,191-214,216-226
+  s_81f9da72a79c26::t_f4a82771c0f03a 7-8
+  s_66be2eb681ad3c::t_00a3ea8645f02b 16
+  s_81f9da72a79c26::t_4511112127a1ed 66,68,70,75-82,84-85,87-92,94-97,99
+  s_81f9da72a79c26::t_0d2424a300342b 72,112,131,148,168,190,215
+  s_66be2eb681ad3c::t_7ab258e004da89 126,135
+  s_66be2eb681ad3c::t_d394ed516dd861 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c32f345746b434900007da7186b5db1ece9881a",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
