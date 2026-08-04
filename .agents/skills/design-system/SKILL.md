@@ -34,8 +34,6 @@ High-churn reminders (agents often skip these when they only live in AGENTS.md):
 - **i18n** — Every user-facing string — including `aria-label`, titles, and
   placeholders — must go through i18n / locale files. For copy wording, follow
   [n8n:content-design](../content-design/SKILL.md).
-- **`data-test-id`** — Put a single-value `data-test-id` on interactive and other
-  key nodes (no spaces or multiple values).
 
 ### General
 
@@ -128,7 +126,6 @@ High-churn reminders (agents often skip these when they only live in AGENTS.md):
       (`defaultValue`); Storybook has a Controlled/Uncontrolled story
 - [ ] Size default is `'default'`; state modifiers use SMACSS `is*` names
 - [ ] No `as` / `!`; `computed` only when justified
-- [ ] `data-test-id` on interactive/key nodes; user-facing strings internationalised
 - [ ] Semantic CSS tokens; no `:global` in DS components; no redundant base CSS;
       shared focus styles
 - [ ] No transitions/animations in design-system components; product UI uses
