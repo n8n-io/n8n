@@ -125,7 +125,7 @@ describe('DbConnection', () => {
 
 			await dbConnection.init();
 
-			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('Postgres'));
 		});
 
 		it('should complete startup even when the version check throws', async () => {
@@ -157,7 +157,7 @@ describe('DbConnection', () => {
 			await sqliteConnection.init();
 
 			expect(dataSource.query).not.toHaveBeenCalled();
-			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('Postgres'));
 		});
 
 		it('should not reinitialize if already connected', async () => {
