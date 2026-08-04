@@ -90,7 +90,7 @@ export function useAgentBuilderMainTabs({
 		...(isEvalsEnabled.value
 			? [
 					{
-						label: i18n.baseText('agents.builder.header.tab.evals'),
+						label: i18n.baseText('agents.builder.header.tab.agentEvals'),
 						value: 'evals' as const,
 					},
 				]

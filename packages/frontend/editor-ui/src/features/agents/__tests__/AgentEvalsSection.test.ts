@@ -23,8 +23,8 @@ describe('AgentEvalsSection', () => {
 		expect(getByTestId('agent-evals-empty-state')).toBeInTheDocument();
 		// Asserting on the mocked key prefix verifies the keys we intended rather
 		// than arbitrary copy.
-		expect(getByText('mocked-agents.builder.evals.empty.title')).toBeInTheDocument();
-		expect(getByText('mocked-agents.builder.evals.empty.description')).toBeInTheDocument();
+		expect(getByText('mocked-agents.builder.agentEvals.empty.title')).toBeInTheDocument();
+		expect(getByText('mocked-agents.builder.agentEvals.empty.description')).toBeInTheDocument();
 	});
 
 	it('emits generate when the CTA is clicked', async () => {

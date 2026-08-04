@@ -28,10 +28,10 @@ const i18n = useI18n();
 				<N8nIcon icon="sparkles" size="xlarge" />
 			</div>
 			<N8nText tag="h3" size="large" color="text-dark" bold :class="$style.title">
-				{{ i18n.baseText('agents.builder.evals.empty.title') }}
+				{{ i18n.baseText('agents.builder.agentEvals.empty.title') }}
 			</N8nText>
 			<N8nText size="medium" color="text-base" :class="$style.description">
-				{{ i18n.baseText('agents.builder.evals.empty.description') }}
+				{{ i18n.baseText('agents.builder.agentEvals.empty.description') }}
 			</N8nText>
 			<N8nButton
 				variant="solid"
@@ -42,7 +42,7 @@ const i18n = useI18n();
 				data-testid="agent-evals-generate-button"
 				@click="emit('generate')"
 			>
-				{{ i18n.baseText('agents.builder.evals.empty.generate') }}
+				{{ i18n.baseText('agents.builder.agentEvals.empty.generate') }}
 			</N8nButton>
 		</div>
 	</div>
