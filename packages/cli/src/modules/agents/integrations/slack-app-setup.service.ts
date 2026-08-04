@@ -21,7 +21,6 @@ import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import { AgentPublishService } from '../agent-publish.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationService } from './chat-integration.service';
@@ -135,7 +134,6 @@ export class SlackAppSetupService {
 		private readonly userRepository: UserRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly agentPublishService: AgentPublishService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
@@ -257,22 +255,17 @@ export class SlackAppSetupService {
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
 
-		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
-			user,
-			modifiedBy: 'user',
-			broadcast: false,
-		});
-		await this.agentPublishService.publishAgent(
-			session.agentId,
-			session.projectId,
-			user,
-			{ by: 'user', trigger: 'slack_setup' },
-			undefined,
+		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+			agent,
+			integration,
 			{
-				syncIntegrations: false,
-				ignoreDraftIntegrations: true,
+				user,
+				modifiedBy: 'user',
+				broadcast: false,
 			},
 		);
+		if (savedAgent.activeVersionId === null) return;
+
 		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,

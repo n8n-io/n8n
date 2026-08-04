@@ -279,7 +279,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
-			mock<AgentModificationTelemetryService>(),
+			modificationTelemetry,
+			credentialsService,
+			mock<AgentSetupCompletionService>(),
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,

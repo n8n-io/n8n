@@ -1,5 +1,5 @@
 import { type Ref } from 'vue';
-import { type AgentIntegrationStatusEntry } from '@n8n/api-types';
+import { isDraftIntegration, type AgentIntegrationStatusEntry } from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -33,9 +33,9 @@ interface EditSnapshot {
 function integrationStatusEntriesFromConfig(
 	config: AgentJsonConfig | null,
 	knownTriggerTypes: readonly string[],
-): AgentIntegrationStatusEntry[] {
+): Array<AgentIntegrationStatusEntry & { credentialId: string }> {
 	const knownTypes = new Set(knownTriggerTypes);
-	const entries: AgentIntegrationStatusEntry[] = [];
+	const entries: Array<AgentIntegrationStatusEntry & { credentialId: string }> = [];
 
 	for (const integration of config?.integrations ?? []) {
 		if (!knownTypes.has(integration.type)) continue;
@@ -93,7 +93,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	}
 
 	/**
-	 * Eagerly derive connected trigger types so telemetry fingerprints are
+	 * Eagerly derive configured trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
 	 * settings sidebar. Integrations are already part of the fetched agent
 	 * config, so this does not need a separate integration-status request.
@@ -105,13 +105,18 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			deps.localConfig.value,
 			knownTriggerTypes,
 		);
+		const configured = integrations.map((integration) => integration.type).sort();
+		const configuredIntegrations = integrations.filter(
+			(integration) => !isDraftIntegration(integration),
+		);
 		syncAgentIntegrationStatusCache(
 			deps.projectId.value,
 			deps.agentId.value,
 			knownTriggerTypes,
-			integrations,
+			configuredIntegrations,
+			deps.agent.value?.activeVersionId ? 'connected' : 'configured',
 		);
-		return integrations.map((integration) => integration.type).sort();
+		return configured;
 	}
 
 	function trackOpenedToolFromList(toolType: string) {

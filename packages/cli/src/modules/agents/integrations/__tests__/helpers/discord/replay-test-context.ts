@@ -247,6 +247,7 @@ export async function createDiscordReplayContext(
 			publicKey: DISCORD_PUBLIC_KEY,
 			applicationId: DISCORD_APPLICATION_ID,
 		},
+		ingressEnabled: true,
 		webhookUrlFor: () => 'https://n8n.example.com/webhook',
 	});
 	await integrationImpl.onConnected({
@@ -258,6 +259,7 @@ export async function createDiscordReplayContext(
 			publicKey: DISCORD_PUBLIC_KEY,
 			applicationId: DISCORD_APPLICATION_ID,
 		},
+		ingressEnabled: true,
 		webhookUrlFor: () => 'https://n8n.example.com/webhook',
 	});
 

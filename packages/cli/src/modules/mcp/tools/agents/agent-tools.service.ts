@@ -72,7 +72,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 
 const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
-	'Integrations are a published runtime surface, not editable config. Use update_agent_integration to connect or disconnect Slack, Telegram, or Linear.';
+	"Integrations can't be changed through config.replace or config.patch. Use update_agent_integration to configure or disconnect Slack, Telegram, or Linear. Configuration never publishes the Agent; an unpublished Agent's channel stays inactive until publish_agent is called.";
 
 /** LLM-facing follow-up guidance for the MCP builder surface. */
 const MCP_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -902,7 +902,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					'Connect or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch cannot touch them. Connecting publishes the current Agent draft, so only connect after explicit user confirmation.',
+					"Configure or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called.",
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
@@ -964,8 +964,8 @@ export class McpAgentToolsService {
 
 		// The hash covers the full persisted config (integrations included) so it
 		// stays consistent with mutate_agent and update_agent_integration, but the
-		// config exposed to the client omits integrations: they are a read-only
-		// runtime surface reported separately, not part of the editable config.
+		// config exposed to the client omits integrations: they are managed
+		// separately and reported in a read-only field.
 		const { integrations: _integrations, ...editableConfig } = config;
 
 		return {
@@ -1005,8 +1005,8 @@ export class McpAgentToolsService {
 			versionId,
 		);
 		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
-		// Integrations are a read-only runtime surface, omitted from the config
-		// here for the same reason as in getAgentSnapshot.
+		// Integrations are managed separately and are not versioned, so omit any
+		// legacy snapshot field here for the same reason as in getAgentSnapshot.
 		const { integrations: _integrations, ...editableConfig } = version.schema;
 
 		return {
@@ -1424,11 +1424,6 @@ export class McpAgentToolsService {
 		const agent = await this.resolveAgent(user, input.agentId);
 		const projectId = agent.projectId;
 		await this.assertScope(user, projectId, 'agent:update');
-		if (input.action === 'connect') {
-			// Connecting publishes the current draft, so it needs the publish
-			// scope on top of update (mirrors the builder's connect flow).
-			await this.assertScope(user, projectId, 'agent:publish');
-		}
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(user, input, agent)
 			: await this.connectIntegration(user, input, agent, projectId);
@@ -1504,14 +1499,17 @@ export class McpAgentToolsService {
 			parsed.data,
 			{ user, modifiedBy: 'mcp', broadcast: false },
 		);
-		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
-			input.agentId,
-			projectId,
-			user,
-			{ by: 'mcp', trigger: 'channel_connect' },
-			undefined,
-			{ syncIntegrations: false, ignoreDraftIntegrations: true },
-		);
+		const result = {
+			ok: true,
+			agentId: input.agentId,
+			integration: { type: input.type, credentialId: input.credentialId },
+			configured: true,
+			published: saved.activeVersionId !== null,
+			activeVersionId: saved.activeVersionId,
+			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+		};
+		if (saved.activeVersionId === null) return { ...result, connected: false };
+
 		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			input.agentId,
@@ -1519,15 +1517,8 @@ export class McpAgentToolsService {
 			'connect',
 		);
 		return {
-			ok: true,
-			agentId: input.agentId,
-			integration: { type: input.type, credentialId: input.credentialId },
+			...result,
 			connected: true,
-			published: true,
-			activeVersionId: publishedAgent.activeVersionId,
-			// Publishing with syncIntegrations:false touches neither schema nor
-			// integrations, so the entity saved above still hashes correctly.
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 	}
 

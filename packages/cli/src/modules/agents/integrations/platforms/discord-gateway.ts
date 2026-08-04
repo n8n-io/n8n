@@ -38,6 +38,11 @@ export interface DiscordConnection {
 	 * receive a descriptor, not the credential.
 	 */
 	botToken: string;
+	/**
+	 * Outbound preview connections keep the bot token registered but must not
+	 * open a Gateway listener.
+	 */
+	ingressEnabled: boolean;
 }
 
 interface DiscordGatewaySession extends DiscordConnection {
@@ -167,7 +172,7 @@ export class DiscordGateway {
 	 */
 	private start(key: string): void {
 		const session = this.sessions.get(key);
-		if (!session) return;
+		if (!session?.ingressEnabled) return;
 
 		// Recorded before the guard below: a takeover landing while a drain is
 		// still in flight is turned away, so it has to leave the intent behind for

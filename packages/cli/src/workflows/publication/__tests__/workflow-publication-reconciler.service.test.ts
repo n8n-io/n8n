@@ -19,6 +19,7 @@ import type {
 import type { EventService } from '@/events/event.service';
 import type { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
+import type { PublishedWorkflowTriggerDeactivator } from '../published-workflow-trigger-deactivator';
 import type { WorkflowPublicationLifecycleLock } from '../workflow-publication-lifecycle-lock';
 import type { WorkflowPublicationOutboxConsumer } from '../workflow-publication-outbox-consumer';
 import { WorkflowPublicationReconciler } from '../workflow-publication-reconciler.service';
@@ -39,6 +40,7 @@ const eventService = mock<EventService>();
 const lifecycleLock = mock<WorkflowPublicationLifecycleLock>();
 const workflowRepository = mock<WorkflowRepository>();
 const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+const triggerDeactivator = mock<PublishedWorkflowTriggerDeactivator>();
 
 let service: WorkflowPublicationReconciler;
 
@@ -71,6 +73,7 @@ beforeEach(() => {
 	workflowRepository.getActiveIds.mockResolvedValue([]);
 	workflowRepository.findOneBy.mockResolvedValue(null);
 	lifecycleLock.runExclusive.mockImplementation(async (_workflowId, fn) => await fn());
+	triggerDeactivator.sweepGhostTriggers.mockResolvedValue(0);
 	service = new WorkflowPublicationReconciler(
 		logger,
 		config,
@@ -85,6 +88,7 @@ beforeEach(() => {
 		lifecycleLock,
 		workflowRepository,
 		activeWorkflowTriggers,
+		triggerDeactivator,
 	);
 });
 
@@ -109,32 +113,89 @@ describe('WorkflowPublicationReconciler', () => {
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not start when the instance is not leader', () => {
+		it('schedules the loop on a follower too, ticking the ghost sweep instead of the detections', async () => {
 			Object.assign(instanceSettings, { isLeader: false });
 
 			service.init();
-			vi.advanceTimersByTime(10_000);
+			await vi.advanceTimersByTimeAsync(5_000);
 
+			expect(triggerDeactivator.sweepGhostTriggers).toHaveBeenCalled();
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('startReconciler', () => {
-		it('does not start when the publication service is disabled', () => {
+	describe('loop lifecycle', () => {
+		it('does not start when the publication service is disabled', async () => {
 			Object.assign(config, { useWorkflowPublicationService: false });
+			Object.assign(instanceSettings, { isLeader: false });
 
-			service.startReconciler();
-			vi.advanceTimersByTime(10_000);
+			service.init();
+			await vi.advanceTimersByTimeAsync(10_000);
 
+			expect(triggerDeactivator.sweepGhostTriggers).not.toHaveBeenCalled();
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
 		});
 
-		it('does not start if shutting down', () => {
+		it('does not start after shutdown', async () => {
 			service.shutdown();
-			service.startReconciler();
-			vi.advanceTimersByTime(10_000);
+			service.init();
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			expect(triggerDeactivator.sweepGhostTriggers).not.toHaveBeenCalled();
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
+		});
+
+		it('keeps ticking across a stepdown, flipping to the follower checks', async () => {
+			service.init();
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
+
+			Object.assign(instanceSettings, { isLeader: false });
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(triggerDeactivator.sweepGhostTriggers).toHaveBeenCalled();
+		});
+
+		it('needs no takeover kick: the next tick after promotion runs the leader detections', async () => {
+			Object.assign(instanceSettings, { isLeader: false });
+			service.init();
+
+			Object.assign(instanceSettings, { isLeader: true });
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
+		});
+
+		it('stops only at shutdown', async () => {
+			service.init();
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			service.shutdown();
+			triggerStatusRepository.findActivatedInMemoryTriggers.mockClear();
+			await vi.advanceTimersByTimeAsync(20_000);
 
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
+			expect(triggerDeactivator.sweepGhostTriggers).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('leader takeover', () => {
+		it('kicks an immediate pass without waiting for the interval', async () => {
+			service.startReconciler();
+
+			await service.reconcileOnLeaderTakeover();
+
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalledTimes(1);
+		});
+
+		it('does nothing while the loop is not running', async () => {
+			// The loop only runs when the publication service is enabled and the
+			// instance is not shutting down; the takeover kick must not open a
+			// side door around those gates.
+			await service.reconcileOnLeaderTakeover();
+
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
+			expect(triggerDeactivator.sweepGhostTriggers).not.toHaveBeenCalled();
 		});
 	});
 
@@ -233,12 +294,28 @@ describe('WorkflowPublicationReconciler', () => {
 			);
 		});
 
-		it('does not run when the instance is no longer leader', async () => {
+		it('runs the ghost sweep and none of the leader detections when not leader', async () => {
 			Object.assign(instanceSettings, { isLeader: false });
 
 			await service.reconcile();
 
+			expect(triggerDeactivator.sweepGhostTriggers).toHaveBeenCalledTimes(1);
 			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
+			expect(outboxRepository.findVersionSkewedWorkflowIds).not.toHaveBeenCalled();
+			expect(outboxRepository.findTriggerStatusDriftedWorkflowIds).not.toHaveBeenCalled();
+			expect(outboxRepository.findUnreportedPublishedWorkflowIds).not.toHaveBeenCalled();
+			expect(outboxRepository.enqueueByWorkflowIds).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'workflow-publication-reconciliation',
+				expect.anything(),
+			);
+		});
+
+		it('does not run the ghost sweep on the leader', async () => {
+			await service.reconcile();
+
+			expect(triggerDeactivator.sweepGhostTriggers).not.toHaveBeenCalled();
+			expect(triggerStatusRepository.findActivatedInMemoryTriggers).toHaveBeenCalled();
 		});
 	});
 
@@ -326,17 +403,6 @@ describe('WorkflowPublicationReconciler', () => {
 			await service.reconcile();
 
 			expect(activeWorkflowTriggers.remove).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('stopReconciler', () => {
-		it('stops the interval on leader stepdown', () => {
-			service.startReconciler();
-			service.stopReconciler();
-
-			vi.advanceTimersByTime(10_000);
-
-			expect(triggerStatusRepository.findActivatedInMemoryTriggers).not.toHaveBeenCalled();
 		});
 	});
 });

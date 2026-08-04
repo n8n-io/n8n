@@ -92,6 +92,7 @@ function connectionContext(
 			applicationId: '900000000000000001',
 			...credentialOverride,
 		},
+		ingressEnabled: true,
 		webhookUrlFor: () => 'https://n8n.example.com/webhook',
 		...rest,
 	};
@@ -323,5 +324,38 @@ describe('DiscordIntegration Gateway lifecycle', () => {
 
 		const liveSignals = fake.calls.filter((call) => call.signal && !call.signal.aborted);
 		expect(liveSignals).toHaveLength(1);
+	});
+
+	it('keeps the bot token for no-ingress sessions without opening a Gateway listener', async () => {
+		const noIngressCtx = connectionContext({ ingressEnabled: false });
+		await integration.createAdapter(noIngressCtx);
+		await integration.onConnected(noIngressCtx);
+
+		expect(fake.startGatewayListener).not.toHaveBeenCalled();
+
+		integration.startAllGateways();
+		expect(fake.startGatewayListener).not.toHaveBeenCalled();
+
+		// Token stays registered for outbound REST (search_channels / preview).
+		await expect(
+			integration.createAdapter(
+				connectionContext({
+					agentId: 'agent-2',
+					credentialId: 'cred-discord-2',
+					ingressEnabled: false,
+				}),
+			),
+		).rejects.toBeInstanceOf(ConflictError);
+	});
+
+	it('releases no-ingress Gateway state on disconnect so the bot token can be reused', async () => {
+		const noIngressCtx = connectionContext({ ingressEnabled: false });
+		await integration.createAdapter(noIngressCtx);
+		await integration.onConnected(noIngressCtx);
+
+		await integration.onDisconnected(noIngressCtx);
+
+		await expect(integration.createAdapter(noIngressCtx)).resolves.toBeDefined();
+		expect(fake.startGatewayListener).not.toHaveBeenCalled();
 	});
 });

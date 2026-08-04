@@ -144,7 +144,10 @@ export class DiscordIntegration extends AgentChatIntegration {
 	 * that runs once the Chat instance has been initialized. Keyed by
 	 * `agentId:credentialId`.
 	 */
-	private readonly pendingConnections = new Map<string, DiscordConnection>();
+	private readonly pendingConnections = new Map<
+		string,
+		Omit<DiscordConnection, 'ingressEnabled'>
+	>();
 
 	private readonly gateway: DiscordGateway;
 
@@ -218,7 +221,10 @@ export class DiscordIntegration extends AgentChatIntegration {
 		if (!connection) return;
 
 		await this.gateway.discard(key);
-		this.gateway.register(key, connection);
+		this.gateway.register(key, {
+			...connection,
+			ingressEnabled: ctx.ingressEnabled,
+		});
 	}
 
 	async onDisconnected(ctx: AgentChatIntegrationContext): Promise<void> {

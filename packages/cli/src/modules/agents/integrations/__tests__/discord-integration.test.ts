@@ -39,6 +39,7 @@ function connectionContext(
 			publicKey: PUBLIC_KEY,
 			applicationId: APPLICATION_ID,
 		},
+		ingressEnabled: true,
 		webhookUrlFor: () => 'https://n8n.example.com/webhook',
 		...overrides,
 	};

@@ -27,6 +27,8 @@ export interface AgentChatIntegrationContext {
 	projectId: string;
 	credentialId: string;
 	credential: Record<string, unknown>;
+	/** Whether this connection may receive events from the external platform. */
+	ingressEnabled: boolean;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
 }
