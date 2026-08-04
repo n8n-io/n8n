@@ -857,17 +857,81 @@ Rules of thumb:
 - **One slot means the modes are mutually exclusive by construction** — there is no way to declare two. Both order strictly before the live turn: `replay` provides its own live turn (omit `conversation`), `inline` pairs with one.
 - **A suite-sourced case carrying a pre-union key (`conversationSeed`, `priorConversation`, `seedThread`, `seedFile`) fails the suite pull by name.** The normalizer whitelists a hosted case down to the schema's keys, so without that guard the key would be stripped and the case would run *unseeded* — passing or failing for reasons that have nothing to do with what it tests.
 
-## Failure categories
+## Failure categories and attribution
 
 When a scenario fails, the verifier categorizes the root cause:
 
 - **builder_issue** — the agent misconfigured a node, chose the wrong node type, or built the wrong structure.
 - **mock_issue** — the LLM mock returned incorrect data (`_evalMockError`, wrong response shape).
 - **framework_issue** — Phase 1 failed (empty trigger content) or the eval framework itself cascaded an error.
-- **verification_failure** — the verifier couldn't produce a valid result.
-- **build_failure** — Instance AI failed to build the workflow or a scenario timed out.
+- **verification_gap** — the verifier didn't have enough information in the artifact to decide.
+
+Harness code stamps three more onto rows the verifier never saw:
+
+- **build_failure** — Instance AI failed to build the workflow.
+- **verification_failure** — the verifier produced no result at all after every attempt (also back-filled onto a failing verdict that arrived without a category).
+- **expectations_failed** — a build-only case whose expectation verdicts failed.
 
 Suite pass rates typically sit between 40–65%; most failures are `builder_issue` on scenarios that require error handling the agent doesn't produce by default.
+
+### `attribution` — the field that carries the meaning
+
+`failureCategory` is a free-form string with three producers, so downstream
+consumers used to re-derive what it meant and drifted (TRUST-375). Every failed
+scenario iteration and build expectation now also carries an **`attribution`**,
+defined once in `harness/attribution.ts` and stored verbatim by LangTracer:
+
+| bucket | means |
+| -- | -- |
+| `builder_issue` | the agent built it wrong, including "runs as built, misses the criteria" |
+| `mock_issue` | the eval mock/fixture layer served data the scenario didn't describe |
+| `framework_issue` | the eval framework failed the test rather than the test failing — no trigger content, seed table missing, provider outage, transport error, budget abort, runner crash |
+| `verification_gap` | we couldn't measure it — verifier returned nothing, judge died, unit ungraded |
+
+Deliberately the same four names the verifier prompt already defines, so ingest
+is an identity map rather than a translation. The harness-code categories fold
+in: `build_failure` and `expectations_failed` → `builder_issue`,
+`verification_failure` → `verification_gap`, and a build that died on seeding,
+transport or a provider outage → `framework_issue`.
+
+`failureCategory` still ships unchanged for readers on the legacy contract.
+
+### Provider outages are never a builder verdict
+
+A model-provider 5xx/429/529 during the build happens upstream of the n8n
+instance, so the lane stays healthy and nothing looks broken locally — but the
+build fails, and unclassified it reads exactly like "the agent built it wrong".
+A ~15-minute Anthropic outage recorded 124 flat-zero units as a product
+regression in nightly sweep #57 (TRUST-374).
+
+`harness/transient-error.ts` classifies these from the run's `error` events
+(structured `statusCode`), falling back to the flattened `Agent error: …` text.
+A classified outage is:
+
+- **retried** up to `MAX_PROVIDER_BUILD_ATTEMPTS` times, waiting **30s then 90s
+  between attempts**. This is a delay between attempts, not a limit on build
+  duration — the build's own budget (`effectiveTimeoutMs`, 15+ minutes) is
+  untouched. It matters because a provider 5xx returns in ~3 seconds, so instant
+  cross-lane retries re-hit the same upstream and let one runner shred its whole
+  queue at ~60× normal speed;
+- reported as `framework_issue`, never `build_failure` (which LangTracer maps
+  straight to `builder_issue`);
+- attributed **`framework_issue`**, and additionally stamped with
+  `PROVIDER_OUTAGE_ROOT_CAUSE` on the row's `rootCause`. LangTracer used to key
+  its infra bucket off that exact prefix; it now reads the attribution directly,
+  so the marker is the fallback for older pinned harness commits — same
+  arrangement as `BUDGET_TIMEOUT_ROOT_CAUSE`;
+- left **ungraded** by the expectation judge: a run that produced no agent output
+  has nothing to grade, so its expectations are recorded as `incomplete` rather
+  than judged against an empty transcript (`build-expectations/select.ts`).
+
+A `Tool errors: …` 5xx is deliberately **not** an outage — that is the built
+workflow's own (mocked) HTTP traffic, which is a real product signal.
+
+Still uncovered: the server-side LLM mock generator shares the same provider, so
+during an outage its failures surface as `_evalMockError` and land in the
+`mock_issue` bucket. Detecting that needs the server to expose the provider
+status.
 
 ## Troubleshooting
 
