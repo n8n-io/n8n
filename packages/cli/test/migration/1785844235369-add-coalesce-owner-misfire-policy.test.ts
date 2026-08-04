@@ -1,0 +1,231 @@
+import {
+	createTestMigrationContext,
+	initDbUpToMigration,
+	runSingleMigration,
+	undoLastSingleMigration,
+	type TestMigrationContext,
+} from '@n8n/backend-test-utils';
+import { DbConnection } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+
+const MIGRATION_NAME = 'AddCoalesceOwnerMisfirePolicy1785844235369';
+
+const SCHEDULE_TRIGGER_TASK_TYPE = 'workflow:schedule-trigger';
+const SYSTEM_TASK_TYPE = 'system:prune-executions';
+
+describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
+	let dataSource: DataSource;
+
+	beforeAll(async () => {
+		const dbConnection = Container.get(DbConnection);
+		await dbConnection.init();
+		dataSource = Container.get(DataSource);
+	});
+
+	beforeEach(async () => {
+		const context = createTestMigrationContext(dataSource);
+		await context.queryRunner.clearDatabase();
+		await context.queryRunner.release();
+		await initDbUpToMigration(MIGRATION_NAME);
+	});
+
+	afterAll(async () => {
+		const dbConnection = Container.get(DbConnection);
+		await dbConnection.close();
+	});
+
+	async function insertJob(
+		context: TestMigrationContext,
+		name: string,
+		taskType: string,
+		misfirePolicy: string,
+	) {
+		await context.runQuery(
+			`INSERT INTO ${context.escape.tableName('scheduled_job')}
+			   ("name", "kind", "intervalSeconds", "taskType", "misfirePolicy", "createdAt", "updatedAt")
+			 VALUES ('${name}', 'interval', 60, '${taskType}', '${misfirePolicy}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+		);
+	}
+
+	async function insertTaskFor(context: TestMigrationContext, jobName: string) {
+		const [job] = (await context.queryRunner.query(
+			`SELECT "id" FROM ${context.escape.tableName('scheduled_job')} WHERE "name" = '${jobName}'`,
+		)) as Array<{ id: number }>;
+		await context.runQuery(
+			`INSERT INTO ${context.escape.tableName('scheduled_task')}
+			   ("jobId", "taskType", "scheduledFor", "runAt", "createdAt")
+			 VALUES (${job.id}, 'test', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+		);
+	}
+
+	async function policies(context: TestMigrationContext): Promise<Record<string, string>> {
+		const rows = (await context.queryRunner.query(
+			`SELECT "name", "misfirePolicy" FROM ${context.escape.tableName('scheduled_job')}`,
+		)) as Array<{ name: string; misfirePolicy: string }>;
+		return Object.fromEntries(rows.map((row) => [row.name, row.misfirePolicy]));
+	}
+
+	async function countRows(context: TestMigrationContext, table: string): Promise<number> {
+		const [{ count }] = (await context.queryRunner.query(
+			`SELECT COUNT(*) AS "count" FROM ${context.escape.tableName(table)}`,
+		)) as Array<{ count: number | string }>;
+		return Number(count);
+	}
+
+	async function columnNames(context: TestMigrationContext, table: string): Promise<string[]> {
+		if (context.isSqlite) {
+			const rows = (await context.queryRunner.query(
+				`PRAGMA table_info(${context.escape.tableName(table)})`,
+			)) as Array<{ name: string }>;
+			return rows.map((row) => row.name);
+		}
+		const rows = (await context.queryRunner.query(
+			'SELECT column_name FROM information_schema.columns WHERE table_name = $1',
+			[`${context.tablePrefix}${table}`],
+		)) as Array<{ column_name: string }>;
+		return rows.map((row) => row.column_name);
+	}
+
+	async function jobIndexDefinitions(context: TestMigrationContext): Promise<string[]> {
+		const table = `${context.tablePrefix}scheduled_job`;
+		if (context.isSqlite) {
+			const rows = (await context.queryRunner.query(
+				`SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = '${table}'`,
+			)) as Array<{ sql: string | null }>;
+			return rows.map((row) => row.sql ?? '');
+		}
+		const rows = (await context.queryRunner.query(
+			'SELECT indexdef FROM pg_indexes WHERE tablename = $1',
+			[table],
+		)) as Array<{ indexdef: string }>;
+		return rows.map((row) => row.indexdef);
+	}
+
+	async function seedJobsAndTasks() {
+		const context = createTestMigrationContext(dataSource);
+		await insertJob(context, 'trigger_a', SCHEDULE_TRIGGER_TASK_TYPE, 'coalesce');
+		await insertJob(context, 'trigger_b', SCHEDULE_TRIGGER_TASK_TYPE, 'coalesce');
+		await insertJob(context, 'trigger_skip', SCHEDULE_TRIGGER_TASK_TYPE, 'skip');
+		await insertJob(context, 'system_job', SYSTEM_TASK_TYPE, 'coalesce');
+		await insertTaskFor(context, 'trigger_a');
+		await insertTaskFor(context, 'system_job');
+		await context.queryRunner.release();
+	}
+
+	describe('up', () => {
+		it('accepts coalesce_owner and still rejects an unknown policy', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			const context = createTestMigrationContext(dataSource);
+
+			await expect(
+				insertJob(context, 'owner', SCHEDULE_TRIGGER_TASK_TYPE, 'coalesce_owner'),
+			).resolves.not.toThrow();
+			await expect(
+				insertJob(context, 'garbage', SCHEDULE_TRIGGER_TASK_TYPE, 'not_a_policy'),
+			).rejects.toThrow();
+
+			await context.queryRunner.release();
+		});
+
+		it('keeps queued occurrences, which the job table rebuild would cascade away', async () => {
+			await seedJobsAndTasks();
+
+			await runSingleMigration(MIGRATION_NAME);
+
+			const context = createTestMigrationContext(dataSource);
+			expect(await countRows(context, 'scheduled_task')).toBe(2);
+			await context.queryRunner.release();
+		});
+
+		it('keeps every job row, the other CHECK constraints and the indexes', async () => {
+			await seedJobsAndTasks();
+
+			await runSingleMigration(MIGRATION_NAME);
+
+			const context = createTestMigrationContext(dataSource);
+			expect(await countRows(context, 'scheduled_job')).toBe(4);
+			expect(await columnNames(context, 'scheduled_job')).toEqual(
+				expect.arrayContaining([
+					'misfirePolicy',
+					'misfireGraceSeconds',
+					'recurrenceUnit',
+					'recurrenceSize',
+				]),
+			);
+			expect(await columnNames(context, 'scheduled_task')).toContain('missedAfter');
+
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${context.escape.tableName('scheduled_job')}
+					   ("name", "kind", "intervalSeconds", "taskType", "createdAt", "updatedAt")
+					 VALUES ('bad_kind', 'nonsense', 60, 'test', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+				),
+			).rejects.toThrow();
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${context.escape.tableName('scheduled_job')}
+					   ("name", "kind", "intervalSeconds", "taskType", "misfireGraceSeconds", "createdAt", "updatedAt")
+					 VALUES ('bad_grace', 'interval', 60, 'test', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+				),
+			).rejects.toThrow();
+
+			const definitions = await jobIndexDefinitions(context);
+			expect(definitions.some((sql) => sql.includes('nextRunAt'))).toBe(true);
+			expect(definitions.some((sql) => sql.includes('workflowId'))).toBe(true);
+			expect(definitions.some((sql) => sql.includes('name'))).toBe(true);
+
+			await context.queryRunner.release();
+		});
+
+		it('moves schedule trigger jobs to coalesce_owner and leaves other jobs alone', async () => {
+			await seedJobsAndTasks();
+
+			await runSingleMigration(MIGRATION_NAME);
+
+			const context = createTestMigrationContext(dataSource);
+			expect(await policies(context)).toEqual({
+				trigger_a: 'coalesce_owner',
+				trigger_b: 'coalesce_owner',
+				trigger_skip: 'skip',
+				system_job: 'coalesce',
+			});
+			await context.queryRunner.release();
+		});
+	});
+
+	describe('down', () => {
+		it('folds coalesce_owner back to coalesce without deleting a job or a task', async () => {
+			await seedJobsAndTasks();
+			await runSingleMigration(MIGRATION_NAME);
+
+			await undoLastSingleMigration();
+
+			const context = createTestMigrationContext(dataSource);
+			expect(await policies(context)).toEqual({
+				trigger_a: 'coalesce',
+				trigger_b: 'coalesce',
+				trigger_skip: 'skip',
+				system_job: 'coalesce',
+			});
+			expect(await countRows(context, 'scheduled_job')).toBe(4);
+			expect(await countRows(context, 'scheduled_task')).toBe(2);
+			await context.queryRunner.release();
+		});
+
+		it('narrows the CHECK back so coalesce_owner is rejected', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			await undoLastSingleMigration();
+
+			const context = createTestMigrationContext(dataSource);
+			await expect(
+				insertJob(context, 'owner', SCHEDULE_TRIGGER_TASK_TYPE, 'coalesce_owner'),
+			).rejects.toThrow();
+			await expect(
+				insertJob(context, 'plain', SCHEDULE_TRIGGER_TASK_TYPE, 'coalesce'),
+			).resolves.not.toThrow();
+
+			await context.queryRunner.release();
+		});
+	});
+});
