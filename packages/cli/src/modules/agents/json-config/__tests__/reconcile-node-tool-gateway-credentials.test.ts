@@ -102,6 +102,19 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 		expect(tools[0].node.credentials).toEqual({ slackApi: { id: 'c1', name: 'My Slack' } });
 	});
 
+	it('assigns the managed credential over a slot whose id was cleared by sanitization', () => {
+		// sanitizeUnknownAgentCredentials clears an inaccessible id to '' — the
+		// slot is effectively empty (validation flags it missing) and must pick
+		// up the managed credential like any other empty slot.
+		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { id: '', name: 'Old' } })];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithCredentials(['slackApi']),
+			GATEWAY_CONFIG,
+		);
+		expect(tools[0].node.credentials).toEqual({ slackApi: SENTINEL });
+	});
+
 	it('does not assign for a service the gateway does not cover', () => {
 		const tools = [nodeTool('n8n-nodes-base.notionTool')];
 		reconcileNodeToolGatewayCredentials(

@@ -152,7 +152,10 @@ function reconcileNode(
 
 	for (const slot of getRequiredNodeCredentialSlots(description)) {
 		const credentialType = slot.credentialType;
-		if (node.credentials?.[credentialType]) continue;
+		// A ref only occupies the slot with a real id or the managed flag —
+		// sanitization clears inaccessible ids to '', leaving the slot empty.
+		const existing = node.credentials?.[credentialType];
+		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
 
 		if (!isCredentialDisplayed(node, description, credentialType, resolvedParameters)) continue;
 
