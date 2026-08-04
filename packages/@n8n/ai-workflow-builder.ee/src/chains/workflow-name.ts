@@ -1,19 +1,14 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { PromptTemplate } from '@langchain/core/prompts';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import z from 'zod';
 
-const workflowNamingPromptTemplate = PromptTemplate.fromTemplate(
-	`Based on the initial user prompt, please generate a name for the workflow that captures its essence and purpose.
+import { workflowNamingPromptTemplate } from '@/prompts/chains/workflow-name.prompt';
 
-<initial_prompt>
-{initialPrompt}
-</initial_prompt>
-
-This name should be concise, descriptive, and suitable for a workflow that automates tasks related to the given prompt. The name should be in a format that is easy to read and understand. Do not include the word "workflow" in the name.
-`,
-);
-
-export async function workflowNameChain(llm: BaseChatModel, initialPrompt: string) {
+export async function workflowNameChain(
+	llm: BaseChatModel,
+	initialPrompt: string,
+	config?: RunnableConfig,
+) {
 	// Use structured output for the workflow name to ensure it meets the required format and length
 	const nameSchema = z.object({
 		name: z.string().min(10).max(128).describe('Name of the workflow based on the prompt'),
@@ -25,7 +20,8 @@ export async function workflowNameChain(llm: BaseChatModel, initialPrompt: strin
 		initialPrompt,
 	});
 
-	const structuredOutput = (await modelWithStructure.invoke(prompt)) as z.infer<typeof nameSchema>;
+	const rawOutput = await modelWithStructure.invoke(prompt, config);
+	const structuredOutput = nameSchema.parse(rawOutput);
 
 	return {
 		name: structuredOutput.name,

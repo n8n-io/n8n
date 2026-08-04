@@ -1,10 +1,10 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import { dataTableColumnNameSchema } from '../../schemas/data-table.schema';
-import { paginationSchema } from '../pagination/pagination.dto';
+import { Z } from '../../zod-class';
+import { paginationSchema, publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 const filterValidator = z
 	.string()
@@ -52,11 +52,13 @@ const sortByValidator = z
 
 		try {
 			column = dataTableColumnNameSchema.parse(column);
-		} catch {
+		} catch (e) {
+			const errorMessage =
+				e instanceof z.ZodError ? e.errors[0]?.message : 'Invalid sort columnName';
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: 'Invalid sort columnName',
-				path: ['sort'],
+				message: errorMessage,
+				path: ['sortBy'],
 			});
 			return z.NEVER;
 		}
@@ -79,4 +81,13 @@ export class ListDataTableContentQueryDto extends Z.class({
 	skip: paginationSchema.skip.optional(),
 	filter: filterValidator.optional(),
 	sortBy: sortByValidator.optional(),
+	search: z.string().optional(),
+}) {}
+
+export class PublicApiListDataTableContentQueryDto extends Z.class({
+	limit: publicApiPaginationSchema.limit,
+	offset: publicApiPaginationSchema.offset,
+	filter: filterValidator.optional(),
+	sortBy: sortByValidator.optional(),
+	search: z.string().optional(),
 }) {}

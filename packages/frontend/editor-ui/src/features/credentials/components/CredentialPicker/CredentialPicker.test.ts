@@ -1,11 +1,15 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { useUIStore } from '@/app/stores/ui.store';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '../../credentials.store';
 import { createTestingPinia } from '@pinia/testing';
 import CredentialPicker from './CredentialPicker.vue';
 import {
 	PERSONAL_OPENAI_CREDENTIAL,
 	PROJECT_OPENAI_CREDENTIAL,
+	GLOBAL_OPENAI_CREDENTIAL,
 	TEST_CREDENTIAL_TYPES,
 	TEST_CREDENTIALS,
 } from './CredentialPicker.test.constants';
@@ -26,6 +30,7 @@ vi.mock('vue-router', () => {
 });
 
 let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 const renderComponent = createComponentRenderer(CredentialPicker);
 
@@ -35,6 +40,10 @@ describe('CredentialPicker', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.state.credentials = TEST_CREDENTIALS;
 		credentialsStore.state.credentialTypes = TEST_CREDENTIAL_TYPES;
+		mockedStore(useProjectsStore).currentProject = createTestProject({
+			scopes: ['credential:create', 'credential:update'],
+		});
+		uiStore = mockedStore(useUIStore);
 	});
 
 	it('should render', () => {
@@ -49,7 +58,7 @@ describe('CredentialPicker', () => {
 		).not.toThrowError();
 	});
 
-	it('should only render personal credentials of the specified type', async () => {
+	it('should render all credentials of the specified type', async () => {
 		const TEST_APP_NAME = 'OpenAI';
 		const TEST_CREDENTIAL_TYPE = 'openAiApi';
 		const { getByTestId } = renderComponent({
@@ -70,9 +79,88 @@ describe('CredentialPicker', () => {
 		expect(
 			screen.getByTestId(`node-credentials-select-item-${PERSONAL_OPENAI_CREDENTIAL.id}`),
 		).toBeInTheDocument();
+		// OpenAI credential that belong to other project should be in the dropdown
+		expect(
+			screen.queryByTestId(`node-credentials-select-item-${PROJECT_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
+		// Global OpenAI credential should be in the dropdown
+		expect(
+			screen.queryByTestId(`node-credentials-select-item-${GLOBAL_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
+	});
+
+	it('should only render personal credentials of the specified type', async () => {
+		const TEST_APP_NAME = 'OpenAI';
+		const TEST_CREDENTIAL_TYPE = 'openAiApi';
+		const { getByTestId } = renderComponent({
+			props: {
+				personalOnly: true,
+				appName: TEST_APP_NAME,
+				credentialType: TEST_CREDENTIAL_TYPE,
+				selectedCredentialId: null,
+			},
+		});
+		expect(getByTestId('credential-dropdown')).toBeInTheDocument();
+		expect(getByTestId('credential-dropdown')).toHaveAttribute(
+			'credential-type',
+			TEST_CREDENTIAL_TYPE,
+		);
+		// Open the dropdown
+		await userEvent.click(getByTestId('credential-dropdown'));
+		// Personal openAI credential should be in the dropdown
+		expect(
+			screen.getByTestId(`node-credentials-select-item-${PERSONAL_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
 		// OpenAI credential that belong to other project should not be in the dropdown
 		expect(
 			screen.queryByTestId(`node-credentials-select-item-${PROJECT_OPENAI_CREDENTIAL.id}`),
 		).not.toBeInTheDocument();
+		// Global OpenAI credential should be in the dropdown
+		expect(
+			screen.queryByTestId(`node-credentials-select-item-${GLOBAL_OPENAI_CREDENTIAL.id}`),
+		).toBeInTheDocument();
+	});
+
+	it('opens the credential editor at the body level when requested', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				appName: 'OpenAI',
+				credentialType: 'openAiApi',
+				selectedCredentialId: PERSONAL_OPENAI_CREDENTIAL.id,
+				credentialModalAppendToBody: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('credential-edit-button'));
+
+		expect(uiStore.openExistingCredential).toHaveBeenCalledWith(PERSONAL_OPENAI_CREDENTIAL.id, {
+			appendToBody: true,
+		});
+	});
+
+	it('opens the new credential form at the body level when requested', async () => {
+		credentialsStore.state.credentials = {};
+		const { getByTestId } = renderComponent({
+			props: {
+				appName: 'OpenAI',
+				credentialType: 'openAiApi',
+				selectedCredentialId: null,
+				projectId: 'project-1',
+				credentialModalAppendToBody: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('create-credential'));
+
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'openAiApi',
+			true,
+			false,
+			'project-1',
+			undefined,
+			undefined,
+			undefined,
+			{ closeOnSave: true, appendToBody: true },
+		);
 	});
 });

@@ -1,7 +1,7 @@
-import { BreakingChangeRecommendation } from '@n8n/api-types';
+import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { INode } from 'n8n-workflow';
+import { BreakingChangeRule } from '@n8n/decorators';
+import type { INode } from 'n8n-workflow';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 	private readonly REMOVED_NODES = [
 		'n8n-nodes-base.spontit',
@@ -26,11 +26,15 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 			title: 'Removed Deprecated Nodes',
 			description: 'Several deprecated nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
-			severity: 'critical',
+			severity: 'low',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#removed-nodes-for-retired-services',
 		};
 	}
 
-	async getRecommendations(): Promise<BreakingChangeRecommendation[]> {
+	async getRecommendations(
+		_workflowResults: BreakingChangeAffectedWorkflow[],
+	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
 				action: 'Update affected workflows',

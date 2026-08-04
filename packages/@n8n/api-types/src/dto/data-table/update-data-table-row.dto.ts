@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import {
 	dataTableColumnNameSchema,
 	dataTableColumnValueSchema,
 } from '../../schemas/data-table.schema';
+import { Z } from '../../zod-class';
 
 const updateFilterSchema = dataTableFilterSchema.refine((filter) => filter.filters.length > 0, {
 	message: 'filter must not be empty',

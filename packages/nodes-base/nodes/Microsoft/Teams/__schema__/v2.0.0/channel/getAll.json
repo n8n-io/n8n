@@ -18,7 +18,10 @@
         },
         "tenantId": {
             "type": "string"
+        },
+        "webUrl": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

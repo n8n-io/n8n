@@ -1,0 +1,52 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 1+1?"
+						}
+					]
+				}
+			],
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013bd53c1aadb3010bce72bcc5eeb80ed24d00a7a7a140aa5c75e5a8ad867edb34514c94f5a859487ffbdc8895bdb75da5e5a5f8c67469ad95d2f9dc9b2c84e1402362403a3e78d424691bd007feb0804cc48c8c76f102f70728a0c08a80d4645db16f5316ef7dbc3b62aaa43591425e4a055ba2334b228dfb49f1f6cbbbf3c1cdf3fef3e7e68de7d8ad5eb0af28513e4e09d490086a003a34db6b5b34c96417cf99a4360d7494f189c0561a3313728d073245bd30c54c4a84d18b138a6d7b68b2cd91dc90610d53e871aeb9664ed09593b2be78262e43da1bac78d67d3fdd4b574228f461e4ebfea7fb265bb64fb1c5ce429b4cb21903feb9a246bf22020f545a157a9c5f6897c2a5b36e44080752cf18cdae0a321e8fb6cfaf49b0d5da77eeba87c34ae3eaecf7e4532f829ba5c8b9ef2a9e6db39a64b120e2f01d02f9c3b6d9b85550609847be91419c6dfa71b24b37457649eea87ec96adcc8674ffddf75556666fb30afafbf370dd9fc6e1ba89ef9d298febbb5ac98c8449f2d982015925397a0b7fbd66fd3fdbb3c56294bbf9efbd52f95a27a71c0c87be030024deb10b050000"
+		],
+		"rawHeaders": {
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10372712afc5a99-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:35 GMT",
+			"request-id": "req_011CcLBTcxtWSWmcF1kFzgZn",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=t7PgsfLRQsRzfbqEcuZAyZo4IQVeAX06BV.BlWnlBms-1782217228.9908383-1.0.1.1-vBk5rir.MdcVDVjkluwtJggGgTFC3D2NKc0nmwGGNKc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-9f35646dc5d8ad4053d7822ec9a12036-454feadc84ab1fbb-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

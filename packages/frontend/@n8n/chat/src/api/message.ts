@@ -27,8 +27,10 @@ export async function sendMessage(
 	sessionId: string,
 	options: ChatOptions,
 ) {
+	let response: SendMessageResponse;
+
 	if (files.length > 0) {
-		return await postWithFiles<SendMessageResponse>(
+		response = await postWithFiles<SendMessageResponse>(
 			`${options.webhookUrl}`,
 			{
 				action: 'sendMessage',
@@ -41,25 +43,39 @@ export async function sendMessage(
 				headers: options.webhookConfig?.headers,
 			},
 		);
+	} else {
+		const method = options.webhookConfig?.method === 'POST' ? post : get;
+		response = await method<SendMessageResponse>(
+			`${options.webhookUrl}`,
+			{
+				action: 'sendMessage',
+				[options.chatSessionKey as string]: sessionId,
+				[options.chatInputKey as string]: message,
+				...(options.metadata ? { metadata: options.metadata } : {}),
+			},
+			{
+				headers: options.webhookConfig?.headers,
+			},
+		);
 	}
-	const method = options.webhookConfig?.method === 'POST' ? post : get;
-	return await method<SendMessageResponse>(
-		`${options.webhookUrl}`,
-		{
-			action: 'sendMessage',
-			[options.chatSessionKey as string]: sessionId,
-			[options.chatInputKey as string]: message,
-			...(options.metadata ? { metadata: options.metadata } : {}),
-		},
-		{
-			headers: options.webhookConfig?.headers,
-		},
-	);
+
+	return response;
+}
+
+const PROXY_TIMEOUT_ERROR_MESSAGE =
+	'A proxy timeout occurred while waiting for the response. The workflow may still be running — check the execution list for results.';
+
+function isProxyErrorHtml(line: string): boolean {
+	return line.includes('<!DOCTYPE') || line.includes('<html') || line.includes('</html>');
 }
 
 // Create a transform stream that parses newline-delimited JSON
 function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 	let buffer = '';
+	// Once an HTML error page is detected (e.g. Cloudflare 524), all subsequent
+	// non-JSON lines are suppressed and a single user-facing error is emitted.
+	let insideHtmlError = false;
+	let htmlErrorEmitted = false;
 	const decoder = new TextDecoder();
 
 	return new TransformStream({
@@ -74,8 +90,22 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 				if (line.trim()) {
 					try {
 						const parsed = JSON.parse(line) as StructuredChunk;
+						insideHtmlError = false;
 						controller.enqueue(parsed);
 					} catch (error) {
+						if (isProxyErrorHtml(line)) {
+							insideHtmlError = true;
+						}
+						if (insideHtmlError) {
+							if (!htmlErrorEmitted) {
+								htmlErrorEmitted = true;
+								controller.enqueue({
+									type: 'error',
+									content: PROXY_TIMEOUT_ERROR_MESSAGE,
+								} as StructuredChunk);
+							}
+							continue;
+						}
 						// Handle non-JSON lines as plain text
 						controller.enqueue({
 							type: 'item',
@@ -88,11 +118,20 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 
 		flush(controller) {
 			// Process any remaining buffer content
-			if (buffer.trim()) {
+			if (buffer.trim() && !insideHtmlError) {
 				try {
 					const parsed = JSON.parse(buffer) as StructuredChunk;
 					controller.enqueue(parsed);
 				} catch (error) {
+					if (isProxyErrorHtml(buffer)) {
+						if (!htmlErrorEmitted) {
+							controller.enqueue({
+								type: 'error',
+								content: PROXY_TIMEOUT_ERROR_MESSAGE,
+							} as StructuredChunk);
+						}
+						return;
+					}
 					controller.enqueue({
 						type: 'item',
 						content: buffer,
@@ -106,7 +145,7 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 export interface StreamingEventHandlers {
 	onBeginMessage: (nodeId: string, runIndex?: number) => void;
 	onChunk: (chunk: string, nodeId?: string, runIndex?: number) => void;
-	onEndMessage: (nodeId: string, runIndex?: number) => void;
+	onEndMessage: (nodeId: string, runIndex?: number) => void | Promise<void>;
 }
 
 export async function sendMessageStreaming(
@@ -152,12 +191,12 @@ export async function sendMessageStreaming(
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'end':
-					handlers.onEndMessage(nodeId, runIndex);
+					await handlers.onEndMessage(nodeId, runIndex);
 					break;
 				case 'error':
 					hasReceivedChunks = true;
 					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
-					handlers.onEndMessage(nodeId, runIndex);
+					await handlers.onEndMessage(nodeId, runIndex);
 					break;
 			}
 		}
@@ -188,12 +227,16 @@ async function sendWithFiles(
 		formData.append('files', file);
 	}
 
+	// Exclude Content-Type to let the browser set it with the multipart boundary
+	const headers: Record<string, string> = {
+		Accept: 'text/plain',
+		...options.webhookConfig?.headers,
+	};
+	delete headers['Content-Type'];
+
 	return await fetch(options.webhookUrl, {
 		method: 'POST',
-		headers: {
-			Accept: 'text/plain',
-			...options.webhookConfig?.headers,
-		},
+		headers,
 		body: formData,
 	});
 }

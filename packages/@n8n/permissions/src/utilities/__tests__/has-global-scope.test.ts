@@ -8,6 +8,7 @@ describe('hasGlobalScope', () => {
 			{ role: 'global:owner', scope: 'workflow:create', expected: true },
 			{ role: 'global:admin', scope: 'user:delete', expected: true },
 			{ role: 'global:member', scope: 'workflow:read', expected: false },
+			{ role: 'global:chatUser', scope: 'workflow:read', expected: false },
 			{ role: 'non:existent', scope: 'workflow:read', expected: false },
 		] as Array<{ role: GlobalRole; scope: Scope; expected: boolean }>)(
 			'$role with $scope -> $expected',

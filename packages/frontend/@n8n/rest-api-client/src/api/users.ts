@@ -2,13 +2,13 @@ import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
+	UserSelfSettingsUpdateRequestDto,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
-	Role,
 	UsersList,
 	User,
 } from '@n8n/api-types';
-import type { Scope } from '@n8n/permissions';
+import type { AssignableGlobalRole, Scope } from '@n8n/permissions';
 import type {
 	FeatureFlags,
 	IDataObject,
@@ -115,28 +115,9 @@ export async function setupOwner(
 
 export async function validateSignupToken(
 	context: IRestApiContext,
-	params: { inviterId: string; inviteeId: string },
+	params: { token: string },
 ): Promise<{ inviter: { firstName: string; lastName: string } }> {
 	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
-}
-
-export async function signup(
-	context: IRestApiContext,
-	params: {
-		inviterId: string;
-		inviteeId: string;
-		firstName: string;
-		lastName: string;
-		password: string;
-	},
-): Promise<CurrentUserResponse> {
-	const { inviteeId, ...props } = params;
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		`/users/${params.inviteeId}`,
-		props as unknown as IDataObject,
-	);
 }
 
 export async function sendForgotPasswordEmail(
@@ -169,7 +150,7 @@ export async function updateCurrentUser(
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: SettingsUpdateRequestDto,
+	settings: UserSelfSettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
@@ -210,6 +191,13 @@ export async function getInviteLink(
 	return await makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
 }
 
+export async function generateInviteLink(
+	context: IRestApiContext,
+	{ id }: { id: string },
+): Promise<{ link: string }> {
+	return await makeRestApiRequest(context, 'POST', `/users/${id}/invite-link`);
+}
+
 export async function getPasswordResetLink(
 	context: IRestApiContext,
 	{ id }: { id: string },
@@ -226,7 +214,8 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: Role;
+	// Allows custom global role slugs in addition to built-in roles (assignable = any non-owner global role).
+	newRoleName: AssignableGlobalRole;
 }
 
 export async function updateGlobalRole(

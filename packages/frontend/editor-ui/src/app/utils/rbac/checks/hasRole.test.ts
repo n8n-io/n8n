@@ -1,8 +1,8 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { ROLE } from '@n8n/api-types';
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 
@@ -17,6 +17,17 @@ describe('Checks', () => {
 			} as ReturnType<typeof useUsersStore>);
 
 			expect(hasRole([ROLE.Owner])).toBe(true);
+		});
+
+		it('should return true if the user has specified chat user role', () => {
+			vi.mocked(useUsersStore).mockReturnValue({
+				currentUser: {
+					isDefaultUser: false,
+					role: ROLE.ChatUser,
+				},
+			} as ReturnType<typeof useUsersStore>);
+
+			expect(hasRole([ROLE.ChatUser])).toBe(true);
 		});
 
 		it('should return false if the user does not have the specified role', () => {

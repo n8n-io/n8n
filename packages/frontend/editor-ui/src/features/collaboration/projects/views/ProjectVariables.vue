@@ -2,11 +2,11 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
@@ -18,7 +18,7 @@ import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nBadge,
 	N8nButton,
 	N8nCheckbox,
@@ -71,7 +71,6 @@ const globalPermissions = computed(
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).projectVariable,
 );
-
 const { isLoading, execute } = useAsyncState(environmentsStore.fetchAllVariables, [], {
 	immediate: true,
 });
@@ -280,7 +279,6 @@ sourceControlStore.$onAction(({ name, after }) => {
 });
 
 const unavailableNoticeProps = computed(() => ({
-	emoji: '👋',
 	heading: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.title),
 	description: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.description),
 	buttonText: i18n.baseText(uiStore.contextBasedTranslationKeys.variables.unavailable.button),
@@ -384,14 +382,13 @@ onMounted(() => {
 			</div>
 		</template>
 		<template v-if="!isFeatureEnabled" #preamble>
-			<N8nActionBox class="mb-m" v-bind="unavailableNoticeProps" />
+			<N8nEmptyState class="mb-m" v-bind="unavailableNoticeProps" />
 		</template>
 		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
-			<N8nActionBox v-if="!isFeatureEnabled" v-bind="unavailableNoticeProps" />
-			<N8nActionBox
+			<N8nEmptyState v-if="!isFeatureEnabled" v-bind="unavailableNoticeProps" />
+			<N8nEmptyState
 				v-else-if="!canCreateVariables"
 				data-test-id="cannot-create-variables"
-				emoji="👋"
 				:heading="
 					i18n.baseText('variables.empty.notAllowedToCreate.heading', {
 						interpolate: { name: usersStore.currentUser?.firstName ?? '' },
@@ -424,12 +421,16 @@ onMounted(() => {
 				</td>
 				<td v-if="isFeatureEnabled" align="right">
 					<div class="action-buttons">
-						<N8nTooltip :disabled="globalPermissions.update" placement="top">
+						<N8nTooltip
+							:disabled="globalPermissions.update ?? projectPermissions.update"
+							placement="top"
+						>
 							<N8nButton
+								variant="subtle"
+								size="small"
 								data-test-id="variable-row-edit-button"
-								type="tertiary"
 								class="mr-xs"
-								:disabled="!globalPermissions.update"
+								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
 								@click="openEditVariableModal(data)"
 							>
 								{{ i18n.baseText('variables.row.button.edit') }}
@@ -438,11 +439,15 @@ onMounted(() => {
 								{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 							</template>
 						</N8nTooltip>
-						<N8nTooltip :disabled="globalPermissions.delete" placement="top">
+						<N8nTooltip
+							:disabled="globalPermissions.delete ?? projectPermissions.delete"
+							placement="top"
+						>
 							<N8nButton
+								variant="subtle"
+								size="small"
 								data-test-id="variable-row-delete-button"
-								type="tertiary"
-								:disabled="!globalPermissions.delete"
+								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
 								@click="handleDeleteVariable(data)"
 							>
 								{{ i18n.baseText('variables.row.button.delete') }}
@@ -476,6 +481,8 @@ onMounted(() => {
 	padding: 2px;
 }
 .action-buttons {
+	display: flex;
+	justify-content: end;
 	opacity: 0;
 	transition: opacity 0.2s ease;
 }

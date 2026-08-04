@@ -2,11 +2,28 @@ export type Headers = Record<string, string | string[]>;
 
 export type OAuth2GrantType = 'pkce' | 'authorizationCode' | 'clientCredentials';
 
+/** How the secret is transmitted on the token request (RFC 6749 §2.3.1). */
 export type OAuth2AuthenticationMethod = 'header' | 'body';
+
+/**
+ * Which credential the client presents to prove its identity: a shared secret, or
+ * a certificate (private_key_jwt, RFC 7521/7523). Distinct from
+ * `OAuth2AuthenticationMethod`, which only controls where the secret is placed.
+ */
+export type OAuth2ClientCredentialType = 'clientSecret' | 'certificate';
+
+/** Certificate (private_key_jwt) client authentication, an alternative to `clientSecret`. */
+export interface ClientCertificate {
+	privateKey: string;
+	certificate: string;
+}
 
 export interface OAuth2CredentialData {
 	clientId: string;
+	clientCredentialType?: OAuth2ClientCredentialType;
 	clientSecret?: string;
+	privateKey?: string;
+	certificate?: string;
 	accessTokenUrl: string;
 	authentication?: OAuth2AuthenticationMethod;
 	authUrl?: string;
@@ -14,13 +31,33 @@ export interface OAuth2CredentialData {
 	authQueryParameters?: string;
 	additionalBodyProperties?: string;
 	grantType: OAuth2GrantType;
+	/** Whether authorization-code flows should use PKCE in addition to client authentication. */
+	usePkce?: boolean;
 	ignoreSSLIssues?: boolean;
+	tokenExpiredStatusCode?: number;
 	oauthTokenData?: {
 		access_token: string;
 		refresh_token?: string;
+		expires_in?: string;
+		n8n_expires_at?: string;
+		resource?: string;
 	};
 	useDynamicClientRegistration?: boolean;
 	serverUrl?: string;
+	/*
+	 * Resource indicator lifecycle:
+	 * - `resourceUrl`       – raw user input from the credential form (optional override)
+	 * - `resource`          – resolved value after discovery / validation, ephemeral for auth URI generation
+	 * - `oauthTokenData.resource` – persisted with tokens so it can be re‑sent on refresh
+	 */
+	resourceUrl?: string;
+	jweEnabled?: boolean;
+	/**
+	 * The resolved RFC 8707 resource indicator, set after discovery/validation.
+	 * Populated from either the discovered metadata or the user's resourceUrl override.
+	 */
+	resource?: string;
+	inlineJwks?: boolean;
 }
 
 /**
@@ -32,34 +69,4 @@ export interface OAuth2AccessTokenErrorResponse extends Record<string, unknown> 
 	error: string;
 	error_description?: string;
 	error_uri?: string;
-}
-
-/**
- * OAuth 2.0 Authorization Server Metadata
- * Based on RFC 8414: https://www.rfc-editor.org/rfc/rfc8414.html
- */
-export interface OAuthAuthorizationServerMetadata {
-	/** The authorization server's identifier */
-	issuer: string;
-
-	/** URL of the authorization server's authorization endpoint */
-	authorization_endpoint: string;
-
-	/** URL of the authorization server's token endpoint */
-	token_endpoint: string;
-
-	/** URL of the authorization server's dynamic client registration endpoint */
-	registration_endpoint: string;
-
-	/** Array of OAuth 2.0 response_type values supported */
-	response_types_supported: string[];
-
-	/** Array of OAuth 2.0 grant type values supported */
-	grant_types_supported: string[];
-
-	/** Array of client authentication methods supported by the token endpoint */
-	token_endpoint_auth_methods_supported: string[];
-
-	/** Array of PKCE code challenge methods supported */
-	code_challenge_methods_supported: string[];
 }

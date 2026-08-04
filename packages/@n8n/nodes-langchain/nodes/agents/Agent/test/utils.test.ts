@@ -1,5 +1,5 @@
-import type { Tool } from 'langchain/tools';
-import { DynamicStructuredTool } from 'langchain/tools';
+import type { Tool } from '@langchain/classic/tools';
+import { DynamicStructuredTool } from '@langchain/classic/tools';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { z } from 'zod';

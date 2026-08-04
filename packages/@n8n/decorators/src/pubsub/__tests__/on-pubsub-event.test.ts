@@ -15,7 +15,7 @@ describe('@OnPubSubEvent', () => {
 	});
 
 	it('should register methods decorated with @OnPubSubEvent', () => {
-		jest.spyOn(metadata, 'register');
+		vi.spyOn(metadata, 'register');
 
 		@Service()
 		class TestService {

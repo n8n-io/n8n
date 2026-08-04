@@ -1,9 +1,9 @@
-import type { INode, IRunExecutionData, IExecuteData } from 'n8n-workflow';
-import { WorkflowDataProxy } from 'n8n-workflow';
+import type { INode, IExecuteData } from 'n8n-workflow';
+import { createRunExecutionData, WorkflowDataProxy } from 'n8n-workflow';
 import { createTestWorkflowObject, mockNodes } from '@/__tests__/mocks';
 import { mock } from 'vitest-mock-extended';
 
-const runExecutionData: IRunExecutionData = {
+const runExecutionData = createRunExecutionData({
 	resultData: {
 		runData: {
 			Start: [
@@ -145,7 +145,7 @@ const runExecutionData: IRunExecutionData = {
 			],
 		},
 	},
-};
+});
 
 const workflow = createTestWorkflowObject({
 	id: '123',

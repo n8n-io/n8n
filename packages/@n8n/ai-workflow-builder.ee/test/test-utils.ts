@@ -1,19 +1,26 @@
 import type { ToolRunnableConfig } from '@langchain/core/tools';
-import type { LangGraphRunnableConfig } from '@langchain/langgraph';
-import { getCurrentTaskInput } from '@langchain/langgraph';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { LangGraphRunnableConfig, getCurrentTaskInput } from '@langchain/langgraph';
 import type {
 	INode,
 	INodeTypeDescription,
 	INodeParameters,
 	IConnection,
 	NodeConnectionType,
+	INodeListSearchResult,
+	IRunData,
+	ITaskDataConnections,
+	NodeExecutionSchema,
+	Schema,
+	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
+import type { Mock, MockedFunction } from 'vitest';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
+import type { ResourceLocatorCallback } from '../src/types/callbacks';
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
 
@@ -21,13 +28,13 @@ export const mockProgress = (): MockProxy<ProgressReporter> => mock<ProgressRepo
 
 // Mock state helpers
 export const mockStateHelpers = () => ({
-	getNodes: jest.fn(() => [] as INode[]),
-	getConnections: jest.fn(() => ({}) as SimpleWorkflow['connections']),
-	updateNode: jest.fn((_id: string, _updates: Partial<INode>) => undefined),
-	addNodes: jest.fn((_nodes: INode[]) => undefined),
-	removeNode: jest.fn((_id: string) => undefined),
-	addConnections: jest.fn((_connections: IConnection[]) => undefined),
-	removeConnection: jest.fn((_sourceId: string, _targetId: string, _type?: string) => undefined),
+	getNodes: vi.fn(() => [] as INode[]),
+	getConnections: vi.fn(() => ({}) as SimpleWorkflow['connections']),
+	updateNode: vi.fn((_id: string, _updates: Partial<INode>) => undefined),
+	addNodes: vi.fn((_nodes: INode[]) => undefined),
+	removeNode: vi.fn((_id: string) => undefined),
+	addConnections: vi.fn((_connections: IConnection[]) => undefined),
+	removeConnection: vi.fn((_sourceId: string, _targetId: string, _type?: string) => undefined),
 });
 
 export type MockStateHelpers = ReturnType<typeof mockStateHelpers>;
@@ -326,22 +333,6 @@ export interface ParsedToolContent {
 	};
 }
 
-// Setup LangGraph mocks
-export const setupLangGraphMocks = () => {
-	const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
-		typeof getCurrentTaskInput
-	>;
-
-	jest.mock('@langchain/langgraph', () => ({
-		getCurrentTaskInput: jest.fn(),
-		Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
-			content: JSON.stringify(params),
-		})),
-	}));
-
-	return { mockGetCurrentTaskInput };
-};
-
 // Parse tool result with double-wrapped content handling
 export const parseToolResult = <T = ParsedToolContent>(result: unknown): T => {
 	const parsed = jsonParse<{ content?: string }>((result as MockedCommandResult).content);
@@ -351,9 +342,7 @@ export const parseToolResult = <T = ParsedToolContent>(result: unknown): T => {
 // ========== Progress Message Utilities ==========
 
 // Extract progress messages from mockWriter
-export const extractProgressMessages = (
-	mockWriter: jest.Mock,
-): Array<ToolProgressMessage<string>> => {
+export const extractProgressMessages = (mockWriter: Mock): Array<ToolProgressMessage<string>> => {
 	const progressCalls: Array<ToolProgressMessage<string>> = [];
 
 	mockWriter.mock.calls.forEach((call) => {
@@ -389,8 +378,8 @@ export const createToolConfig = (
 export const createToolConfigWithWriter = (
 	toolName: string,
 	callId: string = 'test-call',
-): ToolRunnableConfig & LangGraphRunnableConfig & { writer: jest.Mock } => {
-	const mockWriter = jest.fn();
+): ToolRunnableConfig & LangGraphRunnableConfig & { writer: Mock } => {
+	const mockWriter = vi.fn();
 	return {
 		toolCall: { id: callId, name: toolName, args: {} },
 		writer: mockWriter,
@@ -401,7 +390,7 @@ export const createToolConfigWithWriter = (
 
 // Setup workflow state with mockGetCurrentTaskInput
 export const setupWorkflowState = (
-	mockGetCurrentTaskInput: jest.MockedFunction<typeof getCurrentTaskInput>,
+	mockGetCurrentTaskInput: MockedFunction<typeof getCurrentTaskInput>,
 	workflow: SimpleWorkflow = createWorkflow([]),
 ) => {
 	mockGetCurrentTaskInput.mockReturnValue({
@@ -412,6 +401,124 @@ export const setupWorkflowState = (
 		messages: [],
 		previousSummary: 'EMPTY',
 	});
+};
+
+// ========== Execution Data Builders ==========
+
+// Build run data entry from simple JSON data
+export interface MockRunDataEntry {
+	json: Record<string, unknown>;
+	startTime?: number;
+	executionTime?: number;
+}
+
+// Create mock run data from simplified entries
+export const createMockRunData = (entries: Record<string, MockRunDataEntry[]>): IRunData => {
+	const runData: IRunData = {};
+	let executionIndex = 0;
+	for (const [nodeName, items] of Object.entries(entries)) {
+		runData[nodeName] = [
+			{
+				data: {
+					main: [items.map((item) => ({ json: item.json }))] as ITaskDataConnections['main'],
+				},
+				startTime: items[0]?.startTime ?? Date.now(),
+				executionTime: items[0]?.executionTime ?? 100,
+				executionIndex: executionIndex++,
+				source: [null],
+			},
+		];
+	}
+	return runData;
+};
+
+// Create mock execution schema from simplified entries
+export interface MockNodeSchema {
+	nodeName: string;
+	schema: Schema;
+}
+
+export const createMockExecutionSchema = (nodeSchemas: MockNodeSchema[]): NodeExecutionSchema[] => {
+	return nodeSchemas.map(({ nodeName, schema }) => ({
+		nodeName,
+		schema,
+	}));
+};
+
+// Helper to create a Schema object for testing
+export const createMockSchema = (
+	type: Schema['type'],
+	path: string,
+	value: Schema['value'],
+	key?: string,
+): Schema => ({
+	type,
+	path,
+	value,
+	...(key && { key }),
+});
+
+// Generate large test data for truncation tests
+export const createLargeTestData = (itemCount = 100, fieldValueSize = 30): IDataObject[] => {
+	return Array.from({ length: itemCount }, (_, i) => ({
+		id: i,
+		field: 'x'.repeat(fieldValueSize) + String(i),
+		extra: 'y'.repeat(fieldValueSize),
+	}));
+};
+
+// ========== Extended Workflow State Setup ==========
+
+export interface ExecutionDataOptions {
+	runData?: IRunData;
+	lastNodeExecuted?: string;
+	error?: { message: string; description?: string };
+}
+
+export interface ExpressionValueTestData {
+	expression: string;
+	resolvedValue: unknown;
+	nodeType?: string;
+}
+
+export interface WorkflowStateOptions {
+	workflow: SimpleWorkflow;
+	executionData?: ExecutionDataOptions;
+	executionSchema?: NodeExecutionSchema[];
+	expressionValues?: Record<string, ExpressionValueTestData[]>;
+}
+
+// Setup workflow state with execution context (extended version)
+export const setupWorkflowStateWithContext = (
+	mockGetCurrentTaskInput: MockedFunction<typeof getCurrentTaskInput>,
+	options: WorkflowStateOptions,
+) => {
+	mockGetCurrentTaskInput.mockReturnValue({
+		workflowJSON: options.workflow,
+		workflowOperations: null,
+		workflowContext: {
+			executionData: options.executionData ?? null,
+			executionSchema: options.executionSchema ?? null,
+			expressionValues: options.expressionValues ?? null,
+		},
+		workflowValidation: null,
+		messages: [],
+		previousSummary: 'EMPTY',
+	});
+};
+
+// ========== AI Workflow Helpers ==========
+
+// Setup AI connections on workflow (e.g., model -> agent)
+export const setupAIWorkflowConnections = (
+	workflow: SimpleWorkflow,
+	modelNodeName: string,
+	agentNodeName: string,
+	connectionType: NodeConnectionType = 'ai_languageModel',
+) => {
+	workflow.connections[modelNodeName] = {
+		[connectionType]: [[{ node: agentNodeName, type: connectionType, index: 0 }]],
+	};
 };
 
 // ========== Common Tool Assertions ==========
@@ -501,16 +608,16 @@ export const buildAddNodeInput = (overrides: {
 	nodeType: string;
 	nodeVersion?: number;
 	name?: string;
-	connectionParametersReasoning?: string;
-	connectionParameters?: Record<string, unknown>;
+	initialParametersReasoning?: string;
+	initialParameters?: Record<string, unknown>;
 }) => ({
 	nodeType: overrides.nodeType,
 	nodeVersion: overrides.nodeVersion ?? 1,
 	name: overrides.name ?? 'Test Node',
-	connectionParametersReasoning:
-		overrides.connectionParametersReasoning ??
-		'Standard node with static inputs/outputs, no connection parameters needed',
-	connectionParameters: overrides.connectionParameters ?? {},
+	initialParametersReasoning:
+		overrides.initialParametersReasoning ??
+		'Standard node with static inputs/outputs, no initial parameters needed',
+	initialParameters: overrides.initialParameters ?? {},
 });
 
 // Build connect nodes input
@@ -609,3 +716,64 @@ export const REASONING = {
 	TRIGGER_NODE: 'Trigger node, no connection parameters needed',
 	WEBHOOK_NODE: 'Webhook is a trigger node, no connection parameters needed',
 } as const;
+
+// ========== Resource Locator Testing Utilities ==========
+
+// Create a node type with resource locator property
+export const createNodeTypeWithResourceLocator = (
+	nodeName: string,
+	parameterName: string,
+	searchMethod: string,
+	overrides: Partial<INodeTypeDescription> = {},
+): INodeTypeDescription =>
+	createNodeType({
+		name: nodeName,
+		displayName: overrides.displayName ?? 'Test Resource Node',
+		credentials: overrides.credentials ?? [{ name: 'testApi', required: true }],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: parameterName,
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: searchMethod,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+					},
+				],
+			},
+			...(overrides.properties ?? []),
+		],
+		...overrides,
+	});
+
+// Create a mock resource locator callback
+export const mockResourceLocatorCallback = (
+	results: INodeListSearchResult = { results: [] },
+): MockedFunction<ResourceLocatorCallback> => {
+	return vi.fn().mockResolvedValue(results);
+};
+
+// Create sample resource locator results
+export const createResourceLocatorResults = (
+	items: Array<{ name: string; value: string; description?: string }>,
+	paginationToken?: string,
+): INodeListSearchResult => ({
+	results: items.map((item) => ({
+		name: item.name,
+		value: item.value,
+		...(item.description && { description: item.description }),
+	})),
+	...(paginationToken && { paginationToken }),
+});

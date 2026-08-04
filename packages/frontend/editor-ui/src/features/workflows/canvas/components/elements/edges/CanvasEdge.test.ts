@@ -6,6 +6,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import CanvasEdge, { type CanvasEdgeProps } from './CanvasEdge.vue';
 import type { CanvasConnectionPort } from '../../../canvas.types';
+import { createCanvasProvide } from '@/features/workflows/canvas/__tests__/utils';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -22,6 +23,11 @@ const DEFAULT_PROPS = {
 } satisfies Partial<CanvasEdgeProps>;
 const renderComponent = createComponentRenderer(CanvasEdge, {
 	props: DEFAULT_PROPS,
+	global: {
+		provide: {
+			...createCanvasProvide(),
+		},
+	},
 });
 
 beforeEach(() => {
@@ -57,6 +63,29 @@ describe('CanvasEdge', () => {
 		await userEvent.click(addButton);
 
 		expect(emitted()).toHaveProperty('add');
+	});
+
+	it('routes the emit payload through resolveCanonicalConnection', async () => {
+		const canonical = {
+			source: 'real-source-id',
+			target: 'real-target-id',
+			sourceHandle: 'outputs/main/0',
+			targetHandle: 'inputs/main/0',
+		};
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				source: 'group:g1',
+				target: 'real-target-id',
+				sourceHandleId: 'right',
+				targetHandleId: 'inputs/main/0',
+				data: { ...DEFAULT_PROPS.data, canonicals: [canonical] },
+				hovered: true,
+			},
+		});
+		await userEvent.hover(getByTestId('edge-label'));
+		await userEvent.click(getByTestId('delete-connection-button'));
+
+		expect(emitted().delete[0]).toEqual([canonical]);
 	});
 
 	it('should not render toolbar actions when readOnly', async () => {

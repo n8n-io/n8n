@@ -1,5 +1,4 @@
 import {
-	type CodeExecutionMode,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type WorkflowExecuteMode,
@@ -19,8 +18,6 @@ const JS_TEXT_KEYS: TextKeys = {
  */
 export class JsTaskRunnerSandbox {
 	constructor(
-		private readonly jsCode: string,
-		private readonly nodeMode: CodeExecutionMode,
 		private readonly workflowMode: WorkflowExecuteMode,
 		private readonly executeFunctions: Pick<
 			IExecuteFunctions,
@@ -30,14 +27,14 @@ export class JsTaskRunnerSandbox {
 		private readonly additionalProperties: Record<string, unknown> = {},
 	) {}
 
-	async runCodeAllItems(): Promise<INodeExecutionData[]> {
+	async runCodeAllItems(code: string): Promise<INodeExecutionData[]> {
 		const itemIndex = 0;
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
 			'javascript',
 			{
-				code: this.jsCode,
-				nodeMode: this.nodeMode,
+				code,
+				nodeMode: 'runOnceForAllItems',
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
 				additionalProperties: this.additionalProperties,
@@ -56,14 +53,14 @@ export class JsTaskRunnerSandbox {
 		);
 	}
 
-	async runCodeForTool(): Promise<unknown> {
+	async runCodeForTool(code: string): Promise<unknown> {
 		const itemIndex = 0;
 
 		const executionResult = await this.executeFunctions.startJob(
 			'javascript',
 			{
-				code: this.jsCode,
-				nodeMode: this.nodeMode,
+				code,
+				nodeMode: 'runOnceForAllItems',
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
 				additionalProperties: this.additionalProperties,
@@ -78,8 +75,8 @@ export class JsTaskRunnerSandbox {
 		return executionResult.result;
 	}
 
-	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
-		validateNoDisallowedMethodsInRunForEach(this.jsCode, 0);
+	async runCodeForEachItem(code: string, numInputItems: number): Promise<INodeExecutionData[]> {
+		validateNoDisallowedMethodsInRunForEach(code, 0);
 
 		const itemIndex = 0;
 		const chunks = this.chunkInputItems(numInputItems);
@@ -89,8 +86,8 @@ export class JsTaskRunnerSandbox {
 			const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
 				'javascript',
 				{
-					code: this.jsCode,
-					nodeMode: this.nodeMode,
+					code,
+					nodeMode: 'runOnceForEachItem',
 					workflowMode: this.workflowMode,
 					continueOnFail: this.executeFunctions.continueOnFail(),
 					chunk: {
@@ -121,6 +118,27 @@ export class JsTaskRunnerSandbox {
 		}
 
 		return executionResults;
+	}
+
+	async runCode<T = unknown>(code: string): Promise<T> {
+		const executionResult = await this.executeFunctions.startJob(
+			'javascript',
+			{
+				code,
+				nodeMode: 'runCode',
+				workflowMode: this.workflowMode,
+				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
+			},
+			0,
+		);
+
+		if (!executionResult.ok) {
+			throwExecutionError('error' in executionResult ? executionResult.error : {});
+		}
+
+		// We just assume the caller types the result correctly to match the code
+		return executionResult.result as T;
 	}
 
 	/** Chunks the input items into chunks of 1000 items each */

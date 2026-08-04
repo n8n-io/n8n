@@ -49,27 +49,19 @@ const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeV
 			/>
 		</div>
 		<N8nIconButton
+			variant="ghost"
 			v-if="parameter"
 			icon="x"
 			size="small"
-			type="tertiary"
-			text
 			@click="emit('clearParameter')"
 		/>
-		<N8nIconButton
-			v-else
-			icon="expand"
-			size="small"
-			type="tertiary"
-			text
-			@click="emit('openNdv')"
-		/>
+		<N8nIconButton variant="ghost" v-else icon="expand" size="small" @click="emit('openNdv')" />
 		<NodeExecuteButton
 			v-if="isExecutable"
 			data-test-id="node-execute-button"
 			:node-name="node.name"
 			:tooltip="`Execute ${node.name}`"
-			type="secondary"
+			variant="subtle"
 			size="small"
 			icon="play"
 			:square="true"

@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 import type { UserAction } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
@@ -24,58 +25,162 @@ describe('WorkflowHistoryListItem', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render item with badge', async () => {
-		const item = workflowHistoryDataFactory();
-		item.authors = 'John Doe';
-		const { getByText, container, queryByRole, emitted } = renderComponent({
-			pinia,
-			props: {
-				item,
-				index: 0,
-				actions,
-				isActive: false,
-			},
-		});
-
-		await userEvent.hover(container.querySelector('.el-tooltip__trigger')!);
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-
-		await userEvent.click(container.querySelector('p')!);
-		expect(emitted().preview).toEqual([
-			[expect.objectContaining({ id: item.versionId, event: expect.any(MouseEvent) })],
-		]);
-
-		expect(emitted().mounted).toEqual([[{ index: 0, isActive: false, offsetTop: 0 }]]);
-		expect(getByText(/Latest saved/)).toBeInTheDocument();
-	});
-
 	test.each(actionTypes)('should emit %s event', async (action) => {
 		const item = workflowHistoryDataFactory();
-		const authors = item.authors.split(', ');
-		const { queryByText, getByRole, getByTestId, container, emitted } = renderComponent({
+		const { queryByText, getByTestId, emitted } = renderComponent({
 			pinia,
 			props: {
 				item,
 				index: 2,
 				actions,
-				isActive: true,
+				isSelected: true,
 			},
 		});
 
-		const authorsTag = container.querySelector('.el-tooltip__trigger')!;
-		expect(authorsTag).toHaveTextContent(`${authors[0]} + ${authors.length - 1}`);
-		await userEvent.hover(authorsTag);
-		expect(getByRole('tooltip')).toBeInTheDocument();
-
-		await userEvent.click(getByTestId('action-toggle'));
+		const actionToggle = getByTestId('action-toggle');
+		await userEvent.click(within(actionToggle).getByRole('button'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId(`action-${action}`));
 		expect(emitted().action).toEqual([
-			[{ action, id: item.versionId, data: { formattedCreatedAt: expect.any(String) } }],
+			[
+				{
+					action,
+					id: item.versionId,
+					data: {
+						formattedCreatedAt: expect.any(String),
+						versionName: item.name,
+						description: item.description,
+					},
+				},
+			],
 		]);
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
-		expect(emitted().mounted).toEqual([[{ index: 2, isActive: true, offsetTop: 0 }]]);
+		expect(emitted().mounted).toEqual([[{ index: 2, isSelected: true, offsetTop: 0 }]]);
+	});
+
+	it('should emit compare event when compare button is clicked', async () => {
+		const item = workflowHistoryDataFactory();
+		const itemToCompareWith = workflowHistoryDataFactory();
+		const compareName = itemToCompareWith.name ?? 'compare target';
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: { name: compareName, versionId: itemToCompareWith.versionId },
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toEqual([[{ id: itemToCompareWith.versionId }]]);
+	});
+
+	it('should show a two-line compare tooltip with both version names', async () => {
+		const item = { ...workflowHistoryDataFactory(), name: 'Version 1 name' };
+		const itemToCompareWith = workflowHistoryDataFactory();
+		const compareName = 'Version 2 name';
+		const { getByTestId, findByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: { name: compareName, versionId: itemToCompareWith.versionId },
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		await userEvent.hover(getByTestId('workflow-history-compare-item-button'));
+
+		expect(await findByText('Compare “Version 2 name”')).toBeInTheDocument();
+		expect(await findByText('with “Version 1 name”')).toBeInTheDocument();
+	});
+
+	it('should not emit compare event when compareWith is missing', async () => {
+		const item = workflowHistoryDataFactory();
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: null,
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toBeUndefined();
+	});
+
+	it('should not render compare button when workflow diffs are disabled', () => {
+		const item = workflowHistoryDataFactory();
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: null,
+				isWorkflowDiffsEnabled: false,
+			},
+		});
+
+		expect(queryByTestId('workflow-history-compare-item-button')).not.toBeInTheDocument();
+	});
+
+	it('should render current changes for first unnamed item', () => {
+		const item = { ...workflowHistoryDataFactory(), name: null };
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 0,
+				actions,
+				isSelected: true,
+			},
+		});
+
+		expect(getByText('Current changes')).toBeInTheDocument();
+	});
+
+	it('should render version name for first named item', () => {
+		const item = { ...workflowHistoryDataFactory(), name: 'Named Version' };
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 0,
+				actions,
+				isSelected: true,
+			},
+		});
+
+		expect(getByText('Named Version')).toBeInTheDocument();
+	});
+
+	it('should render a generated version label when the item has no name and it is not the first item', () => {
+		const item = { ...workflowHistoryDataFactory(), name: null };
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+			},
+		});
+
+		expect(getByText(`Version ${item.versionId.substring(0, 8)}`)).toBeInTheDocument();
 	});
 });

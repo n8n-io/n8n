@@ -1,13 +1,23 @@
 import type { User } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
+import {
+	WEBHOOK_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	NodeHelpers,
+	type INode,
+	type INodeType,
+	type INodeTypes,
+} from 'n8n-workflow';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
 
 import {
 	hasHttpHeaderAuthDecryptedData,
 	hasJwtPemKeyDecryptedData,
 	hasJwtSecretDecryptedData,
 } from '../mcp.typeguards';
-
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { MCPTriggersMap } from '../mcp.types';
 
 export type WebhookEndpoints = {
 	webhook: string;
@@ -22,21 +32,154 @@ type WebhookCredentialRequirement =
 
 type WebhookNodeDetails = {
 	nodeName: string;
-	baseUrl: string;
-	productionPath: string;
-	testPath: string;
+	productionUrl: string;
+	testUrl: string;
 	httpMethod: string;
 	responseModeDescription: string;
 	credentials: WebhookCredentialRequirement;
 };
 
+/**
+ * `isFullPath` lives on the node type's webhook description, not on the node's
+ * parameters. When it resolves to false, getNodeWebhookUrl prefixes the node's
+ * webhookId, producing a URL that does not match the registered webhook.
+ */
+const resolveIsFullPath = (nodeTypes: INodeTypes, node: INode): boolean => {
+	let nodeType: INodeType | undefined;
+	try {
+		nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	} catch {
+		return false;
+	}
+	const webhookDescription = nodeType?.description.webhooks?.find(
+		(webhook) => webhook.restartWebhook !== true,
+	);
+	// The value can be an expression, but the Webhook node (the only type routed
+	// here) defines it as a static boolean; treat anything else as false.
+	return webhookDescription?.isFullPath === true;
+};
+
 // Normalizes endpoint segment (strips leading/trailing slashes) and joins with the node path.
-export const buildWebhookPath = (segment: string, pathParam: string) => {
-	let normalizedSegment = segment;
-	while (normalizedSegment.startsWith('/')) normalizedSegment = normalizedSegment.slice(1);
-	while (normalizedSegment.endsWith('/')) normalizedSegment = normalizedSegment.slice(0, -1);
-	const basePath = normalizedSegment ? `/${normalizedSegment}/` : '/';
-	return `${basePath}${pathParam}`;
+const buildEndpointBaseUrl = (baseUrl: string, endpoint: string) => {
+	const trimmedBase = baseUrl.replace(/\/+$/, '');
+	const trimmedEndpoint = endpoint.replace(/^\/+|\/+$/g, '');
+	return trimmedEndpoint ? `${trimmedBase}/${trimmedEndpoint}` : trimmedBase;
+};
+
+export const getTriggerDetails = async (
+	user: User,
+	supportedTriggers: INode[],
+	unsupportedTriggers: INode[],
+	baseUrl: string,
+	credentialsService: CredentialsService,
+	nodeTypes: INodeTypes,
+	endpoints: WebhookEndpoints,
+	workflowId: string,
+	testBaseUrl: string = baseUrl,
+): Promise<string> => {
+	if (supportedTriggers.length === 0) {
+		if (unsupportedTriggers.length > 0) {
+			const names = unsupportedTriggers.map((trigger) => trigger.name).join(', ');
+			return `This workflow's trigger(s) are not supported for direct execution through MCP: ${names}. Only Schedule, Webhook, Form, and Chat triggers can be executed directly through MCP, so this workflow cannot be executed through MCP. Its trigger(s) still run normally when the workflow is active.`;
+		}
+		return 'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.';
+	}
+
+	// Organize triggers by their node type
+	const triggersByType: MCPTriggersMap = {
+		[SCHEDULE_TRIGGER_NODE_TYPE]: [],
+		[WEBHOOK_NODE_TYPE]: [],
+		[FORM_TRIGGER_NODE_TYPE]: [],
+		[CHAT_TRIGGER_NODE_TYPE]: [],
+	};
+
+	// Group triggers by type
+	for (const trigger of supportedTriggers) {
+		if (trigger.type in triggersByType) {
+			triggersByType[trigger.type as keyof MCPTriggersMap].push(trigger);
+		}
+	}
+
+	// Build response based on trigger types present
+	const responses: string[] = ['This workflow has the following trigger(s):\n'];
+
+	// Handle webhook triggers
+	if (triggersByType[WEBHOOK_NODE_TYPE].length > 0) {
+		const webhookDetails = await getWebhookDetails(
+			user,
+			triggersByType[WEBHOOK_NODE_TYPE],
+			baseUrl,
+			credentialsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+			testBaseUrl,
+		);
+		responses.push(webhookDetails);
+	}
+
+	// Handle chat triggers
+	if (triggersByType[CHAT_TRIGGER_NODE_TYPE].length > 0) {
+		responses.push(getChatTriggerDetails(triggersByType[CHAT_TRIGGER_NODE_TYPE]));
+	}
+
+	// Handle schedule triggers
+	if (triggersByType[SCHEDULE_TRIGGER_NODE_TYPE].length > 0) {
+		responses.push(getScheduleTriggerDetails(triggersByType[SCHEDULE_TRIGGER_NODE_TYPE]));
+	}
+
+	// Handle form triggers
+	if (triggersByType[FORM_TRIGGER_NODE_TYPE].length > 0) {
+		responses.push(getFormTriggerDetails(triggersByType[FORM_TRIGGER_NODE_TYPE]));
+	}
+
+	return responses.join('\n\n');
+};
+
+const getScheduleTriggerDetails = (scheduleTriggers: INode[]): string => {
+	const header = 'Schedule trigger(s):\n\n';
+	const footer =
+		'\n\nScheduled workflows can be executed directly through MCP clients and do not require external inputs.';
+	const triggers = scheduleTriggers
+		.map(
+			(node, index) => `
+				<trigger ${index + 1}>
+				\t - Node name: ${node.name}
+				</trigger ${index + 1}>`,
+		)
+		.join('\n\n');
+	return header + triggers + footer;
+};
+
+const getFormTriggerDetails = (formTriggers: INode[]): string => {
+	const header = 'Form trigger(s):\n\n';
+	const footer =
+		'\n\nUse the following input format when directly executing this workflow using any of the form triggers: { inputs { formData: Array<{ FIELD_NAME: VALUE }> } }';
+	const triggers = formTriggers
+		.map(
+			(node, index) => `
+				<trigger ${index + 1}>
+				\t - Node name: ${node.name}
+				\t - Form fields: ${JSON.stringify(node.parameters.formFields ?? 'N/A')}
+				</trigger ${index + 1}>`,
+		)
+		.join('\n\n');
+	return header + triggers + footer;
+};
+
+const getChatTriggerDetails = (chatTriggers: INode[]): string => {
+	const header = 'Chat trigger(s):\n\n';
+	const footer =
+		'\n\nUse the following input format when directly executing this workflow using any of the chat triggers: { inputs { chatInput: <CHAT_MESSAGE_HERE> } }';
+	const triggers = chatTriggers
+		.map(
+			(node, index) => `
+				<trigger ${index + 1}>
+				\t - Node name: ${node.name}
+				</trigger ${index + 1}>`,
+		)
+		.join('\n\n');
+	return header + triggers + footer;
 };
 
 /**
@@ -49,16 +192,24 @@ export const getWebhookDetails = async (
 	webhookNodes: INode[],
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
+	workflowId: string,
+	testBaseUrl: string = baseUrl,
 ): Promise<string> => {
-	if (webhookNodes.length === 0) {
-		return 'This workflow does not have a trigger node that can be executed via MCP.';
-	}
-
 	const nodeDetails = await Promise.all(
 		webhookNodes.map(
 			async (node) =>
-				await collectWebhookNodeDetails(user, node, baseUrl, credentialsService, endpoints),
+				await collectWebhookNodeDetails(
+					user,
+					node,
+					baseUrl,
+					credentialsService,
+					nodeTypes,
+					endpoints,
+					workflowId,
+					testBaseUrl,
+				),
 		),
 	);
 
@@ -70,17 +221,32 @@ const collectWebhookNodeDetails = async (
 	node: INode,
 	baseUrl: string,
 	credentialsService: CredentialsService,
+	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
+	workflowId: string,
+	testBaseUrl: string = baseUrl,
 ): Promise<WebhookNodeDetails> => {
 	const pathParam = typeof node.parameters.path === 'string' ? node.parameters.path : '';
+	const isFullPath = resolveIsFullPath(nodeTypes, node);
 	const httpMethod =
 		typeof node.parameters.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
 
 	return {
 		nodeName: node.name,
-		baseUrl,
-		productionPath: buildWebhookPath(endpoints.webhook, pathParam),
-		testPath: buildWebhookPath(endpoints.webhookTest, pathParam),
+		productionUrl: NodeHelpers.getNodeWebhookUrl(
+			buildEndpointBaseUrl(baseUrl, endpoints.webhook),
+			workflowId,
+			node,
+			pathParam,
+			isFullPath,
+		),
+		testUrl: NodeHelpers.getNodeWebhookUrl(
+			buildEndpointBaseUrl(testBaseUrl, endpoints.webhookTest),
+			workflowId,
+			node,
+			pathParam,
+			isFullPath,
+		),
 		httpMethod,
 		responseModeDescription: getResponseModeDescription(node),
 		credentials: await resolveCredentialRequirement(user, node, credentialsService),
@@ -88,7 +254,7 @@ const collectWebhookNodeDetails = async (
 };
 
 const formatWebhookDetails = (details: WebhookNodeDetails[]): string => {
-	const header = 'This workflow is triggered by the following webhook(s):\n\n';
+	const header = 'Webhook trigger(s):\n\n';
 	const triggers = details
 		.map((detail, index) => formatTriggerDescription(detail, index))
 		.join('\n\n');
@@ -98,9 +264,8 @@ const formatWebhookDetails = (details: WebhookNodeDetails[]): string => {
 const formatTriggerDescription = (detail: WebhookNodeDetails, index: number): string => `
 				<trigger ${index + 1}>
 				\t - Node name: ${detail.nodeName}
-				\t - Base URL: ${detail.baseUrl}
-				\t - Production path: ${detail.productionPath}
-				\t - Test path: ${detail.testPath}
+				\t - Production URL: ${detail.productionUrl}
+				\t - Test URL: ${detail.testUrl}
 				\t - HTTP Method: ${detail.httpMethod}
 				\t - Response Mode: ${detail.responseModeDescription}
 				${formatCredentialRequirement(detail.credentials)}

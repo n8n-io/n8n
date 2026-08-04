@@ -2,8 +2,8 @@
     "type": "object",
     "properties": {
         "status": {
-            "type": "integer"
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

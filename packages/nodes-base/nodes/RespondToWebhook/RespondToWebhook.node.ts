@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
 import type {
@@ -24,7 +25,7 @@ import type { Readable } from 'stream';
 
 import { getBinaryResponse } from './utils/binary';
 import { configuredOutputs } from './utils/outputs';
-import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
+import { generatePairedItemData } from '../../utils/utilities';
 
 const respondWithProperty: INodeProperties = {
 	displayName: 'Respond With',
@@ -79,15 +80,25 @@ const respondWithProperty: INodeProperties = {
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Webhook',
-		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
+		icon: 'node:respond-to-webhook',
+		iconColor: 'magenta',
 		name: 'respondToWebhook',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
-		// Keep the default version at 1.4 until streaming is fully supported
-		defaultVersion: 1.4,
+		defaultVersion: 1.5,
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
+		},
+		builderHint: {
+			searchHint:
+				'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
+			relatedNodes: [
+				{
+					nodeType: 'n8n-nodes-base.webhook',
+					relationHint: 'Required trigger - set responseMode to "responseNode"',
+				},
+			],
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: `={{(${configuredOutputs})($nodeVersion, $parameter)}}`,
@@ -440,7 +451,7 @@ export class RespondToWebhook implements INodeType {
 					if (keyType === 'passphrase') {
 						secretOrPrivateKey = secret;
 					} else {
-						secretOrPrivateKey = formatPrivateKey(privateKey);
+						secretOrPrivateKey = formatPemBlock(privateKey);
 					}
 					const payload = this.getNodeParameter('payload', 0, {}) as IDataObject;
 					const token = jwt.sign(payload, secretOrPrivateKey, { algorithm });
@@ -563,7 +574,7 @@ export class RespondToWebhook implements INodeType {
 			};
 
 			if (!shouldStream || respondWith === 'binary') {
-				this.sendResponse(response);
+				await this.sendResponse(response);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {

@@ -1,18 +1,19 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
-import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
-import { useToast } from '@/app/composables/useToast';
+import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
+import { useToast } from '@n8n/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/app/components/Modal.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 
 import { N8nButton, N8nInput } from '@n8n/design-system';
@@ -29,6 +30,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+
 const workflowSaving = useWorkflowSaving({ router });
 const workflowHelpers = useWorkflowHelpers();
 const { showMessage, showError } = useToast();
@@ -38,6 +40,7 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const name = ref('');
 const currentTagIds = ref(props.data.tags);
@@ -87,8 +90,8 @@ const save = async (): Promise<void> => {
 	isSaving.value = true;
 
 	try {
-		let workflowToUpdate: WorkflowDataUpdate | undefined;
-		if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		let workflowToCreate: WorkflowDataCreate | undefined;
+		if (workflowsStore.isWorkflowSaved[props.data.id]) {
 			const {
 				createdAt,
 				updatedAt,
@@ -96,27 +99,34 @@ const save = async (): Promise<void> => {
 				id,
 				homeProject,
 				sharedWithProjects,
+				activeVersionId,
+				activeVersion,
+				active,
+				// Placement is driven by `parentFolderId` below; the `parentFolder` relation object
+				// is not a valid create input and must not be forwarded to the API.
+				parentFolder,
 				...workflow
-			} = await workflowsStore.fetchWorkflow(props.data.id);
-			workflowToUpdate = workflow;
+			} = await workflowsListStore.fetchWorkflow(props.data.id);
+			workflowToCreate = { ...workflow, projectId: homeProject?.id };
 
 			workflowHelpers.removeForeignCredentialsFromWorkflow(
-				workflowToUpdate,
+				workflowToCreate,
 				credentialsStore.allCredentials,
 			);
 		}
 
-		const workflowId = await workflowSaving.saveAsNewWorkflow({
+		const duplicatedWorkflowId = await workflowSaving.saveAsNewWorkflow({
 			name: workflowName,
-			data: workflowToUpdate,
+			data: workflowToCreate,
 			tags: currentTagIds.value,
 			resetWebhookUrls: true,
 			openInNewWindow: true,
 			resetNodeIds: true,
+			requestNewId: true,
 			parentFolderId,
 		});
 
-		if (workflowId) {
+		if (duplicatedWorkflowId) {
 			closeDialog();
 			telemetry.track('User duplicated workflow', {
 				old_workflow_id: currentWorkflowId,
@@ -185,17 +195,15 @@ onMounted(async () => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					:loading="isSaving"
-					:label="i18n.baseText('duplicateWorkflowDialog.save')"
-					float="right"
-					@click="save"
-				/>
-				<N8nButton
-					type="secondary"
+					variant="subtle"
 					:disabled="isSaving"
 					:label="i18n.baseText('duplicateWorkflowDialog.cancel')"
-					float="right"
 					@click="close"
+				/>
+				<N8nButton
+					:loading="isSaving"
+					:label="i18n.baseText('duplicateWorkflowDialog.save')"
+					@click="save"
 				/>
 			</div>
 		</template>
@@ -210,6 +218,8 @@ onMounted(async () => {
 }
 
 .footer {
+	display: flex;
+	justify-content: flex-end;
 	> * {
 		margin-left: var(--spacing--3xs);
 	}

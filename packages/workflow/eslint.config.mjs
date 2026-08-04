@@ -5,6 +5,7 @@ export default defineConfig(
 	baseConfig,
 	{
 		rules: {
+			'import-x/no-extraneous-dependencies': 'error',
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 			complexity: ['error', 23],
 

@@ -1,0 +1,11 @@
+type: object
+properties:
+  id:
+    type: string
+    example: 9f8e7d6c5b4a3210
+  status:
+    type: string
+    enum: ['new', 'running', 'completed', 'error', 'cancelled']
+  createdAt:
+    type: string
+    format: date-time

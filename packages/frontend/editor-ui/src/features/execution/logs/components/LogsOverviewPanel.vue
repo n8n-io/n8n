@@ -97,8 +97,8 @@ function handleSwitchView(value: 'overview' | 'details') {
 					:content="locale.baseText('logs.overview.header.actions.clearExecution.tooltip')"
 				>
 					<N8nButton
-						size="mini"
-						type="secondary"
+						variant="subtle"
+						size="xsmall"
 						icon="trash-2"
 						icon-size="medium"
 						data-test-id="clear-execution-data-button"
@@ -123,7 +123,13 @@ function handleSwitchView(value: 'overview' | 'details') {
 				:class="$style.emptyText"
 				data-test-id="logs-overview-empty"
 			>
-				{{ locale.baseText('logs.overview.body.empty.message') }}
+				{{
+					locale.baseText(
+						execution?.dataTooLargeToDisplay
+							? 'logs.overview.body.dataTooLarge.message'
+							: 'logs.overview.body.empty.message',
+					)
+				}}
 			</N8nText>
 			<template v-else>
 				<LogsViewExecutionSummary

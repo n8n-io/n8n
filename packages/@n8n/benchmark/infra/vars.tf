@@ -10,13 +10,13 @@ variable "resource_group_name" {
 
 variable "host_size_family" {
   description = "Size Family for the Host Group"
-  default     = "DCSv2-Type1"
+  default     = "DSv5-Type1"
 }
 
 variable "vm_size" {
   description = "VM Size"
   # 8 vCPUs, 32 GiB memory
-  default = "Standard_DC8_v2"
+  default = "Standard_D8s_v5"
 }
 
 variable "number_of_vms" {

@@ -1,5 +1,7 @@
 import type { Locator } from '@playwright/test';
 
+import { MessageBox } from './messageBoxLocators';
+
 /**
  * Save Changes Modal component for handling unsaved changes dialogs.
  * Appears when navigating away from workflow with unsaved changes.
@@ -12,15 +14,11 @@ export class SaveChangesModal {
 	}
 
 	getCancelButton(): Locator {
-		return this.root.locator('.btn--cancel');
+		return new MessageBox(this.root).cancelButton;
 	}
 
 	getCloseButton(): Locator {
-		return this.root.locator('.el-message-box__headerbtn');
-	}
-
-	getSaveButton(): Locator {
-		return this.root.getByRole('button', { name: 'Save' });
+		return new MessageBox(this.root).closeIcon;
 	}
 
 	async clickCancel(): Promise<void> {
@@ -29,9 +27,5 @@ export class SaveChangesModal {
 
 	async clickClose(): Promise<void> {
 		await this.getCloseButton().click();
-	}
-
-	async clickSave(): Promise<void> {
-		await this.getSaveButton().click();
 	}
 }

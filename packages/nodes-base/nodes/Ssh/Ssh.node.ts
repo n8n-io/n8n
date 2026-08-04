@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { writeFile } from 'fs/promises';
 import type {
 	ICredentialTestFunctions,
@@ -9,13 +10,16 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeConnectionTypes,
+	NodeOperationError,
+	sanitizeFilename,
+} from 'n8n-workflow';
 import type { Config } from 'node-ssh';
 import { NodeSSH } from 'node-ssh';
 import type { Readable } from 'stream';
 import { file as tmpFile } from 'tmp-promise';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 async function resolveHomeDir(
 	this: IExecuteFunctions,
@@ -50,7 +54,7 @@ export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSH',
 		name: 'ssh',
-		icon: 'fa:terminal',
+		icon: 'node:ssh',
 		iconColor: 'black',
 		group: ['input'],
 		version: 1,
@@ -58,7 +62,6 @@ export class Ssh implements INodeType {
 		description: 'Execute commands via SSH',
 		defaults: {
 			name: 'SSH',
-			color: '#000000',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -297,7 +300,7 @@ export class Ssh implements INodeType {
 							host: credentials.host as string,
 							username: credentials.username as string,
 							port: credentials.port as number,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
+							privateKey: formatPemBlock(credentials.privateKey as string),
 						};
 
 						if (credentials.passphrase) {
@@ -350,7 +353,7 @@ export class Ssh implements INodeType {
 					host: credentials.host as string,
 					username: credentials.username as string,
 					port: credentials.port as number,
-					privateKey: formatPrivateKey(credentials.privateKey as string),
+					privateKey: formatPemBlock(credentials.privateKey as string),
 				};
 
 				if (credentials.passphrase) {
@@ -444,11 +447,15 @@ export class Ssh implements INodeType {
 							try {
 								await writeFile(binaryFile.path, uploadData);
 
+								// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+								const rawFileName = fileName || binaryData.fileName || '';
+								const sanitizedFileName = sanitizeFilename(rawFileName);
+
 								await ssh.putFile(
 									binaryFile.path,
 									`${parameterPath}${
 										parameterPath.charAt(parameterPath.length - 1) === '/' ? '' : '/'
-									}${fileName || binaryData.fileName}`,
+									}${sanitizedFileName}`,
 								);
 
 								returnItems.push({

@@ -1,297 +1,122 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { JSONSchema7 } from 'json-schema';
+import { z } from 'zod';
 
-import type { McpAuthenticationOption, McpServerTransport } from '../types';
-import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
+import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js');
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
-jest.mock('@modelcontextprotocol/sdk/client/sse.js');
+import type { McpTool } from '../../shared/types';
+import { buildMcpToolName, isZodObjectSchema, mcpToolToDynamicTool } from '../utils';
 
-const MockedClient = Client as jest.MockedClass<typeof Client>;
-const MockedHTTPTransport = StreamableHTTPClientTransport as jest.MockedClass<
-	typeof StreamableHTTPClientTransport
->;
-const MockedSSETransport = SSEClientTransport as jest.MockedClass<typeof SSEClientTransport>;
+vi.mock('@utils/schemaParsing', () => ({
+	convertJsonSchemaToZod: vi.fn(),
+}));
 
-describe('utils', () => {
-	describe('tryRefreshOAuth2Token', () => {
-		it('should refresh an OAuth2 token without headers', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
-
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
-
-			expect(headers).toEqual({ Authorization: 'Bearer new-access-token' });
-		});
-
-		it('should refresh an OAuth2 token with headers', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: 'new-access-token',
-			});
-
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api', {
-				Foo: 'bar',
-				Authorization: 'Bearer old-access-token',
-			});
-
-			expect(headers).toEqual({
-				Foo: 'bar',
-				Authorization: 'Bearer new-access-token',
-			});
-		});
-
-		it('should return null if the authentication method is not oAuth2Api', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-
-			const headers = await tryRefreshOAuth2Token(ctx, 'headerAuth');
-
-			expect(headers).toBeNull();
-		});
-
-		it('should return null if the refreshOAuth2Token returns no access_token', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
-				access_token: null,
-			});
-
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
-
-			expect(headers).toBeNull();
-		});
-
-		it('should return null if the refreshOAuth2Token throws an error', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.helpers.refreshOAuth2Token.mockRejectedValue(new Error('Failed to refresh OAuth2 token'));
-
-			const headers = await tryRefreshOAuth2Token(ctx, 'mcpOAuth2Api');
-
-			expect(headers).toBeNull();
-		});
+describe('buildMcpToolName', () => {
+	it('should prefix tool name with sanitized server name', () => {
+		expect(buildMcpToolName('MCP Client', 'get_weather')).toBe('MCP_Client_get_weather');
 	});
 
-	describe('getAuthHeaders', () => {
-		it('should return the headers for mcpOAuth2Api', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
-				oauthTokenData: {
-					access_token: 'access-token',
-				},
-			});
-
-			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
-
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
-		});
-
-		it('should return the headers for headerAuth', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
-				name: 'Foo',
-				value: 'bar',
-			});
-
-			const result = await getAuthHeaders(ctx, 'headerAuth');
-
-			expect(result).toEqual({ headers: { Foo: 'bar' } });
-		});
-
-		it('should return the headers for bearerAuth', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
-				token: 'access-token',
-			});
-
-			const result = await getAuthHeaders(ctx, 'bearerAuth');
-
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
-		});
-
-		it('should return an empty object for none', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-
-			const result = await getAuthHeaders(ctx, 'none');
-
-			expect(result).toEqual({});
-		});
-
-		it('should return an empty object for an unknown authentication method', async () => {
-			const ctx = mockDeep<IExecuteFunctions>();
-
-			const result = await getAuthHeaders(ctx, 'unknown' as McpAuthenticationOption);
-
-			expect(result).toEqual({});
-		});
-
-		it.each(['headerAuth', 'bearerAuth', 'mcpOAuth2Api'] as McpAuthenticationOption[])(
-			'should return an empty object for %s when it fails',
-			async (authentication) => {
-				const ctx = mockDeep<IExecuteFunctions>();
-				ctx.getCredentials.mockRejectedValue(new Error('Failed to get credentials'));
-
-				const result = await getAuthHeaders(ctx, authentication);
-
-				expect(result).toEqual({});
-			},
-		);
+	it('should sanitize special characters in server name', () => {
+		expect(buildMcpToolName('GitHub MCP (v2)', 'list_repos')).toBe('GitHub_MCP__v2__list_repos');
 	});
 
-	describe('connectMcpClient', () => {
-		const mockClient = {
-			connect: jest.fn(),
-		};
+	it('should handle server name with only special characters', () => {
+		expect(buildMcpToolName('---', 'tool')).toBe('____tool');
+	});
 
-		beforeEach(() => {
-			jest.resetAllMocks();
-			const mockHttpTransport = {} as unknown as StreamableHTTPClientTransport;
-			const mockSSETransport = {} as unknown as SSEClientTransport;
-			MockedClient.mockImplementation(() => mockClient as unknown as Client);
-			MockedHTTPTransport.mockImplementation(() => mockHttpTransport);
-			MockedSSETransport.mockImplementation(() => mockSSETransport);
-		});
+	it('should handle numeric server name', () => {
+		expect(buildMcpToolName('123', 'tool')).toBe('123_tool');
+	});
 
-		describe.each([
-			['httpStreamable', StreamableHTTPClientTransport],
-			['sse', SSEClientTransport],
-		] as Array<
-			[McpServerTransport, typeof StreamableHTTPClientTransport | typeof SSEClientTransport]
-		>)('%s transport', (transport, Transport) => {
-			it('should retry on 401 and succeed', async () => {
-				const unauthorizedError = new Error('Request failed with status 401');
-				const onUnauthorized = jest.fn().mockResolvedValue({ Authorization: 'Bearer new-token' });
-				mockClient.connect
-					.mockRejectedValueOnce(unauthorizedError)
-					.mockResolvedValueOnce(undefined);
+	it('should handle empty server name', () => {
+		expect(buildMcpToolName('', 'tool')).toBe('_tool');
+	});
 
-				const result = await connectMcpClient({
-					serverTransport: transport,
-					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
-					name: 'test-client',
-					version: 1,
-					onUnauthorized,
-				});
+	it('should not truncate when total length is exactly 64 characters', () => {
+		const serverName = 'S';
+		const toolName = 'a'.repeat(62); // S_ + 62 = 64
+		const result = buildMcpToolName(serverName, toolName);
+		expect(result).toBe(`S_${'a'.repeat(62)}`);
+		expect(result).toHaveLength(64);
+	});
 
-				expect(result.ok).toBe(true);
-				expect(mockClient.connect).toHaveBeenCalledTimes(2);
-				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
-				expect(Transport).toHaveBeenCalledTimes(2);
-				expect(Transport).toHaveBeenNthCalledWith(
-					1,
-					expect.any(URL),
-					expect.objectContaining({
-						requestInit: expect.objectContaining({
-							headers: expect.objectContaining({
-								Authorization: 'Bearer old-token',
-							}),
-						}),
-					}),
-				);
-				expect(Transport).toHaveBeenNthCalledWith(
-					2,
-					expect.any(URL),
-					expect.objectContaining({
-						requestInit: expect.objectContaining({
-							headers: expect.objectContaining({
-								Authorization: 'Bearer new-token',
-							}),
-						}),
-					}),
-				);
-			});
+	it('should truncate prefix when total length exceeds 64 characters', () => {
+		const toolName = 'a'.repeat(50);
+		const result = buildMcpToolName('MyServer', toolName);
+		expect(result.length).toBeLessThanOrEqual(64);
+		expect(result).toContain(toolName);
+	});
 
-			it('should not retry on not 401', async () => {
-				const error = new Error('Internal Server Error');
-				mockClient.connect.mockRejectedValueOnce(error);
+	it('should truncate at 65 characters', () => {
+		const serverName = 'SS';
+		const toolName = 'a'.repeat(62); // SS_ + 62 = 65, exceeds limit
+		const result = buildMcpToolName(serverName, toolName);
+		expect(result).toBe(`S_${'a'.repeat(62)}`);
+		expect(result).toHaveLength(64);
+	});
 
-				const result = await connectMcpClient({
-					serverTransport: transport,
-					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
-					name: 'test-client',
-					version: 1,
-				});
+	it('should return original tool name when it alone exceeds 64 characters', () => {
+		const longToolName = 'a'.repeat(65);
+		expect(buildMcpToolName('Server', longToolName)).toBe(longToolName);
+	});
 
-				expect(result.ok).toBe(false);
-				if (!result.ok) {
-					expect(result.error.type).toBe('connection');
-				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(1);
-				expect(Transport).toHaveBeenCalledTimes(1);
-			});
+	it('should return original tool name when tool name is exactly 64 characters', () => {
+		const toolName = 'a'.repeat(64); // maxPrefixLen = 64 - 64 - 1 = -1, so <= 0
+		expect(buildMcpToolName('Server', toolName)).toBe(toolName);
+	});
+});
 
-			it('should not retry when onUnauthorized is not provided', async () => {
-				const error = new Error('Request failed with status 401');
-				mockClient.connect.mockRejectedValueOnce(error);
+describe('isZodObjectSchema', () => {
+	it('should recognize a real ZodObject', () => {
+		expect(isZodObjectSchema(z.object({ url: z.string() }))).toBe(true);
+	});
 
-				const result = await connectMcpClient({
-					serverTransport: transport,
-					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
-					name: 'test-client',
-					version: 1,
-				});
+	it('should reject a non-object schema', () => {
+		expect(isZodObjectSchema(z.string())).toBe(false);
+	});
 
-				expect(result.ok).toBe(false);
-				if (!result.ok) {
-					expect(result.error.type).toBe('connection');
-				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(1);
-				expect(Transport).toHaveBeenCalledTimes(1);
-			});
+	it('should recognize an object schema built by a different zod module instance', () => {
+		const foreignInstanceObject = { _def: { typeName: 'ZodObject' } } as unknown as z.ZodTypeAny;
+		expect(isZodObjectSchema(foreignInstanceObject)).toBe(true);
+	});
 
-			it('should not retry when onUnauthorized returns null', async () => {
-				const error = new Error('Request failed with status 401');
-				const onUnauthorized = jest.fn().mockResolvedValue(null);
-				mockClient.connect.mockRejectedValueOnce(error);
+	it('should recognize a zod v4 object schema via its type marker', () => {
+		const zodV4Object = { _zod: { def: { type: 'object' } } } as unknown as z.ZodTypeAny;
+		expect(isZodObjectSchema(zodV4Object)).toBe(true);
+	});
+});
 
-				const result = await connectMcpClient({
-					serverTransport: transport,
-					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
-					name: 'test-client',
-					version: 1,
-					onUnauthorized,
-				});
+describe('mcpToolToDynamicTool', () => {
+	const tool: McpTool = {
+		name: 'browser_navigate',
+		description: 'Navigate the browser',
+		inputSchema: { type: 'object', properties: { url: { type: 'string' } } } as JSONSchema7,
+	};
 
-				expect(result.ok).toBe(false);
-				if (!result.ok) {
-					expect(result.error.type).toBe('connection');
-				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(1);
-				expect(Transport).toHaveBeenCalledTimes(1);
-				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
-			});
+	it('should keep an object schema unwrapped so args are forwarded top-level', () => {
+		vi.mocked(convertJsonSchemaToZod).mockReturnValue(z.object({ url: z.string() }));
 
-			it('should not retry more than once', async () => {
-				const error = new Error('Request failed with status 401');
-				mockClient.connect.mockRejectedValue(error);
-				const onUnauthorized = jest.fn().mockResolvedValue({ Authorization: 'Bearer new-token' });
+		const dynamicTool = mcpToolToDynamicTool(tool, vi.fn());
 
-				const result = await connectMcpClient({
-					serverTransport: transport,
-					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
-					name: 'test-client',
-					version: 1,
-					onUnauthorized,
-				});
+		expect(Object.keys((dynamicTool.schema as z.ZodObject<z.ZodRawShape>).shape)).toEqual(['url']);
+	});
 
-				expect(result.ok).toBe(false);
-				if (!result.ok) {
-					expect(result.error.type).toBe('connection');
-				}
-				expect(mockClient.connect).toHaveBeenCalledTimes(2);
-				expect(Transport).toHaveBeenCalledTimes(2);
-				expect(onUnauthorized).toHaveBeenCalledTimes(1);
-				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
-			});
-		});
+	it('should wrap a non-object schema in a value object', () => {
+		vi.mocked(convertJsonSchemaToZod).mockReturnValue(z.string());
+
+		const dynamicTool = mcpToolToDynamicTool(tool, vi.fn());
+
+		expect(Object.keys((dynamicTool.schema as z.ZodObject<z.ZodRawShape>).shape)).toEqual([
+			'value',
+		]);
+	});
+
+	it('should forward object-schema args to the callback top-level, not wrapped in value', async () => {
+		vi.mocked(convertJsonSchemaToZod).mockReturnValue(z.object({ url: z.string() }));
+		const onCallTool = vi.fn().mockResolvedValue('ok');
+
+		const dynamicTool = mcpToolToDynamicTool(tool, onCallTool);
+		await dynamicTool.invoke({ url: 'https://example.com' });
+
+		expect(onCallTool.mock.calls[0][0]).toEqual({ url: 'https://example.com' });
 	});
 });

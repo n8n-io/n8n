@@ -43,6 +43,9 @@ export function isValidCredentialResponse(value: unknown): value is ICredentials
 export const isObj = (obj: unknown): obj is object =>
 	!!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
+export const isBinaryLike = (obj: unknown): obj is object =>
+	isObj(obj) && 'mimeType' in obj && 'data' in obj;
+
 export function isString(value: unknown): value is string {
 	return typeof value === 'string';
 }
@@ -160,3 +163,11 @@ export function isTeamProjectRole(role: string): role is TeamProjectRole {
 
 export const isWorkflowListItem = (resource: WorkflowListResource): resource is WorkflowListItem =>
 	'resource' in resource ? resource.resource !== 'folder' : true;
+
+export function isDebouncedFunction(fn: unknown): fn is { cancel: () => void } {
+	return (
+		typeof fn === 'function' &&
+		'cancel' in fn &&
+		typeof (fn as Record<string, unknown>).cancel === 'function'
+	);
+}

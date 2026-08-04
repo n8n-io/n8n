@@ -12,4 +12,5 @@ export default defineConfig({
 	dts: true,
 	sourcemap: true,
 	tsconfig: 'tsconfig.backend.json',
+	hash: false,
 });

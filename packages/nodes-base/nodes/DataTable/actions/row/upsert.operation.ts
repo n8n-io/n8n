@@ -21,7 +21,7 @@ const displayOptions: IDisplayOptions = {
 };
 
 export const description: INodeProperties[] = [
-	...getSelectFields(displayOptions),
+	...getSelectFields(displayOptions, true),
 	makeAddRow(FIELD, displayOptions),
 	{
 		displayName: 'Options',

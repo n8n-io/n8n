@@ -1,43 +1,54 @@
 import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from './insights-collection.service';
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsPruningService } from './insights-pruning.service';
-import { INSIGHTS_DATE_RANGE_KEYS, keyRangeToDays } from './insights.constants';
 
 @Service()
 export class InsightsService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly compactionService: InsightsCompactionService,
-		private readonly collectionService: InsightsCollectionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	settings() {
-		return {
-			summary: this.licenseState.isInsightsSummaryLicensed(),
-			dashboard: this.licenseState.isInsightsDashboardLicensed(),
-			dateRanges: this.getAvailableDateRanges(),
-		};
+	private async toggleCollectionService(enable: boolean) {
+		if (
+			this.instanceSettings.instanceType !== 'main' &&
+			this.instanceSettings.instanceType !== 'webhook'
+		) {
+			this.logger.debug('Instance is not main or webhook, skipping collection');
+			return;
+		}
+
+		const { InsightsCollectionService } = await import('./insights-collection.service.js');
+		const collectionService = Container.get(InsightsCollectionService);
+		if (enable) {
+			collectionService.init();
+		} else {
+			await collectionService.shutdown();
+		}
 	}
 
-	startTimers() {
-		this.collectionService.startFlushingTimer();
+	async init() {
+		await this.toggleCollectionService(true);
 
 		if (this.instanceSettings.isLeader) this.startCompactionAndPruningTimers();
 	}
@@ -45,20 +56,18 @@ export class InsightsService {
 	@OnLeaderTakeover()
 	startCompactionAndPruningTimers() {
 		this.compactionService.startCompactionTimer();
-		if (this.pruningService.isPruningEnabled) {
-			this.pruningService.startPruningTimer();
-		}
+		this.pruningService.startPruningTimer();
 	}
 
 	@OnLeaderStepdown()
-	stopCompactionAndPruningTimers() {
-		this.compactionService.stopCompactionTimer();
+	async stopCompactionAndPruningTimers() {
 		this.pruningService.stopPruningTimer();
+		await this.compactionService.stopCompactionTimer();
 	}
 
 	async shutdown() {
-		await this.collectionService.shutdown();
-		this.stopCompactionAndPruningTimers();
+		await this.toggleCollectionService(false);
+		await this.stopCompactionAndPruningTimers();
 	}
 
 	async getInsightsSummary({
@@ -156,6 +165,7 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
+		user,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
@@ -163,6 +173,7 @@ export class InsightsService {
 		startDate,
 		endDate,
 	}: {
+		user: User;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
@@ -179,9 +190,21 @@ export class InsightsService {
 			projectId,
 		});
 
+		const accessibleWorkflowIds = new Set(
+			await this.workflowSharingService.getSharedWorkflowIds(user, {
+				scopes: ['workflow:read'],
+				projectId,
+			}),
+		);
+
+		const data = rows.map((row) => ({
+			...row,
+			hasReadAccess: row.workflowId !== null && accessibleWorkflowIds.has(row.workflowId),
+		}));
+
 		return {
 			count,
-			data: rows,
+			data,
 		};
 	}
 
@@ -282,25 +305,4 @@ export class InsightsService {
 
 		return 'week';
 	}
-
-	private getAvailableDateRanges(): DateRange[] {
-		const maxHistoryInDays =
-			this.licenseState.getInsightsMaxHistory() === -1
-				? Number.MAX_SAFE_INTEGER
-				: this.licenseState.getInsightsMaxHistory();
-		const isHourlyDateLicensed = this.licenseState.isInsightsHourlyDataLicensed();
-
-		return INSIGHTS_DATE_RANGE_KEYS.map((key) => ({
-			key,
-			licensed:
-				key === 'day' ? (isHourlyDateLicensed ?? false) : maxHistoryInDays >= keyRangeToDays[key],
-			granularity: key === 'day' ? 'hour' : keyRangeToDays[key] <= 30 ? 'day' : 'week',
-		}));
-	}
 }
-
-type DateRange = {
-	key: 'day' | 'week' | '2weeks' | 'month' | 'quarter' | '6months' | 'year';
-	licensed: boolean;
-	granularity: 'hour' | 'day' | 'week';
-};

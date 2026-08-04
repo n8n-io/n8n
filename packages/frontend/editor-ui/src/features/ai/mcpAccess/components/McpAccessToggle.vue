@@ -3,43 +3,51 @@ import { ElSwitch } from 'element-plus';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { computed } from 'vue';
+
 type Props = {
 	modelValue: boolean;
 	disabled?: boolean;
 	loading?: boolean;
+	managedByEnv?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	loading: false,
+	managedByEnv: false,
 });
 
 const emit = defineEmits<{
-	toggleMcpAccess: [enabled: boolean];
+	disableMcpAccess: [];
 }>();
 
 const i18n = useI18n();
 
-const onUpdateMCPEnabled = (value: string | number | boolean) => {
-	const boolValue = typeof value === 'boolean' ? value : Boolean(value);
-	emit('toggleMcpAccess', boolValue);
+const disabledTooltip = computed(() =>
+	props.managedByEnv
+		? i18n.baseText('settings.mcp.managedByEnv.tooltip')
+		: i18n.baseText('settings.mcp.toggle.disabled.tooltip'),
+);
+
+const onUpdateMCPEnabled = () => {
+	emit('disableMcpAccess');
 };
 </script>
 
 <template>
 	<div :class="$style['main-toggle-container']">
 		<div :class="$style['main-toggle-info']">
-			<N8nText :bold="true">{{ i18n.baseText('settings.mcp.toggle.label') }}</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('settings.mcp.toggle.description') }}
+			<N8nText :bold="true" :color="modelValue ? `success` : `text-light`" size="small">
+				{{
+					modelValue
+						? i18n.baseText('settings.mcp.header.toggle.enabled')
+						: i18n.baseText('settings.mcp.header.toggle.disabled')
+				}}
 			</N8nText>
 		</div>
 		<div :class="$style['main-toggle']" data-test-id="mcp-toggle-container">
-			<N8nTooltip
-				:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-				:disabled="!props.disabled"
-				placement="top"
-			>
+			<N8nTooltip :content="disabledTooltip" :disabled="!props.disabled" placement="top">
 				<ElSwitch
 					size="large"
 					data-test-id="mcp-access-toggle"
@@ -57,19 +65,7 @@ const onUpdateMCPEnabled = (value: string | number | boolean) => {
 .main-toggle-container {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--sm);
-	justify-content: space-between;
-	flex-shrink: 0;
-
-	border-radius: var(--radius);
-	border: var(--border);
-}
-
-.main-toggle-info {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
+	gap: var(--spacing--2xs);
 }
 
 .main-toggle {

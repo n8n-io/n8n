@@ -37,6 +37,12 @@ export interface NodeViewEventBusEvents {
 	renameWorkflow: never;
 
 	addTag: never;
+
+	/** Command to publish current workflow */
+	publishWorkflow: never;
+
+	/** Command to unpublish current workflow */
+	unpublishWorkflow: never;
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();

@@ -7,6 +7,12 @@
         "activities_count": {
             "type": "integer"
         },
+        "add_time": {
+            "type": "string"
+        },
+        "birthday": {
+            "type": "null"
+        },
         "cc_email": {
             "type": "string"
         },
@@ -167,10 +173,40 @@
                 }
             }
         },
+        "postal_address_admin_area_level_1": {
+            "type": "null"
+        },
+        "postal_address_admin_area_level_2": {
+            "type": "null"
+        },
+        "postal_address_country": {
+            "type": "null"
+        },
+        "postal_address_formatted_address": {
+            "type": "null"
+        },
         "postal_address_lat": {
             "type": "null"
         },
+        "postal_address_locality": {
+            "type": "null"
+        },
         "postal_address_long": {
+            "type": "null"
+        },
+        "postal_address_postal_code": {
+            "type": "null"
+        },
+        "postal_address_route": {
+            "type": "null"
+        },
+        "postal_address_street_number": {
+            "type": "null"
+        },
+        "postal_address_sublocality": {
+            "type": "null"
+        },
+        "postal_address_subpremise": {
             "type": "null"
         },
         "related_closed_deals_count": {
@@ -191,9 +227,12 @@
         "update_time": {
             "type": "string"
         },
+        "visible_to": {
+            "type": "string"
+        },
         "won_deals_count": {
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -26,6 +26,7 @@ export class Elasticsearch implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Elasticsearch API',
+		schemaPath: 'Elastic/Elasticsearch',
 		defaults: {
 			name: 'Elasticsearch',
 		},

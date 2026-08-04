@@ -1,4 +1,4 @@
-import type { SharedWorkflow, IWorkflowDb } from '@n8n/db';
+import type { SharedWorkflow, IWorkflowDb, WorkflowPublishHistory, WorkflowHistory } from '@n8n/db';
 import {
 	Project,
 	User,
@@ -6,6 +6,10 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
+	WorkflowDependencies,
+	WorkflowDependencyRepository,
+	WebhookRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -15,7 +19,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb {
-	const { active, isArchived, name, nodes, connections, versionId, settings } = attributes;
+	const { active, isArchived, name, nodes, connections, versionId, settings, nodeGroups } =
+		attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
 		active: active ?? false,
@@ -32,12 +37,34 @@ export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb 
 			},
 		],
 		connections: connections ?? {},
+		nodeGroups: nodeGroups ?? [],
 		versionId: versionId ?? uuid(),
 		settings: settings ?? {},
 		...attributes,
 	});
 
 	return workflowEntity;
+}
+
+async function populateWorkflowDependencies(workflow: IWorkflowDb) {
+	const dependencies = new WorkflowDependencies(workflow.id, workflow.versionCounter);
+
+	for (const node of workflow.nodes) {
+		if (node.type) {
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: node.type,
+				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+			});
+		}
+	}
+
+	if (dependencies.dependencies.length > 0) {
+		await Container.get(WorkflowDependencyRepository).updateDependenciesForWorkflow(
+			workflow.id,
+			dependencies,
+		);
+	}
 }
 
 /**
@@ -74,6 +101,8 @@ export async function createWorkflow(
 		);
 	}
 
+	await populateWorkflowDependencies(workflow);
+
 	return workflow;
 }
 
@@ -85,6 +114,18 @@ export async function createManyWorkflows(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const workflowRequests = [...Array(amount)].map(
 		async (_) => await createWorkflow(attributes, user),
+	);
+	return await Promise.all(workflowRequests);
+}
+
+export async function createManyActiveWorkflows(
+	amount: number,
+	attributes: Partial<IWorkflowDb> = {},
+	userOrProject?: User | Project,
+) {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const workflowRequests = [...Array(amount)].map(
+		async (_) => await createActiveWorkflow(attributes, userOrProject),
 	);
 	return await Promise.all(workflowRequests);
 }
@@ -135,7 +176,7 @@ export async function getWorkflowSharing(workflow: IWorkflowBase) {
  */
 export async function createWorkflowWithTrigger(
 	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
+	userOrProject?: User | Project,
 ) {
 	const workflow = await createWorkflow(
 		{
@@ -144,7 +185,7 @@ export async function createWorkflowWithTrigger(
 					id: 'uuid-1',
 					parameters: {},
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [240, 300],
 				},
@@ -170,7 +211,7 @@ export async function createWorkflowWithTrigger(
 			},
 			...attributes,
 		},
-		user,
+		userOrProject,
 	);
 
 	return workflow;
@@ -184,12 +225,12 @@ export async function createWorkflowWithTrigger(
 export async function createWorkflowWithHistory(
 	attributes: Partial<IWorkflowDb> = {},
 	userOrProject?: User | Project,
+	withPublishHistory?: Partial<WorkflowPublishHistory>,
 ) {
 	const workflow = await createWorkflow(attributes, userOrProject);
 
 	// Create workflow history for the initial version
-	const user = userOrProject instanceof User ? userOrProject : undefined;
-	await createWorkflowHistory(workflow, user);
+	await createWorkflowHistory(workflow, userOrProject, withPublishHistory);
 
 	return workflow;
 }
@@ -201,12 +242,13 @@ export async function createWorkflowWithHistory(
  */
 export async function createWorkflowWithTriggerAndHistory(
 	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
+	userOrProject?: User | Project,
+	withPublishHistory?: Partial<WorkflowPublishHistory>,
 ) {
-	const workflow = await createWorkflowWithTrigger(attributes, user);
+	const workflow = await createWorkflowWithTrigger(attributes, userOrProject);
 
 	// Create workflow history for the initial version
-	await createWorkflowHistory(workflow, user);
+	await createWorkflowHistory(workflow, userOrProject, withPublishHistory);
 
 	return workflow;
 }
@@ -226,13 +268,87 @@ export const getWorkflowById = async (id: string) =>
  * Create a workflow history record for a workflow
  * @param workflow workflow to create history for
  * @param user user who created the version (optional)
+ * @param withPublishHistory publish history to create (optional)
+ * @param autosaved whether this is an autosave (optional)
  */
-export async function createWorkflowHistory(workflow: IWorkflowDb, user?: User): Promise<void> {
-	await Container.get(WorkflowHistoryRepository).insert({
-		workflowId: workflow.id,
-		versionId: workflow.versionId,
-		nodes: workflow.nodes,
-		connections: workflow.connections,
-		authors: user?.email ?? 'test@example.com',
-	});
+export async function createWorkflowHistory(
+	workflow: IWorkflowDb,
+	userOrProject?: User | Project,
+	withPublishHistory?: Partial<WorkflowPublishHistory>,
+	overrides: Partial<WorkflowHistory> = {},
+): Promise<void> {
+	const authors =
+		userOrProject instanceof User
+			? userOrProject.firstName && userOrProject.lastName
+				? `${userOrProject.firstName} ${userOrProject.lastName}`
+				: 'Test User'
+			: 'Test User';
+
+	const repo = Container.get(WorkflowHistoryRepository);
+	await repo.insert(
+		repo.create({
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			nodeGroups: workflow.nodeGroups ?? [],
+			authors,
+			autosaved: false,
+			...overrides,
+		}),
+	);
+
+	if (withPublishHistory) {
+		// We wait a millisecond as createdAt order is often relevant for the publishing history
+		await new Promise((res) => setTimeout(res, 1));
+		await Container.get(WorkflowPublishHistoryRepository).insert({
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			event: 'activated',
+			userId: userOrProject instanceof User ? userOrProject.id : undefined,
+			...withPublishHistory,
+		});
+	}
+}
+
+/**
+ * Set the active version for a workflow
+ * @param workflowId workflow ID
+ * @param versionId version ID to set as active
+ */
+export async function setActiveVersion(workflowId: string, versionId: string): Promise<void> {
+	await Container.get(WorkflowRepository)
+		.createQueryBuilder()
+		.update()
+		.set({ activeVersionId: versionId })
+		.where('id = :workflowId', { workflowId })
+		.execute();
+}
+
+/**
+ * Create an active workflow with trigger, history, and activeVersionId set to the current version.
+ * This simulates a workflow that has been activated and is running.
+ * @param attributes workflow attributes
+ * @param user user to assign the workflow to
+ */
+export async function createActiveWorkflow(
+	attributes: Partial<IWorkflowDb> = {},
+	userOrProject?: User | Project,
+) {
+	const workflow = await createWorkflowWithTriggerAndHistory(
+		{ active: true, ...attributes },
+		userOrProject,
+		{},
+	);
+
+	await setActiveVersion(workflow.id, workflow.versionId);
+
+	workflow.activeVersionId = workflow.versionId;
+
+	return workflow;
+}
+
+export async function deleteWorkflowAndWebhooks(workflowId: string) {
+	await Container.get(WorkflowRepository).delete({ id: workflowId });
+	await Container.get(WebhookRepository).delete({ workflowId });
 }

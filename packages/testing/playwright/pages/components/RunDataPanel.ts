@@ -35,8 +35,36 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-search');
 	}
 
+	getSearchContainer() {
+		return this.root.getByTestId('ndv-search-container');
+	}
+
 	getDataContainer() {
 		return this.root.getByTestId('ndv-data-container');
+	}
+
+	getPagination() {
+		return this.root.getByTestId('ndv-data-pagination');
+	}
+
+	getPaginationPages() {
+		return this.getPagination().locator('li');
+	}
+
+	getHighlightMarks() {
+		return this.getDataContainer().locator('mark');
+	}
+
+	getBranchTab(name: string | RegExp) {
+		return this.root.getByText(name);
+	}
+
+	getItemsCountText(text: string | RegExp) {
+		return this.getItemsCount().filter({ hasText: text });
+	}
+
+	getActiveDisplayMode() {
+		return this.root.locator('[class*="active"]');
 	}
 
 	getPinDataButton() {
@@ -63,8 +91,20 @@ export class RunDataPanel {
 		return this.root.locator('tr').nth(index);
 	}
 
+	getTableRowHighlights(index: number) {
+		return this.getTableRow(index).locator('mark');
+	}
+
+	getTableCellByText(text: string) {
+		return this.getTable().locator(`text=${text}`);
+	}
+
 	getTbodyCell(row: number, col: number) {
 		return this.root.locator('table tbody tr').nth(row).locator('td').nth(col);
+	}
+
+	getTbodyCellLink(row: number, col: number) {
+		return this.getTbodyCell(row, col).locator('a');
 	}
 
 	getTableCellSpan(row: number, col: number, dataName: string) {
@@ -103,6 +143,14 @@ export class RunDataPanel {
 		return this.getSchemaItems().locator('span').filter({ hasText: text }).first();
 	}
 
+	getSchemaItemToggle(text: string) {
+		return this.getSchemaItem(text).locator('.toggle');
+	}
+
+	getSchemaItemPill(text: string) {
+		return this.getSchemaItemText(text).locator('span');
+	}
+
 	getNodeInputOptions() {
 		return this.root.getByTestId('ndv-input-select');
 	}
@@ -115,12 +163,32 @@ export class RunDataPanel {
 		return this.root.getByTestId('related-execution-link');
 	}
 
+	getHoveringItems() {
+		return this.root.getByTestId('hovering-item');
+	}
+
 	getNodeErrorMessageHeader(): Locator {
 		return this.root.getByTestId('node-error-message');
 	}
 
+	getErrorMessage(): Locator {
+		return this.getNodeErrorMessageHeader().first();
+	}
+
 	async toggleInputRunLinking() {
 		await this.root.getByTestId('link-run').click();
+	}
+
+	getNoInputDataMessage() {
+		return this.root.getByText('No input data');
+	}
+
+	getContentEditableEditor() {
+		return this.root.locator('[contenteditable="true"]');
+	}
+
+	getFirstLink() {
+		return this.root.locator('a').first();
 	}
 
 	async switchDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema' | 'binary'): Promise<void> {

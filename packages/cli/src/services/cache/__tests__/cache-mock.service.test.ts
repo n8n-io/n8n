@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -8,7 +8,7 @@ const store = mock<NonNullable<CacheService['cache']>['store']>({ isCacheable: (
 Object.assign(cacheService, { cache: { store } });
 
 describe('CacheService (Mock)', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	describe('should prevent use of empty keys', () => {
 		test('get', async () => {
@@ -17,14 +17,6 @@ describe('CacheService (Mock)', () => {
 
 			await cacheService.get('key');
 			expect(store.get).toHaveBeenCalledWith('key');
-		});
-
-		test('getMany', async () => {
-			await cacheService.getMany([]);
-			expect(store.mget).not.toHaveBeenCalled();
-
-			await cacheService.getMany(['key1', 'key2']);
-			expect(store.mget).toHaveBeenCalledWith('key1', 'key2');
 		});
 
 		test('set', async () => {
@@ -36,6 +28,15 @@ describe('CacheService (Mock)', () => {
 
 			await cacheService.set('key', 'value', 123);
 			expect(store.set).toHaveBeenCalledWith('key', 'value', 123);
+
+			await cacheService.set('false-key', false);
+			expect(store.set).toHaveBeenCalledWith('false-key', false, undefined);
+
+			await cacheService.set('zero-key', 0);
+			expect(store.set).toHaveBeenCalledWith('zero-key', 0, undefined);
+
+			await cacheService.set('empty-string-key', '');
+			expect(store.set).toHaveBeenCalledWith('empty-string-key', '', undefined);
 		});
 
 		test('setMany', async () => {

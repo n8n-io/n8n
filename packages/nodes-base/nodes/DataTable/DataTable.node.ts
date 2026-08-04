@@ -3,6 +3,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { router } from './actions/router';
 import * as row from './actions/row/Row.resource';
+import * as table from './actions/table/Table.resource';
 import {
 	getConditionsForColumn,
 	getDataTableColumns,
@@ -14,10 +15,10 @@ export class DataTable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Data table',
 		name: 'dataTable',
-		icon: 'fa:table',
+		icon: 'node:data-table',
 		iconColor: 'orange-red',
 		group: ['input', 'transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["action"]}}',
 		description: 'Permanently save data across workflow executions in a table',
 		defaults: {
@@ -26,6 +27,40 @@ export class DataTable implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			extraTypeDefContent: [
+				{
+					displayOptions: { show: { resource: ['row'], operation: ['insert'] } },
+					content: `<patterns>
+<pattern title="Insert with explicit schema">
+const storeData = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Store Data',
+    parameters: {
+      resource: 'row',
+      operation: 'insert',
+      dataTableId: { __rl: true, mode: 'name', value: 'my-table' },
+      columns: {
+        mappingMode: 'defineBelow',
+        value: {
+          name: expr('{{ $json.name }}'),
+          email: expr('{{ $json.email }}')
+        },
+        schema: [
+          { id: 'name', displayName: 'name', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true },
+          { id: 'email', displayName: 'email', required: false, defaultMatch: false, display: true, type: 'string', canBeUsedToMatch: true }
+        ]
+      }
+    }
+  }
+});
+</pattern>
+</patterns>`,
+				},
+			],
+		},
 		hints: [
 			{
 				message: 'The selected data table has no columns.',
@@ -47,10 +82,15 @@ export class DataTable implements INodeType {
 						name: 'Row',
 						value: 'row',
 					},
+					{
+						name: 'Table',
+						value: 'table',
+					},
 				],
 				default: 'row',
 			},
 			...row.description,
+			...table.description,
 		],
 	};
 

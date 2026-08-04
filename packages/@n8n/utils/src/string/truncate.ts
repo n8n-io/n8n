@@ -4,10 +4,16 @@ export const truncate = (text: string, length = 30): string =>
 /**
  * Replace part of given text with ellipsis following the rules below:
  *
- * - Remove chars just before the last word, as long as the last word is under 15 chars
- * - Otherwise preserve the last 5 chars of the name and remove chars before that
+ * - Remove chars just before the last word, as long as the last word is between
+ *   minLastWordLength and 15 chars
+ * - Otherwise preserve the last `lastCharsLength` chars and remove chars before that
  */
-export function truncateBeforeLast(text: string, maxLength: number): string {
+export function truncateBeforeLast(
+	text: string,
+	maxLength: number,
+	lastCharsLength: number = 5,
+	minLastWordLength: number = 1,
+): string {
 	const chars: string[] = [];
 
 	const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
@@ -26,7 +32,7 @@ export function truncateBeforeLast(text: string, maxLength: number): string {
 	const ellipsis = '…';
 	const ellipsisLength = ellipsis.length;
 
-	if (lastWord.length < 15) {
+	if (lastWord.length >= minLastWordLength && lastWord.length < 15) {
 		const charsToRemove = chars.length - maxLength + ellipsisLength;
 		const indexBeforeLastWord = lastWordIndex;
 		const keepLength = indexBeforeLastWord - charsToRemove;
@@ -38,7 +44,13 @@ export function truncateBeforeLast(text: string, maxLength: number): string {
 		}
 	}
 
+	if (lastCharsLength < 1) {
+		return chars.slice(0, maxLength).join('') + ellipsis;
+	}
+
 	return (
-		chars.slice(0, maxLength - 5 - ellipsisLength).join('') + ellipsis + chars.slice(-5).join('')
+		chars.slice(0, maxLength - lastCharsLength - ellipsisLength).join('') +
+		ellipsis +
+		chars.slice(-lastCharsLength).join('')
 	);
 }

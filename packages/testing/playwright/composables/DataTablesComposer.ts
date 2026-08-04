@@ -6,7 +6,8 @@ export class DataTableComposer {
 	async createNewDataTable(name: string) {
 		const nameInput = this.n8n.dataTable.getNewDataTableNameInput();
 		await nameInput.fill(name);
-		await this.n8n.dataTable.getNewDataTableConfirmButton().click();
+		await this.n8n.dataTable.getFromScratchOption().click();
+		await this.n8n.dataTable.getProceedFromSelectButton().click();
 	}
 
 	/**
@@ -25,9 +26,9 @@ export class DataTableComposer {
 		const { projectId } = await this.n8n.projectComposer.createProject();
 
 		if (fromDataTableTab) {
-			await this.n8n.page.goto(`projects/${projectId}/datatables`);
+			await this.n8n.navigate.toDatatables(projectId);
 		} else {
-			await this.n8n.page.goto(`projects/${projectId}`);
+			await this.n8n.navigate.toProject(projectId);
 		}
 
 		if (source === 'empty-state') {
@@ -36,6 +37,6 @@ export class DataTableComposer {
 			await this.n8n.dataTable.clickAddDataTableAction(fromDataTableTab);
 		}
 		await this.n8n.dataTableComposer.createNewDataTable(dataTableName);
-		await this.n8n.page.goto(`projects/${projectId}/datatables`);
+		await this.n8n.navigate.toDatatables(projectId);
 	}
 }

@@ -6,10 +6,15 @@ import type { IUser } from '@n8n/design-system/types';
 import N8nUsersList from './UsersList.vue';
 
 export default {
-	title: 'Modules/UsersList',
+	title: 'Core/UsersList',
 	component: N8nUsersList,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A list layout for showing multiple users with associated metadata.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

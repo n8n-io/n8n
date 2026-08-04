@@ -1,9 +1,10 @@
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { isAuthProviderType, SettingsRepository, type AuthProviderType } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import config from '@/config';
-import { Logger } from '@n8n/backend-common';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 /**
  * Only one authentication method can be active at a time. This function sets
@@ -52,6 +53,25 @@ export function isSamlCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'saml';
 }
 
+/**
+ *  Check whether the SAML feature is licensed and enabled in the instance
+ */
+export function isSamlLoginEnabled(): boolean {
+	return Container.get(GlobalConfig).sso.saml.loginEnabled;
+}
+
+export function getSamlLoginLabel(): string {
+	return Container.get(GlobalConfig).sso.saml.loginLabel;
+}
+
+export function isSamlLicensed(): boolean {
+	return Container.get(LicenseState).isSamlLicensed();
+}
+
+export function isSamlLicensedAndEnabled(): boolean {
+	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();
+}
+
 export function isLdapCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'ldap';
 }
@@ -60,8 +80,28 @@ export function isOidcCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'oidc';
 }
 
+export function isSsoCurrentAuthenticationMethod(): boolean {
+	return (
+		isSamlCurrentAuthenticationMethod() ||
+		isLdapCurrentAuthenticationMethod() ||
+		isOidcCurrentAuthenticationMethod()
+	);
+}
+
 export function isEmailCurrentAuthenticationMethod(): boolean {
 	return getCurrentAuthenticationMethod() === 'email';
+}
+
+/** Only one authentication method (`email` or a single SSO method) can be active at a time. */
+export function assertAuthenticationMethodCanBeEnabled(
+	method: Extract<AuthProviderType, 'ldap' | 'saml' | 'oidc'>,
+): void {
+	const currentAuthenticationMethod = getCurrentAuthenticationMethod();
+	if (currentAuthenticationMethod !== 'email' && currentAuthenticationMethod !== method) {
+		throw new BadRequestError(
+			`Cannot switch ${method} login enabled state when an authentication method other than email or ${method} is active (current: ${currentAuthenticationMethod})`,
+		);
+	}
 }
 
 export function isSsoJustInTimeProvisioningEnabled(): boolean {

@@ -8,7 +8,6 @@ import {
 	type Scope,
 	PROJECT_OWNER_ROLE_SLUG,
 } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
@@ -111,14 +110,14 @@ export class WorkflowSharingService {
 		});
 	}
 
-	async getOwnedWorkflowsInPersonalProject(user: User): Promise<string[]> {
+	async getOwnedWorkflowsInPersonalProject(userId: string): Promise<string[]> {
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			select: ['workflowId'],
 			where: {
 				role: 'workflow:owner',
 				project: {
 					projectRelations: {
-						userId: user.id,
+						userId,
 						role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					},
 				},

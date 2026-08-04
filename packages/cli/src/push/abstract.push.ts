@@ -1,12 +1,11 @@
 import type { PushMessage } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { assert, jsonStringify } from 'n8n-workflow';
 
 import type { OnPushMessage } from '@/push/types';
-import { TypedEmitter } from '@/typed-emitter';
 
 export interface AbstractPushEvents {
 	message: OnPushMessage;
@@ -64,6 +63,10 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.emit('message', { pushRef, userId, msg });
 	}
 
+	protected getConnection(pushRef: string): Connection | undefined {
+		return this.connections[pushRef];
+	}
+
 	protected remove(pushRef?: string) {
 		if (!pushRef) return;
 
@@ -74,6 +77,8 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 	}
 
 	private sendTo({ type, data }: PushMessage, pushRefs: string[], asBinary: boolean = false) {
+		if (pushRefs.length === 0) return;
+
 		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
 			pushRefs: pushRefs.join(', '),

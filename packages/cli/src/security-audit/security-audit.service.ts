@@ -30,7 +30,7 @@ export class SecurityAuditService {
 		}
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'name', 'active', 'nodes', 'connections'],
+			select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'connections'],
 		});
 
 		const promises = categories.map(async (c) => await this.reporters[c].report(workflows));
@@ -62,8 +62,12 @@ export class SecurityAuditService {
 				NodesRiskReporter: 'nodes-risk-reporter',
 			};
 
+			// `@vite-ignore` keeps vite's dynamic-import-vars plugin from analyzing this
+			// runtime-only import, which surfaces fatally during v8 coverage's uncovered-file walk.
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const RiskReporterModule = await import(`./risk-reporters/${toFilename[className]}`);
+			const RiskReporterModule = await import(
+				/* @vite-ignore */ `./risk-reporters/${toFilename[className]}.js`
+			);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const RiskReporterClass = RiskReporterModule[className] as { new (): RiskReporter };

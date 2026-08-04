@@ -504,7 +504,7 @@
 					{
 						"id": 42,
 						"icon": "fa:play",
-						"name": "n8n-nodes-base.start",
+						"name": "n8n-nodes-base.manualTrigger",
 						"defaults": {
 							"name": "Start",
 							"color": "#00e000"
@@ -679,7 +679,7 @@
 					{
 						"id": 42,
 						"icon": "fa:play",
-						"name": "n8n-nodes-base.start",
+						"name": "n8n-nodes-base.manualTrigger",
 						"defaults": {
 							"name": "Start",
 							"color": "#00e000"
@@ -960,7 +960,7 @@
 					{
 						"id": 42,
 						"icon": "fa:play",
-						"name": "n8n-nodes-base.start",
+						"name": "n8n-nodes-base.manualTrigger",
 						"defaults": {
 							"name": "Start",
 							"color": "#00e000"
@@ -1200,7 +1200,7 @@
 					{
 						"id": 42,
 						"icon": "fa:play",
-						"name": "n8n-nodes-base.start",
+						"name": "n8n-nodes-base.manualTrigger",
 						"defaults": {
 							"name": "Start",
 							"color": "#00e000"
@@ -1438,7 +1438,7 @@
 					{
 						"id": 42,
 						"icon": "fa:play",
-						"name": "n8n-nodes-base.start",
+						"name": "n8n-nodes-base.manualTrigger",
 						"defaults": {
 							"name": "Start",
 							"color": "#00e000"

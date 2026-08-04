@@ -2,16 +2,16 @@
 import type { EditorState, SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { Segment } from '@/app/types/expressions';
 import { onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 
-import { N8nPopoverReka, N8nText } from '@n8n/design-system';
+import { N8nPopover, N8nText } from '@n8n/design-system';
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
 	unresolvedExpression?: string;
@@ -31,12 +31,12 @@ withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 
 const i18n = useI18n();
 const theme = outputTheme();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const contentRef = useTemplateRef('content');
 const { APP_Z_INDEXES } = useStyles();
 
 onBeforeUnmount(() => {
-	ndvStore.expressionOutputItemIndex = 0;
+	ndvStore.value.expressionOutputItemIndex = 0;
 });
 
 defineExpose({
@@ -45,7 +45,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nPopoverReka
+	<N8nPopover
 		:open="visible"
 		side="bottom"
 		:side-flip="false"
@@ -85,7 +85,7 @@ defineExpose({
 				</div>
 			</div>
 		</template>
-	</N8nPopoverReka>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>

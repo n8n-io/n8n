@@ -6,28 +6,27 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import {
-	EnterpriseEditionFeature,
-	VIEWS,
-	EDITABLE_CANVAS_VIEWS,
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
-} from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { canMessageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -37,10 +36,7 @@ const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthori
 const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
-const MainHeader = async () => await import('@/app/components/MainHeader/MainHeader.vue');
-const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
-const LogsPanel = async () => await import('@/features/execution/logs/components/LogsPanel.vue');
-const DemoFooter = async () => await import('@/features/execution/logs/components/DemoFooter.vue');
+
 const NodeView = async () => await import('@/app/views/NodeView.vue');
 const WorkflowExecutionsView = async () =>
 	await import('@/features/execution/executions/views/WorkflowExecutionsView.vue');
@@ -50,13 +46,13 @@ const WorkflowExecutionsLandingPage = async () =>
 	);
 const WorkflowExecutionsPreview = async () =>
 	await import('@/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue');
-const SettingsView = async () => await import('@/app/views/SettingsView.vue');
 const SettingsLdapView = async () =>
 	await import('@/features/settings/sso/views/SettingsLdapView.vue');
 const SettingsPersonalView = async () =>
 	await import('@/features/core/auth/views/SettingsPersonalView.vue');
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
+const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -77,27 +73,55 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
+const SettingsEncryptionKeys = async () =>
+	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () =>
-	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
-const SettingsProvisioningView = async () =>
-	await import('@/features/settings/provisioning/views/SettingsProvisioningView.vue');
+const SettingsExternalSecrets = async () => {
+	const settingsStore = useSettingsStore();
+	const moduleConfig = settingsStore.moduleSettings['external-secrets'];
+
+	if (moduleConfig?.multipleConnections || moduleConfig?.forProjects) {
+		return await import(
+			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
+		);
+	}
+
+	return await import(
+		'@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue'
+	);
+};
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
-const EvaluationsView = async () =>
-	await import('@/features/ai/evaluation.ee/views/EvaluationsView.vue');
+const EvaluationsListSwitcher = async () =>
+	await import('@/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue');
 const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
+const CompareCollectionView = async () =>
+	await import('@/features/ai/evaluation.ee/views/CompareCollectionView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
-const PrebuiltAgentTemplatesView = async () =>
-	await import('@/app/views/PrebuiltAgentTemplatesView.vue');
+const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+const SettingsAiGatewayView = async () =>
+	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
+const ResourceCenterView = async () =>
+	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
+
+const SecuritySettingsView = async () =>
+	await import('@/features/settings/security/SecuritySettings.vue');
+
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+
+const MigrationReportView = async () =>
+	await import('@/features/settings/migrationReport/MigrationRules.vue');
+
+const MigrationRuleReportView = async () =>
+	await import('@/features/settings/migrationReport/MigrationRuleDetail.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -109,10 +133,57 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 	return false;
 }
 
+const RESOURCE_CENTER_FLAG_WAIT_TIMEOUT = 2000;
+
+const waitForPendingFeatureFlags = async (posthogStore: ReturnType<typeof usePostHog>) => {
+	let timeoutId: number | undefined;
+
+	await Promise.race([
+		posthogStore.waitForFeatureFlags(),
+		new Promise<void>((resolve) => {
+			timeoutId = window.setTimeout(resolve, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT);
+		}),
+	]);
+
+	if (timeoutId !== undefined) {
+		window.clearTimeout(timeoutId);
+	}
+};
+
+const allowResourceCenterRoute = (
+	posthogStore: ReturnType<typeof usePostHog>,
+	next: NavigationGuardNext,
+) => {
+	if (
+		posthogStore.isVariantEnabled(
+			RESOURCE_CENTER_EXPERIMENT.name,
+			RESOURCE_CENTER_EXPERIMENT.variant,
+		)
+	) {
+		next();
+	} else {
+		next({ name: VIEWS.HOMEPAGE });
+	}
+};
+
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
-		redirect: '/home/workflows',
+		// Stub component — beforeEnter always navigates away, so it is never rendered.
+		// Required because vue-router resolves `redirect` before guards run, and we need
+		// stores populated by `initializeCore` to decide where to send the user.
+		component: { render: () => null },
+		beforeEnter: (_to, _from, next) => {
+			const settingsStore = useSettingsStore();
+			if (
+				settingsStore.isModuleActive('instance-ai') &&
+				settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
+				canMessageInstanceAi()
+			) {
+				return next({ name: INSTANCE_AI_VIEW });
+			}
+			next('/home/workflows');
+		},
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -120,10 +191,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/collections/:id',
 		name: VIEWS.COLLECTION,
-		components: {
-			default: TemplatesCollectionView,
-			sidebar: MainSidebar,
-		},
+		component: TemplatesCollectionView,
 		meta: {
 			templatesEnabled: true,
 			telemetry: {
@@ -139,39 +207,13 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 	},
-	{
-		path: '/templates/agents',
-		name: VIEWS.PRE_BUILT_AGENT_TEMPLATES,
-		components: {
-			default: PrebuiltAgentTemplatesView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			getRedirect: getTemplatesRedirect,
-			middleware: ['authenticated'],
-		},
-		beforeEnter: (_to, _from, next) => {
-			const calloutHelpers = useCalloutHelpers();
-			const templatesStore = useTemplatesStore();
-
-			if (!calloutHelpers.isPreBuiltAgentsCalloutVisible.value) {
-				window.location.href = templatesStore.websiteTemplateRepositoryURL;
-			} else {
-				next();
-			}
-		},
-	},
 	// Following two routes are kept in-app:
 	// Single workflow view, used when a custom template host is set
 	// Also, reachable directly from this URL
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
-		components: {
-			default: TemplatesWorkflowView,
-			sidebar: MainSidebar,
-		},
+		component: TemplatesWorkflowView,
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
@@ -193,10 +235,7 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,
-		components: {
-			default: SetupWorkflowFromTemplateView,
-			sidebar: MainSidebar,
-		},
+		component: SetupWorkflowFromTemplateView,
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
@@ -213,14 +252,22 @@ export const routes: RouteRecordRaw[] = [
 			},
 			middleware: ['authenticated'],
 		},
+		beforeEnter: (to, _from, next) => {
+			const posthogStore = usePostHog();
+			if (
+				posthogStore.getVariant(TEMPLATE_SETUP_EXPERIENCE.name) ===
+				TEMPLATE_SETUP_EXPERIENCE.variant
+			) {
+				next({ name: VIEWS.TEMPLATE_IMPORT, params: { id: to.params.id } });
+			} else {
+				next();
+			}
+		},
 	},
 	{
 		path: '/templates/',
 		name: VIEWS.TEMPLATES,
-		components: {
-			default: TemplatesSearchView,
-			sidebar: MainSidebar,
-		},
+		component: TemplatesSearchView,
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
@@ -249,15 +296,43 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/debug/:executionId',
-		name: VIEWS.EXECUTION_DEBUG,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-			footer: LogsPanel,
-		},
+		path: '/resource-center',
+		name: VIEWS.RESOURCE_CENTER,
+		component: ResourceCenterView,
 		meta: {
+			middleware: ['authenticated'],
+		},
+		beforeEnter: (_to, _from, next) => {
+			const posthogStore = usePostHog();
+
+			if (
+				posthogStore.isVariantEnabled(
+					RESOURCE_CENTER_EXPERIMENT.name,
+					RESOURCE_CENTER_EXPERIMENT.variant,
+				)
+			) {
+				next();
+				return;
+			}
+
+			if (!posthogStore.hasPendingFeatureFlags()) {
+				next({ name: VIEWS.HOMEPAGE });
+				return;
+			}
+
+			void waitForPendingFeatureFlags(posthogStore).then(() => {
+				allowResourceCenterRoute(posthogStore, next);
+			});
+		},
+	},
+
+	{
+		path: '/workflow/:workflowId/debug/:executionId',
+		name: VIEWS.EXECUTION_DEBUG,
+		component: NodeView,
+		meta: {
+			layout: 'workflow',
+			layoutProps: { logs: true },
 			nodeView: true,
 			keepWorkflowAlive: true,
 			middleware: ['authenticated', 'enterprise'],
@@ -269,14 +344,11 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/executions',
+		path: '/workflow/:workflowId/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
-		components: {
-			default: WorkflowExecutionsView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowExecutionsView,
 		meta: {
+			layout: 'workflow',
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
@@ -306,17 +378,12 @@ export const routes: RouteRecordRaw[] = [
 		],
 	},
 	{
-		path: '/workflow/:name/evaluation',
+		path: '/workflow/:workflowId/evaluation',
 		name: VIEWS.EVALUATION,
-		components: {
-			default: EvaluationRootView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		props: {
-			default: true,
-		},
+		component: EvaluationRootView,
+		props: true,
 		meta: {
+			layout: 'workflow',
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
@@ -324,7 +391,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: '',
 				name: VIEWS.EVALUATION_EDIT,
-				component: EvaluationsView,
+				component: EvaluationsListSwitcher,
 				props: true,
 			},
 			{
@@ -333,15 +400,18 @@ export const routes: RouteRecordRaw[] = [
 				component: TestRunDetailView,
 				props: true,
 			},
+			{
+				path: 'collections/:collectionId/compare',
+				name: VIEWS.EVALUATION_COLLECTION_COMPARE,
+				component: CompareCollectionView,
+				props: true,
+			},
 		],
 	},
 	{
 		path: '/workflow/:workflowId/history/:versionId?',
 		name: VIEWS.WORKFLOW_HISTORY,
-		components: {
-			default: WorkflowHistory,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowHistory,
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -349,12 +419,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'workflow',
 			templatesEnabled: true,
 			keepWorkflowAlive: true,
 			getRedirect: getTemplatesRedirect,
@@ -364,12 +431,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflows/onboarding/:id',
 		name: VIEWS.WORKFLOW_ONBOARDING,
-		components: {
-			default: WorkflowOnboardingView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
+		component: WorkflowOnboardingView,
 		meta: {
+			layout: 'workflow',
 			templatesEnabled: true,
 			keepWorkflowAlive: true,
 			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
@@ -379,26 +443,31 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow/new',
 		name: VIEWS.NEW_WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-			footer: LogsPanel,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'workflow',
+			layoutProps: { logs: true },
 			nodeView: true,
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
+		},
+		beforeEnter: (to) => {
+			// Generate a unique workflow ID using 16-character nanoid and redirect to it
+			// Preserve existing query params (e.g., templateId, projectId) and add new=true
+			const newWorkflowId = generateNanoId();
+			return {
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: newWorkflowId },
+				query: { ...to.query, new: 'true' },
+			};
 		},
 	},
 	{
 		path: '/workflows/demo',
 		name: VIEWS.DEMO,
-		components: {
-			default: NodeView,
-			footer: DemoFooter,
-		},
+		component: NodeView,
 		meta: {
+			layout: 'demo',
 			middleware: ['authenticated'],
 			middlewareOptions: {
 				authenticated: {
@@ -411,15 +480,29 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/:nodeId?',
-		name: VIEWS.WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-			footer: LogsPanel,
-		},
+		path: '/workflows/demo/diff',
+		name: VIEWS.DEMO_DIFF,
+		component: async () => await import('@/app/views/DemoDiffView.vue'),
 		meta: {
+			layout: 'demo',
+			middleware: ['authenticated'],
+			middlewareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
+				},
+			},
+		},
+	},
+	{
+		path: '/workflow/:workflowId/:nodeId?',
+		name: VIEWS.WORKFLOW,
+		component: NodeView,
+		meta: {
+			layout: 'workflow',
+			layoutProps: { logs: true },
 			nodeView: true,
 			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
@@ -432,10 +515,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/signin',
 		name: VIEWS.SIGNIN,
-		components: {
-			default: SigninView,
-		},
+		component: SigninView,
 		meta: {
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -445,10 +527,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/signup',
 		name: VIEWS.SIGNUP,
-		components: {
-			default: SignupView,
-		},
+		component: SignupView,
 		meta: {
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -458,10 +539,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/signout',
 		name: VIEWS.SIGNOUT,
-		components: {
-			default: SignoutView,
-		},
+		component: SignoutView,
 		meta: {
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -471,20 +551,19 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/oauth/consent',
 		name: VIEWS.OAUTH_CONSENT,
-		components: {
-			default: OAuthConsentView,
-		},
+		component: OAuthConsentView,
 		meta: {
+			// Standalone authorization screen, rendered without the app sidebar.
+			layout: 'auth',
 			middleware: ['authenticated'],
 		},
 	},
 	{
 		path: '/setup',
 		name: VIEWS.SETUP,
-		components: {
-			default: SetupView,
-		},
+		component: SetupView,
 		meta: {
+			layout: 'auth',
 			middleware: ['defaultUser'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -494,10 +573,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/forgot-password',
 		name: VIEWS.FORGOT_PASSWORD,
-		components: {
-			default: ForgotMyPasswordView,
-		},
+		component: ForgotMyPasswordView,
 		meta: {
+			layout: 'auth',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -507,10 +585,9 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/change-password',
 		name: VIEWS.CHANGE_PASSWORD,
-		components: {
-			default: ChangePasswordView,
-		},
+		component: ChangePasswordView,
 		meta: {
+			layout: 'auth',
 			middleware: ['guest'],
 			telemetry: {
 				pageCategory: 'auth',
@@ -520,7 +597,6 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/settings',
 		name: VIEWS.SETTINGS,
-		component: SettingsView,
 		props: true,
 		redirect: () => {
 			const settingsStore = useSettingsStore();
@@ -529,14 +605,16 @@ export const routes: RouteRecordRaw[] = [
 			}
 			return { name: VIEWS.USAGE };
 		},
+		meta: {
+			layout: 'settings',
+		},
 		children: [
 			{
 				path: 'usage',
 				name: VIEWS.USAGE,
-				components: {
-					settingsView: SettingsUsageAndPlan,
-				},
+				component: SettingsUsageAndPlan,
 				meta: {
+					layout: 'settings',
 					middleware: ['authenticated', 'custom'],
 					middlewareOptions: {
 						custom: () => {
@@ -555,11 +633,48 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'migration-report',
+				component: RouterView,
+				beforeEnter: () => {
+					if (!MIGRATION_REPORT_TARGET_VERSION) {
+						return { name: VIEWS.HOMEPAGE };
+					}
+					return true;
+				},
+				children: [
+					{
+						path: '',
+						name: VIEWS.MIGRATION_REPORT,
+						component: MigrationReportView,
+					},
+					{
+						path: ':migrationRuleId',
+						name: VIEWS.MIGRATION_RULE_REPORT,
+						component: MigrationRuleReportView,
+						props: true,
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['breakingChanges:list'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'migration-report',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'personal',
 				name: VIEWS.PERSONAL_SETTINGS,
-				components: {
-					settingsView: SettingsPersonalView,
-				},
+				component: SettingsPersonalView,
 				meta: {
 					middleware: ['authenticated'],
 					telemetry: {
@@ -573,11 +688,30 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'security',
+				name: VIEWS.SECURITY_SETTINGS,
+				component: SecuritySettingsView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
-				components: {
-					settingsView: SettingsUsersView,
-				},
+				component: SettingsUsersView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -596,35 +730,203 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
-				path: 'project-roles',
-				components: {
-					settingsView: RouterView,
-				},
-				children: [
-					{
-						path: '',
-						name: VIEWS.PROJECT_ROLES_SETTINGS,
-						component: async () => await import('@/features/project-roles/ProjectRolesView.vue'),
-					},
-					{
-						path: 'new',
-						name: VIEWS.PROJECT_NEW_ROLE,
-						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
-					},
-					{
-						path: 'edit/:roleSlug',
-						name: VIEWS.PROJECT_ROLE_SETTINGS,
-						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
-					},
-				],
+				path: 'ai',
+				name: VIEWS.AI_SETTINGS,
+				component: SettingsAIView,
 				meta: {
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: 'aiAssistant:manage',
 						},
 						custom: () => {
-							return useEnvFeatureFlag().check.value('CUSTOM_ROLES');
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiAssistantEnabled || settingsStore.isAskAiEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'assistant',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'n8n-connect',
+				name: VIEWS.AI_GATEWAY_SETTINGS,
+				component: SettingsAiGatewayView,
+				meta: {
+					middleware: ['authenticated', 'custom'],
+					middlewareOptions: {
+						custom: () => {
+							const settingsStore = useSettingsStore();
+							return settingsStore.isAiGatewayEnabled;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'n8n-connect',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'resolvers',
+				name: VIEWS.RESOLVERS,
+				component: SettingsResolversView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: [
+								'credentialResolver:read',
+								'credentialResolver:list',
+								'credentialResolver:create',
+								'credentialResolver:update',
+								'credentialResolver:delete',
+							],
+							options: { mode: 'allOf' },
+						},
+						custom: () => {
+							const { isEnabled } = useDynamicCredentials();
+							return isEnabled.value;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'resolvers',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'project-roles/view/:roleSlug',
+				name: VIEWS.PROJECT_ROLE_VIEW,
+				component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
+				props: true,
+				meta: {
+					middleware: ['authenticated', 'enterprise'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'project-roles',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'roles',
+				name: VIEWS.ROLES_SETTINGS,
+				component: async () => await import('@/features/roles/RolesView.vue'),
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['role:manage', 'role:manageProject'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'roles',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'instance-roles',
+				component: RouterView,
+				children: [
+					{
+						path: '',
+						// Instance roles are listed inside the tabbed Roles shell; the bare
+						// path has no standalone page, so redirect it to the instance tab.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } }),
+					},
+					{
+						path: 'new',
+						name: VIEWS.INSTANCE_NEW_ROLE,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+					},
+					{
+						path: 'edit/:roleSlug',
+						name: VIEWS.INSTANCE_ROLE_SETTINGS,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+						props: true,
+					},
+					{
+						path: 'view/:roleSlug',
+						name: VIEWS.INSTANCE_ROLE_VIEW,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+						props: true,
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+						rbac: {
+							scope: ['role:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'roles',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'project-roles',
+				component: RouterView,
+				children: [
+					{
+						path: '',
+						name: VIEWS.PROJECT_ROLES_SETTINGS,
+						// The standalone project-roles page is superseded by the tabbed Roles shell;
+						// redirect old deep links to the project tab there.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } }),
+					},
+					{
+						path: 'new',
+						name: VIEWS.PROJECT_NEW_ROLE,
+						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
+					},
+					{
+						path: 'edit/:roleSlug',
+						name: VIEWS.PROJECT_ROLE_SETTINGS,
+						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
+						props: true,
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {
@@ -640,9 +942,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'api',
 				name: VIEWS.API_SETTINGS,
-				components: {
-					settingsView: SettingsApiView,
-				},
+				component: SettingsApiView,
 				meta: {
 					middleware: ['authenticated'],
 					telemetry: {
@@ -658,9 +958,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
-				components: {
-					settingsView: SettingsSourceControl,
-				},
+				component: SettingsSourceControl,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -681,9 +979,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'external-secrets',
 				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
-				components: {
-					settingsView: SettingsExternalSecrets,
-				},
+				component: SettingsExternalSecrets,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -704,9 +1000,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'sso',
 				name: VIEWS.SSO_SETTINGS,
-				components: {
-					settingsView: SettingsSso,
-				},
+				component: SettingsSso,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -725,11 +1019,34 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'encryption-keys',
+				name: VIEWS.ENCRYPTION_KEYS_SETTINGS,
+				component: SettingsEncryptionKeys,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'encryptionKey:manage',
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('ENCRYPTION_KEY_ROTATION');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'encryption-keys',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'log-streaming',
 				name: VIEWS.LOG_STREAMING_SETTINGS,
-				components: {
-					settingsView: SettingsLogStreamingView,
-				},
+				component: SettingsLogStreamingView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -745,19 +1062,20 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'workers',
 				name: VIEWS.WORKER_VIEW,
-				components: {
-					settingsView: WorkerView,
-				},
+				component: WorkerView,
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'workersView:manage',
+						},
+					},
 				},
 			},
 			{
 				path: 'community-nodes',
 				name: VIEWS.COMMUNITY_NODES,
-				components: {
-					settingsView: SettingsCommunityNodesView,
-				},
+				component: SettingsCommunityNodesView,
 				meta: {
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
@@ -777,9 +1095,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'ldap',
 				name: VIEWS.LDAP_SETTINGS,
-				components: {
-					settingsView: SettingsLdapView,
-				},
+				component: SettingsLdapView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -789,48 +1105,14 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
-			{
-				path: 'provisioning',
-				name: VIEWS.PROVISIONING_SETTINGS,
-				components: {
-					settingsView: SettingsProvisioningView,
-				},
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom' /* 'enterprise' */],
-					middlewareOptions: {
-						/*
-						TODO: comment this back in once the custom check using experiment is no longer used
-						enterprise: {
-							feature: EnterpriseEditionFeature.Provisioning,
-						},
-						*/
-						rbac: {
-							scope: 'provisioning:manage',
-						},
-						custom: () => {
-							const posthogStore = usePostHog();
-							return posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name);
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'provisioning',
-							};
-						},
-					},
-				},
-			},
 		],
 	},
 	{
 		path: '/saml/onboarding',
 		name: VIEWS.SAML_ONBOARDING,
-		components: {
-			default: SamlOnboarding,
-		},
+		component: SamlOnboarding,
 		meta: {
+			layout: 'auth',
 			middleware: ['authenticated', 'custom'],
 			middlewareOptions: {
 				custom: () => {
@@ -849,19 +1131,13 @@ export const routes: RouteRecordRaw[] = [
 		path: '/entity-not-found/:entityType(credential|workflow)',
 		props: true,
 		name: VIEWS.ENTITY_NOT_FOUND,
-		components: {
-			default: EntityNotFound,
-			sidebar: MainSidebar,
-		},
+		component: EntityNotFound,
 	},
 	{
 		path: '/entity-not-authorized/:entityType(credential|workflow)',
 		props: true,
 		name: VIEWS.ENTITY_UNAUTHORIZED,
-		components: {
-			default: EntityUnAuthorised,
-			sidebar: MainSidebar,
-		},
+		component: EntityUnAuthorised,
 	},
 	{
 		path: '/:pathMatch(.*)*',

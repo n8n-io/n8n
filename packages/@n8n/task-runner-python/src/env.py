@@ -43,3 +43,15 @@ def read_bool_env(env_name: str, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() == "true"
+
+
+def read_float_env(env_name: str, default: float) -> float:
+    value = read_env(env_name)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        raise ValueError(
+            f"Environment variable {env_name} must be a float, got '{value}'"
+        )

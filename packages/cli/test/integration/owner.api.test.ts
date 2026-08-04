@@ -10,7 +10,7 @@ import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
-import config from '@/config';
+import { OwnershipService } from '@/services/ownership.service';
 
 import { createUserShell } from './shared/db/users';
 import * as utils from './shared/utils/';
@@ -21,7 +21,6 @@ let ownerShell: User;
 
 beforeEach(async () => {
 	ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
-	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 
 afterEach(async () => {
@@ -71,10 +70,7 @@ describe('POST /owner/setup', () => {
 		expect(storedOwner.firstName).toBe(newOwnerData.firstName);
 		expect(storedOwner.lastName).toBe(newOwnerData.lastName);
 
-		const isInstanceOwnerSetUpConfig = config.getEnv('userManagement.isInstanceOwnerSetUp');
-		expect(isInstanceOwnerSetUpConfig).toBe(true);
-
-		const isInstanceOwnerSetUpSetting = await utils.isInstanceOwnerSetUp();
+		const isInstanceOwnerSetUpSetting = await Container.get(OwnershipService).hasInstanceOwner();
 		expect(isInstanceOwnerSetUpSetting).toBe(true);
 	});
 

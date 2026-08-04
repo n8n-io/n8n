@@ -1,7 +1,13 @@
-import { MANUAL_TRIGGER_NODE_TYPE, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
+	isTrimmedNodeExecutionData,
+} from 'n8n-workflow';
+import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
 	ExecutionStatus,
+	ExecutionSummary,
 	IDataObject,
 	INode,
 	IPinData,
@@ -9,12 +15,15 @@ import type {
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
-	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type {
 	ExecutionFilterType,
+	ExecutionPreviewNodeSchema,
+	ExecutionPreviewOutputSchema,
+	ExecutionPreviewSchemaField,
 	ExecutionsQueryFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -29,12 +38,20 @@ import {
 	WORKFLOW_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
 import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessage.vue';
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+
+export function hasCancellableExecutions(executions: ExecutionSummary[]): boolean {
+	const cancellableStatuses = new Set<ExecutionStatus>(CANCELLABLE_EXECUTION_STATUSES);
+
+	return executions.some((execution) => cancellableStatuses.has(execution.status));
+}
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -46,6 +63,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
+		workflowVersionId: 'all',
 	};
 }
 
@@ -67,6 +85,10 @@ export const executionFilterToQueryFilter = (
 
 	if (filter.vote !== 'all') {
 		queryFilter.vote = filter.vote;
+	}
+
+	if (filter.workflowVersionId !== 'all') {
+		queryFilter.workflowVersionId = filter.workflowVersionId;
 	}
 
 	if (!isEmpty(filter.metadata)) {
@@ -173,31 +195,43 @@ export async function displayForm({
 	}
 }
 
-export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: Workflow) => {
+export const waitingNodeTooltip = (
+	node: INodeUi | null | undefined,
+	workflow?: WorkflowObjectAccessors,
+	metadata?: { resumeUrl?: string; resumeFormUrl?: string },
+) => {
 	if (!node) return '';
 	try {
-		const waitingNodeTooltip = useNodeTypesStore().getNodeType(node.type)?.waitingNodeTooltip;
-		if (waitingNodeTooltip) {
-			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+		const waitingNodeTooltipFromNodeType = useNodeTypesStore().getNodeType(
+			node.type,
+		)?.waitingNodeTooltip;
+		if (waitingNodeTooltipFromNodeType) {
+			const activeExecutionId = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			).activeExecutionId as string;
+			// Use signed URLs from metadata if available
+			// otherwise fall back to constructing URLs without token
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {
 				$execution: {
 					id: activeExecutionId,
 					mode: 'test',
-					resumeUrl: `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
-					resumeFormUrl: `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+					resumeUrl:
+						metadata?.resumeUrl ?? `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
+					resumeFormUrl:
+						metadata?.resumeFormUrl ?? `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
 				},
 			};
 			if (workflow) {
 				const tooltip = workflow.expression.getSimpleParameterValue(
 					node,
-					waitingNodeTooltip,
+					waitingNodeTooltipFromNodeType,
 					'internal',
 					additionalData,
 				);
 
 				return String(tooltip);
-			} else if (waitingNodeTooltip) {
-				return waitingNodeTooltip;
+			} else if (waitingNodeTooltipFromNodeType) {
+				return waitingNodeTooltipFromNodeType;
 			}
 		}
 	} catch (error) {
@@ -207,12 +241,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: 
 	return '';
 };
 
-/**
- * Check whether node execution data contains a trimmed item.
- */
-export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
-	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
-}
+export { isTrimmedNodeExecutionData };
 
 /**
  * Check whether task data contains a trimmed item.
@@ -347,6 +376,13 @@ export function getExecutionErrorToastConfiguration({
 }) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
 
+	if (error.name === 'WorkflowHasIssuesError') {
+		return {
+			title: i18n.baseText('pushConnection.workflowHasIssues.title'),
+			message: h('div', { style: 'white-space: pre-line' }, error.message),
+		};
+	}
+
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };
 	}
@@ -425,4 +461,132 @@ export function findTriggerNodeToAutoSelect(
 			return bPriority - aPriority;
 		})
 		.find((node) => !node.disabled);
+}
+
+const MAX_ITEM_COUNT = 10;
+const MAX_NESTING_DEPTH = 5;
+
+export function generatePlaceholderValue(field: ExecutionPreviewSchemaField, depth = 0): unknown {
+	if (depth > MAX_NESTING_DEPTH) {
+		return field.type === 'object' ? {} : field.type === 'array' ? [] : '';
+	}
+
+	switch (field.type) {
+		case 'string':
+			return '';
+		case 'number':
+			return 0;
+		case 'boolean':
+			return false;
+		case 'object': {
+			if (!field.fields?.length) return {};
+			const obj: IDataObject = {};
+			for (const child of field.fields) {
+				obj[child.name] = generatePlaceholderValue(child, depth + 1) as IDataObject[string];
+			}
+			return obj;
+		}
+		case 'array': {
+			if (!field.itemSchema?.length) return [];
+			const element: IDataObject = {};
+			for (const itemField of field.itemSchema) {
+				element[itemField.name] = generatePlaceholderValue(
+					itemField,
+					depth + 1,
+				) as IDataObject[string];
+			}
+			return [element];
+		}
+		default:
+			return '';
+	}
+}
+
+export function generateFakeDataFromSchema(
+	outputSchema: ExecutionPreviewOutputSchema,
+): INodeExecutionData[] {
+	const itemCount = Math.max(1, Math.min(outputSchema.itemCount ?? 1, MAX_ITEM_COUNT));
+	const items: INodeExecutionData[] = [];
+
+	for (let i = 0; i < itemCount; i++) {
+		const json: IDataObject = {};
+		for (const field of outputSchema.fields) {
+			json[field.name] = generatePlaceholderValue(field) as IDataObject[string];
+		}
+		items.push({ json });
+	}
+
+	return items;
+}
+
+/**
+ * Builds a synthetic IExecutionResponse from a lightweight per-node execution schema.
+ * When an outputSchema is provided, placeholder data is generated so the NDV can
+ * display realistic columns/rows without exposing sensitive real data.
+ */
+export function buildExecutionResponseFromSchema({
+	workflow,
+	nodeExecutionSchema,
+	executionStatus,
+	executionError,
+	lastNodeExecuted,
+}: {
+	workflow: IWorkflowDb;
+	nodeExecutionSchema: Record<string, ExecutionPreviewNodeSchema>;
+	executionStatus: ExecutionStatus;
+	executionError?: {
+		message: string;
+		description?: string;
+		name?: string;
+		stack?: string;
+	};
+	lastNodeExecuted?: string;
+}): IExecutionResponse {
+	const runData: IRunData = {};
+
+	for (const [nodeName, schema] of Object.entries(nodeExecutionSchema)) {
+		const taskData: ITaskData = {
+			startTime: 0,
+			executionIndex: 0,
+			executionTime: schema.executionTime ?? 0,
+			executionStatus: schema.executionStatus,
+			source: [],
+		};
+
+		if (schema.error) {
+			// Preview errors are plain JSON objects from postMessage, not class instances.
+			// They structurally match ExecutionError for rendering purposes.
+			taskData.error = schema.error as unknown as ExecutionError;
+		}
+
+		if (schema.outputSchema && schema.outputSchema.fields.length > 0) {
+			taskData.data = { main: [generateFakeDataFromSchema(schema.outputSchema)] };
+		}
+
+		runData[nodeName] = [taskData];
+	}
+
+	// Same as above: preview error is a serialized plain object, not an Error subclass instance.
+	const resultError = executionError ? (executionError as unknown as ExecutionError) : undefined;
+
+	const data = createRunExecutionData({
+		resultData: {
+			runData,
+			error: resultError,
+			lastNodeExecuted,
+		},
+		executionData: null,
+	});
+
+	return {
+		id: 'preview',
+		finished: executionStatus === 'success',
+		mode: 'manual',
+		status: executionStatus,
+		startedAt: new Date().toISOString(),
+		createdAt: new Date().toISOString(),
+		stoppedAt: new Date().toISOString(),
+		data,
+		workflowData: workflow,
+	};
 }

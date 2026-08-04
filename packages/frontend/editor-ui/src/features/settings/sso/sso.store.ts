@@ -1,4 +1,4 @@
-import type { OidcConfigDto, SamlPreferences } from '@n8n/api-types';
+import { AuthenticationMethod, type OidcConfigDto, type SamlPreferences } from '@n8n/api-types';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -7,7 +7,6 @@ import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso'
 import * as ldapApi from '@n8n/rest-api-client/api/ldap';
 import type { LdapConfig } from '@n8n/rest-api-client/api/ldap';
 import type { IDataObject } from 'n8n-workflow';
-import { UserManagementAuthenticationMethod } from '@/Interface';
 
 export const SupportedProtocols = {
 	SAML: 'saml',
@@ -19,8 +18,9 @@ export type SupportedProtocolType = (typeof SupportedProtocols)[keyof typeof Sup
 export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 
-	const authenticationMethod = ref<UserManagementAuthenticationMethod | undefined>(undefined);
+	const authenticationMethod = ref<AuthenticationMethod | undefined>(undefined);
 	const selectedAuthProtocol = ref<SupportedProtocolType | undefined>(undefined);
+	const ssoManagedByEnv = ref(false);
 
 	const showSsoLoginButton = computed(
 		() =>
@@ -36,7 +36,8 @@ export const useSSOStore = defineStore('sso', () => {
 		await ssoApi.initSSO(rootStore.restApiContext, existingRedirect);
 
 	const initialize = (options: {
-		authenticationMethod: UserManagementAuthenticationMethod;
+		authenticationMethod: AuthenticationMethod;
+		managedByEnv?: boolean;
 		config: {
 			ldap?: Pick<LdapConfig, 'loginLabel' | 'loginEnabled'>;
 			saml?: Pick<SamlPreferences, 'loginLabel' | 'loginEnabled'>;
@@ -52,6 +53,7 @@ export const useSSOStore = defineStore('sso', () => {
 		};
 	}) => {
 		authenticationMethod.value = options.authenticationMethod;
+		ssoManagedByEnv.value = options.managedByEnv ?? false;
 
 		isEnterpriseLdapEnabled.value = options.features.ldap;
 		if (options.config.ldap) {
@@ -88,31 +90,30 @@ export const useSSOStore = defineStore('sso', () => {
 		get: () => saml.value.loginEnabled,
 		set: (value: boolean) => {
 			saml.value.loginEnabled = value;
-			void toggleLoginEnabled(value);
 		},
 	});
 
 	const isEnterpriseSamlEnabled = ref(false);
 
 	const isDefaultAuthenticationSaml = computed(
-		() => authenticationMethod.value === UserManagementAuthenticationMethod.Saml,
+		() => authenticationMethod.value === AuthenticationMethod.Saml,
 	);
-
-	const toggleLoginEnabled = async (enabled: boolean) =>
-		await ssoApi.toggleSamlConfig(rootStore.restApiContext, { loginEnabled: enabled });
 
 	const getSamlMetadata = async () => await ssoApi.getSamlMetadata(rootStore.restApiContext);
 
 	const getSamlConfig = async () => {
 		const config = await ssoApi.getSamlConfig(rootStore.restApiContext);
 		samlConfig.value = config;
+		saml.value.loginEnabled = config.loginEnabled;
+		saml.value.loginLabel = config.loginLabel;
 		return config;
 	};
 
 	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
 		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
 
-	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
+	const testSamlConfig = async (config: Partial<SamlPreferences>) =>
+		await ssoApi.testSamlConfig(rootStore.restApiContext, config);
 
 	/**
 	 * OIDC
@@ -136,6 +137,7 @@ export const useSSOStore = defineStore('sso', () => {
 	const getOidcConfig = async () => {
 		const config = await ssoApi.getOidcConfig(rootStore.restApiContext);
 		oidcConfig.value = config;
+		oidc.value.loginEnabled = config.loginEnabled;
 		return config;
 	};
 
@@ -145,6 +147,8 @@ export const useSSOStore = defineStore('sso', () => {
 		return savedConfig;
 	};
 
+	const testOidcConfig = async () => await ssoApi.testOidcConfig(rootStore.restApiContext);
+
 	const isOidcLoginEnabled = computed({
 		get: () => oidc.value.loginEnabled,
 		set: (value: boolean) => {
@@ -153,7 +157,7 @@ export const useSSOStore = defineStore('sso', () => {
 	});
 
 	const isDefaultAuthenticationOidc = computed(
-		() => authenticationMethod.value === UserManagementAuthenticationMethod.Oidc,
+		() => authenticationMethod.value === AuthenticationMethod.Oidc,
 	);
 
 	/**
@@ -210,6 +214,7 @@ export const useSSOStore = defineStore('sso', () => {
 		initialize,
 		selectedAuthProtocol,
 		initializeSelectedProtocol,
+		ssoManagedByEnv,
 
 		saml,
 		samlConfig,
@@ -228,6 +233,7 @@ export const useSSOStore = defineStore('sso', () => {
 		isDefaultAuthenticationOidc,
 		getOidcConfig,
 		saveOidcConfig,
+		testOidcConfig,
 
 		ldap,
 		isLdapLoginEnabled,

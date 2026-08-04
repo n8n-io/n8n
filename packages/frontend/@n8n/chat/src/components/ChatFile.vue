@@ -11,6 +11,7 @@ const props = defineProps<{
 	file: File;
 	isRemovable: boolean;
 	isPreviewable?: boolean;
+	href?: string;
 }>();
 
 const emit = defineEmits<{
@@ -30,6 +31,11 @@ const TypeIcon = computed(() => {
 });
 
 function onClick() {
+	if (props.href) {
+		window.open(props.href, '_blank', 'noopener noreferrer');
+		return;
+	}
+
 	if (props.isPreviewable) {
 		window.open(URL.createObjectURL(props.file));
 	}
@@ -40,13 +46,18 @@ function onDelete() {
 </script>
 
 <template>
-	<div class="chat-file" @click="onClick">
-		<TypeIcon />
+	<div class="chat-file" data-test-id="chat-file" @click="onClick">
+		<TypeIcon class="chat-icon" />
 		<p class="chat-file-name">{{ file.name }}</p>
-		<span v-if="isRemovable" class="chat-file-delete" @click.stop="onDelete">
+		<span
+			v-if="isRemovable"
+			class="chat-file-delete"
+			data-test-id="chat-file-remove"
+			@click.stop="onDelete"
+		>
 			<IconDelete />
 		</span>
-		<IconPreview v-else-if="isPreviewable" class="chat-file-preview" />
+		<IconPreview v-else-if="isPreviewable || href" class="chat-file-preview" />
 	</div>
 </template>
 
@@ -64,7 +75,14 @@ function onDelete() {
 	background: white;
 	color: var(--chat--color-dark);
 	border: 1px solid var(--chat--color-dark);
-	cursor: pointer;
+
+	&:has(.chat-file-preview) {
+		cursor: pointer;
+	}
+}
+
+.chat-icon {
+	flex-shrink: 0;
 }
 
 .chat-file-name-tooltip {

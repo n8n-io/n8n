@@ -24,8 +24,16 @@ export class StickyComponent extends BasePage {
 		return this.page.getByTestId('sticky');
 	}
 
-	getStickyByIndex(index: number): Locator {
-		return this.getStickies().nth(index);
+	getStickyByContent(content: string): Locator {
+		return this.getStickies().filter({ hasText: content });
+	}
+
+	async getStickyBoundingBox(
+		content: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getStickyByContent(content).boundingBox();
+		if (!box) throw new Error(`Sticky with content "${content}" not found or not visible`);
+		return box;
 	}
 
 	async addSticky(): Promise<void> {
@@ -46,5 +54,17 @@ export class StickyComponent extends BasePage {
 
 	getDefaultStickyGuideLink(): Locator {
 		return this.getStickies().first().getByRole('link', { name: 'Guide' });
+	}
+
+	/**
+	 * Open the color picker for a sticky via its right-click context menu.
+	 */
+	async openColorPickerFromContextMenu(sticky: Locator): Promise<void> {
+		await sticky.click({ button: 'right' });
+		await this.page.getByTestId('context-menu-item-change_color').click();
+	}
+
+	getColorOptions(): Locator {
+		return this.page.getByTestId('color');
 	}
 }

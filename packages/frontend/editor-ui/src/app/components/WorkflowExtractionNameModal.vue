@@ -7,7 +7,7 @@ import type { INodeUi } from '@/Interface';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { ExtractableSubgraphData } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { N8nButton, N8nFormInput } from '@n8n/design-system';
 const props = defineProps<{
@@ -38,10 +38,10 @@ const onSubmit = async () => {
 	if (initiatedExtraction.value) return;
 
 	initiatedExtraction.value = true;
-	const { selection, subGraph } = props.data;
+	const { selection: extractionBoundary, subGraph } = props.data;
 	try {
 		await workflowExtraction.extractNodesIntoSubworkflow(
-			selection,
+			extractionBoundary,
 			subGraph,
 			workflowNameOrDefault.value,
 		);
@@ -90,7 +90,7 @@ onMounted(() => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
 					float="right"
 					data-test-id="cancel-button"

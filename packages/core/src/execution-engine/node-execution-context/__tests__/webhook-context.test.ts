@@ -1,17 +1,18 @@
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INode,
 	INodeType,
 	INodeTypes,
+	IRunExecutionData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { WebhookContext } from '../webhook-context';
 
@@ -34,7 +35,7 @@ describe('WebhookContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node = mock<INode>({
 		credentials: {
@@ -76,13 +77,59 @@ describe('WebhookContext', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+	});
+
+	describe('connectionInputData', () => {
+		it('should expose the HTTP request as input data when there is no execution stack', () => {
+			const context = new WebhookContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				webhookData,
+				[],
+				null,
+			);
+
+			expect(context.connectionInputData).toEqual([
+				{
+					json: {
+						body: { test: 'body' },
+						headers: { test: 'header' },
+						params: { test: 'param' },
+						query: { test: 'query' },
+					},
+				},
+			]);
+		});
+
+		it('should not throw and should leave input empty when the seeded execution stack has no main data', () => {
+			const runExecutionDataWithEmptyStack = {
+				executionData: {
+					nodeExecutionStack: [{ node, data: { main: [] }, source: null }],
+				},
+			} as unknown as IRunExecutionData;
+
+			const context = new WebhookContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				webhookData,
+				[],
+				runExecutionDataWithEmptyStack,
+			);
+
+			expect(context.connectionInputData).toEqual([]);
+		});
 	});
 
 	describe('getCredentials', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await webhookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
@@ -137,6 +184,77 @@ describe('WebhookContext', () => {
 		it('should return the name of the webhook', () => {
 			const webhookName = webhookContext.getWebhookName();
 			expect(webhookName).toBe('default');
+		});
+	});
+
+	describe('webhook URLs', () => {
+		const WEBHOOK_KINDS = [
+			['a generic webhook', undefined],
+			['a form webhook', 'form'],
+			['an MCP webhook', 'mcp'],
+		] as const;
+
+		const buildUrlContext = (webhookNodeType: 'form' | 'mcp' | undefined, isTest: boolean) => {
+			const urlNodeType = mock<INodeType>({
+				description: {
+					webhooks: [
+						{ name: 'default', nodeType: webhookNodeType, path: 'my-path', isFullPath: false },
+					],
+				},
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(urlNodeType);
+			expression.getSimpleParameterValue.mockImplementation((_node, value) => value);
+
+			const urlAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				formBaseUrl: 'http://localhost/prod-webhook',
+				formTestBaseUrl: 'http://localhost/test-webhook',
+				mcpBaseUrl: 'http://localhost/prod-webhook',
+				mcpTestBaseUrl: 'http://localhost/test-webhook',
+				webhookBaseUrl: 'http://localhost/prod-webhook',
+				webhookTestBaseUrl: 'http://localhost/test-webhook',
+			});
+			const urlWebhookData = mock<IWebhookData>({
+				webhookDescription: { name: 'default', nodeType: webhookNodeType },
+				isTest,
+			});
+
+			return new WebhookContext(
+				workflow,
+				node,
+				urlAdditionalData,
+				mode,
+				urlWebhookData,
+				[],
+				runExecutionData,
+			);
+		};
+
+		describe('getNodeWebhookUrl', () => {
+			it.each(WEBHOOK_KINDS)(
+				'should use the production base URL for %s running as a test',
+				(_label, nodeType) => {
+					const context = buildUrlContext(nodeType, true);
+					expect(context.getNodeWebhookUrl('default')).toContain('prod-webhook');
+				},
+			);
+		});
+
+		describe('getWebhookResourceUrl', () => {
+			it.each(WEBHOOK_KINDS)(
+				'should use the test base URL for %s running as a test',
+				(_label, nodeType) => {
+					const context = buildUrlContext(nodeType, true);
+					expect(context.getWebhookResourceUrl('default')).toContain('test-webhook');
+				},
+			);
+
+			it.each(WEBHOOK_KINDS)(
+				'should use the production base URL for %s running in production',
+				(_label, nodeType) => {
+					const context = buildUrlContext(nodeType, false);
+					expect(context.getWebhookResourceUrl('default')).toContain('prod-webhook');
+				},
+			);
 		});
 	});
 

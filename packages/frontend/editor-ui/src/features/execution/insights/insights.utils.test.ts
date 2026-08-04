@@ -1,4 +1,6 @@
 import type { InsightsSummary } from '@n8n/api-types';
+import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date';
+
 import {
 	transformInsightsTimeSaved,
 	transformInsightsAverageRunTime,
@@ -6,6 +8,9 @@ import {
 	transformInsightsValues,
 	transformInsightsDeviation,
 	transformInsightsSummary,
+	formatDateRange,
+	getMatchingPreset,
+	timeRangeMappings,
 } from './insights.utils';
 
 import {
@@ -242,5 +247,94 @@ describe('Insights Transformers', () => {
 			expect(INSIGHTS_UNIT_MAPPING.timeSaved).toHaveBeenCalledWith(30);
 			expect(INSIGHTS_DEVIATION_UNIT_MAPPING.timeSaved).not.toHaveBeenCalled(); // deviation is null
 		});
+	});
+
+	describe('formatDateRange', () => {
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should return empty string if start date is not provided', () => {
+			const result = formatDateRange({ end: new CalendarDate(2025, 6, 5) });
+
+			expect(result).toBe('');
+		});
+
+		it('should return formatted start date if the end date is not provided', () => {
+			const result = formatDateRange({ start: new CalendarDate(2025, 2, 28) });
+
+			expect(result).toBe('28 Feb, 2025');
+		});
+
+		it('should return formatted start date if the end date is the same as the start date', () => {
+			const result = formatDateRange({
+				start: new CalendarDate(2025, 10, 20),
+				end: new CalendarDate(2025, 10, 20),
+			});
+
+			expect(result).toBe('20 Oct, 2025');
+		});
+
+		it('should return formatted range for same year range', () => {
+			const result = formatDateRange({
+				start: new CalendarDate(2025, 10, 20),
+				end: new CalendarDate(2025, 10, 25),
+			});
+
+			expect(result).toBe('20 Oct - 25 Oct, 2025');
+		});
+
+		it('should return formatted range for different year range', () => {
+			const result = formatDateRange({
+				start: new CalendarDate(2024, 12, 20),
+				end: new CalendarDate(2025, 1, 5),
+			});
+
+			expect(result).toBe('20 Dec, 2024 - 5 Jan, 2025');
+		});
+	});
+
+	describe('getMatchingPreset', () => {
+		it('should return null if the end date is not provided', () => {
+			const result = getMatchingPreset({ start: new CalendarDate(2025, 10, 20) });
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null if the start date is not provided', () => {
+			const result = getMatchingPreset({ end: new CalendarDate(2025, 10, 20) });
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null if the end date is not today', () => {
+			const result = getMatchingPreset({
+				start: new CalendarDate(2025, 10, 20),
+				end: new CalendarDate(2025, 10, 21),
+			});
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null for custom range', () => {
+			const result = getMatchingPreset({
+				start: new CalendarDate(2025, 10, 20),
+				end: today(getLocalTimeZone()),
+			});
+
+			expect(result).toBeNull();
+		});
+
+		test.each(Object.entries(timeRangeMappings))(
+			'should return the %s" preset for for %d days',
+			(key, days) => {
+				const end = today(getLocalTimeZone());
+				const start = end.subtract({ days });
+
+				const result = getMatchingPreset({ start, end });
+
+				expect(result).toBe(key);
+			},
+		);
 	});
 });

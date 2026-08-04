@@ -1,7 +1,7 @@
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
-import { UserManagementAuthenticationMethod } from '@/Interface';
+import { AuthenticationMethod } from '@n8n/api-types';
 import { defaultSettings } from './defaults';
 import type { Mock } from 'vitest';
 import type { Store, StoreDefinition } from 'pinia';
@@ -45,8 +45,9 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	userManagement: {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
-		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		authenticationMethod: AuthenticationMethod.Email,
 		quota: defaultSettings.userManagement.quota,
+		passwordMinLength: 8,
 	},
 	templatesEndpointHealthy: false,
 	api: {
@@ -94,32 +95,39 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 	return selectedItem?.querySelector('p')?.textContent?.trim();
 };
 
+type Mutable<T> = { -readonly [P in keyof T]: T[P] };
+
 /**
  * Typescript helper for mocking pinia store actions return value
  *
  * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
  */
-export const mockedStore = <TStoreDef extends () => unknown>(
+export const mockedStore = <TStoreDef extends (...args: never[]) => unknown>(
 	useStore: TStoreDef,
+	...args: Parameters<TStoreDef>
 ): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
-	? Store<
-			Id,
-			State,
-			Record<string, never>,
-			{
-				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
-					? Mock<(...args: Args) => ReturnT>
-					: Actions[K];
+	? Mutable<
+			Store<
+				Id,
+				State,
+				Record<string, never>,
+				{
+					[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
+						? Mock<(...args: Args) => ReturnT>
+						: Actions[K];
+				}
+			> & {
+				[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
 			}
-		> & {
-			[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
-		}
+		>
 	: ReturnType<TStoreDef> => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return useStore() as any;
+	return useStore(...args) as any;
 };
 
-export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;
+export type MockedStore<T extends (...args: never[]) => unknown> = ReturnType<
+	typeof mockedStore<T>
+>;
 
 export type Emitter = (event: string, ...args: unknown[]) => void;
 export type Emitters<T extends string> = Record<
@@ -136,4 +144,76 @@ export const useEmitters = <T extends string>() => {
 			emitters[name] = { emit: emitter };
 		},
 	};
+};
+
+/**
+ * Helper to get the visible tooltip content container.
+ * Queries the tooltip by its CSS class which is applied by N8nTooltip component.
+ * This is the semantic approach since .n8n-tooltip is the design system class.
+ *
+ * Usage: const tooltip = getTooltip(); expect(tooltip).toHaveTextContent('...');
+ */
+export const getTooltip = () => {
+	const tooltip = document.querySelector('.n8n-tooltip');
+	if (!tooltip) {
+		throw new Error('Unable to find tooltip with class .n8n-tooltip');
+	}
+	return tooltip as HTMLElement;
+};
+
+/**
+ * Query version that returns null if not found
+ */
+export const queryTooltip = () => document.querySelector('.n8n-tooltip');
+
+/**
+ * Get a within() wrapper for querying inside the tooltip
+ */
+export const withinTooltip = () => within(getTooltip());
+
+/**
+ * Triggers tooltip hover by dispatching a proper pointermove event.
+ * Works with Reka UI tooltips in JSDOM by setting correct pointerType.
+ *
+ * Automatically finds the actual tooltip trigger element (with data-grace-area-trigger)
+ * if the passed element is a parent container.
+ *
+ * Requires PointerEvent polyfill in setup.ts (already configured).
+ *
+ * @example
+ * const button = getByRole('button');
+ * await hoverTooltipTrigger(button);
+ * await waitFor(() => expect(getTooltip()).toHaveTextContent('Expected text'));
+ */
+export const hoverTooltipTrigger = async (element: Element): Promise<void> => {
+	// Find actual tooltip trigger - check element, children, then ancestors
+	let trigger: Element = element;
+
+	if (element.hasAttribute('data-grace-area-trigger')) {
+		trigger = element;
+	} else {
+		// Check children first
+		const childTrigger = element.querySelector('[data-grace-area-trigger]');
+		if (childTrigger) {
+			trigger = childTrigger;
+		} else {
+			// Check ancestors
+			const ancestorTrigger = element.closest('[data-grace-area-trigger]');
+			if (ancestorTrigger) {
+				trigger = ancestorTrigger;
+			}
+		}
+	}
+
+	const event = new PointerEvent('pointermove', {
+		bubbles: true,
+		cancelable: true,
+		pointerType: 'mouse',
+		clientX: 100,
+		clientY: 100,
+	});
+
+	trigger.dispatchEvent(event);
+	// Allow Vue reactivity and Reka UI to process
+	await new Promise((r) => setTimeout(r, 10));
 };

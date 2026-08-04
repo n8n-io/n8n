@@ -17,9 +17,8 @@ import {
 	DateRangePickerTrigger,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { useSlots } from 'vue';
 
-import Button from '../N8nButton/Button.vue';
+import N8nButton from '../N8nButton';
 import IconButton from '../N8nIconButton';
 import N8nDateRangePickerField from './DateRangePickerField.vue';
 import type { N8nDateRangePickerProps, N8nDateRangePickerRootEmits } from './index';
@@ -32,21 +31,29 @@ const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 });
 
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
+
+defineSlots<{
+	presets?: {};
+	trigger?: {};
+	footer?: { close: () => void };
+}>();
+
+const closePopover = () => emit('update:open', false);
+
 const forwarded = useForwardPropsEmits(props, emit);
-const slots = useSlots();
 </script>
 
 <template>
 	<DateRangePickerRoot v-bind="forwarded">
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
-				<IconButton icon="calendar" type="secondary" aria-label="Open calendar" />
+				<IconButton variant="subtle" icon="calendar" aria-label="Open calendar" />
 			</slot>
 		</DateRangePickerTrigger>
 
 		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
 			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
-				<template v-if="!!slots.presets">
+				<template v-if="!!$slots.presets">
 					<div :class="$style.Presets">
 						<slot name="presets" />
 					</div>
@@ -55,11 +62,11 @@ const slots = useSlots();
 					<div :class="$style.CalendarWrapper">
 						<DateRangePickerHeader :class="$style.CalendarHeader">
 							<DateRangePickerPrev as-child>
-								<IconButton icon="chevron-left" type="secondary" />
+								<IconButton icon="chevron-left" variant="subtle" />
 							</DateRangePickerPrev>
 							<DateRangePickerHeading :class="$style.CalendarHeading" />
 							<DateRangePickerNext as-child>
-								<IconButton icon="chevron-right" type="secondary" />
+								<IconButton icon="chevron-right" variant="subtle" />
 							</DateRangePickerNext>
 						</DateRangePickerHeader>
 
@@ -106,9 +113,15 @@ const slots = useSlots();
 						<N8nDateRangePickerField :class="$style.DateField"></N8nDateRangePickerField>
 						<div :class="$style.DateFieldError">Outside of allowed range</div>
 
-						<Button type="secondary" block class="mt-2xs" @click="emit('update:open', false)">
-							Apply
-						</Button>
+						<slot name="footer" :close="closePopover">
+							<N8nButton
+								variant="subtle"
+								label="Apply"
+								class="mt-2xs"
+								:class="$style.ApplyButton"
+								@click="closePopover"
+							/>
+						</slot>
 					</div>
 				</div>
 			</DateRangePickerCalendar>
@@ -132,6 +145,10 @@ const slots = useSlots();
 	line-height: var(--line-height--xl);
 	margin-top: 5px;
 	display: none;
+}
+
+.ApplyButton {
+	width: 100%;
 }
 
 .DateFieldSegment:focus {

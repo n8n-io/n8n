@@ -10,20 +10,18 @@ describe('getDateRangesCommonTableExpressionQuery', () => {
 	const now = DateTime.utc(2025, 10, 8, 8, 51, 27);
 
 	beforeEach(() => {
-		jest.useFakeTimers();
-		jest.setSystemTime(now.toJSDate());
+		vi.useFakeTimers();
+		vi.setSystemTime(now.toJSDate());
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
-	describe.each([
+	describe.each<[DatabaseConfig['type'], string]>([
 		['sqlite', 'SQLite'],
 		['postgresdb', 'PostgreSQL'],
-		['mysqldb', 'MySQL'],
-		['mariadb', 'MariaDB'],
-	])('%s', (dbType: DatabaseConfig['type']) => {
+	])('%s', (dbType) => {
 		describe('hour periodicity (1 day - startDate == endDate)', () => {
 			test('last 24 hours (endDate is today)', () => {
 				const startDate = now.minus({ days: 1 }).startOf('day').toJSDate();

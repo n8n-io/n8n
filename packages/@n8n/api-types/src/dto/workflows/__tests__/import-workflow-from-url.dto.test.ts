@@ -6,25 +6,30 @@ describe('ImportWorkflowFromUrlDto', () => {
 			{
 				name: 'valid URL with .json extension',
 				url: 'https://example.com/workflow.json',
+				projectId: '12345',
 			},
 			{
 				name: 'valid URL without .json extension',
 				url: 'https://example.com/workflow',
+				projectId: '12345',
 			},
 			{
 				name: 'valid URL with query parameters',
 				url: 'https://example.com/workflow.json?param=value',
+				projectId: '12345',
 			},
 			{
 				name: 'valid URL with fragments',
 				url: 'https://example.com/workflow.json#section',
+				projectId: '12345',
 			},
 			{
 				name: 'valid API endpoint URL',
 				url: 'https://api.example.com/v1/workflows/123',
+				projectId: '12345',
 			},
-		])('should validate $name', ({ url }) => {
-			const result = ImportWorkflowFromUrlDto.safeParse({ url });
+		])('should validate $name', ({ url, projectId }) => {
+			const result = ImportWorkflowFromUrlDto.safeParse({ url, projectId });
 			expect(result.success).toBe(true);
 		});
 	});

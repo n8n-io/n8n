@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { IDataObject, ExecutionSummary, AnnotationVote } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ExecutionSummary,
+	AnnotationVote,
+	ExecutionStatus,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -27,6 +34,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const settingsStore = useSettingsStore();
 
 	const loading = ref(false);
+	const initialLoadComplete = ref(false);
 	const itemsPerPage = ref(10);
 
 	const activeExecution = ref<ExecutionSummary | null>(null);
@@ -51,7 +59,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
-	const executionsCountEstimated = ref(false);
+	const hasMoreExecutions = ref(true);
 	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
@@ -175,20 +183,32 @@ export const useExecutionsStore = defineStore('executions', () => {
 				}
 			});
 
+			const isLoadMore = !!lastId;
+			const isFullPage = data.results.length >= itemsPerPage.value;
+			if (isLoadMore) {
+				hasMoreExecutions.value = isFullPage;
+			} else if (!isFullPage) {
+				hasMoreExecutions.value = false;
+			}
+
 			executionsCount.value = data.count;
-			executionsCountEstimated.value = data.estimated;
 			concurrentExecutionsCount.value = data.concurrentExecutionsCount;
 			return data;
 		} finally {
 			loading.value = false;
+			initialLoadComplete.value = true;
 		}
 	}
 
-	async function fetchExecution(id: string): Promise<IExecutionResponse | undefined> {
+	async function fetchExecution(
+		id: string,
+		queryParams?: ExecutionRedactionQueryDto,
+	): Promise<IExecutionResponse | undefined> {
 		const response = await makeRestApiRequest<IExecutionFlattedResponse>(
 			rootStore.restApiContext,
 			'GET',
 			`/executions/${id}`,
+			queryParams,
 		);
 
 		return response ? unflattenExecutionData(response) : undefined;
@@ -236,6 +256,40 @@ export const useExecutionsStore = defineStore('executions', () => {
 		if (updatedExecution.id === activeExecution.value?.id) {
 			activeExecution.value = updatedExecution;
 		}
+	}
+
+	type FilterFields = Partial<{
+		id: string;
+		finished: boolean;
+		mode: WorkflowExecuteMode;
+		retryOf: string;
+		retrySuccessId: string;
+		status: ExecutionStatus[];
+		workflowId: string;
+		waitTill: boolean;
+		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
+		startedAfter: string;
+		startedBefore: string;
+		annotationTags: string[]; // tag IDs
+		vote: AnnotationVote;
+		projectId: string;
+	}>;
+
+	type StopExecutionFilterQuery = { workflowId: string } & Pick<
+		FilterFields,
+		'startedAfter' | 'startedBefore' | 'mode' | 'workflowId' | 'status'
+	>; // parsed from query params
+
+	// Returns the amount of stopped executions
+	async function stopManyExecutions(filter: Omit<StopExecutionFilterQuery, 'workflowId'>) {
+		return await makeRestApiRequest<{ stopped: number }>(
+			rootStore.restApiContext,
+			'POST',
+			'/executions/stopMany',
+			{
+				filter: { ...filter, workflowId: filters.value.workflowId },
+			},
+		);
 	}
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
@@ -286,25 +340,27 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsById.value = {};
 		currentExecutionsById.value = {};
 		executionsCount.value = 0;
-		executionsCountEstimated.value = false;
 		concurrentExecutionsCount.value = 0;
+		hasMoreExecutions.value = true;
 	}
 
 	function reset() {
 		itemsPerPage.value = 10;
 		filters.value = getDefaultExecutionFilters();
 		autoRefresh.value = true;
+		initialLoadComplete.value = false;
 		resetData();
 		stopAutoRefreshInterval();
 	}
 
 	return {
 		loading,
+		initialLoadComplete,
 		annotateExecution,
 		executionsById,
 		executions,
 		executionsCount,
-		executionsCountEstimated,
+		hasMoreExecutions,
 		concurrentExecutionsCount,
 		executionsByWorkflowId,
 		currentExecutions,
@@ -329,5 +385,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		resetData,
 		reset,
 		itemsPerPage,
+		stopManyExecutions,
 	};
 });

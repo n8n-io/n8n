@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "content": {
+            "type": "string"
+        },
         "description": {
             "type": "string"
         },
@@ -82,7 +85,13 @@
         "metadata": {
             "type": "object",
             "properties": {
+                "description": {
+                    "type": "string"
+                },
                 "lang": {
+                    "type": "string"
+                },
+                "og:image": {
                     "type": "string"
                 },
                 "og:locale": {
@@ -92,6 +101,9 @@
                     "type": "string"
                 },
                 "og:url": {
+                    "type": "string"
+                },
+                "robots": {
                     "type": "string"
                 }
             }
@@ -111,5 +123,5 @@
             }
         }
     },
-    "version": 4
+    "version": 6
 }

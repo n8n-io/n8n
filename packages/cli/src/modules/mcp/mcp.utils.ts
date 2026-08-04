@@ -1,10 +1,16 @@
 import type { AuthenticatedRequest } from '@n8n/db';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Request } from 'express';
+import type { INode } from 'n8n-workflow';
 
-import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
+import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
+import { isJSONRPCRequest } from './mcp.typeguards';
+import type { McpClientInfo } from './mcp.types';
+
+type McpExecutionMode = 'manual' | 'production';
 
 export const getClientInfo = (req: Request | AuthenticatedRequest) => {
-	let clientInfo: { name?: string; version?: string } | undefined;
+	let clientInfo: McpClientInfo | undefined;
 	if (isJSONRPCRequest(req.body) && req.body.params?.clientInfo) {
 		clientInfo = req.body.params.clientInfo;
 	}
@@ -37,10 +43,31 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 	if (!isJSONRPCRequest(body)) return {};
 	if (!body.params) return {};
 
-	const { arguments: args } = body.params;
+	const args = body.params.arguments;
 	if (isRecord(args)) {
 		return args;
 	}
 
 	return {};
+};
+
+/**
+ * Finds the first supported trigger node in the provided nodes array.
+ * Supported MCP triggers for production mode:
+ * - Schedule trigger
+ * - Webhook trigger
+ * - Form trigger
+ * - Chat trigger
+ *
+ * In manual mode, Manual Trigger is also supported.
+ */
+export const findMcpSupportedTrigger = (
+	nodes: INode[],
+	mode: McpExecutionMode = 'production',
+): INode | undefined => {
+	const triggerNodeTypes =
+		mode === 'production'
+			? Object.keys(SUPPORTED_PRODUCTION_MCP_TRIGGERS)
+			: Object.keys(SUPPORTED_MCP_TRIGGERS);
+	return nodes.find((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
 };

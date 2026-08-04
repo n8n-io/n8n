@@ -1,5 +1,6 @@
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
@@ -11,6 +12,16 @@ import { createTestNodeProperties } from '@/__tests__/mocks';
 import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
 
 vi.mock('vue-router');
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 	pinia: createTestingPinia({
@@ -43,7 +54,9 @@ const getInput = (e: HTMLElement): HTMLInputElement => {
 };
 
 const getAssignmentType = (assignment: HTMLElement): string => {
-	return getInput(within(assignment).getByTestId('assignment-type-select')).value;
+	const typeSelect = within(assignment).getByTestId('assignment-type-select');
+	const button = within(typeSelect).getByRole('button');
+	return button.textContent?.trim() ?? '';
 };
 
 async function dropAssignment({
@@ -55,7 +68,7 @@ async function dropAssignment({
 	value: unknown;
 	dropArea: HTMLElement;
 }): Promise<void> {
-	useNDVStore().draggableStartDragging({
+	useNDVStore(createWorkflowDocumentId('')).draggableStartDragging({
 		type: 'mapping',
 		data: `{{ $json.${key} }}`,
 		dimensions: null,
@@ -70,6 +83,90 @@ async function dropAssignment({
 describe('AssignmentCollection.vue', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('updates when node and value props change externally (e.g., collaboration)', async () => {
+		const initialValue: AssignmentCollectionValue = {
+			assignments: [{ id: 'id-1', name: 'key1', value: 'value1', type: 'string' }],
+		};
+
+		const initialNode = {
+			parameters: {},
+			id: 'f63efb2d-3cc5-4500-89f9-b39aab19baf5',
+			name: 'Edit Fields',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 3.3,
+			position: [1120, 380] as [number, number],
+			credentials: {},
+			disabled: false,
+		};
+
+		const { findAllByTestId, rerender } = renderComponent({
+			props: {
+				value: initialValue,
+				node: initialNode,
+			},
+		});
+
+		let assignments = await findAllByTestId('assignment');
+		expect(assignments.length).toEqual(1);
+		expect(getInput(within(assignments[0]).getByTestId('assignment-value'))).toHaveValue('value1');
+
+		// Simulate external update (e.g., from collaboration) - both node and value change
+		const updatedValue: AssignmentCollectionValue = {
+			assignments: [
+				{ id: 'id-1', name: 'key1', value: 'updatedValue1', type: 'string' },
+				{ id: 'id-2', name: 'key2', value: 'value2', type: 'string' },
+			],
+		};
+
+		// Node object is replaced (new reference) when workflow is re-initialized
+		const updatedNode = { ...initialNode };
+
+		await rerender({ value: updatedValue, node: updatedNode });
+
+		assignments = await findAllByTestId('assignment');
+		expect(assignments.length).toEqual(2);
+		expect(getInput(within(assignments[0]).getByTestId('assignment-value'))).toHaveValue(
+			'updatedValue1',
+		);
+		expect(getInput(within(assignments[1]).getByTestId('assignment-value'))).toHaveValue('value2');
+	});
+
+	it('keeps source assignments unchanged while editing restricted values', async () => {
+		const sourceValue: AssignmentCollectionValue = {
+			assignments: [
+				{
+					name: 'teamId',
+					value: '<__PLACEHOLDER_VALUE__Linear team ID__>',
+					type: 'string',
+				} as AssignmentValue,
+			],
+		};
+
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: {
+				value: sourceValue,
+				editableValueIndices: [0],
+			},
+		});
+
+		const assignment = await findByTestId('assignment');
+		const valueInput = getInput(within(assignment).getByTestId('assignment-value'));
+		await userEvent.type(valueInput, 'team-1');
+		await fireEvent.blur(valueInput);
+
+		expect(sourceValue).toEqual({
+			assignments: [
+				{
+					name: 'teamId',
+					value: '<__PLACEHOLDER_VALUE__Linear team ID__>',
+					type: 'string',
+				},
+			],
+		});
+		expect(within(assignment).queryByTestId('assignment-remove')).not.toBeInTheDocument();
+		expect(queryByTestId('assignment-collection-drop-area')).not.toBeInTheDocument();
 	});
 
 	it('renders empty state properly', async () => {
@@ -149,6 +246,23 @@ describe('AssignmentCollection.vue', () => {
 		expect(getAssignmentType(assignments[2])).toEqual('Number');
 		expect(getAssignmentType(assignments[3])).toEqual('Object');
 		expect(getAssignmentType(assignments[4])).toEqual('Array');
+	});
+
+	it('can infer binary type for binary-like objects', async () => {
+		const { getByTestId, findAllByTestId } = renderComponent();
+		const dropArea = getByTestId('drop-area');
+
+		const binaryValue = {
+			mimeType: 'image/png',
+			data: 'base64data',
+		};
+
+		await dropAssignment({ key: 'binaryKey', value: binaryValue, dropArea });
+
+		const assignments = await findAllByTestId('assignment');
+
+		expect(assignments.length).toBe(1);
+		expect(getAssignmentType(assignments[0])).toEqual('Binary Data');
 	});
 
 	describe('defaultType prop', () => {

@@ -1,6 +1,6 @@
 import { BreakingChangeRecommendation } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 import { INode } from 'n8n-workflow';
 
 import type {
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 	id: string = 'process-env-access-v2';
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -19,7 +19,9 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 			title: 'Block process.env Access in Expressions and Code nodes',
 			description: 'Direct access to process.env is blocked by default for security',
 			category: BreakingChangeCategory.workflow,
-			severity: 'high',
+			severity: 'low',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#block-environment-variable-access-from-code-node-by-default',
 		};
 	}
 
@@ -27,6 +29,15 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 		workflow: WorkflowEntity,
 		_nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
+		// If N8N_BLOCK_ENV_ACCESS_IN_NODE is explicitly set, then the instance is not affected
+		// because the user has already made a choice
+		if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE) {
+			return {
+				isAffected: false,
+				issues: [],
+			};
+		}
+
 		// Match process.env with optional whitespace, newlines, comments between 'process' and '.env'
 		// This covers: process.env, process  .env, process/* comment */.env, process\n.env, etc.
 		// Also matches optional chaining: process?.env

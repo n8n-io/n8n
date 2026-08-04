@@ -29,6 +29,7 @@ export class GoogleDocs implements INodeType {
 		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Docs API.',
+		schemaPath: 'Google/Docs',
 		defaults: {
 			name: 'Google Docs',
 		},
@@ -164,7 +165,7 @@ export class GoogleDocs implements INodeType {
 						value: 'default',
 					},
 				];
-				const driveId = this.getNodeParameter('driveId');
+				const driveId = this.getNodeParameter('driveId', 'myDrive');
 
 				const qs = {
 					q: `mimeType = \'application/vnd.google-apps.folder\' ${

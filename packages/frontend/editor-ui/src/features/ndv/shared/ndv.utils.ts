@@ -28,9 +28,15 @@ import unset from 'lodash/unset';
 
 import { captureException } from '@sentry/vue';
 import { isPresent } from '@/app/utils/typesUtils';
+import { setParameterValue } from '@/app/utils/parameterUtils';
 import type { Ref } from 'vue';
 import { omitKey } from '@/app/utils/objectUtils';
 import type { BaseTextKey } from '@n8n/i18n';
+
+export interface ParameterOptionsOverrides {
+	hideExpressionSelector?: boolean;
+	hideFocusPanelButton?: boolean;
+}
 
 export function getNodeSettingsInitialValues(): INodeParameters {
 	return {
@@ -43,6 +49,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 		maxTries: 3,
 		waitBetweenTries: 1000,
 		notes: '',
+		customTelemetryTags: {},
 		parameters: {},
 	};
 }
@@ -50,7 +57,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 export function setValue(
 	nodeValues: Ref<INodeParameters>,
 	name: string,
-	value: NodeParameterValue,
+	value: NodeParameterValueType,
 ) {
 	const nameParts = name.split('.');
 	let lastNamePart: string | undefined = nameParts.pop();
@@ -85,12 +92,14 @@ export function setValue(
 		// Data is on lower level
 		if (value === null) {
 			// Property should be deleted
-			let tempValue = get(nodeValues.value, nameParts.join('.')) as
-				| INodeParameters
-				| INodeParameters[];
+			const path = nameParts.join('.');
+			let tempValue = get(nodeValues.value, path) as INodeParameters | INodeParameters[];
 
-			if (lastNamePart && !Array.isArray(tempValue)) {
-				tempValue = omitKey(tempValue, lastNamePart);
+			if (isArray && Array.isArray(tempValue) && lastNamePart !== undefined) {
+				tempValue.splice(parseInt(lastNamePart, 10), 1);
+				set(nodeValues.value, path, tempValue);
+			} else if (lastNamePart && tempValue && !Array.isArray(tempValue)) {
+				set(nodeValues.value, path, omitKey(tempValue, lastNamePart));
 			}
 
 			if (isArray && Array.isArray(tempValue) && tempValue.length === 0) {
@@ -99,24 +108,21 @@ export function setValue(
 				lastNamePart = nameParts.pop();
 				tempValue = get(nodeValues.value, nameParts.join('.')) as INodeParameters;
 				if (lastNamePart) {
-					tempValue = omitKey(tempValue, lastNamePart);
+					if (nameParts.length === 0) {
+						nodeValues.value = omitKey(nodeValues.value, lastNamePart);
+					} else {
+						set(nodeValues.value, nameParts.join('.'), omitKey(tempValue, lastNamePart));
+					}
 				}
 			}
 		} else {
-			// Value should be set
-			if (typeof value === 'object') {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					deepCopy(value),
-				);
-			} else {
-				set(
-					get(nodeValues.value, nameParts.join('.')) as Record<string, unknown>,
-					lastNamePart as string,
-					value,
-				);
-			}
+			// Value should be set. Write from the root via the full path so the setter
+			// builds own-property intermediates rather than reading an inherited member
+			// of an object along the path.
+			const fullPath = isArray
+				? `${nameParts.join('.')}[${lastNamePart}]`
+				: `${nameParts.join('.')}.${lastNamePart}`;
+			set(nodeValues.value, fullPath, typeof value === 'object' ? deepCopy(value) : value);
 		}
 	}
 
@@ -305,34 +311,11 @@ export function updateParameterByPath(
 	nodeType: INodeTypeDescription,
 	nodeTypeVersion: INode['typeVersion'],
 ) {
-	// Remove the 'parameters.' from the beginning to just have the
-	// actual parameter name
 	const parameterPath = parameterName.split('.').slice(1).join('.');
 
-	// Check if the path is supposed to change an array and if so get
-	// the needed data like path and index
-	const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
+	setParameterValue(nodeParameters, parameterPath, newValue);
 
-	// Apply the new value
-	if (newValue === undefined && parameterPathArray !== null) {
-		// Delete array item
-		const path = parameterPathArray[1];
-		const index = parameterPathArray[2];
-		const data = get(nodeParameters, path);
-
-		if (Array.isArray(data)) {
-			data.splice(parseInt(index, 10), 1);
-			set(nodeParameters as object, path, data);
-		}
-	} else {
-		if (newValue === undefined) {
-			unset(nodeParameters as object, parameterPath);
-		} else {
-			set(nodeParameters as object, parameterPath, newValue);
-		}
-
-		// If value is updated, remove parameter values that have invalid options
-		// so getNodeParameters checks don't fail
+	if (newValue !== undefined) {
 		removeMismatchedOptionValues(nodeType, nodeTypeVersion, nodeParameters, {
 			name: parameterPath,
 			value: newValue,
@@ -350,7 +333,7 @@ export function getParameterTypeOption<T extends keyof NonNullable<INodeProperti
 }
 
 export function isResourceLocatorParameterType(type: NodePropertyTypes) {
-	return type === 'resourceLocator' || type === 'workflowSelector';
+	return type === 'resourceLocator' || type === 'workflowSelector' || type === 'agentSelector';
 }
 
 export function isValidParameterOption(
@@ -443,6 +426,12 @@ export function parseFromExpression(
 			: null;
 	}
 
+	// `json` fields (e.g. HTTP Request "JSON Body") store raw text. Switching back to
+	// fixed mode must drop the internal "=" expression marker so the value parses as JSON.
+	if (parameterType === 'json' && typeof currentParameterValue === 'string') {
+		return currentParameterValue ? currentParameterValue.replace(/^=+/, '') : null;
+	}
+
 	if (typeof evaluatedExpressionValue !== 'undefined') {
 		return evaluatedExpressionValue;
 	}
@@ -466,13 +455,13 @@ export function shouldSkipParamValidation(
 }
 
 export function createCommonNodeSettings(
-	isExecutable: boolean,
-	isTriggerNode: boolean,
+	isToolOrModelNode: boolean,
 	t: (key: BaseTextKey) => string,
+	canUseOtelCustomSpanAttributes = false,
 ) {
 	const ret: INodeProperties[] = [];
 
-	if (isExecutable && !isTriggerNode) {
+	if (!isToolOrModelNode) {
 		ret.push(
 			{
 				displayName: t('nodeSettings.alwaysOutputData.displayName'),
@@ -590,6 +579,42 @@ export function createCommonNodeSettings(
 		},
 	);
 
+	if (canUseOtelCustomSpanAttributes) {
+		ret.push({
+			displayName: t('nodeSettings.customSpanAttributes.displayName'),
+			name: 'customTelemetryTags',
+			type: 'fixedCollection',
+			typeOptions: { multipleValues: true, sortable: true },
+			placeholder: t('nodeSettings.customSpanAttributes.placeholder'),
+			default: {},
+			description: t('nodeSettings.customSpanAttributes.description'),
+			isNodeSetting: true,
+			options: [
+				{
+					name: 'tag',
+					displayName: t('nodeSettings.customSpanAttributes.tag.displayName'),
+					values: [
+						{
+							displayName: t('nodeSettings.customSpanAttributes.tag.key.displayName'),
+							name: 'key',
+							type: 'string',
+							default: '',
+							noDataExpression: true,
+							isNodeSetting: true,
+						},
+						{
+							displayName: t('nodeSettings.customSpanAttributes.tag.value.displayName'),
+							name: 'value',
+							type: 'string',
+							default: '',
+							isNodeSetting: true,
+						},
+					],
+				},
+			],
+		});
+	}
+
 	return ret;
 }
 
@@ -675,6 +700,14 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		ret = {
 			...ret,
 			waitBetweenTries: node.waitBetweenTries,
+		};
+	}
+
+	if (node.customTelemetryTags) {
+		foundNodeSettings.push('customTelemetryTags');
+		ret = {
+			...ret,
+			customTelemetryTags: deepCopy(node.customTelemetryTags),
 		};
 	}
 

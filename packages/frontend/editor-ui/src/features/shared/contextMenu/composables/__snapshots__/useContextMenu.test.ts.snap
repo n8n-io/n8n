@@ -18,6 +18,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   },
   {
     "disabled": true,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -78,6 +79,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
+    "disabled": true,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -99,6 +101,18 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -171,6 +185,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
+    "disabled": true,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -192,6 +207,18 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -243,6 +270,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -303,6 +331,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -324,6 +353,18 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -375,6 +416,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -435,6 +477,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -456,6 +499,18 @@ exports[`useContextMenu > should return the correct actions when right clicking 
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -528,6 +583,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -549,6 +605,18 @@ exports[`useContextMenu > should return the correct actions when right clicking 
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -600,6 +668,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -672,6 +741,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -693,6 +763,18 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -744,6 +826,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -816,6 +899,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -837,6 +921,18 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -888,6 +984,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -960,6 +1057,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -981,6 +1079,18 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -1032,6 +1142,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
   },
   {
     "disabled": false,
+    "divided": false,
     "id": "rename",
     "label": "Rename",
     "shortcut": {
@@ -1104,6 +1215,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -1125,6 +1237,18 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group node",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {
@@ -1202,6 +1326,7 @@ exports[`useContextMenu > should support opening and closing (default = right cl
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up selection",
@@ -1223,6 +1348,18 @@ exports[`useContextMenu > should support opening and closing (default = right cl
       "keys": [
         "X",
       ],
+    },
+  },
+  {
+    "disabled": true,
+    "divided": false,
+    "id": "group_nodes",
+    "label": "Group nodes",
+    "shortcut": {
+      "keys": [
+        "G",
+      ],
+      "metaKey": true,
     },
   },
   {

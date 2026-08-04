@@ -1,7 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';
-import { createPinia, setActivePinia } from 'pinia';
 import type { DataTableResource } from '@/features/core/dataTable/types';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createTestingPinia } from '@pinia/testing';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 vi.mock('@/features/collaboration/projects/projects.store');
 
@@ -62,16 +65,26 @@ const renderComponent = createComponentRenderer(DataTableCard, {
 			TimeAgo: {
 				template: '<span>just now</span>',
 			},
+			ProjectCardBadge: {
+				template: '<div data-test-id="project-card-badge" />',
+			},
 		},
 	},
 });
 
 describe('DataTableCard', () => {
-	let pinia: ReturnType<typeof createPinia>;
+	let dataTableStore: MockedStore<typeof useDataTableStore>;
 
 	beforeEach(async () => {
-		pinia = createPinia();
-		setActivePinia(pinia);
+		createTestingPinia();
+		dataTableStore = mockedStore(useDataTableStore);
+		// @ts-expect-error partial data match
+		dataTableStore.projectPermissions = {
+			dataTable: {
+				delete: true,
+				update: true,
+			},
+		};
 	});
 
 	afterEach(() => {
@@ -116,5 +129,23 @@ describe('DataTableCard', () => {
 		const columnCountElement = getByTestId('data-table-card-column-count');
 		expect(columnCountElement).toBeInTheDocument();
 		expect(columnCountElement).toHaveTextContent(`${DEFAULT_DATA_TABLE.columns.length + 1}`);
+	});
+
+	describe('ownership badge', () => {
+		beforeEach(() => {
+			vi.mocked(useProjectsStore).mockReturnValue({
+				personalProject: { id: 'personal-project-id' },
+			} as ReturnType<typeof useProjectsStore>);
+		});
+
+		it('should not render ownership badge when showOwnershipBadge is false', () => {
+			const { queryByTestId } = renderComponent({ props: { showOwnershipBadge: false } });
+			expect(queryByTestId('project-card-badge')).not.toBeInTheDocument();
+		});
+
+		it('should render ownership badge when showOwnershipBadge is true', () => {
+			const { getByTestId } = renderComponent({ props: { showOwnershipBadge: true } });
+			expect(getByTestId('project-card-badge')).toBeInTheDocument();
+		});
 	});
 });

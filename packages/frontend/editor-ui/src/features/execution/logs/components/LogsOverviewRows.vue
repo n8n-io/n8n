@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
+import {
+	type LatestNodeInfo,
+	type LogEntry,
+	isNodeLog,
+} from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useVirtualList } from '@vueuse/core';
 import { watch } from 'vue';
@@ -48,11 +52,25 @@ const virtualList = useVirtualList(
 	{ itemHeight: 32 },
 );
 
+function getLatestInfo(entry: LogEntry): LatestNodeInfo | undefined {
+	return isNodeLog(entry) ? latestNodeInfo[entry.node.id] : undefined;
+}
+
 async function handleTriggerPartialExecution(treeNode: LogEntry) {
+	if (!isNodeLog(treeNode)) {
+		return;
+	}
+
 	const latestName = latestNodeInfo[treeNode.node.id]?.name ?? treeNode.node.name;
 
 	if (latestName) {
-		await runWorkflow.runWorkflow({ destinationNode: latestName });
+		await runWorkflow.runWorkflow({
+			destinationNode: {
+				nodeName: latestName,
+				// TODO(CAT-1265): check that this is the right mode.
+				mode: 'inclusive',
+			},
+		});
 	}
 }
 
@@ -102,7 +120,7 @@ watch(
 				:is-selected="data.id === selected?.id"
 				:is-compact="isCompact"
 				:should-show-token-count-column="shouldShowTokenCountColumn"
-				:latest-info="latestNodeInfo[data.node.id]"
+				:latest-info="getLatestInfo(data)"
 				:expanded="isExpanded[data.id]"
 				:can-open-ndv="canOpenNdv"
 				@toggle-expanded="emit('toggleExpanded', data)"

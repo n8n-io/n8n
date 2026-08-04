@@ -1,9 +1,7 @@
-import type { CredentialsEntity } from '@n8n/db';
 import {
 	User,
 	CredentialsRepository,
 	ProjectRepository,
-	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -19,6 +17,7 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
+	lastActiveAt: null,
 	role: 'global:owner',
 };
 
@@ -39,11 +38,8 @@ export class Reset extends BaseCommand {
 		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
 
-		const danglingCredentials: CredentialsEntity[] = await Container.get(CredentialsRepository)
-			.createQueryBuilder('credentials')
-			.leftJoinAndSelect('credentials.shared', 'shared')
-			.where('shared.credentialsId is null')
-			.getMany();
+		const danglingCredentials =
+			await Container.get(CredentialsRepository).findDanglingProjectCredentials();
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
@@ -52,11 +48,6 @@ export class Reset extends BaseCommand {
 			}),
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
-
-		await Container.get(SettingsRepository).update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: 'false' },
-		);
 
 		this.logger.info('Successfully reset the database to default user state.');
 	}

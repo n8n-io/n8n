@@ -8,17 +8,22 @@ set -euo pipefail;
 CURRENT_USER=$(whoami)
 
 # Mount the data disk
+# The data disk is attached at LUN 1 (see infra/modules/benchmark-vm/vm.tf).
+# Use Azure's stable by-LUN symlink instead of /dev/sdX: kernel device order
+# shifts depending on whether the VM size has a local temp disk.
+DATA_DISK=/dev/disk/azure/scsi1/lun1
+
 # First wait for the disk to become available
 WAIT_TIME=0
 MAX_WAIT_TIME=60
 
-while [ ! -e /dev/sdc ]; do
+while [ ! -e "$DATA_DISK" ]; do
     if [ $WAIT_TIME -ge $MAX_WAIT_TIME ]; then
-        echo "Error: /dev/sdc did not become available within $MAX_WAIT_TIME seconds."
+        echo "Error: $DATA_DISK did not become available within $MAX_WAIT_TIME seconds."
         exit 1
     fi
 
-    echo "Waiting for /dev/sdc to be available... ($WAIT_TIME/$MAX_WAIT_TIME)"
+    echo "Waiting for $DATA_DISK to be available... ($WAIT_TIME/$MAX_WAIT_TIME)"
     sleep 1
     WAIT_TIME=$((WAIT_TIME + 1))
 done
@@ -30,10 +35,12 @@ if [ -d "/n8n" ]; then
 	sudo rm -rf /n8n/.[!.]*
 else
 	sudo mkdir -p /n8n
-	sudo parted /dev/sdc --script mklabel gpt mkpart xfspart xfs 0% 100%
-	sudo mkfs.xfs /dev/sdc1
-	sudo partprobe /dev/sdc1
-	sudo mount /dev/sdc1 /n8n
+	sudo parted "$DATA_DISK" --script mklabel gpt mkpart xfspart xfs 0% 100%
+	sudo partprobe "$DATA_DISK"
+	# Wait for udev to create the partition symlink before formatting
+	sudo udevadm settle
+	sudo mkfs.xfs "${DATA_DISK}-part1"
+	sudo mount "${DATA_DISK}-part1" /n8n
 	sudo chown -R "$CURRENT_USER":"$CURRENT_USER" /n8n
 fi
 

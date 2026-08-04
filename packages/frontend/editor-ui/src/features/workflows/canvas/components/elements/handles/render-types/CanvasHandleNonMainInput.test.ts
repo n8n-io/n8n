@@ -1,6 +1,9 @@
 import CanvasHandleNonMainInput from './CanvasHandleNonMainInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createCanvasHandleProvide } from '@/features/workflows/canvas/__tests__/utils';
+import {
+	createCanvasHandleProvide,
+	createCanvasProvide,
+} from '@/features/workflows/canvas/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CanvasHandleNonMainInput);
 
@@ -10,6 +13,7 @@ describe('CanvasHandleNonMainInput', () => {
 		const { container, getByText } = renderComponent({
 			global: {
 				provide: {
+					...createCanvasProvide(),
 					...createCanvasHandleProvide({ label }),
 				},
 			},

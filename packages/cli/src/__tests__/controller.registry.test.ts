@@ -1,29 +1,35 @@
-jest.mock('@n8n/backend-common', () => {
+vi.mock('@n8n/backend-common', async () => {
 	return {
-		...jest.requireActual('@n8n/backend-common'),
+		...(await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common')),
 		inProduction: true,
 	};
 });
 
+import { Z } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	ControllerRegistryMetadata,
 	Param,
 	Get,
+	Post,
+	Body,
 	Licensed,
 	RestController,
 	RootLevelController,
+	createBodyKeyedRateLimiter,
+	createUserKeyedRateLimiter,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import express from 'express';
-import { mock } from 'jest-mock-extended';
-import { agent as testAgent } from 'supertest';
+import express, { json } from 'express';
+import request from 'supertest';
+import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
-import type { SuperAgentTest } from '@test-integration/types';
+import { RateLimitService } from '@/services/rate-limit.service';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
@@ -31,12 +37,13 @@ describe('ControllerRegistry', () => {
 	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	const metadata = Container.get(ControllerRegistryMetadata);
 	const lastActiveAtService = mock<LastActiveAtService>();
-	let agent: SuperAgentTest;
-	const authMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => next());
+	let app: express.Express;
+	const authMiddleware = vi.fn().mockImplementation(async (_req, _res, next) => next());
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		const app = express();
+		vi.resetAllMocks();
+		app = express();
+		app.use(json());
 		authService.createAuthMiddleware.mockImplementation(() => authMiddleware);
 		new ControllerRegistry(
 			license,
@@ -44,11 +51,11 @@ describe('ControllerRegistry', () => {
 			globalConfig,
 			metadata,
 			lastActiveAtService,
+			new RateLimitService(),
 		).activate(app);
-		agent = testAgent(app);
 	});
 
-	describe('Rate limiting', () => {
+	describe('IP-based rate limiting', () => {
 		@RestController('/test')
 		// @ts-expect-error tsc complains about unused class
 		class TestController {
@@ -57,7 +64,7 @@ describe('ControllerRegistry', () => {
 				return { ok: true };
 			}
 
-			@Get('/rate-limited', { rateLimit: true })
+			@Get('/rate-limited', { ipRateLimit: true })
 			rateLimited() {
 				return { ok: true };
 			}
@@ -70,15 +77,214 @@ describe('ControllerRegistry', () => {
 
 		it('should not rate-limit by default', async () => {
 			for (let i = 0; i < 6; i++) {
-				await agent.get('/rest/test/unlimited').expect(200);
+				await request(app).get('/rest/test/unlimited').expect(200);
 			}
 		});
 
 		it('should rate-limit when configured', async () => {
 			for (let i = 0; i < 5; i++) {
-				await agent.get('/rest/test/rate-limited').expect(200);
+				await request(app).get('/rest/test/rate-limited').expect(200);
 			}
-			await agent.get('/rest/test/rate-limited').expect(429);
+			await request(app).get('/rest/test/rate-limited').expect(429);
+		});
+	});
+
+	describe('Body-based keyed rate limiting', () => {
+		class TestBodyDto extends Z.class({
+			email: z.string().max(20),
+		}) {}
+
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Post('/body-keyed', {
+				skipAuth: true,
+				keyedRateLimit: createBodyKeyedRateLimiter<TestBodyDto>({
+					limit: 3,
+					windowMs: 60_000,
+					field: 'email',
+				}),
+			})
+			bodyKeyed(@Body _body: TestBodyDto) {
+				return { ok: true };
+			}
+		}
+
+		beforeAll(() => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		test.each([null, undefined, [''], {}])(
+			'should not rate limit when keyed value is %s',
+			async (identifier) => {
+				for (let i = 0; i < 5; i++) {
+					await request(app).post('/rest/test/body-keyed').send({ email: identifier }).expect(400);
+				}
+			},
+		);
+
+		it('should apply keyed rate limiting based on request body field', async () => {
+			const email = 'test@example.com';
+
+			for (let i = 0; i < 3; i++) {
+				await request(app).post('/rest/test/body-keyed').send({ email }).expect(200);
+			}
+
+			await request(app).post('/rest/test/body-keyed').send({ email }).expect(429);
+
+			await request(app)
+				.post('/rest/test/body-keyed')
+				.send({ email: 'other@example.com' })
+				.expect(200);
+		});
+
+		it('should not rate limit when the value does not match the schema', async () => {
+			const tooLongEmail = 'a'.repeat(21);
+
+			for (let i = 0; i < 4; i++) {
+				await request(app).post('/rest/test/body-keyed').send({ email: tooLongEmail }).expect(400);
+			}
+		});
+
+		it('should not rate limit when no body is sent', async () => {
+			for (let i = 0; i < 5; i++) {
+				await request(app).post('/rest/test/body-keyed').expect(400);
+			}
+		});
+
+		it('should not rate limit when the field is missing from body', async () => {
+			for (let i = 0; i < 5; i++) {
+				await request(app).post('/rest/test/body-keyed').send({}).expect(400);
+			}
+
+			for (let i = 0; i < 5; i++) {
+				await request(app).post('/rest/test/body-keyed').send({ other: 'value' }).expect(400);
+			}
+		});
+
+		it('should not rate limit when numeric value fails string schema validation', async () => {
+			for (let i = 0; i < 5; i++) {
+				await request(app).post('/rest/test/body-keyed').send({ email: 123 }).expect(400);
+			}
+		});
+
+		it('should rate limit empty string if it passes schema validation', async () => {
+			const emptyEmail = '';
+
+			for (let i = 0; i < 3; i++) {
+				await request(app).post('/rest/test/body-keyed').send({ email: emptyEmail }).expect(200);
+			}
+
+			await request(app).post('/rest/test/body-keyed').send({ email: emptyEmail }).expect(429);
+		});
+
+		it('should maintain separate rate limit counters for different identifiers', async () => {
+			const email1 = 'user1@example.com';
+			const email2 = 'user2@example.com';
+			const email3 = 'user3@example.com';
+
+			// Each email should have its own counter
+			await request(app).post('/rest/test/body-keyed').send({ email: email1 }).expect(200); // email1: 1
+			await request(app).post('/rest/test/body-keyed').send({ email: email2 }).expect(200); // email2: 1
+			await request(app).post('/rest/test/body-keyed').send({ email: email1 }).expect(200); // email1: 2
+			await request(app).post('/rest/test/body-keyed').send({ email: email3 }).expect(200); // email3: 1
+			await request(app).post('/rest/test/body-keyed').send({ email: email1 }).expect(200); // email1: 3
+
+			// email1 should be rate limited now
+			await request(app).post('/rest/test/body-keyed').send({ email: email1 }).expect(429);
+
+			// But email2 and email3 should still work
+			await request(app).post('/rest/test/body-keyed').send({ email: email2 }).expect(200); // email2: 2
+			await request(app).post('/rest/test/body-keyed').send({ email: email3 }).expect(200); // email3: 2
+		});
+	});
+
+	describe('Body-based keyed rate limiting with numeric field', () => {
+		class TestNumericDto extends Z.class({
+			userId: z.number(),
+		}) {}
+
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Post('/numeric-keyed', {
+				skipAuth: true,
+				keyedRateLimit: createBodyKeyedRateLimiter<TestNumericDto>({
+					limit: 3,
+					windowMs: 60_000,
+					field: 'userId',
+				}),
+			})
+			numericKeyed(@Body _body: TestNumericDto) {
+				return { ok: true };
+			}
+		}
+
+		beforeAll(() => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should apply keyed rate limiting based on numeric field', async () => {
+			const userId = 12345;
+
+			for (let i = 0; i < 3; i++) {
+				await request(app).post('/rest/test/numeric-keyed').send({ userId }).expect(200);
+			}
+
+			await request(app).post('/rest/test/numeric-keyed').send({ userId }).expect(429);
+
+			// Different numeric ID should work
+			await request(app).post('/rest/test/numeric-keyed').send({ userId: 67890 }).expect(200);
+		});
+
+		it('should not rate limit when string value fails numeric schema validation', async () => {
+			for (let i = 0; i < 5; i++) {
+				await request(app)
+					.post('/rest/test/numeric-keyed')
+					.send({ userId: 'not-a-number' })
+					.expect(400);
+			}
+		});
+	});
+
+	describe('User-based keyed rate limiting', () => {
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Post('/user-keyed', {
+				keyedRateLimit: createUserKeyedRateLimiter({
+					limit: 3,
+					windowMs: 60_000,
+				}),
+			})
+			bodyKeyed(@Body _body: { email: string }) {
+				return { ok: true };
+			}
+		}
+
+		beforeEach(() => {
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = { id: 'user-1' };
+				next();
+			});
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should apply keyed rate limiting based on user id', async () => {
+			for (let i = 0; i < 3; i++) {
+				await request(app).post('/rest/test/user-keyed').send({}).expect(200);
+			}
+
+			await request(app).post('/rest/test/user-keyed').send({}).expect(429);
+
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = { id: 'user-2' };
+				next();
+			});
+
+			await request(app).post('/rest/test/user-keyed').send({}).expect(200);
 		});
 	});
 
@@ -98,7 +304,7 @@ describe('ControllerRegistry', () => {
 		}
 
 		it('should not require auth if configured to skip', async () => {
-			await agent.get('/rest/test/no-auth').expect(200);
+			await request(app).get('/rest/test/no-auth').expect(200);
 			expect(authMiddleware).not.toHaveBeenCalled();
 		});
 
@@ -106,7 +312,7 @@ describe('ControllerRegistry', () => {
 			authMiddleware.mockImplementation(async (_req, res) => {
 				res.status(401).send();
 			});
-			await agent.get('/rest/test/auth').expect(401);
+			await request(app).get('/rest/test/auth').expect(401);
 			expect(authMiddleware).toHaveBeenCalled();
 		});
 	});
@@ -129,13 +335,13 @@ describe('ControllerRegistry', () => {
 
 		it('should disallow when feature is missing', async () => {
 			license.isLicensed.calledWith('feat:sharing').mockReturnValue(false);
-			await agent.get('/rest/test/with-sharing').expect(403);
+			await request(app).get('/rest/test/with-sharing').expect(403);
 			expect(license.isLicensed).toHaveBeenCalled();
 		});
 
 		it('should allow when feature is available', async () => {
 			license.isLicensed.calledWith('feat:sharing').mockReturnValue(true);
-			await agent.get('/rest/test/with-sharing').expect(200);
+			await request(app).get('/rest/test/with-sharing').expect(200);
 			expect(license.isLicensed).toHaveBeenCalled();
 		});
 	});
@@ -157,7 +363,7 @@ describe('ControllerRegistry', () => {
 		});
 
 		it('should pass in correct args to the route handler', async () => {
-			const { headers, body } = await agent.get('/rest/test/args/1234').expect(200);
+			const { headers, body } = await request(app).get('/rest/test/args/1234').expect(200);
 			expect(headers.testing).toBe('true');
 			expect(body.data).toEqual({ url: '/args/1234', id: '1234' });
 		});
@@ -188,13 +394,13 @@ describe('ControllerRegistry', () => {
 		});
 
 		it('should mount controller without rest prefix', async () => {
-			const { body } = await agent.get('/public/info').expect(200);
+			const { body } = await request(app).get('/public/info').expect(200);
 			expect(body.data).toEqual({ ok: true });
-			await agent.get('/rest/public/info').expect(404);
+			await request(app).get('/rest/public/info').expect(404);
 		});
 
 		it('should mount default controller at root path', async () => {
-			const { body } = await agent.get('/ping').expect(200);
+			const { body } = await request(app).get('/ping').expect(200);
 			expect(body.data).toEqual({ ok: true });
 		});
 	});

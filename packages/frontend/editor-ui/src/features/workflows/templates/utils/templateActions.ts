@@ -1,5 +1,5 @@
 import type { INodeUi } from '@/Interface';
-import type { ITemplatesWorkflowFull, IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
+import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { getNewWorkflow } from '@/app/api/workflows';
 import { VIEWS } from '@/app/constants';
@@ -8,7 +8,10 @@ import type { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import type { TemplateCredentialKey } from './templateTransforms';
-import { replaceAllTemplateNodeCredentials } from './templateTransforms';
+import {
+	clearAllNodeResourceLocatorValues,
+	replaceAllTemplateNodeCredentials,
+} from './templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { RouteLocationRaw, Router } from 'vue-router';
 import type { TemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -25,21 +28,25 @@ type ExternalHooks = ReturnType<typeof useExternalHooks>;
  * Creates a new workflow from a template
  */
 export async function createWorkflowFromTemplate(opts: {
-	template: IWorkflowTemplate;
+	template: ITemplatesWorkflowFull;
 	credentialOverrides: Record<TemplateCredentialKey, INodeCredentialsDetails>;
 	rootStore: ReturnType<typeof useRootStore>;
 	workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	nodeTypeProvider: NodeTypeProvider;
+	clearResourceLocators?: boolean;
 }) {
 	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
 
 	const workflowData = await getNewWorkflow(rootStore.restApiContext, { name: template.name });
-	const nodesWithCreds = replaceAllTemplateNodeCredentials(
+	let nodesWithOverrides = replaceAllTemplateNodeCredentials(
 		nodeTypeProvider,
 		template.workflow.nodes,
 		credentialOverrides,
 	);
-	const nodes = getNodesWithNormalizedPosition(nodesWithCreds) as INodeUi[];
+	if (opts.clearResourceLocators) {
+		nodesWithOverrides = clearAllNodeResourceLocatorValues(nodesWithOverrides);
+	}
+	const nodes = getNodesWithNormalizedPosition(nodesWithOverrides) as INodeUi[];
 	const connections = template.workflow.connections;
 
 	const workflowToCreate: WorkflowData = {
@@ -50,7 +57,8 @@ export async function createWorkflowFromTemplate(opts: {
 		meta: {
 			templateId: template.id.toString(),
 		},
-		// Ignored: pinData, settings, tags, versionId
+		pinData: template.readyToDemo ? (template.workflow.pinData ?? {}) : {},
+		// Ignored: settings, tags, versionId
 	};
 
 	const createdWorkflow = await workflowsStore.createNewWorkflow(workflowToCreate);
@@ -89,7 +97,7 @@ async function openTemplateCredentialSetup(opts: {
  * Opens the given template's workflow on NodeView. Fires necessary
  * telemetry events.
  */
-async function openTemplateWorkflowOnNodeView(opts: {
+export async function openTemplateWorkflowOnNodeView(opts: {
 	externalHooks: ExternalHooks;
 	templateId: string;
 	templatesStore: TemplatesStore;

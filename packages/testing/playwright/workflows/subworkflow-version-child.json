@@ -1,0 +1,54 @@
+{
+	"name": "Version Test Child",
+	"nodes": [
+		{
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0],
+			"id": "execute-workflow-trigger",
+			"name": "When Executed by Another Workflow"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "wf-version-field",
+							"name": "wf-version",
+							"value": "v1",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [208, 0],
+			"id": "set-version",
+			"name": "Set Version"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Set Version",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1",
+		"callerPolicy": "workflowsFromSameOwner"
+	}
+}

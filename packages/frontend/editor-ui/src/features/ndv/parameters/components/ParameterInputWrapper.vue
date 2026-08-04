@@ -14,13 +14,12 @@ import {
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
+import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/useBinaryDataAccessTooltip';
 import { isValueExpression, parseResourceMapperFieldName } from '@/app/utils/nodeTypesUtils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
-
-import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
 
 import { N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -45,6 +44,7 @@ type Props = {
 	label?: IParameterLabel;
 	eventBus?: EventBus;
 	canBeOverridden?: boolean;
+	hideLabel?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -62,9 +62,10 @@ const emit = defineEmits<{
 	textInput: [value: IUpdateInformation];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const externalSecretsStore = useExternalSecretsStore();
 const environmentsStore = useEnvironmentsStore();
+const { binaryDataAccessTooltip } = useBinaryDataAccessTooltip();
 
 const isExpression = computed(() => {
 	return isValueExpression(props.parameter, props.modelValue);
@@ -98,9 +99,11 @@ const parameterHint = computed(() => {
 	return props.hint;
 });
 
-const targetItem = computed(() => ndvStore.expressionTargetItem);
+const targetItem = computed(() => ndvStore.value?.expressionTargetItem ?? null);
 
-const isInputParentOfActiveNode = computed(() => ndvStore.isInputParentOfActiveNode);
+const isInputParentOfActiveNode = computed(
+	() => ndvStore.value?.isInputParentOfActiveNode ?? false,
+);
 
 const expression = computed(() => {
 	if (!isExpression.value) return '';
@@ -170,7 +173,7 @@ defineExpose({
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
 		<N8nTooltip placement="left" :disabled="!expectsBinaryData">
 			<template #content>
-				{{ BINARY_DATA_ACCESS_TOOLTIP }}
+				{{ binaryDataAccessTooltip }}
 			</template>
 			<ParameterInput
 				ref="param"
@@ -187,6 +190,7 @@ defineExpose({
 				:documentation-url="documentationUrl"
 				:error-highlight="errorHighlight"
 				:is-for-credential="isForCredential"
+				:hide-label="hideLabel"
 				:event-source="eventSource"
 				:expression-evaluated="resolvedExpression"
 				:additional-expression-data="resolvedAdditionalExpressionData"

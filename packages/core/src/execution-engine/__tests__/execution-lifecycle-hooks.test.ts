@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -10,6 +9,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type {
 	ExecutionLifecycleHookName,
@@ -23,7 +23,7 @@ describe('ExecutionLifecycleHooks', () => {
 
 	let hooks: ExecutionLifecycleHooks;
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		hooks = new ExecutionLifecycleHooks('internal', executionId, workflowData);
 	});
 
@@ -39,6 +39,7 @@ describe('ExecutionLifecycleHooks', () => {
 				sendResponse: [],
 				workflowExecuteAfter: [],
 				workflowExecuteBefore: [],
+				workflowExecuteResume: [],
 				sendChunk: [],
 			});
 		});
@@ -63,6 +64,7 @@ describe('ExecutionLifecycleHooks', () => {
 			},
 			{ hook: 'workflowExecuteBefore', args: [mock<Workflow>(), mock<IRunExecutionData>()] },
 			{ hook: 'workflowExecuteAfter', args: [mock<IRun>(), mock<IDataObject>()] },
+			{ hook: 'workflowExecuteResume', args: [mock<Workflow>(), mock<IRunExecutionData>()] },
 			{ hook: 'sendResponse', args: [mock<IExecuteResponsePromiseData>()] },
 			{ hook: 'nodeFetchedData', args: ['workflow123', mock<INode>()] },
 		];
@@ -80,10 +82,10 @@ describe('ExecutionLifecycleHooks', () => {
 	describe('runHook()', () => {
 		it('should execute multiple hooks in order', async () => {
 			const executionOrder: string[] = [];
-			const hook1 = jest.fn().mockImplementation(async () => {
+			const hook1 = vi.fn().mockImplementation(async () => {
 				executionOrder.push('hook1');
 			});
-			const hook2 = jest.fn().mockImplementation(async () => {
+			const hook2 = vi.fn().mockImplementation(async () => {
 				executionOrder.push('hook2');
 			});
 
@@ -96,7 +98,7 @@ describe('ExecutionLifecycleHooks', () => {
 		});
 
 		it('should maintain correct "this" context', async () => {
-			const hook = jest.fn().mockImplementation(async function (this: ExecutionLifecycleHooks) {
+			const hook = vi.fn().mockImplementation(async function (this: ExecutionLifecycleHooks) {
 				expect(this.executionId).toBe(executionId);
 				expect(this.mode).toBe('internal');
 			});
@@ -108,7 +110,7 @@ describe('ExecutionLifecycleHooks', () => {
 		});
 
 		it('should handle errors in hooks', async () => {
-			const errorHook = jest.fn().mockRejectedValue(new Error('Hook failed'));
+			const errorHook = vi.fn().mockRejectedValue(new Error('Hook failed'));
 			hooks.addHandler('nodeExecuteBefore', errorHook);
 
 			await expect(hooks.runHook('nodeExecuteBefore', ['testNode', mock()])).rejects.toThrow(

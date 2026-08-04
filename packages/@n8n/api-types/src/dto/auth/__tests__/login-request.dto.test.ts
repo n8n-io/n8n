@@ -73,6 +73,14 @@ describe('LoginRequestDto', () => {
 				},
 				expectedErrorPath: ['password'],
 			},
+			{
+				name: 'emailOrLdapLoginId exceeds max length',
+				request: {
+					emailOrLdapLoginId: 'a'.repeat(256),
+					password: 'securePassword123',
+				},
+				expectedErrorPath: ['emailOrLdapLoginId'],
+			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = LoginRequestDto.safeParse(request);
 			expect(result.success).toBe(false);

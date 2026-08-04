@@ -1,12 +1,13 @@
-import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ApiKeyAudience } from 'n8n-workflow';
 
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { JwtService } from '@/services/jwt.service';
-
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
+import { UserWithContext } from '@/services/oauth-token-verifier-proxy.service';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -23,8 +24,7 @@ export class McpServerApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
-		private readonly userRepository: UserRepository,
-		private readonly accessTokenRepository: AccessTokenRepository,
+		private readonly authStrategyRegistry: AuthStrategyRegistry,
 	) {}
 
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
@@ -65,48 +65,38 @@ export class McpServerApiKeyService {
 		return apiKey;
 	}
 
-	async getUserForApiKey(apiKey: string) {
-		return await this.userRepository.findOne({
-			where: {
-				apiKeys: {
-					apiKey,
-					audience: API_KEY_AUDIENCE,
-				},
-			},
-			relations: ['role'],
-		});
-	}
-
-	async verifyApiKey(apiKey: string): Promise<User | null> {
+	async verifyApiKey(apiKey: string): Promise<UserWithContext> {
 		try {
-			this.jwtService.verify(apiKey, {
-				issuer: API_KEY_ISSUER,
+			const tokenGrant = await this.authStrategyRegistry.buildContextFromToken(apiKey, {
 				audience: API_KEY_AUDIENCE,
 			});
 
-			return await this.getUserForApiKey(apiKey);
+			if (tokenGrant) {
+				return {
+					user: tokenGrant.actor ?? tokenGrant.subject,
+					actor: tokenGrant.actor,
+					authType: 'api_key',
+				};
+			}
+
+			return {
+				user: null,
+				context: {
+					reason: 'invalid_token',
+					auth_type: 'api_key',
+				},
+			};
 		} catch (error) {
-			return null;
+			const errorForSure = ensureError(error);
+			return {
+				user: null,
+				context: {
+					reason: errorForSure.name === 'JsonWebTokenError' ? 'invalid_token' : 'unknown_error',
+					auth_type: 'api_key',
+					error_details: errorForSure.message,
+				},
+			};
 		}
-	}
-
-	async getUserForAccessToken(token: string) {
-		const accessToken = await this.accessTokenRepository.findOne({
-			where: {
-				token,
-			},
-		});
-
-		if (!accessToken) {
-			return null;
-		}
-
-		return await this.userRepository.findOne({
-			where: {
-				id: accessToken.userId,
-			},
-			relations: ['role'],
-		});
 	}
 
 	async deleteAllMcpApiKeysForUser(user: User, trx?: EntityManager) {

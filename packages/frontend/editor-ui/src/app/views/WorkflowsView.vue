@@ -3,25 +3,37 @@ import Draggable from '@/app/components/Draggable.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import FolderCard from '@/features/core/folders/components/FolderCard.vue';
-import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/core/folders/folders.constants';
+import {
+	FOLDER_LIST_ITEM_ACTIONS,
+	MCP_ACCESS_ACTIONS,
+} from '@/features/core/folders/folders.constants';
+import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
+import ResourcesListLoadingState from '@/app/components/layouts/ResourcesListLoadingState.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import type { DragTarget, DropTarget, FolderListItem } from '@/features/core/folders/folders.types';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import type {
+	DragTarget,
+	DropTarget,
+	FolderListItem,
+	WorkflowListEventMap,
+} from '@/features/core/folders/folders.types';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
+	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/app/constants';
@@ -31,15 +43,17 @@ import SuggestedWorkflowCard from '@/experiments/personalizedTemplates/component
 import SuggestedWorkflows from '@/experiments/personalizedTemplates/components/SuggestedWorkflows.vue';
 import { usePersonalizedTemplatesStore } from '@/experiments/personalizedTemplates/stores/personalizedTemplates.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
-import { useReadyToRunWorkflowsV2Store } from '@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store';
 import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/TemplateRecommendationV2.vue';
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import SimplifiedEmptyLayout from '@/experiments/readyToRunWorkflowsV2/components/SimplifiedEmptyLayout.vue';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
+import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
 	BaseFilters,
 	FolderResource,
@@ -51,26 +65,29 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import type { ToggleWorkflowsMcpAccessResponse } from '@/features/ai/mcpAccess/mcp.api';
 import {
 	type Project,
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import { getEasyAiWorkflowJson } from '@/features/workflows/templates/utils/workflowSamples';
-import {
-	isExtraTemplateLinksExperimentEnabled,
-	TemplateClickSource,
-	trackTemplatesClick,
-} from '@/experiments/utils';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -81,12 +98,11 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nCard,
 	N8nCheckbox,
-	N8nHeading,
 	N8nIcon,
 	N8nInfoTip,
 	N8nInlineTextEdit,
@@ -98,7 +114,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-const SEARCH_DEBOUNCE_TIME = 300;
+
+const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
 const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
@@ -127,31 +144,48 @@ const router = useRouter();
 const message = useMessage();
 const toast = useToast();
 const folderHelpers = useFolders();
-const calloutHelpers = useCalloutHelpers();
 
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
+const credentialsStore = useCredentialsStore();
+const environmentsStore = useEnvironmentsStore();
+const dataTableStore = useDataTableStore();
+const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const uiStore = useUIStore();
 const tagsStore = useTagsStore();
 const foldersStore = useFoldersStore();
+const favoritesStore = useFavoritesStore();
+const posthogStore = usePostHog();
 const usageStore = useUsageStore();
 const insightsStore = useInsightsStore();
-const templatesStore = useTemplatesStore();
 const aiStarterTemplatesStore = useAITemplatesStarterCollectionStore();
 const personalizedTemplatesStore = usePersonalizedTemplatesStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
-const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
+const readyToRunStore = useReadyToRunStore();
+const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
+const { next: nextFetch } = useLatestFetch();
+const { fetchDependencyCounts } = useDependencies();
+const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
+const { hasKnownInstanceContent } = useEmptyStateDetection();
+const emptinessResolved = ref(false);
+
+// Pinia state persists across in-app navigation, so any already-known content
+// keeps the chrome instant; only a hard page load starts with unknown counts.
+const deferChromeForOnboarding = computed(
+	() =>
+		projectPages.isOverviewSubPage && !hasKnownInstanceContent.value && !emptinessResolved.value,
+);
 
 // We render component in a loading state until initialization is done
 // This will prevent any additional workflow fetches while initializing
@@ -165,7 +199,18 @@ const filters = ref<Filters>({
 	tags: [],
 });
 
-const workflowListEventBus = createEventBus();
+const workflowListEventBus = createEventBus<WorkflowListEventMap>();
+
+type BreadcrumbAction = UserAction<IUser> & {
+	children?: BreadcrumbAction[];
+	tooltip?: string;
+};
+
+type McpAccessScope = {
+	type: 'folder' | 'project';
+	id: string;
+	name: string;
+};
 
 type ResourcesListLayoutExpose = {
 	getScrollContainer?: () => HTMLElement | null;
@@ -174,8 +219,6 @@ type ResourcesListLayoutExpose = {
 const resourcesListLayoutRef = useTemplateRef('resourcesListLayout');
 
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
-
-const easyAICalloutVisible = ref(true);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
@@ -211,6 +254,15 @@ const folderActions = computed<
 		disabled: readOnlyEnv.value || !hasPermissionToCreateWorkflows.value,
 	},
 	{
+		label:
+			currentFolder.value && favoritesStore.isFavorite(currentFolder.value.id, 'folder')
+				? i18n.baseText('favorites.remove')
+				: i18n.baseText('favorites.add'),
+		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+		disabled: false,
+		onlyAvailableOn: 'mainBreadcrumbs' as const,
+	},
+	{
 		label: i18n.baseText('generic.rename'),
 		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
 		disabled: readOnlyEnv.value || !hasPermissionToUpdateFolders.value,
@@ -241,8 +293,6 @@ const mainBreadcrumbsActions = computed(
 		),
 );
 
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
@@ -251,13 +301,22 @@ const foldersEnabled = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled;
 });
 
-const teamProjectsEnabled = computed(() => {
-	return projectsStore.isTeamProjectFeatureEnabled;
-});
+const mcpModuleActive = computed(() => settingsStore.isModuleActive('mcp'));
 
 const mcpEnabled = computed(() => {
-	return settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
+	return mcpModuleActive.value && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
 });
+
+const canManageInstanceMcp = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: ['mcp:manage'] } }),
+);
+
+const isWorkflowCardMcpToggleEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name,
+		WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.variant,
+	),
+);
 
 const showFolders = computed(() => {
 	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
@@ -271,6 +330,10 @@ const currentFolderParent = computed(() => {
 	return currentFolder.value?.parentFolder
 		? foldersStore.breadcrumbsCache[currentFolder.value.parentFolder]
 		: null;
+});
+
+const showMainBreadcrumbs = computed(() => {
+	return showFolders.value && (!currentFolderId.value || currentFolder.value !== null);
 });
 
 const isDragging = computed(() => {
@@ -294,18 +357,21 @@ useAutoScrollOnDrag({
 });
 
 const hasPermissionToCreateFolders = computed(() => {
-	if (!currentProject.value) return false;
-	return getResourcePermissions(currentProject.value.scopes).folder.create === true;
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).folder.create === true;
 });
 
 const hasPermissionToUpdateFolders = computed(() => {
-	if (!currentProject.value) return false;
-	return getResourcePermissions(currentProject.value.scopes).folder.update === true;
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).folder.update === true;
 });
 
 const hasPermissionToDeleteFolders = computed(() => {
-	if (!currentProject.value) return false;
-	return getResourcePermissions(currentProject.value.scopes).folder.delete === true;
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).folder.delete === true;
 });
 
 const hasPermissionToCreateWorkflows = computed(() => {
@@ -313,20 +379,126 @@ const hasPermissionToCreateWorkflows = computed(() => {
 	return getResourcePermissions(currentProject.value.scopes).workflow.create === true;
 });
 
-const currentProject = computed(() => projectsStore.currentProject);
-
-const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return currentProject.value?.name;
+const hasPermissionToUpdateWorkflows = computed(() => {
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).workflow.update === true;
 });
 
-const currentParentName = computed(() => {
-	if (currentFolder.value) {
-		return currentFolder.value.name;
+const currentProject = computed(() => projectsStore.currentProject);
+
+const currentBreadcrumbsProject = computed(
+	() => currentProject.value ?? projectsStore.personalProject,
+);
+
+const currentBreadcrumbsProjectName = computed(() => {
+	const project = currentBreadcrumbsProject.value;
+	if (!project) return undefined;
+
+	return project.type === ProjectTypes.Personal
+		? i18n.baseText('projects.menu.personal')
+		: project.name;
+});
+
+const currentParentName = computed(
+	() => currentFolder.value?.name ?? currentBreadcrumbsProjectName.value,
+);
+
+const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
+	const project = currentBreadcrumbsProject.value;
+	if (!project) return [];
+
+	const actions: Array<UserAction<IUser>> = [
+		{
+			label: i18n.baseText('folders.actions.create'),
+			value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
+			disabled: readOnlyEnv.value || !hasPermissionToCreateFolders.value,
+		},
+	];
+
+	if (project.type !== ProjectTypes.Personal) {
+		actions.push({
+			label: favoritesStore.isFavorite(project.id, 'project')
+				? i18n.baseText('favorites.remove')
+				: i18n.baseText('favorites.add'),
+			value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+			disabled: false,
+		});
 	}
-	return projectName.value;
+
+	return actions;
+});
+
+const mcpAccessScope = computed<McpAccessScope | null>(() => {
+	if (currentFolderId.value) {
+		if (!currentFolder.value) return null;
+
+		return {
+			type: 'folder' as const,
+			id: currentFolder.value.id,
+			name: currentFolder.value.name,
+		};
+	}
+
+	const project = currentBreadcrumbsProject.value;
+	const name = currentBreadcrumbsProjectName.value;
+
+	if (!project?.id || !name) return null;
+
+	return {
+		type: 'project' as const,
+		id: project.id,
+		name,
+	};
+});
+
+const showMcpAccessActions = computed(
+	() =>
+		mcpModuleActive.value &&
+		mcpAccessScope.value !== null &&
+		!projectPages.isOverviewSubPage &&
+		!projectPages.isSharedSubPage &&
+		!readOnlyEnv.value &&
+		hasPermissionToUpdateWorkflows.value,
+);
+
+const settingsLink = computed(() => router.resolve({ name: MCP_SETTINGS_VIEW }).href);
+
+const mcpAccessBreadcrumbsAction = computed<BreadcrumbAction | null>(() => {
+	if (!showMcpAccessActions.value || !mcpAccessScope.value) return null;
+
+	return {
+		label: i18n.baseText('resourceActions.mcpAccess.manage'),
+		value: MCP_ACCESS_ACTIONS.MANAGE,
+		disabled: false,
+		children: [
+			{
+				label: i18n.baseText('resourceActions.mcpAccess.enable'),
+				value: MCP_ACCESS_ACTIONS.ENABLE,
+				disabled: false,
+				tooltip: i18n.baseText('resourceActions.mcpAccess.enable.tooltip', {
+					interpolate: { scopeName: mcpAccessScope.value.name },
+				}),
+			},
+			{
+				label: i18n.baseText('resourceActions.mcpAccess.disable'),
+				value: MCP_ACCESS_ACTIONS.DISABLE,
+				disabled: false,
+				tooltip: i18n.baseText('resourceActions.mcpAccess.disable.tooltip', {
+					interpolate: { scopeName: mcpAccessScope.value.name },
+				}),
+			},
+		],
+	};
+});
+
+const breadcrumbsActions = computed<BreadcrumbAction[]>(() => {
+	const actions = currentFolder.value
+		? mainBreadcrumbsActions.value
+		: projectRootBreadcrumbsActions.value;
+	const mcpAction = mcpAccessBreadcrumbsAction.value;
+
+	return mcpAction ? [...actions, mcpAction] : actions;
 });
 
 const personalProject = computed<Project | null>(() => {
@@ -354,6 +526,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				name: resource.name,
 				description: resource.description,
 				active: resource.active ?? false,
+				activeVersionId: resource.activeVersionId,
 				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
 				createdAt: resource.createdAt.toString(),
@@ -364,6 +537,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
 				settings: resource.settings,
+				hasResolvableCredentials: resource.hasResolvableCredentials,
 			} satisfies WorkflowResource;
 		}
 	});
@@ -385,21 +559,6 @@ const statusFilterOptions = computed(() => [
 	},
 ]);
 
-const showEasyAIWorkflowCallout = computed(() => {
-	const easyAIWorkflowOnboardingDone = usersStore.isEasyAIWorkflowOnboardingDone;
-	return !easyAIWorkflowOnboardingDone;
-});
-
-const templatesCardEnabled = computed(() => {
-	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
-});
-
-const projectPermissions = computed(() => {
-	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
-	);
-});
-
 const showReadyToRunWorkflowsCallout = computed(() => {
 	const isEnabled = readyToRunWorkflowsStore.isFeatureEnabled;
 	const isDismissed = readyToRunWorkflowsStore.isCalloutDismissed;
@@ -412,16 +571,6 @@ const showReadyToRunWorkflowsCallout = computed(() => {
 		(projectPages.isOverviewSubPage ||
 			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
 	);
-});
-
-const emptyListDescription = computed(() => {
-	if (readOnlyEnv.value) {
-		return i18n.baseText('workflows.empty.description.readOnlyEnv');
-	} else if (!projectPermissions.value.workflow.create) {
-		return i18n.baseText('workflows.empty.description.noPermission');
-	} else {
-		return i18n.baseText('workflows.empty.description');
-	}
 });
 
 const hasFilters = computed(() => {
@@ -467,30 +616,17 @@ const showAIStarterCollectionCallout = computed(() => {
 	);
 });
 
-const showPrebuiltAgentsCallout = computed(() => {
-	return (
-		!loading.value &&
-		calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-		!calloutHelpers.isCalloutDismissed('preBuiltAgentsModalCallout') &&
-		!readOnlyEnv.value &&
-		// We want to show the callout only if the user has permissions to create folders and workflows
-		// but also on the overview page
-		(projectPages.isOverviewSubPage ||
-			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
-	);
-});
-
 const showPersonalizedTemplates = computed(
 	() => !loading.value && personalizedTemplatesStore.isFeatureEnabled(),
 );
 
 const shouldUseSimplifiedLayout = computed(() => {
-	return readyToRunWorkflowsV2Store.getSimplifiedLayoutVisibility(route, loading.value);
+	const simplifiedLayoutVisible = readyToRunStore.getSimplifiedLayoutVisibility(route);
+	return !loading.value && simplifiedLayoutVisible;
 });
 
 const hasActiveCallouts = computed(() => {
 	return (
-		showPrebuiltAgentsCallout.value ||
 		showAIStarterCollectionCallout.value ||
 		showPersonalizedTemplates.value ||
 		showReadyToRunWorkflowsCallout.value
@@ -503,6 +639,12 @@ const hasActiveCallouts = computed(() => {
 
 watch([() => route.params?.projectId, () => route.name], async () => {
 	loading.value = true;
+	// Re-resolve emptiness for the new surface; while chrome is deferred the
+	// layout is unmounted, so its own watcher can't drive the refetch.
+	emptinessResolved.value = false;
+	if (deferChromeForOnboarding.value) {
+		void initialize();
+	}
 });
 
 watch(
@@ -593,7 +735,14 @@ const showTemplateRecommendationV3 = computed(() => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
+
 	void usersStore.showPersonalizationSurvey();
+
+	// ResourcesListLayout's own onMounted fetch can't run while chrome is
+	// deferred (it isn't mounted), so trigger it here or the skeleton never resolves.
+	if (deferChromeForOnboarding.value) {
+		void initialize();
+	}
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
 	workflowListEventBus.on('workflow-duplicated', fetchWorkflows);
@@ -619,24 +768,74 @@ onBeforeUnmount(() => {
  */
 
 // Main component fetch methods
-const initialize = async () => {
-	loading.value = true;
-	await setFiltersFromQueryString();
+const isInitializing = ref(false);
+let initializeQueued = false;
 
-	currentFolderId.value = route.params.folderId as string | null;
-	const [, resourcesPage] = await Promise.all([
-		usersStore.fetchUsers(),
-		fetchWorkflows(),
-		workflowsStore.fetchActiveWorkflows(),
-		usageStore.getLicenseInfo(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(
-			route.params.projectId as string | undefined,
-			currentFolderId.value ?? undefined,
-		),
-	]);
-	breadcrumbsLoading.value = false;
-	workflowsAndFolders.value = resourcesPage;
-	loading.value = false;
+const fetchEmptyStateData = async () => {
+	const variablesEnabled =
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+	const dataTablesEnabled = settingsStore.isDataTableFeatureEnabled;
+
+	try {
+		await Promise.all([
+			credentialsStore.fetchAllCredentials(),
+			variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
+			dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
+		]);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
+	}
+};
+
+const initialize = async () => {
+	if (isInitializing.value) {
+		// A route change landed mid-fetch; re-run once the current pass settles
+		// so the new route isn't resolved with the old route's data.
+		initializeQueued = true;
+		return;
+	}
+	isInitializing.value = true;
+	try {
+		loading.value = true;
+		await setFiltersFromQueryString();
+
+		currentFolderId.value = route.params.folderId as string | null;
+
+		// Fetched in parallel to avoid a second round-trip on first run
+		const emptinessUnknown = projectPages.isOverviewSubPage && !hasKnownInstanceContent.value;
+
+		await Promise.all([
+			fetchWorkflows(),
+			workflowsListStore.fetchActiveWorkflows(),
+			usageStore.getLicenseInfo(),
+			foldersStore.fetchTotalWorkflowsAndFoldersCount(
+				route.params.projectId as string | undefined,
+				currentFolderId.value ?? undefined,
+			),
+			...(emptinessUnknown ? [fetchEmptyStateData()] : []),
+		]);
+
+		// Stale case: stores showed content but the fresh workflow count is 0,
+		// so the remaining counts are still needed to pick the right state.
+		if (
+			!emptinessUnknown &&
+			foldersStore.totalWorkflowCount === 0 &&
+			projectPages.isOverviewSubPage
+		) {
+			loading.value = true;
+			await fetchEmptyStateData();
+		}
+
+		breadcrumbsLoading.value = false;
+	} finally {
+		loading.value = false;
+		isInitializing.value = false;
+		emptinessResolved.value = true;
+		if (initializeQueued) {
+			initializeQueued = false;
+			void initialize();
+		}
+	}
 };
 
 /**
@@ -646,6 +845,8 @@ const initialize = async () => {
  * - Path to the current folder (if not cached)
  */
 const fetchWorkflows = async () => {
+	const isCurrent = nextFetch();
+
 	// We debounce here so that fast enough fetches don't trigger
 	// the placeholder graphics for a few milliseconds, which would cause a flicker
 	const delayedLoading = debounce(() => {
@@ -671,7 +872,7 @@ const fetchWorkflows = async () => {
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
 
 	try {
-		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
+		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
 			currentPage.value,
 			pageSize.value,
@@ -686,6 +887,8 @@ const fetchWorkflows = async () => {
 			fetchFolders,
 			projectPages.isSharedSubPage,
 		);
+
+		if (!isCurrent()) return [];
 
 		foldersStore.cacheFolders(
 			fetchedResources
@@ -705,21 +908,36 @@ const fetchWorkflows = async () => {
 
 		workflowsAndFolders.value = fetchedResources;
 
+		// Async-fetch dependency counts for visible workflows (fire-and-forget)
+		// in the overview page we don't have a resource type
+		const workflowIds = fetchedResources
+			.filter((r) => r.resource === 'workflow' || r.resource === undefined)
+			.map((r) => r.id);
+		if (workflowIds.length > 0) {
+			void fetchDependencyCounts(workflowIds, 'workflow');
+		}
+
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
-			projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters.value.search !== '';
+			projectPages.isOverviewSubPage ||
+			projectPages.isSharedSubPage ||
+			filters.value.search !== '' ||
+			filters.value.tags.length > 0;
 
 		return fetchedResources;
 	} catch (error) {
+		if (!isCurrent()) return [];
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 		// redirect to the project page if the folder is not found
 		void router.push({ name: VIEWS.PROJECTS_FOLDERS, params: { projectId: routeProjectId } });
 		return [];
 	} finally {
 		delayedLoading.cancel();
-		loading.value = false;
-		if (breadcrumbsLoading.value) {
-			breadcrumbsLoading.value = false;
+		if (isCurrent()) {
+			loading.value = false;
+			if (breadcrumbsLoading.value) {
+				breadcrumbsLoading.value = false;
+			}
 		}
 	}
 };
@@ -735,6 +953,11 @@ const getParentFolderId = (routeId?: string) => {
 
 	// If we're on overview/shared page or searching, don't filter by parent folder
 	if (projectPages.isOverviewSubPage || projectPages.isSharedSubPage || filters?.value.search) {
+		return undefined;
+	}
+
+	// If filtering by tags, search across all folders
+	if (filters.value.tags.length > 0) {
 		return undefined;
 	}
 
@@ -921,22 +1144,6 @@ const addWorkflow = () => {
 	trackEmptyCardClick('blank');
 };
 
-const openTemplatesRepository = async () => {
-	trackTemplatesClick(TemplateClickSource.emptyInstanceCard);
-
-	if (templatesStore.hasCustomTemplatesHost) {
-		await router.push({ name: VIEWS.TEMPLATES });
-		return;
-	}
-
-	if (templatesDataQualityStore.isFeatureEnabled()) {
-		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
-		return;
-	}
-
-	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
-};
-
 const trackEmptyCardClick = (option: 'blank' | 'templates' | 'courses') => {
 	telemetry.track('User clicked empty page option', {
 		option,
@@ -986,10 +1193,6 @@ const createAIStarterWorkflows = async (source: 'card' | 'callout') => {
 	}
 };
 
-const openPrebuiltAgentsModal = (source: 'workflowsEmptyState' | 'workflowsList') => {
-	void calloutHelpers.openPreBuiltAgentsModal(source);
-};
-
 const handleCreateReadyToRunWorkflows = async (source: 'card' | 'callout') => {
 	try {
 		const projectId = projectPages.isOverviewSubPage
@@ -1035,29 +1238,6 @@ const dismissStarterCollectionCallout = () => {
 	aiStarterTemplatesStore.trackUserDismissedCallout();
 };
 
-const dismissEasyAICallout = () => {
-	easyAICalloutVisible.value = false;
-};
-
-const dismissPreBuiltAgentsCallout = () => {
-	void calloutHelpers.dismissCallout('preBuiltAgentsModalCallout');
-};
-
-const openAIWorkflow = async (source: string) => {
-	dismissEasyAICallout();
-	telemetry.track('User clicked test AI workflow', {
-		source,
-	});
-
-	const easyAiWorkflowJson = getEasyAiWorkflowJson();
-
-	await router.push({
-		name: VIEWS.TEMPLATE_IMPORT,
-		params: { id: easyAiWorkflowJson.meta.templateId },
-		query: { fromJson: 'true', parentFolderId: route.params.folderId },
-	});
-};
-
 const onShowArchived = async () => {
 	filters.value.showArchived = true;
 	await onFiltersUpdated();
@@ -1074,16 +1254,27 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
+	workflow.activeVersionId = data.active ? workflow.versionId : null;
 
 	// Fetch the updated workflow to get the latest settings
 	try {
-		const updatedWorkflow = await workflowsStore.fetchWorkflow(data.id);
+		const updatedWorkflow = await workflowsListStore.fetchWorkflow(data.id);
 		if (updatedWorkflow.settings) {
 			workflow.settings = updatedWorkflow.settings;
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching.one'));
 	}
+};
+
+const onWorkflowUnpublished = async (data: { id: string }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+
+	// Update the workflow to reflect unpublished state
+	workflow.activeVersionId = null;
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -1223,9 +1414,15 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 // These render next to the breadcrumbs and are applied to the current folder/project
 const onBreadCrumbsAction = async (action: string) => {
 	switch (action) {
+		case MCP_ACCESS_ACTIONS.ENABLE:
+			await toggleMcpAccess(true);
+			break;
+		case MCP_ACCESS_ACTIONS.DISABLE:
+			await toggleMcpAccess(false);
+			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
-			if (!route.params.projectId) return;
-			const currentParent = currentFolder.value?.name || projectName.value;
+			if (!currentBreadcrumbsProject.value) return;
+			const currentParent = currentFolder.value?.name || currentBreadcrumbsProjectName.value;
 			if (!currentParent) return;
 			await createFolder({
 				id: (route.params.folderId as string) ?? '-1',
@@ -1244,6 +1441,13 @@ const onBreadCrumbsAction = async (action: string) => {
 				content.workflowCount,
 				content.subFolderCount,
 			);
+			break;
+		case FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
+			if (currentFolder.value) {
+				await favoritesStore.toggleFavorite(currentFolder.value.id, 'folder');
+			} else if (currentBreadcrumbsProject.value) {
+				await favoritesStore.toggleFavorite(currentBreadcrumbsProject.value.id, 'project');
+			}
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
 			onNameToggle();
@@ -1265,12 +1469,198 @@ const onBreadCrumbsAction = async (action: string) => {
 	}
 };
 
+function getMcpAccessTarget(scope: McpAccessScope | null = mcpAccessScope.value) {
+	if (!scope) return null;
+
+	return scope.type === 'folder' ? { folderId: scope.id } : { projectId: scope.id };
+}
+
+function openSettingsFromToast(event?: MouseEvent) {
+	if (!(event?.target instanceof HTMLAnchorElement)) return;
+
+	event.preventDefault();
+	void router.push(settingsLink.value);
+}
+
+function getMCPAccessUpdatedSummary(enabled: boolean, count: number, scopeName: string) {
+	return enabled
+		? i18n.baseText('resourceActions.mcpAccess.summary.updated.enabled', {
+				adjustToNumber: count,
+				interpolate: { count: String(count), scopeName },
+			})
+		: i18n.baseText('resourceActions.mcpAccess.summary.updated.disabled', {
+				adjustToNumber: count,
+				interpolate: { count: String(count), scopeName },
+			});
+}
+
+function getMCPAccessUnchangedSummary(enabled: boolean, count: number, scopeName: string) {
+	return enabled
+		? i18n.baseText('resourceActions.mcpAccess.summary.unchanged.enabled', {
+				adjustToNumber: count,
+				interpolate: { count: String(count), scopeName },
+			})
+		: i18n.baseText('resourceActions.mcpAccess.summary.unchanged.disabled', {
+				adjustToNumber: count,
+				interpolate: { count: String(count), scopeName },
+			});
+}
+
+function getMCPAccessSkippedSummary(count: number, scopeName: string) {
+	return i18n.baseText('resourceActions.mcpAccess.summary.skipped', {
+		adjustToNumber: count,
+		interpolate: { count: String(count), scopeName },
+	});
+}
+
+function getMCPAccessOutcomeMessage(
+	enabled: boolean,
+	response: ToggleWorkflowsMcpAccessResponse,
+	scopeName: string,
+) {
+	const summaries: string[] = [];
+
+	if (response.updatedCount > 0) {
+		summaries.push(getMCPAccessUpdatedSummary(enabled, response.updatedCount, scopeName));
+	}
+
+	if (response.unchangedCount > 0) {
+		summaries.push(getMCPAccessUnchangedSummary(enabled, response.unchangedCount, scopeName));
+	}
+
+	if (response.skippedCount > 0) {
+		summaries.push(getMCPAccessSkippedSummary(response.skippedCount, scopeName));
+	}
+
+	if (summaries.length === 0) {
+		return i18n.baseText('resourceActions.mcpAccess.noWorkflows.message', {
+			interpolate: { link: settingsLink.value, scopeName },
+		});
+	}
+
+	return i18n.baseText('resourceActions.mcpAccess.outcome.message', {
+		interpolate: { link: settingsLink.value, summary: `${summaries.join('. ')}.` },
+	});
+}
+
+function showMCPAccessOutcomeToast(
+	enabled: boolean,
+	response: ToggleWorkflowsMcpAccessResponse,
+	scopeName: string,
+) {
+	const hasUpdated = response.updatedCount > 0;
+	const hasSkipped = response.skippedCount > 0;
+	const hasUnchanged = response.unchangedCount > 0;
+	let title = i18n.baseText('resourceActions.mcpAccess.noWorkflows.title');
+	let type: 'info' | 'success' | 'warning' = 'info';
+
+	if (hasSkipped) {
+		title = i18n.baseText('resourceActions.mcpAccess.partial.title');
+		type = 'warning';
+	} else if (hasUpdated) {
+		title = enabled
+			? i18n.baseText('resourceActions.mcpAccess.success.enabled.title')
+			: i18n.baseText('resourceActions.mcpAccess.success.disabled.title');
+		type = 'success';
+	} else if (hasUnchanged) {
+		title = i18n.baseText('resourceActions.mcpAccess.noChanges.title');
+	}
+
+	toast.showToast({
+		title,
+		message: getMCPAccessOutcomeMessage(enabled, response, scopeName),
+		onClick: openSettingsFromToast,
+		type,
+	});
+}
+
+function showMCPAccessErrorToast(enabled: boolean, scopeName: string) {
+	const title = enabled
+		? i18n.baseText('resourceActions.mcpAccess.error.enabled.title')
+		: i18n.baseText('resourceActions.mcpAccess.error.disabled.title');
+	const message = enabled
+		? i18n.baseText('resourceActions.mcpAccess.error.enabled.message', {
+				interpolate: {
+					link: settingsLink.value,
+					scopeName,
+				},
+			})
+		: i18n.baseText('resourceActions.mcpAccess.error.disabled.message', {
+				interpolate: {
+					link: settingsLink.value,
+					scopeName,
+				},
+			});
+
+	toast.showToast({
+		title,
+		message,
+		onClick: openSettingsFromToast,
+		type: 'error',
+		duration: 0,
+	});
+}
+
+function showMCPAccessDisabledToast() {
+	toast.showToast({
+		title: i18n.baseText('resourceActions.mcpAccess.disabled.title'),
+		message: i18n.baseText('resourceActions.mcpAccess.disabled.message', {
+			interpolate: { link: settingsLink.value },
+		}),
+		onClick: openSettingsFromToast,
+		type: 'warning',
+	});
+}
+
+async function toggleMcpAccess(
+	enabled: boolean,
+	scope: McpAccessScope | null = mcpAccessScope.value,
+) {
+	if (!mcpEnabled.value) {
+		showMCPAccessDisabledToast();
+		return;
+	}
+
+	if (!scope) return;
+
+	const target = getMcpAccessTarget(scope);
+	if (!target) return;
+
+	try {
+		const response = await mcpStore.toggleWorkflowsMcpAccess(target, enabled);
+		await fetchWorkflows();
+
+		if (response.failedCount > 0) {
+			showMCPAccessErrorToast(enabled, scope.name);
+			return;
+		}
+
+		showMCPAccessOutcomeToast(enabled, response, scope.name);
+	} catch {
+		showMCPAccessErrorToast(enabled, scope.name);
+	}
+}
+
 // Folder card action handlers
 // These render on each folder card and are applied to the clicked folder
 const onFolderCardAction = async (payload: { action: string; folderId: string }) => {
 	const clickedFolder = foldersStore.getCachedFolder(payload.folderId);
 	if (!clickedFolder) return;
 	switch (payload.action) {
+		case MCP_ACCESS_ACTIONS.ENABLE:
+			await toggleMcpAccess(true, {
+				type: 'folder',
+				id: clickedFolder.id,
+				name: clickedFolder.name,
+			});
+			break;
+		case MCP_ACCESS_ACTIONS.DISABLE:
+			await toggleMcpAccess(false, {
+				type: 'folder',
+				id: clickedFolder.id,
+				name: clickedFolder.name,
+			});
+			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
 			await createFolder(
 				{
@@ -1318,6 +1708,9 @@ const createFolder = async (
 	parent: { id: string; name: string; type: 'project' | 'folder' },
 	options: { openAfterCreate: boolean } = { openAfterCreate: false },
 ) => {
+	const projectId = currentBreadcrumbsProject.value?.id;
+	if (!projectId) return;
+
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
@@ -1333,13 +1726,13 @@ const createFolder = async (
 		try {
 			const newFolder = await foldersStore.createFolder(
 				folderName,
-				route.params.projectId as string,
+				projectId,
 				parent.type === 'folder' ? parent.id : undefined,
 			);
 
 			const newFolderURL = router.resolve({
 				name: VIEWS.PROJECTS_FOLDERS,
-				params: { projectId: route.params.projectId, folderId: newFolder.id },
+				params: { projectId, folderId: newFolder.id },
 			}).href;
 			toast.showToast({
 				title: i18n.baseText('folders.add.success.title'),
@@ -1364,7 +1757,7 @@ const createFolder = async (
 				// Navigate to parent folder id option specified by the caller
 				await router.push({
 					name: VIEWS.PROJECTS_FOLDERS,
-					params: { projectId: route.params.projectId, folderId: parent.id },
+					params: { projectId, folderId: parent.id },
 				});
 			} else {
 				// If we are on an empty list, just add the new folder to the list
@@ -1376,7 +1769,7 @@ const createFolder = async (
 							resource: 'folder',
 							createdAt: newFolder.createdAt,
 							updatedAt: newFolder.updatedAt,
-							homeProject: projectsStore.currentProject as ProjectSharingData,
+							homeProject: currentBreadcrumbsProject.value as ProjectSharingData,
 							workflowCount: 0,
 							subFolderCount: 0,
 						},
@@ -1439,8 +1832,8 @@ const createFolderInCurrent = async () => {
 		});
 		return;
 	}
-	if (!route.params.projectId) return;
-	const currentParent = currentFolder.value?.name || projectName.value;
+	if (!currentBreadcrumbsProject.value) return;
+	const currentParent = currentFolder.value?.name || currentBreadcrumbsProjectName.value;
 	if (!currentParent) return;
 	await createFolder({
 		id: (route.params.folderId as string) ?? '-1',
@@ -1465,22 +1858,18 @@ const deleteFolder = async (folderId: string, workflowCount: number, subFolderCo
 	}
 };
 
-const moveFolder = async (payload: {
-	folder: { id: string; name: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' };
-	options?: {
-		skipFetch?: boolean;
-		skipNavigation?: boolean;
-	};
-}) => {
+const moveFolder = async (payload: WorkflowListEventMap['folder-moved']) => {
 	if (!route.params.projectId) return;
 
+	loading.value = true;
 	try {
-		await foldersStore.moveFolder(
-			route.params.projectId as string,
-			payload.folder.id,
-			payload.newParent.type === 'folder' ? payload.newParent.id : '0',
-		);
+		if (!payload.options?.skipApiCall) {
+			await foldersStore.moveFolder(
+				route.params.projectId as string,
+				payload.folder.id,
+				payload.newParent.type === 'folder' ? payload.newParent.id : '0',
+			);
+		}
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 
 		const newFolderURL = router.resolve({
@@ -1524,30 +1913,14 @@ const moveFolder = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
-const onFolderTransferred = async (payload: {
-	source: {
-		projectId: string;
-		folder: { id: string; name: string };
-	};
-	destination: {
-		projectId: string;
-		parentFolder: { id: string | undefined; name: string };
-		canAccess: boolean;
-	};
-	shareCredentials?: string[];
-}) => {
+const onFolderTransferred = async (payload: WorkflowListEventMap['folder-transferred']) => {
+	loading.value = true;
 	try {
-		await foldersStore.moveFolderToProject(
-			payload.source.projectId,
-			payload.source.folder.id,
-			payload.destination.projectId,
-			payload.destination.parentFolder.id,
-			payload.shareCredentials,
-		);
-
 		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -1607,6 +1980,8 @@ const onFolderTransferred = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1615,6 +1990,7 @@ const moveWorkflowToFolder = async (payload: {
 	name: string;
 	parentFolderId?: string;
 	sharedWithProjects?: ProjectSharingData[];
+	homeProjectId?: string;
 }) => {
 	if (showRegisteredCommunityCTA.value) {
 		uiStore.openModalWithData({
@@ -1630,32 +2006,15 @@ const moveWorkflowToFolder = async (payload: {
 			name: payload.name,
 			parentFolderId: payload.parentFolderId,
 			sharedWithProjects: payload.sharedWithProjects,
+			homeProjectId: payload.homeProjectId,
 		},
 		workflowListEventBus,
 	);
 };
 
-const onWorkflowTransferred = async (payload: {
-	source: {
-		projectId: string;
-		workflow: { id: string; name: string };
-	};
-	destination: {
-		projectId: string;
-		parentFolder: { id: string | undefined; name: string };
-		canAccess: boolean;
-	};
-	shareCredentials?: string[];
-}) => {
+const onWorkflowTransferred = async (payload: WorkflowListEventMap['workflow-transferred']) => {
+	loading.value = true;
 	try {
-		await projectsStore.moveResourceToProject(
-			'workflow',
-			payload.source.workflow.id,
-			payload.destination.projectId,
-			payload.destination.parentFolder.id,
-			payload.shareCredentials,
-		);
-
 		await refreshWorkflows();
 
 		if (payload.destination.canAccess) {
@@ -1695,17 +2054,15 @@ const onWorkflowTransferred = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
-const onWorkflowMoved = async (payload: {
-	workflow: { id: string; name: string; oldParentId: string };
-	newParent: { id: string; name: string; type: 'folder' | 'project' };
-	options?: {
-		skipFetch?: boolean;
-	};
-}) => {
+const onWorkflowMoved = async (payload: WorkflowListEventMap['workflow-moved']) => {
 	if (!route.params.projectId) return;
+
+	loading.value = true;
 	try {
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -1714,13 +2071,15 @@ const onWorkflowMoved = async (payload: {
 				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
-		const workflowResource = workflowsAndFolders.value.find(
-			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
-		);
-		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
-			versionId: workflowResource?.versionId,
-		});
+		if (!payload.options?.skipApiCall) {
+			const workflowResource = workflowsAndFolders.value.find(
+				(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
+			);
+			await workflowsStore.updateWorkflow(payload.workflow.id, {
+				parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
+				versionId: workflowResource?.versionId,
+			});
+		}
 		if (!payload.options?.skipFetch) {
 			await fetchWorkflows();
 		}
@@ -1747,6 +2106,8 @@ const onWorkflowMoved = async (payload: {
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1819,7 +2180,15 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
-	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
+	<div
+		v-if="trialIntroModalStore.shouldSuppressTrialBackground"
+		data-test-id="trial-intro-background-placeholder"
+	/>
+	<ResourcesListLoadingState
+		v-else-if="deferChromeForOnboarding"
+		data-test-id="workflows-onboarding-loading"
+	/>
+	<EmptyStateLayout v-else-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
 		v-else
@@ -1835,7 +2204,7 @@ const onNameSubmit = async (name: string) => {
 		:loading="false"
 		:resources-refreshing="loading"
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="workflowsStore.totalWorkflowCount"
+		:total-items="workflowsListStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"
@@ -1857,32 +2226,10 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="foldersEnabled || showRegisteredCommunityCTA" #add-button>
-			<N8nTooltip
-				placement="top"
-				:disabled="
-					!(
-						projectPages.isOverviewSubPage ||
-						projectPages.isSharedSubPage ||
-						(!readOnlyEnv && hasPermissionToCreateFolders)
-					)
-				"
-			>
+		<template v-if="showRegisteredCommunityCTA" #add-button>
+			<N8nTooltip placement="top">
 				<template #content>
-					<span
-						v-if="
-							(projectPages.isOverviewSubPage || projectPages.isSharedSubPage) &&
-							!showRegisteredCommunityCTA
-						"
-					>
-						<span v-if="teamProjectsEnabled">
-							{{ i18n.baseText('folders.add.overview.withProjects.message') }}
-						</span>
-						<span v-else>
-							{{ i18n.baseText('folders.add.overview.community.message') }}
-						</span>
-					</span>
-					<span v-else>
+					<span>
 						{{
 							currentParentName
 								? i18n.baseText('folders.add.to.parent.message', {
@@ -1893,51 +2240,19 @@ const onNameSubmit = async (name: string) => {
 					</span>
 				</template>
 				<N8nButton
-					size="small"
+					variant="outline"
+					size="medium"
+					iconOnly
 					icon="folder-plus"
-					type="tertiary"
+					:aria-label="i18n.baseText('workflows.addFolder')"
 					data-test-id="add-folder-button"
-					:class="$style['add-folder-button']"
-					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
 					@click="createFolderInCurrent"
 				/>
 			</N8nTooltip>
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="showPrebuiltAgentsCallout"
-				theme="secondary"
-				icon="bot"
-				icon-size="large"
-				:class="$style['easy-ai-workflow-callout']"
-			>
-				<N8nText size="small">
-					{{ i18n.baseText('workflows.preBuiltAgents.callout') }}
-					{{ ' ' }}
-					<N8nLink
-						theme="secondary"
-						size="small"
-						:bold="true"
-						:underline="true"
-						@click="openPrebuiltAgentsModal('workflowsEmptyState')"
-					>
-						{{ i18n.baseText('workflows.preBuiltAgents.linkText') }}
-					</N8nLink>
-				</N8nText>
-				<template #trailingContent>
-					<div :class="$style['callout-trailing-content']">
-						<N8nIcon
-							size="small"
-							icon="x"
-							:title="i18n.baseText('generic.dismiss')"
-							class="clickable"
-							@click="dismissPreBuiltAgentsCallout()"
-						/>
-					</div>
-				</template>
-			</N8nCallout>
-			<N8nCallout
-				v-else-if="showAIStarterCollectionCallout"
+				v-if="showAIStarterCollectionCallout"
 				theme="secondary"
 				icon="gift"
 				:class="$style['easy-ai-workflow-callout']"
@@ -1946,9 +2261,9 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
+							variant="subtle"
 							data-test-id="easy-ai-button"
 							size="small"
-							type="secondary"
 							@click="createAIStarterWorkflows('callout')"
 						>
 							{{ i18n.baseText('generic.startNow') }}
@@ -1984,9 +2299,9 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
+							variant="subtle"
 							data-test-id="easy-ai-button"
 							size="small"
-							type="secondary"
 							@click="handleCreateReadyToRunWorkflows('callout')"
 						>
 							{{ i18n.baseText('generic.startNow') }}
@@ -2007,13 +2322,13 @@ const onNameSubmit = async (name: string) => {
 				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
-				v-else-if="showFolders && currentFolder"
+				v-else-if="showMainBreadcrumbs"
 				:class="$style['breadcrumbs-container']"
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
 					:current-folder="currentFolderParent"
-					:actions="mainBreadcrumbsActions"
+					:actions="breadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
@@ -2021,7 +2336,7 @@ const onNameSubmit = async (name: string) => {
 					@item-drop="onBreadCrumbsItemDrop"
 					@project-drop="moveFolderToProjectRoot"
 				>
-					<template #append>
+					<template v-if="currentFolder" #append>
 						<span :class="$style['path-separator']">/</span>
 						<N8nInlineTextEdit
 							ref="renameInput"
@@ -2074,7 +2389,9 @@ const onNameSubmit = async (name: string) => {
 							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
 					}"
 					:show-ownership-badge="showCardsBadge"
+					:show-mcp-access-actions="showMcpAccessActions"
 					data-target="folder"
+					data-droppable
 					class="mb-2xs"
 					@action="onFolderCardAction"
 					@mouseenter="folderHelpers.onDragEnter"
@@ -2116,12 +2433,16 @@ const onNameSubmit = async (name: string) => {
 					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
 					:are-tags-enabled="settingsStore.areTagsEnabled"
 					:is-mcp-enabled="mcpEnabled"
+					:is-mcp-module-active="mcpModuleActive"
+					:can-manage-instance-mcp="canManageInstanceMcp"
+					:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
 					@workflow:unarchived="refreshWorkflows"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
+					@workflow:unpublished="onWorkflowUnpublished"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
@@ -2135,138 +2456,14 @@ const onNameSubmit = async (name: string) => {
 				resource-type="workflows"
 			/>
 			<div v-else>
-				<div class="text-center mt-s" data-test-id="list-empty-state">
-					<N8nHeading tag="h2" size="xlarge" class="mb-2xs">
-						{{
-							currentUser.firstName
-								? i18n.baseText('workflows.empty.heading', {
-										interpolate: { name: currentUser.firstName },
-									})
-								: i18n.baseText('workflows.empty.heading.userNotSetup')
-						}}
-					</N8nHeading>
-					<N8nText size="large" color="text-base">
-						{{ emptyListDescription }}
-					</N8nText>
-				</div>
-				<div
-					v-if="!readOnlyEnv && projectPermissions.workflow.create"
-					:class="['text-center', 'mt-2xl', $style.actionsContainer]"
-				>
-					<N8nCard
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="new-workflow-card"
-						@click="addWorkflow"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								icon="file"
-								color="foreground-dark"
-								:stroke-width="1.5"
-							/>
-							<N8nText size="large" class="mt-xs">
-								{{ i18n.baseText('workflows.empty.startFromScratch') }}
-							</N8nText>
-						</div>
-					</N8nCard>
-					<N8nCard
-						v-if="showPrebuiltAgentsCallout"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="prebuilt-agents-card"
-						@click="openPrebuiltAgentsModal('workflowsList')"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="bot"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.empty.preBuiltAgents') }}
-							</N8nText>
-						</div>
-					</N8nCard>
-					<N8nCard
-						v-else-if="showAIStarterCollectionCallout"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="easy-ai-workflow-card"
-						@click="createAIStarterWorkflows('card')"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="gift"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.ai.starter.collection.card') }}
-							</N8nText>
-						</div>
-					</N8nCard>
-					<N8nCard
-						v-else-if="showEasyAIWorkflowCallout"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="easy-ai-workflow-card"
-						@click="openAIWorkflow('empty')"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="bot"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.empty.easyAI') }}
-							</N8nText>
-						</div>
-					</N8nCard>
-					<N8nCard
-						v-if="showReadyToRunWorkflowsCallout"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="ready-to-run-workflows-card"
-						@click="handleCreateReadyToRunWorkflows('card')"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="package-open"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ readyToRunWorkflowsStore.getCardText() }}
-							</N8nText>
-						</div>
-					</N8nCard>
-					<N8nCard
-						v-if="templatesCardEnabled"
-						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="new-workflow-from-template-card"
-						@click="openTemplatesRepository"
-					>
-						<div :class="$style.emptyStateCardContent">
-							<N8nIcon
-								:class="$style.emptyStateCardIcon"
-								:stroke-width="1.5"
-								icon="package-open"
-								color="foreground-dark"
-							/>
-							<N8nText size="large" class="mt-xs pl-2xs pr-2xs">
-								{{ i18n.baseText('workflows.empty.startWithTemplate') }}
-							</N8nText>
-						</div>
-					</N8nCard>
-				</div>
+				<ResourcesListEmptyState
+					resource-key="workflows"
+					:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
+					:disabled-tooltip-text="
+						readOnlyEnv ? i18n.baseText('readOnlyEnv.cantAdd.workflow') : undefined
+					"
+					@click:button="addWorkflow"
+				/>
 				<TemplateRecommendationV3 v-if="showTemplateRecommendationV3" />
 				<TemplateRecommendationV2 v-else-if="showTemplateRecommendationV2" />
 			</div>
@@ -2337,7 +2534,7 @@ const onNameSubmit = async (name: string) => {
 					:personal-project="personalProject"
 					resource-type="workflows"
 				/>
-				<N8nActionBox
+				<N8nEmptyState
 					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
@@ -2356,19 +2553,23 @@ const onNameSubmit = async (name: string) => {
 								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
 								: i18n.baseText('generic.missing.permissions')
 						}}
-					</template></N8nActionBox
+					</template></N8nEmptyState
 				>
+				<ResourcesListEmptyState
+					v-else-if="showArchivedOnlyHint"
+					resource-key="workflows"
+					:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
+					:disabled-tooltip-text="
+						readOnlyEnv ? i18n.baseText('readOnlyEnv.cantAdd.workflow') : undefined
+					"
+					@click:button="addWorkflow"
+				/>
 			</div>
 		</template>
 	</ResourcesListLayout>
 </template>
 
 <style lang="scss" module>
-.actionsContainer {
-	display: flex;
-	justify-content: center;
-}
-
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing--xs);
@@ -2380,43 +2581,6 @@ const onNameSubmit = async (name: string) => {
 		align-items: center;
 		gap: var(--spacing--md);
 	}
-}
-
-.emptyStateCard {
-	width: 192px;
-	text-align: center;
-	display: inline-flex;
-	height: 230px;
-
-	& + & {
-		margin-left: var(--spacing--sm);
-	}
-
-	&:hover {
-		svg {
-			color: var(--color--primary);
-		}
-	}
-}
-
-.emptyStateCardContent {
-	display: inline-flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-}
-
-.emptyStateCardIcon {
-	font-size: 48px;
-
-	svg {
-		transition: color 0.3s ease;
-	}
-}
-
-.add-folder-button {
-	width: 30px;
-	height: 30px;
 }
 
 .breadcrumbs-container {

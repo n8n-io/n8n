@@ -3,9 +3,10 @@ import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
 const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{
@@ -21,18 +22,22 @@ const emit = defineEmits<{
 	dblclickHeader: [MouseEvent];
 }>();
 
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const { renameNode } = useCanvasOperations();
 const nodeHelpers = useNodeHelpers();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
-const activeNode = computed(() => workflowsStore.getNodeById(nodeId));
+const activeNode = computed(() => workflowDocumentStore?.value?.getNodeById(nodeId));
 const foreignCredentials = computed(() =>
 	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() =>
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
+			.executionWaitingForWebhook,
+);
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
 function handleValueChanged(parameterData: IUpdateInformation) {

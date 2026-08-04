@@ -17,9 +17,9 @@ const mockActions = [
 	},
 ];
 
-// Mock N8nPopoverReka to always render content when open
-const MockN8nPopoverReka = {
-	name: 'N8nPopoverReka',
+// Mock N8nPopover to always render content when open
+const MockN8nPopover = {
+	name: 'N8nPopover',
 	props: ['open', 'width', 'maxHeight', 'align'],
 	emits: ['update:open'],
 	template: `
@@ -50,7 +50,7 @@ const stubs = {
 		props: ['theme'],
 		template: '<div data-test-id="n8n-callout" :class="theme"><slot /></div>',
 	},
-	N8nPopoverReka: MockN8nPopoverReka,
+	N8nPopover: MockN8nPopover,
 };
 
 describe('N8nSuggestedActions', () => {

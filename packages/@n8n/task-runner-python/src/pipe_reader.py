@@ -79,9 +79,6 @@ class PipeReader(threading.Thread):
         if has_result and has_error:
             raise InvalidPipeMsgContentError("Msg has both 'result' and 'error' keys")
 
-        if has_result and not isinstance(msg["result"], list):
-            raise InvalidPipeMsgContentError("'result' must be a list")
-
         if has_error and not isinstance(msg["error"], dict):
             raise InvalidPipeMsgContentError("'error' must be a dict")
 

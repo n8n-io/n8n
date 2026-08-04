@@ -2,12 +2,16 @@
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { MainPanelType, NodePanelType } from '../ndv.types';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { IRunData, NodeConnectionType, Workflow } from 'n8n-workflow';
+import type { IRunData, NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 
 import NDVHeader from '../../panel/components/NDVHeader.vue';
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
+import {
+	useNdvAgentConfig,
+	NdvAgentConfigKey,
+} from '@/features/ndv/agents/composables/useNdvAgentConfig';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -16,36 +20,35 @@ import { useNdvLayout } from '../../panel/composables/useNdvLayout';
 import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
-import { useStyles } from '@/app/composables/useStyles';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useStyles } from '@n8n/composables/useStyles';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	APP_MODALS_ELEMENT_ID,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MODAL_CONFIRM,
-	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
-import { useNDVStore } from '../ndv.store';
+import { ndvEventBus } from '../ndv.eventBus';
+import { injectNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { getNodeIconSource } from '@/app/utils/nodeIcon';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
-import { storeToRefs } from 'pinia';
 import InputPanel from '../../panel/components/InputPanel.vue';
 import OutputPanel from '../../panel/components/OutputPanel.vue';
 import PanelDragButtonV2 from '../../panel/components/PanelDragButtonV2.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
-
+import { nodeViewEventBus } from '@/app/event-bus';
 import { N8nResizeWrapper } from '@n8n/design-system';
 import NDVFloatingNodes from '@/features/ndv/panel/components/NDVFloatingNodes.vue';
+import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
 const emit = defineEmits<{
-	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
 	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
@@ -55,7 +58,6 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: Workflow;
 		readOnly?: boolean;
 		isProductionExecutionPreview?: boolean;
 	}>(),
@@ -65,16 +67,21 @@ const props = withDefaults(
 	},
 );
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
-const workflowActivate = useWorkflowActivate();
+
+// The AI Agent node's NDV data facade (referenced summary + inline editing).
+// Owned here (the stable container) so it survives node switches. No-ops for
+// other nodes.
+provide(NdvAgentConfigKey, useNdvAgentConfig(activeNode));
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
 const i18n = useI18n();
@@ -83,7 +90,7 @@ const { APP_Z_INDEXES } = useStyles();
 
 const settingsEventBus = createEventBus();
 const runInputIndex = ref(-1);
-const runOutputIndex = ref(-1);
+const runOutputIndex = computed(() => ndvStore.value.output.run ?? -1);
 const isLinkingEnabled = ref(true);
 const selectedInput = ref<string | undefined>();
 const triggerWaitingWarningEnabled = ref(false);
@@ -100,7 +107,11 @@ const containerRef = useTemplateRef('containerRef');
 const mainPanelRef = useTemplateRef('mainPanelRef');
 
 // computed
-const pushRef = computed(() => ndvStore.pushRef);
+const pushRef = computed(() => ndvStore.value.pushRef);
+
+const workflowObject = computed(() =>
+	workflowDocumentStore?.value?.getWorkflowObjectAccessorSnapshot(),
+);
 
 const activeNodeType = computed(() => {
 	if (activeNode.value) {
@@ -130,7 +141,7 @@ const workflowRunData = computed(() => {
 const parentNodes = computed(() => {
 	if (activeNode.value) {
 		return (
-			props.workflowObject
+			workflowDocumentStore.value
 				.getParentNodesByDepth(activeNode.value.name, 1)
 				.map(({ name }) => name) || []
 		);
@@ -141,7 +152,7 @@ const parentNodes = computed(() => {
 
 const parentNode = computed(() => {
 	for (const parentNodeName of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parentNodeName]) {
+		if (workflowDocumentStore?.value?.pinnedDataByNodeName?.[parentNodeName]) {
 			return parentNodeName;
 		}
 
@@ -154,8 +165,8 @@ const parentNode = computed(() => {
 
 const inputNodeName = computed<string | undefined>(() => {
 	const nodeOutputs =
-		activeNode.value && activeNodeType.value
-			? NodeHelpers.getNodeOutputs(props.workflowObject, activeNode.value, activeNodeType.value)
+		activeNode.value && activeNodeType.value && workflowObject.value
+			? NodeHelpers.getNodeOutputs(workflowObject.value, activeNode.value, activeNodeType.value)
 			: [];
 
 	const nonMainOutputs = nodeOutputs.filter((output) => {
@@ -170,7 +181,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		// For sub-nodes, we need to get their connected output node to determine the input
 		// because sub-nodes use specialized outputs (e.g. NodeConnectionTypes.AiTool)
 		// instead of the standard Main output type
-		const connectedOutputNode = props.workflowObject.getChildNodes(
+		const connectedOutputNode = workflowDocumentStore.value.getChildNodes(
 			activeNode.value.name,
 			'ALL_NON_MAIN',
 		)?.[0];
@@ -181,18 +192,15 @@ const inputNodeName = computed<string | undefined>(() => {
 
 const inputNode = computed(() => {
 	if (inputNodeName.value) {
-		return workflowsStore.getNodeByName(inputNodeName.value);
+		return workflowDocumentStore?.value?.getNodeByName(inputNodeName.value) ?? null;
 	}
 	return null;
 });
 
-const inputSize = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
+const inputSize = computed(() => ndvStore.value.ndvInputDataWithPinnedData.length);
 
 const isTriggerNode = computed(
-	() =>
-		!!activeNodeType.value &&
-		(activeNodeType.value.group.includes('trigger') ||
-			activeNodeType.value.name === START_NODE_TYPE),
+	() => !!activeNodeType.value && activeNodeType.value.group.includes('trigger'),
 );
 
 const showTriggerPanel = computed(() => {
@@ -216,10 +224,11 @@ const isExecutableTriggerNode = computed(() => {
 });
 
 const isActiveStickyNode = computed(
-	() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
+	() => !!ndvStore.value.activeNode && ndvStore.value.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {
@@ -250,14 +259,14 @@ const maxInputRun = computed(() => {
 		return 0;
 	}
 
-	const workflowNode = props.workflowObject.getNode(activeNode.value.name);
+	const workflowNode = workflowDocumentStore.value.getNodeByName(activeNode.value.name);
 
-	if (!workflowNode || !activeNodeType.value) {
+	if (!workflowNode || !activeNodeType.value || !workflowObject.value) {
 		return 0;
 	}
 
 	const outputs = NodeHelpers.getNodeOutputs(
-		props.workflowObject,
+		workflowObject.value,
 		workflowNode,
 		activeNodeType.value,
 	);
@@ -298,11 +307,13 @@ const canLinkRuns = computed(
 
 const linked = computed(() => isLinkingEnabled.value && canLinkRuns.value);
 
-const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
+const outputPanelEditMode = computed(() => ndvStore.value.outputPanelEditMode);
 
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowExecutionStateStore.value.executionWaitingForWebhook,
+);
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
@@ -312,9 +323,9 @@ const foreignCredentials = computed(() =>
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
 
-const inputPanelDisplayMode = computed(() => ndvStore.inputPanelDisplayMode);
+const inputPanelDisplayMode = computed(() => ndvStore.value.inputPanelDisplayMode);
 
-const outputPanelDisplayMode = computed(() => ndvStore.outputPanelDisplayMode);
+const outputPanelDisplayMode = computed(() => ndvStore.value.outputPanelDisplayMode);
 
 const hasInputPanel = computed(() => !isTriggerNode.value || showTriggerPanel.value);
 
@@ -326,7 +337,6 @@ const nodeSettingsProps = computed(() => ({
 	eventBus: settingsEventBus,
 	dragging: isDragging.value,
 	pushRef: pushRef.value,
-	nodeType: activeNodeType.value,
 	foreignCredentials: foreignCredentials.value,
 	readOnly: props.readOnly,
 	blockUI: blockUi.value && showTriggerPanel.value,
@@ -343,29 +353,26 @@ const currentNodePaneType = computed((): MainPanelType => {
 const { containerWidth, onDrag, onResize, onResizeEnd, panelWidthPercentage, panelWidthPixels } =
 	useNdvLayout({ container: containerRef, hasInputPanel, paneType: currentNodePaneType });
 
+const icon = useNodeIconSource(activeNodeType, activeNode);
+
 //methods
 const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
 
-const onKeyDown = (e: KeyboardEvent) => {
-	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
-		onSaveWorkflow(e);
-	}
+const setSelectedInput = (value: string | undefined) => {
+	selectedInput.value = value;
 };
 
-const onSaveWorkflow = (e: KeyboardEvent) => {
-	e.stopPropagation();
-	e.preventDefault();
-
-	if (props.readOnly) return;
-
-	emit('saveKeyboardShortcut', e);
+const onKeyDown = (e: KeyboardEvent) => {
+	if (e.key === 's' && deviceSupport.isCtrlKeyPressed(e)) {
+		e.preventDefault();
+	}
 };
 
 const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
 	if (e === null || !inputNodeName.value || !isPairedItemHoveringEnabled.value) {
-		ndvStore.setHoveringItem(null);
+		ndvStore.value.setHoveringItem(null);
 		return;
 	}
 
@@ -375,7 +382,7 @@ const onInputItemHover = (e: { itemIndex: number; outputIndex: number } | null) 
 		outputIndex: e.outputIndex,
 		itemIndex: e.itemIndex,
 	};
-	ndvStore.setHoveringItem(item);
+	ndvStore.value.setHoveringItem(item);
 };
 
 const onInputTableMounted = (e: { avgRowHeight: number }) => {
@@ -383,15 +390,13 @@ const onInputTableMounted = (e: { avgRowHeight: number }) => {
 };
 
 const onWorkflowActivate = () => {
-	ndvStore.unsetActiveNodeName();
-	setTimeout(() => {
-		void workflowActivate.activateCurrentWorkflow('ndv');
-	}, 1000);
+	ndvStore.value.unsetActiveNodeName();
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null) => {
 	if (e === null || !activeNode.value || !isPairedItemHoveringEnabled.value) {
-		ndvStore.setHoveringItem(null);
+		ndvStore.value.setHoveringItem(null);
 		return;
 	}
 
@@ -401,7 +406,7 @@ const onOutputItemHover = (e: { itemIndex: number; outputIndex: number } | null)
 		outputIndex: e.outputIndex,
 		itemIndex: e.itemIndex,
 	};
-	ndvStore.setHoveringItem(item);
+	ndvStore.value.setHoveringItem(item);
 };
 
 const onDragEnd = () => {
@@ -415,7 +420,7 @@ const onDragEnd = () => {
 		// end_position: mainPanelDimensions.value.relativeLeft,
 		node_type: activeNodeType.value ? activeNodeType.value.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 };
 
@@ -457,7 +462,7 @@ const trackLinking = (pane: string) => {
 };
 
 const onLinkRunToInput = () => {
-	runOutputIndex.value = runInputIndex.value;
+	ndvStore.value.setOutputRunIndex(runInputIndex.value);
 	isLinkingEnabled.value = true;
 	trackLinking('input');
 };
@@ -494,18 +499,18 @@ const close = async () => {
 			}
 		}
 
-		ndvStore.setOutputPanelEditModeEnabled(false);
+		ndvStore.value.setOutputPanelEditModeEnabled(false);
 	}
 
 	await externalHooks.run('dataDisplay.nodeEditingFinished');
 	telemetry.track('User closed node modal', {
 		node_type: activeNodeType.value ? activeNodeType.value?.name : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 	});
 	triggerWaitingWarningEnabled.value = false;
-	ndvStore.unsetActiveNodeName();
-	ndvStore.resetNDVPushRef();
+	ndvStore.value.unsetActiveNodeName();
+	ndvStore.value.resetNDVPushRef();
 };
 
 useKeybindings({ Escape: close });
@@ -520,14 +525,14 @@ const trackRunChange = (run: number, pane: string) => {
 };
 
 const onRunOutputIndexChange = (run: number) => {
-	runOutputIndex.value = run;
+	ndvStore.value.setOutputRunIndex(run);
 	trackRunChange(run, 'output');
 };
 
 const onRunInputIndexChange = (run: number) => {
 	runInputIndex.value = run;
 	if (linked.value) {
-		runOutputIndex.value = run;
+		ndvStore.value.setOutputRunIndex(run);
 	}
 	trackRunChange(run, 'input');
 };
@@ -544,7 +549,7 @@ const onInputNodeChange = (value: string, index: number) => {
 	telemetry.track('User changed ndv input dropdown', {
 		node_type: activeNode.value ? activeNode.value.type : '',
 		push_ref: pushRef.value,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		selection_value: index,
 		input_node_type: inputNode.value ? inputNode.value.type : '',
 	});
@@ -581,7 +586,7 @@ const onRename = (name: string) => {
 };
 
 const handleChangeDisplayMode = (pane: NodePanelType, mode: IRunDataDisplayMode) => {
-	ndvStore.setPanelDisplayMode({ pane, mode });
+	ndvStore.value.setPanelDisplayMode({ pane, mode });
 };
 
 //watchers
@@ -597,40 +602,42 @@ watch(
 
 		if (node && node.name !== oldNode?.name && !isActiveStickyNode.value) {
 			runInputIndex.value = -1;
-			runOutputIndex.value = -1;
+			ndvStore.value.setOutputRunIndex(-1);
 			isLinkingEnabled.value = true;
 			selectedInput.value = undefined;
 			triggerWaitingWarningEnabled.value = false;
 			avgOutputRowHeight.value = 0;
 			avgInputRowHeight.value = 0;
 
-			setTimeout(() => ndvStore.setNDVPushRef(), 0);
+			setTimeout(() => ndvStore.value.setNDVPushRef(), 0);
 
-			if (!activeNodeType.value) {
+			if (!activeNodeType.value || !workflowObject.value) {
 				return;
 			}
 
 			void externalHooks.run('dataDisplay.nodeTypeChanged', {
-				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, props.workflowObject),
+				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, workflowObject.value),
 			});
 
 			setTimeout(() => {
 				if (activeNode.value) {
-					const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(
+					const outgoingConnections = workflowDocumentStore?.value?.outgoingConnectionsByNodeName(
 						activeNode.value?.name,
 					);
 
 					telemetry.track('User opened node modal', {
 						node_id: activeNode.value?.id,
 						node_type: activeNodeType.value ? activeNodeType.value?.name : '',
-						workflow_id: workflowsStore.workflowId,
+						workflow_id: workflowId.value,
 						push_ref: pushRef.value,
 						is_editable: !hasForeignCredential.value,
 						parameters_pane_position: mainPanelPosition.value,
 						input_first_connector_runs: maxInputRun.value,
 						output_first_connector_runs: maxOutputRun.value,
-						selected_view_inputs: isTriggerNode.value ? 'trigger' : ndvStore.inputPanelDisplayMode,
-						selected_view_outputs: ndvStore.outputPanelDisplayMode,
+						selected_view_inputs: isTriggerNode.value
+							? 'trigger'
+							: ndvStore.value.inputPanelDisplayMode,
+						selected_view_outputs: ndvStore.value.outputPanelDisplayMode,
 						input_connectors: parentNodes.value.length,
 						output_connectors: outgoingConnections?.main?.length,
 						input_displayed_run_index: inputRun.value,
@@ -651,7 +658,7 @@ watch(
 );
 
 watch(maxOutputRun, () => {
-	runOutputIndex.value = -1;
+	ndvStore.value.setOutputRunIndex(-1);
 });
 
 watch(maxInputRun, () => {
@@ -660,13 +667,13 @@ watch(maxInputRun, () => {
 
 watch(inputNodeName, (nodeName) => {
 	setTimeout(() => {
-		ndvStore.setInputNodeName(nodeName);
+		ndvStore.value.setInputNodeName(nodeName);
 	}, 0);
 });
 
 watch(inputRun, (run) => {
 	setTimeout(() => {
-		ndvStore.setInputRunIndex(run);
+		ndvStore.value.setInputRunIndex(run);
 	}, 0);
 });
 
@@ -702,10 +709,12 @@ watch(mainPanelRef, (mainPanel) => {
 onMounted(() => {
 	dialogRef.value?.show();
 	dataPinningEventBus.on('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.on('updateInputNodeName', setSelectedInput);
 });
 
 onBeforeUnmount(() => {
 	dataPinningEventBus.off('data-pinning-discovery', setIsTooltipVisible);
+	ndvEventBus.off('updateInputNodeName', setSelectedInput);
 	unregisterKeyboardListener();
 });
 </script>
@@ -728,14 +737,20 @@ onBeforeUnmount(() => {
 			:style="{ zIndex: APP_Z_INDEXES.NDV }"
 		>
 			<NDVFloatingNodes :root-node="activeNode" @switch-selected-node="onSwitchSelectedNode" />
-			<div ref="containerRef" :class="$style.container">
+			<div
+				ref="containerRef"
+				:class="{
+					[$style.container]: true,
+					[$style.webhookWaiting]: isExecutionWaitingForWebhook,
+				}"
+			>
 				<NDVHeader
 					:class="$style.header"
 					:node-name="activeNode.name"
 					:node-type-name="
 						activeNodeType?.defaults.name ?? activeNodeType?.displayName ?? activeNode.name
 					"
-					:icon="getNodeIconSource(activeNodeType ?? activeNode.type, activeNode)"
+					:icon="icon"
 					:docs-url="docsUrl"
 					@close="close"
 					@rename="onRename"
@@ -755,8 +770,7 @@ onBeforeUnmount(() => {
 							@activate="onWorkflowActivate"
 						/>
 						<InputPanel
-							v-else-if="!isTriggerNode"
-							:workflow-object="workflowObject"
+							v-else-if="!isTriggerNode && workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="inputRun"
 							:linked-runs="linked"
@@ -789,7 +803,10 @@ onBeforeUnmount(() => {
 						:min-width="260"
 						:supported-directions="supportedResizeDirections"
 						:grid-size="8"
-						:class="$style.column"
+						:class="{
+							[$style.column]: !isExecutionWaitingForWebhook,
+							[$style.webhookWaiting]: isExecutionWaitingForWebhook,
+						}"
 						:style="{ width: `${panelWidthPercentage.main}%` }"
 						outset
 						@resize="onResize"
@@ -824,7 +841,6 @@ onBeforeUnmount(() => {
 					>
 						<OutputPanel
 							data-test-id="output-panel"
-							:workflow-object="workflowObject"
 							:can-link-runs="canLinkRuns"
 							:run-index="outputRun"
 							:linked-runs="linked"
@@ -902,6 +918,7 @@ onBeforeUnmount(() => {
 
 .column {
 	min-width: 0;
+	background-color: var(--ndv--background--color);
 
 	+ .column {
 		border-left: var(--border);
@@ -926,6 +943,7 @@ onBeforeUnmount(() => {
 }
 
 .header {
+	background-color: var(--ndv--background--color);
 	border-bottom: var(--border);
 	border-top-left-radius: var(--radius--lg);
 	border-top-right-radius: var(--radius--lg);
@@ -943,5 +961,9 @@ onBeforeUnmount(() => {
 	left: 50%;
 	transform: translateX(-50%);
 	height: var(--draggable--height);
+}
+
+.webhookWaiting {
+	border: none;
 }
 </style>

@@ -1,4 +1,5 @@
 import type { User } from '@n8n/api-types';
+import type { APIResponse } from '@playwright/test';
 import { customAlphabet } from 'nanoid';
 
 import type { ApiHelpers } from './api-helper';
@@ -44,14 +45,16 @@ export class UserApiHelper {
 		const inviteData = await inviteResponse.json();
 		const { id, inviteAcceptUrl } = inviteData.data[0].user;
 
-		// Accept invitation
+		// Accept invitation (invite URL contains token, e.g. /signup?token=...)
 		const url = new URL(inviteAcceptUrl);
-		const inviterId = url.searchParams.get('inviterId');
-		const inviteeId = url.searchParams.get('inviteeId');
+		const token = url.searchParams.get('token');
+		if (!token) {
+			throw new TestError(`Invite URL has no token: ${inviteAcceptUrl}`);
+		}
 
-		const acceptResponse = await this.api.request.post(`/rest/invitations/${inviteeId}/accept`, {
+		const acceptResponse = await this.api.request.post('/rest/invitations/accept', {
 			data: {
-				inviterId,
+				token,
 				firstName: user.firstName,
 				lastName: user.lastName,
 				password: user.password,
@@ -65,10 +68,14 @@ export class UserApiHelper {
 	}
 
 	/**
-	 * Delete a user
+	 * Triggers a password reset email for the given address. Returns the raw
+	 * response so callers can assert on the status (the endpoint returns 200 even
+	 * for unknown emails to avoid leaking which accounts exist).
 	 */
-	async delete(userId: string): Promise<void> {
-		await this.api.request.delete(`/rest/users/${userId}`);
+	async forgotPassword(email: string): Promise<APIResponse> {
+		return await this.api.request.post('/rest/forgot-password', {
+			data: { email },
+		});
 	}
 
 	/**

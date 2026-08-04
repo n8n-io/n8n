@@ -1,13 +1,19 @@
-import { AuthenticatedRequest, User } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+import {
+	OAuthTokenVerifierProxy,
+	type TelemetryAuthContext,
+	type UserWithContext,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { McpProtectedResource } from './mcp-protected-resource';
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
 import { getClientInfo } from './mcp.utils';
 
@@ -20,7 +26,8 @@ import { getClientInfo } from './mcp.utils';
 export class McpServerMiddlewareService {
 	constructor(
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
-		private readonly mcpAuthTokenService: McpOAuthTokenService,
+		private readonly oauthTokenVerifier: OAuthTokenVerifierProxy,
+		private readonly mcpProtectedResource: McpProtectedResource,
 		private readonly jwtService: JwtService,
 		private readonly telemetry: Telemetry,
 	) {}
@@ -29,16 +36,24 @@ export class McpServerMiddlewareService {
 	 * Get user for a given token (API key or OAuth access token)
 	 * Uses JWT metadata to determine token type and route to correct validation
 	 */
-	async getUserForToken(token: string): Promise<User | null> {
+	async getUserForToken(token: string): Promise<UserWithContext> {
 		let decoded: { meta?: { isOAuth?: boolean } };
 		try {
 			decoded = this.jwtService.decode<{ meta?: { isOAuth?: boolean } }>(token);
 		} catch (error) {
-			return null;
+			return {
+				user: null,
+				context: {
+					reason: 'jwt_decode_failed',
+					auth_type: 'unknown',
+					error_details: ensureError(error).message,
+				},
+			};
 		}
 
 		if (decoded?.meta?.isOAuth === true) {
-			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token);
+			const expectedAudience = this.mcpProtectedResource.getResourceUrl();
+			return await this.oauthTokenVerifier.verifyOAuthAccessToken(token, expectedAudience);
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);
@@ -53,33 +68,51 @@ export class McpServerMiddlewareService {
 			const authorizationHeader = req.header('authorization');
 
 			if (!authorizationHeader) {
-				this.responseWithUnauthorized(res, req);
+				this.responseWithUnauthorized(res, req, {
+					reason: 'missing_authorization_header',
+					auth_type: 'unknown',
+					error_details: 'Authorization header not sent',
+				});
 				return;
 			}
 
-			const token = this.extractBearerToken(authorizationHeader);
-
-			if (!token) {
-				this.responseWithUnauthorized(res, req);
+			let token: string;
+			try {
+				token = this.extractBearerToken(authorizationHeader);
+			} catch (er) {
+				const error = ensureError(er);
+				this.responseWithUnauthorized(res, req, {
+					reason: 'invalid_bearer_format',
+					auth_type: 'unknown',
+					error_details: error.message,
+				});
 				return;
 			}
 
-			const user = await this.getUserForToken(token);
+			const result = await this.getUserForToken(token);
+			const user = result.user;
 
 			if (!user) {
-				this.responseWithUnauthorized(res, req);
+				this.responseWithUnauthorized(res, req, result.context);
 				return;
 			}
 
 			(req as AuthenticatedRequest).user = user;
+			const mcpReq = req as AuthenticatedRequest & {
+				mcpAuthType?: UserWithContext['authType'];
+				mcpScopes?: string[];
+			};
+			mcpReq.mcpAuthType = result.authType;
+			// undefined for API keys = not scope-bearing → full tool access
+			mcpReq.mcpScopes = result.scopes;
 
 			next();
 		};
 	}
 
-	private extractBearerToken(headerValue: string): string | null {
+	private extractBearerToken(headerValue: string): string {
 		if (!headerValue.startsWith('Bearer')) {
-			throw new AuthError('Invalid authorization header format');
+			throw new AuthError('Invalid authorization header format - Missing Bearer prefix');
 		}
 
 		const tokenMatch = headerValue.match(/^Bearer\s+(.+)$/i);
@@ -87,23 +120,30 @@ export class McpServerMiddlewareService {
 			return tokenMatch[1];
 		}
 
-		throw new AuthError('Invalid authorization header format');
+		throw new AuthError('Invalid authorization header format - Malformed Bearer token');
 	}
 
-	private responseWithUnauthorized(res: Response, req: Request) {
-		this.trackUnauthorizedEvent(req);
-		// RFC 6750 Section 3: Include WWW-Authenticate header for 401 responses
-		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
-		res.status(401).send({ message: UNAUTHORIZED_ERROR_MESSAGE });
+	private responseWithUnauthorized(res: Response, req: Request, context?: TelemetryAuthContext) {
+		this.trackUnauthorizedEvent(req, context);
+		// RFC 6750 Section 3 / RFC 9728 Section 5.1: include the WWW-Authenticate
+		// header on 401s, advertising the protected-resource metadata URL so
+		// clients discover it directly instead of guessing the well-known path.
+		const prmUrl = this.mcpProtectedResource.getProtectedResourceMetadataUrl();
+		res.header('WWW-Authenticate', `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`);
+		res.status(401).send({
+			message: `${UNAUTHORIZED_ERROR_MESSAGE}${context?.error_details ? ': ' + context.error_details : ''}`,
+		});
 	}
 
-	private trackUnauthorizedEvent(req: Request) {
+	private trackUnauthorizedEvent(req: Request, context?: TelemetryAuthContext) {
 		const clientInfo = getClientInfo(req);
-		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, {
+		const payload = {
 			mcp_connection_status: 'error',
 			error: UNAUTHORIZED_ERROR_MESSAGE,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
-		});
+			...context,
+		};
+		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);
 	}
 }

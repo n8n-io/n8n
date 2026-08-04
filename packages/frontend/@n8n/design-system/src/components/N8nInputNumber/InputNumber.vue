@@ -38,6 +38,13 @@ const resolvedSize = computed(() => (props.size ? sizeMap[props.size] : undefine
 		:max="max"
 		:step="step"
 		:precision="precision"
+		:class="$style.inputNumber"
 		v-bind="$attrs"
 	/>
 </template>
+
+<style lang="scss" module>
+.inputNumber {
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+}
+</style>

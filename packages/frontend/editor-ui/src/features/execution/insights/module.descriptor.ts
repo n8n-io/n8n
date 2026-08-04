@@ -1,9 +1,8 @@
 import { RouterView } from 'vue-router';
-import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { VIEWS } from '@/app/constants';
 
-const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const InsightsDashboard = async () =>
 	await import('@/features/execution/insights/components/InsightsDashboard.vue');
 
@@ -19,10 +18,7 @@ export const InsightsModule: FrontendModuleDescription = {
 				const insightsStore = useInsightsStore();
 				return insightsStore.isInsightsEnabled || { name: VIEWS.NOT_FOUND };
 			},
-			components: {
-				default: RouterView,
-				sidebar: MainSidebar,
-			},
+			component: RouterView,
 			meta: {
 				middleware: ['authenticated', 'rbac'],
 				middlewareOptions: {

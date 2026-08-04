@@ -5,6 +5,7 @@ import { DataTableSizeStatus, DataTablesSizeData } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
 
 import { DataTableValidationError } from './errors/data-table-validation.error';
+import { toMb } from './utils/size-utils';
 
 @Service()
 export class DataTableSizeValidator {
@@ -64,7 +65,7 @@ export class DataTableSizeValidator {
 			});
 
 			throw new DataTableValidationError(
-				`Data table size limit exceeded: ${this.toMb(size.totalBytes)}MB used, limit is ${this.toMb(this.globalConfig.dataTable.maxSize)}MB`,
+				`Data table size limit exceeded: ${toMb(size.totalBytes)}MB used, limit is ${toMb(this.globalConfig.dataTable.maxSize)}MB`,
 			);
 		}
 	}
@@ -85,10 +86,6 @@ export class DataTableSizeValidator {
 	async getSizeStatus(fetchSizeFn: () => Promise<DataTablesSizeData>, now = new Date()) {
 		const size = await this.getCachedSizeData(fetchSizeFn, now);
 		return this.sizeToState(size.totalBytes);
-	}
-
-	private toMb(sizeInBytes: number): number {
-		return Math.round(sizeInBytes / (1024 * 1024));
 	}
 
 	reset() {

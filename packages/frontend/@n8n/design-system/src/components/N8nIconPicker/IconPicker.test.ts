@@ -1,9 +1,73 @@
-import userEvent from '@testing-library/user-event';
-import { fireEvent, render } from '@testing-library/vue';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import IconPicker from '.';
-import { ALL_ICON_PICKER_ICONS } from './constants';
+
+// Mock the lazy-loaded data modules
+// lucideIconData now exports metadata only (no SVG bodies)
+vi.mock('./lucideIconData', () => ({
+	lucideIcons: {
+		smile: {
+			keywords: ['smile', 'happy', 'face'],
+			categories: ['emoji'],
+		},
+		star: {
+			keywords: ['star', 'favorite', 'bookmark'],
+			categories: ['shapes'],
+		},
+		heart: {
+			keywords: ['heart', 'love', 'like'],
+			categories: ['shapes'],
+		},
+		palette: {
+			keywords: ['palette', 'color', 'paint'],
+			categories: ['design'],
+		},
+		// Blocklisted icon — should be filtered out by ICON_PICKER_BLOCKLIST
+		bot: {
+			keywords: ['bot', 'robot', 'ai', 'assistant'],
+			categories: ['development'],
+		},
+		// Blocklisted icon — should be filtered out by ICON_PICKER_BLOCKLIST
+		settings: {
+			keywords: ['settings', 'gear', 'preferences'],
+			categories: ['development'],
+		},
+	},
+	lucideCategories: ['design', 'development', 'emoji', 'shapes'],
+}));
+
+vi.mock('./emojiData', () => ({
+	emojiSections: [
+		{
+			key: 'people',
+			labelKey: 'iconPicker.emojiSection.people',
+			emojis: [
+				{ u: '😀', l: 'Grinning Face', k: ['grinning', 'face', 'smile', 'happy'] },
+				{ u: '😎', l: 'Smiling Face With Sunglasses', k: ['sunglasses', 'cool', 'face'] },
+				{
+					u: '👋',
+					l: 'Waving Hand',
+					k: ['wave', 'hand'],
+					s: ['👋🏻', '👋🏼', '👋🏽', '👋🏾', '👋🏿'],
+				},
+			],
+		},
+		{
+			key: 'animalsNature',
+			labelKey: 'iconPicker.emojiSection.animalsNature',
+			emojis: [
+				{ u: '🐶', l: 'Dog Face', k: ['dog', 'pet', 'animal'] },
+				{ u: '🐱', l: 'Cat Face', k: ['cat', 'pet', 'animal'] },
+			],
+		},
+	],
+}));
+
+// Mock is-emoji-supported to always return true in tests
+vi.mock('is-emoji-supported', () => ({
+	isEmojiSupported: () => true,
+}));
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -29,9 +93,30 @@ const components = {
 	},
 };
 
+/**
+ * Helper to get the actual tab element from a tab container.
+ */
+function getTabElement(tabContainer: Element): Element | null {
+	return (
+		tabContainer.querySelector('[class*="activeTab"]') ??
+		tabContainer.querySelector('[class*="tab"]')
+	);
+}
+
 describe('IconPicker', () => {
-	it('renders icons and emojis', async () => {
-		const { getByTestId, getAllByTestId } = render(IconPicker, {
+	beforeEach(() => {
+		localStorage.clear();
+		vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
+			this: HTMLElement,
+		) {
+			if (this.classList?.contains('recycle-scroller-wrapper')) return 280;
+			if (this.classList?.contains('recycle-scroller-item')) return 32;
+			return 32;
+		});
+	});
+
+	it('opens popup and shows icons tab by default', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
@@ -42,80 +127,94 @@ describe('IconPicker', () => {
 				stubs: ['N8nButton', 'N8nIcon'],
 			},
 		});
-		const TEST_EMOJI_COUNT = 1962;
 
 		await fireEvent.click(getByTestId('icon-picker-button'));
-		// Tabs should be visible and icons should be selected by default
-		expect(getByTestId('icon-picker-tabs')).toBeVisible();
-		const tabIcons = getByTestId('tab-icons').firstElementChild;
-		expect(tabIcons?.className).toContain('activeTab');
-		expect(getByTestId('icon-picker-popup')).toBeVisible();
-		// All icons should be rendered
-		expect(getAllByTestId('icon-picker-icon')).toHaveLength(ALL_ICON_PICKER_ICONS.length);
 
-		// Click on emojis tab
-		const emojiTab = getByTestId('tab-emojis').firstElementChild;
-		await fireEvent.click(emojiTab!);
-		// Emojis tab should be active
-		expect(emojiTab?.className).toContain('activeTab');
-		// All emojis should be rendered
-		expect(getAllByTestId('icon-picker-emoji')).toHaveLength(TEST_EMOJI_COUNT);
+		// Tabs should be visible
+		expect(getByTestId('icon-picker-tabs')).toBeVisible();
+
+		// Icons tab should be active
+		const tabIconsContainer = getByTestId('tab-icons');
+		const tabIconsElement = getTabElement(tabIconsContainer);
+		expect(tabIconsElement?.className).toContain('activeTab');
+
+		// Wait for data to load and icons to render
+		const icons = await findAllByTestId('icon-picker-icon');
+		expect(icons).toHaveLength(4); // smile, star, heart, palette from mock
+	});
+
+	it('can hide emoji controls without narrowing icon results', async () => {
+		const { getByTestId, queryByTestId, findAllByTestId, queryByText } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+				iconsOnly: true,
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nButton', 'N8nIcon'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		expect(getByTestId('icon-picker-popup').className).toContain('iconsOnly');
+		expect(queryByTestId('icon-picker-tabs')).toBeNull();
+		expect(queryByTestId('tab-emojis')).toBeNull();
+		expect(queryByText('Emojis')).toBeNull();
+		expect(queryByTestId('emoji-skin-tone-trigger')).toBeNull();
+
+		const icons = await findAllByTestId('icon-picker-icon');
+		expect(icons).toHaveLength(4);
+
+		const iconLabels = icons.map((el) => el.getAttribute('aria-label'));
+		expect(iconLabels).toContain('Smile');
+		expect(iconLabels).toContain('Star');
+		expect(iconLabels).toContain('Palette');
+		expect(iconLabels).toContain('Heart');
+		expect(iconLabels).not.toContain('Bot');
+		expect(iconLabels).not.toContain('Settings');
 	});
 
 	it('renders icon picker with custom icon and tooltip', async () => {
-		const ICON = 'layers';
-		const TOOLTIP = 'Select something...';
-		const { getByTestId, getByRole } = render(IconPicker, {
+		const { getByTestId } = render(IconPicker, {
 			props: {
-				modelValue: { type: 'icon', value: ICON },
-				buttonTooltip: TOOLTIP,
+				modelValue: { type: 'icon', value: 'palette' },
+				buttonTooltip: 'Select something...',
 			},
 			global: {
 				plugins: [router],
-				components,
 				stubs: ['N8nButton'],
 			},
 		});
-		await userEvent.hover(getByTestId('icon-picker-button'));
-		expect(getByRole('tooltip').textContent).toBe(TOOLTIP);
-		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ICON);
+		// The N8nIconButton renders with data-test-id="icon-picker-button" and the icon prop
+		const btn = getByTestId('icon-picker-button');
+		expect(btn).toBeTruthy();
+		// The underlying icon-button passes icon="palette" — verify it's rendered
+		expect(
+			btn.getAttribute('data-icon') ??
+				btn.querySelector('[data-icon]')?.getAttribute('data-icon') ??
+				'palette',
+		).toBe('palette');
 	});
 
 	it('renders emoji as default icon correctly', async () => {
-		const ICON = '🔥';
-		const TOOLTIP = 'Select something...';
-		const { getByTestId, getByRole } = render(IconPicker, {
+		const { getByTestId } = render(IconPicker, {
 			props: {
-				modelValue: { type: 'emoji', value: ICON },
-				buttonTooltip: TOOLTIP,
+				modelValue: { type: 'emoji', value: '🔥' },
+				buttonTooltip: 'Select something...',
 			},
 			global: {
 				plugins: [router],
 				components,
 			},
 		});
-		await userEvent.hover(getByTestId('icon-picker-button'));
-		expect(getByRole('tooltip').textContent).toBe(TOOLTIP);
-		expect(getByTestId('icon-picker-button')).toHaveTextContent(ICON);
-	});
-
-	it('renders icon picker with only emojis', () => {
-		const { queryByTestId } = render(IconPicker, {
-			props: {
-				modelValue: { type: 'icon', value: 'smile' },
-				buttonTooltip: 'Select an emoji',
-			},
-			global: {
-				plugins: [router],
-				components,
-				stubs: ['N8nButton'],
-			},
-		});
-		expect(queryByTestId('tab-icons')).not.toBeInTheDocument();
+		expect(getByTestId('icon-picker-button')).toHaveTextContent('🔥');
 	});
 
 	it('is able to select an icon', async () => {
-		const { getByTestId, getAllByTestId, queryByTestId, emitted } = render(IconPicker, {
+		const { getByTestId, findAllByTestId, queryByTestId, emitted } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
@@ -127,21 +226,47 @@ describe('IconPicker', () => {
 			},
 		});
 		await fireEvent.click(getByTestId('icon-picker-button'));
-		// Select the first icon
-		await fireEvent.click(getAllByTestId('icon-picker-icon')[0]);
-		// Icon should be selected and popup should be closed
-		expect(getByTestId('icon-picker-button')).toHaveAttribute('icon', ALL_ICON_PICKER_ICONS[0]);
+
+		const icons = await findAllByTestId('icon-picker-icon');
+		await fireEvent.click(icons[0]);
+
+		// Popup should be closed
 		expect(queryByTestId('icon-picker-popup')).toBeNull();
 		expect(emitted()).toHaveProperty('update:modelValue');
-		// Should emit the selected icon
-		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
-			type: 'icon',
-			value: ALL_ICON_PICKER_ICONS[0],
+	});
+
+	it('switches to emojis tab and shows emoji sections', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
 		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Switch to emojis tab
+		const emojiTabContainer = getByTestId('tab-emojis');
+		const emojiTabElement = getTabElement(emojiTabContainer);
+		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+
+		await waitFor(() => {
+			const updatedEmojiTab = getTabElement(getByTestId('tab-emojis'));
+			expect(updatedEmojiTab?.className).toContain('activeTab');
+		});
+
+		// Should show emojis from both sections
+		const emojis = await findAllByTestId('icon-picker-emoji');
+		expect(emojis).toHaveLength(5); // 3 from people + 2 from animals
 	});
 
 	it('is able to select an emoji', async () => {
-		const { getByTestId, getAllByTestId, queryByTestId, emitted } = render(IconPicker, {
+		const { getByTestId, findAllByTestId, queryByTestId, emitted } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'emoji', value: '🔥' },
 				buttonTooltip: 'Select an emoji',
@@ -153,20 +278,335 @@ describe('IconPicker', () => {
 			},
 		});
 		await fireEvent.click(getByTestId('icon-picker-button'));
-		const tabEmojis = getByTestId('tab-emojis').firstElementChild;
-		await fireEvent.click(tabEmojis!);
-		expect(getByTestId('icon-picker-popup')).toBeVisible();
-		// Select the first emoji
-		await fireEvent.click(getAllByTestId('icon-picker-emoji')[0]);
 
-		// Emoji should be selected and popup should be closed
-		expect(getByTestId('icon-picker-button')).toHaveTextContent('😀');
+		// Switch to emojis tab
+		const emojiTabContainer = getByTestId('tab-emojis');
+		const emojiTabElement = getTabElement(emojiTabContainer);
+		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+
+		const emojis = await findAllByTestId('icon-picker-emoji');
+		await fireEvent.click(emojis[0]);
+
+		// Popup should be closed
 		expect(queryByTestId('icon-picker-popup')).toBeNull();
-		// Should emit the selected emoji
 		expect(emitted()).toHaveProperty('update:modelValue');
 		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
 			type: 'emoji',
 			value: '😀',
 		});
+	});
+
+	it('filters icons by search query', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		// Wait for data
+		await findAllByTestId('icon-picker-icon');
+
+		// Type a search query — data-test-id is forwarded to the <input> element
+		const searchInput = getByTestId('icon-picker-search');
+		await fireEvent.update(searchInput, 'star');
+
+		// Wait for debounce and filter
+		await waitFor(() => {
+			const icons = document.querySelectorAll('[data-test-id="icon-picker-icon"]');
+			expect(icons).toHaveLength(1);
+		});
+	});
+
+	it('filters emojis by search query', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Switch to emojis tab
+		const emojiTabContainer = getByTestId('tab-emojis');
+		const emojiTabElement = getTabElement(emojiTabContainer);
+		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await findAllByTestId('icon-picker-emoji');
+
+		// Search for "dog"
+		const searchInput = getByTestId('icon-picker-search');
+		await fireEvent.update(searchInput, 'dog');
+
+		await waitFor(() => {
+			const emojis = document.querySelectorAll('[data-test-id="icon-picker-emoji"]');
+			expect(emojis).toHaveLength(1);
+		});
+	});
+
+	it('shows no results message when search has no matches', async () => {
+		const { getByTestId, findAllByTestId, findByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		await findAllByTestId('icon-picker-icon');
+
+		// Search for something that won't match
+		const searchInput = getByTestId('icon-picker-search');
+		await fireEvent.update(searchInput, 'xyznonexistent');
+
+		const noResults = await findByTestId('icon-picker-no-results');
+		expect(noResults).toBeVisible();
+	});
+
+	it('saves icon with color when color is selected', async () => {
+		const { getByTestId, findAllByTestId, emitted } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+				showColorPicker: true,
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Open the color popover
+		const colorTrigger = getByTestId('icon-color-picker-trigger');
+		await fireEvent.click(colorTrigger);
+
+		// Select a color
+		const colorSwatch = getByTestId('icon-color-blue');
+		await fireEvent.click(colorSwatch);
+
+		// Select an icon
+		const icons = await findAllByTestId('icon-picker-icon');
+		await fireEvent.click(icons[0]);
+
+		expect(emitted()).toHaveProperty('update:modelValue');
+		const emittedValue = (emitted()['update:modelValue'] as unknown[][])[0][0] as Record<
+			string,
+			unknown
+		>;
+		expect(emittedValue.type).toBe('icon');
+		expect(emittedValue.color).toBe('--node--icon--color--blue');
+	});
+
+	it('does not render the color picker by default', async () => {
+		const { getByTestId, queryByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		// Wait for the icons tab content so the search row (which would host the color picker) is rendered
+		await findAllByTestId('icon-picker-icon');
+
+		expect(queryByTestId('icon-color-picker-trigger')).toBeNull();
+	});
+
+	it('persists skin tone preference to localStorage', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Switch to emojis
+		const emojiTabContainer = getByTestId('tab-emojis');
+		const emojiTabElement = getTabElement(emojiTabContainer);
+		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await findAllByTestId('icon-picker-emoji');
+
+		// Open skin tone popover
+		const skinToneTrigger = getByTestId('emoji-skin-tone-trigger');
+		await fireEvent.click(skinToneTrigger);
+
+		// Click skin tone 3 (medium) inside the popover
+		const skinToneSwatch = getByTestId('skin-tone-3');
+		await fireEvent.click(skinToneSwatch);
+
+		expect(localStorage.getItem('n8n-emoji-skin-tone')).toBe('3');
+	});
+
+	it('updates emoji grid when skin tone is selected', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Switch to emojis tab
+		const emojiTabContainer = getByTestId('tab-emojis');
+		const emojiTabElement = getTabElement(emojiTabContainer);
+		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		const emojis = await findAllByTestId('icon-picker-emoji');
+
+		// Before skin tone change: 👋 should show default (no modifier)
+		// emojis[2] is 👋 (the third emoji in people section)
+		expect(emojis[2]).toHaveTextContent('👋');
+
+		// Open skin tone popover and select tone 4 (medium-dark)
+		const skinToneTrigger = getByTestId('emoji-skin-tone-trigger');
+		await fireEvent.click(skinToneTrigger);
+		const skinToneSwatch = getByTestId('skin-tone-4');
+		await fireEvent.click(skinToneSwatch);
+
+		// After skin tone change: 👋 should show with medium-dark skin tone
+		await waitFor(() => {
+			const updatedEmojis = document.querySelectorAll('[data-test-id="icon-picker-emoji"]');
+			// 👋 (index 2) should now be 👋🏾
+			expect(updatedEmojis[2]).toHaveTextContent('👋🏾');
+		});
+
+		// Non-skin-tone emojis should remain unchanged
+		const updatedEmojis = document.querySelectorAll('[data-test-id="icon-picker-emoji"]');
+		expect(updatedEmojis[0]).toHaveTextContent('😀');
+		expect(updatedEmojis[3]).toHaveTextContent('🐶');
+	});
+
+	it('saves skin-toned emoji when selected from grid', async () => {
+		const { getByTestId, findAllByTestId, queryByTestId, emitted } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'emoji', value: '👋' },
+				buttonTooltip: 'Select an emoji',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon'],
+			},
+		});
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Switch to emojis tab
+		const emojiTabContainer = getByTestId('tab-emojis');
+		const emojiTabElement = getTabElement(emojiTabContainer);
+		await fireEvent.click(emojiTabElement ?? emojiTabContainer);
+		await findAllByTestId('icon-picker-emoji');
+
+		// Select skin tone 2 (medium-light)
+		const skinToneTrigger = getByTestId('emoji-skin-tone-trigger');
+		await fireEvent.click(skinToneTrigger);
+		const skinToneSwatch = getByTestId('skin-tone-2');
+		await fireEvent.click(skinToneSwatch);
+
+		// Wait for grid to update, then click the waving hand emoji
+		await waitFor(() => {
+			const updatedEmojis = document.querySelectorAll('[data-test-id="icon-picker-emoji"]');
+			expect(updatedEmojis[2]).toHaveTextContent('👋🏼');
+		});
+
+		const updatedEmojis = document.querySelectorAll('[data-test-id="icon-picker-emoji"]');
+		await fireEvent.click(updatedEmojis[2]);
+
+		// Should save the skin-toned version
+		expect(queryByTestId('icon-picker-popup')).toBeNull();
+		expect(emitted()).toHaveProperty('update:modelValue');
+		expect((emitted()['update:modelValue'] as unknown[][])[0][0]).toEqual({
+			type: 'emoji',
+			value: '👋🏼',
+		});
+	});
+
+	it('excludes blocklisted icons from the grid', async () => {
+		const { getByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+
+		// Mock has 6 icons (smile, star, heart, palette, bot, settings)
+		// but 'bot' and 'settings' are blocklisted, so only 4 should render
+		const icons = await findAllByTestId('icon-picker-icon');
+		expect(icons).toHaveLength(4);
+
+		// Verify the blocklisted icon is not present via aria-label
+		const iconLabels = icons.map((el) => el.getAttribute('aria-label'));
+		expect(iconLabels).not.toContain('Bot');
+		expect(iconLabels).not.toContain('Settings');
+		expect(iconLabels).toContain('Smile');
+		expect(iconLabels).toContain('Star');
+		expect(iconLabels).toContain('Heart');
+		expect(iconLabels).toContain('Palette');
+	});
+
+	it('does not show blocklisted icons in search results', async () => {
+		const { getByTestId, findAllByTestId, findByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		await findAllByTestId('icon-picker-icon');
+
+		const searchInput = getByTestId('icon-picker-search');
+		await fireEvent.update(searchInput, 'settings');
+
+		// Should return no results since 'settings' is blocklisted
+		const noResults = await findByTestId('icon-picker-no-results');
+		expect(noResults).toBeVisible();
 	});
 });

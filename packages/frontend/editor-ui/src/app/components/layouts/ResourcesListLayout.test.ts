@@ -32,6 +32,7 @@ const TEST_WORKFLOWS: Resource[] = vi.hoisted(() => [
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		activeVersionId: 'v1',
 		isArchived: false,
 		readOnly: false,
 		homeProject: TEST_HOME_PROJECT,
@@ -43,6 +44,7 @@ const TEST_WORKFLOWS: Resource[] = vi.hoisted(() => [
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		activeVersionId: 'v1',
 		isArchived: false,
 		readOnly: false,
 		homeProject: TEST_HOME_PROJECT,
@@ -106,6 +108,29 @@ describe('ResourcesListLayout', () => {
 		});
 
 		expect(container.querySelectorAll('.el-skeleton__p')).toHaveLength(25);
+	});
+
+	it('should render loading skeleton instead of list chrome while refreshing an empty list', () => {
+		const { container, queryByTestId } = renderComponent({
+			props: {
+				resourcesRefreshing: true,
+			},
+		});
+
+		expect(container.querySelectorAll('.el-skeleton__p')).toHaveLength(25);
+		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
+	});
+
+	it('should render the list chrome while refreshing when resources are already known', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				resources: TEST_WORKFLOWS,
+				type: 'list-paginated',
+				resourcesRefreshing: true,
+			},
+		});
+
+		expect(getByTestId('resources-list-search')).toBeInTheDocument();
 	});
 
 	it('should render scrollable list based on `type` prop', () => {

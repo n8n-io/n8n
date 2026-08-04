@@ -14,7 +14,7 @@ describe('requireCompletions', () => {
 		setActivePinia(createTestingPinia());
 		settingsStore = useSettingsStore();
 
-		vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
+		vi.spyOn(utils, 'receivesNoBinaryData').mockResolvedValue(true); // hide $binary
 		vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
 		vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
 	});

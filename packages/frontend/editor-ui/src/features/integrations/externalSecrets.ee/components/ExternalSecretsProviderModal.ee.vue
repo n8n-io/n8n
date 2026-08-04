@@ -6,7 +6,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { useExternalSecretsProvider } from '@/features/integrations/externalSecrets.ee/composables/useExternalSecretsProvider';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import ParameterInputExpanded from '@/features/ndv/parameters/components/ParameterInputExpanded.vue';
 import type { IUpdateInformation } from '@/Interface';
@@ -189,7 +189,12 @@ async function onConnectionStateChange() {
 						:provider="provider"
 						@change="onConnectionStateChange"
 					/>
-					<N8nButton type="primary" :loading="saving" :disabled="!canSave && !saving" @click="save">
+					<N8nButton
+						variant="solid"
+						:loading="saving"
+						:disabled="!canSave && !saving"
+						@click="save"
+					>
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.buttons.${saving ? 'saving' : 'save'}`,

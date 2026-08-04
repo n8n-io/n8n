@@ -1,11 +1,6 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach, type Mock } from 'vitest';
 import { useIntersectionObserver } from './useIntersectionObserver';
 import { ref } from 'vue';
-
-interface MockIntersectionObserverConstructor {
-	__callback?: IntersectionObserverCallback;
-	new (callback: IntersectionObserverCallback): IntersectionObserver;
-}
 
 function createMockEntry(element: Element, isIntersecting: boolean): IntersectionObserverEntry {
 	return {
@@ -19,35 +14,43 @@ function createMockEntry(element: Element, isIntersecting: boolean): Intersectio
 	};
 }
 
+class MockIntersectionObserver extends IntersectionObserver {
+	constructor(handler: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+		super(handler, options);
+
+		this.__callback = handler;
+		MockIntersectionObserver._instance = this;
+		MockIntersectionObserver.init(handler, options);
+	}
+
+	static _instance: MockIntersectionObserver;
+
+	static getInstance() {
+		return MockIntersectionObserver._instance;
+	}
+
+	__callback: IntersectionObserverCallback;
+
+	static init = vi.fn();
+
+	observe = vi.fn();
+
+	disconnect = vi.fn();
+
+	unobserve = vi.fn();
+}
+
 describe('useIntersectionObserver()', () => {
-	let mockIntersectionObserver: {
-		observe: ReturnType<typeof vi.fn>;
-		disconnect: ReturnType<typeof vi.fn>;
-		unobserve: ReturnType<typeof vi.fn>;
-	};
-	let mockCallback: ReturnType<typeof vi.fn>;
+	let mockCallback: Mock;
 	let mockRoot: Element;
-	let mockConstructor: MockIntersectionObserverConstructor;
 	let originalIntersectionObserver: typeof IntersectionObserver;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		// Cache original IntersectionObserver
 		originalIntersectionObserver = global.IntersectionObserver;
 
-		// Mock IntersectionObserver
-		mockIntersectionObserver = {
-			observe: vi.fn(),
-			disconnect: vi.fn(),
-			unobserve: vi.fn(),
-		};
-
-		mockConstructor = vi.fn((callback) => {
-			// Store callback for manual triggering
-			mockConstructor.__callback = callback;
-			return mockIntersectionObserver;
-		}) as unknown as MockIntersectionObserverConstructor;
-
-		global.IntersectionObserver = mockConstructor as unknown as typeof IntersectionObserver;
+		vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 
 		mockCallback = vi.fn();
 		mockRoot = document.createElement('div');
@@ -69,14 +72,14 @@ describe('useIntersectionObserver()', () => {
 		const element = document.createElement('div');
 		observe(element);
 
-		expect(global.IntersectionObserver).toHaveBeenCalledWith(
+		expect(MockIntersectionObserver.init).toHaveBeenCalledWith(
 			expect.any(Function),
 			expect.objectContaining({
 				root: mockRoot,
 				threshold: 0.01,
 			}),
 		);
-		expect(mockIntersectionObserver.observe).toHaveBeenCalledWith(element);
+		expect(MockIntersectionObserver.getInstance().observe).toHaveBeenCalledWith(element);
 	});
 
 	it('executes callback when element intersects', () => {
@@ -90,7 +93,7 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate intersection
-		const callback = mockConstructor.__callback;
+		const callback = MockIntersectionObserver.getInstance().__callback;
 		if (callback) {
 			callback([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
@@ -109,7 +112,7 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate no intersection
-		const callback = mockConstructor.__callback;
+		const callback = MockIntersectionObserver.getInstance().__callback;
 		if (callback) {
 			callback([createMockEntry(element, false)], {} as IntersectionObserver);
 		}
@@ -128,12 +131,12 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate intersection
-		const callback = mockConstructor.__callback;
+		const callback = MockIntersectionObserver.getInstance().__callback;
 		if (callback) {
 			callback([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
-		expect(mockIntersectionObserver.disconnect).toHaveBeenCalledTimes(1);
+		expect(MockIntersectionObserver.getInstance().disconnect).toHaveBeenCalledTimes(1);
 	});
 
 	it('continues observing when once is false', () => {
@@ -148,12 +151,12 @@ describe('useIntersectionObserver()', () => {
 		observe(element);
 
 		// Simulate intersection
-		const callback = mockConstructor.__callback;
+		const callback = MockIntersectionObserver.getInstance().__callback;
 		if (callback) {
 			callback([createMockEntry(element, true)], {} as IntersectionObserver);
 		}
 
-		expect(mockIntersectionObserver.disconnect).not.toHaveBeenCalled();
+		expect(MockIntersectionObserver.getInstance().disconnect).not.toHaveBeenCalled();
 	});
 
 	it('uses custom threshold when provided', () => {
@@ -168,7 +171,7 @@ describe('useIntersectionObserver()', () => {
 		const element = document.createElement('div');
 		observe(element);
 
-		expect(global.IntersectionObserver).toHaveBeenCalledWith(
+		expect(MockIntersectionObserver.init).toHaveBeenCalledWith(
 			expect.any(Function),
 			expect.objectContaining({
 				threshold: customThreshold,
@@ -187,7 +190,7 @@ describe('useIntersectionObserver()', () => {
 		const element2 = document.createElement('div');
 
 		observe(element1);
-		const firstObserver = mockIntersectionObserver.disconnect;
+		const firstObserver = MockIntersectionObserver.getInstance().disconnect;
 
 		observe(element2);
 
@@ -203,7 +206,7 @@ describe('useIntersectionObserver()', () => {
 
 		observe(null);
 
-		expect(global.IntersectionObserver).not.toHaveBeenCalled();
+		expect(MockIntersectionObserver.init).not.toHaveBeenCalled();
 	});
 
 	it('does nothing when observing undefined element', () => {
@@ -215,7 +218,7 @@ describe('useIntersectionObserver()', () => {
 
 		observe(undefined);
 
-		expect(global.IntersectionObserver).not.toHaveBeenCalled();
+		expect(MockIntersectionObserver.init).not.toHaveBeenCalled();
 	});
 
 	it('exposes disconnect method for manual cleanup', () => {
@@ -230,7 +233,7 @@ describe('useIntersectionObserver()', () => {
 
 		disconnect();
 
-		expect(mockIntersectionObserver.disconnect).toHaveBeenCalledTimes(1);
+		expect(MockIntersectionObserver.getInstance().disconnect).toHaveBeenCalledTimes(1);
 	});
 
 	it('safely handles multiple disconnect calls', () => {
@@ -246,6 +249,6 @@ describe('useIntersectionObserver()', () => {
 		disconnect();
 		disconnect(); // Second call should not error
 
-		expect(mockIntersectionObserver.disconnect).toHaveBeenCalledTimes(1);
+		expect(MockIntersectionObserver.getInstance().disconnect).toHaveBeenCalledTimes(1);
 	});
 });

@@ -1,10 +1,11 @@
-import jp from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
 import type { INodeUi, Schema } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
+	createRunExecutionData,
 	NodeConnectionTypes,
 	type INodeExecutionData,
 	type ITaskDataConnections,
@@ -12,8 +13,37 @@ import {
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
+import { computed } from 'vue';
 
 vi.mock('@/app/stores/workflows.store');
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowDocumentStore: vi.fn(() =>
+			computed(() => ({
+				getSettingsSnapshot: () => ({ binaryMode: undefined }),
+				getNodePinData: () => undefined,
+			})),
+		),
+	};
+});
+
+let mockExecution: IExecutionResponse | null = null;
+
+vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowExecutionStateStore: vi.fn(() => ({
+			// Plain accessor (not `computed`) so per-test reassignment of the
+			// non-reactive `mockExecution` is always picked up.
+			get value() {
+				return { activeExecution: mockExecution };
+			},
+		})),
+	};
+});
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;
@@ -299,10 +329,10 @@ describe('useDataSchema', () => {
 		it('should return the correct data when using the generated json path on an object', () => {
 			const input = { people: ['Joe', 'John'] };
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${((schema.value as Schema[])[0].value as Schema[])[0].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${((schema.value as Schema[])[0].value as Schema[])[0].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual(['Joe']);
 		});
 
@@ -312,20 +342,20 @@ describe('useDataSchema', () => {
 				{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] },
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${(((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${(((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual(['traveling']);
 		});
 
 		it('should return the correct data when using the generated json path on a list of list', () => {
 			const input = [[1, 2]];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${((schema.value as Schema[])[0].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${((schema.value as Schema[])[0].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual([2]);
 		});
 
@@ -337,10 +367,10 @@ describe('useDataSchema', () => {
 				],
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${(((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${(((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual([33]);
 		});
 
@@ -354,15 +384,15 @@ describe('useDataSchema', () => {
 				},
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${
+			const pathData = JSONPath({
+				path: `$${
 					(
 						(((schema.value as Schema[])[0].value as Schema[])[0].value as Schema[])[0]
 							.value as Schema[]
 					)[0].path
 				}`,
-			);
+				json: input,
+			});
 			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z')]);
 		});
 
@@ -731,7 +761,7 @@ describe('useDataSchema', () => {
 
 		const name = 'a';
 		const makeMockData = (data: ITaskDataConnections | undefined, runDataKey?: string) => ({
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					runData: {
 						[runDataKey ?? name]: [
@@ -739,7 +769,7 @@ describe('useDataSchema', () => {
 						],
 					},
 				},
-			},
+			}),
 		});
 
 		const mockExecutionDataMarker = Symbol() as unknown as INodeExecutionData[];
@@ -757,8 +787,16 @@ describe('useDataSchema', () => {
 			[[null, 0, 0, null], []],
 			[[{ name }, 0, 0, null], []],
 			[[{ name }, 0, 0, { data: undefined }], []],
-			[[{ name }, 0, 0, { data: { resultData: { runData: {} } } }], []],
-			[[{ name }, 0, 0, { data: { resultData: { runData: { [name]: [] } } } }], []],
+			[[{ name }, 0, 0, { data: createRunExecutionData({ resultData: { runData: {} } }) }], []],
+			[
+				[
+					{ name },
+					0,
+					0,
+					{ data: createRunExecutionData({ resultData: { runData: { [name]: [] } } }) },
+				],
+				[],
+			],
 			[[{ name }, 0, 0, makeMockData(undefined)], []],
 			[[{ name }, 1, 0, makeMockData({})], []],
 			[[{ name }, -1, 0, makeMockData({})], []],
@@ -795,7 +833,7 @@ describe('useDataSchema', () => {
 					2,
 					1,
 					{
-						data: {
+						data: createRunExecutionData({
 							resultData: {
 								runData: {
 									[name]: [
@@ -821,18 +859,15 @@ describe('useDataSchema', () => {
 									],
 								},
 							},
-						},
+						}),
 					},
 				],
 				mockExecutionDataMarker,
 			],
 		])(
 			'should return correct output %s',
-			([node, runIndex, outputIndex, getWorkflowExecution], output) => {
-				vi.mocked(useWorkflowsStore).mockReturnValue({
-					...useWorkflowsStore(),
-					getWorkflowExecution: getWorkflowExecution as IExecutionResponse,
-				});
+			([node, runIndex, outputIndex, workflowExecution], output) => {
+				mockExecution = (workflowExecution ?? null) as IExecutionResponse | null;
 				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
 			},
 		);
@@ -1156,6 +1191,11 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should flatten node schemas', () => {
+			vi.mocked(useWorkflowsStore).mockReturnValue({
+				...useWorkflowsStore(),
+				workflowId: '1',
+			});
+
 			const { flattenMultipleSchemas } = useFlattenSchema();
 			const schema: Schema = {
 				path: '',

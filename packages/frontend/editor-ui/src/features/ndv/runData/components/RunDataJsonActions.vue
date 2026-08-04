@@ -1,20 +1,21 @@
 <script lang="ts" setup>
-import jp from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import type { INodeUi } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { nonExistingJsonPath, PopOutWindowKey } from '@/app/constants';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { nonExistingJsonPath } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nIconButton } from '@n8n/design-system';
 type JsonPathData = {
@@ -32,6 +33,7 @@ const props = withDefaults(
 		jsonData: IDataObject[];
 		outputIndex: number | undefined;
 		runIndex: number | undefined;
+		execution?: IRunExecutionData;
 	}>(),
 	{
 		selectedJsonPath: nonExistingJsonPath,
@@ -41,14 +43,14 @@ const props = withDefaults(
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
+const ndvStore = injectNDVStore();
 
 const clipboard = useClipboard();
 
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = ndvStore;
+const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();
 const telemetry = useTelemetry();
@@ -76,14 +78,21 @@ function getJsonValue(): string {
 			selectedValue = clearJsonKey(pinnedData.data.value as object);
 		} else {
 			selectedValue = executionDataToJson(
-				nodeHelpers.getNodeInputData(props.node, props.runIndex, props.outputIndex),
+				nodeHelpers.getNodeInputData(
+					props.node,
+					props.runIndex,
+					props.outputIndex,
+					'output',
+					NodeConnectionTypes.Main,
+					props.execution,
+				),
 			);
 		}
 	} else {
 		const jsonPath = normalisedJsonPath.value.startsWith('$')
 			? normalisedJsonPath.value
 			: `$${normalisedJsonPath.value}`;
-		selectedValue = jp.query(props.jsonData, jsonPath)[0];
+		selectedValue = JSONPath({ path: jsonPath, json: props.jsonData })[0];
 	}
 
 	let value = '';
@@ -171,12 +180,12 @@ function handleCopyClick(commandData: { command: string }) {
 	}[commandData.command];
 
 	telemetry.track('User copied ndv data', {
-		node_type: activeNode?.type,
+		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		view: 'json',
 		copy_type: copyType,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		pane: props.paneType,
 		in_execution_log: isReadOnlyRoute.value,
 	});
@@ -188,10 +197,10 @@ function handleCopyClick(commandData: { command: string }) {
 <template>
 	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
 		<N8nIconButton
+			variant="subtle"
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="files"
-			type="tertiary"
 			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
 		/>
@@ -205,9 +214,9 @@ function handleCopyClick(commandData: { command: string }) {
 		>
 			<span class="el-dropdown-link">
 				<N8nIconButton
+					variant="subtle"
 					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="files"
-					type="tertiary"
 					:circle="false"
 				/>
 			</span>

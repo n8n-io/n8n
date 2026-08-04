@@ -3,7 +3,7 @@ import type { CSSProperties } from 'vue';
 import { computed, onMounted, ref } from 'vue';
 import { capitalizeFirstLetter } from '@/app/utils/htmlUtils';
 import { convertToDisplayDate } from '@/app/utils/typesUtils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInput, IFormInputs } from '@/Interface';
@@ -21,7 +21,13 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useSSOStore } from '../sso.store';
 
 import { ElTable, ElTableColumn } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nFormInputs, N8nHeading, N8nInfoTip } from '@n8n/design-system';
+import {
+	N8nEmptyState,
+	N8nButton,
+	N8nFormInputs,
+	N8nHeading,
+	N8nInfoTip,
+} from '@n8n/design-system';
 type TableRow = {
 	status: string;
 	startAt: string;
@@ -51,6 +57,7 @@ type LDAPConfigForm = {
 	synchronizationInterval: string;
 	pageSize: string;
 	searchTimeout: string;
+	enforceEmailUniqueness: boolean;
 };
 
 type CellClassStyleMethodParams<T> = {
@@ -167,6 +174,7 @@ const onSubmit = async () => {
 		synchronizationInterval: +formValues.synchronizationInterval,
 		searchPageSize: +formValues.pageSize,
 		searchTimeout: +formValues.searchTimeout,
+		enforceEmailUniqueness: formValues.enforceEmailUniqueness,
 	};
 
 	let saveForm = true;
@@ -548,13 +556,24 @@ const getLdapConfig = async () => {
 				},
 				shouldDisplay: whenSyncAndLoginEnabled,
 			},
+			{
+				name: 'enforceEmailUniqueness',
+				initialValue: adConfig.value.enforceEmailUniqueness,
+				properties: {
+					type: 'toggle',
+					label: i18n.baseText('settings.ldap.form.enforceEmailUniqueness.label'),
+					tooltipText: i18n.baseText('settings.ldap.form.enforceEmailUniqueness.tooltip'),
+					required: false,
+				},
+				shouldDisplay: whenLoginEnabled,
+			},
 		];
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.configurationError'));
 	}
 };
 
-const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
+const loadSyncPage = async (): Promise<boolean> => {
 	try {
 		loadingTable.value = true;
 		const data = await ssoStore.getLdapSynchronizations({
@@ -564,13 +583,23 @@ const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0])
 		if (data.length !== 0) {
 			dataTable.value.push(...data.map(syncDataMapper));
 			page.value += 1;
-			state.loaded();
-		} else {
-			state.complete();
+			return true;
 		}
-		loadingTable.value = false;
+		return false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.synchronizationError'));
+		return false;
+	} finally {
+		loadingTable.value = false;
+	}
+};
+
+const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
+	const hasData = await loadSyncPage();
+	if (hasData) {
+		state.loaded();
+	} else {
+		state.complete();
 	}
 };
 
@@ -579,6 +608,8 @@ const reloadLdapSynchronizations = async () => {
 		page.value = 0;
 		tableKey.value += 1;
 		dataTable.value = [];
+		// Reload the first page of data
+		await loadSyncPage();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.synchronizationError'));
 	}
@@ -588,6 +619,10 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.ldap'));
 	if (!isLDAPFeatureEnabled.value) return;
 	await getLdapConfig();
+	// Load initial sync data if login is enabled
+	if (loginEnabled.value) {
+		await loadSyncPage();
+	}
 });
 </script>
 
@@ -602,7 +637,7 @@ onMounted(async () => {
 		<N8nInfoTip type="note" theme="info" tooltip-placement="right" class="mb-l">
 			{{ i18n.baseText('settings.ldap.note') }}
 		</N8nInfoTip>
-		<N8nActionBox
+		<N8nEmptyState
 			:description="i18n.baseText('settings.ldap.disabled.description')"
 			:button-text="i18n.baseText('settings.ldap.disabled.buttonText')"
 			@click:button="goToUpgrade"
@@ -610,7 +645,7 @@ onMounted(async () => {
 			<template #heading>
 				<span>{{ i18n.baseText('settings.ldap.disabled.title') }}</span>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 	<div v-else>
 		<div :class="$style.container">
@@ -637,7 +672,7 @@ onMounted(async () => {
 					@submit="onSubmit"
 				/>
 			</div>
-			<div>
+			<div :class="$style.buttonContainer">
 				<N8nButton
 					v-if="loginEnabled"
 					:label="
@@ -703,10 +738,10 @@ onMounted(async () => {
 					</template>
 				</ElTable>
 			</div>
-			<div class="pb-3xl">
+			<div :class="['pb-3xl', $style.buttonContainer]">
 				<N8nButton
+					variant="subtle"
 					:label="i18n.baseText('settings.ldap.dryRun')"
-					type="secondary"
 					size="large"
 					class="mr-s"
 					:disabled="hasAnyChanges || !readyToSubmit"
@@ -775,5 +810,11 @@ onMounted(async () => {
 	& > div {
 		margin-bottom: var(--spacing--xl);
 	}
+}
+
+.buttonContainer {
+	display: flex;
+	align-items: center;
+	justify-content: start;
 }
 </style>
