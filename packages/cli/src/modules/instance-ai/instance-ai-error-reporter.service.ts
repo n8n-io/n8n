@@ -1,3 +1,4 @@
+import type { AgentEventData } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
@@ -8,7 +9,20 @@ import {
 	type InstanceAiObservabilityContext,
 } from './observability';
 
-export type InstanceAiErrorReportContext = { component: string } & InstanceAiObservabilityContext;
+export type InstanceAiErrorReportContext = {
+	component: string;
+	/** Report non-terminal, best-effort failures at warning level. */
+	severity?: 'warning';
+} & InstanceAiObservabilityContext;
+
+type AgentErrorSource = NonNullable<Extract<AgentEventData, { error: unknown }>['source']>;
+
+export function getAgentErrorSeverity(source: AgentErrorSource): 'warning' | undefined {
+	if (source === 'observer' || source === 'reflector' || source === 'episodic-memory') {
+		return 'warning';
+	}
+	return undefined;
+}
 
 /**
  * The ai-assistant-sdk vendors its own ApplicationError, so its client-level
@@ -75,15 +89,17 @@ export class InstanceAiErrorReporterService {
 			return;
 		}
 
-		this.logger.error(`Instance AI error in ${context.component}`, {
-			error,
-			component: context.component,
-			...observability,
-		});
+		const logDetails = { error, component: context.component, ...observability };
+		if (context.severity === 'warning') {
+			this.logger.warn(`Instance AI error in ${context.component}`, logDetails);
+		} else {
+			this.logger.error(`Instance AI error in ${context.component}`, logDetails);
+		}
 
 		this.errorReporter.error(error, {
 			tags: { component: context.component, ...observability },
 			extra: observability,
+			...(context.severity ? { level: context.severity } : {}),
 			// Reports fire from the background run loop, where the ambient Sentry
 			// scope can hold an unrelated HTTP request (e.g. a health check).
 			shouldIsolate: true,

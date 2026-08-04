@@ -42,6 +42,11 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
  * `activeVersionId` (a rolled-back or lost publication, or a missed unpublish)
  * is invisible to the node-id diffs when the trigger set is unchanged, so it is
  * detected in the database directly and healed through the same enqueue path.
+ * Two further database detections complete the coverage: trigger-status rows
+ * recorded for a version other than the active one (the mapping may already be
+ * correct while the rows lag), and published workflows with no trigger-status
+ * rows at all (published before the service was enabled, or a publication that
+ * failed before reporting).
  */
 @Service()
 export class WorkflowPublicationReconciler {
@@ -136,10 +141,22 @@ export class WorkflowPublicationReconciler {
 						await this.outboxRepository.findVersionSkewedWorkflowIds(),
 						'Re-enqueuing workflows whose published version diverged from the active version',
 					);
+					// Also after the earlier drains, for the same reason: rows those
+					// passes already converged must not be re-detected here.
+					const statusDrift = await this.republishWorkflows(
+						await this.outboxRepository.findTriggerStatusDriftedWorkflowIds(),
+						'Re-enqueuing workflows whose trigger-status rows lag the active version',
+					);
+					const unreported = await this.republishWorkflows(
+						await this.outboxRepository.findUnreportedPublishedWorkflowIds(),
+						'Re-enqueuing published workflows that no publication reported trigger statuses for',
+					);
 
 					span.setAttribute('n8n.publication.deficient_workflows', missing);
 					span.setAttribute('n8n.publication.surplus_workflows', surplus);
 					span.setAttribute('n8n.publication.version_skewed_workflows', versionSkew);
+					span.setAttribute('n8n.publication.status_drifted_workflows', statusDrift);
+					span.setAttribute('n8n.publication.unreported_workflows', unreported);
 
 					span.setStatus({ code: SpanStatus.ok });
 					this.eventService.emit('workflow-publication-reconciliation', {
@@ -147,6 +164,8 @@ export class WorkflowPublicationReconciler {
 						deficientCount: missing,
 						surplusCount: surplus,
 						versionSkewCount: versionSkew,
+						statusDriftCount: statusDrift,
+						unreportedCount: unreported,
 						durationMs: Date.now() - startedAt,
 					});
 				} catch (error) {
@@ -157,6 +176,8 @@ export class WorkflowPublicationReconciler {
 						deficientCount: 0,
 						surplusCount: 0,
 						versionSkewCount: 0,
+						statusDriftCount: 0,
+						unreportedCount: 0,
 						durationMs: Date.now() - startedAt,
 					});
 				}

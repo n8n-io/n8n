@@ -208,6 +208,7 @@ describe('Test Webhook Node', () => {
 				name: 'Webhook',
 			} as any);
 			context.getNodeWebhookUrl.calledWith('default').mockReturnValue(WEBHOOK_URL);
+			context.getWebhookResourceUrl.calledWith('default').mockReturnValue(WEBHOOK_URL);
 			context.getNodeParameter.mockImplementation((paramName: string) => {
 				if (paramName === 'options') return {};
 				if (paramName === 'responseMode') return 'onReceived';

@@ -6,7 +6,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { createPasswordRules } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';

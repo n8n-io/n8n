@@ -16,9 +16,14 @@ export class EvalThreadCredentialAllowlistService {
 
 	set(threadId: string, credentialIds: string[], bypassCredentialTest?: string[]): void {
 		this.byThread.set(threadId, [...credentialIds]);
-		// Always overwrite rather than merge: the harness re-sends the whole list
-		// when it appends a mid-run credential, so a stale bypass must not survive.
-		this.testBypassByThread.set(threadId, [...(bypassCredentialTest ?? [])]);
+		// Bypass only what the thread can already see: the allowlist narrows, and a
+		// bypass must not be the thing that widens. Overwrite rather than merge —
+		// the harness re-sends the whole list as it appends mid-run credentials.
+		const allowed = new Set(credentialIds);
+		this.testBypassByThread.set(
+			threadId,
+			(bypassCredentialTest ?? []).filter((id) => allowed.has(id)),
+		);
 	}
 
 	get(threadId: string): string[] | undefined {

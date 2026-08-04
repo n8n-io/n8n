@@ -1,8 +1,8 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { isAuthenticated } from '@/app/utils/rbac/checks/isAuthenticated';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 

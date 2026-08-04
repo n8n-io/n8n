@@ -1,4 +1,4 @@
-import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from './agent-json-config.schema';
 
 export type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
 type AgentPersonalisationGradient = AgentPersonalisation['gradient'];

@@ -18,6 +18,8 @@ const props = withDefaults(
 		isPublished: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		simpleChannelSetup?: boolean;
+		/** No agent row exists yet — nothing can be connected to it. */
+		agentUnsaved?: boolean;
 	}>(),
 	{
 		connectedTriggers: () => [],
@@ -95,7 +97,12 @@ const channelRows = computed(() =>
 
 async function loadChannelDetails() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
-	await fetchStatus(integrations.map(({ type }) => type));
+	// Connection status is per agent, so there is nothing to ask for until one
+	// exists. The catalog and credential list below are project-scoped and still
+	// load, so the channel picker works on an unsaved agent.
+	if (!props.agentUnsaved) {
+		await fetchStatus(integrations.map(({ type }) => type));
+	}
 
 	try {
 		credentialsStore.setCredentials([]);

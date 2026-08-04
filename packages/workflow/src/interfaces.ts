@@ -1531,7 +1531,14 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	/** Always the production endpoint, whichever endpoint the request arrived on. */
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
+	/**
+	 * The endpoint actually being served (`/webhook-test/…` on a test run), which
+	 * identifies the webhook as an OAuth protected resource. Minting and verifying a
+	 * token both derive the resource from it, so it must track the endpoint served.
+	 */
+	getWebhookResourceUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;

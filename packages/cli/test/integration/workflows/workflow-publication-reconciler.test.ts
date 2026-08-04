@@ -351,6 +351,158 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
 	});
 
+	test('re-writes trigger-status rows recorded for a version other than the active one', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('status-drift');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		const newVersionId = 'version-2-status-drift';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...trigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// A zombie writer rewrites the status rows for the old version after its
+		// record already resolved. The mapping still agrees with `activeVersionId`,
+		// so the version-skew check cannot see this — only the rows lag.
+		await triggerStatusRepository.update(
+			{ workflowId: workflow.id },
+			{ versionId: workflow.versionId },
+		);
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
+
+		await reconciler.reconcile();
+
+		const rows = await triggerStatusRepository.findByWorkflowId(workflow.id);
+		expect(rows).toHaveLength(1);
+		expect(rows[0].versionId).toBe(newVersionId);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('publishes a workflow that was published while the publication service was off', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('pre-flag');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		// Legacy activation maintains the published-version mapping, but only the
+		// publication reporter writes trigger-status rows — so a workflow published
+		// while the flag was off has none, and no outbox record either.
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		await reconciler.reconcile();
+
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		const rows = await triggerStatusRepository.findByWorkflowId(workflow.id);
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({ nodeId: trigger.id, status: 'activated' });
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('leaves a workflow whose most recent publication failed before reporting statuses alone', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('failed-terminal');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		// A publish that crashed after advancing the mapping but before the
+		// reporter wrote any rows: mapping equals `activeVersionId`, the record is
+		// terminal `failed`, zero rows. Re-enqueueing would fail before reporting
+		// again and still leave zero rows — an every-pass loop — so the pass must
+		// leave it for a user republish (a fresh pending record) to recover.
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+		await outboxRepository.markFailed(record!.id, 'unexpected error before reporting');
+
+		await reconciler.reconcile();
+
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toHaveLength(0);
+	});
+
+	test('leaves a drifted workflow whose most recent publication failed before reporting alone', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('drift-failed-terminal');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+
+		// A v2 publish that crashed after advancing the mapping but before the
+		// reporter rewrote the rows: mapping equals `activeVersionId`, the record
+		// is terminal `failed`, and the rows still carry v1. If the failure is
+		// deterministic, re-enqueueing loops — the pass must leave it for a user
+		// republish to recover, exactly like the zero-rows case.
+		const newVersionId = 'version-2-drift-failed';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...trigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+		await outboxRepository.markFailed(record!.id, 'unexpected error before reporting');
+
+		await reconciler.reconcile();
+
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+		const rows = await triggerStatusRepository.findByWorkflowId(workflow.id);
+		expect(rows[0].versionId).toBe(workflow.versionId);
+	});
+
+	test('leaves drifted and unreported workflows with an in-flight record for that record to converge', async () => {
+		const owner = await createOwner();
+
+		// Drifted rows, but a pending publish owns the convergence.
+		const driftTrigger = scheduleNode('drift-in-flight');
+		const drifted = await createWorkflowWithHistory({ active: true, nodes: [driftTrigger] }, owner);
+		await setActiveVersion(drifted.id, drifted.versionId);
+		await outboxRepository.enqueue(drifted.id, drifted.versionId);
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!);
+		const newVersionId = 'version-2-drift-in-flight';
+		await createWorkflowHistory(drifted, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [{ ...driftTrigger, parameters: { rule: { interval: [{ field: 'hours' }] } } }],
+		});
+		await setActiveVersion(drifted.id, newVersionId);
+		await outboxRepository.enqueue(drifted.id, newVersionId);
+
+		// No rows yet, but the first publish is still pending.
+		const unreportedTrigger = scheduleNode('unreported-in-flight');
+		const unreported = await createWorkflowWithHistory(
+			{ active: true, nodes: [unreportedTrigger] },
+			owner,
+		);
+		await setActiveVersion(unreported.id, unreported.versionId);
+		await outboxRepository.enqueue(unreported.id, unreported.versionId);
+
+		expect(await outboxRepository.findTriggerStatusDriftedWorkflowIds()).not.toContain(drifted.id);
+		expect(await outboxRepository.findUnreportedPublishedWorkflowIds()).not.toContain(
+			unreported.id,
+		);
+
+		await reconciler.reconcile();
+
+		// Untouched: both records are still pending — reconciliation neither
+		// enqueued nor drained.
+		expect((await outboxRepository.findInFlightByWorkflowId(drifted.id))?.status).toBe('pending');
+		expect((await outboxRepository.findInFlightByWorkflowId(unreported.id))?.status).toBe(
+			'pending',
+		);
+	});
+
 	test('records persisted rows for a pseudo-only workflow, keeping it out of leader handoff and reconciliation', async () => {
 		const owner = await createOwner();
 

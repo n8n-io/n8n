@@ -267,6 +267,103 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
+	 * Published workflows where any trigger-status row was recorded for a version
+	 * other than the workflow's canonical `activeVersionId`. Catches a crash or a
+	 * stale (zombie) writer between the published-version advance and the status
+	 * report: the `workflow_published_version` mapping may already be correct, so
+	 * {@link findVersionSkewedWorkflowIds} cannot see it — only the rows lag.
+	 *
+	 * Workflows with an in-flight (pending/in_progress) record are excluded in
+	 * the same statement, for the same reason as the version-skew check: the
+	 * reporter only writes rows while its record is `in_progress`, so row drift
+	 * with no in-flight record is a real divergence, never a normal mid-flight
+	 * state.
+	 *
+	 * Workflows whose most recent record is terminal `failed` are excluded for
+	 * the same reason as in {@link findUnreportedPublishedWorkflowIds}: a
+	 * publication that deterministically fails before reporting leaves the rows
+	 * drifted forever, so re-enqueueing would loop every pass. A user republish
+	 * (a fresh pending record) still recovers.
+	 */
+	async findTriggerStatusDriftedWorkflowIds(): Promise<string[]> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
+
+		// Both compared columns are non-null here (`activeVersionId` is filtered,
+		// `versionId` is NOT NULL), so plain `<>` needs no null-emulation.
+		const rows: Array<{ workflowId: string }> = await this.query(
+			`SELECT DISTINCT w."id" AS "workflowId"
+			 FROM ${workflowTableName} w
+			 INNER JOIN ${triggerStatusTableName} ts ON ts."workflowId" = w."id"
+			 WHERE w."activeVersionId" IS NOT NULL
+			 AND ts."versionId" <> w."activeVersionId"
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 )
+			 AND COALESCE((
+				 SELECT o."status" FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 ORDER BY o."id" DESC LIMIT 1
+			 ), '') <> '${Status.Failed}'`,
+		);
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/**
+	 * Published, non-archived workflows with no trigger-status rows at all — no
+	 * publication was ever reported for them. Two populations: workflows
+	 * published while the publication service flag was off (only the reporter
+	 * writes rows), and publications that terminally failed before reporting any
+	 * per-trigger status (a consumer-wrapped unexpected throw, `version-missing`).
+	 *
+	 * The failed population is why workflows whose most recent outbox record is
+	 * terminal `failed` are excluded: re-enqueueing them would fail before
+	 * reporting again, still leave zero rows, and so be re-detected on every
+	 * pass forever, reporting an error each round. Recovery is not lost — a user
+	 * republish enqueues a fresh pending record, which is excluded here as
+	 * in-flight while it processes normally. `partial_success` always writes
+	 * rows, so it never reaches this bucket.
+	 *
+	 * Same in-flight exclusion, in the same statement, as
+	 * {@link findVersionSkewedWorkflowIds}.
+	 */
+	async findUnreportedPublishedWorkflowIds(): Promise<string[]> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
+
+		// "Most recent" is the highest id: ids are monotonically assigned, the
+		// same FIFO assumption the claim query relies on. Sqlite (>= 3.23) accepts
+		// the `false` literal, so one statement serves both dialects.
+		const rows: Array<{ workflowId: string }> = await this.query(
+			`SELECT w."id" AS "workflowId"
+			 FROM ${workflowTableName} w
+			 WHERE w."activeVersionId" IS NOT NULL
+			 AND w."isArchived" = false
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${triggerStatusTableName} ts
+				 WHERE ts."workflowId" = w."id"
+			 )
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 )
+			 AND COALESCE((
+				 SELECT o."status" FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 ORDER BY o."id" DESC LIMIT 1
+			 ), '') <> '${Status.Failed}'`,
+		);
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/**
 	 * Atomically claim the oldest pending record by transitioning its status to
 	 * `in_progress`. Postgres uses `FOR UPDATE SKIP LOCKED` so concurrent
 	 * consumers never receive the same row; SQLite serializes the find-then-update
