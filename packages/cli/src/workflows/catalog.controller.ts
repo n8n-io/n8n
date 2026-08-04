@@ -1,10 +1,11 @@
 import { CatalogRunDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { IDataObject } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CatalogRunService } from '@/workflows/catalog-run.service';
+import { CatalogService } from '@/workflows/catalog.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 type WorkflowParam = { workflowId: string };
@@ -20,9 +21,20 @@ type WorkflowParam = { workflowId: string };
 @RestController('/catalog/workflows')
 export class CatalogController {
 	constructor(
+		private readonly catalogService: CatalogService,
 		private readonly catalogRunService: CatalogRunService,
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
+
+	/**
+	 * Scoped globally rather than per project: the listing spans every project
+	 * the person belongs to, and the per-workflow filtering happens in the query.
+	 */
+	@Get('/')
+	@GlobalScope('workflow:list')
+	async list(req: AuthenticatedRequest) {
+		return await this.catalogService.list(req.user);
+	}
 
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
