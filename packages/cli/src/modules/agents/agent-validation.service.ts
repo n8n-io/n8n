@@ -3,7 +3,11 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
+	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
+	findVectorStoreToolNameCollisions,
+	isDraftAgentConfig,
+	isDraftIntegration,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
@@ -19,8 +23,9 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -75,7 +80,22 @@ export class AgentValidationService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
+
+	/**
+	 * Whether n8n Connect (AI Gateway) can serve the model's provider, using only
+	 * the cached gateway config — this static validator must not perform a network
+	 * fetch. Returns `undefined` when support can't be determined (no cached
+	 * config), so the caller can tell "gateway says no" from "could not ask".
+	 */
+	private isAiGatewayModelSupported(model: string): boolean | undefined {
+		const provider = getProviderPrefix(model);
+		if (!provider) return false;
+		const credentialType = this.aiGatewayService.getCredentialTypeForProviderCached(provider);
+		if (credentialType === undefined) return undefined;
+		return credentialType !== null;
+	}
 
 	/**
 	 * Backward-compatible wrapper over {@link validateAgentConfiguration}.
@@ -248,6 +268,7 @@ export class AgentValidationService {
 		const { agentsById, workflowsByName } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
+		this.collectVectorStoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
@@ -308,7 +329,7 @@ export class AgentValidationService {
 			issues.push(agentIssue('missing_required', 'instructions'));
 		}
 
-		if (!config.model?.trim()) {
+		if (isDraftAgentConfig(config)) {
 			issues.push(agentIssue('missing_required', 'model'));
 		} else if (!AgentModelSchema.safeParse(config.model).success) {
 			issues.push(agentIssue('invalid_value', 'model'));
@@ -326,6 +347,23 @@ export class AgentValidationService {
 		}
 
 		const credentialId = config.credential.trim();
+
+		// n8n Connect managed credential: no stored credential to resolve — it is
+		// valid as long as the gateway can serve the selected model's provider.
+		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			const model = config.model?.trim();
+			// Only flag a definitive "gateway does not serve this provider". When
+			// support can't be determined (no cached gateway config), don't fail
+			// closed — a transient/cold config must not make a working managed agent
+			// look broken and block Publish / chat runs. A missing model is already
+			// reported against `model` by `collectCoreIssues`, so it is not the
+			// credential's problem.
+			if (model && this.isAiGatewayModelSupported(model) === false) {
+				issues.push(agentIssue('incompatible_credential', 'credential'));
+			}
+			return;
+		}
+
 		const credential = await this.findCredentialSafe(findCredential, credentialId);
 		if (!credential) {
 			issues.push(agentIssue('invalid_credential', 'credential'));
@@ -406,6 +444,29 @@ export class AgentValidationService {
 		}
 	}
 
+	/**
+	 * A vector store registers a `search_<sanitized-name>` tool at runtime; a
+	 * collision with a configured tool name only fails once the agent is built.
+	 * The write gate (AgentConfigService.validateConfig) checks this too — this
+	 * re-check covers configs that reached the entity through other paths
+	 * (e.g. history restore).
+	 */
+	private collectVectorStoreIssues(config: AgentJsonConfig, issues: AgentConfigValidationIssue[]) {
+		const collisions = new Set(findVectorStoreToolNameCollisions(config));
+		const stores = config.vectorStores ?? [];
+		for (let index = 0; index < stores.length; index++) {
+			const store = stores[index];
+			if (!collisions.has(`search_${store.name.replace(/-/g, '_')}`)) continue;
+			issues.push(
+				issue('invalid_value', `vectorStores.${index}.name`, {
+					kind: 'vectorStore',
+					id: store.name,
+					index,
+				}),
+			);
+		}
+	}
+
 	private async collectChannelIssues(
 		integrations: AgentIntegrationConfig[],
 		findCredential: FindCredential,
@@ -419,12 +480,11 @@ export class AgentValidationService {
 				id: integration.type,
 				index,
 			};
-			const credentialId = integration.credentialId?.trim();
-
-			if (!credentialId) {
+			if (isDraftIntegration(integration)) {
 				issues.push(issue('missing_credential', path, capability));
 				continue;
 			}
+			const credentialId = integration.credentialId.trim();
 
 			const credential = await this.findCredentialSafe(findCredential, credentialId);
 			if (!credential) {

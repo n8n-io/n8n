@@ -1,6 +1,7 @@
-import type { INode } from 'n8n-workflow';
+import type { INode, IExecuteFunctions } from 'n8n-workflow';
+import { Binary, ObjectId } from 'mongodb';
 
-import { prepareItems } from './GenericFunctions';
+import { prepareItems, serializeMongoItems } from './GenericFunctions';
 
 const mockNode = { name: 'MongoDB', type: 'n8n-nodes-base.mongoDb' } as INode;
 
@@ -148,6 +149,59 @@ describe('MongoDB Node: Generic Functions', () => {
 				node: mockNode,
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
+		});
+	});
+
+	describe('serializeMongoItems', () => {
+		const prepareBinaryData = vi.fn(async (buffer: Buffer, fileName?: string) => ({
+			data: buffer.toString('base64'),
+			fileName,
+			mimeType: 'application/octet-stream',
+		}));
+		const thisArg = {
+			helpers: { prepareBinaryData },
+		} as unknown as IExecuteFunctions;
+
+		it('should stringify nested ObjectIds and Dates to JSON-safe values', async () => {
+			const date = new Date('2020-01-01T12:00:00.000Z');
+			const items = [
+				{
+					json: {
+						_id: new ObjectId('507f1f77bcf86cd799439011'),
+						createdAt: date,
+						author: { ref: new ObjectId('507f191e810c19729de860ea'), joinedAt: date },
+					},
+				},
+			];
+
+			const result = await serializeMongoItems.call(thisArg, items);
+
+			expect(result[0].json).toEqual({
+				_id: '507f1f77bcf86cd799439011',
+				createdAt: '2020-01-01T12:00:00.000Z',
+				author: {
+					ref: '507f191e810c19729de860ea',
+					joinedAt: '2020-01-01T12:00:00.000Z',
+				},
+			});
+		});
+
+		it('should move top-level binary fields to the binary output and remove them from json', async () => {
+			const items = [
+				{
+					json: {
+						_id: new ObjectId('507f1f77bcf86cd799439011'),
+						avatar: new Binary(Buffer.from('image-bytes')),
+					},
+				},
+			];
+
+			const result = await serializeMongoItems.call(thisArg, items);
+
+			expect(result[0].json).toEqual({ _id: '507f1f77bcf86cd799439011' });
+			expect(result[0].json).not.toHaveProperty('avatar');
+			expect(prepareBinaryData).toHaveBeenCalledWith(Buffer.from('image-bytes'), 'avatar');
+			expect(result[0].binary?.avatar).toBeDefined();
 		});
 	});
 });

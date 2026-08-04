@@ -1,6 +1,7 @@
 import chunk from 'lodash/chunk';
 import { jsonParse, jsonStringify, UnexpectedError } from 'n8n-workflow';
 
+import { ByteStoreRegistry } from './byte-store-registry';
 import { SkippedEntryDeletionError } from './skipped-entry-deletion.error';
 import type { ByteStore, JsonEntry, JsonStoreOptions, StorageLocation, Stored } from './types';
 
@@ -13,16 +14,14 @@ const MAX_READ_CONCURRENCY = 50;
  * The `version` key is reserved for the schema version: writes reject payloads that contain it.
  */
 export class JsonStore<Ref, Payload extends object> {
-	private readonly byteStores = new Map<StorageLocation, ByteStore>();
+	private readonly byteStores: ByteStoreRegistry;
 
 	constructor(private readonly options: JsonStoreOptions<Ref>) {
-		for (const [loc, store] of Object.entries(options.byteStores)) {
-			if (store) this.byteStores.set(loc as StorageLocation, store);
-		}
+		this.byteStores = new ByteStoreRegistry(options.byteStores);
 	}
 
 	registerByteStore(loc: StorageLocation, store: ByteStore) {
-		this.byteStores.set(loc, store);
+		this.byteStores.register(loc, store);
 	}
 
 	hasLocation(loc: StorageLocation) {
@@ -30,7 +29,7 @@ export class JsonStore<Ref, Payload extends object> {
 	}
 
 	async write(ref: Ref, payload: Payload, loc: StorageLocation) {
-		const store = this.getByteStore(loc);
+		const store = this.byteStores.get(loc);
 		if ('version' in payload) {
 			throw new UnexpectedError('Payload must not contain the reserved `version` key.');
 		}
@@ -39,14 +38,14 @@ export class JsonStore<Ref, Payload extends object> {
 				jsonStringify({ ...payload, version: this.options.version }),
 				'utf-8',
 			);
-			return await store.write(this.options.key(ref), body, 'application/json');
+			return await store.write(this.options.key(ref), body, { mimeType: 'application/json' });
 		} catch (error) {
 			throw this.options.createWriteError(ref, error);
 		}
 	}
 
 	async read(ref: Ref, loc: StorageLocation) {
-		const store = this.getByteStore(loc);
+		const store = this.byteStores.get(loc);
 		const key = this.options.key(ref);
 		const bytes = await store.read(key);
 		if (!bytes) return null;
@@ -59,7 +58,7 @@ export class JsonStore<Ref, Payload extends object> {
 
 		await Promise.all(
 			[...this.groupByLocation(refs)].map(async ([loc, group]) => {
-				const store = this.getByteStore(loc);
+				const store = this.byteStores.get(loc);
 				for (const batch of chunk(group, MAX_READ_CONCURRENCY)) {
 					const results = await Promise.all(
 						batch.map(async (ref) => await this.tryRead(ref, store)),
@@ -79,7 +78,7 @@ export class JsonStore<Ref, Payload extends object> {
 
 		await Promise.all(
 			[...this.groupByLocation(refs)].map(async ([loc, group]) => {
-				const store = this.byteStores.get(loc);
+				const store = this.byteStores.find(loc);
 				if (!store) {
 					this.options.reportError(new SkippedEntryDeletionError(loc, group.length));
 					return;
@@ -125,14 +124,6 @@ export class JsonStore<Ref, Payload extends object> {
 		} catch (error) {
 			throw this.markCorrupt(this.options.createCorruptedError(ref, error));
 		}
-	}
-
-	private getByteStore(loc: StorageLocation): ByteStore {
-		const store = this.byteStores.get(loc);
-		if (!store) {
-			throw new UnexpectedError(`JSON store for location "${loc}" is not configured.`);
-		}
-		return store;
 	}
 
 	private markCorrupt<E extends Error>(error: E): E {

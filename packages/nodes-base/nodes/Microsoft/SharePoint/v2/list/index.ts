@@ -18,6 +18,9 @@ export const listRLC: INodeProperties = {
 	required: true,
 	default: { mode: 'list', value: '' },
 	description: 'The list to operate on. You can use the list title in place of the ID.',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',

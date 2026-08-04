@@ -38,6 +38,8 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
+	/** True while the AI is actively building/mutating this agent in artifact mode — disables publish/revert/unpublish without hiding them. */
+	editingLocked?: boolean;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	beforePublish?: () => Promise<boolean>;
 }>();
@@ -223,7 +225,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:agent="agent"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:is-saving="saveStatus === 'saving'"
+				:is-saving="saveStatus === 'saving' || editingLocked"
 				:before-revert-to-published="beforeRevertToPublished"
 				:config-validation-status="configValidationStatus"
 				:before-publish="beforePublish"

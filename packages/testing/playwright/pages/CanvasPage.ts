@@ -168,9 +168,11 @@ export class CanvasPage extends BasePage {
 
 	/**
 	 * @param options - Configuration options for waiting for save workflow completion.
-	 * @param options.timeout - Timeout in milliseconds. Defaults to 2000ms to account for the 1500ms autosave debounce.
+	 * @param options.timeout - Timeout in milliseconds. Defaults to 5000ms: the 1500ms
+	 * autosave debounce plus round-trip headroom, since CI runs one n8n instance for
+	 * as many workers as there are cores.
 	 */
-	async waitForSaveWorkflowCompleted({ timeout = 2000 }: { timeout?: number } = {}) {
+	async waitForSaveWorkflowCompleted({ timeout = 5000 }: { timeout?: number } = {}) {
 		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
@@ -592,7 +594,7 @@ export class CanvasPage extends BasePage {
 	 * interacting with it after a navigation.
 	 */
 	async waitForCanvasReady(): Promise<void> {
-		await expect(this.canvasPane()).toBeVisible();
+		await expect(this.canvasPane()).toBeVisible({ timeout: 30_000 });
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
 	}
@@ -952,6 +954,10 @@ export class CanvasPage extends BasePage {
 
 	getNodeWarningStatusIndicator(nodeName: string): Locator {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
+	}
+
+	getNodePinnedStatusIndicator(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('canvas-node-status-pinned');
 	}
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {

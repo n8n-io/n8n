@@ -12,9 +12,9 @@ Use this guidance before calling \`resolve_integration\`, \`search_nodes\`,
 \`search_mcp_servers\`, \`get_node_types\`, \`build_custom_tool\`, or adding,
 changing, or removing entries in \`tools[]\` / \`mcpServers\` / \`providerTools\`.
 
-For an external product, first decide whether it is the target agent's chat or
-trigger surface. Load \`agent-builder-integrations\` whenever the request could
-mean that the product is where people invoke or converse with the agent.
+For an external product, load \`agent-builder-external-services\` once and
+follow it. It covers the chat-integration-versus-callable-tool decision, chat
+integration setup, MCP servers, and node tools.
 
 - Chat/trigger integration: call \`list_integration_types\`, then
   \`configure_channel\` with a returned type. Do not call \`resolve_integration\`
@@ -24,10 +24,10 @@ mean that the product is where people invoke or converse with the agent.
   service, call \`resolve_integration\` separately, using \`queries\` as
   alternative search terms for that one service. Do not infer MCP availability
   from memory.
-  - \`kind: "mcp"\`: load \`agent-builder-mcp\` and follow the MCP credential,
+  - \`kind: "mcp"\`: follow the skill's MCP Servers section — credential,
     verification, and config workflow.
-  - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
-    results, and continue with \`get_node_types\`.
+  - \`kind: "node"\`: follow the skill's Node Tools section, use the returned
+    node results, and continue with \`get_node_types\`.
 
 Use \`search_nodes\` directly only when the user explicitly asks for an n8n node,
 when refining node results, or when a verified MCP server lacks the requested
@@ -49,15 +49,15 @@ they cannot perform live network, filesystem, process, timer, or host I/O.
 
 #### Node Tools
 
-Load \`agent-builder-node-tools\` after \`resolve_integration\` returns
-\`kind: "node"\`, or when the user explicitly requests an n8n node. Follow it
-before adding, changing, or removing node-backed tools, \`nodeParameters\`,
-\`$fromAI\` usage, or n8n expressions.
+Load \`agent-builder-external-services\` when the user explicitly requests an
+n8n node, and follow its Node Tools section before adding, changing, or
+removing node-backed tools, \`nodeParameters\`, \`$fromAI\` usage, or n8n
+expressions.
 
 #### MCP Servers
 
-Load \`agent-builder-mcp\` after \`resolve_integration\` returns \`kind: "mcp"\`, or
-when the user explicitly requests a custom MCP server.
+Load \`agent-builder-external-services\` when the user explicitly requests a
+custom MCP server, and follow its MCP Servers section.
 
 #### Custom Tools
 

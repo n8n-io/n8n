@@ -23,17 +23,17 @@ exhaustive field reference; this skill is the opinionated *how*.
 > approach.** Author the file locally (uncommitted), calibrate it against a real
 > build, then **push it to a lang-tracer suite** with `eval:langtracer-push`
 > (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)) —
-> `--suite n8n-workflows` for the corpus n8n CI runs, or a capability suite
-> like `workflow-building` that runs on LangTracer's own automation.
+> `--suite baseline` for the consolidated corpus n8n CI runs, or a dedicated
+> capability suite like `agents`.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
 > the push, not a committed artifact.
 >
-> **Exception — seeded cases.** The case-write API can't hold any seeding mode, so
-> seeded cases are never pushed. A `seedThread` case is a local throwaway (don't
-> commit it either — it dies when its trace is pruned); a `seedFile` or
-> `priorConversation` case isn't transient and has no suite home, so it's the one
-> sanctioned exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
+> **Exception — seeded cases.** The case-write API has no `seed` field, so seeded
+> cases are never pushed. A `seed.mode: "replay"` case is a local throwaway (don't
+> commit it either — it dies when its trace is pruned); a `seed.mode: "inline"`
+> case isn't transient and has no suite home, so it's the one sanctioned
+> exception — it lives as committed JSON. See [`case-shapes.md`](case-shapes.md).
 
 ## Set the autonomy level first
 
@@ -88,7 +88,7 @@ connections help you find and verify one: **LangTracer** clusters real
 conversations into capability-gap themes (discover what actually fails, at
 scale), and **LangSmith** holds the raw traces (verify exactly what happened in a
 run). LangTracer is the discovery layer; the durable artifact is almost always a
-synthetic case you author from what you learn (use `seedThread` only per
+synthetic case you author from what you learn (use `seed.mode: "replay"` only per
 [`case-shapes.md`](case-shapes.md)). See
 [`sourcing-cases.md`](sourcing-cases.md) for connecting the MCPs and the
 discover → verify → encode workflow.
@@ -104,7 +104,7 @@ case can still assert outcome), but the primary shape drives the work.
 | **Build** (default) | Does the workflow the agent builds actually *work*? | `outcomeExpectations` + `executionScenarios` |
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
-| **Seeded** | Reproduce a conversation mid-thread and drive the turn under test | `seedThread` / `priorConversation` / `seedFile` |
+| **Seeded** | Reproduce a conversation mid-thread and drive the turn under test | `seed` (`mode: "inline"` or `"replay"`) |
 
 **Build** is documented in full below. The other three, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).
@@ -206,9 +206,11 @@ calibration you hand the driver the thread link + login to review the real build
    [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)); the suite is the
    case's home, not the repo. Leave the `data/workflows/*.json` file uncommitted
    (or delete it once it's in the suite). Committing new case JSONs into the repo
-   is no longer the approach. (Exception: seeded cases can't be pushed — a
-   `seedFile`/`priorConversation` case stays committed JSON, a `seedThread` case is
-   a local throwaway; see [`case-shapes.md`](case-shapes.md).)
+   is no longer the approach. (Exception: seeded cases can't be pushed — an
+   `inline`-seeded case stays committed JSON, a `replay` case is
+   a local throwaway; see [`case-shapes.md`](case-shapes.md).) For a sourced case,
+   finish by **linking it to its source thread/finding** over the MCP — see
+   [Link the pushed case to its source](#link-the-pushed-case-to-its-source-provenance-step--always-do-this).
 
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
@@ -260,6 +262,13 @@ switch. Two shapes to know:
   '@/utils/...'` from `dist/skills/*.js`: the build's `tsc-alias` step (which
   rewrites `@/` path aliases to relative requires) didn't complete, so the dist is
   internally inconsistent.
+
+- **Out-of-sync `node_modules`** — `pnpm build` itself dies early with `Cannot find
+  module '@n8n/<pkg>'` even though that package is a declared `workspace:*`
+  dependency *and* has a `dist/`. The workspace symlink is missing from the
+  consumer's `node_modules` (typical after a branch or worktree switch). Confirm
+  with `ls -d packages/<consumer>/node_modules/@n8n/<pkg>`; fix with a plain
+  `pnpm install` — no need for the heavier `pnpm reset --full`.
 
 Fix it, don't calibrate around it: run a full ordered `pnpm build` (a targeted
 `--filter` build can fail on unrelated stale-dep type errors; for the instance-ai
@@ -381,7 +390,7 @@ What each piece is doing:
   misses the label filter. Keep the whole script in one turn and encode ordering
   inside it (don't fabricate assistant "done" turns to sequence steps — see
   [`case-shapes.md`](case-shapes.md)). `applies-each-change-when-asked` (in the
-  `n8n-workflows` LangTracer suite) is a good real example.
+  `baseline` LangTracer suite) is a good real example.
 - **`dataSetup` describes only what external services return.** That's the layer
   the harness controls (below).
 
@@ -630,9 +639,9 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 ```bash
 cd packages/@n8n/instance-ai
 # preview first — no writes (use `npx dotenvx`; the bare `dotenvx` binary is usually not on PATH):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
 # then push (drop --dry-run):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
@@ -658,13 +667,41 @@ npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-build
   lang-tracer #48), so scenario edits re-push like any other field. A lang-tracer
   deployment predating that change silently ignores the key; if a pushed scenario
   edit doesn't land, update the scenario in the lang-tracer UI.
-- **Seeded cases can't be pushed:** the case-write API rejects every seeding mode
-  (`seedThread` / `seedFile` / `priorConversation`), so the push lists them under
-  `skipped:` and they never reach the suite. A `seedThread` case shouldn't be
-  committed either — it dies when its trace is pruned or deleted — so derive a
-  durable synthetic case as the artifact instead. A `seedFile`/`priorConversation`
-  case isn't transient and has no suite home, so it's the one exception to
-  "don't commit the JSON" — it lives as a committed artifact.
+- **Seeded cases can't be pushed:** the case-write API has no `seed` field, so the
+  push lists any seeded case under `skipped:` and it never reaches the suite. A
+  `replay` case shouldn't be committed either — it dies when its trace is pruned
+  or deleted — so derive a durable synthetic case as the artifact instead. An
+  `inline`-seeded case isn't transient and has no suite home, so it's the one
+  exception to "don't commit the JSON" — it lives as a committed artifact.
+
+### Link the pushed case to its source (provenance step — always do this)
+
+A sourced case that isn't linked back to the conversation/finding it encodes is
+an orphan: six months later nobody can tell what real failure it guards. The
+push CLI doesn't carry provenance, so after pushing, link the case over the
+lang-tracer MCP with one **`update_test_case`** call on the new case id (the
+push prints it):
+
+1. **`sourceThreadId`** — the source conversation's thread id (plus
+   **`sourceRunId`** when the case anchors to one specific run/step within it).
+   This is the DB-level link every by-version rollup, conversation float, and
+   `?sourceThreadId=` query joins on — the tags/description below are the
+   human-readable layer on top, not a substitute. The thread must already be
+   imported into lang-tracer (running `get_conversation_analysis` on it, as the
+   sourcing flow does, is enough); `source_kind` is derived server-side, and
+   the link is only editable on authored cases — promotion-recorded provenance
+   is immutable.
+2. **`expectedBehavior`** — the rule the case enforces, one paragraph — and
+   **`failurePattern`** — what actually happened in the source thread, with
+   turn references. Copy/adapt these from the analysis's `extractedCases`
+   entry when the case came from `get_conversation_analysis`.
+
+Then **`add_case_tags`** (additive; targets the LT-side `tags` array, not
+`evalTags`, so nothing round-trips into eval runs): add a capability tag (e.g.
+`instruction-persistence`). Tag normalization is aggressive (lowercase, kebab);
+colon-form tags get silently dropped. And keep the thread id + turn refs in
+the case `description` too (the drafter's habit of "Sourced from thread <id>"
+is the convention) — the description is the only field shown everywhere.
 
 ## Running
 

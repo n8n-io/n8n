@@ -13,7 +13,7 @@ export class McpRegistryModule implements ModuleInterface {
 
 		await import('./mcp-registry.controller.js');
 
-		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+		if (process.env.E2E_TESTS === 'true') {
 			await import('./mcp-registry-test.controller.js');
 		}
 	}

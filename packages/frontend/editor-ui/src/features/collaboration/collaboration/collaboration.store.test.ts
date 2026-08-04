@@ -42,7 +42,7 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		currentUserId: 'user-1',
 	}),
@@ -52,7 +52,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => mockUiStore,
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 	}),

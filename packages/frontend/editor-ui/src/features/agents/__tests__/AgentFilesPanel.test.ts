@@ -34,7 +34,6 @@ function mountPanel(props: Partial<InstanceType<typeof AgentFilesPanel>['$props'
 	return mount(AgentFilesPanel, {
 		props: {
 			files: [] as AgentFileDto[],
-			isPublished: true,
 			...props,
 		},
 		global: {
@@ -57,30 +56,16 @@ const file: AgentFileDto = {
 };
 
 describe('AgentFilesPanel', () => {
-	it('disables the upload button with the publish-required tooltip when unpublished', () => {
-		const wrapper = mountPanel({ isPublished: false });
-
-		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
-		expect(uploadButton.attributes('disabled')).toBeDefined();
-		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.publishRequired');
-	});
-
-	it('enables the upload button with the normal upload tooltip when published', () => {
-		const wrapper = mountPanel({ isPublished: true });
+	it('enables the upload button with the normal upload tooltip', () => {
+		const wrapper = mountPanel();
 
 		const uploadButton = wrapper.find('[data-testid="agent-files-upload"]');
 		expect(uploadButton.attributes('disabled')).toBeUndefined();
 		expect(uploadButton.attributes('aria-label')).toBe('agents.builder.files.addFile');
 	});
 
-	it('shows the publish hint in the empty state when unpublished', () => {
-		const wrapper = mountPanel({ isPublished: false, files: [] });
-
-		expect(wrapper.text()).toContain('agents.builder.files.publishRequired');
-	});
-
-	it('shows the normal empty-state message when published', () => {
-		const wrapper = mountPanel({ isPublished: true, files: [] });
+	it('shows the normal empty-state message', () => {
+		const wrapper = mountPanel({ files: [] });
 
 		expect(wrapper.text()).toContain('agents.builder.files.empty');
 	});

@@ -1,7 +1,7 @@
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useViewStacks } from './composables/useViewStacks';
 import { prepareCommunityNodeDetailsViewStack } from './nodeCreator.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	AI_UNCATEGORIZED_CATEGORY,
 	CUSTOM_API_CALL_KEY,
@@ -39,7 +39,7 @@ const node_version = 1;
 const input_node_type = 'input-node-type';
 const actions = ['action1'];
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {

@@ -1,5 +1,7 @@
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewRequestWorkflow } from '../../entities/workflow-review-request-workflow.ee';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -51,6 +53,38 @@ describe('WorkflowReviewRequestWorkflowRepository', () => {
 			expect(savedEntity).toMatchObject({
 				workflowVersionId: null,
 			});
+		});
+	});
+
+	describe('updateWorkflowVersion', () => {
+		it('updates only the row matching the (requestId, workflowId) pair', async () => {
+			await repo.updateWorkflowVersion({
+				workflowReviewRequestId: 'req-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-2',
+			});
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				WorkflowReviewRequestWorkflow,
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1' },
+				{ workflowVersionId: 'ver-2' },
+			);
+		});
+
+		it('writes through the provided transaction manager', async () => {
+			const trx = mock<EntityManager>();
+
+			await repo.updateWorkflowVersion(
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1', workflowVersionId: 'ver-2' },
+				trx,
+			);
+
+			expect(trx.update).toHaveBeenCalledWith(
+				WorkflowReviewRequestWorkflow,
+				{ workflowReviewRequestId: 'req-1', workflowId: 'wf-1' },
+				{ workflowVersionId: 'ver-2' },
+			);
+			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
 });

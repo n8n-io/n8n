@@ -26,7 +26,7 @@ import GithubButton from 'vue-github-button';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 
 import { N8nIcon } from '@n8n/design-system';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();

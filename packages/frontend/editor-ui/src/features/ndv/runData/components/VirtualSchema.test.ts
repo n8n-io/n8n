@@ -7,7 +7,7 @@ import {
 import { createComponentRenderer } from '@/__tests__/render';
 import VirtualSchema from './VirtualSchema.vue';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import * as calloutHelpers from '@/app/composables/useCalloutHelpers';
 import {
 	IF_NODE_TYPE,

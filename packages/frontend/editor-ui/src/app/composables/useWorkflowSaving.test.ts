@@ -47,13 +47,12 @@ vi.mock('@/app/composables/useMessage', () => {
 
 const showMessageSpy = vi.hoisted(() => vi.fn());
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: showMessageSpy,
 		showToast: vi.fn(() => ({ close: vi.fn() })),
 		showError: vi.fn(),
 		clearAllStickyNotifications: vi.fn(),
-		showNotificationForViews: vi.fn(),
 	}),
 }));
 

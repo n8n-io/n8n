@@ -1,21 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCanvasThinkingPill } from '@n8n/design-system';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
+import type { AgentResource } from '@/features/agents/types';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
-import { useThread } from '../instanceAi.store';
+import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import { INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY } from '../constants';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
-	refreshKey: number;
+	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
+	pending?: boolean;
 }>();
 
 // === Editing lock ===
-// Lock the artifact's editor while the AI is actively building/mutating THIS
-// agent, so the user can't edit into a mid-stream conflict. `isAgentEditingAgent`
-// defines the signals that trigger the lock.
+// Lock the artifact's editing (not its visibility) while the AI is actively
+// building/mutating THIS agent, so the user can't edit into a mid-stream
+// conflict. `isAgentEditingAgent` defines the signals that trigger the lock.
+// Parity with the workflow artifact: content stays fully visible and
+// inspectable — only editing/publishing is disabled, via
+// `artifact-editing-locked` on `AgentBuilderView`.
 const thread = useThread();
+const instanceAiStore = useInstanceAiStore();
 
 const isAgentBuilding = computed(() => {
 	for (const message of thread.messages) {
@@ -24,25 +30,34 @@ const isAgentBuilding = computed(() => {
 	}
 	return false;
 });
+
+/**
+ * Bind the agent to the thread once the builder has actually created it. This
+ * is what stops a reload from treating the artifact as pending again: the
+ * pending marker cannot be removed (thread metadata merges rather than
+ * deletes), so a real binding is how the registry tells the two apart.
+ */
+async function onAgentPersisted(agent: AgentResource) {
+	await instanceAiStore.updateThreadMetadata(thread.id, {
+		[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+			agentId: agent.id,
+			projectId: props.projectId,
+			name: agent.name,
+		},
+	});
+}
 </script>
 
 <template>
 	<div :class="$style.root">
-		<div :class="$style.builder" :inert="isAgentBuilding">
-			<AgentBuilderView
-				artifact-mode
-				:artifact-project-id="props.projectId"
-				:artifact-agent-id="props.agentId"
-				:artifact-refresh-key="props.refreshKey"
-			/>
-		</div>
-		<div
-			v-if="isAgentBuilding"
-			:class="$style.buildingOverlay"
-			data-testid="agent-preview-building-overlay"
-		>
-			<N8nCanvasThinkingPill />
-		</div>
+		<AgentBuilderView
+			artifact-mode
+			:artifact-project-id="props.projectId"
+			:artifact-agent-id="props.agentId"
+			:artifact-agent-pending="props.pending"
+			:artifact-editing-locked="isAgentBuilding"
+			@persisted="onAgentPersisted"
+		/>
 	</div>
 </template>
 
@@ -51,23 +66,5 @@ const isAgentBuilding = computed(() => {
 	position: relative;
 	height: 100%;
 	min-height: 0;
-}
-
-.builder {
-	height: 100%;
-	min-height: 0;
-
-	&[inert] {
-		opacity: 0.6;
-	}
-}
-
-.buildingOverlay {
-	position: absolute;
-	inset: 0;
-	z-index: 10;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 }
 </style>

@@ -48,6 +48,55 @@ export function isTriggerNodeType(nodeType: string | undefined): boolean {
 	return isCanonicalTriggerNodeType(nodeType);
 }
 
+/** Mid-flow node types that park the execution until an external resume. */
+const WAIT_GATE_NODE_TYPES = new Set(['n8n-nodes-base.wait', 'n8n-nodes-base.form']);
+
+/** Shared operation name of the send-and-wait resource operations (Gmail, Slack, …). */
+const SEND_AND_WAIT_OPERATION = 'sendAndWait';
+
+/** True for nodes that pause a live execution until a human responds. */
+export function isWaitGateNode(node: WorkflowJSON['nodes'][number]): boolean {
+	if (WAIT_GATE_NODE_TYPES.has(node.type)) return true;
+	const parameters = isRecord(node.parameters) ? node.parameters : {};
+	return parameters.operation === SEND_AND_WAIT_OPERATION;
+}
+
+/**
+ * True when `nodeName` can reach itself by following outgoing connections of
+ * any type. Disabled nodes still forward data, so they stay in the walk.
+ */
+export function nodeCanReachItself(json: WorkflowJSON, nodeName: string): boolean {
+	const adjacency = new Map<string, string[]>();
+	for (const [sourceName, connectionsByType] of Object.entries(json.connections ?? {})) {
+		if (!isRecord(connectionsByType)) continue;
+		const targets: string[] = [];
+		for (const groups of Object.values(connectionsByType)) {
+			if (!Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const connection of group) {
+					if (isRecord(connection) && typeof connection.node === 'string') {
+						targets.push(connection.node);
+					}
+				}
+			}
+		}
+		adjacency.set(sourceName, targets);
+	}
+
+	const queue = [...(adjacency.get(nodeName) ?? [])];
+	const visited = new Set<string>();
+	while (queue.length > 0) {
+		const current = queue.pop();
+		if (current === undefined) break;
+		if (current === nodeName) return true;
+		if (visited.has(current)) continue;
+		visited.add(current);
+		queue.push(...(adjacency.get(current) ?? []));
+	}
+	return false;
+}
+
 function extractWorkflowIdParameter(value: unknown): string | undefined {
 	const rawValue = isRecord(value) ? value.value : value;
 	if (typeof rawValue !== 'string') return undefined;
