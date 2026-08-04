@@ -2,7 +2,7 @@ import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { LogScope, TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { sleep } from '@n8n/utils/sleep';
+import { sleep } from 'n8n-workflow';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 
