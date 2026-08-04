@@ -187,12 +187,17 @@ export async function getWorkflowDetails(
 
 	// execute_workflow runs the published (active) version in production mode, so
 	// when its triggers diverge from the draft's (edited but not republished),
-	// surface the published version's trigger info alongside the draft's.
+	// surface the published version's trigger info alongside the draft's. The
+	// node comparison is a cheap prefilter; only a differing notice is emitted.
 	let activeVersionTriggerNotice: string | undefined;
-	if (workflow.activeVersionId && workflow.activeVersion) {
+	if (
+		workflow.activeVersionId &&
+		workflow.activeVersion &&
+		workflow.activeVersionId !== workflow.versionId
+	) {
 		const publishedTriggers = splitTriggers(workflow.activeVersion.nodes ?? []);
 		if (JSON.stringify(publishedTriggers) !== JSON.stringify(draftTriggers)) {
-			activeVersionTriggerNotice = await getTriggerDetails(
+			const publishedNotice = await getTriggerDetails(
 				user,
 				publishedTriggers.supported,
 				publishedTriggers.unsupported,
@@ -203,6 +208,9 @@ export async function getWorkflowDetails(
 				workflow.id,
 				testBaseWebhookUrl,
 			);
+			if (publishedNotice !== triggerNotice) {
+				activeVersionTriggerNotice = publishedNotice;
+			}
 		}
 	}
 

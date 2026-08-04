@@ -269,6 +269,9 @@ describe('get-workflow-details MCP tool', () => {
 
 			// Draft trigger was removed after publishing: both notices returned.
 			getTriggerDetailsMock.mockClear();
+			getTriggerDetailsMock
+				.mockResolvedValueOnce('DRAFT_TRIGGER_INFO')
+				.mockResolvedValueOnce('PUBLISHED_TRIGGER_INFO');
 			const diverged = createWorkflow({
 				activeVersionId: uuid(),
 				nodes: [],
@@ -288,11 +291,41 @@ describe('get-workflow-details MCP tool', () => {
 				projectService,
 				{ workflowId: 'wf-1', detailLevel: 'execution' },
 			);
-			expect(divergedPayload.activeVersionTriggerInfo).toBe('MOCK_TRIGGER_DETAILS');
+			expect(divergedPayload.triggerInfo).toBe('DRAFT_TRIGGER_INFO');
+			expect(divergedPayload.activeVersionTriggerInfo).toBe('PUBLISHED_TRIGGER_INFO');
 			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
 			// Second call receives the published version's triggers.
 			const [, publishedSupported] = getTriggerDetailsMock.mock.calls[1];
 			expect(publishedSupported.map((t) => t.name)).toEqual(['Webhook', 'Start']);
+		});
+
+		test('suppresses activeVersionTriggerInfo when node differences do not change the trigger info', async () => {
+			// Position-only difference: both notices come out identical, nothing extra emitted.
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+			const draftNodes = createWorkflow({}).nodes;
+			const movedNodes = draftNodes.map((node) => ({ ...node, position: [500, 500] }));
+			const moved = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: draftNodes,
+				activeVersion: { nodes: movedNodes },
+			} as unknown as Partial<WorkflowEntity>);
+			const movedFinder = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(moved),
+			});
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				movedFinder,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+			expect(payload.activeVersionTriggerInfo).toBeUndefined();
 		});
 
 		test('omits activeVersion graph when the published version matches the current draft', async () => {
