@@ -8,8 +8,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 import WorkflowReviewDetailTabs from './WorkflowReviewDetailTabs.vue';
 
-// The changes sections pull in the whole workflow-diff canvas machinery, which
-// is far too heavy for these tests.
 vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 	default: {
 		name: 'WorkflowReviewChangesSection',
@@ -21,8 +19,6 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 const renderComponent = createComponentRenderer(WorkflowReviewDetailTabs, {
 	global: {
 		stubs: {
-			// The real tooltip renders its content in a popper on hover, which jsdom
-			// cannot exercise; expose the bindings as attributes instead.
 			N8nTooltip: {
 				props: ['disabled', 'content'],
 				template: `
@@ -210,8 +206,6 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(queryByTestId('workflow-review-request-changes-button')).not.toBeInTheDocument();
 		});
 
-		// Eligibility rides on the detail payload, so a bare list item cannot say
-		// whether the viewer may decide.
 		it('hides the action buttons on a review whose detail payload never loaded', () => {
 			const { queryByTestId } = renderComponent({
 				props: { review: makeInboxItem(), tab: 'activity', deciding: false },

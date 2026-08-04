@@ -301,10 +301,6 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
-/**
- * One contract for both columns' tab bars, so the inbox and detail tabs can't
- * drift apart.
- */
 .content {
 	--review-tab-bar--height: var(--height--sm);
 	--review-tab-bar--indicator-overhang: 11px;

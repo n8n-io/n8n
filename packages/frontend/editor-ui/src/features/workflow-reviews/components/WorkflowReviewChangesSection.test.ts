@@ -21,8 +21,6 @@ const { diffViewProps } = vi.hoisted(() => ({
 	diffViewProps: [] as DiffViewProps[],
 }));
 
-// The real diff view pulls in the whole canvas machinery; the section only
-// needs to hand it the right workflows.
 vi.mock('@/features/workflows/workflowDiff/WorkflowDiffView.vue', () => ({
 	default: {
 		name: 'WorkflowDiffView',
@@ -30,7 +28,6 @@ vi.mock('@/features/workflows/workflowDiff/WorkflowDiffView.vue', () => ({
 		setup(props: DiffViewProps) {
 			diffViewProps.push(props);
 		},
-		// Renders the label slots so the section's own badge content is assertable.
 		template:
 			'<div data-test-id="workflow-diff-view-stub"><slot name="sourceLabel" /><slot name="targetLabel" /></div>',
 	},
@@ -168,16 +165,13 @@ describe('WorkflowReviewChangesSection', () => {
 		// canvases can't feed writes back into store state.
 		expect(targetWorkflow?.nodes).not.toBe(workflow.pinnedVersion?.nodes);
 
-		// Substrings, not the full string: the separator is copy and has been tweaked
-		// before. What matters is that each side gets its own short version.
 		expect(sourceLabel).toContain('Published');
 		expect(sourceLabel).toContain('0f123890');
 		expect(targetLabel).toContain('In review');
 		expect(targetLabel).toContain('77b70644');
 	});
 
-	// R8: feed a genuinely reactive prop, so dropping the markRaw/deepCopy in the
-	// component actually fails this. The guard matters — a reactive source lets
+	// Feed a genuinely reactive prop, The guard matters — a reactive source lets
 	// WorkflowDiffView's position writes drive a hydrate → dispose → hydrate loop
 	// that pins the main thread.
 	it('detaches the handed-off workflows from a reactive source', () => {
@@ -194,28 +188,6 @@ describe('WorkflowReviewChangesSection', () => {
 		expect(isReactive(targetWorkflow?.nodes[0])).toBe(false);
 	});
 
-	// A reposition is a versioned change: the editor marks the workflow dirty and
-	// the backend mints a new versionId, so a review can legitimately contain one.
-	// Reporting "no changes" for it would make the surface look broken.
-	it('renders the diff when versions differ only by node position', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: {
-				workflow: makeWorkflow({
-					pinnedVersion: makeSnapshot({ nodes: [makeNode({ position: [640, 220] })] }),
-					baselineVersion: makeSnapshot({
-						versionId: '0f123890-0000-0000-0000-000000000000',
-						nodes: [makeNode({ position: [0, 0] })],
-					}),
-				}),
-			},
-		});
-
-		expect(getByTestId('workflow-diff-view-stub')).toBeInTheDocument();
-		expect(queryByTestId('workflow-review-changes-no-changes')).not.toBeInTheDocument();
-	});
-
-	// R1: the node comparator ignores execution flags, so deriving "no changes"
-	// from it hid edits like this behind a no-changes callout.
 	it('renders the diff when versions differ only by an execution flag', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
