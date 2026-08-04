@@ -23,6 +23,10 @@ export class BaseRunnerConfig {
 	/**
 	 * ID to identify as to the task broker. Empty to self-assign one, which is the
 	 * default in `external` mode, where no one else knows this runner beforehand.
+	 *
+	 * Must be unique per runner when set: the broker keys connections by runner ID, so
+	 * two runners sharing one keep evicting each other's connection. In `internal` mode
+	 * n8n sets this itself, per runner it spawns.
 	 */
 	@Env('N8N_RUNNERS_ID')
 	runnerId: string = '';

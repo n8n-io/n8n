@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
@@ -32,15 +33,17 @@ const createServer = ({
 	heartbeatInterval = 30,
 	runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>(),
 	eventService = mock<EventService>(),
+	logger = mock<Logger>(),
 }: {
 	taskBroker?: TaskBroker;
 	disconnectAnalyzer?: DefaultTaskRunnerDisconnectAnalyzer;
 	heartbeatInterval?: number;
 	runnerLifecycleEvents?: TaskRunnerLifecycleEvents;
 	eventService?: EventService;
+	logger?: Logger;
 } = {}) =>
 	new TaskBrokerWsServer(
-		mock(),
+		logger,
 		taskBroker,
 		disconnectAnalyzer,
 		mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval, mode: 'internal' }),
@@ -223,6 +226,53 @@ describe('TaskBrokerWsServer', () => {
 			await onStaleMessage(wsMessage(offer));
 
 			expect(taskBroker.onRunnerMessage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('duplicate runner ID', () => {
+		const idIsAlreadyTaken = () => expect.stringContaining('N8N_RUNNERS_ID');
+
+		it('should warn when an ID a live runner holds is claimed again', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			await registerOverWs(server, 'test-runner', mockWs());
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+
+		it('should not warn on a first registration', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).not.toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+
+		it('should not warn when the holder is already closing, as on a reconnect', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			await registerOverWs(server, 'test-runner', mockWs(WS_CLOSING));
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).not.toHaveBeenCalledWith(idIsAlreadyTaken());
+		});
+
+		it('should not warn when the holder stopped answering heartbeats', async () => {
+			const logger = mock<Logger>();
+			const server = createServer({ logger });
+
+			// `add` marks every new connection alive, so go stale only after registering
+			const holder = mockWs();
+			await registerOverWs(server, 'test-runner', holder);
+			holder.isAlive = false;
+
+			await registerOverWs(server, 'test-runner', mockWs());
+
+			expect(logger.warn).not.toHaveBeenCalledWith(idIsAlreadyTaken());
 		});
 	});
 
