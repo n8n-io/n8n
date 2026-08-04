@@ -327,7 +327,7 @@ export function formatHumanSummary(report: LoadTestReport): string {
 		lines.push(
 			'',
 			'='.repeat(72),
-			'SWEEP FIT — rss(N) = intercept + slope * N',
+			'SWEEP FIT — rss(N) = intercept + slope * N   (fitted on load-peak)',
 			'='.repeat(72),
 			`  memory per concurrent user   ${slopeMBPerUser} MB   <-- the answer`,
 			`  fixed cost (intercept)       ${interceptMB} MB`,

@@ -68,6 +68,8 @@ export interface VirtualUserResult {
 export interface OpenOptions {
 	logger: EvalLogger;
 	cases: readonly BuildCase[];
+	/** Target base URL — cases may reference it (e.g. an HTTP node hitting /healthz). */
+	baseUrl: string;
 	/** Per-thread cap on retained events in the driver. */
 	eventCap?: number;
 }
@@ -84,7 +86,7 @@ export async function openVirtualUser(
 ): Promise<VirtualUser> {
 	const { logger } = options;
 	const buildCase = options.cases[caseIndex % options.cases.length];
-	const renderedCase = renderCase(buildCase, user.index);
+	const renderedCase = renderCase(buildCase, user.index, options.baseUrl);
 
 	const projectId = await user.client.getPersonalProjectId();
 	const threadId = randomUUID();

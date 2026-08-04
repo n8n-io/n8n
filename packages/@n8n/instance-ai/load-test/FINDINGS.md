@@ -1,0 +1,346 @@
+# Instance AI concurrency — memory findings
+
+Results from three sweeps run with the load harness in this directory: one at
+2-turn conversations and two identical repeats at 4-turn, each across
+N = 1, 5, 10 concurrent users. See [README.md](./README.md) for how to run it and
+what each phase measures.
+
+Measured **2026-08-04**. Point-in-time numbers from one machine and one
+configuration — re-measure after significant changes to the agent, the sandbox
+provider, or the model.
+
+## TL;DR
+
+- **Absolute peak memory is what to quote, and it reproduces well** (within 3.2%
+  across identical runs). A single-main instance peaks at **~625 MB with 1
+  concurrent builder, ~635 MB with 5, and ~720–740 MB with 10** on 4-turn
+  conversations.
+- **~12 MB per additional concurrent builder, with 20 MB as a safe ceiling.**
+  Measured endpoint-to-endpoint (N=1 → N=10) this comes out at 14.4 / 13.2 / 10.1
+  MB/user across three sweeps — consistent. Only the *least-squares fit over three
+  points* was unreliable (13.61 vs 10.32 on identical runs, heap slope flipping
+  sign), because it leans on a noisy middle point and a GC-inflated N=1 anchor.
+  See [Per-user cost](#per-user-cost--what-can-and-cannot-be-said).
+- **No per-thread leak.** Retained heap after a full lifecycle and forced GC is
+  **0.38–0.73 MB per user**, reproduced across all three sweeps. Per-thread
+  structures release cleanly.
+- **Conversation length adds peak, not retention.** Doubling turns raised peak RSS
+  ~60–75 MB at N=10 but left retained heap unchanged.
+- **Memory is not the constraint at this scale.** Budget ~1 GB for 10 concurrent
+  builders and you have headroom. Build *latency* is what degrades.
+
+## Environment
+
+| | |
+| --- | --- |
+| n8n | local dev from source, single main, no workers |
+| DB | sqlite (`~/.n8n/database.sqlite`) |
+| Platform | macOS (so no `n8n_process_pss_bytes`; `/rest/e2e/memory-maps` is Linux-only) |
+| Model | `anthropic/claude-sonnet-4-6` |
+| Sandbox | enabled, Daytona |
+| Env | `N8N_METRICS=true`, `E2E_TESTS=true`, `NODE_OPTIONS=--expose-gc`, `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS=0` |
+| Cases | `hourly-health-check`, `webhook-sample-api`, `health-ping`, round-robin |
+
+Stabilization used the `forced-gc` tier throughout, and the instance was **warmed**
+before each sweep (see [RSS is a high-water mark](#rss-is-a-high-water-mark)).
+
+```bash
+pnpm loadtest:instance-ai --sweep 1,5,10 --max-turns 4 --ramp 5s \
+  --max-cost-usd 30 --max-wall-clock 90m --timeout-ms 900000 \
+  --cases hourly-health-check,webhook-sample-api,health-ping
+```
+
+## All measurements
+
+Every level of every sweep reached full concurrency and completed every
+conversation (16/16 per sweep), so no run is disqualified.
+
+| sweep | N | baseline RSS | **peak RSS** | peak heapUsed | retained heap/user | cost |
+| --- | --: | --: | --: | --: | --: | --: |
+| 2-turn | 1 | 455.48 | **534.45** | 341.26 | 1.90 | $0.57 |
+| 2-turn | 5 | 532.61 | **604.39** | 343.54 | 0.98 | $2.75 |
+| 2-turn | 10 | 479.56 | **663.78** | 348.72 | 0.44 | $6.18 |
+| 4-turn A | 1 | 374.42 | **621.22** | 429.34 | 0.73 | $0.92 |
+| 4-turn A | 5 | 570.16 | **627.41** | 359.88 | 0.42 | $4.18 |
+| 4-turn A | 10 | 462.36 | **740.30** | 442.20 | 0.38 | $7.90 |
+| 4-turn B | 1 | 390.88 | **626.16** | 430.33 | 0.57 | $0.95 |
+| 4-turn B | 5 | 557.27 | **638.63** | 344.40 | 0.49 | $4.15 |
+| 4-turn B | 10 | 605.33 | **716.94** | 384.34 | 0.38 | $8.64 |
+
+Cost: $9.50 for the 2-turn sweep, $13.00 and $13.74 for the 4-turn repeats
+($0.59 and ~$0.83 per conversation — the extra turns cost only ~1.4×, not 2×,
+because prompt caching absorbs the growing context).
+
+## Reproducibility — what survived a repeat
+
+The two 4-turn sweeps ran with identical flags against the same warm instance,
+from near-identical baselines (382 vs 374 MB idle RSS).
+
+**Reproduced well:**
+
+| metric | run A | run B | difference |
+| --- | --: | --: | --: |
+| peak RSS @ N=1 | 621.22 | 626.16 | 0.8% |
+| peak RSS @ N=5 | 627.41 | 638.63 | 1.8% |
+| peak RSS @ N=10 | 740.30 | 716.94 | 3.2% |
+| retained heap/user | 0.73 / 0.42 / 0.38 | 0.57 / 0.49 / 0.38 | all ~0.4–0.7 MB |
+
+**Did not reproduce:**
+
+| metric | 2-turn | 4-turn A | 4-turn B |
+| --- | --: | --: | --: |
+| fitted RSS slope | 14.27 MB/user (r² 0.988) | 13.61 (r² 0.839) | 10.32 (r² 0.893) |
+| fitted heap slope | +0.84 | +2.05 | **−4.57** |
+
+So **absolute peaks and retention are solid; the three-point least-squares fit is
+not.** The 2-turn sweep's r² of 0.988 was luck — a negative heap slope on the third
+run makes that unambiguous. Note this indicts the *estimator*, not the underlying
+quantity: the endpoint estimator recovers a consistent 10–14 MB/user from the same
+data (see [Per-user cost](#per-user-cost--what-can-and-cannot-be-said)).
+
+### Why the slope is unstable
+
+Marginal cost per additional user, derived from peak RSS:
+
+| sweep | 1 → 5 users | 5 → 10 users |
+| --- | --: | --: |
+| 2-turn | 17.5 MB/user | 11.9 MB/user |
+| 4-turn A | 1.5 MB/user | 22.6 MB/user |
+| 4-turn B | 3.1 MB/user | 15.7 MB/user |
+
+The relationship isn't linear, and the shape isn't even consistent between turn
+counts. The cause is that **the N=1 anchor is inflated by lazy GC**, which
+flattens 1→5 and steepens 5→10.
+
+GC frequency scales strongly with concurrency, and committed heap moves
+*inversely* to it:
+
+| N | GCs per 2s sample (A / B) | peak heapTotal (A / B) |
+| --: | --: | --: |
+| 1 | 0.45 / 0.40 | 516 / 521 MB |
+| 5 | 1.54 / 0.94 | 487 / 494 MB |
+| 10 | 2.22 / 1.66 | 565 / 510 MB |
+
+At N=1 a single uninterrupted conversation creates little pressure, so V8 defers
+collection and lets committed heap grow to ~520 MB. At N=5 it collects 2–3× more
+often and holds heap *lower* (~490 MB) despite five times the work. Because RSS
+includes committed heap, this inflates the N=1 peak RSS and corrupts any slope
+anchored on it — and it's why peak `heapUsed` at N=1 (429 MB) reads *higher* than
+at N=5 (~350 MB).
+
+**Consequence: peak-under-load figures measure GC scheduling as much as demand.**
+Trust them as reproducible upper bounds at a given N. Differentiating them is only
+safe over a *wide* span: the GC distortion is a roughly fixed ~40–60 MB offset on
+the N=1 point, which swamps a 4-user segment but is tolerable spread across the
+full 1→10 range — hence the endpoint estimator below.
+
+### How to get a trustworthy slope
+
+1. **More points, especially at the low end** — 1, 2, 3, 5, 8, 10. The 1→5 gap is
+   where the curve bends and three points can't see it.
+2. **Restart the instance between levels**, so each starts from an identical
+   warmed baseline instead of inheriting the previous level's watermark
+   (374 → 570 → 462 MB within one sweep). The harness can't do this itself — it's
+   a pure HTTP client by design — so it needs an external wrapper.
+3. **Interleave and repeat levels** (1,5,10,1,5,10,…) to average out drift.
+
+Until then, use the endpoint estimator below, and quote the measured peak at the N
+you care about.
+
+## Per-user cost — what can and cannot be said
+
+Three estimators of the same quantity, from the same data, ranked by stability:
+
+| estimator | 2-turn | 4-turn A | 4-turn B | spread |
+| --- | --: | --: | --: | --- |
+| **endpoint, (peak@10 − peak@1)/9** | **14.4** | **13.2** | **10.1** | 10–14 ✅ |
+| least-squares over N=1,5,10 | 14.27 | 13.61 | 10.32 | 10–14, but r² 0.84–0.99 ⚠️ |
+| segment 1→5 | 17.5 | 1.5 | 3.1 | 1.5–17.5 ❌ |
+| segment 5→10 | 11.9 | 22.6 | 15.7 | 11.9–22.6 ❌ |
+
+The **endpoint estimator is the one to use.** It spans the widest baseline and so
+averages over both problems that wreck the others: the noisy N=5 middle point, and
+the GC-inflated N=1 anchor (which is *inside* the span rather than pivoting it).
+
+So:
+
+- **Central estimate: ~12 MB per additional concurrent builder** (mean 12.6,
+  range 10.1–14.4 across three sweeps at two conversation lengths).
+- **Conservative ceiling: 20 MB/user.** Only one figure in the entire dataset
+  exceeds it (22.6 for one 5→10 segment), and that's the least reliable estimator.
+- **Planning formula:** `~600 MB base + 20 MB × concurrent builders`. At N=10 that
+  predicts 800 MB against 717–740 MB observed, so it errs safe.
+
+Scope conditions, which matter as much as the number:
+
+- Valid for **N ≤ 10** on this configuration. The curve is non-linear; don't
+  extrapolate far past it.
+- **Transient, not retained** — this is peak-while-building. Retained memory per
+  user after the thread closes is ~0.4 MB (see below).
+- **"Concurrent builder" means actively running a build**, not merely connected.
+  An idle user holding an SSE connection costs essentially nothing.
+
+What still can't be said: the *shape* of the curve between 1 and 10, so no
+confident per-user figure at N=2 or N=20. That needs the denser sweep described
+below.
+
+## What to use for sizing
+
+| concurrent builders | peak RSS, 2-turn | peak RSS, 4-turn |
+| --: | --: | --: |
+| 1 | ~534 MB | ~625 MB |
+| 5 | ~604 MB | ~635 MB |
+| 10 | ~664 MB | ~720–740 MB |
+
+Ten people building simultaneously with realistic multi-turn conversations peaks
+around **740 MB**. Budget ~1 GB for comfortable headroom.
+
+As a formula: **`~600 MB base + 20 MB × concurrent builders`**, which errs safe
+(predicts 800 MB at N=10 vs 717–740 observed). Don't extrapolate far past N=10 —
+the curve is non-linear.
+
+## No per-thread leak
+
+The most solid result here, reproduced across all three sweeps. Per-user retained
+heap after conversation → SSE closed → thread deleted → forced GC:
+
+| sweep | N=1 | N=5 | N=10 |
+| --- | --: | --: | --: |
+| 2-turn | 1.90 MB | 0.98 MB | 0.44 MB |
+| 4-turn A | 0.73 MB | 0.42 MB | 0.38 MB |
+| 4-turn B | 0.57 MB | 0.49 MB | 0.38 MB |
+
+It stays ~0.4–1.9 MB and *decreases* with N, i.e. fixed measurement noise rather
+than per-user retention. Corroborated by three identical N=1 runs where heap
+returned to within 0.5 MB of baseline (279.27 → 279.30 MB in one case).
+
+So `RunStateRegistry.suspendedRuns`, the 500-event/2 MB `InProcessEventBus.store`
+and the `DurableEventLog` coalesce buffers all release correctly on thread delete —
+including at 4 turns, so it doesn't accumulate with conversation length either.
+This was the main risk going in and it is not a problem.
+
+## Where the memory actually goes
+
+Retained heap per user is ~0.4 MB while peak RSS is hundreds of MB above an empty
+instance, and `nonHeapOverheadMB` (`rss − heapTotal`) reached ~390 MB. The bulk of
+the cost sits **outside the JS heap** and is fully released afterwards.
+
+The split can't be quantified precisely from these runs, because peak `heapUsed`
+is GC-timing dependent and can't be cleanly subtracted from peak RSS. Suspects for
+the non-heap portion: the sandbox client, TLS/HTTP buffers for streaming model
+responses, and allocator fragmentation from large short-lived buffers.
+
+**Heap snapshots will not explain this.** On Linux,
+`GET /rest/e2e/memory-maps` (`E2E_TESTS=true`, parses `/proc/self/smaps`) would
+attribute it per mapping; it returns nothing useful on macOS, which is why these
+runs couldn't break it down further.
+
+## RSS is a high-water mark
+
+**Don't read per-run RSS deltas as leaks, and always warm the instance first.**
+
+Three identical N=1 runs from a cold instance:
+
+| run | residual RSS | residual heap | peak RSS |
+| --- | --: | --: | --: |
+| 1 (cold) | +258.67 MB | +123.22 MB | 572.97 MB |
+| 2 (warm) | +89.86 MB | +0.03 MB | 528.63 MB |
+| 3 (warm) | +44.78 MB | −0.49 MB | 560.63 MB |
+
+The residual halves each run while the absolute peak stays flat. Two effects:
+
+1. **First-run lazy init** — the +123 MB heap on run 1 is one-time process-global
+   cache (prompts, knowledge base, node descriptions, tool/skill registries, the
+   models.dev cost catalog). It collapsed to +0.03 MB on the warm re-run.
+   Confirmed again after a later restart: +81.81 MB, then +2.52 MB.
+2. **RSS tracks the working-set watermark** — the process grows toward the peak it
+   needs and holds those pages. "Residual" is the baseline creeping toward a peak
+   that already existed.
+
+RSS *does* eventually return: the instance fell from 697 MB to 383 MB while idle
+between sweeps. The watermark is slow, not permanent.
+
+Practical rule: **one throwaway build after any restart before measuring**, and
+compare absolute peaks, not deltas.
+
+## Metrics from this harness that are NOT trustworthy
+
+Recording these so nobody quotes them:
+
+- **Fitted slopes** (`sweep.rss.slopeMBPerUser`, `sweep.heap.slopeMBPerUser`) —
+  did not reproduce; see above.
+- **`perUserIdle` (RSS)** — ranged −118 MB to +4.7 MB across runs. Both `baseline`
+  and `threads-open` sit on the RSS watermark, so their difference is noise. The
+  *heap* half is stable and ~zero (0–0.16 MB), which is the real finding: **an
+  idle SSE-connected user with an empty thread costs essentially no heap.** An
+  earlier "~4.7 MB per idle user" figure came from a single noisy sample.
+- **`residualLeak` / `residualPerUser` (RSS)** — same watermark problem; one level
+  reported −49.95 MB. Only the heap column is meaningful.
+- **`freedByDeleteThread` (RSS)** — consistently ~0, drowned in watermark noise.
+- **Peak `heapUsed`** — GC-scheduling artifact, see above.
+
+In short: **trust absolute peak RSS at a given N, and heap for retention.**
+
+## Latency degrades more than memory
+
+Build wall-clock per user:
+
+| sweep | N=1 | N=5 (med/max) | N=10 (med/max) |
+| --- | --: | --: | --: |
+| 2-turn | 61 s | 66 / 102 s | 87 / 154 s |
+| 4-turn A | 99 s | 128 / 144 s | 112 / 133 s |
+| 4-turn B | 121 s | 120 / 162 s | 127 / 176 s |
+
+At 2 turns, median build time grew ~43% from N=1 to N=10 and the slowest user took
+2.5× the fastest. At 4 turns the median doesn't climb monotonically, but the tail
+does — slowest user 176 s.
+
+Event-loop lag stayed in the 100–175 ms band throughout with no clear trend
+(4-turn B peaked at N=5, not N=10) despite GC activity scaling ~4×. V8 absorbs the
+load without stalling the loop, so the slowdown is more likely contention in the
+builder/sandbox path or model-side latency. **If anything limits concurrency here
+it is latency, not memory** — that deserves a dedicated investigation with
+per-tool-call timings rather than more memory sweeps.
+
+## SSE traffic per user
+
+Stable across concurrency and roughly proportional to turns: **~150–160 KB per
+2-turn conversation, ~250–300 KB per 4-turn**, at ~230–305 events. The driver
+retains ~36–38 events (6–7:1 prune). Total server→client volume stayed under 3 MB
+even at N=10, so the streaming path is not a memory factor at this scale.
+
+## Harness bugs found and fixed during these runs
+
+1. **The sweep regressed on the wrong phase.** It originally fit
+   `post-load-idle`, which for a high-water-mark metric is non-monotonic — N=5
+   read *below* N=1, giving r² 0.459. Now fits `load-peak`, with a regression test
+   pinning both against real measurements. (Deeper lesson from the repeat: fixing
+   the input phase improved the fit but did not make it reproducible.)
+2. **Build cases must not call third-party endpoints.** `hourly-ip-check` used
+   `httpbin.org/get`, which started returning 503. Because the agent *executes*
+   the workflow to verify it, that triggered remediation retries and injected
+   unpredictable token spend and duration. Cases now target the instance's own
+   `/healthz` via a `{baseUrl}` placeholder.
+3. **`--max-turns` above the case ceiling silently ran shorter conversations.**
+   Cases ship 3 follow-ups, so 4 is the maximum; asking for 8 quietly ran 4. Now
+   warns loudly via `maxDeliverableTurns()`.
+4. **`--max-cost-usd` applies per concurrency level, not per run.** The default of
+   5 would have killed the N=10 level. Arguably it should scale with `--users`.
+5. **`--max-wall-clock` covers the whole sweep, not each level.** The 20-minute
+   default would abort a multi-level sweep partway.
+
+## Not yet covered
+
+- **A slope worth trusting** — needs more points at the low end plus per-level
+  instance restarts (see [above](#how-to-get-a-trustworthy-slope)).
+- **Conversations beyond 4 turns.** 4 is the current case ceiling and did not
+  increase retention. Crossing the observational-memory compression threshold
+  (`N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS`, default 30k tokens estimated as
+  chars/4) likely needs 8+ turns, which means writing more follow-ups.
+- **Postgres, multi-main, Linux.** Instance AI doesn't support queue/multi-main
+  today, but Postgres and Linux are what production runs — and Linux would unlock
+  `/rest/e2e/memory-maps` for non-heap attribution.
+- **Sustained load.** Every run here is a burst then idle. A soak test would show
+  whether the watermark keeps climbing under continuous traffic.
+- **N > 10.** The curve is non-linear; don't extrapolate.
+- **The latency question**, which now looks more interesting than the memory one.

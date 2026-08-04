@@ -16,7 +16,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { MAX_USERS, parseArgs, USAGE, type LoadTestArgs } from './args';
-import { selectCases, type BuildCase } from './cases';
+import { maxDeliverableTurns, selectCases, type BuildCase } from './cases';
 import {
 	deleteProvisionedUsers,
 	provisionUsers,
@@ -76,6 +76,7 @@ async function main(): Promise<void> {
 	const args = parseArgs(argv);
 	const logger = createLogger(args.verbose);
 	const cases = selectCases(args.caseNames);
+	const deliverableTurns = maxDeliverableTurns(cases);
 	const startedAt = new Date().toISOString();
 	const timestamp = startedAt.replace(/[:.]/g, '-');
 
@@ -102,6 +103,16 @@ async function main(): Promise<void> {
 		: capabilities;
 
 	printPreflight(args, cases, effectiveCapabilities, logger);
+
+	// Loud, because paying for turns that never get sent would silently flatten a
+	// conversation-length comparison.
+	if (args.maxTurns > deliverableTurns) {
+		logger.warn(
+			`--max-turns ${args.maxTurns} exceeds what the selected cases can deliver ` +
+				`(${deliverableTurns}); conversations will stop at ${deliverableTurns} turns. ` +
+				'Add follow-ups to the cases for longer conversations.',
+		);
+	}
 
 	if (!effectiveCapabilities.instanceAiEnabled) {
 		throw new Error(
@@ -176,11 +187,18 @@ async function main(): Promise<void> {
 			});
 			runs.push(run);
 
-			const peak = run.readings['post-load-idle'] ?? run.readings['load-peak'];
+			// Fit on load-peak, NOT post-load-idle. RSS is a high-water mark: once
+			// the conversations finish, RSS depends on when the allocator happens to
+			// release pages and on the previous level's watermark, not on
+			// concurrency — measured non-monotonic (N=5 read *below* N=1, r2 0.46).
+			// The peak while N runs are actually in flight is the concurrency-
+			// sensitive quantity, and it fits cleanly (r2 0.99). post-load-idle is
+			// only the fallback for --dry-run, where no load phase ran.
+			const sweepReading = run.readings['load-peak'] ?? run.readings['post-load-idle'];
 			sweepPoints.push({
 				users: run.users,
-				rssMB: peak?.rssMB ?? null,
-				heapMB: peak?.heapUsedMB ?? null,
+				rssMB: sweepReading?.rssMB ?? null,
+				heapMB: sweepReading?.heapUsedMB ?? null,
 			});
 
 			if (rootAbort.signal.aborted) {
@@ -282,7 +300,13 @@ async function runLevel(options: RunLevelOptions): Promise<RunLevelReport> {
 	sampler.setPhase('threads-open');
 	const virtualUsers = await runWithConcurrency(
 		users,
-		async (user) => await openVirtualUser(user, user.index, { logger, cases, eventCap: 4_000 }),
+		async (user) =>
+			await openVirtualUser(user, user.index, {
+				logger,
+				cases,
+				baseUrl: args.baseUrl,
+				eventCap: 4_000,
+			}),
 		Math.min(OPEN_CONCURRENCY, userCount),
 	);
 	await measure('threads-open');

@@ -300,3 +300,33 @@ describe('formatHumanSummary', () => {
 		expect(text).toContain('DRIVER MAY BE CONFOUNDING');
 	});
 });
+
+// Regression: the sweep must regress on the load-peak reading, not post-load-idle.
+// Fitting post-load-idle produced a non-monotonic series (N=5 read below N=1) and
+// an r2 of 0.46, because RSS is a high-water mark and post-load RSS reflects
+// allocator release timing rather than concurrency. Real measured values below.
+describe('sweep fit input choice', () => {
+	const loadPeak = [
+		{ users: 1, rssMB: 534.45, heapMB: 341.26 },
+		{ users: 5, rssMB: 604.39, heapMB: 343.54 },
+		{ users: 10, rssMB: 663.78, heapMB: 348.72 },
+	];
+	const postLoadIdle = [
+		{ users: 1, rssMB: 532.7, heapMB: 284.61 },
+		{ users: 5, rssMB: 482.66, heapMB: 288.76 },
+		{ users: 10, rssMB: 620.41, heapMB: 292.59 },
+	];
+
+	it('fits load-peak RSS cleanly', () => {
+		const fit = fitSweep(loadPeak).rss;
+		expect(fit).toBeDefined();
+		expect(fit!.r2).toBeGreaterThan(0.95);
+		expect(fit!.slopeMBPerUser).toBeCloseTo(14.27, 1);
+	});
+
+	it('would have fit post-load-idle RSS badly — the reason for the load-peak preference', () => {
+		const fit = fitSweep(postLoadIdle).rss;
+		expect(fit).toBeDefined();
+		expect(fit!.r2).toBeLessThan(0.6);
+	});
+});

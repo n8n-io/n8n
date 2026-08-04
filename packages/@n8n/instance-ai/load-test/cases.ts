@@ -26,7 +26,7 @@ export interface BuildCase {
 	description: string;
 	/** False for the read-only control case, which never touches the builder. */
 	builds: boolean;
-	/** `{name}` is substituted with the per-user workflow name. */
+	/** `{name}` -> per-user workflow name, `{n}` -> user index, `{baseUrl}` -> target. */
 	opening: string;
 	/** Follow-up turns, in order. Consumed up to --max-turns. */
 	followUps: string[];
@@ -36,13 +36,20 @@ export interface BuildCase {
 
 export const BUILD_CASES: readonly BuildCase[] = [
 	{
-		name: 'hourly-ip-check',
+		name: 'hourly-health-check',
 		description: 'Schedule → HTTP Request → Set',
 		builds: true,
-		workflowNameTemplate: 'Load Hourly IP Check {n}',
+		workflowNameTemplate: 'Load Health Check {n}',
+		// Points at the target instance's own /healthz rather than a public
+		// endpoint. The agent *executes* the workflow to verify it, so a flaky
+		// third party (httpbin.org 503s) would trigger remediation retries and
+		// inject unpredictable token spend and run duration into the very numbers
+		// we're fitting a slope through. /healthz is unauthenticated, returns a
+		// tiny stable body, and is guaranteed up — the load test can't run
+		// without the instance. Its own load is negligible next to the LLM work.
 		opening:
 			`${NO_QUESTIONS} A Schedule Trigger that runs every hour, then an HTTP Request node ` +
-			'that GETs httpbin.org/get, then a Set node that keeps only the origin field. ' +
+			'that GETs {baseUrl}/healthz, then a Set node that keeps only the status field. ' +
 			'Name the workflow "{name}".',
 		followUps: [
 			'Add a Set node at the end that adds a checkedAt field with the current timestamp.',
@@ -125,17 +132,36 @@ export function selectCases(names?: string[]): BuildCase[] {
 	});
 }
 
+/**
+ * Largest `--max-turns` the selected cases can actually deliver (opening + the
+ * shortest follow-up list). Asking for more silently runs shorter conversations,
+ * which would quietly invalidate a conversation-length comparison.
+ */
+export function maxDeliverableTurns(cases: readonly BuildCase[]): number {
+	if (cases.length === 0) return 0;
+	return 1 + Math.min(...cases.map((buildCase) => buildCase.followUps.length));
+}
+
 /** Round-robin, so N users spread evenly across the selected cases. */
 export function caseFor(cases: readonly BuildCase[], userIndex: number): BuildCase {
 	if (cases.length === 0) throw new Error('No cases selected');
 	return cases[userIndex % cases.length];
 }
 
-/** Substitute the per-user workflow name and index into a case's prompts. */
-export function renderCase(buildCase: BuildCase, userIndex: number): RenderedCase {
+/**
+ * Substitute the per-user workflow name, user index and target base URL into a
+ * case's prompts. `baseUrl` is threaded through rather than hardcoded so a case
+ * can reference the instance under test and still work against a cloud target.
+ */
+export function renderCase(buildCase: BuildCase, userIndex: number, baseUrl: string): RenderedCase {
 	const workflowName = buildCase.workflowNameTemplate?.replace('{n}', String(userIndex));
+	// Trailing slash would produce `.../healthz` off a doubled slash.
+	const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
 	const substitute = (text: string): string =>
-		text.replaceAll('{n}', String(userIndex)).replaceAll('{name}', workflowName ?? '');
+		text
+			.replaceAll('{n}', String(userIndex))
+			.replaceAll('{name}', workflowName ?? '')
+			.replaceAll('{baseUrl}', normalizedBaseUrl);
 
 	return {
 		caseName: buildCase.name,

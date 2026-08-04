@@ -3,6 +3,10 @@
 Measures **backend memory per concurrent user** when several people build
 workflows at the same time.
 
+**Results: [FINDINGS.md](./FINDINGS.md)** — three sweeps. Peak ~740 MB at 10
+concurrent builders, no per-thread leak, and **which of this tool's metrics are
+trustworthy** (the fitted per-user slope is not — it didn't reproduce).
+
 Each virtual user is a *real* n8n account with its own `n8n-auth` cookie, its own
 thread and its own SSE connection. That matters: the existing Playwright
 benchmark driver fakes concurrency with multiple browser tabs of a single user,
@@ -77,7 +81,7 @@ assigned round-robin by user index. `--cases a,b` narrows the set.
 
 | Case | Shape |
 | --- | --- |
-| `hourly-ip-check` | Schedule → HTTP Request → Set |
+| `hourly-health-check` | Schedule → HTTP Request → Set (hits the target's own `/healthz`) |
 | `webhook-sample-api` | Webhook → Code → Respond to Webhook |
 | `health-ping` | Schedule → Code → Set |
 | `read-only` | Control group: questions only, never builds |
@@ -86,6 +90,12 @@ Cases deliberately differ from each other and each names its workflow uniquely
 per user. Identical prompts across users would hit Anthropic's prompt cache,
 understating both cost and per-thread history size — the things being measured.
 `read-only` exists so sandbox/builder cost can be attributed by comparison.
+
+The HTTP case deliberately points at the **target instance's own `/healthz`**
+via the `{baseUrl}` placeholder, not a public endpoint. The agent executes the
+workflow to verify it, so a flaky third party (httpbin.org returning 503) makes
+the agent retry and remediate — injecting unpredictable token spend and run
+duration into the numbers being measured.
 
 ## What it measures
 
@@ -118,8 +128,20 @@ bypasses compression via the `stripBrotli` middleware.
   harness prunes SSE events hard, but it measures itself rather than assuming;
   `driverConfounded` flags a run where it can't be ruled out.
 - **`cleanup failures` invalidate the residual-leak number.**
-- **A single concurrency level cannot separate fixed from marginal cost.** Use
-  `--sweep`; the slope is the answer and `r²` says whether to believe it.
+- **RSS-based `perUserIdle`, `residualLeak` and `freedByDeleteThread` are noise**
+  — they sit on the RSS watermark. Trust `load-peak` for RSS and the heap column
+  for retention. See [FINDINGS.md](./FINDINGS.md#metrics-from-this-harness-that-are-not-trustworthy).
+- **The fitted slope did not reproduce** across identical sweeps (13.61 vs 10.32
+  MB/user) — quote the measured absolute peak at the N you care about instead.
+  `--sweep` is still useful for collecting those peaks; treat `slopeMBPerUser` as
+  indicative at best, whatever the r².
+
+The sweep fits **`load-peak`**, not `post-load-idle`. RSS is a high-water mark:
+once conversations finish, RSS reflects when the allocator releases pages and the
+previous level's watermark rather than concurrency. Measured on a real sweep,
+post-load-idle was non-monotonic (N=5 read *below* N=1) giving r²=0.46, while
+load-peak gave r²=0.99 for the same run. If you add a phase, keep the fit on a
+reading taken while the runs are actually in flight.
 
 ### Stabilization
 
