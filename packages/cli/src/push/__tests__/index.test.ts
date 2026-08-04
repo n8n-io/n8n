@@ -44,7 +44,7 @@ describe('Push', () => {
 	});
 
 	describe('setupPushServer', () => {
-		const restEndpoint = 'rest';
+		const pushEndpoint = '/rest/push';
 		const app = mock<Application>();
 		const server = mock<Server>();
 		// @ts-expect-error `vi.spyOn` typings don't allow `constructor`
@@ -55,7 +55,7 @@ describe('Push', () => {
 				config.backend = 'sse';
 				push = new Push(config, mock(), logger, mock(), mock());
 
-				push.setupPushServer(restEndpoint, server, app);
+				push.setupPushServer(pushEndpoint, server, app);
 
 				expect(wssSpy).not.toHaveBeenCalled();
 				expect(server.on).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('Push', () => {
 					return wsServer;
 				} as never);
 
-				push.setupPushServer(restEndpoint, server, app);
+				push.setupPushServer(pushEndpoint, server, app);
 
 				expect(wssSpy).toHaveBeenCalledWith({ noServer: true });
 				const onUpgradeCaptor = captor<typeof onUpgrade>();
@@ -86,6 +86,14 @@ describe('Push', () => {
 
 			test('should not upgrade non-push urls', () => {
 				const request = mock<WebSocketPushRequest>({ url: '/rest/testing' });
+
+				onUpgrade(request, socket, upgradeHead);
+
+				expect(wsServer.handleUpgrade).not.toHaveBeenCalled();
+			});
+
+			test('should not upgrade urls that contain the push endpoint as a substring', () => {
+				const request = mock<WebSocketPushRequest>({ url: '/rest/push-other' });
 
 				onUpgrade(request, socket, upgradeHead);
 
