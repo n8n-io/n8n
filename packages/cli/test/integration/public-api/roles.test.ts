@@ -1,7 +1,8 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { RoleRepository, type User } from '@n8n/db';
+import { Container } from '@n8n/di';
 
-import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { addApiKey, createOwnerWithApiKey, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -28,9 +29,8 @@ describe('Roles in Public API', () => {
 	});
 
 	beforeEach(async () => {
-		// Truncate users first so cleanup can delete custom roles they referenced.
 		await testDb.truncate(['User']);
-		await cleanupRolesAndScopes();
+		await Container.get(RoleRepository).delete({ systemRole: false });
 		owner = await createOwnerWithApiKey();
 	});
 
