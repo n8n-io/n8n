@@ -66,13 +66,31 @@ describe('InstanceAiSettingsService', () => {
 
 	let service: InstanceAiSettingsService;
 	let persistedSettingsValue: string | undefined;
+	const createService = () =>
+		new InstanceAiSettingsService(
+			globalConfig as never,
+			dbLockService,
+			settingsRepository,
+			userRepository,
+			userService,
+			aiService,
+			credentialsService,
+			credentialsFinderService,
+			instanceCredentialBroker,
+			eventService,
+		);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		vi.stubEnv('OPENAI_API_KEY', '');
+		vi.stubEnv('ANTHROPIC_API_KEY', '');
 		persistedSettingsValue = undefined;
 		logger.scoped.mockReturnValue(logger);
 		Container.set(Logger, logger);
 		Object.assign(globalConfig.instanceAi, {
+			model: 'openai/gpt-4',
+			modelApiKey: '',
+			modelUrl: '',
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
@@ -116,18 +134,7 @@ describe('InstanceAiSettingsService', () => {
 		dbLockService.withLockContext.mockImplementation(async (_lockId, fn) => {
 			return await fn(operationContext);
 		});
-		service = new InstanceAiSettingsService(
-			globalConfig as never,
-			dbLockService,
-			settingsRepository,
-			userRepository,
-			userService,
-			aiService,
-			credentialsService,
-			credentialsFinderService,
-			instanceCredentialBroker,
-			eventService,
-		);
+		service = createService();
 	});
 
 	afterEach(() => {
@@ -140,7 +147,7 @@ describe('InstanceAiSettingsService', () => {
 
 			await expect(
 				service.updateAdminSettings({
-					sandboxEnabled: true,
+					sandboxImage: 'custom-image',
 				}),
 			).rejects.toThrow(UnprocessableRequestError);
 		});
@@ -150,21 +157,35 @@ describe('InstanceAiSettingsService', () => {
 
 			await expect(
 				service.updateAdminSettings({
-					sandboxEnabled: true,
+					sandboxImage: 'custom-image',
 					mcpServers: '[]',
 				}),
-			).rejects.toThrow(/sandboxEnabled.*mcpServers|mcpServers.*sandboxEnabled/);
+			).rejects.toThrow(/sandboxImage.*mcpServers|mcpServers.*sandboxImage/);
 		});
 
 		it('should reject environment-managed fields on self-hosted', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 
-			await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
+			await expect(service.updateAdminSettings({ sandboxImage: 'custom-image' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
 			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
+			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
+		});
+
+		it('persists an explicit decision to disable web search and clears its assignment', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			const result = await service.updateAdminSettings({ searchDisabled: true });
+
+			expect(result.searchDisabled).toBe(true);
+			expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+				INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+				operationContext,
+			);
+			expect(persistedSettingsValue).toContain('"searchDisabled":true');
 		});
 
 		it('should store service credential selections as broker assignments', async () => {
@@ -732,6 +753,7 @@ describe('InstanceAiSettingsService', () => {
 			it('should validate sandbox settings before running connection hooks', async () => {
 				globalConfig.instanceAi.sandboxEnabled = true;
 				globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+				service = createService();
 
 				await expect(
 					service.updateAdminSettings(
@@ -923,6 +945,7 @@ describe('InstanceAiSettingsService', () => {
 		it('should reject n8n sandbox selection without a service URL', async () => {
 			globalConfig.instanceAi.sandboxEnabled = true;
 			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+			service = createService();
 
 			await expect(
 				service.updateAdminSettings({
@@ -1787,9 +1810,11 @@ describe('InstanceAiSettingsService', () => {
 
 			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
 			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
+			service = createService();
 			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(true);
 
 			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+			service = createService();
 			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(false);
 		});
 
@@ -1802,6 +1827,49 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig.instanceAi.braveSearchApiKey = '';
 			globalConfig.instanceAi.searxngUrl = 'http://searxng:8080';
 			expect((await service.getAdminSettings()).searchEnvConfigured).toBe(true);
+		});
+
+		it('only exposes env-management booleans for server-managed values', async () => {
+			globalConfig.instanceAi.modelApiKey = 'model-secret';
+			globalConfig.instanceAi.braveSearchApiKey = 'search-secret';
+
+			const settings = await service.getAdminSettings();
+			const serialized = JSON.stringify(settings);
+
+			expect(settings.envManaged.model.apiKey).toBe(true);
+			expect(settings.envManaged.search.apiKey).toBe(true);
+			expect(serialized).not.toContain('model-secret');
+			expect(serialized).not.toContain('search-secret');
+		});
+	});
+
+	describe('isSetupCompleted', () => {
+		it('requires an explicit web-search decision after model and sandbox are configured', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({
+				modelName: 'gpt-5.4',
+				sandboxEnabled: true,
+				sandboxProvider: 'n8n-sandbox',
+			});
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) => {
+				if (policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id) return 'model-credential';
+				if (policy.id === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id) {
+					return 'sandbox-credential';
+				}
+				return null;
+			});
+
+			await expect(service.isSetupCompleted()).resolves.toBe(false);
+
+			persistedSettingsValue = JSON.stringify({
+				modelName: 'gpt-5.4',
+				sandboxEnabled: true,
+				sandboxProvider: 'n8n-sandbox',
+				searchDisabled: true,
+			});
+			await service.reloadFromDb();
+
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
 		});
 	});
 

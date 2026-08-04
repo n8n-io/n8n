@@ -15,6 +15,7 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
@@ -52,11 +53,7 @@ const isChatLinkAvailable = computed(
 		settingsStore.isChatFeatureEnabled &&
 		hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 );
-const isInstanceAiNavVisible = computed(() => {
-	if (!settingsStore.isModuleActive('instance-ai')) return false;
-	const ms = settingsStore.moduleSettings['instance-ai'];
-	return ms?.enabled !== false;
-});
+const isInstanceAiNavVisible = useInstanceAiAvailable();
 const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );

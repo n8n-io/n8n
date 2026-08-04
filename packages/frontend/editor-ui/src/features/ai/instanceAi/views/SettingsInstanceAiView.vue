@@ -33,6 +33,7 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
+import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
@@ -45,6 +46,14 @@ const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
 const { isTestingCredential, testSavedCredential } = useInstanceCredentialTest();
+const {
+	modelCredential,
+	modelConfigured: isModelConfigured,
+	sandboxCredentialId,
+	sandboxConfigured: isSandboxConfigured,
+	searchCredential,
+	searchState,
+} = useInstanceAiConfiguration();
 
 const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
 	useInstanceAiMcpConnectionsExperiment();
@@ -63,17 +72,6 @@ const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudMana
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
 const showSandboxRow = computed(() => isAdmin.value && !store.isCloudManaged);
 
-const modelCredential = computed(() =>
-	store.instanceModelCredentials.find(
-		(credential) => credential.id === store.settings?.modelCredentialId,
-	),
-);
-const isModelConfigured = computed(() =>
-	Boolean(
-		store.settings?.modelEnvConfigured ||
-			(store.settings?.modelCredentialId && store.settings.modelName),
-	),
-);
 const modelValue = computed(() => {
 	if (store.settings?.modelCredentialId) {
 		const typeLabel = modelCredential.value ? credentialTypeLabel(modelCredential.value.type) : '';
@@ -89,14 +87,6 @@ const modelDescription = computed<{ key: BaseTextKey; warning: boolean } | null>
 	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: !isOff.value };
 });
 
-const sandboxCredentialId = computed(() =>
-	store.settings?.sandboxProvider === 'daytona'
-		? store.settings?.daytonaCredentialId
-		: store.settings?.n8nSandboxCredentialId,
-);
-const isSandboxConfigured = computed(() =>
-	Boolean(sandboxCredentialId.value ?? store.settings?.sandboxEnvConfigured),
-);
 const sandboxValue = computed(() => {
 	if (sandboxCredentialId.value) {
 		return store.settings?.sandboxProvider === 'daytona'
@@ -113,18 +103,9 @@ const sandboxDescription = computed<{ key: BaseTextKey; warning: boolean }>(() =
 	return { key: 'settings.n8nAgent.sandbox.missing.description', warning: !isOff.value };
 });
 
-const searchCredential = computed(() =>
-	store.serviceCredentials.find(
-		(credential) => credential.id === store.settings?.searchCredentialId,
-	),
-);
-const searchState = computed<'set' | 'env' | 'notset'>(() => {
-	if (store.settings?.searchCredentialId) return 'set';
-	if (store.settings?.searchEnvConfigured) return 'env';
-	return 'notset';
-});
 const searchValue = computed(() => {
 	if (searchState.value === 'env') return i18n.baseText('settings.n8nAgent.search.env.value');
+	if (searchState.value === 'disabled') return i18n.baseText('instanceAi.onboarding.disabled');
 	return searchCredential.value ? credentialTypeLabel(searchCredential.value.type) : '';
 });
 
@@ -132,7 +113,8 @@ const isSetupRequired = computed(
 	() =>
 		isEnabled.value &&
 		((showCredentialsRows.value && !isModelConfigured.value) ||
-			(showSandboxRow.value && !isSandboxConfigured.value)),
+			(showSandboxRow.value && !isSandboxConfigured.value) ||
+			(showCredentialsRows.value && searchState.value === 'notset')),
 );
 const neverConfigured = computed(() => {
 	if (isEnabled.value) return false;
@@ -276,7 +258,7 @@ function openModelDialog() {
 }
 
 function openModelSetup() {
-	setupChain.value = !isSandboxConfigured.value;
+	setupChain.value = !isSandboxConfigured.value || searchState.value === 'notset';
 	activeDialog.value = 'model';
 }
 
@@ -296,20 +278,23 @@ async function finishSetup(): Promise<boolean> {
 
 async function handleModelSaved() {
 	if (setupChain.value) {
-		activeDialog.value = 'sandbox';
+		activeDialog.value = isSandboxConfigured.value ? 'search' : 'sandbox';
 		return;
 	}
 	await finishSetup();
 }
 
 async function handleSandboxSaved() {
-	// The optional search step never gates enablement; enable first, then offer it.
 	const chainSearch = setupChain.value && searchState.value === 'notset';
-	if (!(await finishSetup())) return;
 	if (chainSearch) {
-		setupChain.value = true;
 		activeDialog.value = 'search';
+		return;
 	}
+	await finishSetup();
+}
+
+async function handleSearchSaved() {
+	await finishSetup();
 }
 
 function credentialTypeLabel(type: string) {
@@ -367,6 +352,12 @@ async function handleEnable() {
 			openSandboxDialog();
 			return;
 		}
+	}
+
+	if (showCredentialsRows.value && searchState.value === 'notset') {
+		setupChain.value = true;
+		activeDialog.value = 'search';
+		return;
 	}
 
 	await finishSetup();
@@ -768,6 +759,7 @@ function openAiUsageSettings() {
 			:setup="setupChain"
 			@update:open="setDialogOpen('search', $event)"
 			@back="activeDialog = 'sandbox'"
+			@saved="handleSearchSaved"
 		/>
 	</N8nSettingsLayout>
 </template>

@@ -3,7 +3,6 @@ import { computed, ref, toRaw, watch } from 'vue';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import {
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
-	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
 	type InstanceAiProviderConnection,
 } from '@n8n/api-types';
 import {
@@ -26,6 +25,10 @@ import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../../constants';
+import {
+	INSTANCE_AI_SANDBOX_PROVIDERS,
+	INSTANCE_AI_SEARCH_PROVIDERS,
+} from '../../instanceAiConnection.constants';
 import { useInstanceAiSetupSteps } from '../../composables/useInstanceAiSetupSteps';
 import { useInstanceCredentialTest } from '../../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
@@ -33,8 +36,8 @@ import ConnectionFields from './ConnectionFields.vue';
 
 const DAYTONA_DEFAULT_API_URL = 'https://app.daytona.io/api';
 const N8N_SANDBOX_HEADER = 'x-api-key';
-const DEFAULT_SEARCH_TYPE = 'searXngApi';
-const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi', 'httpHeaderAuth'];
+const DEFAULT_SEARCH_TYPE = INSTANCE_AI_SEARCH_PROVIDERS[0].credentialType;
+const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi', 'httpHeaderAuth'] as const;
 const SETUP_STEP: Record<InstanceAiConnectionKind, number> = { model: 1, sandbox: 2, search: 3 };
 
 const open = defineModel<boolean>('open', { required: true });
@@ -170,22 +173,21 @@ function getDefaultSelection(): string {
 
 function getProviderOptions(): Array<{ value: string; label: string }> {
 	if (props.kind === 'sandbox') {
-		return [
-			{ value: 'daytona', label: SANDBOX_PROVIDER_LABELS.daytona },
-			{ value: 'n8n-sandbox', label: SANDBOX_PROVIDER_LABELS['n8n-sandbox'] },
-		];
+		return INSTANCE_AI_SANDBOX_PROVIDERS.map(({ id, label }) => ({ value: id, label }));
 	}
 	const credentialTypes =
 		props.kind === 'model'
 			? INSTANCE_AI_MODEL_CREDENTIAL_TYPES
-			: INSTANCE_AI_SEARCH_CREDENTIAL_TYPES;
+			: INSTANCE_AI_SEARCH_PROVIDERS.map(({ credentialType }) => credentialType);
 	return credentialTypes.map((type) => ({ value: type, label: credentialTypeLabel(type) }));
 }
 
 function getExistingCredentials(): InstanceAiProviderConnection[] {
 	if (props.kind === 'model') return store.instanceModelCredentials;
 	const allowedTypes =
-		props.kind === 'sandbox' ? SANDBOX_CREDENTIAL_TYPES : INSTANCE_AI_SEARCH_CREDENTIAL_TYPES;
+		props.kind === 'sandbox'
+			? SANDBOX_CREDENTIAL_TYPES
+			: INSTANCE_AI_SEARCH_PROVIDERS.map(({ credentialType }) => credentialType);
 	return store.serviceCredentials.filter(({ type }) =>
 		allowedTypes.some((allowed) => allowed === type),
 	);
@@ -298,6 +300,7 @@ function stageClear(): void {
 		store.setField('sandboxConnection', null);
 	} else {
 		store.setField('searchConnection', null);
+		store.setField('searchDisabled', true);
 	}
 }
 
@@ -480,6 +483,15 @@ function handleClose() {
 	handleOpenChange(false);
 }
 
+async function handleDisableSearch() {
+	if (isBusy.value || props.kind !== 'search') return;
+	store.setField('searchConnection', null);
+	store.setField('searchDisabled', true);
+	if (!(await store.save())) return;
+	emit('saved');
+	open.value = false;
+}
+
 const title = computed(() => i18n.baseText(props.setup ? copy.setupTitleKey : copy.titleKey));
 const description = computed(() =>
 	i18n.baseText(
@@ -651,10 +663,10 @@ const primaryLabel = computed(() => {
 				v-if="setup && kind === 'search'"
 				variant="outline"
 				size="medium"
-				:label="i18n.baseText('settings.n8nAgent.setup.skip')"
+				:label="i18n.baseText('instanceAi.onboarding.search.disable')"
 				:disabled="isBusy"
-				:data-test-id="`${copy.idPrefix}-dialog-skip`"
-				@click="handleClose"
+				:data-test-id="`${copy.idPrefix}-dialog-disable`"
+				@click="handleDisableSearch"
 			/>
 			<N8nButton
 				v-if="showCancel"

@@ -1,0 +1,80 @@
+import { ref } from 'vue';
+
+import { useInstanceAiOnboarding } from './useInstanceAiOnboarding';
+
+function createConfiguration() {
+	return {
+		modelConfigured: ref(false),
+		sandboxConfigured: ref(false),
+		searchDecided: ref(false),
+		sandboxEnvConfigured: ref(false),
+		searchEnvConfigured: ref(false),
+	};
+}
+
+describe('useInstanceAiOnboarding', () => {
+	it('resumes at the first unmet setup step', () => {
+		const configuration = createConfiguration();
+		const onboarding = useInstanceAiOnboarding(configuration);
+
+		expect(onboarding.firstUnmetStep()).toBe('model');
+
+		configuration.modelConfigured.value = true;
+		expect(onboarding.firstUnmetStep()).toBe('sandbox');
+
+		configuration.sandboxConfigured.value = true;
+		expect(onboarding.firstUnmetStep()).toBe('search');
+
+		configuration.searchDecided.value = true;
+		expect(onboarding.firstUnmetStep()).toBe('done');
+	});
+
+	it('omits env-configured services from the setup sequence', () => {
+		const configuration = createConfiguration();
+		configuration.sandboxEnvConfigured.value = true;
+		configuration.sandboxConfigured.value = true;
+		configuration.searchEnvConfigured.value = true;
+		configuration.searchDecided.value = true;
+		const onboarding = useInstanceAiOnboarding(configuration);
+
+		expect(onboarding.sequence.value).toEqual(['model', 'done']);
+
+		onboarding.start();
+		configuration.modelConfigured.value = true;
+		onboarding.advance();
+		expect(onboarding.step.value).toBe('done');
+	});
+
+	it('returns to an earlier unmet prerequisite after completing a later checklist step', () => {
+		const configuration = createConfiguration();
+		configuration.modelConfigured.value = true;
+		const onboarding = useInstanceAiOnboarding(configuration);
+
+		onboarding.start('search');
+		configuration.searchDecided.value = true;
+		onboarding.advance();
+
+		expect(onboarding.step.value).toBe('sandbox');
+	});
+
+	it('returns to the summary after applying a single-step edit', () => {
+		const onboarding = useInstanceAiOnboarding(createConfiguration());
+
+		onboarding.start('sandbox', true);
+		onboarding.advance();
+
+		expect(onboarding.step.value).toBe('done');
+		expect(onboarding.editMode.value).toBe(false);
+		expect(onboarding.open.value).toBe(true);
+	});
+
+	it('clears edit mode when the wizard closes', () => {
+		const onboarding = useInstanceAiOnboarding(createConfiguration());
+
+		onboarding.start('search', true);
+		onboarding.close();
+
+		expect(onboarding.open.value).toBe(false);
+		expect(onboarding.editMode.value).toBe(false);
+	});
+});

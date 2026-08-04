@@ -121,7 +121,7 @@ function validateModelCredential({
 	data,
 }: {
 	type: string;
-	data: ICredentialDataDecryptedObject;
+	data: Record<string, unknown>;
 }): void {
 	const apiKey = data.apiKey;
 	if (typeof apiKey === 'string' && apiKey.trim().length > 0) return;
@@ -137,7 +137,7 @@ function validateModelCredential({
 
 function modelCredentialHeaders(
 	credentialType: string,
-	data: ICredentialDataDecryptedObject,
+	data: Record<string, unknown>,
 ): Record<string, string> | undefined {
 	const headers: Record<string, string> = {};
 	if (credentialType === 'openAiApi' && typeof data.organizationId === 'string') {
@@ -250,6 +250,8 @@ interface PersistedAdminSettings {
 	sandboxImage?: string;
 	sandboxTimeout?: number;
 	modelName?: string | null;
+	searchDisabled?: boolean;
+	n8nSandboxServiceUrl?: string | null;
 	localGatewayDisabled?: boolean;
 	browserUseEnabled?: boolean;
 }
@@ -300,6 +302,13 @@ export class InstanceAiSettingsService {
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 
 	private adminModelName: string | null = null;
+
+	private searchDisabled = false;
+
+	private adminN8nSandboxServiceUrl: string | null = null;
+
+	private readonly environmentN8nSandboxServiceUrl: string;
+
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly dbLockService: DbLockService,
@@ -315,6 +324,7 @@ export class InstanceAiSettingsService {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
 		this.environmentSandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
+		this.environmentN8nSandboxServiceUrl = this.config.n8nSandboxServiceUrl;
 		this.config.sandboxProvider = this.environmentSandboxProvider;
 	}
 
@@ -408,6 +418,12 @@ export class InstanceAiSettingsService {
 		const isProxyEnabled = this.aiService.isProxyEnabled();
 		const isManaged = this.isCloud || isProxyEnabled;
 		const sandboxProvider = normalizeSandboxProvider(c.sandboxProvider);
+		const providerModelApiKeyConfigured = Boolean(
+			modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim(),
+		);
+		const modelConnectionEnvConfigured = Boolean(
+			c.modelApiKey.trim() || c.modelUrl.trim() || providerModelApiKeyConfigured,
+		);
 		return {
 			enabled: this.enabled,
 			permissions: { ...this.permissions },
@@ -419,17 +435,38 @@ export class InstanceAiSettingsService {
 			searchCredentialId: isManaged ? null : credentialSelection.searchCredentialId,
 			modelCredentialId: isManaged ? null : credentialSelection.modelCredentialId,
 			modelName: isManaged ? null : credentialSelection.modelName,
-			modelEnvConfigured: Boolean(
-				c.modelApiKey.trim() ||
-					c.modelUrl.trim() ||
-					(modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim()),
-			),
+			modelEnvConfigured: modelConnectionEnvConfigured,
 			// n8n-sandbox needs only the URL; the service accepts keyless clients.
 			sandboxEnvConfigured:
 				sandboxProvider === 'daytona'
 					? isProxyEnabled || Boolean(c.daytonaApiKey.trim())
-					: Boolean(c.n8nSandboxServiceUrl.trim()),
+					: Boolean(this.environmentN8nSandboxServiceUrl.trim()),
 			searchEnvConfigured: Boolean(c.braveSearchApiKey.trim() || c.searxngUrl.trim()),
+			searchDisabled: this.searchDisabled,
+			n8nSandboxServiceUrl: this.environmentN8nSandboxServiceUrl
+				? null
+				: this.adminN8nSandboxServiceUrl,
+			envManaged: {
+				model: {
+					provider: modelConnectionEnvConfigured,
+					apiKey: Boolean(c.modelApiKey.trim() || providerModelApiKeyConfigured),
+					baseUrl: Boolean(c.modelUrl.trim()),
+					model: Boolean(process.env.N8N_INSTANCE_AI_MODEL?.trim()),
+				},
+				sandbox: {
+					provider: Boolean(process.env.N8N_INSTANCE_AI_SANDBOX_PROVIDER?.trim()),
+					serviceUrl: Boolean(this.environmentN8nSandboxServiceUrl.trim()),
+					apiKey:
+						sandboxProvider === 'daytona'
+							? Boolean(c.daytonaApiKey.trim())
+							: Boolean(c.n8nSandboxServiceApiKey.trim()),
+				},
+				search: {
+					provider: Boolean(c.braveSearchApiKey.trim() || c.searxngUrl.trim()),
+					apiKey: Boolean(c.braveSearchApiKey.trim()),
+					url: Boolean(c.searxngUrl.trim()),
+				},
+			},
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
@@ -450,14 +487,28 @@ export class InstanceAiSettingsService {
 				InstanceAiSettingsService.INSTANCE_CREDENTIAL_FIELDS,
 				this.deploymentLabel(),
 			);
-			this.rejectManagedFields(update, ['modelName', 'sandboxProvider'], this.deploymentLabel());
+			this.rejectManagedFields(
+				update,
+				[
+					'modelName',
+					'sandboxProvider',
+					'sandboxEnabled',
+					'n8nSandboxServiceUrl',
+					'searchDisabled',
+				],
+				this.deploymentLabel(),
+			);
 		} else if (this.aiService.isProxyEnabled()) {
 			this.rejectManagedFields(
 				update,
 				['modelCredentialId', 'searchCredentialId', 'modelConnection', 'searchConnection'],
 				this.deploymentLabel(),
 			);
-			this.rejectManagedFields(update, ['modelName'], this.deploymentLabel());
+			this.rejectManagedFields(
+				update,
+				['modelName', 'sandboxEnabled', 'n8nSandboxServiceUrl', 'searchDisabled'],
+				this.deploymentLabel(),
+			);
 			if (update.daytonaCredentialId !== null) {
 				this.rejectManagedFields(update, ['daytonaCredentialId'], this.deploymentLabel());
 			}
@@ -479,6 +530,16 @@ export class InstanceAiSettingsService {
 		let daytonaCredentialId = initialDaytonaCredentialId;
 		let n8nSandboxCredentialId = initialN8nSandboxCredentialId;
 		let searchCredentialId = initialSearchCredentialId;
+		if (settingsUpdate.searchDisabled === true) {
+			if (searchConnection) {
+				throw new UnprocessableRequestError(
+					'Cannot disable web search while configuring a search connection',
+				);
+			}
+			searchCredentialId = null;
+		} else if (searchConnection || typeof searchCredentialId === 'string') {
+			settingsUpdate.searchDisabled = false;
+		}
 		this.rejectConnectionConflicts(update);
 
 		if (
@@ -642,7 +703,7 @@ export class InstanceAiSettingsService {
 							'modelName must be set together with modelCredentialId',
 						);
 					}
-					if (hasModelName && !hasCredential) {
+					if (hasModelName && !hasCredential && !this.hasEnvironmentModelConnection()) {
 						throw new UnprocessableRequestError('modelName requires modelCredentialId');
 					}
 				}
@@ -987,6 +1048,46 @@ export class InstanceAiSettingsService {
 
 	// ── Shared accessors ──────────────────────────────────────────────────
 
+	/** Restores redacted fields from the assigned credential without sending them to the client. */
+	async resolveModelConnectionForVerification(
+		connection: InstanceAiConnectionUpdate,
+	): Promise<InstanceAiConnectionUpdate> {
+		const prepared = await this.prepareConnection(
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+			'AI Assistant model',
+			connection,
+		);
+		return this.connectionForVerification(prepared);
+	}
+
+	async resolveSandboxConnectionForVerification(
+		connection: InstanceAiConnectionUpdate,
+	): Promise<InstanceAiConnectionUpdate> {
+		const prepared = await this.prepareSandboxConnection(connection);
+		return this.connectionForVerification(prepared);
+	}
+
+	async resolveSearchConnectionForVerification(
+		connection: InstanceAiConnectionUpdate,
+	): Promise<InstanceAiConnectionUpdate> {
+		const prepared = await this.prepareConnection(
+			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+			'AI Assistant web search',
+			connection,
+		);
+		return this.connectionForVerification(prepared);
+	}
+
+	private connectionForVerification(
+		prepared: PreparedConnection | undefined,
+	): InstanceAiConnectionUpdate {
+		if (!prepared) throw new UnexpectedError('Prepared provider connection is missing');
+		return {
+			type: prepared.credential.type,
+			data: prepared.credential.data,
+		};
+	}
+
 	async listInstanceModelCredentials(): Promise<InstanceAiProviderConnection[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const instanceCredentials = await this.instanceCredentialBroker.listForUse(
@@ -1195,6 +1296,44 @@ export class InstanceAiSettingsService {
 		return this.enabled;
 	}
 
+	/** Public, detail-free setup state used to gate member-facing entry points. */
+	async isSetupCompleted(): Promise<boolean> {
+		if (this.isCloud || this.aiService.isProxyEnabled()) return true;
+
+		const [modelSelection, daytonaCredentialId, n8nSandboxCredentialId, searchCredentialId] =
+			await Promise.all([
+				this.readAdminModelSelection(),
+				this.instanceCredentialBroker.getAssignedCredentialId(
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+				),
+				this.instanceCredentialBroker.getAssignedCredentialId(
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+				),
+				this.instanceCredentialBroker.getAssignedCredentialId(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY),
+			]);
+		const response = this.buildAdminSettingsResponse({
+			...modelSelection,
+			daytonaCredentialId,
+			n8nSandboxCredentialId,
+			searchCredentialId,
+		});
+		const modelConfigured = Boolean(
+			response.modelEnvConfigured || (response.modelCredentialId && response.modelName),
+		);
+		const sandboxCredentialId =
+			response.sandboxProvider === 'daytona'
+				? response.daytonaCredentialId
+				: response.n8nSandboxCredentialId;
+		const sandboxConfigured = Boolean(
+			response.sandboxEnabled && (response.sandboxEnvConfigured || sandboxCredentialId),
+		);
+		const searchDecided = Boolean(
+			response.searchEnvConfigured || response.searchCredentialId || response.searchDisabled,
+		);
+
+		return modelConfigured && sandboxConfigured && searchDecided;
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);
@@ -1234,6 +1373,39 @@ export class InstanceAiSettingsService {
 		);
 	}
 
+	async resolveModelConfigForVerification(user: User, modelName?: string): Promise<ModelConfig> {
+		const config = await this.resolveModelConfig(user);
+		if (!modelName) return config;
+		if (typeof config === 'string') {
+			const provider = config.includes('/') ? config.slice(0, config.indexOf('/')) : 'custom';
+			return `${provider}/${modelName}`;
+		}
+		if ('id' in config && typeof config.id === 'string') {
+			const provider = config.id.includes('/')
+				? config.id.slice(0, config.id.indexOf('/'))
+				: 'custom';
+			return { ...config, id: `${provider}/${modelName}` };
+		}
+		return config;
+	}
+
+	buildModelConfigForConnection(
+		connection: InstanceAiConnectionUpdate,
+		modelName: string,
+	): ModelConfig {
+		if (!INSTANCE_AI_MODEL_CREDENTIAL_POLICY.credentialTypes.includes(connection.type)) {
+			throw new UnprocessableRequestError(
+				`Connection type "${connection.type}" is not supported for the model`,
+			);
+		}
+		validateModelCredential({ type: connection.type, data: connection.data });
+		const config = this.buildModelConfig(connection.type, connection.data, modelName);
+		if (!config) {
+			throw new UnprocessableRequestError('The model connection is incomplete');
+		}
+		return config;
+	}
+
 	private async resolveAdminModelConfig(): Promise<ModelConfig | null> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
 
@@ -1270,7 +1442,7 @@ export class InstanceAiSettingsService {
 
 	private buildModelConfig(
 		credentialType: string,
-		data: ICredentialDataDecryptedObject,
+		data: Record<string, unknown>,
 		modelName: string,
 	): ModelConfig | null {
 		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
@@ -1297,7 +1469,6 @@ export class InstanceAiSettingsService {
 	 */
 	private static readonly MANAGED_ADMIN_FIELDS: readonly string[] = [
 		'mcpServers',
-		'sandboxEnabled',
 		'sandboxImage',
 		'sandboxTimeout',
 	];
@@ -1347,6 +1518,7 @@ export class InstanceAiSettingsService {
 		const touchesSandboxSettings =
 			update.sandboxEnabled !== undefined ||
 			update.sandboxProvider !== undefined ||
+			update.n8nSandboxServiceUrl !== undefined ||
 			update.sandboxImage !== undefined ||
 			update.sandboxTimeout !== undefined ||
 			update.daytonaCredentialId !== undefined ||
@@ -1361,18 +1533,28 @@ export class InstanceAiSettingsService {
 				this.environmentSandboxProvider,
 		);
 		const sandboxEnabled = update.sandboxEnabled ?? current.sandboxEnabled ?? false;
-		const unavailableReason = this.getSandboxUnavailableReason(sandboxEnabled, sandboxProvider);
+		const sandboxServiceUrl =
+			this.environmentN8nSandboxServiceUrl ||
+			update.n8nSandboxServiceUrl ||
+			current.n8nSandboxServiceUrl ||
+			'';
+		const unavailableReason = this.getSandboxUnavailableReason(
+			sandboxEnabled,
+			sandboxProvider,
+			sandboxServiceUrl,
+		);
 		if (unavailableReason) throw new UnprocessableRequestError(unavailableReason);
 	}
 
 	private getSandboxUnavailableReason(
 		sandboxEnabled: boolean,
 		sandboxProvider: InstanceAiSandboxProvider,
+		sandboxServiceUrl = this.config.n8nSandboxServiceUrl,
 	): string | null {
 		if (
 			sandboxEnabled &&
 			sandboxProvider === 'n8n-sandbox' &&
-			this.config.n8nSandboxServiceUrl.trim().length === 0
+			sandboxServiceUrl.trim().length === 0
 		) {
 			return N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE;
 		}
@@ -1381,7 +1563,21 @@ export class InstanceAiSettingsService {
 	}
 
 	private envVarModelConfig(): ModelConfig {
-		return this.envVarModelConfigForModel(this.config.model);
+		const configuredModel = this.config.model;
+		if (!this.adminModelName) return this.envVarModelConfigForModel(configuredModel);
+		const slash = configuredModel.indexOf('/');
+		const provider = slash >= 0 ? configuredModel.slice(0, slash) : 'custom';
+		return this.envVarModelConfigForModel(`${provider}/${this.adminModelName}`);
+	}
+
+	private hasEnvironmentModelConnection(): boolean {
+		const provider = this.config.model.split('/', 1)[0] ?? '';
+		const providerApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(provider);
+		return Boolean(
+			this.config.modelApiKey.trim() ||
+				this.config.modelUrl.trim() ||
+				(providerApiKeyEnv && process.env[providerApiKeyEnv]?.trim()),
+		);
 	}
 
 	private envVarModelConfigForModel(model: string): ModelConfig {
@@ -1427,6 +1623,12 @@ export class InstanceAiSettingsService {
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
 		if (persisted.modelName !== undefined) this.adminModelName = persisted.modelName;
+		if (persisted.searchDisabled !== undefined) this.searchDisabled = persisted.searchDisabled;
+		if (persisted.n8nSandboxServiceUrl !== undefined) {
+			this.adminN8nSandboxServiceUrl = persisted.n8nSandboxServiceUrl;
+			this.config.n8nSandboxServiceUrl =
+				this.environmentN8nSandboxServiceUrl || persisted.n8nSandboxServiceUrl || '';
+		}
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.browserUseEnabled !== undefined)
@@ -1449,6 +1651,8 @@ export class InstanceAiSettingsService {
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
 			modelName: this.adminModelName,
+			searchDisabled: this.searchDisabled,
+			n8nSandboxServiceUrl: this.adminN8nSandboxServiceUrl,
 			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};

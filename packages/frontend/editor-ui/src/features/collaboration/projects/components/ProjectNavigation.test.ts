@@ -7,6 +7,7 @@ import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -109,6 +110,7 @@ describe('ProjectsNavigation', () => {
 
 	it('should show Instance AI above Home when enabled', () => {
 		projectsStore.teamProjectsLimit = -1;
+		vi.mocked(useRBACStore().hasScope).mockReturnValue(true);
 		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
 		settingsStore.moduleSettings = {
 			'instance-ai': {
@@ -117,6 +119,7 @@ describe('ProjectsNavigation', () => {
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
+				setupCompleted: true,
 				sandboxEnabled: true,
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,

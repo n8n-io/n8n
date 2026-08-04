@@ -8,7 +8,11 @@ export function useInstanceAiSetupSteps(step: number) {
 	const store = useInstanceAiSettingsStore();
 
 	const totalSteps = computed(() =>
-		(store.settings?.searchCredentialId ?? store.settings?.searchEnvConfigured) ? 2 : 3,
+		store.settings?.searchCredentialId ||
+		store.settings?.searchEnvConfigured ||
+		store.settings?.searchDisabled
+			? 2
+			: 3,
 	);
 	const stepLabel = computed(() =>
 		i18n.baseText('settings.n8nAgent.setup.step', {

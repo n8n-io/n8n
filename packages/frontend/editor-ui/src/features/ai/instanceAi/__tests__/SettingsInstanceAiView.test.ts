@@ -816,6 +816,7 @@ describe('SettingsInstanceAiView', () => {
 			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			vi.spyOn(store, 'save').mockResolvedValue(true);
 			const { findByTestId, findByText, getByRole, getByTestId } = renderComponent();
 
 			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
@@ -834,6 +835,9 @@ describe('SettingsInstanceAiView', () => {
 			await fireEvent.update(apiKeyInput, 'sk-test');
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
 
+			await waitFor(() => expect(getByTestId('n8n-agent-search-dialog-step')).toBeVisible());
+			expect(persistEnabled).not.toHaveBeenCalled();
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-disable'));
 			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
 		});
 
@@ -876,7 +880,9 @@ describe('SettingsInstanceAiView', () => {
 				...store.settings!,
 				enabled: false,
 				modelEnvConfigured: true,
+				sandboxEnabled: true,
 				sandboxEnvConfigured: true,
+				searchDisabled: true,
 			};
 			store.$patch({ settings: disabledSettings });
 			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
@@ -895,7 +901,9 @@ describe('SettingsInstanceAiView', () => {
 				enabled: false,
 				modelCredentialId: 'openai-id',
 				modelName: 'gpt-4o',
+				sandboxEnabled: true,
 				sandboxEnvConfigured: true,
+				searchDisabled: true,
 			};
 			store.$patch({
 				settings: disabledSettings,
@@ -958,12 +966,13 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
 		});
 
-		it('offers the optional search step after the sandbox step without gating enablement', async () => {
+		it('requires an explicit search decision before enabling', async () => {
 			const disabledSettings = { ...store.settings!, enabled: false };
 			store.$patch({ settings: disabledSettings });
 			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			vi.spyOn(store, 'save').mockResolvedValue(true);
 			const { findByTestId, findByText, getByRole, getByTestId, queryByTestId } = renderComponent();
 
 			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
@@ -972,20 +981,22 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
 			await completeSandboxStep(getByTestId);
 
-			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
 			await waitFor(() => expect(getByTestId('n8n-agent-search-dialog-step')).toBeVisible());
+			expect(persistEnabled).not.toHaveBeenCalled();
 
-			await fireEvent.click(getByTestId('n8n-agent-search-dialog-skip'));
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-disable'));
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
 			await waitFor(() => expect(queryByTestId('n8n-agent-search-dialog-step')).toBeNull());
 			expect(store.settings?.searchCredentialId).toBeNull();
 		});
 
-		it('does not offer the search step when enabling fails', async () => {
+		it('stays disabled when enabling fails after the search decision', async () => {
 			const disabledSettings = { ...store.settings!, enabled: false };
 			store.$patch({ settings: disabledSettings });
 			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(false);
+			vi.spyOn(store, 'save').mockResolvedValue(true);
 			const { findByTestId, findByText, getByRole, getByTestId, queryByTestId } = renderComponent();
 
 			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
@@ -994,9 +1005,12 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
 			await completeSandboxStep(getByTestId);
 
+			await waitFor(() => expect(getByTestId('n8n-agent-search-dialog-step')).toBeVisible());
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-disable'));
 			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
 			await nextTick();
 			expect(queryByTestId('n8n-agent-search-dialog-step')).toBeNull();
+			expect(store.settings?.enabled).toBe(false);
 		});
 
 		it('keeps the setup chain when navigating back from search to model', async () => {
@@ -1035,7 +1049,12 @@ describe('SettingsInstanceAiView', () => {
 
 		it('opens a plain dialog when only the model is missing', async () => {
 			store.$patch({
-				settings: { ...store.settings!, sandboxEnvConfigured: true },
+				settings: {
+					...store.settings!,
+					sandboxEnabled: true,
+					sandboxEnvConfigured: true,
+					searchDisabled: true,
+				},
 			});
 			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
 
@@ -1091,7 +1110,9 @@ describe('SettingsInstanceAiView', () => {
 					...store.settings!,
 					modelCredentialId: 'openai-id',
 					modelEnvConfigured: true,
+					sandboxEnabled: true,
 					sandboxEnvConfigured: true,
+					searchDisabled: true,
 				},
 			});
 			const { getByTestId, getByText } = renderComponent();
