@@ -110,7 +110,7 @@ function makeService() {
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
 
-	executionService.startExecution.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
@@ -156,7 +156,7 @@ describe('AgentWorkflowExecutionService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecution.mockResolvedValue('agent-execution-1');
+		executionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
 		executionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 
 		const result = await service.executeForWorkflow(
@@ -195,6 +195,14 @@ describe('AgentWorkflowExecutionService', () => {
 			run_type: 'production',
 			message_count: 1,
 		});
+		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'agent-execution-1',
+			}),
+		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'agent-execution-1',
 			expect.objectContaining({
@@ -206,7 +214,7 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
-		const startedAt = executionService.startExecution.mock.calls[0][1];
+		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
@@ -227,7 +235,7 @@ describe('AgentWorkflowExecutionService', () => {
 		runtime.agent.stream.mockRejectedValue(new Error('stream setup failed'));
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-		executionService.startExecution.mockResolvedValue('fallback-execution-1');
+		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
 
 		await expect(
 			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
@@ -498,7 +506,7 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(result.response).toBe('answer');
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
-			expect(executionService.startExecution).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
 
 			// Thread-scoped persistence: stable across executions, so a reused
 			// session id continues the same conversation.

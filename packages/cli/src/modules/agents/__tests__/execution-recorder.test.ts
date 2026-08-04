@@ -984,11 +984,13 @@ describe('ExecutionRecorder — durable timeline events', () => {
 			const snapshots: TimelineEvent[][] = [];
 			const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
 			recorder.record({ type: 'text-delta', id: 'text-1', delta: 'First' });
-			vi.advanceTimersByTime(5_000);
+			vi.advanceTimersByTime(999);
+			expect(snapshots).toEqual([]);
+			vi.advanceTimersByTime(1);
 			expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'First' })]]);
 
 			recorder.record({ type: 'text-delta', id: 'text-1', delta: ' second' });
-			vi.advanceTimersByTime(5_000);
+			vi.advanceTimersByTime(1_000);
 
 			expect(snapshots).toEqual([
 				[expect.objectContaining({ type: 'text', content: 'First' })],
@@ -1004,7 +1006,7 @@ describe('ExecutionRecorder — durable timeline events', () => {
 		}
 	});
 
-	it('emits completed text and tool snapshots without emitting token deltas or open tools', () => {
+	it('emits a tool snapshot when execution starts and updates it on completion', () => {
 		const snapshots: TimelineEvent[][] = [];
 		const recorder = new ExecutionRecorder(undefined, (timeline) => snapshots.push(timeline));
 
@@ -1020,6 +1022,18 @@ describe('ExecutionRecorder — durable timeline events', () => {
 		expect(snapshots).toEqual([[expect.objectContaining({ type: 'text', content: 'Checking' })]]);
 
 		recorder.record({
+			type: 'tool-execution-start',
+			toolCallId: 'tool-1',
+			toolName: 'lookup',
+			startTime: 10,
+		});
+		expect(snapshots[1]?.[1]).toMatchObject({
+			type: 'tool-call',
+			startTime: 10,
+			endTime: 0,
+		});
+
+		recorder.record({
 			type: 'tool-execution-end',
 			toolCallId: 'tool-1',
 			toolName: 'lookup',
@@ -1033,13 +1047,13 @@ describe('ExecutionRecorder — durable timeline events', () => {
 			output: { name: 'Ada' },
 		});
 
-		expect(snapshots).toHaveLength(3);
-		expect(snapshots[1]?.[1]).toMatchObject({
+		expect(snapshots).toHaveLength(4);
+		expect(snapshots[2]?.[1]).toMatchObject({
 			type: 'tool-call',
 			endTime: 20,
 			output: undefined,
 		});
-		expect(snapshots[2]?.[1]).toMatchObject({
+		expect(snapshots[3]?.[1]).toMatchObject({
 			type: 'tool-call',
 			endTime: 20,
 			output: { name: 'Ada' },

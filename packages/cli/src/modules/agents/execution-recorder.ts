@@ -14,7 +14,7 @@ import type { ToolRegistry } from './tool-registry';
 /** Cap on child trace characters persisted per delegation. Tighter than the
  *  live forwarding budget because this is written into every parent execution row. */
 const CHILD_TRACE_PERSIST_CHAR_BUDGET = 4_000;
-const TIMELINE_BLOCK_MAX_DURATION_MS = 5_000;
+const TIMELINE_BLOCK_MAX_DURATION_MS = 1_000;
 
 /**
  * Walk a nodeParameters tree and substitute templated values with what the
@@ -546,7 +546,10 @@ export class ExecutionRecorder {
 	private recordToolExecutionStart(toolCallId: string, startTime: number): void {
 		if (!toolCallId) return;
 		const entry = this.findOpenTimelineToolCall(toolCallId);
-		if (entry) entry.startTime = startTime;
+		if (entry) {
+			entry.startTime = startTime;
+			this.emitTimelineSnapshot();
+		}
 	}
 
 	/**

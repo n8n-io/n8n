@@ -211,7 +211,7 @@ export class AgentWorkflowExecutionService {
 			workflowId?: string;
 			nodeId?: string;
 		};
-		recording?: StartExecutionParams;
+		recordingParams?: StartExecutionParams;
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
 			agentInstance,
@@ -222,13 +222,19 @@ export class AgentWorkflowExecutionService {
 			runType,
 			outputSchema,
 			tracing,
-			recording,
+			recordingParams,
 		} = params;
 
 		let agentExecutionId: string | undefined;
 		const recorder = new ExecutionRecorder(undefined, (timeline) => {
-			if (agentExecutionId) {
-				this.agentExecutionService.recordTimelineSnapshot(agentExecutionId, timeline);
+			if (agentExecutionId && recordingParams) {
+				this.agentExecutionService.recordTimelineSnapshot({
+					projectId: recordingParams.projectId,
+					agentId: recordingParams.agentId,
+					threadId: recordingParams.threadId,
+					executionId: agentExecutionId,
+					timeline,
+				});
 			}
 		});
 		const startedAt = recorder.startedAt;
@@ -270,13 +276,16 @@ export class AgentWorkflowExecutionService {
 				}),
 				...(telemetry ? { telemetry } : {}),
 			});
-			if (recording) {
+			if (recordingParams) {
 				try {
-					const executionId = await this.agentExecutionService.startExecution(recording, startedAt);
+					const executionId = await this.agentExecutionService.startExecutionRecording(
+						recordingParams,
+						startedAt,
+					);
 					agentExecutionId = executionId;
 				} catch (error) {
 					this.logger.warn('Failed to start agent execution recording from workflow', {
-						agentId: recording.agentId,
+						agentId: recordingParams.agentId,
 						threadId,
 						error: error instanceof Error ? error.message : String(error),
 					});
@@ -307,12 +316,15 @@ export class AgentWorkflowExecutionService {
 			streamError = normalizedError;
 		}
 
-		if (streamError && recording && !agentExecutionId) {
+		if (streamError && recordingParams && !agentExecutionId) {
 			try {
-				agentExecutionId = await this.agentExecutionService.startExecution(recording, startedAt);
+				agentExecutionId = await this.agentExecutionService.startExecutionRecording(
+					recordingParams,
+					startedAt,
+				);
 			} catch (error) {
 				this.logger.warn('Failed to start agent execution recording from workflow', {
-					agentId: recording.agentId,
+					agentId: recordingParams.agentId,
 					threadId,
 					error: error instanceof Error ? error.message : String(error),
 				});
@@ -440,7 +452,7 @@ export class AgentWorkflowExecutionService {
 				workflowId: workflowContext?.workflowId,
 				nodeId: workflowContext?.callingNodeId,
 			},
-			recording: {
+			recordingParams: {
 				threadId,
 				agentId,
 				agentName: agentInstance.name,

@@ -1,5 +1,7 @@
 <script lang="ts" setup>
+import type { PushMessage } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import type {
 	AgentExecution,
@@ -24,13 +26,8 @@ import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.u
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput } from '@n8n/design-system';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import {
-	useActiveElement,
-	useDocumentVisibility,
-	useEventListener,
-	useTimeoutPoll,
-} from '@vueuse/core';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
 const props = defineProps<{
 	projectId: string;
@@ -48,9 +45,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
+const pushStore = usePushConnectionStore();
 const activeElement = useActiveElement();
 const documentVisibility = useDocumentVisibility();
-const THREAD_REFRESH_INTERVAL_MS = 5_000;
 
 const projectId = computed(() => props.projectId);
 
@@ -61,6 +58,9 @@ const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
 let threadDetailRequestId = 0;
+let refreshPending = false;
+let removePushListener: (() => void) | undefined;
+let activeRequest: { identity: string; promise: Promise<void> } | undefined;
 
 const baseItems = computed<TimelineItem[]>(() =>
 	flattenExecutionsToTimelineItems(executions.value),
@@ -200,44 +200,26 @@ function onKeyUp(event: KeyboardEvent) {
 
 useEventListener(document, 'keyup', onKeyUp);
 
-async function loadThreadDetail() {
-	const currentProjectId = props.projectId;
-	const currentAgentId = props.agentId;
-	const currentThreadId = props.threadId;
-	const requestId = ++threadDetailRequestId;
-	pause();
-
+function loadThreadDetail() {
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
 	selectTimelineItem(null);
 	loading.value = true;
 	emit('loaded', null);
-
-	try {
-		const result = await sessionsStore.getThreadDetail(
-			currentProjectId,
-			currentAgentId,
-			currentThreadId,
-		);
-		if (requestId !== threadDetailRequestId) return;
-		executions.value = result.executions;
-		emit('loaded', result);
-	} catch (error) {
-		if (requestId !== threadDetailRequestId) return;
-		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
-	} finally {
-		if (requestId === threadDetailRequestId) {
-			loading.value = false;
-			if (documentVisibility.value === 'visible') resume();
-		}
-	}
+	refreshPending = false;
+	startThreadDetailRequest(true);
 }
 
-async function refreshThreadDetail() {
+function threadIdentity(): string {
+	return `${props.projectId}:${props.agentId}:${props.threadId}`;
+}
+
+async function fetchThreadDetail(initial: boolean) {
 	const currentProjectId = props.projectId;
 	const currentAgentId = props.agentId;
 	const currentThreadId = props.threadId;
+	const identity = threadIdentity();
 	const requestId = ++threadDetailRequestId;
 
 	try {
@@ -246,42 +228,78 @@ async function refreshThreadDetail() {
 			currentAgentId,
 			currentThreadId,
 		);
-		if (
-			requestId !== threadDetailRequestId ||
-			currentProjectId !== props.projectId ||
-			currentAgentId !== props.agentId ||
-			currentThreadId !== props.threadId
-		) {
+		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
 			return;
 		}
-		const selectedKey = selectedItem.value ? timelineItemKey(selectedItem.value) : null;
+		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
 		executions.value = result.executions;
 		if (selectedKey) {
 			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
 			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
 		}
 		emit('loaded', result);
-	} catch {
-		// Background refreshes retry on the next tick.
+	} catch (error) {
+		if (requestId !== threadDetailRequestId) return;
+		if (initial) toast.showError(error, i18n.baseText('agentSessions.showError.load'));
+	} finally {
+		if (initial && requestId === threadDetailRequestId) loading.value = false;
 	}
 }
 
-const { pause, resume } = useTimeoutPoll(refreshThreadDetail, THREAD_REFRESH_INTERVAL_MS, {
-	immediate: false,
-});
+function startThreadDetailRequest(initial: boolean) {
+	const identity = threadIdentity();
+	const request = { identity, promise: fetchThreadDetail(initial) };
+	activeRequest = request;
+	void request.promise.finally(() => {
+		if (activeRequest !== request) return;
+		activeRequest = undefined;
+		if (refreshPending && identity === threadIdentity()) {
+			refreshPending = false;
+			refreshThreadDetail();
+		}
+	});
+}
+
+function refreshThreadDetail() {
+	if (activeRequest?.identity === threadIdentity()) {
+		refreshPending = true;
+		return;
+	}
+	startThreadDetailRequest(false);
+}
+
+function onPushMessage(event: PushMessage) {
+	if (
+		event.type === 'agentExecutionUpdated' &&
+		event.data.projectId === props.projectId &&
+		event.data.agentId === props.agentId &&
+		event.data.threadId === props.threadId
+	) {
+		refreshThreadDetail();
+	}
+}
 
 watch(documentVisibility, (visibility) => {
-	if (visibility === 'hidden') {
-		pause();
-	} else if (!loading.value) {
-		void refreshThreadDetail().finally(() => {
-			if (documentVisibility.value === 'visible' && !loading.value) resume();
-		});
-	}
+	if (visibility === 'visible') refreshThreadDetail();
+});
+
+watch(
+	() => pushStore.isConnected,
+	(isConnected, wasConnected) => {
+		if (isConnected && !wasConnected) refreshThreadDetail();
+	},
+);
+
+onMounted(() => {
+	pushStore.pushConnect();
+	removePushListener = pushStore.addEventListener(onPushMessage);
 });
 
 onBeforeUnmount(() => {
 	threadDetailRequestId++;
+	refreshPending = false;
+	removePushListener?.();
+	pushStore.pushDisconnect();
 });
 
 watch([() => props.projectId, () => props.agentId, () => props.threadId], loadThreadDetail, {

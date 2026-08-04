@@ -108,7 +108,7 @@ function makeService() {
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
 
-	executionService.startExecution.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue('execution-1');
 	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
@@ -179,7 +179,7 @@ describe('AgentExecutionOrchestratorService', () => {
 
 	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
 		const { service, executionService } = makeService();
-		executionService.startExecution.mockResolvedValue('execution-running');
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
 		executionService.finalizeExecution.mockResolvedValue('execution-running');
 		const runtime = makeRuntime([
 			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
@@ -199,12 +199,20 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(executionService.startExecution).toHaveBeenCalledWith(
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
 			expect.objectContaining({ threadId: 'thread-1', userMessage: 'hello' }),
 			expect.any(Date),
 		);
-		expect(executionService.startExecution.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(executionService.startExecutionRecording.mock.invocationCallOrder[0]).toBeLessThan(
 			executionService.recordTimelineSnapshot.mock.invocationCallOrder[0],
+		);
+		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'execution-running',
+			}),
 		);
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-running',
@@ -212,7 +220,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				record: expect.objectContaining({ assistantResponse: 'Working' }),
 			}),
 		);
-		const startedAt = executionService.startExecution.mock.calls[0][1];
+		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 	});

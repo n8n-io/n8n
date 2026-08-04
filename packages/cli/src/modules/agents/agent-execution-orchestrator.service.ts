@@ -349,7 +349,11 @@ export class AgentExecutionOrchestratorService {
 
 		const { agent: agentInstance, toolRegistry } = runtime;
 		let executionId: string | undefined;
-		const recorder = this.createRecorder(toolRegistry, () => executionId);
+		const recorder = this.createRecorder(toolRegistry, () => executionId, {
+			projectId,
+			agentId,
+			threadId,
+		});
 		const startedAt = recorder.startedAt;
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 
@@ -612,7 +616,11 @@ export class AgentExecutionOrchestratorService {
 		const { threadId, resourceId } = memory;
 
 		let executionId: string | undefined;
-		const recorder = this.createRecorder(toolRegistry, () => executionId);
+		const recorder = this.createRecorder(toolRegistry, () => executionId, {
+			projectId,
+			agentId,
+			threadId,
+		});
 		const startedAt = recorder.startedAt;
 
 		try {
@@ -703,10 +711,17 @@ export class AgentExecutionOrchestratorService {
 	private createRecorder(
 		toolRegistry: ToolRegistry,
 		getExecutionId: () => string | undefined,
+		context: Pick<StartExecutionParams, 'projectId' | 'agentId' | 'threadId'>,
 	): ExecutionRecorder {
 		return new ExecutionRecorder(toolRegistry, (timeline) => {
 			const executionId = getExecutionId();
-			if (executionId) this.agentExecutionService.recordTimelineSnapshot(executionId, timeline);
+			if (executionId) {
+				this.agentExecutionService.recordTimelineSnapshot({
+					...context,
+					executionId,
+					timeline,
+				});
+			}
 		});
 	}
 
@@ -716,7 +731,7 @@ export class AgentExecutionOrchestratorService {
 		failureMessage: string,
 	): Promise<string | undefined> {
 		try {
-			return await this.agentExecutionService.startExecution(params, startedAt);
+			return await this.agentExecutionService.startExecutionRecording(params, startedAt);
 		} catch (error) {
 			this.logger.warn(failureMessage, {
 				agentId: params.agentId,

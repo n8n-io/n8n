@@ -189,7 +189,15 @@ export class SubAgentForegroundRunner {
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
 		let executionId: string | undefined;
 		const recorder = new ExecutionRecorder(undefined, (timeline) => {
-			if (executionId) this.agentExecutionService.recordTimelineSnapshot(executionId, timeline);
+			if (executionId) {
+				this.agentExecutionService.recordTimelineSnapshot({
+					projectId: context.projectId,
+					agentId: runtimeSource.source.sourceId,
+					threadId,
+					executionId,
+					timeline,
+				});
+			}
 		});
 		const startedAt = recorder.startedAt;
 		let recorded = false;
@@ -215,7 +223,7 @@ export class SubAgentForegroundRunner {
 							toolCallId: operation.request.childToolCallId,
 						});
 			try {
-				const currentExecutionId = await this.agentExecutionService.startExecution(
+				const currentExecutionId = await this.agentExecutionService.startExecutionRecording(
 					{
 						threadId,
 						agentId: runtimeSource.source.sourceId,

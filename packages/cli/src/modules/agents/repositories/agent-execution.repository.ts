@@ -4,6 +4,22 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 
 import { AgentExecution } from '../entities/agent-execution.entity';
 
+export type RunningAgentExecution = Pick<
+	AgentExecution,
+	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
+>;
+
+type AgentExecutionFinalizationValues = Pick<
+	AgentExecution,
+	'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error'
+> &
+	Partial<
+		Pick<
+			AgentExecution,
+			'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost' | 'hitlStatus'
+		>
+	>;
+
 @Service()
 export class AgentExecutionRepository extends Repository<AgentExecution> {
 	constructor(dataSource: DataSource) {
@@ -15,8 +31,11 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 		return await this.find({ where: { threadId }, order: { createdAt: 'ASC' } });
 	}
 
-	async findRunning(): Promise<AgentExecution[]> {
-		return await this.find({ where: { status: 'running' } });
+	async findRunning(): Promise<RunningAgentExecution[]> {
+		return await this.find({
+			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
+			where: { status: 'running' },
+		});
 	}
 
 	async touchRunning(executionId: string): Promise<void> {
@@ -36,16 +55,7 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 
 	async updateIfRunning(
 		executionId: string,
-		values: Pick<
-			AgentExecution,
-			'status' | 'stoppedAt' | 'duration' | 'timeline' | 'storedAt' | 'error'
-		> &
-			Partial<
-				Pick<
-					AgentExecution,
-					'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'cost' | 'hitlStatus'
-				>
-			>,
+		values: AgentExecutionFinalizationValues,
 	): Promise<boolean> {
 		const result = await this.update(
 			{ id: executionId, status: 'running' },

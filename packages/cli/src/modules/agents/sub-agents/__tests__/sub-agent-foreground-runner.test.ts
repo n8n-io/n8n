@@ -122,7 +122,7 @@ describe('SubAgentForegroundRunner', () => {
 		reconstructionService = mock<AgentRuntimeReconstructionService>();
 		Container.set(AgentRuntimeReconstructionService, reconstructionService);
 		agentExecutionService = mock<AgentExecutionService>();
-		agentExecutionService.startExecution.mockResolvedValue('agent-execution-1');
+		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
@@ -155,7 +155,7 @@ describe('SubAgentForegroundRunner', () => {
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
-		agentExecutionService.startExecution.mockResolvedValue('agent-execution-1');
+		agentExecutionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		const result = await runner.runForeground(spawnRequest, {
 			projectId,
@@ -200,9 +200,17 @@ describe('SubAgentForegroundRunner', () => {
 		const childPrompt = childAgent.stream.mock.calls[0]?.[0] as string;
 		expect(childPrompt).toContain('CONTEXT:\nFocus on auth endpoints.');
 		expect(childPrompt).toContain('EXPECTED OUTPUT:\nA concise summary.');
-		expect(agentExecutionService.startExecution).toHaveBeenCalledWith(
+		expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
 			expect.objectContaining({ threadId: result.threadId, source: 'subagent' }),
 			expect.any(Date),
+		);
+		expect(agentExecutionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId: 'agent-1',
+				threadId: result.threadId,
+				executionId: 'agent-execution-1',
+			}),
 		);
 		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
 			'agent-execution-1',
@@ -218,7 +226,7 @@ describe('SubAgentForegroundRunner', () => {
 				},
 			}),
 		);
-		const startedAt = agentExecutionService.startExecution.mock.calls[0][1];
+		const startedAt = agentExecutionService.startExecutionRecording.mock.calls[0][1];
 		const finalizedRecord = agentExecutionService.finalizeExecution.mock.calls[0][1].record;
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 	});

@@ -1,11 +1,23 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import type { PushMessage } from '@n8n/api-types';
+import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
 
 const getThreadDetail = vi.fn();
 const showError = vi.fn();
+const pushHandlers = new Set<(event: PushMessage) => void>();
+const pushStore = reactive({
+	isConnected: false,
+	pushConnect: vi.fn(),
+	pushDisconnect: vi.fn(),
+	addEventListener: vi.fn((handler: (event: PushMessage) => void) => {
+		pushHandlers.add(handler);
+		return () => pushHandlers.delete(handler);
+	}),
+});
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError }),
@@ -13,6 +25,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/features/agents/agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({ getThreadDetail }),
+}));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => pushStore,
 }));
 
 // Avoid the project-agents list dependency — the panel only reads `.value`.
@@ -24,8 +40,9 @@ const stubs = {
 	SessionTimelineChart: { template: '<div data-test-id="chart-stub" />' },
 	SessionTimelineTable: {
 		name: 'SessionTimelineTable',
-		props: ['selectedIndex'],
-		template: '<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" />',
+		props: ['selectedIndex', 'items'],
+		template:
+			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
 	},
 	SessionEventFilter: { template: '<div data-test-id="filter-stub" />' },
 	SessionDetailPanel: { template: '<div data-test-id="detail-stub" />' },
@@ -38,6 +55,18 @@ const detail: ThreadDetail = {
 	executions: [],
 };
 
+const update: PushMessage = {
+	type: 'agentExecutionUpdated',
+	data: {
+		projectId: 'p1',
+		agentId: 'a1',
+		threadId: 't1',
+		executionId: 'exec-1',
+	},
+};
+
+enableAutoUnmount(afterEach);
+
 function mountPanel(props: Partial<{ projectId: string; agentId: string; threadId: string }> = {}) {
 	return mount(AgentSessionTimelinePanel, {
 		props: { projectId: 'p1', agentId: 'a1', threadId: 't1', ...props },
@@ -45,14 +74,16 @@ function mountPanel(props: Partial<{ projectId: string; agentId: string; threadI
 	});
 }
 
+function emitPush(message: PushMessage = update) {
+	pushHandlers.forEach((handler) => handler(message));
+}
+
 describe('AgentSessionTimelinePanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		pushHandlers.clear();
+		pushStore.isConnected = false;
 		getThreadDetail.mockResolvedValue(detail);
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
 	});
 
 	it('loads the thread detail on mount for its props', async () => {
@@ -100,64 +131,120 @@ describe('AgentSessionTimelinePanel', () => {
 		expect(showError).toHaveBeenCalled();
 	});
 
-	it('polls the complete thread so simultaneous executions update together', async () => {
-		vi.useFakeTimers();
-		const initial = {
-			...detail,
-			executions: [
-				{ id: 'exec-3', status: 'running', timeline: [] },
-				{ id: 'exec-4', status: 'running', timeline: [] },
-			],
-		} as unknown as ThreadDetail;
+	it('refreshes the rendered thread only for matching invalidations', async () => {
 		const refreshed = {
 			...detail,
 			executions: [
 				{
-					id: 'exec-3',
+					id: 'exec-1',
 					status: 'running',
-					timeline: [{ type: 'text', content: 'Third', timestamp: 1 }],
-				},
-				{
-					id: 'exec-4',
-					status: 'success',
-					timeline: [{ type: 'text', content: 'Fourth', timestamp: 2 }],
+					timeline: [{ type: 'text', content: 'Working', timestamp: 1 }],
 				},
 			],
 		} as unknown as ThreadDetail;
-		getThreadDetail.mockResolvedValueOnce(initial).mockResolvedValueOnce(refreshed);
 		const wrapper = mountPanel();
 		await flushPromises();
 
-		await vi.advanceTimersByTimeAsync(5_000);
+		for (const data of [
+			{ ...update.data, projectId: 'other-project' },
+			{ ...update.data, agentId: 'other-agent' },
+			{ ...update.data, threadId: 'other-thread' },
+		]) {
+			emitPush({ type: 'agentExecutionUpdated', data });
+		}
+		await flushPromises();
+		expect(getThreadDetail).toHaveBeenCalledTimes(1);
+
+		getThreadDetail.mockResolvedValueOnce(refreshed);
+		emitPush();
 		await flushPromises();
 
 		expect(getThreadDetail).toHaveBeenCalledTimes(2);
 		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([refreshed]);
-		wrapper.unmount();
+		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-item-count')).toBe('1');
 	});
 
-	it('stops polling after the panel unmounts', async () => {
-		vi.useFakeTimers();
-		let resolveRefresh!: (value: ThreadDetail) => void;
-		getThreadDetail
-			.mockResolvedValueOnce(detail)
-			.mockReturnValueOnce(new Promise<ThreadDetail>((resolve) => (resolveRefresh = resolve)));
+	it('reconciles state after the push connection reconnects', async () => {
+		const refreshed = { ...detail, thread: { ...detail.thread, title: 'Updated' } };
+		getThreadDetail.mockResolvedValueOnce(detail).mockResolvedValueOnce(refreshed);
 		const wrapper = mountPanel();
 		await flushPromises();
-		vi.advanceTimersByTime(5_000);
+
+		pushStore.isConnected = true;
+		await flushPromises();
+
+		expect(getThreadDetail).toHaveBeenCalledTimes(2);
+		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([refreshed]);
+	});
+
+	it('coalesces invalidations while a refresh is in flight', async () => {
+		let resolveRefresh!: (value: ThreadDetail) => void;
+		const refreshed = { ...detail, thread: { ...detail.thread, title: 'Refreshed' } };
+		getThreadDetail
+			.mockResolvedValueOnce(detail)
+			.mockReturnValueOnce(new Promise<ThreadDetail>((resolve) => (resolveRefresh = resolve)))
+			.mockResolvedValueOnce(refreshed);
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		emitPush();
+		emitPush();
+		emitPush();
 		await flushPromises();
 		expect(getThreadDetail).toHaveBeenCalledTimes(2);
-		wrapper.unmount();
+
 		resolveRefresh(detail);
 		await flushPromises();
 
-		await vi.advanceTimersByTimeAsync(10_000);
-
-		expect(getThreadDetail).toHaveBeenCalledTimes(2);
+		expect(getThreadDetail).toHaveBeenCalledTimes(3);
+		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([refreshed]);
 	});
 
-	it('does not restore a stale selection when a refresh resolves', async () => {
-		vi.useFakeTimers();
+	it('ignores stale responses and invalidations after the selected thread changes', async () => {
+		let resolveStaleRefresh!: (value: ThreadDetail) => void;
+		const nextDetail = {
+			...detail,
+			thread: { ...detail.thread, id: 't2', title: 'Current thread' },
+		} as ThreadDetail;
+		const staleDetail = {
+			...detail,
+			thread: { ...detail.thread, title: 'Stale thread' },
+		} as ThreadDetail;
+		getThreadDetail
+			.mockResolvedValueOnce(detail)
+			.mockReturnValueOnce(new Promise<ThreadDetail>((resolve) => (resolveStaleRefresh = resolve)))
+			.mockResolvedValueOnce(nextDetail);
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		emitPush();
+		await flushPromises();
+		await wrapper.setProps({ threadId: 't2' });
+		await flushPromises();
+		emitPush();
+		resolveStaleRefresh(staleDetail);
+		await flushPromises();
+
+		expect(getThreadDetail).toHaveBeenCalledTimes(3);
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([nextDetail]);
+	});
+
+	it('disconnects and ignores invalidations after unmount', async () => {
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		wrapper.unmount();
+		emitPush();
+		await flushPromises();
+
+		expect(pushStore.pushConnect).toHaveBeenCalledOnce();
+		expect(pushStore.pushDisconnect).toHaveBeenCalledOnce();
+		expect(pushHandlers.size).toBe(0);
+		expect(getThreadDetail).toHaveBeenCalledOnce();
+	});
+
+	it('keeps the selected timeline item through reconciliation', async () => {
 		const execution = {
 			id: 'exec-1',
 			status: 'running',
@@ -169,22 +256,26 @@ describe('AgentSessionTimelinePanel', () => {
 			timeline: [{ type: 'text', content: 'Answer', timestamp: 1 }],
 		};
 		const runningDetail = { ...detail, executions: [execution] } as unknown as ThreadDetail;
-		let resolveRefresh!: (value: ThreadDetail) => void;
-		getThreadDetail
-			.mockResolvedValueOnce(runningDetail)
-			.mockReturnValueOnce(new Promise<ThreadDetail>((resolve) => (resolveRefresh = resolve)));
+		const refreshedDetail = {
+			...detail,
+			executions: [
+				{
+					...execution,
+					timeline: [
+						{ type: 'text', content: 'Earlier update', timestamp: 0 },
+						{ type: 'text', content: 'Answer', timestamp: 1 },
+					],
+				},
+			],
+		} as unknown as ThreadDetail;
+		getThreadDetail.mockResolvedValueOnce(runningDetail).mockResolvedValueOnce(refreshedDetail);
 		const wrapper = mountPanel();
 		await flushPromises();
 		const table = wrapper.findComponent({ name: 'SessionTimelineTable' });
-		table.vm.$emit('select', 0);
-		vi.advanceTimersByTime(5_000);
-		await flushPromises();
-
 		table.vm.$emit('select', 1);
-		resolveRefresh(runningDetail);
+		emitPush();
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-selected-index')).toBe('1');
-		wrapper.unmount();
+		expect(wrapper.find('[data-test-id="table-stub"]').attributes('data-selected-index')).toBe('2');
 	});
 });

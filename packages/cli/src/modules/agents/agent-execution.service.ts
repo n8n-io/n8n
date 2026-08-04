@@ -12,6 +12,7 @@ import {
 	AgentChatAttachmentService,
 	type StoredAttachmentRef,
 } from './agent-chat-attachment.service';
+import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecution } from './entities/agent-execution.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
@@ -19,7 +20,10 @@ import { AgentExecutionLogStore } from './execution-log/agent-execution-log-stor
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import type { AgentExecutionThreadMetadata } from './repositories/agent-execution-thread.repository';
-import { AgentExecutionRepository } from './repositories/agent-execution.repository';
+import {
+	AgentExecutionRepository,
+	type RunningAgentExecution,
+} from './repositories/agent-execution.repository';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -49,6 +53,14 @@ export interface RecordMessageParams {
 
 export type StartExecutionParams = Omit<RecordMessageParams, 'record' | 'hitlStatus'>;
 
+interface TimelineSnapshotParams {
+	executionId: string;
+	projectId: string;
+	agentId: string;
+	threadId: string;
+	timeline: TimelineEvent[];
+}
+
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
@@ -71,7 +83,10 @@ export class AgentExecutionService {
 
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
 
-	private readonly pendingTimelineSnapshots = new Map<string, TimelineEvent[]>();
+	private readonly pendingTimelineSnapshots = new Map<
+		string,
+		Omit<TimelineSnapshotParams, 'executionId'>
+	>();
 
 	private readonly timelineSnapshotWrites = new Map<string, Promise<void>>();
 
@@ -87,9 +102,10 @@ export class AgentExecutionService {
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly executionUpdateBroadcaster: AgentExecutionUpdateBroadcaster,
 	) {}
 
-	async startExecution(params: StartExecutionParams, startedAt: Date): Promise<string> {
+	async startExecutionRecording(params: StartExecutionParams, startedAt: Date): Promise<string> {
 		const { userMessage, created } = await this.prepareThread(params);
 		const inserted = await this.agentExecutionRepository.save(
 			this.agentExecutionRepository.create({
@@ -114,11 +130,17 @@ export class AgentExecutionService {
 		);
 		if (created) this.executionsNeedingTitleSync.add(inserted.id);
 		this.startHeartbeat(inserted.id);
+		this.executionUpdateBroadcaster.notify({
+			projectId: params.projectId,
+			agentId: params.agentId,
+			threadId: params.threadId,
+			executionId: inserted.id,
+		});
 		return inserted.id;
 	}
 
-	recordTimelineSnapshot(executionId: string, timeline: TimelineEvent[]): void {
-		this.pendingTimelineSnapshots.set(executionId, timeline);
+	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
+		this.pendingTimelineSnapshots.set(executionId, snapshot);
 		this.ensureTimelineSnapshotWrite(executionId);
 	}
 
@@ -158,6 +180,12 @@ export class AgentExecutionService {
 			});
 			if (!finalized) return executionId;
 
+			this.executionUpdateBroadcaster.notify({
+				projectId: params.projectId,
+				agentId: params.agentId,
+				threadId: params.threadId,
+				executionId,
+			});
 			await this.completeRecordedExecution(params, executionId, status);
 			return executionId;
 		} catch (error) {
@@ -169,7 +197,7 @@ export class AgentExecutionService {
 		}
 	}
 
-	async finalizeInterruptedExecution(execution: AgentExecution): Promise<boolean> {
+	async finalizeInterruptedExecution(execution: RunningAgentExecution): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
 		const duration = execution.startedAt
@@ -183,7 +211,29 @@ export class AgentExecutionService {
 			storedAt: 'db',
 			error: 'Agent execution was interrupted by a process restart.',
 		});
+		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
+	}
+
+	private async notifyInterruptedExecution(execution: RunningAgentExecution): Promise<void> {
+		try {
+			const thread = await this.agentExecutionThreadRepository.findOneBy({
+				id: execution.threadId,
+			});
+			if (!thread) return;
+			this.executionUpdateBroadcaster.notify({
+				projectId: thread.projectId,
+				agentId: thread.agentId,
+				threadId: execution.threadId,
+				executionId: execution.id,
+			});
+		} catch (error) {
+			this.logger.warn('Failed to resolve an interrupted agent execution update', {
+				executionId: execution.id,
+				threadId: execution.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private startHeartbeat(executionId: string): void {
@@ -221,17 +271,28 @@ export class AgentExecutionService {
 
 	private async drainTimelineSnapshots(executionId: string): Promise<void> {
 		while (true) {
-			const timeline = this.pendingTimelineSnapshots.get(executionId);
-			if (!timeline) return;
+			const snapshot = this.pendingTimelineSnapshots.get(executionId);
+			if (!snapshot) return;
 			this.pendingTimelineSnapshots.delete(executionId);
 			try {
-				if (!(await this.agentExecutionRepository.updateTimelineIfRunning(executionId, timeline))) {
+				if (
+					!(await this.agentExecutionRepository.updateTimelineIfRunning(
+						executionId,
+						snapshot.timeline,
+					))
+				) {
 					this.pendingTimelineSnapshots.delete(executionId);
 					return;
 				}
+				this.executionUpdateBroadcaster.notify({
+					projectId: snapshot.projectId,
+					agentId: snapshot.agentId,
+					threadId: snapshot.threadId,
+					executionId,
+				});
 			} catch (error) {
 				if (!this.pendingTimelineSnapshots.has(executionId)) {
-					this.pendingTimelineSnapshots.set(executionId, timeline);
+					this.pendingTimelineSnapshots.set(executionId, snapshot);
 				}
 				this.logger.warn('Failed to persist an agent execution timeline snapshot; retrying', {
 					executionId,
