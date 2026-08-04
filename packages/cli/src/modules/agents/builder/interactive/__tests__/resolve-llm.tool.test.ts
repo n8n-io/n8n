@@ -925,6 +925,19 @@ describe('resolve_llm tool', () => {
 			expect(providers).toEqual(expect.arrayContaining(['openai', 'google']));
 		});
 
+		it('reports n8n_credits_unavailable when the gateway serves no provider', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async () => false,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ useN8nCredits: true }, {});
+
+			// No providers list — there is nothing for the caller to pick from.
+			expect(result).toEqual({ ok: false, reason: 'n8n_credits_unavailable' });
+		});
+
 		it('surfaces the allowlisted models on unknown_model so the agent can retry', async () => {
 			const modelLookup = makeModelLookup(async () => [
 				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },

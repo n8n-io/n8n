@@ -250,8 +250,9 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'like any credential and tell the user the model runs on n8n credits. When the user ' +
 				'explicitly asks to use n8n credits, pass useN8nCredits: true (with provider when named): ' +
 				'the tool resolves n8n credits for that provider without a picker even if the user has their ' +
-				'own credential for it, and returns ok=false with reason "n8n_credits_unsupported_provider" ' +
-				'or "ambiguous_n8n_credits_provider" (with providers) when it cannot. When multiple ' +
+				'own credential for it, and returns ok=false with reason "n8n_credits_unsupported_provider", ' +
+				'"ambiguous_n8n_credits_provider" (with providers), or "n8n_credits_unavailable" (n8n ' +
+				'credits serves no provider on this instance) when it cannot. When multiple ' +
 				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
 				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
 				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +
@@ -308,12 +309,12 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					if (served.length === 1) {
 						return await resolveManagedCredentialForProvider(served[0], model, deps);
 					}
+					if (served.length === 0) {
+						return { ok: false as const, reason: 'n8n_credits_unavailable' as const };
+					}
 					return {
 						ok: false as const,
-						reason:
-							served.length === 0
-								? ('n8n_credits_unavailable' as const)
-								: ('ambiguous_n8n_credits_provider' as const),
+						reason: 'ambiguous_n8n_credits_provider' as const,
 						providers: served,
 					};
 				}
