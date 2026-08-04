@@ -159,6 +159,7 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus.scss';
 @use '../../css/mixins/motion.scss';
 
 .codeBlock {
@@ -167,6 +168,11 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	border: var(--border);
 	border-radius: var(--radius);
 	background: var(--background--subtle);
+
+	&:has(.pre:focus) {
+		@include focus.focus-ring;
+		border-color: var(--focus--border-color);
+	}
 }
 
 .actions {
@@ -233,7 +239,6 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 .codeBlock:hover .expandButton,
 .codeBlock:focus-within .expandButton {
 	opacity: 1;
-	pointer-events: auto;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
 </style>
