@@ -253,6 +253,18 @@ export class CanvasPage extends BasePage {
 	}
 
 	/**
+	 * Commits a name for a new workflow and waits for the resulting save, so
+	 * actions that need a persisted workflow (e.g. the description and tags
+	 * modal) become available.
+	 */
+	async saveNewWorkflow(name = 'Test Workflow'): Promise<void> {
+		const saved = this.waitForSaveWorkflowCompleted();
+		await this.setWorkflowName(name);
+		await this.page.getByTestId('inline-edit-input').press('Enter');
+		await saved;
+	}
+
+	/**
 	 * Import a workflow from a fixture file
 	 * @param fixtureKey - The key of the fixture file to import
 	 * @param workflowName - The name of the workflow to import

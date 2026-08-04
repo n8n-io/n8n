@@ -17,6 +17,8 @@ test.describe(
 	() => {
 		test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
+			// The description and tags modal only works on persisted workflows
+			await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 			const tag1 = `tag-${nanoid(6)}`;
 			const tag2 = `tag-${nanoid(6)}`;
@@ -54,6 +56,8 @@ test.describe(
 
 		test('should create tags via modal without attaching them', async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();
+			// The description and tags modal only works on persisted workflows
+			await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 			const tag1 = `modal-${nanoid(6)}`;
 			const tag2 = `modal-${nanoid(6)}`;
@@ -97,6 +101,8 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		// The description and tags modal only works on persisted workflows
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 		await n8n.canvas.openTagManagerModal();
 
 		for (let i = 0; i < 5; i++) {
@@ -128,6 +134,8 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		// The description and tags modal only works on persisted workflows
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {
@@ -157,6 +165,8 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		// The description and tags modal only works on persisted workflows
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {
@@ -183,6 +193,8 @@ test.describe('Workflow tags - Tag operations', () => {
 		]);
 
 		await n8n.start.fromBlankCanvas();
+		// The description and tags modal only works on persisted workflows
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {
@@ -211,6 +223,8 @@ test.describe('Workflow tags - Tag operations', () => {
 		const nonExisting = `nonexist-${nanoid(6)}`;
 
 		await n8n.start.fromBlankCanvas();
+		// The description and tags modal only works on persisted workflows
+		await n8n.canvas.saveNewWorkflow(`Tags test ${nanoid(6)}`);
 
 		await n8n.canvas.clickCreateTagButton();
 		for (const tag of tags) {

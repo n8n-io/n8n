@@ -52,14 +52,6 @@ export function useWorkflowSettingsCache() {
 			...updates,
 		};
 
-		// Deep merge suggestedActions if provided
-		if (updates.suggestedActions) {
-			updatedSettings.suggestedActions = {
-				...(existingSettings.suggestedActions ?? {}),
-				...updates.suggestedActions,
-			};
-		}
-
 		cache.setItem(workflowId, JSON.stringify(updatedSettings));
 	}
 
