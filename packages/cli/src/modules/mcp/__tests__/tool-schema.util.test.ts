@@ -36,4 +36,29 @@ describe('shapeToStandardSchema', () => {
 		const result = await schema['~standard'].validate({ limit: 1, extra: 'x' });
 		expect(result).toEqual({ value: { limit: 1 } });
 	});
+
+	// The v2 SDK validates a tool's returned value against its declared
+	// outputSchema. Tools that report handled failures in structured output
+	// (execute_workflow, test_workflow, get_execution, …) return an error-marker
+	// shape instead of the success fields, so their output schema admits an
+	// 'error' status, keeps `error` optional, and makes success-only fields
+	// nullable. This locks that a handled-error payload still validates, so the
+	// output check can't turn a reported failure into a protocol error.
+	it('accepts a handled-error payload for a tool that reports failures in structured output', async () => {
+		const output = shapeToStandardSchema({
+			executionId: z.string().nullable(),
+			status: z.enum(['success', 'error', 'running']),
+			error: z.string().optional(),
+		});
+
+		const handledError = await output['~standard'].validate({
+			executionId: null,
+			status: 'error',
+			error: 'workflow failed',
+		});
+
+		expect(handledError).toEqual({
+			value: { executionId: null, status: 'error', error: 'workflow failed' },
+		});
+	});
 });
