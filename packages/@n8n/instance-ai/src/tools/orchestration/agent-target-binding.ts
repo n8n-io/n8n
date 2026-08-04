@@ -6,6 +6,7 @@
  * target in thread metadata lets follow-up turns keep editing the same agent
  * instead of creating a new one — including after a cancelled build.
  */
+import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
@@ -130,7 +131,17 @@ export function agentBuilderTargetMetadata(targets: AgentBuilderTarget[]): Recor
 	);
 	const registry: Record<string, AgentBuilderTarget> = {};
 	for (const entry of entries) {
-		if (entry.ref) registry[entry.ref] = entry;
+		if (!entry.ref) continue;
+		// Two refs normalizing to one key ("Support Bot" / "support-bot") would drop
+		// an entry, and a later ref lookup would then edit the surviving agent —
+		// silently the wrong one. Refuse instead, like a duplicate seed workflow name.
+		const clash = registry[entry.ref];
+		if (clash && clash.agentId !== entry.agentId) {
+			throw new UserError(
+				`Seed agents "${clash.name ?? clash.agentId}" and "${entry.name ?? entry.agentId}" both address as "${entry.ref}" — give them names that differ by more than case, spacing or punctuation`,
+			);
+		}
+		registry[entry.ref] = entry;
 	}
 	return {
 		[METADATA_KEY]: entries[entries.length - 1],

@@ -237,6 +237,47 @@ describe('agentBuilderTargetMetadata', () => {
 		});
 	});
 
+	it('refuses two targets whose refs normalize to one key', () => {
+		// Silently keeping the last would leave the other unaddressable, and a later
+		// ref lookup would edit the surviving agent instead — the wrong one.
+		expect(() =>
+			agentBuilderTargetMetadata([
+				{ agentId: 'agent-1', projectId: 'p', name: 'Support Bot', ref: 'Support Bot' },
+				{ agentId: 'agent-2', projectId: 'p', name: 'support-bot', ref: 'support-bot' },
+			]),
+		).toThrow(/both address as "support-bot"/);
+	});
+
+	it('allows the same agent to appear twice under one ref', () => {
+		expect(() =>
+			agentBuilderTargetMetadata([
+				{ agentId: 'agent-1', projectId: 'p', ref: 'Triage' },
+				{ agentId: 'agent-1', projectId: 'p', ref: 'triage' },
+			]),
+		).not.toThrow();
+	});
+
+	// Keeping the last entry would drop the other agent from the registry, and a
+	// later ref lookup would edit the survivor — silently the wrong agent.
+	it('refuses two seed agents whose names address as the same ref', () => {
+		expect(() =>
+			agentBuilderTargetMetadata([
+				{ agentId: 'agent-1', projectId: 'p', name: 'Support Bot', ref: 'Support Bot' },
+				{ agentId: 'agent-2', projectId: 'p', name: 'support-bot', ref: 'support-bot' },
+			]),
+		).toThrow(/support-bot/);
+	});
+
+	it('allows the same agent listed twice under one ref', () => {
+		const metadata = agentBuilderTargetMetadata([
+			{ agentId: 'agent-1', projectId: 'p', ref: 'Support Bot' },
+			{ agentId: 'agent-1', projectId: 'p', ref: 'support bot' },
+		]);
+		expect(metadata.instanceAiAgentBuilderTargets).toEqual({
+			'support-bot': { agentId: 'agent-1', projectId: 'p', ref: 'support-bot' },
+		});
+	});
+
 	it('resolves through the same readers the product uses', async () => {
 		// The point of the export: a thread seeded with this metadata addresses its
 		// agent exactly as one that really built it does.

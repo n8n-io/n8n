@@ -866,12 +866,16 @@ describe('InstanceAiController', () => {
 				expect(memoryService.updateThread).not.toHaveBeenCalled();
 			});
 
-			it('should roll the agent back when a later step fails', async () => {
+			it('should roll the agent back when a later step fails, leaving no binding to it', async () => {
+				// The binding is not rolled back, so it must not be written before the
+				// steps that can fail — a thread bound to an agent the rollback deleted
+				// would send the next `build-agent` call after a missing id.
 				memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
 
 				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow('boom');
 
 				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				expect(memoryService.updateThread).not.toHaveBeenCalled();
 			});
 		});
 

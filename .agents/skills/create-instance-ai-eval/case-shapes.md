@@ -559,6 +559,10 @@ it on a dev instance, fetch both, scrub, paste. Things worth knowing:
   ids will miss a paragraph.
 - **Skill ids must match**: every `config.skills[].id` needs an entry in the
   `skills` map, or the agent renders with a dangling reference.
+- **Two agents can't share an addressing key.** Names are slugified to address the
+  agent (`Support Bot` and `support-bot` both become `support-bot`), so a seed
+  whose agent names differ only by case, spacing or punctuation is refused rather
+  than silently dropping one from the registry.
 - **Credential ids don't survive**, so leave them out. An id from the instance you
   authored on won't exist on the eval instance, and a dangling one is something the
   agent may try to "fix" — which then grades as its behaviour. Declare credentials

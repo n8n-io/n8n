@@ -1056,9 +1056,19 @@ export class InstanceAiController {
 				idMap,
 			);
 			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId);
+			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
+			if (payload.messages.length > 0) {
+				({ restored } = await this.memoryService.restoreThreadMessages(
+					req.user.id,
+					payload.threadId,
+					payload.messages,
+				));
+			}
 			// Bind the thread as the conversation that built these agents would have:
 			// without it `build-agent` has no target to continue and creates a second
-			// agent beside the seeded one.
+			// agent beside the seeded one. Written last, and never rolled back — a
+			// binding pointing at an agent a failed restore already deleted would send
+			// `build-agent` after a missing id.
 			if (createdAgentIds.length > 0) {
 				await this.memoryService.updateThread(payload.threadId, {
 					metadata: agentBuilderTargetMetadata(
@@ -1070,14 +1080,6 @@ export class InstanceAiController {
 						})),
 					),
 				});
-			}
-			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
-			if (payload.messages.length > 0) {
-				({ restored } = await this.memoryService.restoreThreadMessages(
-					req.user.id,
-					payload.threadId,
-					payload.messages,
-				));
 			}
 		} catch (error) {
 			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
