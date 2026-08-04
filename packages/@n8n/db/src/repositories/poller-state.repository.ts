@@ -31,9 +31,9 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * Returns the node's cursor, which is not always `initial`: two processes racing to
-	 * poll the same node for the first time both try to insert, and the loser continues
-	 * from the cursor the winner stored.
+	 * Returns the node's cursor, seeding it with `initial` on first read. Reads first
+	 * so a node past its first poll costs one query, not two; on a miss, racing
+	 * processes both try to insert, and the loser re-reads the winner's stored cursor.
 	 */
 	async ensureCursor(
 		workflowId: string,
@@ -42,6 +42,12 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		ctx: OperationContext,
 	): Promise<PollerCursor> {
 		const manager = this.managerFor(ctx);
+
+		const existing = await manager.findOne(PollerState, {
+			select: ['cursor'],
+			where: { workflowId, nodeId },
+		});
+		if (existing !== null) return existing.cursor;
 
 		await manager
 			.createQueryBuilder()

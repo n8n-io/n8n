@@ -10,7 +10,6 @@ import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
-import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { isPollTriggerTaskPayload, POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
@@ -21,7 +20,6 @@ describe('PollTriggerTaskHandler', () => {
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const workflowRepository = mock<WorkflowRepository>();
-	const pollCursorService = mock<PollCursorService>({ enabled: true });
 	const errorReporter = mock<ErrorReporter>();
 
 	const scopedLogger = mock<Logger>();
@@ -32,7 +30,6 @@ describe('PollTriggerTaskHandler', () => {
 		triggerExecutionContextFactory,
 		triggersAndPollers,
 		workflowRepository,
-		pollCursorService,
 		errorReporter,
 	);
 
@@ -287,30 +284,6 @@ describe('PollTriggerTaskHandler', () => {
 			await handler.execute(buildTask(), report);
 
 			expect(pollFunctions.__commitCursor).toHaveBeenCalledTimes(commits);
-		});
-	});
-
-	describe('durable cursors disabled', () => {
-		beforeEach(() => {
-			vi.spyOn(pollCursorService, 'enabled', 'get').mockReturnValue(false);
-			triggersAndPollers.runPollFunction.mockResolvedValue(null);
-		});
-
-		test('neither commits the cursor nor queries the stored active state on an empty poll', async () => {
-			await handler.execute(buildTask(), report);
-
-			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-			expect(workflowRepository.isActive).not.toHaveBeenCalled();
-			expect(onDispatch).not.toHaveBeenCalled();
-		});
-
-		test('still queries the stored active state when the poll returns data', async () => {
-			triggersAndPollers.runPollFunction.mockResolvedValue(pollData);
-
-			await handler.execute(buildTask(), report);
-
-			expect(workflowRepository.isActive).toHaveBeenCalledWith('wf-1');
-			expect(pollFunctions.__emit).toHaveBeenCalledWith(pollData);
 		});
 	});
 
