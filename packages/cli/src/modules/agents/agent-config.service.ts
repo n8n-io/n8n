@@ -133,8 +133,9 @@ export class AgentConfigService {
 			projectId,
 			user,
 		);
+		const accessibleCredentials = await credentialProvider.list();
 		const accessibleCredentialIds = new Set(
-			(await credentialProvider.list()).map((credential) => credential.id),
+			accessibleCredentials.map((credential) => credential.id),
 		);
 		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
@@ -153,7 +154,10 @@ export class AgentConfigService {
 		const validatedConfig = reconcileNativeWebSearch(result.config);
 
 		if (validatedConfig.tools !== undefined) {
-			await this.nodeToolAiGatewayService.assignManagedCredentials(validatedConfig.tools);
+			await this.nodeToolAiGatewayService.assignManagedCredentials(
+				validatedConfig.tools,
+				new Set(accessibleCredentials.map((credential) => credential.type)),
+			);
 			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
 		}
 

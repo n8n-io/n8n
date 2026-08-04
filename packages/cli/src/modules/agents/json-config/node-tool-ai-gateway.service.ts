@@ -18,13 +18,17 @@ export class NodeToolAiGatewayService {
 		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
-	async assignManagedCredentials(tools: AgentJsonToolConfig[] | undefined): Promise<void> {
+	async assignManagedCredentials(
+		tools: AgentJsonToolConfig[] | undefined,
+		ownedCredentialTypes: ReadonlySet<string>,
+	): Promise<void> {
 		if (tools === undefined) return;
 		const availability = await this.aiGatewayService.isAvailable();
 		reconcileNodeToolGatewayCredentials(
 			tools,
 			this.nodeTypes,
 			availability.available ? availability.config : undefined,
+			ownedCredentialTypes,
 		);
 	}
 }

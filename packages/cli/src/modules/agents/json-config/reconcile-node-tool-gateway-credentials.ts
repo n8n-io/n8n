@@ -85,15 +85,20 @@ function reconcileAiGatewayManagedMarkers(
  * re-validate any inbound `__aiGatewayManaged` marker against live gateway
  * eligibility. Runs on every config write (the marker is server-assigned, so an
  * inbound one is untrusted until re-earned here). Real credentials win: a slot
- * with a stored id is never touched.
+ * with a stored id is never touched, and auto-assignment skips types the
+ * project owns a credential for. An inbound marker is exempt from that
+ * precedence — it is an explicit opt-in and only has to stay eligible.
  */
 export function reconcileNodeToolGatewayCredentials(
 	tools: AgentJsonToolConfig[] | undefined,
 	nodeTypes: NodeTypes,
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
+	ownedCredentialTypes: ReadonlySet<string>,
 ): void {
 	for (const tool of tools ?? []) {
-		if (tool.type === 'node') reconcileNode(tool.node, nodeTypes, aiGatewayConfig);
+		if (tool.type === 'node') {
+			reconcileNode(tool.node, nodeTypes, aiGatewayConfig, ownedCredentialTypes);
+		}
 	}
 }
 
@@ -101,6 +106,7 @@ function reconcileNode(
 	node: NodeToolConfig,
 	nodeTypes: NodeTypes,
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
+	ownedCredentialTypes: ReadonlySet<string>,
 ): void {
 	let description: INodeTypeDescription;
 	try {
@@ -137,6 +143,7 @@ function reconcileNode(
 			(candidateType) =>
 				candidateType !== credentialType &&
 				!node.credentials?.[candidateType]?.id &&
+				!ownedCredentialTypes.has(candidateType) &&
 				isEligible(candidateType),
 		);
 
@@ -156,6 +163,10 @@ function reconcileNode(
 		// sanitization clears inaccessible ids to '', leaving the slot empty.
 		const existing = node.credentials?.[credentialType];
 		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
+
+		// Own credential wins (same precedence as MCP and model slots): leave the
+		// slot empty so the builder resolves the user's credential instead.
+		if (ownedCredentialTypes.has(credentialType)) continue;
 
 		if (!isCredentialDisplayed(node, description, credentialType, resolvedParameters)) continue;
 

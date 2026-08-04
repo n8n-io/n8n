@@ -250,9 +250,13 @@ describe('AgentConfigService', () => {
 			expect(result.config?.providerTools).toEqual({});
 		});
 
-		it('runs node-tool gateway credential assignment on every write with tools', async () => {
-			const { service, agentRepository, nodeToolAiGatewayService } = makeService();
+		it('runs node-tool gateway credential assignment on every write with tools, passing the owned credential types', async () => {
+			const { service, agentRepository, credentialsService, nodeToolAiGatewayService } =
+				makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'slack-1', type: 'slackApi', name: 'My Slack' },
+			] as never);
 
 			await service.updateConfig(
 				agentId,
@@ -265,9 +269,10 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
-			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith([
-				{ type: 'custom', id: 'tool_1' },
-			]);
+			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith(
+				[{ type: 'custom', id: 'tool_1' }],
+				new Set(['slackApi']),
+			);
 		});
 
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {

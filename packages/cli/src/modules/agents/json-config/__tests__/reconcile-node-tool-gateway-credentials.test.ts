@@ -20,6 +20,8 @@ const SERVICE_GATEWAY_CONFIG = {
 
 const SENTINEL = { id: null, name: 'n8n credits', __aiGatewayManaged: true } as const;
 
+const NO_OWNED = new Set<string>();
+
 function nodeTypesWithDescription(description: INodeTypeDescription): NodeTypes {
 	const nodeTypes = mock<NodeTypes>();
 	nodeTypes.getByNameAndVersion.mockReturnValue({ description } as INodeType);
@@ -86,6 +88,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			tools,
 			nodeTypesWithCredentials(['slackApi']),
 			GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 		expect(tools[0].node.credentials).toEqual({ slackApi: SENTINEL });
 	});
@@ -98,6 +101,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			tools,
 			nodeTypesWithCredentials(['slackApi']),
 			GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 		expect(tools[0].node.credentials).toEqual({ slackApi: { id: 'c1', name: 'My Slack' } });
 	});
@@ -111,6 +115,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			tools,
 			nodeTypesWithCredentials(['slackApi']),
 			GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 		expect(tools[0].node.credentials).toEqual({ slackApi: SENTINEL });
 	});
@@ -121,8 +126,45 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			tools,
 			nodeTypesWithCredentials(['notionApi']),
 			GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 		expect(tools[0].node.credentials).toBeUndefined();
+	});
+
+	it('does not auto-assign when the project already has a credential of the type (own credential wins)', () => {
+		const tools = [nodeTool('n8n-nodes-base.slackTool')];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithCredentials(['slackApi']),
+			GATEWAY_CONFIG,
+			new Set(['slackApi']),
+		);
+		expect(tools[0].node.credentials).toBeUndefined();
+	});
+
+	it('keeps an explicit inbound managed marker even when the project has a credential of the type', () => {
+		// An inbound marker is an explicit choice (manual toggle or the user
+		// asking the builder for n8n credits) — own credentials must not veto it.
+		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } })];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithCredentials(['slackApi']),
+			GATEWAY_CONFIG,
+			new Set(['slackApi']),
+		);
+		expect(tools[0].node.credentials).toEqual({ slackApi: SENTINEL });
+	});
+
+	it('does not switch auth to a sibling type the project has a credential for', () => {
+		const tools = [nodeTool('n8n-nodes-base.serviceTool')];
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithDescription(multiAuthNodeDescription),
+			SERVICE_GATEWAY_CONFIG,
+			new Set(['serviceApiKey']),
+		);
+		expect(tools[0].node.credentials).toBeUndefined();
+		expect(tools[0].node.nodeParameters).toEqual({});
 	});
 
 	it('switches auth to a supported sibling credential type when the displayed type is unsupported', () => {
@@ -132,6 +174,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			tools,
 			nodeTypesWithDescription(multiAuthNodeDescription),
 			SERVICE_GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 
 		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
@@ -158,6 +201,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 				],
 			}),
 			SERVICE_GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 
 		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
@@ -183,6 +227,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 				],
 			}),
 			SERVICE_GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 
 		expect(tools[0].node.credentials).toEqual({ serviceApiKey: SENTINEL });
@@ -195,6 +240,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			tools,
 			nodeTypesWithCredentials(['notionApi']),
 			GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 		expect(tools[0].node.credentials).toEqual({});
 	});
@@ -209,13 +255,19 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			tools,
 			nodeTypesWithCredentials(['slackApi']),
 			GATEWAY_CONFIG,
+			NO_OWNED,
 		);
 		expect(tools[0].node.credentials).toEqual({ slackApi: SENTINEL });
 	});
 
 	it('drops all managed markers when no gateway config is available', () => {
 		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } })];
-		reconcileNodeToolGatewayCredentials(tools, nodeTypesWithCredentials(['slackApi']), undefined);
+		reconcileNodeToolGatewayCredentials(
+			tools,
+			nodeTypesWithCredentials(['slackApi']),
+			undefined,
+			NO_OWNED,
+		);
 		expect(tools[0].node.credentials).toEqual({});
 	});
 
@@ -225,7 +277,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 			throw new Error('unknown node type');
 		});
 		const tools = [nodeTool('n8n-nodes-base.slackTool', { slackApi: { ...SENTINEL } })];
-		reconcileNodeToolGatewayCredentials(tools, nodeTypes, GATEWAY_CONFIG);
+		reconcileNodeToolGatewayCredentials(tools, nodeTypes, GATEWAY_CONFIG, NO_OWNED);
 		expect(tools[0].node.credentials).toEqual({});
 	});
 });
