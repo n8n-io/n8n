@@ -14,6 +14,7 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
+import { z } from 'zod';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
@@ -76,6 +77,76 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 	next();
 };
 
+const ClientCredentialsGrantSchema = z.object({
+	grant_type: z.string(),
+	client_id: z.string().optional(),
+	client_secret: z.string().optional(),
+	resource: z.string().optional(),
+});
+
+const clientCredentialsExchangeGuard: RequestHandler = async (req, res, next) => {
+	const parseResult = ClientCredentialsGrantSchema.safeParse(req.body);
+	if (!parseResult.success || parseResult.data.grant_type !== 'client_credentials') {
+		// Not our grant — hand off to the SDK token handler.
+		next();
+		return;
+	}
+
+	res.setHeader('Cache-Control', 'no-store');
+	try {
+		if (!parseResult.data.resource) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: 'Missing required parameter: resource',
+			});
+			return;
+		}
+		let clientId = parseResult.data.client_id;
+		let clientSecret = parseResult.data.client_secret;
+		const resource = parseResult.data.resource;
+
+		if (!clientId || !clientSecret) {
+			const authorizationHeader = req.headers['authorization'];
+			if (authorizationHeader?.startsWith('Basic ')) {
+				const credentials = Buffer.from(
+					authorizationHeader.slice('Basic '.length),
+					'base64',
+				).toString('utf-8');
+				const [authClientId, authClientSecret] = credentials.split(':');
+				if (authClientId && authClientSecret) {
+					clientId = authClientId;
+					clientSecret = authClientSecret;
+				}
+			}
+		}
+
+		if (!clientId || !clientSecret) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: 'Missing required parameters: client_id and/or client_secret',
+			});
+			return;
+		}
+
+		const response = await oauthServerService.exchangeClientCredentials(
+			clientId,
+			clientSecret,
+			resource,
+		);
+		if (!response) {
+			res.status(401).json({ error: 'invalid_client' });
+			return;
+		}
+		res.status(200).json(response);
+	} catch (error) {
+		// We own the client_credentials grant here — surface failures directly
+		// instead of falling through to the SDK handler, which would mask them
+		// as a misleading "invalid_client".
+		logger.error('Error handling client credentials exchange', { error });
+		res.status(500).json({ error: 'server_error' });
+	}
+};
+
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
@@ -111,6 +182,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
+		middlewares: [clientCredentialsExchangeGuard],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitToken,
 			5 * Time.minutes.toMilliseconds,
@@ -188,7 +260,7 @@ export class OAuthController {
 			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
 			revocation_endpoint: `${baseUrl}/mcp-oauth/revoke`,
 			response_types_supported: ['code'],
-			grant_types_supported: ['authorization_code', 'refresh_token'],
+			grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
 			// RFC 9207: we include the `iss` parameter on authorization responses

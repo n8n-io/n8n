@@ -23,6 +23,13 @@ export class OAuthServerModule implements ModuleInterface {
 			await import('./oauth.controller.js');
 			await import('./oauth-consent.controller.js');
 			await import('./oauth-clients.controller.js');
+
+			// Demo-only seed so the client_credentials → MCP curl proof needs no manual
+			// DB insert. ponytail: hackathon convenience — off unless the env flag is set;
+			// remove once the credential-creation flow is the normal path.
+			if (process.env.N8N_SEED_DEMO_SERVICE_ACCOUNT === 'true') {
+				await this.seedDemoServiceAccount();
+			}
 		}
 
 		// Register the token service as the OAuth token verifier provider, so
@@ -39,9 +46,72 @@ export class OAuthServerModule implements ModuleInterface {
 		);
 		registerProtectedResourceResolvers();
 
+		// Register the public API as a protected resource and its OAuth auth strategy
+		// into the public API auth chain. Registering the resource is what lets the
+		// token verifier accept service-account tokens whose `aud` is the public-API
+		// URL. The strategy runs after ApiKeyAuthStrategy (which abstains for OAuth
+		// bearer tokens).
+		const { ProtectedResourceRegistry } = await import('@/services/protected-resource.registry.js');
+		const { PublicApiProtectedResource } = await import(
+			'@/public-api/public-api-protected-resource.js'
+		);
+		Container.get(ProtectedResourceRegistry).register(Container.get(PublicApiProtectedResource));
+
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
+		const { PublicApiOAuthStrategy } = await import('@/services/public-api-oauth.strategy.js');
+		Container.get(AuthStrategyRegistry).register(Container.get(PublicApiOAuthStrategy));
+
 		const { OAuth2FlowProxy } = await import('@/services/oauth2-flow-proxy.service.js');
 		const { OAuth2FlowService } = await import('./oauth-flow.service.js');
 		Container.get(OAuth2FlowProxy).registerProvider(Container.get(OAuth2FlowService));
+	}
+
+	/**
+	 * Demo/hackathon helper: inserts a fixed `demo-client` / `demo-secret`
+	 * service-account credential owned by the instance owner so the
+	 * client_credentials → MCP curl proof needs no manual seeding. No-op if the
+	 * row already exists or no owner is set up. Never enable in production.
+	 */
+	private async seedDemoServiceAccount() {
+		const { UserRepository, ServiceAccountCredentialRepository, GLOBAL_OWNER_ROLE } = await import(
+			'@n8n/db'
+		);
+		const { PasswordUtility } = await import('@/services/password.utility.js');
+		const { Logger } = await import('@n8n/backend-common');
+		const logger = Container.get(Logger);
+
+		const DEMO_CLIENT_ID = 'demo-client';
+		const DEMO_CLIENT_SECRET = 'demo-secret';
+
+		const credentials = Container.get(ServiceAccountCredentialRepository);
+		if (await credentials.findByClientId(DEMO_CLIENT_ID, {})) {
+			logger.info(
+				`Demo service-account credential '${DEMO_CLIENT_ID}' already exists; skipping seed`,
+			);
+			return;
+		}
+
+		const owner = await Container.get(UserRepository).findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+		});
+		if (!owner) {
+			logger.warn('No instance owner found; skipping demo service-account seed');
+			return;
+		}
+
+		const clientSecret = await Container.get(PasswordUtility).hash(DEMO_CLIENT_SECRET);
+		await credentials.insertCredential(
+			{
+				userId: owner.id,
+				credentialType: 'client_secret',
+				clientId: DEMO_CLIENT_ID,
+				clientSecret,
+			},
+			{},
+		);
+		logger.info(
+			`Seeded demo service-account credential: client_id='${DEMO_CLIENT_ID}' client_secret='${DEMO_CLIENT_SECRET}' (owner ${owner.email})`,
+		);
 	}
 
 	async entities() {

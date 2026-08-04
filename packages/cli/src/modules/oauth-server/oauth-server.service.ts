@@ -21,6 +21,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
+import { ServiceAccountCredentialRepository } from '@n8n/db';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
@@ -36,6 +37,7 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
+import { PasswordUtility } from '@/services/password.utility';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -107,6 +109,8 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly serviceAccountCredentialRepository: ServiceAccountCredentialRepository,
+		private readonly passwordUtility: PasswordUtility,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -389,6 +393,61 @@ export class OAuthServerService implements OAuthServerProvider {
 			this.oauthSessionService.clearSession(res);
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
 		}
+	}
+
+	async exchangeClientCredentials(
+		clientId: string,
+		clientSecret: string,
+		resource: string,
+	): Promise<OAuthTokens | null> {
+		const credential = await this.serviceAccountCredentialRepository.findByClientId(clientId, {});
+
+		if (!credential) {
+			return null;
+		}
+
+		const isValid = await this.passwordUtility.compare(clientSecret, credential.clientSecret);
+		if (!isValid) {
+			return null;
+		}
+
+		// TODO: authorize the service account against `resource`. Safe to defer here:
+		// the target surface (MCP Trigger / public-API strategy) re-checks access at verify time.
+
+		// oauth_access_tokens FKs clientId -> oauth_clients. A service-account client
+		// lives in service_account_credential, not oauth_clients, so persisting the
+		// token would violate that FK. Ensure a first-party client row exists for it.
+		// ponytail: shadow row — the real secret/user binding stays on the credential.
+		await this.ensureServiceAccountClient(clientId);
+
+		const { accessToken } = await this.tokenService.generateAccessTokenOnly(
+			credential.userId,
+			clientId,
+			resource,
+			[],
+		);
+
+		return {
+			access_token: accessToken,
+			token_type: 'Bearer',
+			expires_in: this.tokenService.getAccessTokenExpirySeconds(),
+		};
+	}
+
+	/** Idempotently create the oauth_clients row backing a service-account client. */
+	private async ensureServiceAccountClient(clientId: string): Promise<void> {
+		const existing = await this.oauthClientRepository.findOneBy({ id: clientId });
+		if (existing) return;
+		await this.oauthClientRepository.insert({
+			id: clientId,
+			name: clientId,
+			redirectUris: [],
+			grantTypes: ['client_credentials'],
+			clientSecret: null,
+			clientSecretExpiresAt: null,
+			tokenEndpointAuthMethod: 'client_secret_post',
+			isFirstParty: true,
+		});
 	}
 
 	async challengeForAuthorizationCode(

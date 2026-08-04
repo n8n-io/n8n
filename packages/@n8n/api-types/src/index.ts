@@ -6,6 +6,7 @@ export type * from './scaling';
 export * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
+export type * from './service-account-credentials';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';

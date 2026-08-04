@@ -54,6 +54,7 @@ export type {
 	DeleteFinishedTasksOptions,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
+export { ServiceAccountCredentialRepository } from './service-account-credential.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';

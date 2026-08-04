@@ -48,6 +48,7 @@ import {
 } from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
+import { ServiceAccountCredential } from './service-account-credential';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -137,6 +138,7 @@ export {
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
+	ServiceAccountCredential,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
@@ -194,6 +196,7 @@ export const entities = {
 	ProjectRelation,
 	RoleMappingRule,
 	Scope,
+	ServiceAccountCredential,
 	SharedCredentials,
 	SharedWorkflow,
 	TagEntity,
