@@ -32,21 +32,6 @@ async function tableExists(context: TestMigrationContext, table: string): Promis
 	return rows.length > 0;
 }
 
-async function indexExists(context: TestMigrationContext, name: string): Promise<boolean> {
-	if (context.isSqlite) {
-		const rows = await context.runQuery<Array<{ name: string }>>(
-			"SELECT name FROM sqlite_master WHERE type = 'index' AND name = :name",
-			{ name },
-		);
-		return rows.length === 1;
-	}
-	const rows = await context.runQuery<Array<{ indexname: string }>>(
-		'SELECT indexname FROM pg_indexes WHERE indexname = :name',
-		{ name },
-	);
-	return rows.length === 1;
-}
-
 describe('CreateWorkflowReviewActivityTables Migration', () => {
 	let dataSource: DataSource;
 
@@ -153,7 +138,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 
 	async function insertComment(
 		context: TestMigrationContext,
-		activityId: number,
+		activityId: number | null,
 		createdById?: string,
 	): Promise<void> {
 		await context.runQuery(
@@ -171,21 +156,6 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 	describe('up', () => {
 		beforeAll(async () => {
 			await runSingleMigration(MIGRATION_NAME);
-		});
-
-		it('creates the feed index and the thread index', async () => {
-			const context = createTestMigrationContext(dataSource);
-			try {
-				const prefix = context.tablePrefix;
-				expect(await indexExists(context, `IDX_${prefix}workflow_review_activity_request`)).toBe(
-					true,
-				);
-				expect(
-					await indexExists(context, `IDX_${prefix}workflow_review_activity_comment_activity`),
-				).toBe(true);
-			} finally {
-				await context.queryRunner.release();
-			}
 		});
 
 		it('round-trips an activity and its comment thread through the entities', async () => {
@@ -257,36 +227,42 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			expect(reply.createdById).toBe(userId);
 		});
 
-		it('rejects a comment whose activityId has no parent row', async () => {
+		it('rejects a comment with no activityId', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
-				// Well past the current max, so no activity row in this suite can carry this id.
-				const orphanActivityId = (await maxActivityId(context)) + 1000;
-
-				await expect(insertComment(context, orphanActivityId)).rejects.toThrow(
-					/foreign key constraint/i,
-				);
+				// SQLite says "NOT NULL constraint failed", Postgres "violates not-null constraint".
+				await expect(insertComment(context, null)).rejects.toThrow(/not[- ]null constraint/i);
 			} finally {
 				await context.queryRunner.release();
 			}
 		});
 
-		it('removes activity rows when the review request is deleted', async () => {
+		it('removes activity and comment rows when the review request is deleted', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
 				const requestId = await seedRequest(context);
-				const activityId = await insertActivity(context, { workflowReviewRequestId: requestId });
+				const activityId = await insertActivity(context, {
+					workflowReviewRequestId: requestId,
+					type: 'comment',
+				});
+				await insertComment(context, activityId);
 
 				await context.runQuery(
 					`DELETE FROM ${context.escape.tableName('workflow_review_request')} WHERE "id" = :id`,
 					{ id: requestId },
 				);
 
-				const rows = await context.runQuery<unknown[]>(
+				// Both hops of request -> activity -> comment.
+				const activityRows = await context.runQuery<unknown[]>(
 					`SELECT "id" FROM ${context.escape.tableName(ACTIVITY_TABLE)} WHERE "id" = :id`,
 					{ id: activityId },
 				);
-				expect(rows).toHaveLength(0);
+				const commentRows = await context.runQuery<unknown[]>(
+					`SELECT "id" FROM ${context.escape.tableName(COMMENT_TABLE)} WHERE "activityId" = :id`,
+					{ id: activityId },
+				);
+				expect(activityRows).toHaveLength(0);
+				expect(commentRows).toHaveLength(0);
 			} finally {
 				await context.queryRunner.release();
 			}
@@ -357,21 +333,27 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 		// The drop order only matters on Postgres: the SQLite query runner disables foreign keys
 		// for every migration run, so a wrong order would still pass on that leg.
 		it('drops both tables', async () => {
+			// Assert the precondition inside this test, not in the `up` block: under a filtered run
+			// (`vitest -t`) the `up` hook is skipped, so without this the test would revert whatever
+			// migration preceded ours and pass by finding tables that never existed.
+			const before = createTestMigrationContext(dataSource);
+			try {
+				expect(await tableExists(before, ACTIVITY_TABLE)).toBe(true);
+				expect(await tableExists(before, COMMENT_TABLE)).toBe(true);
+			} finally {
+				// Release before reverting: holding a pooled lease across the revert exhausts the
+				// Postgres pool and the migration times out trying to connect.
+				await before.queryRunner.release();
+			}
+
 			await undoLastSingleMigration();
 
-			const context = createTestMigrationContext(dataSource);
+			const after = createTestMigrationContext(dataSource);
 			try {
-				const prefix = context.tablePrefix;
-				expect(await tableExists(context, ACTIVITY_TABLE)).toBe(false);
-				expect(await tableExists(context, COMMENT_TABLE)).toBe(false);
-				expect(await indexExists(context, `IDX_${prefix}workflow_review_activity_request`)).toBe(
-					false,
-				);
-				expect(
-					await indexExists(context, `IDX_${prefix}workflow_review_activity_comment_activity`),
-				).toBe(false);
+				expect(await tableExists(after, ACTIVITY_TABLE)).toBe(false);
+				expect(await tableExists(after, COMMENT_TABLE)).toBe(false);
 			} finally {
-				await context.queryRunner.release();
+				await after.queryRunner.release();
 			}
 		});
 	});

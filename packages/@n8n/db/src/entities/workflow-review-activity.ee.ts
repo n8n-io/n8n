@@ -46,6 +46,12 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	@JsonColumn({ nullable: true })
 	data: IDataObject | null;
 
+	/**
+	 * Who produced this entry. For `type = 'comment'` it is a denormalised copy of the first
+	 * message's author, so it must be written in the same transaction as that message; the message
+	 * row stays authoritative for the author-only edit check. If the two drift, the feed renders
+	 * one name above a first message written by someone else.
+	 */
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
 }
