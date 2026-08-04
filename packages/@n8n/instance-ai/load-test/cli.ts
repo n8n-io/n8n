@@ -386,6 +386,15 @@ async function runLevel(options: RunLevelOptions): Promise<RunLevelReport> {
 		notes.push('driver memory growth is a large fraction of server growth — treat with suspicion');
 	}
 
+	const { restarted, startTimes } = sampler.detectRestart();
+	if (restarted) {
+		notes.push(
+			`server process restarted mid-run (${startTimes.length} distinct start times) — ` +
+				'probable OOM kill under a memory limit; treat every memory number from this level as invalid',
+		);
+		logger.error('Server restarted during the run — probable OOM kill');
+	}
+
 	const finalCost = sampler.latestCostUsd();
 	const costUsdDelta =
 		finalCost !== null && baselineCost !== null ? round2(finalCost - baselineCost) : null;
@@ -401,6 +410,7 @@ async function runLevel(options: RunLevelOptions): Promise<RunLevelReport> {
 		plateauReached,
 		costUsdDelta,
 		eventLoopLagMaxMs: maxOf(sampler.samples.map((sample) => sample.eventLoopLagMs)),
+		serverRestarted: restarted,
 		driverConfounded,
 		driverRssGrowthMB,
 		serverRssGrowthMB: serverRssGrowthMB === null ? null : round2(serverRssGrowthMB),

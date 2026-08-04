@@ -84,6 +84,8 @@ export interface RunLevelReport {
 	plateauReached: boolean;
 	costUsdDelta: number | null;
 	eventLoopLagMaxMs: number | null;
+	/** Server process restarted mid-run — under a memory limit, a probable OOM kill. */
+	serverRestarted: boolean;
 	driverConfounded: boolean;
 	driverRssGrowthMB: number | null;
 	serverRssGrowthMB: number | null;
@@ -315,6 +317,7 @@ export function formatHumanSummary(report: LoadTestReport): string {
 			`  conversations completed       ${run.userResults.filter((r) => r.completed).length} / ${run.userResults.length}`,
 			`  event-loop lag max            ${fmt(run.eventLoopLagMaxMs, ' ms')}`,
 			`  LLM cost this run             ${run.costUsdDelta === null ? '—' : `$${run.costUsdDelta.toFixed(4)}`}`,
+			`  server restarted mid-run      ${run.serverRestarted ? 'YES  <-- PROBABLE OOM KILL, memory numbers invalid' : 'no'}`,
 			`  driver RSS growth             ${fmt(run.driverRssGrowthMB, ' MB')} (server ${fmt(run.serverRssGrowthMB, ' MB')})${run.driverConfounded ? '   <-- DRIVER MAY BE CONFOUNDING' : ''}`,
 			`  cleanup                       ${run.cleanup.threadsDeleted} threads, ${run.cleanup.workflowsDeleted} workflows, ${run.cleanup.dataTablesDeleted} data tables, ${run.cleanup.failures.length} failures`,
 		);

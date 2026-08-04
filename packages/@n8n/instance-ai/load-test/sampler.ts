@@ -77,6 +77,12 @@ export interface MetricSample {
 	tokensOutput: number | null;
 	durableLogRows: number | null;
 	durableLogBytes: number | null;
+	/**
+	 * Process start time. A change mid-run means the server restarted — under a
+	 * container memory limit that is almost always an OOM kill, which would
+	 * otherwise show up only as "conversations failed".
+	 */
+	processStartTime: number | null;
 	// Driver self-measurement — guards against the harness confounding the result
 	driverRssMB: number;
 	driverHeapUsedMB: number;
@@ -229,6 +235,7 @@ export class Sampler {
 			tokensOutput: readSumWhere(snapshot, 'n8n_instance_ai_tokens_total', { type: 'output' }),
 			durableLogRows: readSum(snapshot, 'n8n_instance_ai_durable_log_rows_total'),
 			durableLogBytes: readSum(snapshot, 'n8n_instance_ai_durable_log_bytes_total'),
+			processStartTime: readValue(snapshot, 'n8n_process_start_time_seconds'),
 			driverRssMB: round2(driver.rss / BYTES_PER_MB),
 			driverHeapUsedMB: round2(driver.heapUsed / BYTES_PER_MB),
 		};
@@ -448,6 +455,20 @@ export class Sampler {
 			if (cost !== null) return cost;
 		}
 		return null;
+	}
+
+	/**
+	 * Did the server process restart during sampling? Under a memory-limited
+	 * container this is the OOM signal — the pod is killed and restarted, so the
+	 * only trace in the metrics is a new start time.
+	 */
+	detectRestart(): { restarted: boolean; startTimes: number[] } {
+		const startTimes: number[] = [];
+		for (const sample of this.collected) {
+			const value = sample.processStartTime;
+			if (value !== null && !startTimes.includes(value)) startTimes.push(value);
+		}
+		return { restarted: startTimes.length > 1, startTimes };
 	}
 
 	/** Peak concurrent runs observed — validates that the ramp produced a plateau. */

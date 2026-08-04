@@ -194,6 +194,7 @@ describe('assessDriverConfound', () => {
 			tokensOutput: null,
 			durableLogRows: null,
 			durableLogBytes: null,
+			processStartTime: 1785826403,
 			driverRssMB,
 			driverHeapUsedMB: driverRssMB / 2,
 		};
@@ -235,6 +236,7 @@ describe('formatHumanSummary', () => {
 			cleanup: { threadsDeleted: 5, workflowsDeleted: 0, dataTablesDeleted: 0, failures: [] },
 			maxConcurrentRunsObserved: 5,
 			plateauReached: true,
+			serverRestarted: false,
 			costUsdDelta: 1.23,
 			eventLoopLagMaxMs: 12,
 			driverConfounded: false,
