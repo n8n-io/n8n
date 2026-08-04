@@ -234,9 +234,8 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
 		},
 	)
-	// An empty opening is the faithful hand-off shape, but the chat API refuses a
-	// message that is empty with nothing attached. Caught here so the case fails at
-	// load instead of dying mid-run on a 400 that reads like an infrastructure fault.
+	// The chat API refuses a message that is empty with nothing attached, so catch it
+	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
 	.refine(
 		(c) => {
 			const opening = c.conversation?.[0];

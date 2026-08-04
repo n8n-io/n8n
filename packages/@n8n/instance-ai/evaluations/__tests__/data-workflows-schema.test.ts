@@ -393,8 +393,6 @@ describe('EvalTestCaseSchema', () => {
 	});
 
 	it('rejects an empty opening turn that carries no attach', () => {
-		// Loads fine but dies mid-run: the chat API refuses a message that is empty
-		// with nothing attached, which reads like an infrastructure fault.
 		expect(() =>
 			EvalTestCaseSchema.parse({
 				...validFixture(),
@@ -404,8 +402,7 @@ describe('EvalTestCaseSchema', () => {
 	});
 
 	it('accepts an empty opening turn when a seeded workflow is attached', () => {
-		// The faithful hand-off shape: the user opened the assistant on a workflow
-		// and typed nothing.
+		// The faithful hand-off shape: opened on a workflow, nothing typed.
 		expect(() =>
 			EvalTestCaseSchema.parse({
 				...validFixture(),
