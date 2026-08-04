@@ -24,18 +24,14 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
 	});
 
-	it('tells the workflow-builder not to add sticky notes by default', () => {
+	it('defers sticky and other SDK defects to workflow-sdk validate', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
 			'utf-8',
 		);
-		expect(skill).toContain(
-			'Do not add sticky notes (`sticky(...)` / `n8n-nodes-base.stickyNote`) unless',
-		);
+		expect(skill).toContain('unsolicited `sticky()`');
+		expect(skill).toContain('workflow-sdk validate');
 		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
-		expect(skill).toMatch(
-			/opt-in only when the user explicitly\s+asks for a sticky note on the canvas/,
-		);
 	});
 
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
@@ -263,6 +259,7 @@ describe('Instance AI runtime skills', () => {
 			'read_file',
 			'write_file',
 			'edit_file',
+			'execute_command',
 			'build-workflow',
 			'workflows',
 			'nodes',
@@ -273,6 +270,7 @@ describe('Instance AI runtime skills', () => {
 		]);
 		expect(skill?.description).toContain('Load before calling build-workflow');
 		expect(skill?.description).toContain('Default path for all single-workflow work');
+		expect(skill?.description).toContain('workflow-sdk validate');
 		expect(skill?.description).toContain('load data-table-manager first');
 		expect(skill?.description).toContain('Do not load planning or create-tasks first');
 
@@ -280,6 +278,10 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('## Routing');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
+		expect(loaded?.instructions).toContain('workspace_write_file');
+		expect(loaded?.instructions).toContain(
+			'node --import tsx node_modules/@n8n/workflow-sdk/dist/cli/index.js validate',
+		);
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
@@ -317,8 +319,10 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
-		expect(loaded?.instructions).toContain('branch nodes are omitted from the saved graph');
+		expect(loaded?.instructions).toContain(
+			'Do NOT wire branches as standalone statements after `export default`',
+		);
+		expect(loaded?.instructions).toContain('never reaches the builder');
 	});
 
 	it('loads the bundled planning skill', async () => {

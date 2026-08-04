@@ -5,7 +5,7 @@ import {
 	TEMPLATE_ONBOARDING_EXPERIMENT,
 	VIEWS,
 } from '@/app/constants';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';

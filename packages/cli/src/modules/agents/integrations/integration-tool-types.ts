@@ -21,6 +21,14 @@ export type IntegrationMessageTarget =
 			threadId?: string;
 	  };
 
+/**
+ * Whether the latest inbound message expects a reply. Only when 'optional'
+ * may the agent end the turn silently via the `do_not_respond` action.
+ * Each platform decides which messages are 'optional' (see
+ * `AgentChatIntegration.getReplyExpectation`).
+ */
+export type ReplyExpectation = 'required' | 'optional';
+
 export interface IntegrationMessageContext {
 	integrationConnectionId: string;
 	platform: string;
@@ -29,6 +37,7 @@ export interface IntegrationMessageContext {
 	interactingUserId?: string;
 	agentUserId?: string;
 	subject?: IntegrationMessageSubject;
+	replyExpectation?: ReplyExpectation;
 	updatedAt: string;
 }
 
@@ -78,6 +87,7 @@ export type IntegrationContextQuery =
 
 export type IntegrationAction =
 	| 'respond'
+	| 'do_not_respond'
 	| 'send_dm'
 	| 'send_channel_message'
 	| 'edit_message'

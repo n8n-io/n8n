@@ -40,7 +40,7 @@ export function assertVariableCreationAllowed(options: {
  * Plan-derived, unlike the pre-plan data-table gate: a tag must
  * never block an import that would not write it (skipped consumers, disabled
  * tags, dropped conflicts), so the assert looks at what the plans actually
- * create or rename.
+ * create, rename, or reconcile.
  */
 export function assertTagWritesAllowed(
 	apiKeyScopes: string[] | undefined,
@@ -49,7 +49,7 @@ export function assertTagWritesAllowed(
 	if (tagPlans.some((plan) => plan.creations.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:create']);
 	}
-	if (tagPlans.some((plan) => plan.renames.length > 0)) {
+	if (tagPlans.some((plan) => plan.renames.length > 0 || plan.reconciles.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['tag:update']);
 	}
 }

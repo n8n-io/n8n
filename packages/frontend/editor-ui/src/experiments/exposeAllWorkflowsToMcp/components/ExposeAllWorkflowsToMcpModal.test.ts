@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
 import ExposeAllWorkflowsToMcpModal from './ExposeAllWorkflowsToMcpModal.vue';
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {

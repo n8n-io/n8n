@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import EmptyStateLayout from './EmptyStateLayout.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
@@ -166,7 +166,7 @@ describe('EmptyStateLayout', () => {
 
 			await userEvent.click(getByTestId('build-agent-card'));
 
-			expect(trackClickedNewAgent).toHaveBeenCalledWith('card');
+			expect(trackClickedNewAgent).toHaveBeenCalledWith('card', expect.any(String));
 		});
 	});
 

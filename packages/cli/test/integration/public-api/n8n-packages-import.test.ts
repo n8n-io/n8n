@@ -266,6 +266,7 @@ describe('POST /n8n-packages/import', () => {
 				matched: [],
 				created: [],
 				renamed: [],
+				reconciled: [],
 				skipped: [],
 			},
 		});

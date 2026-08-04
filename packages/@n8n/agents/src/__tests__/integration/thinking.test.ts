@@ -40,6 +40,37 @@ describeAnthropic('reasoning stream (Anthropic)', () => {
 	});
 });
 
+describeAnthropic('reasoning stream (Anthropic, adaptive thinking)', () => {
+	/**
+	 * Adaptive-thinking models (Sonnet 5, Opus 4.6+) return thinking blocks with
+	 * empty text unless the request asks for `display: 'summarized'`, which the
+	 * SDK's mapping of the generic reasoning level does not do. The cassette
+	 * pins the outgoing request, so an SDK upgrade that stops sending the flag
+	 * fails here instead of silently emptying every trace.
+	 *
+	 * High effort because adaptive models decide per request whether to think at
+	 * all, and at lower effort they routinely answer this prompt without it.
+	 */
+	it('emits reasoning text from a model that withholds it by default', async () => {
+		const agent = new Agent('adaptive-thinking-test')
+			.model('anthropic', 'claude-sonnet-5')
+			.reasoning('high')
+			.instructions('You are a helpful assistant. Think carefully before answering.');
+
+		const { stream: fullStream } = await agent.stream(
+			'Three guests pay 10 each for a 30 dollar room. The clerk refunds 5 via a bellhop who keeps 2 and returns 1 each. Each paid 9, so 27, plus the 2 is 29. Where is the missing dollar?',
+		);
+
+		const chunks = await collectStreamChunks(fullStream);
+		const reasoning = chunksOfType(chunks, 'reasoning-delta')
+			.filter((c): c is typeof c & { delta: string } => 'delta' in c)
+			.map((c) => c.delta)
+			.join('');
+
+		expect(reasoning.length).toBeGreaterThan(0);
+	});
+});
+
 const describeOpenAI = describeIf('openai');
 
 describeOpenAI('reasoning stream (OpenAI)', () => {

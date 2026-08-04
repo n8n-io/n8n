@@ -1,13 +1,16 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
 } from '@n8n/api-types';
-import { useToast } from '@/app/composables/useToast';
+import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	cancelAgentChatRun,
 	clearTestChatMessages,
@@ -61,6 +64,11 @@ type ResumePayload =
 			cancelled: true;
 			text: string;
 	  };
+
+function getApprovalDecision(value: unknown): boolean | undefined {
+	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
+	return value.approved;
+}
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
@@ -476,13 +484,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							: TOOL_CALL_STATE.DONE;
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
-					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the matching card so it flips to its
-					// resolved (disabled) state immediately. Display-only n8n chat
-					// cards never suspend, so they are also born here when the tool
-					// settles.
+					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
 					const updated = rebuildInteractiveFromHistory(found.tc);
-					if (updated) upsertMessageInteractive(found.msg, updated);
+					if (updated && currentInteractive?.resolvedAt === undefined) {
+						upsertMessageInteractive(found.msg, updated);
+					}
 					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
@@ -490,9 +496,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
-				// The approval tool suspends with its renderable input; integration
-				// actions suspend with a sidecar — keep the card-bearing tool input
-				// and store the sidecar separately.
+				// Keep the model-authored tool input intact. A delegated tool can
+				// suspend with a nested approval payload that renders a different tool.
 				const suspendIsRenderableInput = isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
@@ -500,12 +505,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
+					tc.canceled = false;
+					tc.output = undefined;
+					tc.endTime = undefined;
+					tc.displaySummary = undefined;
 					tc.runId = payload.runId;
-					if (suspendIsRenderableInput) {
-						tc.input = payload.input;
-					} else {
-						tc.suspendPayload = payload.input;
-					}
+					tc.suspendPayload = payload.input;
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
@@ -529,6 +534,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
 				session.terminalEventReceived = true;
+				break;
+			}
+			case 'subagent-chunk': {
+				const found = findToolCallById(event.parentToolCallId);
+				if (!found) break;
+				found.tc.childProgress ??= emptyChildTrace();
+				applyForwardedChildChunk(found.tc.childProgress, event.chunk);
 				break;
 			}
 			case 'message':
@@ -704,12 +716,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		};
 	}
 
-	async function streamChat(message: string): Promise<void> {
+	async function streamChat(message: string, files?: File[]): Promise<void> {
 		const { baseUrl } = rootStore.restApiContext;
 		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
 		const body: Record<string, unknown> = { message };
 		if (params.continueSessionId?.value) {
 			body.sessionId = params.continueSessionId.value;
+		}
+		if (files?.length) {
+			body.attachments = await Promise.all(
+				files.map(async (file) => {
+					const encoded = await convertFileToBinaryData(file);
+					// Browsers report an empty type for unrecognized extensions; the
+					// backend requires a non-empty mime type and sniffs the real one.
+					return {
+						fileName: file.name,
+						mimeType: file.type || 'application/octet-stream',
+						data: encoded.data,
+					};
+				}),
+			);
 		}
 		await postAndConsume(url, body);
 	}
@@ -768,6 +794,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated?.toolName === APPROVAL_TOOL_NAME) {
+					const approved = getApprovalDecision(payload.resumeData);
+					if (approved !== undefined) updated.resolvedValue = { approved };
+				}
 				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
 			markMessageSuccessIfSettled(found.msg);
@@ -833,9 +863,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		});
 	}
 
-	async function sendMessage(text: string): Promise<void> {
+	async function sendMessage(text: string, files?: File[]): Promise<void> {
 		const trimmed = text.trim();
-		if (!trimmed || isStreaming.value || isCancelling.value) return;
+		if ((!trimmed && !files?.length) || isStreaming.value || isCancelling.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
 		warnings.value = [];
@@ -844,8 +874,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			role: 'user',
 			content: trimmed,
 			status: 'success',
+			...(files?.length && {
+				attachments: files.map((file) => ({
+					fileName: file.name,
+					mimeType: file.type || 'application/octet-stream',
+					sizeBytes: file.size,
+					file,
+				})),
+			}),
 		});
-		await streamChat(trimmed);
+		await streamChat(trimmed, files);
 	}
 
 	function dismissFatalError(): void {

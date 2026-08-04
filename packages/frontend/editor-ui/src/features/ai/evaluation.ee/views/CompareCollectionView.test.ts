@@ -22,7 +22,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: vi.fn(), replace: routerReplace }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({ showError: vi.fn(), showMessage: vi.fn() })),
 }));
 

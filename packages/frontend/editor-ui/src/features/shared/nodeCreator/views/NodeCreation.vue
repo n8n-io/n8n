@@ -26,7 +26,13 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
-import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nAssistantIcon,
+	N8nButton,
+	N8nButtonList,
+	N8nIconButton,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
@@ -159,7 +165,7 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
-	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
+	<N8nButtonList v-if="!createNodeActive" orientation="vertical" :class="$style.nodeButtonsWrapper">
 		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.openNodesPanel')"
@@ -262,7 +268,7 @@ function openCommandBar(event: MouseEvent) {
 				</template>
 			</N8nButton>
 		</N8nTooltip>
-	</div>
+	</N8nButtonList>
 	<Suspense>
 		<LazyNodeCreator
 			:active="createNodeActive"
@@ -277,9 +283,6 @@ function openCommandBar(event: MouseEvent) {
 	position: absolute;
 	top: 0;
 	right: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
 	pointer-events: all !important;
 }

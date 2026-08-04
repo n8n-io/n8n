@@ -13,7 +13,7 @@ import { Container } from '@n8n/di';
 import { type Response } from 'express';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
-import { type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';
+import { ExpressionError, type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';
 
 import { binaryResponse, renderFormCompletion } from '../utils/formCompletionUtils';
 import { verifyFormUserAuthToken } from '../utils/utils';
@@ -524,6 +524,42 @@ describe('formCompletionUtils', () => {
 				} else {
 					return notExpectedBinaryResponse;
 				}
+			});
+
+			const result = await binaryResponse(mockWebhookFunctions);
+
+			expect(result).toEqual([
+				{
+					data: atob(expectedBinaryResponse.inputData.data),
+					fileName: expectedBinaryResponse.inputData.fileName,
+					type: expectedBinaryResponse.inputData.mimeType,
+				},
+			]);
+		});
+
+		it('should skip parent nodes without run data', async () => {
+			const expectedBinaryResponse = {
+				inputData: {
+					data: 'Zmlyc3Q=',
+					fileName: 'first.txt',
+					mimeType: 'text/plain',
+				},
+			};
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: Record<string, string> = {
+					inputDataFieldName: 'inputData',
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.getParentNodes.mockReturnValueOnce(parentNodesWithMultipleBinaryFiles);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((arg) => {
+				if (arg === `{{ $(${JSON.stringify(nodeNameWithFileToDownload)}).first().binary }}`) {
+					return expectedBinaryResponse;
+				}
+				// Parent nodes that did not execute in this run, e.g. after
+				// resuming a waiting form or on branches of another Form Trigger
+				throw new ExpressionError(`Node '${nodeNameWithFile}' hasn't been executed`);
 			});
 
 			const result = await binaryResponse(mockWebhookFunctions);
