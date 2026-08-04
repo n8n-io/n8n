@@ -46,6 +46,12 @@
         "fields": {
             "type": "object",
             "properties": {
+                "_CheckinComment": {
+                    "type": "string"
+                },
+                "_CommentCount": {
+                    "type": "string"
+                },
                 "_ComplianceFlags": {
                     "type": "string"
                 },
@@ -58,10 +64,19 @@
                 "_ComplianceTagWrittenTime": {
                     "type": "string"
                 },
+                "_DisplayName": {
+                    "type": "string"
+                },
+                "_LikeCount": {
+                    "type": "string"
+                },
                 "_UIVersionString": {
                     "type": "string"
                 },
                 "@odata.etag": {
+                    "type": "string"
+                },
+                "AppAuthorLookupId": {
                     "type": "string"
                 },
                 "AuthorLookupId": {
@@ -79,6 +94,9 @@
                 "EditorLookupId": {
                     "type": "string"
                 },
+                "FileLeafRef": {
+                    "type": "string"
+                },
                 "FolderChildCount": {
                     "type": "string"
                 },
@@ -88,7 +106,19 @@
                 "ItemChildCount": {
                     "type": "string"
                 },
+                "LinkFilename": {
+                    "type": "string"
+                },
+                "LinkFilenameNoMenu": {
+                    "type": "string"
+                },
                 "Modified": {
+                    "type": "string"
+                },
+                "ParentLeafNameLookupId": {
+                    "type": "string"
+                },
+                "ParentVersionStringLookupId": {
                     "type": "string"
                 },
                 "Title": {
@@ -153,5 +183,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

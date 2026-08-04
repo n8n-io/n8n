@@ -1,5 +1,5 @@
 import { useStorage } from '@/app/composables/useStorage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';

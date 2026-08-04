@@ -12,17 +12,24 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
+import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
+import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
+import {
+	assertPackageImportApiKeyScopes,
+	assertTagWritesAllowed,
+	assertVariableCreationAllowed,
+} from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
 	identifyRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
+	toTagSummary,
 	toVariableSummary,
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
@@ -38,6 +45,7 @@ export class WorkflowPackageImporter {
 	constructor(
 		private readonly packageParser: N8nPackageParser,
 		private readonly importOrchestrator: ImportOrchestrator,
+		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
@@ -101,6 +109,12 @@ export class WorkflowPackageImporter {
 			missingMode: request.variableMissingMode,
 		};
 
+		const tagRequest: TagImportRequest = {
+			requirements: manifest.requirements?.tags,
+			missingMode: request.tagMissingMode,
+			conflictPolicy: request.tagConflictPolicy,
+		};
+
 		const plan = await this.importOrchestrator.plan({
 			context,
 			folders,
@@ -108,30 +122,56 @@ export class WorkflowPackageImporter {
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
+			tagRequest,
 			options: request,
+			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		});
 
+		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
 		await this.importOrchestrator.assertNotBlocked([plan]);
 
-		const imported = await this.importOrchestrator.apply(plan);
+		const content = await this.importOrchestrator.apply(plan);
+
+		// Publishing waits until every workflow is written: activation rejects a parent whose
+		// referenced sub-workflow is not yet published, so the order is resolved across the batch.
+		const published = await this.workflowPublisher.applyToPackage({
+			user: request.user,
+			persisted: content.workflowOutcomes,
+			policy: request.workflowPublishingPolicy,
+			subWorkflowRequirements: plan.input.subWorkflowRequirements,
+		});
 
 		emitPackageImportedEvent(this.eventService, {
 			request,
 			manifest,
-			scopes: [{ context, imported, credentialRequest, dataTableRequest, variableRequest }],
+			scopes: [
+				{
+					context,
+					imported: content,
+					credentialRequest,
+					dataTableRequest,
+					variableRequest,
+					tagRequest,
+				},
+			],
 		});
 
 		return buildImportResult({
 			package: toPackageSummary(manifest),
-			workflows: toImportedWorkflowSummaries(imported.workflowOutcomes, context.projectId),
-			folders: imported.folderSummaries,
+			workflows: toImportedWorkflowSummaries(
+				content.workflowOutcomes,
+				context.projectId,
+				published,
+			),
+			folders: content.folderSummaries,
 			projects: [],
-			bindings: imported.bindings,
+			bindings: content.bindings,
 			credentials: {
-				matched: imported.credentialResult.matched,
-				stubbed: imported.credentialResult.stubbed,
+				matched: content.credentialResult.matched,
+				stubbed: content.credentialResult.stubbed,
 			},
-			variables: toVariableSummary(imported.variablePlan, imported.variableResult),
+			variables: toVariableSummary(content.variablePlan, content.variableResult),
+			tags: toTagSummary(content.tagPlan),
 		});
 	}
 

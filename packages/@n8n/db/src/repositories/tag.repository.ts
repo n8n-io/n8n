@@ -19,6 +19,14 @@ export class TagRepository extends Repository<TagEntity> {
 		});
 	}
 
+	/** Exact (case-sensitive) name lookup; no input normalization. */
+	async findManyByName(names: string[]) {
+		return await this.find({
+			select: ['id', 'name'],
+			where: { name: In(names) },
+		});
+	}
+
 	/**
 	 * Set tags on workflow to import while ensuring all tags exist in the database,
 	 * either by matching incoming to existing tags or by creating them first.

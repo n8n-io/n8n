@@ -289,6 +289,21 @@ export class Expression {
 		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
 	}
 
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		const acquired = await this.acquireIsolate();
+		try {
+			return await fn();
+		} finally {
+			if (acquired) {
+				try {
+					await this.releaseIsolate();
+				} catch (error) {
+					LoggerProxy.error('Failed to release expression isolate', { error });
+				}
+			}
+		}
+	}
+
 	/**
 	 * Dispose the VM evaluator and release resources.
 	 * Should be called during application shutdown or test teardown.

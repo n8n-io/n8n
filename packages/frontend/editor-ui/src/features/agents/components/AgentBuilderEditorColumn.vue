@@ -12,6 +12,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
@@ -20,6 +21,7 @@ import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
+import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
@@ -39,13 +41,22 @@ const props = defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
+	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	/** No agent row exists yet, so agent-scoped endpoints would 404. */
+	agentUnsaved?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
+
+const settingsStore = useSettingsStore();
+const isMcpAvailable = computed(
+	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -64,6 +75,7 @@ const emit = defineEmits<{
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'toggle-mcp-access': [enabled: boolean];
 	'tasks-changed': [];
 	'agent-changed': [];
 }>();
@@ -105,9 +117,10 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:agent-id="agentId"
 						:project-id="projectId"
-						:is-published="Boolean(agent?.activeVersionId)"
 						:validation-issues="configValidationIssues ?? []"
 						:simple-channel-setup="artifactMode"
+						:agent-unsaved="agentUnsaved"
+						:ensure-agent-persisted="ensureAgentPersisted"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
 						@agent-changed="emit('agent-changed')"
@@ -125,6 +138,7 @@ const i18n = useI18n();
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
 						:validation-issues="configValidationIssues ?? []"
+						:agent-unsaved="agentUnsaved"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"
@@ -218,10 +232,23 @@ const i18n = useI18n();
 								@update:config="emit('update:config', $event)"
 							/>
 						</N8nCard>
+						<N8nCard
+							v-if="isMcpAvailable"
+							:class="$style.settingsCard"
+							data-testid="agent-settings-card"
+						>
+							<AgentMcpPanel
+								:available-in-mcp="agentAvailableInMcp ?? false"
+								:disabled="childrenDisabled"
+								data-testid="agent-mcp-panel"
+								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
+							/>
+						</N8nCard>
 						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
 							<AgentAdvancedPanel
 								:config="localConfig"
 								:disabled="childrenDisabled"
+								:project-id="projectId"
 								collapsible
 								@update:config="emit('update:config', $event)"
 							/>

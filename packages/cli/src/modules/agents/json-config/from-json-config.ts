@@ -223,9 +223,8 @@ export async function buildFromJson(
 
 	// Config options
 	if (config.config) {
-		if (config.config.thinking) {
-			const { provider, ...rest } = config.config.thinking;
-			agent.thinking(provider, rest);
+		if (config.config.reasoning) {
+			agent.reasoning(config.config.reasoning);
 		}
 		if (config.config.promptCaching) {
 			agent.promptCaching(config.config.promptCaching);
@@ -615,6 +614,10 @@ async function resolveMemoryWorkerModelConfig(
 	config: MemoryWorkerModelConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
+	// Mirrors `resolveModelConfig`: an empty credential means "not configured",
+	// which must not reach `resolve('')` and surface as a credential-not-found error.
+	if (!config.credential) return config.model;
+
 	return await resolveCredentialAwareModelConfig(
 		config.model,
 		config.credential,

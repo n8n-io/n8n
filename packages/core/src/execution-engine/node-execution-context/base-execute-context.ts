@@ -40,6 +40,7 @@ import {
 } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -93,10 +94,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	setMetadata(metadata: ITaskMetadata): void {
-		this.executeData.metadata = {
-			...(this.executeData.metadata ?? {}),
-			...metadata,
-		};
+		this.executeData.metadata = deepMerge(this.executeData.metadata ?? {}, metadata);
 	}
 
 	getContext(type: ContextType): IContextObject {

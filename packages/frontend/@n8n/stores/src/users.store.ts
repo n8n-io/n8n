@@ -9,6 +9,7 @@ import {
 	type UsersListFilterDto,
 } from '@n8n/api-types';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@n8n/frontend-constants/users';
 import type { AssignableGlobalRole } from '@n8n/permissions';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
@@ -31,13 +32,6 @@ import type { ModalOpeners } from './modalOpeners';
 import * as onboardingApi from './onboarding.api';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from './useRootStore';
-
-/**
- * Registration key of the app's personalization modal, passed to the injected
- * modal opener. Mirrors `PERSONALIZATION_MODAL_KEY` in editor-ui's
- * `users.constants`; kept as a literal so the store carries no `@/app` import.
- */
-const PERSONALIZATION_MODAL_KEY = 'personalization';
 
 const _isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
 const _isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;

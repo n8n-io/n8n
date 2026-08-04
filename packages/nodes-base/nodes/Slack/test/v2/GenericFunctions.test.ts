@@ -6,6 +6,7 @@ import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	slackApiRequestAllItemsWithRateLimit,
+	formatUserLabel,
 	processThreadOptions,
 	getMessageContent,
 } from '../../V2/GenericFunctions';
@@ -1466,6 +1467,22 @@ describe('Slack V2 > GenericFunctions', () => {
 			expect(() => {
 				getMessageContent.call(mockExecuteFunctions, 0, 2.1, 'instance-123');
 			}).toThrow('The message type "unknown-type" is not known!');
+		});
+	});
+
+	describe('formatUserLabel', () => {
+		it('should append the handle to the real name', () => {
+			expect(formatUserLabel({ name: 'john.doe', real_name: 'John Doe' })).toBe(
+				'John Doe (@john.doe)',
+			);
+		});
+
+		it('should fall back to the handle alone when real_name is missing', () => {
+			expect(formatUserLabel({ name: 'alertbot' })).toBe('alertbot');
+		});
+
+		it('should fall back to the handle alone when real_name is empty', () => {
+			expect(formatUserLabel({ name: 'alertbot', real_name: '' })).toBe('alertbot');
 		});
 	});
 });

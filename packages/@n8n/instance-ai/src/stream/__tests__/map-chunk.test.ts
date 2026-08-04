@@ -61,6 +61,14 @@ describe('isQuotaExhaustedError', () => {
 		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
 		expect(isQuotaExhaustedError(undefined)).toBe(false);
 	});
+
+	it('stops walking a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(isQuotaExhaustedError(outer)).toBe(false);
+	});
 });
 
 describe('mapAgentChunkToEvent', () => {
@@ -514,6 +522,19 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps an error with a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(map({ type: 'error', error: outer })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'stream failed' },
+		});
+	});
+
 	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
 		const responseBody = JSON.stringify({
 			error: { type: 'quota_exhausted', message: 'Have reached end of quota' },
@@ -529,6 +550,33 @@ describe('mapAgentChunkToEvent', () => {
 				statusCode: 403,
 				code: 'quota_exhausted',
 				technicalDetails: responseBody,
+			},
+		});
+	});
+
+	it('surfaces the gateway error message from an ai-sdk error wrapped in error.cause', () => {
+		// The n8n Connect gateway returns an actionable message; the ai-sdk APICallError
+		// reaches the stream wrapped, so the details live on error.cause.
+		const responseBody = JSON.stringify({
+			error: {
+				message:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				type: 'ai_gateway_request_error',
+			},
+		});
+		const wrapped = new Error('Bad Request') as Error & { cause?: unknown };
+		wrapped.cause = apiError('Bad Request', 400, responseBody);
+
+		expect(map({ type: 'error', error: wrapped })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content:
+					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
+				technicalDetails: responseBody,
+				// Unwrapped from the same cause as the body — a wrapped error must not lose it.
+				statusCode: 400,
 			},
 		});
 	});

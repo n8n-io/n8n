@@ -1,8 +1,10 @@
+import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { VariableApplyResult, VariableImportPlan } from '../entities/variable/variable.types';
 import type {
+	PersistedWorkflowOutcome,
 	PreparedWorkflow,
-	WorkflowImportOutcome,
 } from '../entities/workflow/workflow-import.types';
+import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
 import { serializeBindings } from '../n8n-packages.types';
 import type {
 	ImportBindingMap,
@@ -12,6 +14,7 @@ import type {
 	ImportedWorkflowSummary,
 	ImportPackageSummary,
 	ImportResult,
+	ImportTagSummary,
 	ImportVariableSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
@@ -26,20 +29,32 @@ export function toPackageSummary(manifest: PackageManifest): ImportPackageSummar
 	};
 }
 
+/**
+ * One row per imported workflow, folding in what the publish phase decided for it. Ordered as the
+ * workflows were written, not as they were published (dependencies first), which is an
+ * implementation detail. Publishing reloads the workflow, so its copy wins where it has one; a
+ * workflow the phase never acted on — a skip — keeps the state it had and reports `unchanged`.
+ */
 export function toImportedWorkflowSummaries(
-	outcomes: WorkflowImportOutcome[],
+	outcomes: PersistedWorkflowOutcome[],
 	projectId: string,
+	published: PackagePublishingResults,
 ): ImportedWorkflowSummary[] {
-	return outcomes.map(({ workflow, sourceWorkflowId, status, publishing }) => ({
-		sourceWorkflowId,
-		localId: workflow.id,
-		name: workflow.name,
-		projectId,
-		parentFolderId: workflow.parentFolder?.id ?? null,
-		activeVersionId: workflow.activeVersionId ?? null,
-		publishing,
-		status,
-	}));
+	return outcomes.map(({ workflow, sourceWorkflowId, status }) => {
+		const result = published.get(sourceWorkflowId);
+		const current = result?.workflow ?? workflow;
+
+		return {
+			sourceWorkflowId,
+			localId: current.id,
+			name: current.name,
+			projectId,
+			parentFolderId: current.parentFolder?.id ?? null,
+			activeVersionId: current.activeVersionId ?? null,
+			publishing: result?.publishing ?? { state: 'unchanged' },
+			status,
+		};
+	});
 }
 
 export function buildImportResult(input: {
@@ -50,6 +65,7 @@ export function buildImportResult(input: {
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
 	variables: ImportVariableSummary;
+	tags: ImportTagSummary;
 }): ImportResult {
 	return {
 		package: input.package,
@@ -59,6 +75,7 @@ export function buildImportResult(input: {
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
 		variables: input.variables,
+		tags: input.tags,
 	};
 }
 
@@ -95,6 +112,26 @@ export function toVariableSummary(
 		stubbed: result.stubbed,
 		skipped: result.skippedExisting,
 	});
+}
+
+/** Tag names (renames report the post-rename name). */
+export function toTagSummary(plan: TagImportPlan): ImportTagSummary {
+	return {
+		matched: plan.matched.map(({ name }) => name),
+		created: plan.creations.map(({ name }) => name),
+		renamed: plan.renames.map(({ to }) => to),
+		skipped: plan.dropped.map(({ name }) => name),
+	};
+}
+
+/** Set-unions per-scope tag summaries: one global tag planned by several scopes reports once. */
+export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSummary {
+	return {
+		matched: [...new Set(summaries.flatMap(({ matched }) => matched))],
+		created: [...new Set(summaries.flatMap(({ created }) => created))],
+		renamed: [...new Set(summaries.flatMap(({ renamed }) => renamed))],
+		skipped: [...new Set(summaries.flatMap(({ skipped }) => skipped))],
+	};
 }
 
 /**

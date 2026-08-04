@@ -90,6 +90,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			modelConfig: session.modelConfig,
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
+			abortSignal: session.abortSignal,
 		};
 	}
 
@@ -109,9 +110,12 @@ export class InstanceAiBuilderDelegateAdapterService {
 		};
 
 		return {
-			createAgent: async (name) => {
+			createAgent: async (name, id) => {
 				await assertProjectScope('agent:create');
-				const agent = await this.agentsService.create(projectId, name);
+				const agent = await this.agentsService.create(projectId, name, {
+					id,
+					adoptUnconfiguredOnCollision: true,
+				});
 				return { agentId: agent.id, projectId };
 			},
 

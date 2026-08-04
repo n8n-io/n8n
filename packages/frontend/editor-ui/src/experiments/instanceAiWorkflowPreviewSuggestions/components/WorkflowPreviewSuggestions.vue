@@ -2,7 +2,7 @@
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { onUnmounted, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { type WorkflowPreviewSuggestion } from '../suggestions';
 
@@ -98,6 +98,10 @@ function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	});
 }
 
+function handleSeeAllClick() {
+	telemetry.track('AI Assistant examples see all button clicked');
+}
+
 onUnmounted(clearPreview);
 </script>
 
@@ -129,6 +133,7 @@ onUnmounted(clearPreview);
 				target="_blank"
 				rel="noopener noreferrer"
 				:class="$style.seeAllLink"
+				@click="handleSeeAllClick"
 			>
 				<span>{{
 					i18n.baseText(

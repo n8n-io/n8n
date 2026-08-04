@@ -23,7 +23,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -192,7 +192,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
@@ -207,7 +207,7 @@ vi.mock('@/app/composables/useExternalHooks', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		clearAllStickyNotifications: vi.fn(),
 		showMessage: vi.fn(),

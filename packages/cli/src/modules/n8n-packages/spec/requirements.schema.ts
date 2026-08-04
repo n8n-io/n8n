@@ -13,9 +13,12 @@ export const packageDataTableRequirementSchema = z.object({
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 
+// `name` is best-effort: a `reference-only` export lists workflows that are
+// not in the package, and their name may not be resolvable by the exporting
+// user — the id alone identifies the requirement.
 export const packageWorkflowRequirementSchema = z.object({
 	id: z.string().min(1),
-	name: z.string().min(1),
+	name: z.string().min(1).optional(),
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 

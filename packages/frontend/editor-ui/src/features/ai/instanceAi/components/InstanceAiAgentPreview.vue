@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
+import type { AgentResource } from '@/features/agents/types';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
-import { useThread } from '../instanceAi.store';
+import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import { INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY } from '../constants';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
+	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
+	pending?: boolean;
 }>();
 
 // === Editing lock ===
@@ -17,6 +21,7 @@ const props = defineProps<{
 // inspectable — only editing/publishing is disabled, via
 // `artifact-editing-locked` on `AgentBuilderView`.
 const thread = useThread();
+const instanceAiStore = useInstanceAiStore();
 
 const isAgentBuilding = computed(() => {
 	for (const message of thread.messages) {
@@ -25,6 +30,22 @@ const isAgentBuilding = computed(() => {
 	}
 	return false;
 });
+
+/**
+ * Bind the agent to the thread once the builder has actually created it. This
+ * is what stops a reload from treating the artifact as pending again: the
+ * pending marker cannot be removed (thread metadata merges rather than
+ * deletes), so a real binding is how the registry tells the two apart.
+ */
+async function onAgentPersisted(agent: AgentResource) {
+	await instanceAiStore.updateThreadMetadata(thread.id, {
+		[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+			agentId: agent.id,
+			projectId: props.projectId,
+			name: agent.name,
+		},
+	});
+}
 </script>
 
 <template>
@@ -33,7 +54,9 @@ const isAgentBuilding = computed(() => {
 			artifact-mode
 			:artifact-project-id="props.projectId"
 			:artifact-agent-id="props.agentId"
+			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
+			@persisted="onAgentPersisted"
 		/>
 	</div>
 </template>

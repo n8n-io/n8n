@@ -7,7 +7,7 @@ import { computed } from 'vue';
 import { AGENT_WITH_MEMORY } from '../workflows/1_agent_with_memory';
 import { AGENT_WITH_TOOLS } from '../workflows/2_agent_with_tools';
 import { AGENT_WITH_KNOWLEDGE } from '../workflows/3_agent_with_knowledge';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TEMPLATE_ONBOARDING_EXPERIMENT } from '@/app/constants';
 import { useLocalStorage } from '@vueuse/core';

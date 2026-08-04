@@ -19,11 +19,12 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from '../integration-tool-definitions';
 import { connectionUnavailable } from '../integration-helpers';
-import type { IntegrationActionResult } from '../integration-tools';
+import type { IntegrationActionResult, ReplyExpectation } from '../integration-tools';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
 	getSlackPlatformAgentContext,
+	getSlackReplyExpectation,
 	prepareSlackInboundText,
 } from './slack-bridge-behavior';
 import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
@@ -94,6 +95,14 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	prepareInboundText(text: string, context: PlatformAgentContext): string {
 		return prepareSlackInboundText(text, context);
+	}
+
+	getReplyExpectation(params: {
+		message: BridgeMessageContextParams['message'];
+		isNewMention: boolean;
+		platformAgentContext: PlatformAgentContext;
+	}): ReplyExpectation {
+		return getSlackReplyExpectation(params);
 	}
 
 	async createBridgeExecutionContext(

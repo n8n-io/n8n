@@ -113,6 +113,7 @@ export class N8nPackageParser {
 			sourceWorkflowId: entry.id,
 			sourcePublished: wire.isPublished,
 			parentFolderId,
+			...(wire.tagIds !== undefined ? { tagIds: wire.tagIds } : {}),
 		};
 	}
 

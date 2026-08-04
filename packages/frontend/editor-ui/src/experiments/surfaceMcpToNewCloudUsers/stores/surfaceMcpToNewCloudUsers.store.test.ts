@@ -6,7 +6,7 @@ import { ref } from 'vue';
 const mockTrack = vi.fn();
 const featureFlagProperty = `$feature/${SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name}`;
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTrack,
 	}),

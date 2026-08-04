@@ -3,7 +3,7 @@ import { ref, computed, reactive, toRaw, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	fetchSettings,
 	updateSettings,
@@ -169,10 +169,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const [s, p] = await Promise.all(promises);
 			settings.value = s;
 			preferences.value = p;
-			if (!isProxyEnabled.value && !isCloudManaged.value && canManage.value) {
+			if (!isCloudManaged.value && canManage.value) {
 				const [sc, imc] = await Promise.all([
 					fetchServiceCredentials(rootStore.restApiContext),
-					fetchInstanceModelCredentials(rootStore.restApiContext),
+					isProxyEnabled.value
+						? Promise.resolve([])
+						: fetchInstanceModelCredentials(rootStore.restApiContext),
 				]);
 				serviceCredentials.value = sc;
 				instanceModelCredentials.value = imc;
@@ -567,7 +569,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	}
 
 	async function refreshCredentials(): Promise<void> {
-		if (isProxyEnabled.value) return;
+		if (isCloudManaged.value) return;
 		try {
 			serviceCredentials.value = await fetchServiceCredentials(rootStore.restApiContext);
 		} catch {

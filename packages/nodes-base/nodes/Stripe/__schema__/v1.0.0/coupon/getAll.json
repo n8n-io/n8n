@@ -1,0 +1,27 @@
+{
+    "type": "object",
+    "properties": {
+        "created": {
+            "type": "integer"
+        },
+        "duration": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "livemode": {
+            "type": "boolean"
+        },
+        "object": {
+            "type": "string"
+        },
+        "times_redeemed": {
+            "type": "integer"
+        },
+        "valid": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

@@ -119,6 +119,58 @@ describe('initialization safeguards', () => {
 	});
 });
 
+describe('execution source', () => {
+	const workflow = mock<WorkflowEntity & IWorkflowDb>({
+		id: 'workflow-id',
+		name: 'Test Workflow',
+	});
+
+	const createInitializedService = () => {
+		const service = new InsightsCollectionService(
+			mock<SharedWorkflowRepository>(),
+			mock<InsightsRawRepository>(),
+			mock<InsightsMetadataRepository>(),
+			mock<InsightsConfig>(),
+			mockLogger(),
+		);
+		service.init();
+		return service;
+	};
+
+	// Instance AI verification runs mimic the trigger's mode, so `mode` alone
+	// would report them as production runs on schedule/form/webhook workflows.
+	test('does not collect events for instance AI runs that mimic a trigger mode', async () => {
+		const service = createInitializedService();
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, source: 'instance_ai' });
+		ctx.runData = mock<IRun>({
+			mode: 'trigger',
+			status: 'success',
+			startedAt: DateTime.utc().toJSDate(),
+			stoppedAt: DateTime.utc().plus({ seconds: 5 }).toJSDate(),
+		});
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		expect(service['bufferedInsights'].size).toBe(0);
+	});
+
+	test('collects events for user-initiated runs in the same mode', async () => {
+		const service = createInitializedService();
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, source: undefined });
+		ctx.runData = mock<IRun>({
+			mode: 'trigger',
+			status: 'success',
+			startedAt: DateTime.utc().toJSDate(),
+			stoppedAt: DateTime.utc().plus({ seconds: 5 }).toJSDate(),
+		});
+
+		await service.handleWorkflowExecuteAfter(ctx);
+
+		const buffered = [...service['bufferedInsights']];
+		expect(buffered.some((insight) => insight.type === 'success')).toBe(true);
+	});
+});
+
 describe('calculateTimeSaved', () => {
 	let insightsCollectionService: InsightsCollectionService;
 

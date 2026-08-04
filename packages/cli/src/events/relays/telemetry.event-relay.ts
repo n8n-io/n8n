@@ -1063,6 +1063,8 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
 			variable_missing_mode: options.variableMissingMode,
 			variable_parent_policy: options.variableParentPolicy,
+			tag_missing_mode: options.tagMissingMode,
+			tag_conflict_policy: options.tagConflictPolicy,
 			workflows_created: counts.workflows.created,
 			workflows_updated: counts.workflows.updated,
 			workflows_skipped: counts.workflows.skipped,
@@ -1076,6 +1078,11 @@ export class TelemetryEventRelay extends EventRelay {
 			variables_missing: counts.variables.missing,
 			variables_created: counts.variables.created,
 			variables_required: counts.variables.requirements,
+			tags_matched: counts.tags.matched,
+			tags_created: counts.tags.created,
+			tags_renamed: counts.tags.renamed,
+			tags_skipped: counts.tags.skipped,
+			tags_required: counts.tags.requirements,
 		});
 	}
 

@@ -17,10 +17,11 @@ type WorkflowPackageContent = Pick<
 @Service()
 export class WorkflowSerializer {
 	serialize(workflow: WorkflowEntity, options: { includeTags: boolean }): SerializedWorkflow {
-		const tags =
-			options.includeTags && workflow.tags?.length
-				? [...workflow.tags].sort(compareTagsByName)
-				: undefined;
+		// Emitted even when empty: on import, a present `tagIds` (incl. `[]`) overwrites
+		// taggings to exactly that set, while an absent key leaves them untouched.
+		const tags = options.includeTags
+			? [...(workflow.tags ?? [])].sort(compareTagsByName)
+			: undefined;
 
 		return serializedWorkflowSchema.parse({
 			id: workflow.id,

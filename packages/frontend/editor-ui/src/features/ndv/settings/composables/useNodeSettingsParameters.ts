@@ -10,7 +10,7 @@ import {
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';

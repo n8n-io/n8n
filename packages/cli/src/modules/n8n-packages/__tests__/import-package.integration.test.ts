@@ -74,6 +74,8 @@ type ImportPackageParams = Omit<
 	| 'dataTableSchemaConflictPolicy'
 	| 'variableMissingMode'
 	| 'variableParentPolicy'
+	| 'tagMissingMode'
+	| 'tagConflictPolicy'
 > &
 	Partial<
 		Pick<
@@ -91,6 +93,8 @@ type ImportPackageParams = Omit<
 			| 'dataTableSchemaConflictPolicy'
 			| 'variableMissingMode'
 			| 'variableParentPolicy'
+			| 'tagMissingMode'
+			| 'tagConflictPolicy'
 		>
 	>;
 
@@ -108,6 +112,8 @@ async function importPackage(params: ImportPackageParams) {
 		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
 		variableMissingMode: 'do-nothing',
 		variableParentPolicy: 'project',
+		tagMissingMode: 'create',
+		tagConflictPolicy: 'skip',
 		...params,
 	});
 }
@@ -1215,6 +1221,13 @@ describe('Package import event emission', () => {
 					created: 0,
 					requirements: 0,
 				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1300,6 +1313,13 @@ describe('Package import event emission', () => {
 					created: 0,
 					requirements: 0,
 				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1352,6 +1372,13 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
@@ -1408,6 +1435,13 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					requirements: 0,
+				},
+				tags: {
+					matched: 0,
+					created: 0,
+					renamed: 0,
+					skipped: 0,
 					requirements: 0,
 				},
 			});
