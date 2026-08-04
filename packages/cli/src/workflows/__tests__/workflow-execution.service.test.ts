@@ -21,7 +21,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
-	type Workflow,
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -192,7 +191,6 @@ describe('WorkflowExecutionService', () => {
 		});
 		const cursor = { lastItemId: 'a' };
 		const pollItems = [[{ json: { id: 1 } }]];
-		let liveWorkflow: MockProxy<Workflow>;
 		let responsePromise: MockProxy<IDeferredPromise<IExecuteResponsePromiseData>>;
 
 		const runPolledWorkflow = async (items: INodeExecutionData[][] = pollItems) =>
@@ -203,7 +201,6 @@ describe('WorkflowExecutionService', () => {
 				additionalData,
 				'trigger',
 				cursor,
-				liveWorkflow,
 				responsePromise,
 			);
 
@@ -228,15 +225,12 @@ describe('WorkflowExecutionService', () => {
 
 		beforeEach(() => {
 			vi.clearAllMocks();
-			liveWorkflow = mock<Workflow>();
-			liveWorkflow.getStaticData.mockReturnValue({});
 			responsePromise = mock<IDeferredPromise<IExecuteResponsePromiseData>>();
 			committedPayloads = [];
 			pollCursorService.commitWithExecution.mockImplementation(async ({ payload }) => {
 				committedPayloads.push(capture(payload));
-				return { executionId: 'exec-9', previousCursor: { lastItemId: 'previous' } };
+				return { executionId: 'exec-9' };
 			});
-			pollCursorService.mirrorToStaticData.mockResolvedValue(undefined);
 			workflowRunner.run.mockResolvedValue('exec-9');
 			workflowRunner.establishContextForPersistence.mockResolvedValue(undefined);
 		});
@@ -284,28 +278,12 @@ describe('WorkflowExecutionService', () => {
 			);
 		});
 
-		test('mirrors the cursor the commit replaced to the static data of the polled node', async () => {
-			const nodeStaticData = { lastItemId: 'stale' };
-			liveWorkflow.getStaticData.mockReturnValue(nodeStaticData);
-
-			await runPolledWorkflow();
-
-			expect(pollCursorService.mirrorToStaticData).toHaveBeenCalledWith(
-				'wf-1',
-				'Poll Node',
-				cursor,
-				nodeStaticData,
-				{ lastItemId: 'previous' },
-			);
-		});
-
-		test('neither mirrors nor starts a run when the commit is rejected as a duplicate', async () => {
+		test('does not start a run when the commit is rejected as a duplicate', async () => {
 			const duplicateError = new DuplicateExecutionError('dedup-key');
 			pollCursorService.commitWithExecution.mockRejectedValue(duplicateError);
 
 			await expect(runPolledWorkflow()).rejects.toBe(duplicateError);
 
-			expect(pollCursorService.mirrorToStaticData).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -317,7 +295,6 @@ describe('WorkflowExecutionService', () => {
 
 			expect(returned).toBeUndefined();
 			expect(pollCursorService.commitWithExecution).not.toHaveBeenCalled();
-			expect(pollCursorService.mirrorToStaticData).not.toHaveBeenCalled();
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 			expect(responsePromise.reject).toHaveBeenCalledWith(contextError);
 			expect(errorReporter.error).toHaveBeenCalledWith(contextError, { shouldBeLogged: false });

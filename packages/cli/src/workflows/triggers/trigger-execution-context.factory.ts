@@ -2,6 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
 import {
 	ErrorReporter,
 	PollContext,
@@ -230,30 +232,39 @@ export class TriggerExecutionContextFactory {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
-			// A poll's staged cursor lives in an async scope entered per poll, rather than
-			// in a variable per node: only the poll that staged a cursor can commit it, and
-			// two overlapping polls of the same node never share a slot.
-			const stagedCursorStore = new AsyncLocalStorage<{
-				cursor: PollCursor | null;
-				persistOnEmpty: boolean;
-				closed: boolean;
-			}>();
+			// A poll's staged snapshot lives in an async scope entered per poll, rather
+			// than in a variable per node: only the poll that staged it can commit it, and
+			// two overlapping polls of the same node never share a slot. An unmigrated
+			// node gets no snapshot: it reads and writes the real static-data bucket
+			// directly.
+			const stagedCursorStore = new AsyncLocalStorage<
+				{ migrated: true; snapshot: PollCursor; seed: PollCursor } | { migrated: false }
+			>();
 
 			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> => {
-				const store = { cursor: null, persistOnEmpty: false, closed: false };
-				try {
-					return await stagedCursorStore.run(store, poll);
-				} finally {
-					store.closed = true;
-				}
+				const resolved = await this.pollCursorService.resolveCursor(
+					workflowData.id,
+					node.id,
+					workflow.getStaticData('node', node),
+				);
+				const store = resolved.migrated
+					? { migrated: true as const, snapshot: cloneDeep(resolved.cursor), seed: resolved.cursor }
+					: { migrated: false as const };
+				return await stagedCursorStore.run(store, poll);
 			};
 
-			/** Takes and clears the staged cursor, so one advance is committed at most once. */
+			/**
+			 * Returns a copy of the staged snapshot if it changed since it was seeded,
+			 * so one advance is committed at most once and a later mutation of the
+			 * node's own object can't reach an in-flight commit.
+			 */
 			const takeStagedCursor = (): PollCursor | null => {
 				const staged = stagedCursorStore.getStore();
-				if (staged === undefined) return null;
-				const { cursor } = staged;
-				staged.cursor = null;
+				if (staged === undefined || !staged.migrated || isEqual(staged.snapshot, staged.seed)) {
+					return null;
+				}
+				const cursor = cloneDeep(staged.snapshot);
+				staged.seed = cursor;
 				return cursor;
 			};
 
@@ -266,17 +277,10 @@ export class TriggerExecutionContextFactory {
 
 				const cursor = takeStagedCursor();
 
-				// A staged cursor is persisted by the transaction inside `runPolledWorkflow`;
-				// saving static data here as well would race that write.
-				if (cursor === null) {
-					if (this.pollCursorService.enabled) {
-						this.logger.debug(
-							`Poll node "${node.name}" emitted items without staging a cursor, so its state is kept in workflow static data`,
-							{ workflowId: workflowData.id, nodeId: node.id },
-						);
-					}
-					void this.workflowStaticDataService.saveStaticData(workflow);
-				}
+				// A migrated node's cursor lives in `poller_state`, not static data, so
+				// saving here can't race the cursor commit; this persists global static
+				// data, or an unmigrated node's own bucket, which still doubles as its cursor.
+				void this.workflowStaticDataService.saveStaticData(workflow);
 
 				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
@@ -298,7 +302,6 @@ export class TriggerExecutionContextFactory {
 								additionalData,
 								mode,
 								cursor,
-								workflow,
 								responsePromise,
 							),
 				);
@@ -332,67 +335,30 @@ export class TriggerExecutionContextFactory {
 					});
 			};
 
-			if (!this.pollCursorService.enabled) {
-				return new PollContext(
-					workflow,
-					node,
-					additionalData,
-					mode,
-					activation,
-					__emit,
-					__emitError,
-				);
-			}
-
-			// Reads the stored cursor on every poll, since a registration outlives many
-			// ticks. A cursor already staged by this poll wins, so a node reading back
-			// what it set within one poll sees its own value.
-			const getCursor = async () => {
-				const staged = stagedCursorStore.getStore();
-				if (staged?.cursor != null) return { ...staged.cursor };
-
-				return await this.pollCursorService.readCursor(
-					workflowData.id,
-					node.id,
-					node.name,
-					workflow.getStaticData('node', node),
-				);
-			};
-
-			const setCursor: IPollFunctions['setCursor'] = (cursor, options) => {
-				const staged = stagedCursorStore.getStore();
-				if (staged === undefined) {
-					throw new UnexpectedError(
-						`Poll node "${node.name}" staged a cursor outside of a poll; __runPoll was not entered`,
-						{ extra: { workflowId: workflowData.id, nodeId: node.id } },
-					);
-				}
-				if (staged.closed) {
-					this.logger.warn(
-						`Poll node "${node.name}" staged a cursor after its poll had already finished, so the cursor was discarded`,
-						{ workflowId: workflowData.id, nodeId: node.id },
-					);
-					return;
-				}
-				// An empty cursor means the node has none, so it stages nothing to commit.
-				staged.cursor = Object.keys(cursor).length === 0 ? null : { ...cursor };
-				staged.persistOnEmpty = options?.persistOnEmpty ?? false;
-			};
-
-			// Skipped unless the node opted in: most sources don't need an empty poll's
-			// cursor to survive, since the next poll just widens its own query range.
+			// Persists a snapshot advance that emitted no items, so a source that only
+			// ever moves its cursor is not re-fetched forever.
 			const __commitCursor = async () => {
-				const staged = stagedCursorStore.getStore();
-				const persistOnEmpty = staged?.persistOnEmpty ?? false;
 				const cursor = takeStagedCursor();
-				if (cursor === null || !persistOnEmpty) return;
+				if (cursor === null) return;
 				await this.pollCursorService.commitCursorOnly({
 					workflowId: workflowData.id,
 					nodeId: node.id,
-					nodeName: node.name,
 					cursor,
-					nodeStaticData: workflow.getStaticData('node', node),
 				});
+			};
+
+			// Hands a migrated node its per-poll snapshot in place of the real
+			// static-data bucket, so mutations are captured for `takeStagedCursor` above.
+			// An unmigrated node gets the real bucket directly.
+			const resolveNodeStaticData = () => {
+				const staged = stagedCursorStore.getStore();
+				if (staged === undefined) {
+					throw new UnexpectedError(
+						`Poll node "${node.name}" read its static data outside of a poll; __runPoll was not entered`,
+						{ extra: { workflowId: workflowData.id, nodeId: node.id } },
+					);
+				}
+				return staged.migrated ? staged.snapshot : workflow.getStaticData('node', node);
 			};
 
 			return new PollContext(
@@ -403,10 +369,9 @@ export class TriggerExecutionContextFactory {
 				activation,
 				__emit,
 				__emitError,
-				getCursor,
-				setCursor,
 				__commitCursor,
 				__runPoll,
+				resolveNodeStaticData,
 			);
 		};
 	}
@@ -480,8 +445,8 @@ export class TriggerExecutionContextFactory {
 	 * published data. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
 	 *
-	 * Pass `bypassCache` on the poll path: `saveStaticData` writes the poll cursor
-	 * into `staticData` without refreshing the cache, so a cached read would be stale.
+	 * Pass `bypassCache` on the poll path: the poll cursor lives in `poller_state`,
+	 * written outside the publish-time cache, so a cached read would be stale.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */

@@ -12,7 +12,6 @@ import {
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import {
@@ -40,7 +39,6 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly pollCursorService: PollCursorService,
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('scheduler');
@@ -98,25 +96,22 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					return report.dispatched();
 				}
 
-				// A poll with no items may still have staged a cursor advance, committed here
-				// on its own. Active state is re-read first so a workflow deactivated mid-poll
-				// doesn't get its cursor moved; the flag check skips that entirely when
-				// cursors aren't staged at all.
-				if (this.pollCursorService.enabled) {
-					try {
-						if (await this.workflowRepository.isActive(workflowId))
-							await commitStagedCursor(pollFunctions);
-					} catch (error) {
-						// The poll itself succeeded, so a failed cursor write is logged rather
-						// than routed to the error workflow.
-						this.errorReporter.error(error, {
-							extra: { taskId: task.id, jobId: task.jobId, workflowId, nodeId },
-						});
-						this.logger.error(
-							'Failed to commit the poll cursor; the next poll repeats the same window',
-							{ taskId: task.id, jobId: task.jobId, workflowId, nodeId, error },
-						);
-					}
+				// A poll with no items may still have moved its cursor, committed here on
+				// its own. Active state is re-read first so a workflow deactivated mid-poll
+				// doesn't get its cursor moved.
+				try {
+					if (await this.workflowRepository.isActive(workflowId))
+						await commitStagedCursor(pollFunctions);
+				} catch (error) {
+					// The poll itself succeeded, so a failed cursor write is logged rather
+					// than routed to the error workflow.
+					this.errorReporter.error(error, {
+						extra: { taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+					});
+					this.logger.error(
+						'Failed to commit the poll cursor; the next poll repeats the same window',
+						{ taskId: task.id, jobId: task.jobId, workflowId, nodeId, error },
+					);
 				}
 
 				this.logger.debug('Poll returned no new data; nothing to hand off', {

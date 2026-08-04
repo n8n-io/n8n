@@ -125,7 +125,6 @@ export class WorkflowExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		cursor: PollCursor,
-		workflow: Workflow,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
@@ -187,21 +186,12 @@ export class WorkflowExecutionService {
 			tracingContext: runData.tracingContext ?? null,
 		};
 
-		const { executionId, previousCursor } = await this.pollCursorService.commitWithExecution({
+		const { executionId } = await this.pollCursorService.commitWithExecution({
 			workflowId: workflowData.id,
 			nodeId: node.id,
 			cursor,
 			payload,
 		});
-
-		// A mirror failure is reported inside and must not stop the committed execution.
-		await this.pollCursorService.mirrorToStaticData(
-			workflowData.id,
-			node.name,
-			cursor,
-			workflow.getStaticData('node', node),
-			previousCursor,
-		);
 
 		// The row was committed at `new`; `expectedStatus` claims it and moves it to
 		// running, so a concurrent starter cannot run it a second time.

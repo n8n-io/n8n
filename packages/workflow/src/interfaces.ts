@@ -1390,6 +1390,7 @@ export interface IWorkflowLoader {
 	get(workflowId: string): Promise<IWorkflowBase>;
 }
 
+/** A poll node's opaque static-data-shaped state, durably stored between polls. */
 export type PollCursor = IDataObject;
 
 export interface IPollFunctions
@@ -1405,15 +1406,6 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	/** Resolves to `null` when the node has never polled. */
-	getCursor(): Promise<PollCursor | null>;
-	/**
-	 * Stages the complete cursor for the current poll, dropping any key a previous
-	 * cursor carried. It is persisted once the poll's items are handed off; a poll
-	 * that emits nothing only persists it when `persistOnEmpty` is set, for a source
-	 * whose cursor must still advance to avoid re-walking an already-seen range.
-	 */
-	setCursor(cursor: PollCursor, options?: { persistOnEmpty?: boolean }): void;
 	/** Persists a cursor staged by a poll that emitted no items. Called by the tick engines, never by a node. */
 	__commitCursor?(): Promise<void>;
 	/**
