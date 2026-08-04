@@ -4,7 +4,7 @@ import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import type { StepRecord, StepStore } from './step-store';
 
 /**
- * Loads the step and execution an event names and validates they agree: the
+ * Loads the step and execution for an event, and validates they agree: the
  * step must belong to the event's execution, and its node must exist in the
  * execution's graph.
  *

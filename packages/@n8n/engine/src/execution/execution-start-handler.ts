@@ -6,9 +6,10 @@ import type { StepStore } from './step-store';
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
  * (`queued → running`), records the trigger as a completed step, and announces
- * that completion. Planning deliberately doesn't happen here — the
- * `step:completed` handler plans the trigger's successors exactly as it plans
- * any other node's, so the readiness rule lives in one place.
+ * that completion. The first step(s) are planned by the step completion handler
+ * that handles the trigger completion.
+ * NOTE: this means an extra trip through the queue, but it eliminates some
+ * special-casing for triggers and simplifies the completion logic.
  */
 export class ExecutionStartHandler {
 	constructor(
