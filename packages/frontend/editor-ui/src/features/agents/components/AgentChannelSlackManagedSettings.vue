@@ -4,6 +4,8 @@ import { N8nFormInput, N8nLink, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
+import AgentChannelSlackServiceLimitError from '../channels/slack/AgentChannelSlackServiceLimitError.vue';
+
 const props = defineProps<{
 	settings: SlackManagedAppSettings | null;
 	loading: boolean;
@@ -99,14 +101,7 @@ defineExpose({ currentSettings, validationError });
 			<N8nText v-if="validationError" size="small" :class="$style.error">
 				{{ validationError }}
 			</N8nText>
-			<N8nText
-				v-else-if="saveError === 'service_limits_exceeded'"
-				size="small"
-				:class="$style.error"
-				data-testid="slack-managed-app-service-limit-error"
-			>
-				{{ i18n.baseText('agents.channels.slack.managed.settings.serviceLimitsExceeded') }}
-			</N8nText>
+			<AgentChannelSlackServiceLimitError v-else-if="saveError === 'service_limits_exceeded'" />
 		</template>
 
 		<N8nText v-else-if="error" size="small" :class="$style.error">

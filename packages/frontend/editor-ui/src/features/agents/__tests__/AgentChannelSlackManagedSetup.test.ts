@@ -104,9 +104,15 @@ describe('AgentChannelSlackManagedSetup', () => {
 
 		await wrapper.get('[data-testid="slack-managed-install"]').trigger('click');
 
-		expect(wrapper.get('[data-testid="slack-managed-install-service-limit-error"]').text()).toBe(
-			'agents.channels.slack.managed.install.serviceLimitsExceeded',
+		expect(wrapper.get('[data-testid="slack-managed-service-limit-error"]').text()).toContain(
+			'agents.channels.slack.managed.serviceLimitsExceeded.message',
 		);
+		expect(wrapper.get('[data-testid="slack-managed-service-limit-link"]').attributes('href')).toBe(
+			'https://api.slack.com/apps',
+		);
+		expect(
+			wrapper.get('[data-testid="slack-managed-service-limit-link"]').attributes('target'),
+		).toBe('_blank');
 		expect(wrapper.text()).not.toContain('agents.channels.slack.managed.install.error');
 	});
 

@@ -85,9 +85,15 @@ describe('AgentChannelSlackManagedSettings', () => {
 	it('shows the Slack app limit error returned while saving', () => {
 		const wrapper = mountForm({ saveError: 'service_limits_exceeded' });
 
-		expect(wrapper.get('[data-testid="slack-managed-app-service-limit-error"]').text()).toBe(
-			'agents.channels.slack.managed.settings.serviceLimitsExceeded',
+		expect(wrapper.get('[data-testid="slack-managed-service-limit-error"]').text()).toContain(
+			'agents.channels.slack.managed.serviceLimitsExceeded.message',
 		);
+		expect(wrapper.get('[data-testid="slack-managed-service-limit-link"]').attributes('href')).toBe(
+			'https://api.slack.com/apps',
+		);
+		expect(
+			wrapper.get('[data-testid="slack-managed-service-limit-link"]').attributes('target'),
+		).toBe('_blank');
 		expect(wrapper.vm.validationError).toBeNull();
 	});
 });
