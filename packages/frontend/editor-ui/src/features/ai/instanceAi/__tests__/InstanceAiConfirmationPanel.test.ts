@@ -79,7 +79,7 @@ vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
 		props: ['requestId', 'credentialRequests', 'message', 'projectId', 'credentialFlow'],
 	},
 }));
-vi.mock('../components/InstanceAiWorkflowSetup.vue', () => ({
+vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 	default: {
 		template: '<div />',
 		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],
