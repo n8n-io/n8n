@@ -60,6 +60,8 @@ export class StepCompletedHandler {
 		// Planned together so a fan-out is one round trip, and published only after
 		// the rows exist, so a consumer can always load the step. A step another
 		// planner got to first isn't returned, so it isn't announced twice either.
+		// TODO(CAT-2938): a crash between the insert and the publishes strands the
+		// rows `queued` forever; the reconciler re-announces stale queued steps.
 		const created = await this.stepStore.createSteps(
 			readyNodeIds.map((readyNodeId) => ({
 				executionId: execution.id,
