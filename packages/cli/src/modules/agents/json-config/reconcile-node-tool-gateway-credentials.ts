@@ -6,7 +6,6 @@ import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow'
 import type { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 
-// Inlined to match the MCP auto-assign brand; see spec §11 for the pending dedup.
 const AI_GATEWAY_MANAGED_CREDENTIAL_NAME = 'n8n credits';
 const AI_GATEWAY_MANAGED_CREDENTIAL_FLAG = '__aiGatewayManaged';
 
