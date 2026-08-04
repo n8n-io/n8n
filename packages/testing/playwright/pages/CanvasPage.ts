@@ -381,7 +381,6 @@ export class CanvasPage extends BasePage {
 
 	async openTagManagerModal(): Promise<void> {
 		await this.clickCreateTagButton();
-		await this.page.getByTestId('tags-dropdown').click();
 		await this.page.locator('.manage-tags').click();
 	}
 
