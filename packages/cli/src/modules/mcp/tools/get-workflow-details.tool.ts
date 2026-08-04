@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { isTriggerNodeType, type INodeTypes } from 'n8n-workflow';
+import { isTriggerNodeType, type INode, type INodeTypes } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -27,13 +27,13 @@ const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),
 	detailLevel: z
 		.enum(['full', 'execution'])
-		.optional()
+		.default('full')
 		.describe(
-			"Level of detail to return. 'full' (default) includes the complete workflow graph (nodes, connections, node groups, active version). 'execution' omits the graph and returns only the workflow metadata and trigger information needed to run it — prefer it when the goal is just to execute the workflow via execute_workflow.",
+			"Level of detail to return. 'full' (default) includes the complete workflow graph (nodes, connections, node groups, active version). 'execution' returns only the workflow metadata and trigger information needed to run it — prefer it when the goal is just to execute the workflow via execute_workflow.",
 		),
 } satisfies z.ZodRawShape;
 
-export type WorkflowDetailsLevel = NonNullable<z.infer<typeof inputSchema.detailLevel>>;
+export type WorkflowDetailsLevel = z.infer<typeof inputSchema.detailLevel>;
 
 export type WorkflowDetailsOutputSchema = typeof workflowDetailsOutputSchema;
 
@@ -68,12 +68,14 @@ export const createWorkflowDetailsTool = (
 				openWorldHint: false, // Works with internal n8n data only
 			},
 		},
+		// The SDK parses arguments through the input schema before invoking the
+		// handler, so detailLevel arrives with its schema default applied.
 		handler: async ({
 			workflowId,
-			detailLevel = 'full',
+			detailLevel,
 		}: {
 			workflowId: string;
-			detailLevel?: WorkflowDetailsLevel;
+			detailLevel: WorkflowDetailsLevel;
 		}) => {
 			const parameters = { workflowId, detailLevel };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -83,7 +85,7 @@ export const createWorkflowDetailsTool = (
 			};
 
 			try {
-				const payload = await getWorkflowDetails(
+				const { nodeCount, ...payload } = await getWorkflowDetails(
 					user,
 					baseWebhookUrl,
 					workflowFinderService,
@@ -103,7 +105,7 @@ export const createWorkflowDetailsTool = (
 						workflow_id: workflowId,
 						workflow_name: payload.workflow.name,
 						trigger_count: payload.workflow.triggerCount,
-						node_count: payload.workflow.nodes?.length,
+						node_count: nodeCount,
 					},
 				};
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -136,14 +138,17 @@ export async function getWorkflowDetails(
 	projectService: ProjectService,
 	{ workflowId, detailLevel = 'full' }: { workflowId: string; detailLevel?: WorkflowDetailsLevel },
 	testBaseWebhookUrl: string = baseWebhookUrl,
-): Promise<WorkflowDetailsResult> {
+): Promise<WorkflowDetailsResult & { nodeCount: number }> {
 	const includeGraph = detailLevel === 'full';
+	// The active version is loaded even in execution mode: production executions
+	// run it, so its triggers feed activeVersionTriggerInfo when they diverge
+	// from the draft's.
 	const workflow = await getMcpWorkflow(
 		workflowId,
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: includeGraph, includeTags: true },
+		{ includeActiveVersion: true, includeTags: true },
 	);
 
 	// Compute user scopes for this workflow
@@ -153,32 +158,25 @@ export async function getWorkflowDetails(
 	const canExecute = scopes.includes('workflow:execute');
 
 	const nodes = workflow.nodes ?? [];
-	const connections = workflow.connections ?? {};
-	const activeVersion =
-		includeGraph && workflow.activeVersionId && workflow.activeVersion
-			? {
-					nodes: (workflow.activeVersion.nodes ?? []).map(sanitizeNodeCredentials),
-					connections: workflow.activeVersion.connections ?? {},
-					nodeGroups: toNodeGroupSummary(
-						workflow.activeVersion.nodeGroups ?? [],
-						workflow.activeVersion.nodes ?? [],
-					),
-				}
-			: null;
 
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	const activeNodes = nodes.filter((node) => node.disabled !== true);
-	const triggers = activeNodes.filter((node) => supportedTriggers.includes(node.type));
-	// Triggers the workflow does have but MCP can't execute directly (e.g. Gmail Trigger),
-	// so the notice can distinguish these from a workflow with no triggers at all.
-	const unsupportedTriggers = activeNodes.filter(
-		(node) => isTriggerNodeType(node.type) && !supportedTriggers.includes(node.type),
-	);
+	const splitTriggers = (candidates: INode[]) => {
+		const enabledNodes = candidates.filter((node) => node.disabled !== true);
+		return {
+			supported: enabledNodes.filter((node) => supportedTriggers.includes(node.type)),
+			// Triggers the workflow does have but MCP can't execute directly (e.g. Gmail Trigger),
+			// so the notice can distinguish these from a workflow with no triggers at all.
+			unsupported: enabledNodes.filter(
+				(node) => isTriggerNodeType(node.type) && !supportedTriggers.includes(node.type),
+			),
+		};
+	};
 
+	const draftTriggers = splitTriggers(nodes);
 	const triggerNotice = await getTriggerDetails(
 		user,
-		triggers,
-		unsupportedTriggers,
+		draftTriggers.supported,
+		draftTriggers.unsupported,
 		baseWebhookUrl,
 		credentialsService,
 		nodeTypes,
@@ -186,6 +184,27 @@ export async function getWorkflowDetails(
 		workflow.id,
 		testBaseWebhookUrl,
 	);
+
+	// execute_workflow runs the published (active) version in production mode, so
+	// when its triggers diverge from the draft's (edited but not republished),
+	// surface the published version's trigger info alongside the draft's.
+	let activeVersionTriggerNotice: string | undefined;
+	if (workflow.activeVersionId && workflow.activeVersion) {
+		const publishedTriggers = splitTriggers(workflow.activeVersion.nodes ?? []);
+		if (JSON.stringify(publishedTriggers) !== JSON.stringify(draftTriggers)) {
+			activeVersionTriggerNotice = await getTriggerDetails(
+				user,
+				publishedTriggers.supported,
+				publishedTriggers.unsupported,
+				baseWebhookUrl,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				workflow.id,
+				testBaseWebhookUrl,
+			);
+		}
+	}
 
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
 		id: workflow.id,
@@ -207,14 +226,31 @@ export async function getWorkflowDetails(
 		...(includeGraph
 			? {
 					settings: workflow.settings ?? null,
-					connections,
+					connections: workflow.connections ?? {},
 					nodes: nodes.map(sanitizeNodeCredentials),
 					nodeGroups: toNodeGroupSummary(workflow.nodeGroups ?? [], nodes),
-					activeVersion,
+					activeVersion:
+						workflow.activeVersionId && workflow.activeVersion
+							? {
+									nodes: (workflow.activeVersion.nodes ?? []).map(sanitizeNodeCredentials),
+									connections: workflow.activeVersion.connections ?? {},
+									nodeGroups: toNodeGroupSummary(
+										workflow.activeVersion.nodeGroups ?? [],
+										workflow.activeVersion.nodes ?? [],
+									),
+								}
+							: null,
 					meta: workflow.meta ?? null,
 				}
 			: {}),
 	};
 
-	return { workflow: sanitizedWorkflow, triggerInfo: triggerNotice };
+	return {
+		workflow: sanitizedWorkflow,
+		triggerInfo: triggerNotice,
+		activeVersionTriggerInfo: activeVersionTriggerNotice,
+		// Not part of the MCP response; lets the handler report the workflow size
+		// in telemetry even when detailLevel omits the nodes from the payload.
+		nodeCount: nodes.length,
+	};
 }

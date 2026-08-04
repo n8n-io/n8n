@@ -186,12 +186,12 @@ describe('get-workflow-details MCP tool', () => {
 				{ workflowId: 'wf-1', detailLevel: 'execution' },
 			);
 
-			// Skips loading the active version relation entirely
+			// The active version relation stays loaded (it feeds activeVersionTriggerInfo)
 			expect(findWorkflowForUser).toHaveBeenCalledWith(
 				'wf-1',
 				user,
 				['workflow:read'],
-				expect.objectContaining({ includeActiveVersion: false }),
+				expect.objectContaining({ includeActiveVersion: true }),
 			);
 
 			expect(payload.workflow.nodes).toBeUndefined();
@@ -208,6 +208,90 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
 			expect(payload.workflow.description).toBeUndefined();
+			// The workflow size stays reportable for telemetry despite the trimmed payload
+			expect(payload.nodeCount).toBe(2);
+		});
+
+		test("returns all graph fields when detailLevel is 'full'", async () => {
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'full' },
+			);
+
+			// Guards the full-mode contract: all six graph fields must be present,
+			// since the output schema marks them optional and cannot enforce this.
+			expect(payload.workflow.nodes).toBeDefined();
+			expect(payload.workflow.connections).toBeDefined();
+			expect(payload.workflow.nodeGroups).toBeDefined();
+			expect(payload.workflow.activeVersion).toBeDefined();
+			expect(payload.workflow.settings).toBeDefined();
+			expect(payload.workflow.meta).toBeDefined();
+		});
+
+		test('includes activeVersionTriggerInfo only when published triggers diverge from the draft', async () => {
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			// Published version has the same triggers as the draft: single notice.
+			const inSync = createWorkflow({ activeVersionId: uuid() });
+			const inSyncFinder = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(inSync),
+			});
+			const inSyncPayload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				inSyncFinder,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+			expect(inSyncPayload.activeVersionTriggerInfo).toBeUndefined();
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(1);
+
+			// Draft trigger was removed after publishing: both notices returned.
+			getTriggerDetailsMock.mockClear();
+			const diverged = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [],
+				activeVersion: { nodes: createWorkflow({}).nodes },
+			} as unknown as Partial<WorkflowEntity>);
+			const divergedFinder = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(diverged),
+			});
+			const divergedPayload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				divergedFinder,
+				credentialsService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+			expect(divergedPayload.activeVersionTriggerInfo).toBe('MOCK_TRIGGER_DETAILS');
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
+			// Second call receives the published version's triggers.
+			const [, publishedSupported] = getTriggerDetailsMock.mock.calls[1];
+			expect(publishedSupported.map((t) => t.name)).toEqual(['Webhook', 'Start']);
 		});
 
 		test('presents node groups by member node names, dropping stale ids', async () => {

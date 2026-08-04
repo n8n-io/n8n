@@ -146,7 +146,7 @@ export const toNodeGroupSummary = (
 	}));
 };
 
-const GRAPH_FIELD_OMISSION_NOTE = "Omitted when detailLevel is 'execution'.";
+const FULL_DETAIL_ONLY_NOTE = "Only included when detailLevel is 'full'.";
 
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
@@ -163,13 +163,13 @@ export const workflowDetailsOutputSchema = z.object({
 			triggerCount: z.number(),
 			createdAt: z.string().nullable(),
 			updatedAt: z.string().nullable(),
-			settings: workflowSettingsSchema.optional().describe(GRAPH_FIELD_OMISSION_NOTE),
-			connections: z.record(z.unknown()).optional().describe(GRAPH_FIELD_OMISSION_NOTE),
-			nodes: z.array(nodeSchema).optional().describe(GRAPH_FIELD_OMISSION_NOTE),
+			settings: workflowSettingsSchema.optional().describe(FULL_DETAIL_ONLY_NOTE),
+			connections: z.record(z.unknown()).optional().describe(FULL_DETAIL_ONLY_NOTE),
+			nodes: z.array(nodeSchema).optional().describe(FULL_DETAIL_ONLY_NOTE),
 			nodeGroups: z
 				.array(nodeGroupSchema)
 				.optional()
-				.describe(`Node groups in the workflow. ${GRAPH_FIELD_OMISSION_NOTE}`),
+				.describe(`Node groups in the workflow. ${FULL_DETAIL_ONLY_NOTE}`),
 			activeVersion: z
 				.object({
 					nodes: z.array(nodeSchema),
@@ -178,9 +178,9 @@ export const workflowDetailsOutputSchema = z.object({
 				})
 				.nullable()
 				.optional()
-				.describe(`Active workflow graph, if available. ${GRAPH_FIELD_OMISSION_NOTE}`),
+				.describe(`Active workflow graph, if available. ${FULL_DETAIL_ONLY_NOTE}`),
 			tags: z.array(tagSchema),
-			meta: workflowMetaSchema.optional().describe(GRAPH_FIELD_OMISSION_NOTE),
+			meta: workflowMetaSchema.optional().describe(FULL_DETAIL_ONLY_NOTE),
 			parentFolderId: z.string().nullable(),
 			description: z.string().optional().describe('The description of the workflow'),
 			scopes: z.array(z.string()).describe('User permissions for this workflow'),
@@ -190,5 +190,13 @@ export const workflowDetailsOutputSchema = z.object({
 		.describe('Sanitized workflow data safe for MCP consumption'),
 	triggerInfo: z
 		.string()
-		.describe('Human-readable instructions describing how to trigger the workflow'),
+		.describe(
+			'Human-readable instructions describing how to trigger the workflow, based on the current draft (what manual executions run)',
+		),
+	activeVersionTriggerInfo: z
+		.string()
+		.optional()
+		.describe(
+			"Trigger info for the published (active) version, which production executions via execute_workflow run. Only present when it differs from the draft's triggerInfo.",
+		),
 });
