@@ -7,7 +7,7 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { setTimeout } from 'node:timers/promises';
 
 const INITIAL_DELAY_MS = 1500;
@@ -23,7 +23,9 @@ interface MindeeV2UIParams {
 	confidence: string;
 	rawText: string;
 	pollingTimeoutCount: number;
+	documentSource: 'binary' | 'url';
 	binaryPropertyName?: string;
+	documentUrl?: string;
 }
 
 /**
@@ -163,13 +165,22 @@ export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIP
 				? rawModel.value
 				: '';
 	const pollingTimeoutCount = ctx.getNodeParameter('pollingTimeoutCount', index, 120) as number;
-	const binaryPropertyName = ctx.getNodeParameter('binaryPropertyName', index, '');
-	const options = ctx.getNodeParameter('options', index, {});
+	const documentSource = ctx.getNodeParameter('documentSource', index, 'binary') as
+		| 'binary'
+		| 'url';
+	const binaryPropertyName =
+		documentSource === 'binary'
+			? (ctx.getNodeParameter('binaryPropertyName', index, '') as string)
+			: undefined;
+	const documentUrl =
+		documentSource === 'url'
+			? (ctx.getNodeParameter('documentUrl', index, '') as string)
+			: undefined;
 
-	const rag = (options.rag as string) ?? 'default';
-	const polygon = (options.polygon as string) ?? 'default';
-	const confidence = (options.confidence as string) ?? 'default';
-	const rawText = (options.rawText as string) ?? 'default';
+	const rag = ctx.getNodeParameter('rag', index, 'default') as string;
+	const polygon = ctx.getNodeParameter('polygon', index, 'default') as string;
+	const confidence = ctx.getNodeParameter('confidence', index, 'default') as string;
+	const rawText = ctx.getNodeParameter('rawText', index, 'default') as string;
 	return {
 		modelId,
 		rag,
@@ -177,7 +188,9 @@ export function readUIParams(ctx: IExecuteFunctions, index: number): MindeeV2UIP
 		confidence,
 		rawText,
 		pollingTimeoutCount,
+		documentSource,
 		binaryPropertyName,
+		documentUrl,
 	};
 }
 
@@ -194,8 +207,20 @@ export async function buildRequestBody(
 	uiParams: MindeeV2UIParams,
 	form: FormData,
 ) {
-	const name = uiParams.binaryPropertyName;
-	if (name) {
+	if (uiParams.documentSource === 'url') {
+		if (!uiParams.documentUrl) {
+			throw new NodeOperationError(ctx.getNode(), 'A document URL is required', {
+				itemIndex: index,
+			});
+		}
+		form.append('url', uiParams.documentUrl);
+	} else {
+		const name = uiParams.binaryPropertyName;
+		if (!name) {
+			throw new NodeOperationError(ctx.getNode(), 'An input data field name is required', {
+				itemIndex: index,
+			});
+		}
 		const bin = ctx.helpers.assertBinaryData(index, name);
 		const buf = await ctx.helpers.getBinaryDataBuffer(index, name);
 		form.append('file', buf, { filename: bin.fileName });

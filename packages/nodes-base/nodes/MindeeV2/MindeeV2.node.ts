@@ -50,19 +50,10 @@ export class MindeeV2 implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				default: 'document',
-				options: [{ name: 'Document', value: 'document' }],
-			},
-			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				displayOptions: { show: { resource: ['document'] } },
 				options: [
 					{
 						name: '✨ Document Data Extraction',
@@ -70,48 +61,89 @@ export class MindeeV2 implements INodeType {
 						description:
 							'Extract data from a document file and return the result.' +
 							"Use any extraction model you've built on the Mindee platform.",
-						action: 'Extract document data',
+						action: 'Document Data Extraction',
 					},
 					{
 						name: 'Document Classification',
 						value: 'classification',
 						description: 'Classify documents using your Mindee classification utility model',
-						action: 'Classify a document',
+						action: 'Document Classification',
 					},
 					{
 						name: 'Document Crop Operation',
 						value: 'crop',
 						description:
 							'Crop pages in a document using your Mindee Crop model. Can be chained with an Extraction model.',
-						action: 'Crop a document',
+						action: 'Document Crop Operation',
 					},
 					{
-						name: 'Document Splitting Operation',
+						name: 'Document Raw Text Reading (OCR)',
+						value: 'ocr',
+						description: 'Extract raw document text using your Mindee OCR model',
+						action: 'Document Raw Text Reading (OCR)',
+					},
+					{
+						name: 'Document Split Operation',
 						value: 'split',
 						description:
 							'Split document pages using your Mindee split model. Can be chained with an Extraction model.',
-						action: 'Extract sub-documents from a multi-page document.',
-					},
-					{
-						name: 'Raw Text Reading (OCR)',
-						value: 'ocr',
-						description: 'Extract raw document text using your Mindee OCR model',
-						action: 'Extract all text from a document',
+						action: 'Document Split Operation',
 					},
 				],
 				default: 'extraction',
 			},
 			{
-				displayName: 'Binary Property Name',
+				displayName: 'Document Source',
+				name: 'documentSource',
+				type: 'options',
+				options: [
+					{
+						name: 'Binary File',
+						value: 'binary',
+						description:
+							'Send a file coming from a previous node (e.g. HTTP Request, Read Binary File)',
+					},
+					{
+						name: 'URL',
+						value: 'url',
+						description: 'Have Mindee fetch the document from a public URL',
+					},
+				],
+				default: 'binary',
+				description: 'How the document to process is provided',
+				displayOptions: {
+					show: {
+						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+					},
+				},
+			},
+			{
+				displayName: 'Input Data Field Name',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'The name of the input binary field containing the file to be uploaded',
+				description:
+					'The name of the incoming binary field that contains the document file (e.g. <code>data</code>)',
 				displayOptions: {
 					show: {
-						resource: ['document'],
 						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+						documentSource: ['binary'],
+					},
+				},
+			},
+			{
+				displayName: 'Document URL',
+				name: 'documentUrl',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'https://example.com/invoice.pdf',
+				description: 'Public URL of the document to process',
+				displayOptions: {
+					show: {
+						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
+						documentSource: ['url'],
 					},
 				},
 			},
@@ -128,7 +160,6 @@ export class MindeeV2 implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: ['document'],
 						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
 					},
 				},
@@ -161,7 +192,6 @@ export class MindeeV2 implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: ['document'],
 						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
 					},
 				},
@@ -170,106 +200,111 @@ export class MindeeV2 implements INodeType {
 					'How long the polling will last for after the document has been sent to the server',
 			},
 			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Option',
-				default: {},
+				displayName: 'Enable Confidence Scores',
+				name: 'confidence',
+				type: 'options',
+				options: [
+					{
+						name: 'Use Model Default',
+						value: 'default',
+					},
+					{
+						name: 'Enabled',
+						value: 'true',
+					},
+					{
+						name: 'Disabled',
+						value: 'false',
+					},
+				],
+				default: 'default',
 				displayOptions: {
 					show: {
-						resource: ['document'],
 						operation: ['extraction'],
 					},
 				},
+				description:
+					'Calculate confidence scores for all fields, and fill their `confidence` attribute',
+			},
+			{
+				displayName: 'Enable Polygons (Location Data)',
+				name: 'polygon',
+				type: 'options',
 				options: [
 					{
-						displayName: 'Enable Confidence Scores',
-						name: 'confidence',
-						type: 'options',
-						options: [
-							{
-								name: 'Use Model Default',
-								value: 'default',
-							},
-							{
-								name: 'Enabled',
-								value: 'true',
-							},
-							{
-								name: 'Disabled',
-								value: 'false',
-							},
-						],
-						default: 'default',
-						description:
-							'Calculate confidence scores for all fields, and fill their `confidence` attribute',
+						name: 'Use Model Default',
+						value: 'default',
 					},
 					{
-						displayName: 'Enable Polygons (Location Data)',
-						name: 'polygon',
-						type: 'options',
-						options: [
-							{
-								name: 'Use Model Default',
-								value: 'default',
-							},
-							{
-								name: 'Enabled',
-								value: 'true',
-							},
-							{
-								name: 'Disabled',
-								value: 'false',
-							},
-						],
-						default: 'default',
-						description:
-							'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
+						name: 'Enabled',
+						value: 'true',
 					},
 					{
-						displayName: 'Enable RAG',
-						name: 'rag',
-						type: 'options',
-						options: [
-							{
-								name: 'Use Model Default',
-								value: 'default',
-							},
-							{
-								name: 'Enabled',
-								value: 'true',
-							},
-							{
-								name: 'Disabled',
-								value: 'false',
-							},
-						],
-						default: 'default',
-						description: 'Enhance extraction accuracy with Retrieval-Augmented Generation',
-					},
-					{
-						displayName: 'Enable Raw Text',
-						name: 'rawText',
-						type: 'options',
-						options: [
-							{
-								name: 'Use Model Default',
-								value: 'default',
-							},
-							{
-								name: 'Enabled',
-								value: 'true',
-							},
-							{
-								name: 'Disabled',
-								value: 'false',
-							},
-						],
-						default: 'default',
-						description:
-							'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
+						name: 'Disabled',
+						value: 'false',
 					},
 				],
+				default: 'default',
+				displayOptions: {
+					show: {
+						operation: ['extraction'],
+					},
+				},
+				description:
+					'Calculate bounding box polygons for all fields, and fill their `locations` attribute',
+			},
+			{
+				displayName: 'Enable RAG',
+				name: 'rag',
+				type: 'options',
+				options: [
+					{
+						name: 'Use Model Default',
+						value: 'default',
+					},
+					{
+						name: 'Enabled',
+						value: 'true',
+					},
+					{
+						name: 'Disabled',
+						value: 'false',
+					},
+				],
+				default: 'default',
+				displayOptions: {
+					show: {
+						operation: ['extraction'],
+					},
+				},
+				description: 'Enhance extraction accuracy with Retrieval-Augmented Generation',
+			},
+			{
+				displayName: 'Enable Raw Text',
+				name: 'rawText',
+				type: 'options',
+				options: [
+					{
+						name: 'Use Model Default',
+						value: 'default',
+					},
+					{
+						name: 'Enabled',
+						value: 'true',
+					},
+					{
+						name: 'Disabled',
+						value: 'false',
+					},
+				],
+				default: 'default',
+				displayOptions: {
+					show: {
+						operation: ['extraction'],
+					},
+				},
+				description:
+					'Extract the full text content from the document as strings, and fill the `raw_text` attribute',
 			},
 		],
 	};
@@ -280,11 +315,10 @@ export class MindeeV2 implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			let result: IDataObject[] | undefined;
 			try {
-				const resource = this.getNodeParameter('resource', i);
-				const operation = this.getNodeParameter('operation', i);
+				const operation = this.getNodeParameter('operation', i) as string;
 				const slug = operation;
 
-				if (resource === 'document') {
+				if (['extraction', 'classification', 'crop', 'ocr', 'split'].includes(slug)) {
 					const params = readUIParams(this, i);
 					const form = new FormData();
 					await buildRequestBody(this, i, params, form);
