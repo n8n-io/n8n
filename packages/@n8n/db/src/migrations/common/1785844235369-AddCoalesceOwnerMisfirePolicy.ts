@@ -27,6 +27,12 @@ const POLICY_COMMENT =
  *
  * `down()` folds `coalesce_owner` rows back to `coalesce` instead of deleting them, so
  * a rollback leaves every live trigger scheduled.
+ *
+ * The backfill has a cost: it moves every existing schedule trigger job onto a policy
+ * value that binaries predating this release do not recognise. Such a binary treats the
+ * row as corrupt, defers the job by `planRetrySeconds` and advances its clock, so during
+ * a rolling upgrade, or a downgrade that skips `db:revert`, an affected job can lose a
+ * pending catch-up and stay quiet for that interval.
  */
 export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -49,13 +55,13 @@ export class AddCoalesceOwnerMisfirePolicy1785844235369 implements ReversibleMig
 
 	/**
 	 * `misfirePolicy`, `misfireGraceSeconds` and `missedAfter` were added with raw
-	 * `ALTER TABLE ADD COLUMN`, which TypeORM never observed, so its cached `Table` can
-	 * be stale. On SQLite the CHECK swap rebuilds the table from that cache, and a stale
-	 * one would silently drop those columns. `getTable()` reloads the real schema from
-	 * PRAGMA table_info.
+	 * `ALTER TABLE`, which TypeORM never observed, so the `Table` it caches per query
+	 * runner can be stale. Every dialect reads that cache for the CHECK swap: SQLite
+	 * rebuilds the table from it and would silently drop those columns, Postgres looks
+	 * the CHECK up in it and would fail to find one it never saw added. `getTable()`
+	 * reloads the real schema from the database.
 	 */
-	private async refreshTableMetadata({ isSqlite, queryRunner, tablePrefix }: MigrationContext) {
-		if (!isSqlite) return;
+	private async refreshTableMetadata({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.getTable(`${tablePrefix}${jobTable}`);
 	}
 

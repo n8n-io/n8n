@@ -73,6 +73,22 @@ describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
 		return Number(count);
 	}
 
+	async function taskJobNames(context: TestMigrationContext): Promise<string[]> {
+		const rows = (await context.queryRunner.query(
+			`SELECT "job"."name" AS "name"
+			   FROM ${context.escape.tableName('scheduled_task')} "task"
+			   INNER JOIN ${context.escape.tableName('scheduled_job')} "job" ON "job"."id" = "task"."jobId"`,
+		)) as Array<{ name: string }>;
+		return rows.map((row) => row.name).sort();
+	}
+
+	async function foreignKeyViolations(context: TestMigrationContext): Promise<unknown[]> {
+		if (!context.isSqlite) return [];
+		return (await context.queryRunner.query(
+			`PRAGMA foreign_key_check(${context.escape.tableName('scheduled_task')})`,
+		)) as unknown[];
+	}
+
 	async function columnNames(context: TestMigrationContext, table: string): Promise<string[]> {
 		if (context.isSqlite) {
 			const rows = (await context.queryRunner.query(
@@ -128,13 +144,15 @@ describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
 			await context.queryRunner.release();
 		});
 
-		it('keeps queued occurrences, which the job table rebuild would cascade away', async () => {
+		it('keeps queued occurrences pointing at the jobs they belonged to', async () => {
 			await seedJobsAndTasks();
 
 			await runSingleMigration(MIGRATION_NAME);
 
 			const context = createTestMigrationContext(dataSource);
 			expect(await countRows(context, 'scheduled_task')).toBe(2);
+			expect(await taskJobNames(context)).toEqual(['system_job', 'trigger_a']);
+			expect(await foreignKeyViolations(context)).toEqual([]);
 			await context.queryRunner.release();
 		});
 
@@ -210,6 +228,8 @@ describe('AddCoalesceOwnerMisfirePolicy Migration', () => {
 			});
 			expect(await countRows(context, 'scheduled_job')).toBe(4);
 			expect(await countRows(context, 'scheduled_task')).toBe(2);
+			expect(await taskJobNames(context)).toEqual(['system_job', 'trigger_a']);
+			expect(await foreignKeyViolations(context)).toEqual([]);
 			await context.queryRunner.release();
 		});
 
