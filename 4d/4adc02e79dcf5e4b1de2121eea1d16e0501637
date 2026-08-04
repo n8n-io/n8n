@@ -1,0 +1,48 @@
+packages/cli/src/public-api/v1/handlers/insights/insights.handler.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 70
+packages/cli/src/modules/insights/__tests__/insights.controller.test.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 38-39
+packages/cli/test/integration/insights/insights.api.test.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 2-9,16,55-184
+  s_75c6052c0a2e5a::t_cf6b554a3b0921 185
+packages/cli/src/modules/insights/database/repositories/insights-by-period.repository.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 2-3,8,77-86,91-94,102-125,302-308,339-343,345-349,382,390,432-435,456,463,480-484,486-490
+packages/cli/test/integration/public-api/insights.test.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 2-8,13-14,183-238
+  s_75c6052c0a2e5a::t_47887ffb450f3a 239
+packages/cli/src/modules/insights/insights.service.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 10-11,16,76-104,106,111,116-117,122,221-222,230,233,236,246,253,259,267
+packages/cli/src/workflows/workflow-sharing.service.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 127-148
+  s_75c6052c0a2e5a::t_c36763b8c0751b 149
+packages/cli/src/modules/insights/__tests__/insights.service.integration.test.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 5,12,21,23,43,45,47,154-156,211,241,309,324-450,807-937,946-948,968,987,1052,1131,1212,1267-1381
+  s_75c6052c0a2e5a::t_d93b9aa13dc563 1382
+packages/cli/test/integration/workflows/workflow-sharing.service.test.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 119-140
+packages/cli/src/modules/insights/insights.controller.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 27,34,66,75,89,98
+packages/cli/src/modules/insights/__tests__/insights.service.test.ts
+  s_75c6052c0a2e5a::t_35b5abbe9a364f 8-9,18-23,43,73,207,230,253,275,300,321,343,368,395,418,443,466,489,509,532,555,579,602,625,648,672,695,718,741,765,788,810,833,843-915,939-946,949-950,955,958,961-962,967-1018,1021,1023-1035,1038-1039,1041-1080
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4d4adc02e79dcf5e4b1de2121eea1d16e0501637",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_75c6052c0a2e5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5afab556-446e-456d-8c68-e81478bb836b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
