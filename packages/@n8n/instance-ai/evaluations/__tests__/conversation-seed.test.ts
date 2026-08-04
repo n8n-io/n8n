@@ -1,7 +1,7 @@
 import {
 	ConversationSeedSchema,
 	expandSeedMessageShorthand,
-	remapSeedWorkflowIds,
+	remapSeedArtifactIds,
 	SEED_WORKFLOW_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
@@ -40,6 +40,54 @@ function makeSeed(): ConversationSeed {
 		],
 		workflows: [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }],
 		dataTables: [],
+		agents: [],
+	};
+}
+
+const AGENT_ID = 'AgEnT12345678901';
+
+/** A seed whose history built an agent: the `build-agent` result carries the id,
+ *  and a skill body carries the agent's name in prose. */
+function makeAgentSeed(): ConversationSeed {
+	return {
+		messages: [
+			{
+				id: 'msg-built-agent',
+				type: 'llm',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-agent',
+						toolName: 'build-agent',
+						state: 'resolved',
+						input: { name: 'Support Triage', message: 'Build a triage agent' },
+						output: { ok: true, agentId: AGENT_ID, agentRef: 'support-triage' },
+					},
+				],
+				createdAt: '2026-01-01T00:00:01.000Z',
+			},
+		],
+		workflows: [],
+		dataTables: [],
+		agents: [
+			{
+				id: AGENT_ID,
+				config: {
+					name: 'Support Triage',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Triage inbound support tickets.',
+					skills: [{ type: 'skill', id: 'skill_1' }],
+				},
+				skills: {
+					skill_1: {
+						name: 'Triage rules',
+						description: 'How Support Triage sorts tickets',
+						instructions: 'Support Triage labels each ticket by severity.',
+					},
+				},
+			},
+		],
 	};
 }
 
@@ -199,9 +247,9 @@ describe('expandSeedMessageShorthand', () => {
 	});
 });
 
-describe('remapSeedWorkflowIds', () => {
+describe('remapSeedArtifactIds', () => {
 	it('rewrites the workflow id and every reference to it across the seed', () => {
-		const remapped = remapSeedWorkflowIds(makeSeed());
+		const remapped = remapSeedArtifactIds(makeSeed());
 
 		const newId = remapped.workflows[0].id;
 		expect(newId).not.toBe(WF_ID);
@@ -213,7 +261,7 @@ describe('remapSeedWorkflowIds', () => {
 		expect(serialized).toContain(`/workflow/${newId}`);
 	});
 
-	it('returns the seed untouched when there are no workflows', () => {
+	it('returns the seed untouched when there are no workflows and no agents', () => {
 		const seed: ConversationSeed = {
 			messages: [
 				{
@@ -226,8 +274,9 @@ describe('remapSeedWorkflowIds', () => {
 			],
 			workflows: [],
 			dataTables: [],
+			agents: [],
 		};
-		expect(remapSeedWorkflowIds(seed)).toBe(seed);
+		expect(remapSeedArtifactIds(seed)).toBe(seed);
 	});
 
 	it('uniquifies the workflow NAME too, and follows it through the messages', () => {
@@ -244,7 +293,7 @@ describe('remapSeedWorkflowIds', () => {
 		});
 		seed.workflows[0].name = 'Digest';
 
-		const remapped = remapSeedWorkflowIds(seed);
+		const remapped = remapSeedArtifactIds(seed);
 		const newName = remapped.workflows[0].name;
 
 		expect(newName).toMatch(/^Digest \[seed [0-9a-f]{8}\]$/);
@@ -279,7 +328,7 @@ describe('remapSeedWorkflowIds', () => {
 			],
 		});
 
-		const remapped = remapSeedWorkflowIds(seed);
+		const remapped = remapSeedArtifactIds(seed);
 		const newName = remapped.workflows[0].name;
 		const block = (remapped.messages.find((m) => m.id === 'm-tool')?.content ?? []) as Array<
 			Record<string, unknown>
@@ -304,7 +353,7 @@ describe('remapSeedWorkflowIds', () => {
 		seed.workflows[0].name = 'Digest';
 		seed.workflows[0].nodes = [{ name: 'Digest', type: 'n8n-nodes-base.set' }];
 
-		const remapped = remapSeedWorkflowIds(seed);
+		const remapped = remapSeedArtifactIds(seed);
 
 		expect(remapped.workflows[0].name).not.toBe('Digest');
 		expect(remapped.workflows[0].nodes).toEqual([{ name: 'Digest', type: 'n8n-nodes-base.set' }]);
@@ -316,7 +365,7 @@ describe('remapSeedWorkflowIds', () => {
 		const seed = makeSeed();
 		seed.workflows.push({ ...seed.workflows[0], id: 'ZzZzZz9876543210' });
 
-		expect(() => remapSeedWorkflowIds(seed)).toThrow(/two workflows named/);
+		expect(() => remapSeedArtifactIds(seed)).toThrow(/two workflows named/);
 	});
 
 	// Renaming one workflow at a time would feed each rewrite into the next pass:
@@ -340,7 +389,7 @@ describe('remapSeedWorkflowIds', () => {
 			content: [{ type: 'text', text: 'Order Sync feeds Order downstream' }],
 		});
 
-		const remapped = remapSeedWorkflowIds(seed);
+		const remapped = remapSeedArtifactIds(seed);
 		const [orderName, syncName] = remapped.workflows.map((w) => w.name);
 		const mention = remapped.messages.find((m) => m.id === 'm-names');
 
@@ -351,21 +400,64 @@ describe('remapSeedWorkflowIds', () => {
 	});
 
 	it('generates a distinct NAME per call, so two iterations never share one', () => {
-		expect(remapSeedWorkflowIds(makeSeed()).workflows[0].name).not.toBe(
-			remapSeedWorkflowIds(makeSeed()).workflows[0].name,
+		expect(remapSeedArtifactIds(makeSeed()).workflows[0].name).not.toBe(
+			remapSeedArtifactIds(makeSeed()).workflows[0].name,
 		);
 	});
 
 	it('generates distinct ids per call so parallel iterations never collide', () => {
-		const a = remapSeedWorkflowIds(makeSeed()).workflows[0].id;
-		const b = remapSeedWorkflowIds(makeSeed()).workflows[0].id;
+		const a = remapSeedArtifactIds(makeSeed()).workflows[0].id;
+		const b = remapSeedArtifactIds(makeSeed()).workflows[0].id;
 		expect(a).not.toBe(b);
 	});
 
 	it('refuses to remap a dangerously short workflow id', () => {
 		const seed = makeSeed();
 		seed.workflows[0].id = 'abc';
-		expect(() => remapSeedWorkflowIds(seed)).toThrow(/too short to remap/);
+		expect(() => remapSeedArtifactIds(seed)).toThrow(/too short to remap/);
+	});
+
+	it('rewrites the agent id everywhere it appears, including inside a build-agent result', () => {
+		// The seeded history is how the live turn knows which agent it already built.
+		// A missed reference leaves the history pointing at an agent that was never
+		// restored, and `build-agent` creates a second one instead of editing it.
+		const seed = makeAgentSeed();
+
+		const remapped = remapSeedArtifactIds(seed);
+		const newId = remapped.agents[0].id;
+
+		expect(newId).not.toBe(AGENT_ID);
+		expect(JSON.stringify(remapped)).not.toContain(AGENT_ID);
+		// The tool result the orchestrator reads back moved to the fresh id.
+		const block = (remapped.messages.find((m) => m.id === 'msg-built-agent')?.content ??
+			[]) as Array<Record<string, unknown>>;
+		expect((block[0].output as Record<string, unknown>).agentId).toBe(newId);
+	});
+
+	it('keeps the agent NAME as authored, in config and in skill prose', () => {
+		// Agents are addressed by id, so a same-named copy cannot misdirect the live
+		// turn — and renaming would rewrite skill instructions the case grades.
+		const remapped = remapSeedArtifactIds(makeAgentSeed());
+
+		expect(remapped.agents[0].config.name).toBe('Support Triage');
+		expect(remapped.agents[0].skills?.skill_1.instructions).toContain('Support Triage');
+	});
+
+	it('gives an agent a fresh id disjoint from a co-seeded workflow', () => {
+		const seed = makeAgentSeed();
+		seed.workflows = makeSeed().workflows;
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.agents[0].id).not.toBe(remapped.workflows[0].id);
+		expect(remapped.agents[0].id).not.toBe(AGENT_ID);
+		expect(remapped.workflows[0].id).not.toBe(WF_ID);
+	});
+
+	it('refuses to remap a dangerously short agent id', () => {
+		const seed = makeAgentSeed();
+		seed.agents[0].id = 'ag1';
+		expect(() => remapSeedArtifactIds(seed)).toThrow(/too short to remap/);
 	});
 });
 

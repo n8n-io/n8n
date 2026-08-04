@@ -1,6 +1,7 @@
 import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiContext } from '../../../types';
 import {
+	agentBuilderTargetMetadata,
 	getSessionAgentByRef,
 	normalizeAgentRef,
 	PENDING_AGENT_METADATA_KEY,
@@ -219,5 +220,59 @@ describe('agent-builder target binding', () => {
 			});
 			await expect(getSessionAgentByRef(malformed, 'first')).resolves.toBeUndefined();
 		});
+	});
+});
+
+describe('agentBuilderTargetMetadata', () => {
+	// The eval seed restore writes this metadata directly (it has no
+	// InstanceAiContext), so a thread restored from a seed resolves its agent the
+	// same way a thread that really built one does.
+	it('writes the active target and a registry keyed by the normalized ref', () => {
+		const metadata = agentBuilderTargetMetadata([
+			{ agentId: 'agent-1', projectId: 'project-1', name: 'Support Triage', ref: 'Support Triage' },
+		]);
+
+		const entry = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			name: 'Support Triage',
+			ref: 'support-triage',
+		};
+		expect(metadata).toEqual({
+			instanceAiAgentBuilderTarget: entry,
+			instanceAiAgentBuilderTargets: { 'support-triage': entry },
+		});
+	});
+
+	it('resolves through the same readers the product uses', async () => {
+		const threadMemory = createThreadMemory(
+			agentBuilderTargetMetadata([
+				{
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					name: 'Support Triage',
+					ref: 'Support Triage',
+				},
+			]),
+		);
+		const context = createContext({ threadMemory });
+
+		await expect(resolveAgentBuilderTarget(context)).resolves.toMatchObject({ agentId: 'agent-1' });
+		await expect(getSessionAgentByRef(context, 'support triage')).resolves.toMatchObject({
+			agentId: 'agent-1',
+		});
+	});
+
+	it('makes the last target active and registers every one', () => {
+		const metadata = agentBuilderTargetMetadata([
+			{ agentId: 'agent-1', projectId: 'project-1', ref: 'first' },
+			{ agentId: 'agent-2', projectId: 'project-1', ref: 'second' },
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
+		expect(Object.keys(metadata.instanceAiAgentBuilderTargets as object)).toEqual([
+			'first',
+			'second',
+		]);
 	});
 });

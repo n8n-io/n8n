@@ -14,6 +14,7 @@ import type {
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadStatusResponse,
+	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
 	AgentJsonConfig,
@@ -37,6 +38,7 @@ const RestoreThreadEnvelope = z.object({
 		restored: z.number(),
 		workflowIds: z.array(z.string()),
 		dataTableIds: z.array(z.string()).default([]),
+		agentIds: z.array(z.string()).default([]),
 	}),
 });
 
@@ -646,9 +648,10 @@ export class N8nClient {
 
 	/**
 	 * Seed an existing thread with a previously exported conversation: the
-	 * referenced workflows are recreated (node credentials stripped server-side)
-	 * and the native message log is written verbatim, so the thread continues
-	 * as if the conversation really happened.
+	 * referenced workflows are recreated (node credentials stripped server-side),
+	 * any agents it built are recreated at their pinned ids and bound to the
+	 * thread, and the native message log is written verbatim, so the thread
+	 * continues as if the conversation really happened.
 	 *
 	 * `uniquifyNames` (default true) appends a unique suffix to each seed data
 	 * table's name to dodge the per-project unique-name constraint — safe when the
@@ -663,9 +666,15 @@ export class N8nClient {
 		messages: Array<Record<string, unknown>>,
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
+		agents: InstanceAiEvalSeedAgent[] = [],
 		options: { uniquifyNames?: boolean } = {},
-	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
-		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables };
+	): Promise<{
+		restored: number;
+		workflowIds: string[];
+		dataTableIds: string[];
+		agentIds: string[];
+	}> {
+		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables, agents };
 		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',

@@ -1,7 +1,10 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 
@@ -249,6 +252,80 @@ describe('EvalThreadRestoreService', () => {
 			expect(saved.nodes?.[0]?.parameters).toEqual({
 				dataTableId: { __rl: true, mode: 'id', value: 'dt-new' },
 			});
+		});
+	});
+
+	describe('restoreAgents', () => {
+		const agentsService = mock<AgentsService>();
+		const moduleRegistry = mock<ModuleRegistry>();
+
+		const seedAgent = (over: { id?: string; name?: string } = {}) => ({
+			id: over.id ?? 'agent-original',
+			config: {
+				name: over.name ?? 'Support Triage',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage inbound tickets.',
+				skills: [{ type: 'skill' as const, id: 'skill_1' }],
+			},
+			skills: {
+				skill_1: { name: 'Triage rules', description: 'How to sort', instructions: 'Sort them.' },
+			},
+		});
+
+		beforeEach(() => {
+			Container.set(ModuleRegistry, moduleRegistry);
+			Container.set(AgentsService, agentsService);
+			moduleRegistry.isActive.calledWith('agents').mockReturnValue(true);
+		});
+
+		afterEach(() => {
+			Container.reset(ModuleRegistry);
+			Container.reset(AgentsService);
+		});
+
+		it('creates the agent at its seeded id, carrying its config and skill bodies', async () => {
+			const agent = seedAgent();
+
+			const created = await service.restoreAgents([agent], 'project-1');
+
+			expect(created).toEqual(['agent-original']);
+			expect(agentsService.create).toHaveBeenCalledExactlyOnceWith('project-1', 'Support Triage', {
+				id: 'agent-original',
+				schema: agent.config,
+				skills: agent.skills,
+			});
+		});
+
+		it('rolls back agents already created when a later one fails', async () => {
+			// A partial restore would leak an agent into the shared eval project, and the
+			// build fails anyway — the thread never gets the history that references it.
+			agentsService.create
+				.mockResolvedValueOnce(mock())
+				.mockRejectedValueOnce(new Error('An agent with this id already exists'));
+
+			await expect(
+				service.restoreAgents(
+					[seedAgent({ id: 'agent-1' }), seedAgent({ id: 'agent-2', name: 'Other' })],
+					'project-1',
+				),
+			).rejects.toThrow('already exists');
+
+			expect(agentsService.delete).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+		});
+
+		it('fails loudly when the agents module is disabled, rather than seeding nothing', async () => {
+			moduleRegistry.isActive.calledWith('agents').mockReturnValue(false);
+
+			await expect(service.restoreAgents([seedAgent()], 'project-1')).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(agentsService.create).not.toHaveBeenCalled();
+		});
+
+		it('does not touch the agents module for a seed that declares no agents', async () => {
+			moduleRegistry.isActive.calledWith('agents').mockReturnValue(false);
+
+			await expect(service.restoreAgents([], 'project-1')).resolves.toEqual([]);
 		});
 	});
 });

@@ -21,7 +21,7 @@ import {
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
-	remapSeedWorkflowIds,
+	remapSeedArtifactIds,
 	SEED_WORKFLOW_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
@@ -172,6 +172,10 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
+	/** Agents restored by a seed. Carried separately from `artifactRefs` because a
+	 *  live turn that never calls `build-agent` emits no ref, and the seeded agent
+	 *  would then leak into the shared eval project. */
+	createdAgentIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
 	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
@@ -296,6 +300,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let credentialViewPinned = true;
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
+	let restoredAgentIds: string[] = [];
 	// TRUST-311 follow-up: scenario seed tables are created empty before the build
 	// turn (so the agent binds their real id); this maps declared name → real id
 	// for the per-scenario row seeding, and the note tells the agent they exist.
@@ -406,7 +411,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// seeded case can't run unseeded, so any restore failure fails the build.
 		if (seed) {
 			try {
-				const remapped = remapSeedWorkflowIds(seed);
+				const remapped = remapSeedArtifactIds(seed);
 				await evictLeftoverSeedWorkflows(
 					client,
 					remapped,
@@ -419,16 +424,20 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.messages,
 					remapped.workflows,
 					remapped.dataTables,
+					remapped.agents,
 				);
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
+				restoredAgentIds = restoreResult.agentIds;
 				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
 				const dtSuffix =
 					restoredDataTableIds.length > 0
 						? `, ${String(restoredDataTableIds.length)} data table(s)`
 						: '';
+				const agentSuffix =
+					restoredAgentIds.length > 0 ? `, ${String(restoredAgentIds.length)} agent(s)` : '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${config.laneTag ?? ''}`,
 				);
 			} catch (error: unknown) {
 				seedingFailed = true;
@@ -451,7 +460,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			const scenarioSeedTables = dedupeScenarioSeedTables(config.executionScenarios ?? [], logger);
 			if (scenarioSeedTables.length > 0) {
 				const schemasOnly = scenarioSeedTables.map((table) => ({ ...table, rows: undefined }));
-				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, {
+				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, [], {
 					uniquifyNames: false,
 				});
 				// restoreThread returns ids in input order; a length mismatch means we
@@ -555,6 +564,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const threadWorkflowIds = [
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
+		// Same for a restored agent: the live turn may edit it without ever emitting
+		// its own `agent-spawned`, and the agent artifact is what the case grades.
+		// Live refs stay first — `findAgentArtifactRef` takes the first match.
+		const seenAgentIds = new Set(
+			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
+		);
+		const artifactRefs: ArtifactRef[] = [
+			...eventOutcome.artifactRefs,
+			...restoredAgentIds
+				.filter((id) => !seenAgentIds.has(id))
+				.map((id) => ({ type: 'agent' as const, id })),
+		];
 		const buildTrace: BuildTrace = {
 			finalText:
 				eventOutcome.finalText.length > 0 ? eventOutcome.finalText : lastAgentText(transcript),
@@ -583,9 +604,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					success: true,
 					workflowJsons: [],
 					buildTrace,
-					artifactRefs: eventOutcome.artifactRefs,
+					artifactRefs,
 					createdWorkflowIds: restoredWorkflowIds,
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+					createdAgentIds: restoredAgentIds,
 					conversationMetrics,
 					events,
 					threadId,
@@ -602,7 +624,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
-				artifactRefs: eventOutcome.artifactRefs,
+				createdAgentIds: restoredAgentIds,
+				artifactRefs,
 				conversationMetrics,
 				events,
 				threadId,
@@ -639,8 +662,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+			createdAgentIds: restoredAgentIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
-			artifactRefs: eventOutcome.artifactRefs,
+			artifactRefs,
 			conversationMetrics,
 			events,
 			threadId,
@@ -659,6 +683,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			workflowJsons: [],
 			createdWorkflowIds: [...restoredWorkflowIds, ...builtWorkflowIds],
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
+			createdAgentIds: restoredAgentIds,
 			conversationMetrics,
 			events,
 			threadId,

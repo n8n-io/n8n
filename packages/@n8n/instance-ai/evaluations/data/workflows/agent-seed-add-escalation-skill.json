@@ -1,0 +1,77 @@
+{
+	"description": "Seeded agent case: an n8n Agent the conversation already built is restored (config + one skill) and the live turn asks for a second skill. Tests that the assistant CONTINUES the existing agent rather than building a new one — the failure mode a seeded agent case exists to catch — and that the original skill survives the edit. Build-only; graded on the rendered agent artifact.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Add a skill to Support Triage that escalates anything mentioning a refund straight to the billing team, and say so in the ticket reply."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "simple",
+	"tags": ["agent", "seeded", "skills", "edit-existing"],
+	"datasets": ["seeded"],
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "Build me an agent that triages inbound support tickets by severity."
+			},
+			{
+				"id": "seed-assistant-1",
+				"type": "llm",
+				"role": "assistant",
+				"createdAt": "2026-07-30T09:00:01.000Z",
+				"content": [
+					{
+						"type": "tool-call",
+						"toolCallId": "tc-seed-build-agent",
+						"toolName": "build-agent",
+						"state": "resolved",
+						"input": {
+							"name": "Support Triage",
+							"message": "Build an agent that triages inbound support tickets by severity."
+						},
+						"output": {
+							"ok": true,
+							"agentId": "TrIaGe1234567890",
+							"agentRef": "support-triage",
+							"agentName": "Support Triage",
+							"configUpdated": true
+						}
+					},
+					{
+						"type": "text",
+						"text": "Done — Support Triage is set up with a Triage rules skill that sorts tickets by severity."
+					}
+				]
+			}
+		],
+		"agents": [
+			{
+				"id": "TrIaGe1234567890",
+				"config": {
+					"name": "Support Triage",
+					"model": "anthropic/claude-sonnet-4-5",
+					"instructions": "You triage inbound customer support tickets. Read the ticket, decide how urgent it is, and reply to the customer with what happens next.",
+					"skills": [{ "type": "skill", "id": "skill_triage_rules" }]
+				},
+				"skills": {
+					"skill_triage_rules": {
+						"name": "Triage rules",
+						"description": "How to assign a severity to an inbound ticket",
+						"instructions": "Assign every ticket exactly one severity.\n\n- **P1** — the customer cannot use the product at all, or data is at risk.\n- **P2** — a core feature is broken but there is a workaround.\n- **P3** — everything else: questions, cosmetic issues, feature requests.\n\nState the severity in your reply to the customer, in plain language rather than the P-number."
+					}
+				}
+			}
+		]
+	},
+	"processExpectations": [
+		"The assistant edited the EXISTING Support Triage agent — it did not create a second, separate agent for the refund escalation."
+	],
+	"outcomeExpectations": [
+		"The Support Triage agent has a skill covering refund escalation: anything mentioning a refund goes to the billing team, and the reply to the customer says the ticket was escalated to billing.",
+		"The original 'Triage rules' skill is still attached to the agent and still describes the P1/P2/P3 severity levels — the refund change was added alongside it, not in place of it.",
+		"The agent's instructions still describe triaging inbound support tickets — the agent was edited, not rebuilt from scratch as something else."
+	]
+}

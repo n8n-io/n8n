@@ -42,7 +42,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { agentBuilderTargetMetadata, buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -1015,10 +1015,10 @@ export class InstanceAiController {
 
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate the workflow artifacts the history references (node credentials
-	 * stripped — see `EvalThreadRestoreService`), then write the native message
-	 * log verbatim. The thread then continues as if the conversation really
-	 * happened, so an eval can drive the next turn live.
+	 * recreate the artifacts the history references — workflows (node credentials
+	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
+	 * write the native message log verbatim. The thread then continues as if the
+	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
 	@GlobalScope('instanceAi:eval')
@@ -1035,6 +1035,7 @@ export class InstanceAiController {
 		}
 
 		const workflows = payload.workflows ?? [];
+		const agents = payload.agents ?? [];
 		// Data tables first: the workflows reference them, and their ids are
 		// rewritten to the recreated tables' ids during workflow restore.
 		const idMap = await this.evalThreadRestore.restoreDataTables(
@@ -1044,15 +1045,32 @@ export class InstanceAiController {
 		);
 		const dataTableIds = [...idMap.values()];
 		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak workflows/tables into the shared eval project.
+		// restore doesn't leak workflows/tables/agents into the shared eval project.
 		let restored = 0;
 		let createdWorkflowIds: string[] = [];
+		let createdAgentIds: string[] = [];
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
 			);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId);
+			// Bind the thread to the seeded agents, as the conversation that built them
+			// would have. Without it `build-agent` has no target to continue on the next
+			// turn and creates a second agent beside the seeded one.
+			if (createdAgentIds.length > 0) {
+				await this.memoryService.updateThread(payload.threadId, {
+					metadata: agentBuilderTargetMetadata(
+						agents.map((agent) => ({
+							agentId: agent.id,
+							projectId,
+							name: agent.config.name,
+							ref: agent.config.name,
+						})),
+					),
+				});
+			}
 			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
 			if (payload.messages.length > 0) {
 				({ restored } = await this.memoryService.restoreThreadMessages(
@@ -1062,6 +1080,7 @@ export class InstanceAiController {
 				));
 			}
 		} catch (error) {
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;
@@ -1072,6 +1091,7 @@ export class InstanceAiController {
 			restored,
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
+			agentIds: agents.map((agent) => agent.id),
 		};
 	}
 

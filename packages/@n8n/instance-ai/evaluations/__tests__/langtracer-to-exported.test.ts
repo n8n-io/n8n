@@ -134,6 +134,7 @@ describe('unsupportedPushReason', () => {
 					],
 					workflows: [],
 					dataTables: [],
+					agents: [],
 				},
 			}),
 		);

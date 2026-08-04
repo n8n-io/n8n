@@ -3,6 +3,7 @@
 // `mode: 'replay'` reconstructs one from a LangSmith trace at run time (see
 // langsmith-seed.ts). Either way the shape below is what reaches restore-thread.
 
+import { instanceAiEvalSeedAgentSchema } from '@n8n/api-types';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
@@ -127,6 +128,11 @@ export const ConversationSeedSchema = z.object({
 	workflows: z.array(SeedWorkflowSchema).default([]),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
 	dataTables: z.array(SeedDataTableSchema).default([]),
+	/** Agents the history built, recreated on restore (config + skill bodies) and
+	 *  bound to the thread, so the live turn edits one that already exists. Reuses
+	 *  the restore payload's own schema — an agent's config is validated by the
+	 *  product's schema, not a looser harness copy. */
+	agents: z.array(instanceAiEvalSeedAgentSchema).default([]),
 });
 
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
@@ -282,33 +288,45 @@ function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMe
 }
 
 /**
- * Give every seeded workflow a fresh id AND a per-restore unique name, rewriting
- * all references across the seed — so parallel iterations don't share (and
- * clobber) one workflow row, and a leftover copy can't be grounded on by name.
+ * Give every seeded workflow and agent a fresh id — and every workflow a
+ * per-restore unique name — rewriting all references across the seed, so parallel
+ * iterations don't share (and clobber) one row, and a leftover workflow copy can't
+ * be grounded on by name.
  *
- * The name rewrite is applied to `messages` ONLY, never inside `workflows[].nodes`.
- * Workflow names are short and human ("Batch loop"), so a blanket replace could hit
- * a node that happens to share the name and silently alter the restored graph —
- * which is exactly the "structural skeleton unchanged" guard a seeded case relies on.
+ * Agents get the id pass only. An agent is addressed by id everywhere that
+ * matters (the restored thread binding, `build-agent`'s `agentId`), so a
+ * same-named copy can't misdirect the live turn — and its name appears inside
+ * skill prose, where a blanket rename would rewrite instructions the case grades.
+ *
+ * The workflow name rewrite is applied to `messages` ONLY, never inside
+ * `workflows[].nodes`. Workflow names are short and human ("Batch loop"), so a
+ * blanket replace could hit a node that happens to share the name and silently
+ * alter the restored graph — which is exactly the "structural skeleton unchanged"
+ * guard a seeded case relies on.
  */
-export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
-	if (seed.workflows.length === 0) return seed;
+export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
+	if (seed.workflows.length === 0 && seed.agents.length === 0) return seed;
 
-	const originalIds = new Set(seed.workflows.map((workflow) => workflow.id));
-	let serialized = JSON.stringify({ messages: seed.messages, workflows: seed.workflows });
-	for (const workflow of seed.workflows) {
-		// Workflow ids are long random tokens; a short id would risk rewriting
+	// One id space: a fresh id must miss every original id, workflow or agent, or a
+	// sequential replace could rewrite a not-yet-processed artifact's id.
+	const originalIds = new Set([
+		...seed.workflows.map((workflow) => workflow.id),
+		...seed.agents.map((agent) => agent.id),
+	]);
+	let serialized = JSON.stringify({
+		messages: seed.messages,
+		workflows: seed.workflows,
+		agents: seed.agents,
+	});
+	for (const id of originalIds) {
+		// Artifact ids are long random tokens; a short id would risk rewriting
 		// unrelated substrings, so refuse instead of corrupting the seed.
-		if (workflow.id.length < 8) {
-			throw new Error(
-				`Seed workflow id "${workflow.id}" is too short to remap safely (need ≥8 chars)`,
-			);
+		if (id.length < 8) {
+			throw new Error(`Seed artifact id "${id}" is too short to remap safely (need ≥8 chars)`);
 		}
-		// Keep the fresh id disjoint from every original id so this sequential
-		// replace can't rewrite a not-yet-processed workflow's id.
 		let newId = generateNanoId();
 		while (originalIds.has(newId)) newId = generateNanoId();
-		serialized = serialized.replaceAll(workflow.id, newId);
+		serialized = serialized.replaceAll(id, newId);
 	}
 
 	const remapped = ConversationSeedSchema.parse(jsonParse(serialized));
@@ -349,14 +367,20 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	const renames = new Map(
 		remapped.workflows.map((workflow, index) => [workflow.name, workflows[index].name]),
 	);
-	const mentionRe = new RegExp(
-		[...renames.keys()]
-			.sort((a, b) => b.length - a.length)
-			.map(escapeForRegExp)
-			.join('|'),
-		'g',
-	);
-	const rewrite = (s: string) => s.replace(mentionRe, (match) => renames.get(match) ?? match);
+	// Undefined for an agent-only seed, which renames nothing — an empty alternation
+	// would match the empty string at every position instead.
+	const mentionRe =
+		renames.size === 0
+			? undefined
+			: new RegExp(
+					[...renames.keys()]
+						.sort((a, b) => b.length - a.length)
+						.map(escapeForRegExp)
+						.join('|'),
+					'g',
+				);
+	const rewrite = (s: string) =>
+		mentionRe ? s.replace(mentionRe, (match) => renames.get(match) ?? match) : s;
 	const messages = remapped.messages.map((message) => renameMentions(message, rewrite));
 
 	// Data table ids are remapped server-side on restore (id is generated, not

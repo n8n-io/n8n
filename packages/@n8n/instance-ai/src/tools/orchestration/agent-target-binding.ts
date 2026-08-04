@@ -120,6 +120,28 @@ export async function resolveAgentBuilderTarget(
 }
 
 /**
+ * The thread metadata that binds a thread to an agent build target: the active
+ * target plus its registry entry. Exported for eval thread seeding, which has no
+ * `InstanceAiContext` to hand `saveAgentBuilderTarget` — without the binding a
+ * seeded thread's next `build-agent` call has no target to continue and creates a
+ * second agent beside the seeded one. Last target wins as the active one,
+ * mirroring "most recently targeted".
+ */
+export function agentBuilderTargetMetadata(targets: AgentBuilderTarget[]): Record<string, unknown> {
+	const entries = targets.map((target) =>
+		target.ref ? { ...target, ref: normalizeAgentRef(target.ref) } : target,
+	);
+	const registry: Record<string, AgentBuilderTarget> = {};
+	for (const entry of entries) {
+		if (entry.ref) registry[entry.ref] = entry;
+	}
+	return {
+		[METADATA_KEY]: entries[entries.length - 1],
+		[REGISTRY_METADATA_KEY]: registry,
+	};
+}
+
+/**
  * Persist the build target to thread metadata. A no-op (with a warning) when
  * thread persistence is unavailable — unreachable in practice, since every
  * real instance-AI session carries `threadMemory`/`threadId`.

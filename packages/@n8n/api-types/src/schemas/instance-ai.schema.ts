@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
+import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { Z } from '../zod-class';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -1800,6 +1802,23 @@ export const instanceAiEvalSeedDataTableSchema = z.object({
 
 export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
 
+/** An agent a conversation seed references, recreated at its given id in the
+ *  thread's project. `config` and `skills` are the exact shapes the agent's own
+ *  config/skills routes return, so a seed can be authored from a fetched agent
+ *  verbatim. Skill bodies are prose and carry far more free text than a workflow
+ *  does — scrub them like conversation content, not like config. */
+export const instanceAiEvalSeedAgentSchema = z.object({
+	// ≥8 chars for the same reason as a seed data table: the harness remaps this
+	// id by whole-document string replace before restoring.
+	id: z.string().min(8).max(64),
+	/** The agent's draft config. Its `name` is the agent's display name. */
+	config: AgentJsonConfigSchema,
+	/** Skill bodies keyed by the skill id `config.skills[].id` references. */
+	skills: z.record(agentSkillSchema).optional(),
+});
+
+export type InstanceAiEvalSeedAgent = z.infer<typeof instanceAiEvalSeedAgentSchema>;
+
 export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	threadId: z.string().uuid(),
 	/** Native agent message log (ISO `createdAt`), stored verbatim. May be empty
@@ -1809,6 +1828,10 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 	/** Workflows the history references; recreated (node credentials stripped). */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
+	/** Agents the history references; created at their pinned id in the thread's
+	 *  project, and bound to the thread so the next turn edits the seeded agent
+	 *  instead of creating a second one. */
+	agents: z.array(instanceAiEvalSeedAgentSchema).max(5).optional(),
 	/** Append a unique suffix to each seed data table's name (default true — safe
 	 *  for id-remapped seed workflows). False keeps the EXACT declared name so a
 	 *  freshly-built workflow's by-name references resolve. */

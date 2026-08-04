@@ -1,10 +1,16 @@
-import type { InstanceAiEvalSeedDataTable, InstanceAiEvalSeedWorkflow } from '@n8n/api-types';
+import type {
+	InstanceAiEvalSeedAgent,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiEvalSeedWorkflow,
+} from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -29,8 +35,8 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
-/** Recreates the data tables and workflows a conversation seed references, so a
- *  restored message history's ids resolve. Used by the eval restore endpoint. */
+/** Recreates the data tables, workflows and agents a conversation seed references,
+ *  so a restored message history's ids resolve. Used by the eval restore endpoint. */
 @Service()
 export class EvalThreadRestoreService {
 	constructor(
@@ -120,6 +126,59 @@ export class EvalThreadRestoreService {
 				// best-effort
 			}
 		}
+	}
+
+	/**
+	 * Recreate each seed agent at its pinned id in the thread's project, carrying
+	 * its config and skill bodies in the one insert (an agent is a single row —
+	 * skills live in a JSON column, so there is nothing to write to a filesystem).
+	 * Rolls back agents already created if a later one fails.
+	 *
+	 * Unlike seed data tables, names are NOT uniquified: an agent is addressed by
+	 * id (the thread binding and `build-agent`'s `agentId`), so a same-named copy
+	 * can't misdirect the live turn the way a same-named workflow could.
+	 */
+	async restoreAgents(agents: InstanceAiEvalSeedAgent[], projectId: string): Promise<string[]> {
+		if (agents.length === 0) return [];
+		const agentsService = this.agentsService();
+		const created: string[] = [];
+		try {
+			for (const agent of agents) {
+				// `create` refuses a colliding id rather than overwriting, so a seed can
+				// never clobber an agent that already exists in this or another project.
+				await agentsService.create(projectId, agent.config.name, {
+					id: agent.id,
+					schema: agent.config,
+					...(agent.skills ? { skills: agent.skills } : {}),
+				});
+				created.push(agent.id);
+			}
+		} catch (error) {
+			await this.deleteAgents(created, projectId);
+			throw error;
+		}
+		return created;
+	}
+
+	/** Best-effort delete (rollback of a failed restore). Resolves the service per
+	 *  id so a rollback can never throw over the failure that triggered it. */
+	async deleteAgents(agentIds: string[], projectId: string): Promise<void> {
+		for (const id of agentIds) {
+			try {
+				await this.agentsService().delete(id, projectId);
+			} catch {
+				// best-effort
+			}
+		}
+	}
+
+	/** Resolved lazily: the agents module owns the entity, so resolving it eagerly
+	 *  would break every seeded restore on an instance where agents are disabled. */
+	private agentsService(): AgentsService {
+		if (!Container.get(ModuleRegistry).isActive('agents')) {
+			throw new BadRequestError('Seeding an agent requires the agents module to be enabled');
+		}
+		return Container.get(AgentsService);
 	}
 
 	/** Recreate the seed workflows; returns the ids actually created (newly), and

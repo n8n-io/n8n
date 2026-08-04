@@ -5,6 +5,7 @@ import {
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
 	type AgentJsonConfig,
+	type AgentSkill,
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -67,10 +68,18 @@ export class AgentsService {
 			availableInMCP = false,
 			id,
 			adoptUnconfiguredOnCollision = false,
+			schema,
+			skills,
 		}: {
 			availableInMCP?: boolean;
 			id?: string;
 			adoptUnconfiguredOnCollision?: boolean;
+			/** Ready-made config to create the agent with, instead of the empty draft
+			 *  below. Used by eval thread seeding, which recreates an already-built
+			 *  agent in one insert. */
+			schema?: AgentJsonConfig;
+			/** Skill bodies keyed by the ids `schema.skills[]` references. */
+			skills?: Record<string, AgentSkill>;
 		} = {},
 	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
@@ -92,7 +101,8 @@ export class AgentsService {
 			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: defaultConfig,
+			schema: schema ?? defaultConfig,
+			...(skills ? { skills } : {}),
 			versionId: uuid(),
 			availableInMCP,
 		});
