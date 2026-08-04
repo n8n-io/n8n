@@ -356,6 +356,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 						deferredJobs: 0,
 						misfires: [],
 						retiredOccurrences: 0,
+						groupedCatchUps: 0,
 					};
 				}
 				throw error;

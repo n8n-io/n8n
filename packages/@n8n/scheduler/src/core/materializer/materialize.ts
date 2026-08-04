@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 
 import type { ScheduledJob } from '../types';
+import { coalesceSiblingCatchUps } from './coalesce-group';
 import { countMisfires, type MisfireCount } from './misfire';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
@@ -36,6 +37,7 @@ export interface MaterializerSummary {
 	misfires: MisfireCount[];
 	/** How many pending occurrences were retired because a catch-up run superseded them. */
 	retiredOccurrences: number;
+	groupedCatchUps: number;
 }
 
 /** Notified when a claimed job's schedule cannot be planned, before it is deferred. */
@@ -113,13 +115,15 @@ export async function materialize(
 				deferredJobs: 0,
 				misfires: [],
 				retiredOccurrences: 0,
+				groupedCatchUps: 0,
 			};
 		}
-		const { occurrencesPlanned, numberOfJobsDeferred } = planOrDeferJobs(
+		const { occurrencesPlanned: jobsPlanned, numberOfJobsDeferred } = planOrDeferJobs(
 			claimed,
 			options,
 			hooks.onPlanError,
 		);
+		const occurrencesPlanned = coalesceSiblingCatchUps(jobsPlanned);
 		const rows = toNewOccurrences(occurrencesPlanned, claimed.now);
 		const { recorded, created } = await tx.recordOccurrences(rows);
 		signal?.throwIfAborted();
@@ -141,8 +145,13 @@ export async function materialize(
 			deferredJobs: numberOfJobsDeferred,
 			misfires: countMisfires(occurrencesPlanned),
 			retiredOccurrences,
+			groupedCatchUps: totalGroupedCatchUps(occurrencesPlanned),
 		};
 	});
+}
+
+function totalGroupedCatchUps(planned: PlannedJob[]): number {
+	return planned.reduce((total, { plan }) => total + plan.groupedCatchUps, 0);
 }
 
 export function totalDiscarded(misfires: MisfireCount[]): number {
