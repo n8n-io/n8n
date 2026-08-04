@@ -8,6 +8,7 @@ export const SERVICE_ACCOUNT_ACTIONS = {
 	DISABLE: 'disable',
 	ENABLE: 'enable',
 	DELETE: 'delete',
+	CREATE_CREDENTIAL: 'createCredential',
 } as const;
 
 export const CREATE_SERVICE_ACCOUNT_MODAL_KEY = 'createServiceAccount';

@@ -1,5 +1,6 @@
 import type { ServiceAccountsList, UsersListFilterDto } from '@n8n/api-types';
 import * as serviceAccountsApi from '@n8n/rest-api-client/api/service-accounts';
+import * as serviceAccountCredentialsApi from '@n8n/rest-api-client/api/service-account-credentials';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
@@ -35,11 +36,17 @@ export const useServiceAccountsStore = defineStore(STORES.SERVICE_ACCOUNTS, () =
 	const remove = async (id: string) =>
 		await serviceAccountsApi.deleteServiceAccount(rootStore.restApiContext, id);
 
+	const createCredential = async (userId: string) =>
+		await serviceAccountCredentialsApi.createServiceAccountCredential(rootStore.restApiContext, {
+			userId,
+		});
+
 	return {
 		serviceAccountsList,
 		create,
 		update,
 		changeRole,
 		remove,
+		createCredential,
 	};
 });
