@@ -206,24 +206,16 @@ export function expandSeedMessageShorthand(messages: unknown[]): unknown[] {
 /**
  * Restamp an inline seed's timestamps when the authored ones don't present the
  * messages the way the array orders them: ascending, and entirely before the live
- * turn.
+ * turn. Only a full envelope can get this wrong (the shorthand stamps its own
+ * slots), and either failure makes the agent see its own history out of order.
  *
- * The shorthand stamps its own slots, so it can't get this wrong; a full envelope
- * keeps what it was authored with, and two shapes then break ordering — a future
- * stamp sorts the seeded turn AFTER the live turn, and a non-ascending sequence
- * (a shorthand turn appended after post-epoch envelopes, say) presents the history
- * in an order the graded transcript never had. Either way the agent sees its own
- * history out of order and the judge grades a transcript that never happened.
+ * Restamps the WHOLE sequence, not just the offending entry: a per-message fix
+ * reorders relative to the array (`[future A, past B]` moves only A, leaving the
+ * store presenting B then A while the transcript still grades array order).
+ * Authored timestamps therefore survive only when already ascending and past.
  *
- * Restamps the WHOLE sequence, not just the offending entry. A per-message fix
- * reorders relative to the array: `[future A, past B]` leaves B alone and moves A
- * back, so the store presents B then A while `transcriptPrefixFromSeed` still
- * grades array order. Array order is the authority, so the rewrite reproduces it
- * on the same fixed slots the shorthand uses. Authored timestamps are therefore
- * preserved only when they already ascend and are already in the past.
- *
- * Inline (hand-authored) seeds only — a `replay` seed is reconstructed from a
- * real trace and never reaches this schema, so no real timestamp can be moved.
+ * Inline seeds only — a `replay` seed is reconstructed from a real trace and never
+ * reaches this schema, so no real timestamp can be moved.
  */
 export function normalizeSeedTimestamps(messages: unknown[]): unknown[] {
 	const stampOf = (message: unknown): number | undefined => {

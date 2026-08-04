@@ -117,10 +117,9 @@ async function driveMultiTurnConversation(
 ): Promise<ProxyDecisionStats> {
 	const openingMessage = config.conversation[0]?.text ?? '';
 	const recordedOpeningMessage = config.recordedOpeningMessage ?? openingMessage;
-	// The proxy renders both its script and its running transcript from `text`
-	// alone, so an out-of-band attachment has to be named there too — otherwise a
-	// text-less hand-off (`text: "" + attach`) audits every plan and follow-up
-	// against a blank opening turn that never mentions the workflow.
+	// The proxy renders both its script and its running transcript from `text` alone,
+	// so it needs the recorded opening too — otherwise it audits every plan and
+	// follow-up against a blank turn that never mentions the workflow.
 	const proxyConversation = config.conversation.map((turn, index) =>
 		index === 0 ? { ...turn, text: recordedOpeningMessage } : turn,
 	);
@@ -516,9 +515,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				? undefined
 				: seedWorkflowsBySeedId.get(attachedSeedWorkflow);
 		// The schema already refused an `attach` no seeded workflow declares, so a miss
-		// here means the restore/remap dropped it. Sending no attachment would silently
-		// downgrade a hand-off case to a find-it one and grade the wrong thing — the
-		// same failure class the schema refusals exist to prevent. Harness fault.
+		// here means the restore/remap dropped it. Fail loudly: sending no attachment
+		// would silently downgrade a hand-off case to a find-it one.
 		if (attachedSeedWorkflow !== undefined && restoredForAttach === undefined) {
 			seedingFailed = true;
 			throw new Error(
@@ -528,12 +526,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingAttachments: InstanceAiWorkflowAttachment[] | undefined = restoredForAttach
 			? [{ type: 'workflow', id: restoredForAttach.id, name: restoredForAttach.name }]
 			: undefined;
-		// The API carries the attachment out of band, so the RECORDED turn — what the
-		// expectations judge and the prompt-aware checks read — would show the faithful
-		// `text: "" + attach` hand-off as a bare empty message: an anomaly to the judge,
-		// and `userTurnsAsText` drops empty strings, so fulfills-user-request would get
-		// an empty prompt. Name the hand-off in the transcript instead. Mirrors
-		// `openingMessageSuffix`, which diverges sent-vs-recorded the other way.
+		// Name the out-of-band attachment in the RECORDED turn, or the judge and the
+		// prompt-aware checks read a text-less hand-off as a bare empty message — see
+		// `attachedWorkflowNote`. Mirrors `openingMessageSuffix`, which diverges
+		// sent-vs-recorded the other way.
 		const recordedOpeningMessage = [attachedWorkflowNote(restoredForAttach?.name), openingMessage]
 			.filter(Boolean)
 			.join(' ');

@@ -34,19 +34,12 @@ export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: conversationTurnTextSchema,
 	/** Hand the agent a seeded workflow with this turn, the way the editor does when
-	 *  a user opens the assistant with a workflow in front of them: the product sends
-	 *  it as a resource reference and the agent resolves it by id, never by name.
-	 *
-	 *  Without this a case sourced from that kind of conversation is HARDER than
-	 *  reality — the real agent was handed the workflow, while the eval agent gets
-	 *  prose that deliberately doesn't name it ("why is this failing?") and has to
-	 *  guess. It would list workflows and pick, or ask which one, and we would score
-	 *  a clarification failure the real user never hit.
+	 *  a user opens the assistant with a workflow in front of them — without it the
+	 *  eval agent has to guess which workflow prose like "why is this failing?"
+	 *  means, and we score a clarification failure the real user never hit.
 	 *
 	 *  `workflow` is the id as the seed declares it; the harness swaps in the
-	 *  per-run remapped id, so an author tracks nothing. Only the opening turn may
-	 *  carry it (a refine below) — an attachment is a hand-off, not something the
-	 *  user re-sends every message. */
+	 *  per-run remapped id. Opening turn only (refined below). */
 	attach: z
 		.object({ workflow: z.string().min(1) })
 		.strict()
@@ -206,16 +199,13 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		message:
 			'a case needs a conversation, or a seed with mode: replay (which supplies the live turn from the trace)',
 	})
-	// An attachment is a hand-off: it rides the message that opens the conversation,
-	// not every message after it. Rejected rather than ignored on a later turn, so a
-	// misplaced one can't silently do nothing.
+	// Rejected rather than ignored on a later turn, so a misplaced one can't silently
+	// do nothing.
 	.refine((c) => (c.conversation ?? []).slice(1).every((turn) => turn.attach === undefined), {
 		message: 'only the first conversation turn may carry `attach` — an attachment is a hand-off',
 	})
-	// The hand-off IS the user's opening turn — it models someone opening the
-	// assistant with a workflow already in front of them. An assistant turn
-	// carrying one is malformed, and grading it would score a transcript that
-	// could not have happened.
+	// Grading an assistant turn that carries one would score a transcript that could
+	// not have happened.
 	.refine((c) => c.conversation?.[0]?.attach === undefined || c.conversation[0].role === 'user', {
 		message:
 			'only a `user` turn may carry `attach` — the attachment is the hand-off that opens the conversation',
@@ -236,12 +226,9 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	)
 	// The chat API refuses a message that is empty with nothing attached, so catch it
 	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
-	// EVERY user turn, not just the opening: a later empty one hits the same 400.
-	// Assistant turns are script data for the proxy and never posted, so this rule
-	// doesn't apply to them. Only a non-replay opening may substitute `attach` for
-	// text — on a replay case `conversation[0]` continues the trace's live turn, and
-	// `attach` needs an inline seed to point at, so "add an attach" is advice a
-	// replay author can't follow.
+	// Every user turn, not just the opening; assistant turns are proxy script data
+	// and never posted. Only a non-replay opening may substitute `attach` for text —
+	// a replay case has no inline seed for it to point at.
 	.superRefine((c, ctx) => {
 		const isReplay = c.seed?.mode === 'replay';
 		(c.conversation ?? []).forEach((turn, index) => {
