@@ -1,5 +1,5 @@
+import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import type { BuiltTelemetry } from '../../types/telemetry';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
@@ -102,24 +102,6 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 });
 
 describe('MemoryOrchestrator.loadHistoryMessages telemetry', () => {
-	function fakeSpan() {
-		return {
-			end: vi.fn(),
-			recordException: vi.fn(),
-			setStatus: vi.fn(),
-			setAttributes: vi.fn(),
-		};
-	}
-
-	function fakeTracer(span: ReturnType<typeof fakeSpan>) {
-		return {
-			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
-				const spanFn = fn as (spanValue: ReturnType<typeof fakeSpan>) => Promise<unknown>;
-				return await spanFn(span);
-			}),
-		};
-	}
-
 	it('opens a query_memory span with session/owner attributes and post-hoc ids', async () => {
 		const store = new InMemoryMemory();
 		const m1 = message('m1', 'first', new Date(2026, 4, 12, 14, 30));
@@ -128,13 +110,7 @@ describe('MemoryOrchestrator.loadHistoryMessages telemetry', () => {
 
 		const span = fakeSpan();
 		const tracer = fakeTracer(span);
-		const telemetry: BuiltTelemetry = {
-			enabled: true,
-			recordInputs: true,
-			recordOutputs: true,
-			integrations: [],
-			tracer,
-		};
+		const telemetry = builtTelemetry({ tracer });
 		// buildOrchestrator()'s config has no `name`, and loadHistoryMessages
 		// uses config.name for gen_ai.agent.name — build a named config directly
 		// so that attribute is a real string, matching production (Agent.build()
@@ -173,18 +149,6 @@ describe('MemoryOrchestrator.loadHistoryMessages telemetry', () => {
 				'gen_ai.memory.operations': ['query_memory', 'query_memory'],
 			}),
 		);
-	});
-
-	it('does not open a span when telemetry is undefined', async () => {
-		const store = new InMemoryMemory();
-		await seedThread(store, [message('m1', 'first', new Date(2026, 4, 12, 14, 30))]);
-
-		const loaded = await buildOrchestrator(store).loadHistoryMessages({
-			threadId: THREAD_ID,
-			resourceId: RESOURCE_ID,
-		});
-
-		expect(loaded.map((m) => m.id)).toEqual(['m1']);
 	});
 
 	it('does not call describe() on the memory backend when telemetry is undefined', async () => {

@@ -1,3 +1,4 @@
+import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { RunOptions } from '../../types/sdk/agent';
@@ -249,34 +250,6 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 });
 
 describe('MemoryOrchestrator save-path telemetry', () => {
-	function fakeSpan() {
-		return {
-			end: vi.fn(),
-			recordException: vi.fn(),
-			setStatus: vi.fn(),
-			setAttributes: vi.fn(),
-		};
-	}
-
-	function fakeTracer(span: ReturnType<typeof fakeSpan>) {
-		return {
-			startActiveSpan: vi.fn(async (_name: string, _options: unknown, fn: unknown) => {
-				const spanFn = fn as (spanValue: ReturnType<typeof fakeSpan>) => Promise<unknown>;
-				return await spanFn(span);
-			}),
-		};
-	}
-
-	function fakeTelemetry(tracer: ReturnType<typeof fakeTracer>): BuiltTelemetry {
-		return {
-			enabled: true,
-			recordInputs: true,
-			recordOutputs: true,
-			integrations: [],
-			tracer,
-		};
-	}
-
 	function buildOrchestratorWithTelemetry(
 		store: InMemoryMemory,
 		telemetry: BuiltTelemetry,
@@ -294,7 +267,7 @@ describe('MemoryOrchestrator save-path telemetry', () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
 		const span = fakeSpan();
-		const telemetry = fakeTelemetry(fakeTracer(span));
+		const telemetry = builtTelemetry({ tracer: fakeTracer(span) });
 
 		const list = new AgentMessageList();
 		list.addInput([userMsg('the user prompt')]);
@@ -315,7 +288,7 @@ describe('MemoryOrchestrator save-path telemetry', () => {
 		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
 		const span = fakeSpan();
 		const tracer = fakeTracer(span);
-		const telemetry = fakeTelemetry(tracer);
+		const telemetry = builtTelemetry({ tracer });
 
 		const list = new AgentMessageList();
 		list.addInput([userMsg('please build it')]);
