@@ -13,7 +13,7 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { sanitizeNodeCredentials } from './schemas';
+import { nodeSchema, sanitizeNodeCredentials } from './schemas';
 import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -53,11 +53,15 @@ const outputSchema = {
 	fromVersionId: z.string(),
 	toVersionId: z.string(),
 	nodesAdded: z
-		.array(nodeChangeSummarySchema)
-		.describe('Nodes present in the target version but not in the base version'),
+		.array(nodeSchema)
+		.describe(
+			'Full content of nodes present in the target version but not in the base version (credentials reduced to { id, name }), so the diff is self-contained',
+		),
 	nodesRemoved: z
 		.array(nodeChangeSummarySchema)
-		.describe('Nodes present in the base version but not in the target version'),
+		.describe(
+			'Nodes present in the base version but not in the target version. Fetch the base version with get_workflow_version if you need their content.',
+		),
 	nodesModified: z
 		.array(modifiedNodeSchema)
 		.describe(
@@ -80,7 +84,7 @@ type GetWorkflowVersionsDiffResult = {
 	workflowId: string;
 	fromVersionId: string;
 	toVersionId: string;
-	nodesAdded: NodeChangeSummary[];
+	nodesAdded: Array<Record<string, unknown>>;
 	nodesRemoved: NodeChangeSummary[];
 	nodesModified: ModifiedNode[];
 	connectionsAdded: ConnectionChange[];
@@ -144,7 +148,7 @@ export const createGetWorkflowVersionsDiffTool = (
 	name: 'get_workflow_versions_diff',
 	config: {
 		description:
-			'Compare two saved versions of a workflow and return what changed between them: nodes added, removed, or modified (with a field-level delta per modified node) and connections added or removed. Pass the older version as fromVersionId and the newer one as toVersionId, using version IDs from get_workflow_history.',
+			'Compare two saved versions of a workflow and return what changed between them: nodes added (with their full content), removed, or modified (with a field-level delta per modified node) and connections added or removed. Pass the older version as fromVersionId and the newer one as toVersionId, using version IDs from get_workflow_history.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -159,7 +163,7 @@ export const createGetWorkflowVersionsDiffTool = (
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'get_workflow_versions_diff',
-			parameters: { workflowId, fromVersionId, toVersionId },
+			parameters: { workflowId },
 		};
 
 		try {
@@ -174,16 +178,7 @@ export const createGetWorkflowVersionsDiffTool = (
 
 			telemetryPayload.results = {
 				success: true,
-				data: {
-					workflow_id: workflowId,
-					from_version_id: fromVersionId,
-					to_version_id: toVersionId,
-					nodes_added: payload.nodesAdded.length,
-					nodes_removed: payload.nodesRemoved.length,
-					nodes_modified: payload.nodesModified.length,
-					connections_added: payload.connectionsAdded.length,
-					connections_removed: payload.connectionsRemoved.length,
-				},
+				data: { workflow_id: workflowId },
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
@@ -245,11 +240,13 @@ export async function getWorkflowVersionsDiff(
 	// post-change node so a renamed node is listed by a name that still exists.
 	const toNodesById = new Map(toNodes.map((node) => [node.id, node]));
 
-	const nodesAdded: NodeChangeSummary[] = [];
+	const nodesAdded: Array<Record<string, unknown>> = [];
 	const nodesRemoved: NodeChangeSummary[] = [];
 	const nodesModified: ModifiedNode[] = [];
 	for (const { status, node } of nodeDiff.values()) {
-		if (status === NodeDiffStatus.Added) nodesAdded.push(toNodeChangeSummary(node));
+		// Added nodes carry their full content so the diff is self-contained;
+		// removed nodes stay a summary (their content lives in the base version).
+		if (status === NodeDiffStatus.Added) nodesAdded.push(sanitizeNodeCredentials(node));
 		else if (status === NodeDiffStatus.Deleted) nodesRemoved.push(toNodeChangeSummary(node));
 		else if (status === NodeDiffStatus.Modified) {
 			const toNode = toNodesById.get(node.id);

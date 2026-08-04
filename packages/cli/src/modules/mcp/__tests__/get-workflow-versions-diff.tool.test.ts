@@ -83,7 +83,13 @@ describe('get-workflow-versions-diff MCP tool', () => {
 				name: 'Fetch',
 				parameters: { url: 'https://changed.example.com' },
 			});
-			const added = makeNode({ id: 'node-new', name: 'New Node', type: 'n8n-nodes-base.set' });
+			const added = makeNode({
+				id: 'node-new',
+				name: 'New Node',
+				type: 'n8n-nodes-base.set',
+				parameters: { mode: 'manual', assignments: { assignments: [] } },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Secret' } },
+			});
 
 			mockVersions([unchanged, removed, modifiedBefore], [unchanged, modifiedAfter, added]);
 
@@ -98,7 +104,17 @@ describe('get-workflow-versions-diff MCP tool', () => {
 				workflowId: 'wf-1',
 				fromVersionId: 'v1',
 				toVersionId: 'v2',
-				nodesAdded: [{ id: 'node-new', name: 'New Node', type: 'n8n-nodes-base.set' }],
+				// Added nodes carry their full content (with credentials reduced to
+				// id and name); removed nodes are summaries only.
+				nodesAdded: [
+					{
+						id: 'node-new',
+						name: 'New Node',
+						type: 'n8n-nodes-base.set',
+						parameters: { mode: 'manual', assignments: { assignments: [] } },
+						credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Secret' } },
+					},
+				],
 				nodesRemoved: [{ id: 'node-gone', name: 'Old Node' }],
 				nodesModified: [
 					{
@@ -112,6 +128,8 @@ describe('get-workflow-versions-diff MCP tool', () => {
 					},
 				],
 			});
+			const content = result.structuredContent as { nodesRemoved: Array<Record<string, unknown>> };
+			expect(content.nodesRemoved[0]).not.toHaveProperty('parameters');
 		});
 
 		test('does not report position-only moves as modifications', async () => {
