@@ -80,6 +80,9 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 			.withColumns(
 				column('activityId').int.primary,
 				column('body').text.comment('Only user-editable text in the feed; nulled on delete'),
+				column('data').json.comment(
+					'Reserved for comment revision history; cleared alongside `body` on delete',
+				),
 				column('updatedAt').timestampTimezone().comment('Set when the body is edited'),
 				column('deletedAt').timestampTimezone().comment('Set when the comment is deleted'),
 			)

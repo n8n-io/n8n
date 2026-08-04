@@ -126,7 +126,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_review_activity](public.workflow_review_activity.md) | 8 |  | BASE TABLE |
-| [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) | 5 |  | BASE TABLE |
+| [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) | 6 |  | BASE TABLE |
 | [public.workflow_review_request](public.workflow_review_request.md) | 12 |  | BASE TABLE |
 | [public.workflow_review_request_authors](public.workflow_review_request_authors.md) | 2 |  | BASE TABLE |
 | [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) | 2 |  | BASE TABLE |
@@ -1518,6 +1518,7 @@ erDiagram
   integer activityId FK
   text body
   timestamp_3__with_time_zone createdAt
+  json data
   timestamp_3__with_time_zone deletedAt
   timestamp_3__with_time_zone updatedAt
 }

@@ -76,6 +76,7 @@ erDiagram
   integer activityId FK
   text body
   timestamp_3__with_time_zone createdAt
+  json data
   timestamp_3__with_time_zone deletedAt
   timestamp_3__with_time_zone updatedAt
 }

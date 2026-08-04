@@ -198,6 +198,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			const commentRepository = dataSource.getRepository(WorkflowReviewActivityComment);
 
 			const data = { workflowId: 'wf-1', versionId: 'v-1' };
+			const commentData = { revisions: [{ body: 'First draft' }] };
 			const editedAt = new Date('2026-01-02T03:04:05.678Z');
 			const savedFirst = await activityRepository.save(
 				activityRepository.create({ workflowReviewRequestId: requestId, type: 'submitted', data }),
@@ -209,6 +210,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				commentRepository.create({
 					activityId: savedSecond.id,
 					body: 'Looks good',
+					data: commentData,
 					updatedAt: editedAt,
 				}),
 			);
@@ -230,6 +232,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			expect(second.data).toBeNull();
 
 			expect(comment.body).toBe('Looks good');
+			expect(comment.data).toEqual(commentData);
 			expect(comment.updatedAt).toEqual(editedAt);
 			expect(comment.deletedAt).toBeNull();
 			expect(comment.createdAt).toBeInstanceOf(Date);

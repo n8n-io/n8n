@@ -126,7 +126,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_publish_history](workflow_publish_history.md) | 6 |  | table |
 | [workflow_published_version](workflow_published_version.md) | 4 |  | table |
 | [workflow_review_activity](workflow_review_activity.md) | 8 |  | table |
-| [workflow_review_activity_comment](workflow_review_activity_comment.md) | 5 |  | table |
+| [workflow_review_activity_comment](workflow_review_activity_comment.md) | 6 |  | table |
 | [workflow_review_request](workflow_review_request.md) | 12 |  | table |
 | [workflow_review_request_authors](workflow_review_request_authors.md) | 2 |  | table |
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
@@ -1507,6 +1507,7 @@ erDiagram
   INTEGER activityId FK
   TEXT body
   datetime_3_ createdAt
+  TEXT data
   datetime_3_ deletedAt
   datetime_3_ updatedAt
 }
