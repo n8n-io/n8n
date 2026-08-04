@@ -22,7 +22,7 @@ import type {
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonParse, NodeOperationError, UserError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { ConnectionOptions } from 'node:tls';
@@ -583,18 +583,23 @@ function getResolveOffsetMode(
  * @param ctx - The trigger function context
  * @param options - Kafka trigger options
  * @param nodeVersion - The version of the Kafka trigger node
+ * @param closeSignal - Aborted when the trigger is being closed; unblocks any wait
+ * on an in-flight execution so teardown is not delayed, leaving offsets unresolved
  * @returns Async function that emits data and waits for execution completion based on resolve mode
  */
 export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
+	closeSignal: AbortSignal,
 ) {
 	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
 
 	// For manual mode, always use immediate emit (no donePromise)
 	if (ctx.getMode() === 'manual' || resolveOffsetMode === 'immediately') {
 		return async (dataArray: INodeExecutionData[]) => {
+			// Never start an execution once the trigger is closing.
+			if (closeSignal.aborted) return { success: false };
 			ctx.emit([dataArray]);
 			return { success: true };
 		};
@@ -619,7 +624,25 @@ export function configureDataEmitter(
 		}
 	}
 
+	// Rejects on close; kept handled so it can never become an unhandled rejection.
+	const abortPromise = new Promise<never>((_, reject) => {
+		closeSignal.addEventListener(
+			'abort',
+			() =>
+				reject(
+					new OperationalError(
+						'Trigger closed before the execution finished, offsets not resolved.',
+					),
+				),
+			{ once: true },
+		);
+	});
+	void abortPromise.catch(() => undefined);
+
 	return async (dataArray: INodeExecutionData[]) => {
+		// Never start an execution once the trigger is closing.
+		if (closeSignal.aborted) return { success: false };
+
 		let timeoutId: NodeJS.Timeout | undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
@@ -636,7 +659,7 @@ export function configureDataEmitter(
 				}, executionTimeoutInSeconds * 1000);
 			});
 
-			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
+			const run = await Promise.race([responsePromise.promise, timeoutPromise, abortPromise]);
 
 			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -647,7 +670,10 @@ export function configureDataEmitter(
 
 			return { success: true };
 		} catch (e) {
-			await sleep(errorRetryDelay);
+			// The retry backoff must not delay teardown.
+			if (!closeSignal.aborted) {
+				await Promise.race([sleep(errorRetryDelay), abortPromise.catch(() => undefined)]);
+			}
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
 			return { success: false };
@@ -674,6 +700,82 @@ export function getAutoCommitSettings(options: KafkaTriggerOptions) {
 		autoCommitInterval,
 		autoCommitThreshold,
 	};
+}
+
+/**
+ * Bounds a promise with a timeout, rejecting with an `OperationalError` when it
+ * does not settle in time. A late rejection of the abandoned promise stays
+ * handled, so it cannot surface as an unhandled rejection.
+ * @param promise - The promise to bound
+ * @param ms - Timeout in milliseconds
+ * @param message - Error message used when the timeout wins
+ */
+export async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+	let timer: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(() => reject(new OperationalError(message)), ms);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+/**
+ * Stops and disconnects a Kafka consumer, bounding each call so a hung broker
+ * request cannot block teardown. Assumes close was already signaled by the
+ * caller. When stop() times out while still pending, kafkajs disconnect() would
+ * join the same shared stop promise, so the disconnect is instead chained in
+ * the background for whenever stop settles.
+ * @param consumer - The Kafka consumer instance
+ * @param logger - Logger instance
+ * @param timeoutMs - Upper bound for each teardown call
+ * @returns The first teardown error, or undefined when teardown succeeded
+ */
+export async function stopAndDisconnectConsumer(
+	consumer: Consumer,
+	logger: Logger,
+	timeoutMs: number,
+): Promise<Error | undefined> {
+	let teardownError: Error | undefined;
+	let stopSettled = false;
+	// Tracker is subscribed before the race so stopSettled is accurate when the
+	// race settles.
+	const stopPromise = consumer.stop();
+	void stopPromise.then(
+		() => (stopSettled = true),
+		() => (stopSettled = true),
+	);
+	try {
+		await withTimeout(stopPromise, timeoutMs, 'Kafka consumer did not stop in time');
+	} catch (error) {
+		teardownError = ensureError(error);
+	}
+
+	if (!stopSettled) {
+		void stopPromise
+			.catch(() => undefined)
+			.then(async () => await consumer.disconnect())
+			.catch((error: unknown) => {
+				logger.warn('Kafka consumer disconnect after delayed stop failed', { error });
+			});
+		return teardownError;
+	}
+
+	// A failed stop() must not leave the broker connection open.
+	try {
+		await withTimeout(
+			consumer.disconnect(),
+			timeoutMs,
+			'Kafka consumer did not disconnect in time',
+		);
+	} catch (error) {
+		teardownError ??= ensureError(error);
+	}
+	return teardownError;
 }
 
 /**
