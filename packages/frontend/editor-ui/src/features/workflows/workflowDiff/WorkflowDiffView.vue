@@ -317,6 +317,10 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 	height: 100%;
 }
 
+.tabs {
+	width: 100%;
+}
+
 .popper {
 	box-shadow: var(--shadow--light);
 	:global(.el-popper__arrow) {
