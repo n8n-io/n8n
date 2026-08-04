@@ -115,8 +115,8 @@ ${renderRulesLines()}
 
 /**
  * Render the full language reference. The node-groups section is included by
- * default (Instance AI's knowledge base); pass `includeGroups: false` when the
- * consumer gates groups docs behind a feature flag (the MCP SDK reference).
+ * default (Instance AI's knowledge base); the MCP SDK reference passes its
+ * `canvasGroupsEnabled` flag state as `includeGroups`.
  */
 export function buildSdkLanguageReference(options: { includeGroups?: boolean } = {}): string {
 	const { includeGroups = true } = options;

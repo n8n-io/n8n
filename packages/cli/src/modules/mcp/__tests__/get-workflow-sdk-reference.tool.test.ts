@@ -62,7 +62,7 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 			expect(content).toContain('## Where to put runtime logic');
 		});
 
-		test('embeds the groups docs only via the flag-gated groups section, never twice', () => {
+		test('embeds the groups docs exactly once when the flag is on, never when off', () => {
 			const withGroups = getSdkReferenceContent(undefined, { includeGroups: true });
 			expect(withGroups.split('## Node groups')).toHaveLength(2);
 

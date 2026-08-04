@@ -78,9 +78,9 @@ describe('SDK_LANGUAGE_REFERENCE rendering', () => {
 });
 
 describe('buildSdkLanguageReference', () => {
-	it('includes the groups docs by default, matching SDK_LANGUAGE_REFERENCE', () => {
-		expect(buildSdkLanguageReference()).toBe(SDK_LANGUAGE_REFERENCE);
-		expect(buildSdkLanguageReference({ includeGroups: true })).toContain(NODE_GROUPS_REFERENCE);
+	it('includes the groups docs by default', () => {
+		expect(buildSdkLanguageReference()).toBe(buildSdkLanguageReference({ includeGroups: true }));
+		expect(buildSdkLanguageReference()).toContain(NODE_GROUPS_REFERENCE);
 	});
 
 	it('omits only the groups docs when includeGroups is false', () => {

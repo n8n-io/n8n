@@ -76,11 +76,6 @@ const DESIGN_GUIDANCE_SECTION = `## Design Guidance\n\n${DESIGN_GUIDANCE}`;
 // shared verbatim with Instance AI, so it is served as-is (no extra wrapper).
 const GROUPS_SECTION = NODE_GROUPS_REFERENCE;
 
-// Language rules for the restricted SDK subset (what the AST interpreter
-// accepts). Rendered without the embedded groups docs: those are feature-flag
-// gated and appended as their own section in the full reference instead.
-const SDK_LANGUAGE_SECTION = buildSdkLanguageReference({ includeGroups: false });
-
 const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	import: SDK_IMPORT_SECTION,
 	patterns: WORKFLOW_PATTERNS_SECTION,
@@ -121,7 +116,10 @@ export function getSdkReferenceContent(
 		'',
 		SECTIONS.import,
 		'',
-		SDK_LANGUAGE_SECTION,
+		// Language rules for the restricted SDK subset (what the AST interpreter
+		// accepts). The flag-gated node-groups docs ride inside it, so this is the
+		// single place group content enters the full reference.
+		buildSdkLanguageReference({ includeGroups }),
 		'',
 		SECTIONS.patterns,
 		'',
@@ -136,6 +134,5 @@ export function getSdkReferenceContent(
 		SECTIONS.guidelines,
 		'',
 		SECTIONS.design,
-		...(includeGroups ? ['', SECTIONS.groups] : []),
 	].join('\n');
 }
