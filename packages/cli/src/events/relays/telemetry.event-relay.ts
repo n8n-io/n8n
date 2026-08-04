@@ -1591,7 +1591,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 
 		this.telemetry.identify(info);
-		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.STARTED, {
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
 			otel,

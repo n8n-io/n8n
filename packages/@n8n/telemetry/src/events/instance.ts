@@ -3,7 +3,7 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const INSTANCE_TELEMETRY = defineTelemetryEvents({
-	STARTED: {
+	INSTANCE_STARTED: {
 		name: 'Instance started',
 		description:
 			'Instance finished booting, reported once per main process start with a snapshot of its configuration.',

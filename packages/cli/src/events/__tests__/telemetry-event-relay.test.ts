@@ -2674,7 +2674,7 @@ describe('TelemetryEventRelay', () => {
 				}),
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.INSTANCE.STARTED,
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
 					settings_managed_by_env_vars: {
@@ -2714,7 +2714,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.INSTANCE.STARTED,
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
 			);
 			expect(telemetry.identify).toHaveBeenCalledWith(
@@ -2736,9 +2736,11 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.STARTED,
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
-			expect(TELEMETRY_EVENT.INSTANCE.STARTED.getValidationError(startupEvent?.[1])).toBeNull();
+			expect(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED.getValidationError(startupEvent?.[1]),
+			).toBeNull();
 		});
 
 		it('should report a `null` database version when it cannot be determined', async () => {
@@ -2750,7 +2752,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.INSTANCE.STARTED,
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({ db_type: 'sqlite', db_version: null }),
 			);
 		});
@@ -2771,7 +2773,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.INSTANCE.STARTED,
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					settings_managed_by_env_vars: {
 						owner_managed_by_env: true,
@@ -2822,7 +2824,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.STARTED,
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
 			expect(startupEvent).toBeDefined();
 			if (!startupEvent) throw new Error('Expected Instance started telemetry event');
@@ -2850,7 +2852,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.INSTANCE.STARTED,
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					otel: {
 						enabled: true,
@@ -2881,7 +2883,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.STARTED,
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
 			expect(startupEvent).toBeDefined();
 			expect(startupEvent?.[1]).toEqual(
