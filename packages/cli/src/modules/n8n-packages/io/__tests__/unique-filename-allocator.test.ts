@@ -54,4 +54,19 @@ describe('UniqueFilenameAllocator', () => {
 
 		expect(allocator.allocate('Workflows')).toBe('folders/in-progress/workflows-2');
 	});
+
+	it('avoids an allocation that collides with a reserved full path', () => {
+		const allocator = new UniqueFilenameAllocator('workflows', 'workflow');
+		allocator.reservePath('workflows/my-workflow');
+
+		expect(allocator.allocate('My Workflow')).toBe('workflows/my-workflow-2');
+	});
+
+	it('throws when reserving a path outside the base directory', () => {
+		const allocator = new UniqueFilenameAllocator('workflows', 'workflow');
+
+		expect(() => allocator.reservePath('folders/my-workflow')).toThrow(
+			'Cannot reserve a path outside the allocator base directory',
+		);
+	});
 });

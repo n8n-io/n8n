@@ -4,7 +4,10 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
 
-type ExecutionTranscript = Pick<AgentExecution, 'id' | 'userMessage' | 'timeline'>;
+type ExecutionTranscript = Pick<
+	AgentExecution,
+	'id' | 'userMessage' | 'timeline' | 'attachments' | 'status'
+>;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
 type ToolCallContentPart = AgentPersistedMessageContentPart & {
@@ -15,22 +18,6 @@ type ToolCallContentPart = AgentPersistedMessageContentPart & {
 function textPart(text: string): AgentPersistedMessageContentPart | null {
 	if (!text.trim()) return null;
 	return { type: 'text', text };
-}
-
-function textMessageDto(
-	id: string,
-	role: AgentPersistedMessageDto['role'],
-	text: string | null,
-): AgentPersistedMessageDto | null {
-	if (!text) return null;
-	const contentPart = textPart(text);
-	if (!contentPart) return null;
-
-	return {
-		id,
-		role,
-		content: [contentPart],
-	};
 }
 
 function toolCallState(event: ToolCallTimelineEvent): 'resolved' | 'rejected' | undefined {
@@ -95,6 +82,7 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 		input: event.input,
 		...(event.startTime > 0 ? { startTime: event.startTime } : {}),
 		...(event.endTime > 0 ? { endTime: event.endTime } : {}),
+		...(event.childTrace ? { childTrace: event.childTrace } : {}),
 	};
 
 	if (state === undefined) return base;
@@ -124,6 +112,14 @@ function assistantContentFromExecution(
 			if (!part) continue;
 
 			content.push(part);
+		} else if (event.type === 'reasoning') {
+			if (!event.content.trim()) continue;
+			content.push({
+				type: 'reasoning',
+				text: event.content,
+				startTime: event.timestamp,
+				...(event.endTime !== undefined && { endTime: event.endTime }),
+			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
 		}
@@ -135,8 +131,29 @@ function assistantContentFromExecution(
 export function executionToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
 	const messages: AgentPersistedMessageDto[] = [];
 
-	const userMessage = textMessageDto(`${execution.id}:user`, 'user', execution.userMessage);
-	if (userMessage) messages.push(userMessage);
+	// Message `id` stays `${execution.id}:role` for stable client keys. Turn
+	// scope for handoff/history is the explicit `executionId` field — do not
+	// make consumers parse it back out of `id`.
+	const userContent: AgentPersistedMessageContentPart[] = [];
+	const userText = execution.userMessage === null ? null : textPart(execution.userMessage);
+	if (userText) userContent.push(userText);
+	for (const attachment of execution.attachments ?? []) {
+		userContent.push({
+			type: 'file',
+			fileId: attachment.id,
+			fileName: attachment.fileName,
+			mimeType: attachment.mimeType,
+			sizeBytes: attachment.sizeBytes,
+		});
+	}
+	if (userContent.length > 0) {
+		messages.push({
+			id: `${execution.id}:user`,
+			role: 'user',
+			content: userContent,
+			executionId: execution.id,
+		});
+	}
 
 	const assistantContent = assistantContentFromExecution(execution);
 	if (assistantContent.length > 0) {
@@ -144,6 +161,8 @@ export function executionToMessagesDto(execution: ExecutionTranscript): AgentPer
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
+			executionId: execution.id,
+			...(execution.status ? { executionStatus: execution.status } : {}),
 		});
 	}
 

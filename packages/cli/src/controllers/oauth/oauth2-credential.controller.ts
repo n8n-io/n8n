@@ -58,7 +58,7 @@ export class OAuth2CredentialController {
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
-			const isPkce = oauthCredentials.grantType === 'pkce';
+			const isPkce = oauthCredentials.grantType === 'pkce' || oauthCredentials.usePkce === true;
 			const isBodyAuth = oauthCredentials.authentication === 'body';
 
 			const body: Record<string, string> = { ...(oAuthOptions.body ?? {}) };
@@ -110,6 +110,11 @@ export class OAuth2CredentialController {
 				...(typeof tokenData === 'object' ? tokenData : {}),
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
+
+			const expiresInSeconds = Number(tokenResponse.expires_in);
+			if (Number.isFinite(expiresInSeconds) && expiresInSeconds > 0) {
+				oauthTokenData.n8n_expires_at = String(Date.now() + expiresInSeconds * 1000);
+			}
 
 			if (typeof state.resource === 'string') {
 				oauthTokenData.resource = state.resource;

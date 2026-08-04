@@ -3,8 +3,8 @@ import { jsonParse } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { aggregateResults } from '../cli/aggregator';
-import { writeEvalResults } from '../cli/index';
+import { aggregateResults } from '../run/aggregator';
+import { writeEvalResults } from '../run/persist';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 // The lang-tracer dispatcher reads `eval-results.json`, not the in-memory

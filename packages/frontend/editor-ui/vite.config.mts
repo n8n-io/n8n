@@ -76,6 +76,14 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
 	},
 	{
+		find: /^@n8n\/telemetry$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src/index.ts'),
+	},
+	{
+		find: /^@n8n\/telemetry(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src$1'),
+	},
+	{
 		find: /^@n8n\/utils(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},

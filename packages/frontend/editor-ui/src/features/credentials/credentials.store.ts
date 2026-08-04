@@ -263,6 +263,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const upsertCredential = (credential: ICredentialsResponse) => {
+		if (credential.usageScope === 'instance') return;
 		if (credential.id) {
 			state.value.credentials = {
 				...state.value.credentials,
@@ -361,6 +362,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			uiContext,
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
+			usageScope: data.usageScope,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -408,6 +410,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const disconnectMyConnection = async ({ id }: { id: string }) => {
 		await credentialsApi.disconnectMyConnection(rootStore.restApiContext, id);
 		setConnectedByMe(id, false);
+	};
+
+	const disconnectOauthToken = async ({ id }: { id: string }) => {
+		await credentialsApi.disconnectOauthToken(rootStore.restApiContext, id);
 	};
 
 	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
@@ -535,6 +541,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setCredentials,
 		deleteCredential,
 		disconnectMyConnection,
+		disconnectOauthToken,
 		setConnectedByMe,
 		upsertCredential,
 		fetchCredentialTypes,

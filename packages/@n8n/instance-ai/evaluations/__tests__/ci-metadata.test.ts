@@ -1,4 +1,4 @@
-import { buildCIMetadata, computeExperimentPrefix } from '../cli/ci-metadata';
+import { buildCIMetadata, computeExperimentPrefix } from '../run/ci-metadata';
 
 const CI_ENV_VARS = [
 	'GITHUB_ACTIONS',

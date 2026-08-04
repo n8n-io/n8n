@@ -39,6 +39,23 @@ function findItemByLabel(
 	return undefined;
 }
 
+function getProviderLogoStyle(logoUrl: string) {
+	return {
+		width: '20px',
+		height: '20px',
+		borderRadius: '999px',
+		backgroundColor: 'var(--icon-color)',
+		maskImage: `url(${logoUrl})`,
+		WebkitMaskImage: `url(${logoUrl})`,
+		maskSize: 'contain',
+		WebkitMaskSize: 'contain',
+		maskRepeat: 'no-repeat',
+		WebkitMaskRepeat: 'no-repeat',
+		maskPosition: 'center',
+		WebkitMaskPosition: 'center',
+	};
+}
+
 const meta = {
 	title: 'AI/AiModelSelectorDropdown',
 	component: N8nAiModelSelectorDropdown,
@@ -94,25 +111,32 @@ const meta = {
 				},
 			);
 
-			return { storyArgs, selectedProviderLogo, getProviderLogo, handleSearch, handleSelect };
+			return {
+				storyArgs,
+				selectedProviderLogo,
+				getProviderLogo,
+				getProviderLogoStyle,
+				handleSearch,
+				handleSelect,
+			};
 		},
 		template: `
 			<N8nAiModelSelectorDropdown v-bind="storyArgs" @search="handleSearch" @select="handleSelect">
 				<template #trigger-leading="{ ui }">
-					<img
+					<span
 						v-if="selectedProviderLogo"
 						:class="ui.class"
-						:src="selectedProviderLogo"
-						alt="OpenAI"
-						style="width: 20px; height: 20px; border-radius: 999px;"
+						role="img"
+						aria-label="Selected provider"
+						:style="getProviderLogoStyle(selectedProviderLogo)"
 					/>
 				</template>
 				<template #item-leading="{ item, ui }">
-					<img
+					<span
 						:class="ui.class"
-						:src="getProviderLogo(item.id)"
-						alt=""
-						style="width: 20px; height: 20px; border-radius: 999px;"
+						role="img"
+						aria-hidden="true"
+						:style="getProviderLogoStyle(getProviderLogo(item.id))"
 					/>
 				</template>
 			</N8nAiModelSelectorDropdown>

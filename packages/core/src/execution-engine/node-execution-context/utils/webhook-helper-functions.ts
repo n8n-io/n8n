@@ -45,6 +45,8 @@ export function getNodeWebhookUrl(
 	let baseUrl: string;
 	if (webhookDescription.nodeType === 'mcp') {
 		baseUrl = isTest === true ? additionalData.mcpTestBaseUrl : additionalData.mcpBaseUrl;
+	} else if (webhookDescription.nodeType === 'form') {
+		baseUrl = isTest === true ? additionalData.formTestBaseUrl : additionalData.formBaseUrl;
 	} else {
 		baseUrl = isTest === true ? additionalData.webhookTestBaseUrl : additionalData.webhookBaseUrl;
 	}

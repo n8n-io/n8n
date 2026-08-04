@@ -24,6 +24,18 @@ export class StickyComponent extends BasePage {
 		return this.page.getByTestId('sticky');
 	}
 
+	getStickyByContent(content: string): Locator {
+		return this.getStickies().filter({ hasText: content });
+	}
+
+	async getStickyBoundingBox(
+		content: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getStickyByContent(content).boundingBox();
+		if (!box) throw new Error(`Sticky with content "${content}" not found or not visible`);
+		return box;
+	}
+
 	async addSticky(): Promise<void> {
 		await this.getAddButton().click();
 	}

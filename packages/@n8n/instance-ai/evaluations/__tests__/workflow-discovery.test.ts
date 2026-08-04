@@ -9,6 +9,7 @@ const emptyEventOutcome: EventOutcome = {
 	workflowIds: [],
 	executionIds: [],
 	dataTableIds: [],
+	artifactRefs: [],
 	finalText: '',
 	toolCalls: [],
 	agentActivities: [],

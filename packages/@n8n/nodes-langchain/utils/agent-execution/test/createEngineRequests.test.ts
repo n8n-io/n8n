@@ -757,6 +757,75 @@ describe('createEngineRequests', () => {
 		});
 	});
 
+	describe('DeepSeek reasoning_content extraction', () => {
+		it('should extract reasoning_content from toolCall.additionalKwargs (streaming path)', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						reasoning_content: 'The user wants me to add 2+2, I should call the calculator.',
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'The user wants me to add 2+2, I should call the calculator.',
+			);
+		});
+
+		it('should extract reasoning_content from messageLog additional_kwargs (non-streaming path)', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: '',
+							additional_kwargs: {
+								reasoning_content: 'Reasoning from the raw AIMessage.',
+							},
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'Reasoning from the raw AIMessage.',
+			);
+		});
+
+		it('should not set deepseek metadata when reasoning_content is absent', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [{ content: '' }],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek).toBeUndefined();
+		});
+	});
+
 	describe('Gemini thought_signature from additionalKwargs', () => {
 		it('should extract thought_signature from additionalKwargs on toolCall', async () => {
 			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];

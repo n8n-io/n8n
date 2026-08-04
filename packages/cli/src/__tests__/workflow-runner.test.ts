@@ -7,7 +7,7 @@ import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
-import { DirectedGraph, WorkflowExecute } from 'n8n-core';
+import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type ExecutionError,
@@ -148,7 +148,7 @@ describe('processError', () => {
 		);
 		await Container.get(ActiveExecutions).add(
 			{ executionMode: 'webhook', workflowData: workflow },
-			execution.id,
+			{ executionId: execution.id, expectedStatus: 'waiting' },
 		);
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -234,6 +234,37 @@ describe('run', () => {
 
 		// ASSERT
 		expect(recreateNodeExecutionStackSpy).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ existingExecution: undefined },
+		{ existingExecution: { executionId: '42', expectedStatus: 'waiting' as const } },
+		{ existingExecution: { executionId: '42', expectedStatus: 'new' as const } },
+	])('forwards $existingExecution to activeExecutions.add', async ({ existingExecution }) => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		const addSpy = vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+		vi.spyOn(WorkflowExecute.prototype, 'run').mockReturnValueOnce(
+			new PCancelable(() => mock<IRun>()),
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			triggerToStartFrom: undefined,
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			startNodes: undefined,
+			destinationNode: undefined,
+			runData: undefined,
+		});
+
+		// ACT
+		await runner.run(data, undefined, false, existingExecution);
+
+		// ASSERT
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
 	});
 
 	it('run partial execution with additional data', async () => {
@@ -352,6 +383,59 @@ describe('run', () => {
 			// Not setting data.configureAdditionalData
 
 			await expect(runner.run(data)).resolves.toBe('1');
+		});
+	});
+
+	describe('workflow issues pre-flight failure', () => {
+		function arrangeFailingRunDeps(error: Error) {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(() => {
+				throw error;
+			});
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+			return { data };
+		}
+
+		it('surfaces a WorkflowHasIssuesError as a failed run instead of rejecting', async () => {
+			const error = new WorkflowHasIssuesError(
+				{ node1: { parameters: { field: ['is missing'] } } },
+				{},
+			);
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).resolves.toBe('1');
+
+			expect(failExecution).toHaveBeenCalledWith(data, '1', error);
+			expect(processError).not.toHaveBeenCalled();
+		});
+
+		it('still rejects on other startup errors', async () => {
+			const error = new Error('boom');
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).rejects.toThrowError(error);
+
+			expect(processError).toHaveBeenCalled();
+			expect(failExecution).not.toHaveBeenCalled();
 		});
 	});
 });

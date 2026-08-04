@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
+import { buildWorkflow } from '../harness/build-workflow';
 import type { EvalLogger } from '../harness/logger';
-import { buildWorkflow } from '../harness/runner';
 import { buildAgentOutcome } from '../outcome/workflow-discovery';
 import type { ExecutionScenario } from '../types';
 

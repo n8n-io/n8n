@@ -317,7 +317,7 @@ describe('extractOutcomeFromEvents', () => {
 				data: {
 					type: 'agent-spawned',
 					agentId: 'agent-1',
-					payload: { agentId: 'agent-1', role: 'builder', parentId: 'root' },
+					payload: { agentId: 'agent-1', role: 'agent-builder', parentId: 'root' },
 				},
 			},
 			{
@@ -333,7 +333,7 @@ describe('extractOutcomeFromEvents', () => {
 
 		const result = extractOutcomeFromEvents(events);
 		expect(result.agentActivities).toHaveLength(1);
-		expect(result.agentActivities[0].role).toBe('builder');
+		expect(result.agentActivities[0].role).toBe('agent-builder');
 		expect(result.agentActivities[0].status).toBe('completed');
 	});
 
@@ -344,7 +344,12 @@ describe('extractOutcomeFromEvents', () => {
 			data: {
 				type: 'agent-spawned',
 				agentId,
-				payload: { agentId, role: 'agent-builder', parentId: 'root', ...(targetResource ? { targetResource } : {}) },
+				payload: {
+					agentId,
+					role: 'agent-builder',
+					parentId: 'root',
+					...(targetResource ? { targetResource } : {}),
+				},
 			},
 		});
 		const call = (

@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledTaskMetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
@@ -156,6 +157,8 @@ describe('PrometheusSchedulerMetricsService', () => {
 			for (const name of [
 				'n8n_scheduler_occurrences_materialized_total',
 				'n8n_scheduler_jobs_deferred_total',
+				'n8n_scheduler_occurrences_retired_total',
+				'n8n_scheduler_occurrences_missed_total',
 				'n8n_scheduler_tasks_reclaimed_total',
 				'n8n_scheduler_tasks_dead_lettered_total',
 				'n8n_scheduler_tasks_pruned_total',
@@ -268,7 +271,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 		});
 
 		it('increments reclaimed and dead-lettered into their own counters', () => {
-			service.recordReaped(3, 1);
+			service.recordReaped(3, 1, 0);
 
 			const reclaimed = counterIncFor('n8n_scheduler_tasks_reclaimed_total');
 			const deadLettered = counterIncFor('n8n_scheduler_tasks_dead_lettered_total');
@@ -276,6 +279,25 @@ describe('PrometheusSchedulerMetricsService', () => {
 			expect(reclaimed).toHaveBeenCalledTimes(1);
 			expect(deadLettered).toHaveBeenCalledWith(1);
 			expect(deadLettered).toHaveBeenCalledTimes(1);
+		});
+
+		it('labels discarded occurrences by task type and policy', () => {
+			service.recordMisfired([
+				{ taskType: 'workflow', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 4 },
+				{ taskType: 'poll', policy: ScheduledJobMisfirePolicy.Skip, discarded: 2 },
+			]);
+
+			const misfired = counterIncFor('n8n_scheduler_occurrences_misfired_total');
+			expect(misfired).toHaveBeenCalledWith({ task_type: 'workflow', policy: 'coalesce' }, 4);
+			expect(misfired).toHaveBeenCalledWith({ task_type: 'poll', policy: 'skip' }, 2);
+		});
+
+		it('counts retired and reaper-missed occurrences on their own counters', () => {
+			service.recordRetired(2);
+			service.recordReaped(0, 0, 6);
+
+			expect(counterIncFor('n8n_scheduler_occurrences_retired_total')).toHaveBeenCalledWith(2);
+			expect(counterIncFor('n8n_scheduler_occurrences_missed_total')).toHaveBeenCalledWith(6);
 		});
 
 		it('increments the dead-lettered counter by one on the executor terminal-failure path', () => {
@@ -303,7 +325,11 @@ describe('PrometheusSchedulerMetricsService', () => {
 			service.recordRetry('workflow');
 			service.observeDispatchLagSeconds('workflow', 1);
 			service.recordMaterialized(1, 1);
-			service.recordReaped(1, 1);
+			service.recordMisfired([
+				{ taskType: 'workflow', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 1 },
+			]);
+			service.recordRetired(1);
+			service.recordReaped(1, 1, 1);
 			service.recordDeadLettered();
 			service.recordPruned(1);
 

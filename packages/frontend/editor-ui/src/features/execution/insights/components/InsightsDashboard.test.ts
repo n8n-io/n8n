@@ -71,7 +71,7 @@ const mockTelemetry = {
 	track: vi.fn(),
 };
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => mockTelemetry,
 }));
 
@@ -176,6 +176,7 @@ const mockTableData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-1',
 			workflowName: 'Test Workflow 1',
+			hasReadAccess: true,
 			total: 100,
 			failed: 5,
 			failureRate: 5,
@@ -189,6 +190,7 @@ const mockTableData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-2',
 			workflowName: 'Test Workflow 2',
+			hasReadAccess: true,
 			total: 50,
 			failed: 2,
 			failureRate: 4,

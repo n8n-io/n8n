@@ -1,4 +1,5 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 export interface ExecutionResult {
 	executionId: string;
@@ -417,67 +418,112 @@ function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefi
 	};
 }
 
-interface AgentArtifactWalk {
-	result?: AgentArtifactResult;
+interface AgentTargetedWalk<T> {
+	result?: T;
 	/**
 	 * Most specific agent target found in this subtree: this node's own
 	 * targetResource, or one bubbled up from a child. Lets an orchestrator's
-	 * own `build-agent` tool call (which carries no agentId in its result)
-	 * resolve identity from the builder sub-agent it just spawned, whose
-	 * targetResource carries the agentId via the `agent-spawned` event.
+	 * own tool call (which carries no agentId in its result) resolve identity
+	 * from the builder sub-agent it just spawned, whose targetResource
+	 * carries the agentId via the `agent-spawned` event.
 	 */
 	target?: AgentArtifactTarget;
 }
 
-function walkAgentArtifact(
+/**
+ * Walks an agent tree depth-first (most recent last), threading the nearest
+ * agent target down to descendants and back up to callers, and returns the
+ * first `match` hit among a node's own tool calls (also most recent last).
+ * Shared by artifact discovery and config-mutation preview refresh so their
+ * identical target-resolution/traversal logic can't drift between the two.
+ */
+function walkAgentTargetedResult<T>(
 	node: InstanceAiAgentNode,
 	fallbackTarget: AgentArtifactTarget | undefined,
-): AgentArtifactWalk {
+	match: (
+		toolCall: InstanceAiToolCallState,
+		callTarget: AgentArtifactTarget | undefined,
+	) => T | undefined,
+): AgentTargetedWalk<T> {
 	const ownTarget = getAgentTarget(node);
 	const target = ownTarget ?? fallbackTarget;
 
 	let childTarget: AgentArtifactTarget | undefined;
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childWalk = walkAgentArtifact(node.children[i], target);
+		const childWalk = walkAgentTargetedResult(node.children[i], target, match);
 		if (childWalk.result) return childWalk;
 		if (childTarget === undefined) childTarget = childWalk.target;
 	}
 
-	// Identity for this node's own build-agent call: prefer its own
-	// targetResource, then one discovered on a child (the builder sub-agent
-	// spawned by this call), then the fallback threaded down from an ancestor.
+	// Identity for this node's own tool calls: prefer its own targetResource,
+	// then one discovered on a child (e.g. a builder sub-agent it spawned),
+	// then the fallback threaded down from an ancestor.
 	const callTarget = ownTarget ?? childTarget ?? fallbackTarget;
 
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		if (tc.isLoading || !tc.result || typeof tc.result !== 'object') continue;
-		const result = tc.result as Record<string, unknown>;
-		const args = tc.args as Record<string, unknown> | undefined;
-
-		if (tc.toolName === 'build-agent' && callTarget) {
-			if (result.ok === true && typeof args?.name === 'string') {
-				return {
-					result: { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' },
-					target: callTarget,
-				};
-			}
-			if (result.configUpdated === true) {
-				return {
-					result: { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' },
-					target: callTarget,
-				};
-			}
-		}
+		const result = match(node.toolCalls[i], callTarget);
+		if (result !== undefined) return { result, target: callTarget };
 	}
 
 	return { target: callTarget };
+}
+
+function matchAgentArtifactToolCall(
+	tc: InstanceAiToolCallState,
+	callTarget: AgentArtifactTarget | undefined,
+): AgentArtifactResult | undefined {
+	if (tc.isLoading || !tc.result || typeof tc.result !== 'object' || !callTarget) return undefined;
+	if (tc.toolName !== 'build-agent') return undefined;
+
+	const result = tc.result as Record<string, unknown>;
+	const args = tc.args as Record<string, unknown> | undefined;
+
+	if (result.ok === true && typeof args?.name === 'string') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
+	}
+	if (result.configUpdated === true) {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+	}
+	return undefined;
 }
 
 export function getLatestAgentArtifactResult(
 	node: InstanceAiAgentNode,
 	fallbackTarget?: AgentArtifactTarget,
 ): AgentArtifactResult | undefined {
-	return walkAgentArtifact(node, fallbackTarget).result;
+	return walkAgentTargetedResult(node, fallbackTarget, matchAgentArtifactToolCall).result;
+}
+
+/** Builder tool calls whose success means the persisted agent changed in a panel-visible way. */
+export interface AgentConfigMutationResult {
+	agentId: string;
+	/** Unique per mutation — a later mutation in the same build re-fires watchers. */
+	toolCallId: string;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the latest
+ * resolved tool call stamped with `configMutated: true` by the backend.
+ */
+export function getLatestAgentConfigMutation(
+	node: InstanceAiAgentNode,
+): AgentConfigMutationResult | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAgentConfigMutation(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (
+			!tc.isLoading &&
+			isRecord(tc.result) &&
+			tc.result.configMutated === true &&
+			typeof tc.result.agentId === 'string'
+		) {
+			return { agentId: tc.result.agentId, toolCallId: tc.toolCallId };
+		}
+	}
+	return undefined;
 }
 
 /**

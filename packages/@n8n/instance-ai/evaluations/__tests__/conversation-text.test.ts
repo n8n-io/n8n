@@ -65,7 +65,7 @@ describe('conversationUserTurnsAsText', () => {
 		expect(conversationUserTurnsAsText([])).toBe('');
 	});
 
-	it('returns empty string when conversation is undefined (seedThread-only case)', () => {
+	it('returns empty string when conversation is undefined (replay-seeded case)', () => {
 		expect(conversationUserTurnsAsText(undefined)).toBe('');
 	});
 
