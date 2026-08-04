@@ -1,4 +1,5 @@
 import { DatabaseConfig } from '@n8n/config';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
@@ -120,6 +121,15 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		};
 	}
 
+	/**
+	 * Claim up to `limit` due jobs as {@link claimDue} does, then claim the still-due
+	 * `coalesce_owner` siblings of the claimed `coalesce_owner` jobs, up to a further
+	 * `limit` rows: one pass holds at most `2 * limit` jobs.
+	 *
+	 * Group completion is best-effort. When that second bound bites, or a concurrent
+	 * pass already holds a sibling's lock, the group is claimed incomplete and each
+	 * holder records its own catch-up run.
+	 */
 	async claimDueCompletingOwnerGroups(
 		manager: EntityManager,
 		limit: number,
@@ -131,26 +141,27 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		const remaining = await this.claimRemainingOwnerGroupMembers(
 			manager,
 			claimed.jobs,
+			limit,
 			lookaheadMs,
 		);
 		if (remaining.length === 0) return claimed;
 
-		const jobs = [...claimed.jobs, ...remaining].sort(
-			(a, b) => (a.nextRunAt?.getTime() ?? 0) - (b.nextRunAt?.getTime() ?? 0),
-		);
+		const jobs = [...claimed.jobs, ...remaining].sort((a, b) => nextRunTime(a) - nextRunTime(b));
 		return { now: claimed.now, jobs };
 	}
 
 	private async claimRemainingOwnerGroupMembers(
 		manager: EntityManager,
 		claimed: ScheduledJob[],
+		limit: number,
 		lookaheadMs: number,
 	): Promise<ScheduledJob[]> {
 		const owners = new Map<string, { workflowId: string; nodeId: string }>();
 		for (const job of claimed) {
-			const { workflowId, nodeId } = job;
+			const { workflowId, nodeId, misfirePolicy } = job;
 			if (workflowId === null || nodeId === null) continue;
-			owners.set(`${workflowId}\0${nodeId}`, { workflowId, nodeId });
+			if (misfirePolicy !== ScheduledJobMisfirePolicy.CoalesceOwner) continue;
+			owners.set(ownerGroupKey(workflowId, nodeId), { workflowId, nodeId });
 		}
 		if (owners.size === 0) return [];
 
@@ -158,6 +169,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		const parameters: Record<string, unknown> = {
 			enabled: true,
 			claimedIds: claimed.map((job) => job.id),
+			groupingPolicy: ScheduledJobMisfirePolicy.CoalesceOwner,
 		};
 		const ownerConditions = [...owners.values()].map((owner, i) => {
 			parameters[`ownerWorkflowId${i}`] = owner.workflowId;
@@ -171,8 +183,10 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.andWhere('job.nextRunAt IS NOT NULL')
 			.andWhere(`job.nextRunAt <= ${dueExpression}`)
 			.andWhere('job.id NOT IN (:...claimedIds)')
+			.andWhere('job.misfirePolicy = :groupingPolicy')
 			.andWhere(`(${ownerConditions.join(' OR ')})`)
 			.orderBy('job.nextRunAt', 'ASC')
+			.limit(limit)
 			.setParameters(parameters);
 
 		if (this.isPostgres) {
@@ -361,6 +375,17 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.setParameters(parameters)
 			.execute();
 	}
+}
+
+function ownerGroupKey(workflowId: string, nodeId: string): string {
+	return `${workflowId}\0${nodeId}`;
+}
+
+function nextRunTime(job: ScheduledJob): number {
+	if (job.nextRunAt === null) {
+		throw new UnexpectedError(`Claimed scheduled job ${job.id} has no next run time`);
+	}
+	return job.nextRunAt.getTime();
 }
 
 /**

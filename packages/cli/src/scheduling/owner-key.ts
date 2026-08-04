@@ -6,7 +6,7 @@ type OwnedJob<T extends JobOwner> = T & { ownerKey: string | null };
 
 export function ownerKeyFor(job: JobOwner): string | null {
 	if (job.workflowId === null || job.nodeId === null) return null;
-	return `${job.workflowId}:${job.nodeId}`;
+	return `${job.workflowId}\0${job.nodeId}`;
 }
 
 export function withOwnerKeys<T extends JobOwner>(claimed: {

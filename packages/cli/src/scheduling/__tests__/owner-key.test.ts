@@ -1,8 +1,10 @@
 import { ownerKeyFor, withOwnerKeys } from '../owner-key';
 
+const key = (workflowId: string, nodeId: string) => `${workflowId}\0${nodeId}`;
+
 describe('ownerKeyFor', () => {
 	it('joins workflowId and nodeId when both are present', () => {
-		expect(ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node-1' })).toBe('wf-1:node-1');
+		expect(ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node-1' })).toBe(key('wf-1', 'node-1'));
 	});
 
 	it('returns null when workflowId is null', () => {
@@ -27,13 +29,19 @@ describe('ownerKeyFor', () => {
 		const keys = rules.map(ownerKeyFor);
 		const reversedKeys = [...rules].reverse().map(ownerKeyFor);
 
-		expect(new Set(keys)).toEqual(new Set(['wf-1:node-1']));
-		expect(new Set(reversedKeys)).toEqual(new Set(['wf-1:node-1']));
+		expect(new Set(keys)).toEqual(new Set([key('wf-1', 'node-1')]));
+		expect(new Set(reversedKeys)).toEqual(new Set([key('wf-1', 'node-1')]));
 	});
 
 	it('distinguishes different nodes of the same workflow', () => {
 		expect(ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node-1' })).not.toBe(
 			ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node-2' }),
+		);
+	});
+
+	it('distinguishes owners whose ids differ only in where the boundary falls', () => {
+		expect(ownerKeyFor({ workflowId: 'wf-1:node', nodeId: '1' })).not.toBe(
+			ownerKeyFor({ workflowId: 'wf-1', nodeId: 'node:1' }),
 		);
 	});
 
@@ -63,9 +71,9 @@ describe('withOwnerKeys', () => {
 
 		expect(result.now).toBe(now);
 		expect(result.jobs).toEqual([
-			{ id: 1, workflowId: 'wf-1', nodeId: 'node-1', ownerKey: 'wf-1:node-1' },
-			{ id: 2, workflowId: 'wf-1', nodeId: 'node-1', ownerKey: 'wf-1:node-1' },
-			{ id: 3, workflowId: 'wf-2', nodeId: 'node-9', ownerKey: 'wf-2:node-9' },
+			{ id: 1, workflowId: 'wf-1', nodeId: 'node-1', ownerKey: key('wf-1', 'node-1') },
+			{ id: 2, workflowId: 'wf-1', nodeId: 'node-1', ownerKey: key('wf-1', 'node-1') },
+			{ id: 3, workflowId: 'wf-2', nodeId: 'node-9', ownerKey: key('wf-2', 'node-9') },
 			{ id: 4, workflowId: null, nodeId: null, ownerKey: null },
 		]);
 	});

@@ -1,12 +1,23 @@
 import { createWorkflowWithHistory, testDb } from '@n8n/backend-test-utils';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
-import { ScheduledJobRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
+import {
+	DbConnectionOptions,
+	ScheduledJob,
+	ScheduledJobRepository,
+	WorkflowPublishedVersionRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
+// SKIP LOCKED and two write transactions open at once only apply on Postgres; the sqlite
+// driver serializes every writer through a single lock.
+const isPostgres = process.env.DB_TYPE === 'postgresdb';
+
 describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 	let dataSource: DataSource;
+	let secondaryDataSource: DataSource | undefined;
 	let jobRepository: ScheduledJobRepository;
 	let workflowId: string;
 	let otherWorkflowId: string;
@@ -37,6 +48,7 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 				enabled: true,
 				nextRunAt: secondsFromNow(-60),
 				maxAttempts: 1,
+				misfirePolicy: ScheduledJobMisfirePolicy.CoalesceOwner,
 				...overrides,
 			}),
 		);
@@ -52,6 +64,11 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 		jobRepository = Container.get(ScheduledJobRepository);
 		workflowId = await publishWorkflow();
 		otherWorkflowId = await publishWorkflow();
+
+		if (isPostgres) {
+			secondaryDataSource = new DataSource(Container.get(DbConnectionOptions).getOptions());
+			await secondaryDataSource.initialize();
+		}
 	});
 
 	beforeEach(async () => {
@@ -59,6 +76,9 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 	});
 
 	afterAll(async () => {
+		if (secondaryDataSource?.isInitialized) {
+			await secondaryDataSource.destroy();
+		}
 		await testDb.terminate();
 	});
 
@@ -143,7 +163,7 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 
 		await jobRepository.backdateNextRunAt(workflowId, nodeId, 90);
 
-		const claimed = await claim(1);
+		const claimed = await claim(2);
 
 		expect((claimed?.jobs ?? []).filter((job) => job.nodeId === nodeId)).toHaveLength(3);
 	});
@@ -176,15 +196,73 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 		expect(claimed?.jobs.map((job) => job.id)).toEqual([withoutWorkflow.id]);
 	});
 
-	it('returns more jobs than the limit allows when completing a group', async () => {
+	it('exceeds the limit to complete a group, by at most a further limit', async () => {
 		const nodeId = uuid();
-		for (const secondsBehind of [-400, -300, -200, -100]) {
+		for (const secondsBehind of [-400, -300, -200, -100, -50, -40]) {
 			await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(secondsBehind) });
 		}
 
-		const claimed = await claim(1);
+		const claimed = await claim(2);
 
 		expect(claimed?.jobs).toHaveLength(4);
+	});
+
+	it('leaves the rest of an oversized group for the next pass', async () => {
+		const nodeId = uuid();
+		const runTimes = [-400, -300, -200, -100, -50, -40];
+		for (const secondsBehind of runTimes) {
+			await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(secondsBehind) });
+		}
+
+		const first = await claim(1);
+		const firstIds = first?.jobs.map((job) => job.id) ?? [];
+		await dataSource.transaction(async (trx) => {
+			await jobRepository.advanceMany(
+				trx,
+				firstIds.map((id) => ({ id, nextRunAt: secondsFromNow(3600), lastFiredAt: new Date() })),
+			);
+		});
+		const second = await claim(1);
+
+		expect(firstIds).toHaveLength(2);
+		expect(second?.jobs).toHaveLength(2);
+		expect(second?.jobs.some((job) => firstIds.includes(job.id))).toBe(false);
+	});
+
+	it('does not pull in siblings whose misfire policy cannot group', async () => {
+		const nodeId = uuid();
+		const owner = await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-300) });
+		await createJob({
+			workflowId,
+			nodeId,
+			nextRunAt: secondsFromNow(-200),
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+		});
+		await createJob({
+			workflowId,
+			nodeId,
+			nextRunAt: secondsFromNow(-100),
+			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+		});
+
+		const claimed = await claim(1);
+
+		expect(claimed?.jobs.map((job) => job.id)).toEqual([owner.id]);
+	});
+
+	it('does not complete a group for a claimed job whose misfire policy cannot group', async () => {
+		const nodeId = uuid();
+		const coalescing = await createJob({
+			workflowId,
+			nodeId,
+			nextRunAt: secondsFromNow(-300),
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+		});
+		await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-100) });
+
+		const claimed = await claim(1);
+
+		expect(claimed?.jobs.map((job) => job.id)).toEqual([coalescing.id]);
 	});
 
 	it('adds nothing when the claim already holds every rule of the node', async () => {
@@ -212,6 +290,45 @@ describe('ScheduledJobRepository.claimDueCompletingOwnerGroups', () => {
 		const runTimes = (claimed?.jobs ?? []).map((job) => job.nextRunAt!.getTime());
 		expect(runTimes).toEqual([...runTimes].sort((a, b) => a - b));
 	});
+
+	it.skipIf(!isPostgres)(
+		'claims the group incomplete when another transaction already holds a sibling',
+		async () => {
+			const nodeId = uuid();
+			const ruleA = await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-300) });
+			const ruleB = await createJob({ workflowId, nodeId, nextRunAt: secondsFromNow(-200) });
+
+			const runnerA = dataSource.createQueryRunner();
+			const runnerB = secondaryDataSource!.createQueryRunner();
+			let claimedIds: number[] = [];
+			try {
+				await runnerB.connect();
+				await runnerB.startTransaction();
+				await runnerB.manager
+					.getRepository(ScheduledJob)
+					.createQueryBuilder('job')
+					.setLock('pessimistic_write')
+					.whereInIds([ruleB.id])
+					.getMany();
+
+				await runnerA.connect();
+				await runnerA.startTransaction();
+				const claimed = await jobRepository.claimDueCompletingOwnerGroups(runnerA.manager, 1);
+				claimedIds = claimed?.jobs.map((job) => job.id) ?? [];
+
+				await runnerA.commitTransaction();
+				await runnerB.rollbackTransaction();
+			} finally {
+				await runnerA.release();
+				await runnerB.release();
+			}
+
+			expect(claimedIds).toEqual([ruleA.id]);
+
+			const afterRelease = await claim(1);
+			expect(afterRelease?.jobs.map((job) => job.id)).toEqual([ruleA.id, ruleB.id]);
+		},
+	);
 
 	it('returns undefined when nothing is due', async () => {
 		await createJob({ workflowId, nodeId: uuid(), nextRunAt: secondsFromNow(3600) });
