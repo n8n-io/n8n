@@ -24,7 +24,8 @@ export interface OccurrencePlan {
 
 	/**
 	 * The one occurrence a `coalesce` policy kept to stand in for a backlog, always the
-	 * first of {@link occurrences}. `null` when no policy applied.
+	 * first of {@link occurrences}. `null` when no policy applied, or a sibling in
+	 * its owner group won instead.
 	 */
 	catchUpAt: Date | null;
 
@@ -34,7 +35,11 @@ export interface OccurrencePlan {
 	 */
 	retireBefore: Date | null;
 
-	/** How many catch-up runs were dropped because a sibling won the group. */
+	/**
+	 * How many catch-up runs were dropped because a sibling won the group. Kept
+	 * separate from {@link skippedOccurrences} so `occurrences.length +
+	 * skippedOccurrences` still equals the due instants this plan considered.
+	 */
 	groupedCatchUps: number;
 
 	/**

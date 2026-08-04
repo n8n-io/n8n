@@ -259,6 +259,9 @@ export class DurableJobProvisioner {
 					const claimed = (await this.jobs.findManyByIds(manager, [...jobIds])).filter(
 						(job) => job.enabled && job.nextRunAt !== null,
 					);
+					// Owner keys are mapped for symmetry with the run side, but grouping
+					// never triggers here: every seeded job starts from a freshly computed
+					// `nextRunAt`, so none of them has a backlog to catch up on.
 					return claimed.length > 0 ? withOwnerKeys({ now, jobs: claimed }) : undefined;
 				},
 				recordOccurrences: async (occurrences) =>

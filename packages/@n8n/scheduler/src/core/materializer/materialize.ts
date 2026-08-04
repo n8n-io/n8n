@@ -157,6 +157,9 @@ export async function materialize(
 			skippedOccurrences: totalSkippedOccurrences(occurrencesPlanned),
 			retiredOccurrences,
 			groupedCatchUps: totalGroupedCatchUps(occurrencesPlanned),
+			// Counted before coalescing: grouping nulls a loser's `catchUpAt`, so
+			// counting groups on `occurrencesPlanned` would find every group already
+			// down to one member.
 			multiMemberOwnerGroups: countMultiMemberOwnerGroups(jobsPlanned),
 			retainedOwnerCatchUps: countRetainedOwnerCatchUps(occurrencesPlanned),
 		};
@@ -195,7 +198,11 @@ function toNewOccurrences(planned: PlannedJob[], now: Date): NewOccurrence[] {
 	);
 }
 
-/** The jobs whose plan recorded a catch-up run, paired with that instant. */
+/**
+ * Jobs whose plan set `retireBefore`: normally their own catch-up instant, but
+ * also a group's loser, whose dropped catch-up still leaves an already-recorded
+ * pending occurrence that needs retiring.
+ */
 function toSuperseded(planned: PlannedJob[]): SupersededOccurrences[] {
 	return planned.flatMap(({ job, plan }) =>
 		plan.retireBefore === null ? [] : [{ jobId: job.id, before: plan.retireBefore }],
