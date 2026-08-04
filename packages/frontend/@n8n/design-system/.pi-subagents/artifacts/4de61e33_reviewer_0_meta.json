@@ -1,0 +1,35 @@
+{
+	"runId": "4de61e33",
+	"agent": "reviewer",
+	"task": "[Read from: /Users/robn8n/code/n8n/packages/frontend/@n8n/design-system/src/components/N8nSegmentControl, /Users/robn8n/code/n8n/packages/frontend/@n8n/design-system/src/css/_tokens.scss, /Users/robn8n/code/n8n/packages/frontend/@n8n/design-system/src/components/index.ts]\n\nReview branch diff master...HEAD focusing on the new N8nSegmentControl implementation, tests, accessibility, Vue correctness, and design-system conventions. Report only concrete issues confidence >=80 with file/line/fix. Do not edit. Note current cwd is packages/frontend/@n8n/design-system and repo rules in AGENTS.md apply.",
+	"exitCode": 0,
+	"usage": {
+		"input": 106548,
+		"output": 11526,
+		"cacheRead": 1122816,
+		"cacheWrite": 0,
+		"cost": 1.439928,
+		"turns": 19
+	},
+	"model": "openai-codex/gpt-5.6-sol:high",
+	"attemptedModels": ["openai-codex/gpt-5.6-sol:high"],
+	"modelAttempts": [
+		{
+			"model": "openai-codex/gpt-5.6-sol:high",
+			"success": true,
+			"exitCode": 0,
+			"usage": {
+				"input": 106548,
+				"output": 11526,
+				"cacheRead": 1122816,
+				"cacheWrite": 0,
+				"cost": 1.439928,
+				"turns": 19
+			}
+		}
+	],
+	"durationMs": 287157,
+	"toolCount": 65,
+	"transcriptPath": "/Users/robn8n/code/n8n/packages/frontend/@n8n/design-system/.pi-subagents/artifacts/4de61e33_reviewer_0_transcript.jsonl",
+	"timestamp": 1785850222984
+}

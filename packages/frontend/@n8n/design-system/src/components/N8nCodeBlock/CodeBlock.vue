@@ -119,6 +119,14 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	<!-- Highlight.js escapes source code before returning markup. -->
 	<!-- eslint-disable vue/no-v-html -->
 	<div :class="$style.codeBlock">
+		<pre
+			ref="pre"
+			:class="[$style.pre, { [$style.isExpanded]: !collapsed }]"
+			:style="heightStyle"
+			:aria-label="ariaLabel"
+			:tabindex="ariaLabel ? 0 : undefined"
+			@transitionend="onHeightTransitionEnd"
+		><code class="hljs" v-html="highlightedCode" /></pre>
 		<div v-if="copyable && isClipboardAvailable" :class="$style.actions">
 			<N8nTooltip :content="t('codeBlock.copy')">
 				<N8nButton
@@ -133,14 +141,6 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 				/>
 			</N8nTooltip>
 		</div>
-		<pre
-			ref="pre"
-			:class="[$style.pre, { [$style.isExpanded]: !collapsed }]"
-			:style="heightStyle"
-			:aria-label="ariaLabel"
-			:tabindex="ariaLabel ? 0 : undefined"
-			@transitionend="onHeightTransitionEnd"
-		><code class="hljs" v-html="highlightedCode" /></pre>
 		<div v-if="isCollapsible" :class="$style.expandButtonContainer">
 			<N8nTooltip :content="expandButtonLabel">
 				<N8nButton
