@@ -674,6 +674,11 @@ describe('GET /workflows', () => {
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
 
+		await Container.get(WorkflowHistoryRepository).update(
+			{ workflowId: activeWorkflow.id },
+			{ name: 'Version name', description: 'Version description', autosaved: true },
+		);
+
 		const listResponse = await authMemberAgent.get('/workflows');
 		const singleResponse = await authMemberAgent.get(`/workflows/${activeWorkflow.id}`);
 
@@ -688,17 +693,15 @@ describe('GET /workflows', () => {
 			'connections',
 			'nodeGroups',
 			'authors',
+			'name',
+			'description',
+			'autosaved',
 			'createdAt',
 			'updatedAt',
 		] as const;
 
 		expect(Object.keys(fromList).sort()).toEqual([...documentedFields].sort());
-		for (const field of documentedFields) {
-			expect(fromList[field]).toBeDefined();
-		}
 
-		// Documented fields match GET /workflows/:id; that endpoint may still
-		// return undocumented entity fields / relations the list must not.
 		for (const field of documentedFields) {
 			expect(fromList[field]).toEqual(singleResponse.body.activeVersion[field]);
 		}

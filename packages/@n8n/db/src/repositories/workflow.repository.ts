@@ -1363,6 +1363,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			'activeVersion.connections',
 			'activeVersion.nodeGroups',
 			'activeVersion.authors',
+			'activeVersion.name',
+			'activeVersion.description',
+			'activeVersion.autosaved',
 			'activeVersion.createdAt',
 			'activeVersion.updatedAt',
 		]);
