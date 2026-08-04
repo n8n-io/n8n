@@ -16,12 +16,15 @@ const settings = {
 	appHomeUrl: 'https://api.slack.com/apps/A123/app-home',
 };
 
-function mountForm() {
+function mountForm(
+	overrides: { error?: boolean; saveError?: 'service_limits_exceeded' | null } = {},
+) {
 	return mount(AgentChannelSlackManagedSettings, {
 		props: {
 			settings,
 			loading: false,
-			error: false,
+			error: overrides.error ?? false,
+			saveError: overrides.saveError,
 		},
 		global: {
 			stubs: {
@@ -77,5 +80,14 @@ describe('AgentChannelSlackManagedSettings', () => {
 		expect(wrapper.vm.validationError).toBe(
 			'agents.channels.slack.managed.settings.descriptionRequired',
 		);
+	});
+
+	it('shows the Slack app limit error returned while saving', () => {
+		const wrapper = mountForm({ saveError: 'service_limits_exceeded' });
+
+		expect(wrapper.get('[data-testid="slack-managed-app-service-limit-error"]').text()).toBe(
+			'agents.channels.slack.managed.settings.serviceLimitsExceeded',
+		);
+		expect(wrapper.vm.validationError).toBeNull();
 	});
 });

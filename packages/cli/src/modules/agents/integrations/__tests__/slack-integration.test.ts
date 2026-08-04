@@ -6,7 +6,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatInstance } from '../chat-integration.service';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;

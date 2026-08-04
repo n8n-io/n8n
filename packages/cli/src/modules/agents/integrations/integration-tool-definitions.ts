@@ -10,7 +10,7 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './platforms/linear-tool-definitions';
-import { SLACK_ACTION_TOOL_DEFINITIONS } from './platforms/slack-tool-definitions';
+import { SLACK_ACTION_TOOL_DEFINITIONS } from './platforms/slack/slack-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,

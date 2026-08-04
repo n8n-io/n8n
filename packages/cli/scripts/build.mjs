@@ -103,22 +103,33 @@ function copyInstanceAiExamplesData() {
 }
 
 function copyAgentIntegrationAssets() {
-	const sourceDir = path.resolve(ROOT_DIR, 'src', 'modules', 'agents', 'integrations', 'assets');
-	const destinationParent = path.resolve(
+	const sourceDir = path.resolve(
+		ROOT_DIR,
+		'src',
+		'modules',
+		'agents',
+		'integrations',
+		'platforms',
+		'slack',
+		'assets',
+	);
+	const destinationDir = path.resolve(
 		ROOT_DIR,
 		'dist',
 		'modules',
 		'agents',
 		'integrations',
+		'platforms',
+		'slack',
+		'assets',
 	);
-	const destinationDir = path.resolve(destinationParent, 'assets');
 
 	if (!existsSync(sourceDir)) {
-		throw new Error(`Agent integration assets folder not found: ${sourceDir}`);
+		throw new Error(`Agent integration assets directory not found: ${sourceDir}`);
 	}
-	shell.mkdir('-p', destinationParent);
 	shell.rm('-rf', destinationDir);
-	shell.cp('-r', sourceDir, destinationParent);
+	shell.mkdir('-p', path.dirname(destinationDir));
+	shell.cp('-R', sourceDir, destinationDir);
 	if (!existsSync(destinationDir)) {
 		throw new Error(`Failed to copy agent integration assets to: ${destinationDir}`);
 	}

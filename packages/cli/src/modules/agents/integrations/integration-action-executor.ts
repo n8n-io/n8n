@@ -4,7 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Adapter, SentMessage } from 'chat';
 import { z } from 'zod';
 
-import { ChatIntegrationRegistry } from './agent-chat-integration';
+import { type AgentChatIntegration, ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
 import {
 	ComponentMapper,
@@ -24,7 +24,6 @@ import type {
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
-import { subscribeSlackThread } from './platforms/slack-operations';
 
 // The shared wire schema from @n8n/api-types — the same definition the tool
 // boundary validates against and the editor-ui renderer parses with.
@@ -194,7 +193,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		}
 
 		const thread = chat.thread(threadId);
-		await maybeSubscribeSlackThread(params.descriptor, thread);
+		await this.prepareSentThread(params.descriptor, thread);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 
 		return {
@@ -213,7 +212,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		const thread = await chat.openDM(input.userId);
-		await maybeSubscribeSlackThread(params.descriptor, thread);
+		await this.prepareSentThread(params.descriptor, thread);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 
 		return {
@@ -274,7 +273,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const sent = await channel.post(
 			await this.toPostable(params.descriptor, input.message, params),
 		);
-		await maybeSubscribeSlackSentThread(params.descriptor, chat, sent.threadId);
+		if (sent.threadId) {
+			await this.prepareSentThread(params.descriptor, chat.thread(sent.threadId));
+		}
 
 		return {
 			ok: true,
@@ -326,6 +327,13 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			credentialId,
 		});
 	}
+
+	private async prepareSentThread(
+		descriptor: IntegrationToolConnectionDescriptor,
+		thread: Parameters<NonNullable<AgentChatIntegration['prepareSentThread']>>[0],
+	): Promise<void> {
+		await this.integrationRegistry.get(descriptor.integration.type)?.prepareSentThread?.(thread);
+	}
 }
 
 function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'editMessage'> {
@@ -354,21 +362,4 @@ function buildMessageContextFromSentMessage(params: {
 		messageId: params.sent.id,
 		updatedAt: new Date().toISOString(),
 	};
-}
-
-async function maybeSubscribeSlackThread(
-	descriptor: IntegrationToolConnectionDescriptor,
-	thread: { subscribe?: () => Promise<void> },
-): Promise<void> {
-	if (descriptor.integration.type !== 'slack') return;
-	await subscribeSlackThread(thread);
-}
-
-async function maybeSubscribeSlackSentThread(
-	descriptor: IntegrationToolConnectionDescriptor,
-	chat: ChatInstance,
-	threadId: string | undefined,
-): Promise<void> {
-	if (descriptor.integration.type !== 'slack' || !threadId) return;
-	await subscribeSlackThread(chat.thread(threadId));
 }

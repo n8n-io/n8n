@@ -1,12 +1,14 @@
-import type { RichCardComponentType } from '@n8n/api-types';
-import { Service } from '@n8n/di';
+import type { AgentIntegrationRemovalWarning, RichCardComponentType } from '@n8n/api-types';
+import { Container, Service } from '@n8n/di';
+import type { Thread } from 'chat';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
-import { AgentRepository } from '../../repositories/agent.repository';
+import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
+	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
@@ -14,15 +16,15 @@ import {
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
-} from '../agent-chat-integration';
-import type { ChatInstance } from '../chat-integration.service';
-import { loadSlackAdapter } from '../esm-loader';
-import { connectionUnavailable } from '../integration-helpers';
+} from '../../agent-chat-integration';
+import type { ChatInstance } from '../../chat-integration.service';
+import { loadSlackAdapter } from '../../esm-loader';
+import { connectionUnavailable } from '../../integration-helpers';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions';
-import type { IntegrationActionResult, ReplyExpectation } from '../integration-tools';
+} from '../../integration-tool-definitions';
+import type { IntegrationActionResult, ReplyExpectation } from '../../integration-tools';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
@@ -30,7 +32,12 @@ import {
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
 } from './slack-bridge-behavior';
-import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
+import {
+	executeSlackAction,
+	executeSlackContextQuery,
+	subscribeSlackThread,
+} from './slack-operations';
+import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
 
 /**
@@ -106,6 +113,16 @@ export class SlackIntegration extends AgentChatIntegration {
 		if (others.length > 0) {
 			throw new ConflictError(`Slack credential is already connected to agent "${others[0].name}"`);
 		}
+	}
+
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationRemovalWarning | undefined> {
+		return await Container.get(SlackManagedSetupService).deleteAppForCredential(ctx);
+	}
+
+	async prepareSentThread(thread: Thread<unknown, unknown>): Promise<void> {
+		await subscribeSlackThread(thread);
 	}
 
 	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {

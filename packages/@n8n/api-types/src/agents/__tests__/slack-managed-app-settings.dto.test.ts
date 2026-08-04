@@ -1,4 +1,4 @@
-import { UpdateSlackManagedAppSettingsDto } from '../dto';
+import { UpdateSlackManagedAppSettingsDto } from '../slack';
 
 describe('UpdateSlackManagedAppSettingsDto', () => {
 	const validSettings = {

@@ -8,7 +8,6 @@ import {
 } from '@n8n/ai-utilities/agent-config';
 import {
 	AGENT_MODEL_PROVIDERS,
-	AgentIntegrationSchema,
 	AgentJsonConfigBaseSchema,
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
@@ -33,6 +32,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
@@ -42,8 +42,6 @@ import { AgentValidationService } from '@/modules/agents/agent-validation.servic
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
-import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-factory';
 import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
@@ -352,8 +350,7 @@ export class McpAgentToolsService {
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentSecureRuntime: AgentSecureRuntime,
 		private readonly integrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly chatIntegrationService: ChatIntegrationService,
-		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
+		private readonly integrationManagementService: AgentIntegrationManagementService,
 		private readonly agentModelCatalogService: AgentModelCatalogService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly mcpRegistryService: McpRegistryService,
@@ -1388,94 +1385,40 @@ export class McpAgentToolsService {
 			await this.assertScope(user, projectId, 'agent:publish');
 		}
 		return input.action === 'disconnect'
-			? await this.disconnectIntegration(input, agent)
-			: await this.connectIntegration(user, input, agent, projectId);
+			? await this.disconnectIntegration(user, input, agent)
+			: await this.connectIntegration(user, input, agent);
 	}
 
-	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
-		const persisted = (agent.integrations ?? []).find(
-			(item) => item.type === input.type && item.credentialId === input.credentialId,
-		);
-		// Mirrors AgentIntegrationsController.disconnectIntegration: tear down
-		// the runtime channel even when persistence has no matching record
-		// (e.g. the integration was removed via a config mutation).
-		const parsed = AgentIntegrationSchema.safeParse({
+	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
+		const { savedAgent: saved, warning } = await this.integrationManagementService.disconnect({
+			agent,
+			user,
 			type: input.type,
 			credentialId: input.credentialId,
 		});
-		const integration = persisted ?? (parsed.success ? parsed.data : undefined);
-		if (integration) {
-			await this.chatIntegrationService.disconnectChannel(input.agentId, integration);
-		} else {
-			await this.chatIntegrationService.disconnect(input.agentId, {
-				type: input.type,
-				credentialId: input.credentialId,
-			});
-		}
-		const saved = await this.integrationPersistenceService.removeCredentialIntegration(
-			agent,
-			input.type,
-			input.credentialId,
-			{ broadcast: false },
-		);
 		return {
 			ok: true,
 			agentId: input.agentId,
 			integration: { type: input.type, credentialId: input.credentialId },
 			connected: false,
+			...(warning ? { warning } : {}),
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 	}
 
-	private async connectIntegration(
-		user: User,
-		input: UpdateIntegrationInput,
-		agent: Agent,
-		projectId: string,
-	) {
+	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
 		const candidate = {
 			type: input.type,
 			credentialId: input.credentialId,
 			...(input.settings ? { settings: input.settings } : {}),
 		};
-		const parsed = AgentIntegrationSchema.safeParse(candidate);
-		if (!parsed.success) throw new UserError(`Invalid integration: ${parsed.error.message}`);
-		if (parsed.data.type === 'telegram' && !parsed.data.settings) {
-			throw new UserError('Telegram integration settings are required');
-		}
-
-		const credential = await this.requireAccessibleCredential(
-			this.credentialProvider(user, projectId),
-			input.credentialId,
-		);
-		const implementation = this.chatIntegrationRegistry.require(parsed.data.type);
-		if (!implementation.credentialTypes.includes(credential.type)) {
-			throw new UserError(
-				`${implementation.displayLabel} integrations do not support ${credential.type} credentials`,
-			);
-		}
-
-		const saved = await this.integrationPersistenceService.saveCredentialIntegration(
+		const { savedAgent: saved, publishedAgent } = await this.integrationManagementService.connect({
 			agent,
-			parsed.data,
-			{ broadcast: false },
-		);
-		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
-			input.agentId,
-			projectId,
 			user,
-			'channel_connect',
-			undefined,
-			{ syncIntegrations: false, ignoreDraftIntegrations: true },
-		);
-		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			input.agentId,
-			parsed.data,
-			'connect',
-		);
+			integration: candidate,
+		});
 		return {
 			ok: true,
 			agentId: input.agentId,

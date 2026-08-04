@@ -25,6 +25,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
@@ -105,6 +106,13 @@ describe('McpAgentToolsService', () => {
 	const integrationPersistenceService = mockInstance(AgentIntegrationPersistenceService);
 	const chatIntegrationService = mockInstance(ChatIntegrationService);
 	const chatIntegrationRegistry = mockInstance(ChatIntegrationRegistry);
+	const integrationManagementService = new AgentIntegrationManagementService(
+		integrationPersistenceService,
+		agentPublishService,
+		credentialsService,
+		chatIntegrationService,
+		chatIntegrationRegistry,
+	);
 	const mcpRegistryService = mockInstance(McpRegistryService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
@@ -122,8 +130,7 @@ describe('McpAgentToolsService', () => {
 		agentCustomToolsService,
 		agentSecureRuntime,
 		integrationPersistenceService,
-		chatIntegrationService,
-		chatIntegrationRegistry,
+		integrationManagementService,
 		mockInstance(AgentModelCatalogService),
 		mockInstance(AttachableWorkflowsService),
 		mcpRegistryService,
@@ -1337,10 +1344,18 @@ describe('McpAgentToolsService', () => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				{ id: 'cred-1', type: 'slackApi', name: 'Slack cred' },
 			] as never);
-			chatIntegrationRegistry.require.mockReturnValue({
-				credentialTypes: ['slackApi'],
-				displayLabel: 'Slack',
-			} as never);
+			chatIntegrationRegistry.require.mockImplementation(
+				(type: string) =>
+					({
+						credentialTypes: type === 'telegram' ? ['telegramApi'] : ['slackApi'],
+						displayLabel: type === 'telegram' ? 'Telegram' : 'Slack',
+						validateConfig: (integration: { settings?: unknown }) => {
+							if (type === 'telegram' && !integration.settings) {
+								throw new Error('Telegram integration settings are required');
+							}
+						},
+					}) as never,
+			);
 			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 				agentEntity({ integrations: [{ type: 'slack', credentialId: 'cred-1' }] }),
 			);
@@ -1369,6 +1384,7 @@ describe('McpAgentToolsService', () => {
 				'agent-1',
 				{ type: 'slack', credentialId: 'cred-1' },
 				'project-1',
+				{ skipBeforeConnect: true },
 			);
 			expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 				'agent-1',
@@ -1424,6 +1440,7 @@ describe('McpAgentToolsService', () => {
 	});
 
 	describe('update_agent_integration disconnect', () => {
+		const onRemove = vi.fn();
 		const input = {
 			projectId: 'project-1',
 			agentId: 'agent-1',
@@ -1433,6 +1450,10 @@ describe('McpAgentToolsService', () => {
 		};
 
 		beforeEach(() => {
+			onRemove.mockResolvedValue(undefined);
+			chatIntegrationRegistry.get.mockImplementation((type: string) =>
+				type === 'slack' ? ({ onRemove } as never) : undefined,
+			);
 			integrationPersistenceService.removeCredentialIntegration.mockResolvedValue(
 				agentEntity({ integrations: [] }),
 			);
@@ -1445,6 +1466,15 @@ describe('McpAgentToolsService', () => {
 			const result = await callTool('update_agent_integration', input);
 
 			expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', persisted);
+			expect(onRemove).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				credentialId: 'cred-1',
+				user,
+			});
+			expect(onRemove.mock.invocationCallOrder[0]).toBeLessThan(
+				chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0],
+			);
 			expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
 			expect(integrationPersistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'agent-1' }),

@@ -15,7 +15,21 @@ import type { AgentIntegrationPersistenceService } from '../../agent-integration
 import type { AgentPublishService } from '../../agent-publish.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatIntegrationService } from '../chat-integration.service';
-import { SlackAppSetupService } from '../slack-app-setup.service';
+import {
+	SlackManagedSetupService,
+	type DeleteManagedSlackAppOptions,
+	type GetManagedSetupStateOptions,
+	type GetManagedSlackAppSettingsOptions,
+	type InstallManagedSlackAppOptions,
+	type UpdateManagedSlackAppSettingsOptions,
+} from '../platforms/slack/slack-managed-setup.service';
+import {
+	SlackManualSetupService,
+	type CompleteSlackAppInstallOptions,
+	type CreateSlackAppOptions,
+	type GetSlackAppManifestOptions,
+} from '../platforms/slack/slack-manual-setup.service';
+import { SlackMethodsService } from '../platforms/slack/slack-methods.service';
 
 const agent = {
 	id: 'agent-1',
@@ -58,11 +72,11 @@ function fetchParams(requestMock: Mock, callIndex: number) {
 	};
 	// The body is passed as a plain object; OutboundHttp/axios only serializes it as
 	// form-urlencoded when this content-type is set, so assert the contract here.
-	expect(request.headers?.['Content-Type']).toBe('application/x-www-form-urlencoded');
+	expect(request.headers?.['content-type']).toBe('application/x-www-form-urlencoded');
 	return new URLSearchParams(request.body);
 }
 
-describe('SlackAppSetupService', () => {
+describe('Slack setup services', () => {
 	let requestMock: Mock;
 	let outboundHttp: Mocked<OutboundHttp>;
 	let cacheStore: Map<string, unknown>;
@@ -78,7 +92,32 @@ describe('SlackAppSetupService', () => {
 	>;
 	let agentPublishService: Mocked<Pick<AgentPublishService, 'publishAgent'>>;
 	let chatIntegrationService: Mocked<ChatIntegrationService>;
-	let service: SlackAppSetupService;
+	let service: {
+		createApp: SlackManualSetupService['createApp'];
+		getManualManifest: (
+			options: GetSlackAppManifestOptions,
+		) => ReturnType<SlackManualSetupService['getManifest']>;
+		completeInstall: (options: CompleteSlackAppInstallOptions) => Promise<void>;
+		isManagedSetupAvailable: SlackManagedSetupService['isSetupAvailable'];
+		createManagerCredential: (
+			options: GetManagedSetupStateOptions,
+		) => ReturnType<SlackManagedSetupService['createManagerCredential']>;
+		getManagedSetupState: (
+			options: GetManagedSetupStateOptions,
+		) => ReturnType<SlackManagedSetupService['getSetupState']>;
+		installManagedApp: (
+			options: InstallManagedSlackAppOptions,
+		) => ReturnType<SlackManagedSetupService['installApp']>;
+		getManagedAppSettings: (
+			options: GetManagedSlackAppSettingsOptions,
+		) => ReturnType<SlackManagedSetupService['getAppSettings']>;
+		updateManagedAppSettings: (
+			options: UpdateManagedSlackAppSettingsOptions,
+		) => ReturnType<SlackManagedSetupService['updateAppSettings']>;
+		deleteManagedAppForCredential: (
+			options: DeleteManagedSlackAppOptions,
+		) => ReturnType<SlackManagedSetupService['deleteAppForCredential']>;
+	};
 
 	beforeEach(() => {
 		const httpClient = mock<HttpRequestClient>();
@@ -124,13 +163,10 @@ describe('SlackAppSetupService', () => {
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
 		urlService.getInstanceBaseUrl.mockReturnValue('https://hooks.example');
 
-		service = new SlackAppSetupService(
+		const methods = new SlackMethodsService(
 			cacheService,
 			cipher,
 			credentialsService,
-			credentialsFinderService,
-			credentialsOverwrites,
-			userRepository,
 			agentRepository,
 			agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 			agentPublishService as unknown as AgentPublishService,
@@ -138,6 +174,34 @@ describe('SlackAppSetupService', () => {
 			urlService,
 			outboundHttp,
 		);
+		const manualService = new SlackManualSetupService(
+			methods,
+			userRepository,
+			cacheService,
+			cipher,
+		);
+		const managedService = new SlackManagedSetupService(
+			methods,
+			cacheService,
+			cipher,
+			credentialsService,
+			credentialsFinderService,
+			credentialsOverwrites,
+		);
+		service = {
+			createApp: async (options: CreateSlackAppOptions) => await manualService.createApp(options),
+			getManualManifest: async (options) => await manualService.getManifest(options),
+			completeInstall: async (options) => await manualService.completeInstall(options),
+			isManagedSetupAvailable: () => managedService.isSetupAvailable(),
+			createManagerCredential: async (options) =>
+				await managedService.createManagerCredential(options),
+			getManagedSetupState: async (options) => await managedService.getSetupState(options),
+			installManagedApp: async (options) => await managedService.installApp(options),
+			getManagedAppSettings: async (options) => await managedService.getAppSettings(options),
+			updateManagedAppSettings: async (options) => await managedService.updateAppSettings(options),
+			deleteManagedAppForCredential: async (options) =>
+				await managedService.deleteAppForCredential(options),
+		};
 	});
 
 	it('creates a Slack app from an agent manifest and returns an install URL with state', async () => {
@@ -155,7 +219,7 @@ describe('SlackAppSetupService', () => {
 				url: 'https://slack.com/api/apps.manifest.create',
 				method: 'POST',
 				headers: expect.objectContaining({
-					'Content-Type': 'application/x-www-form-urlencoded',
+					'content-type': 'application/x-www-form-urlencoded',
 				}),
 			}),
 		);
@@ -338,8 +402,8 @@ describe('SlackAppSetupService', () => {
 		expect(tokenRequest.url).toBe('https://slack.com/api/oauth.v2.access');
 		expect(tokenRequest.headers).toEqual(
 			expect.objectContaining({
-				Authorization: `Basic ${Buffer.from('C123:client-secret').toString('base64')}`,
-				'Content-Type': 'application/x-www-form-urlencoded',
+				authorization: `Basic ${Buffer.from('C123:client-secret').toString('base64')}`,
+				'content-type': 'application/x-www-form-urlencoded',
 			}),
 		);
 		const tokenParams = fetchParams(requestMock, 1);
@@ -984,7 +1048,7 @@ describe('SlackAppSetupService', () => {
 		expect(requestMock).not.toHaveBeenCalled();
 	});
 
-	it('surfaces Slack manifest export errors', async () => {
+	it('includes Slack error metadata in managed settings errors', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue({
 			clientId: 'client',
 			clientSecret: 'secret',
@@ -1021,7 +1085,9 @@ describe('SlackAppSetupService', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{ id: 'manager', type: 'slackManagerOAuth2Api' },
 		] as never);
-		requestMock.mockResolvedValueOnce(slackResponse({ ok: false, error: 'missing_scope' }));
+		requestMock.mockResolvedValueOnce(
+			slackResponse({ ok: false, error: 'service_limits_exceeded' }),
+		);
 
 		await expect(
 			service.getManagedAppSettings({
@@ -1030,7 +1096,13 @@ describe('SlackAppSetupService', () => {
 				credentialId: 'bot-credential',
 				user,
 			}),
-		).rejects.toThrow('missing_scope');
+		).rejects.toMatchObject({
+			message: expect.stringContaining('service_limits_exceeded'),
+			meta: {
+				integrationType: 'slack',
+				code: 'service_limits_exceeded',
+			},
+		});
 	});
 
 	it('deletes a managed Slack app associated with the bot credential', async () => {
@@ -1106,9 +1178,10 @@ describe('SlackAppSetupService', () => {
 				user,
 			}),
 		).resolves.toEqual({
-			code: 'slack_app_not_deleted',
-			appId: 'A123',
-			appConfigurationUrl: 'https://api.slack.com/apps/A123',
+			integrationType: 'slack',
+			code: 'app_not_deleted',
+			action: { type: 'open_url', url: 'https://api.slack.com/apps/A123' },
+			details: { appId: 'A123' },
 		});
 		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'bot-credential');
 		expect(requestMock).not.toHaveBeenCalled();

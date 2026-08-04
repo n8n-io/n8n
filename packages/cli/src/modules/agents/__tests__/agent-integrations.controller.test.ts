@@ -6,20 +6,35 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
+import { AgentSlackIntegrationsController } from '../agent-slack-integrations.controller';
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
+import type { SlackManagedSetupService } from '../integrations/platforms/slack/slack-managed-setup.service';
+import type { SlackManualSetupService } from '../integrations/platforms/slack/slack-manual-setup.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
 
-const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook', 'handleSlackAppOAuthCallback']);
+const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook']);
+
+interface SlackAppSetupService {
+	createApp: SlackManualSetupService['createApp'];
+	getManualManifest: SlackManualSetupService['getManifest'];
+	completeInstall: SlackManualSetupService['completeInstall'];
+	getManagedSetupState: SlackManagedSetupService['getSetupState'];
+	createManagerCredential: SlackManagedSetupService['createManagerCredential'];
+	installManagedApp: SlackManagedSetupService['installApp'];
+	getManagedAppSettings: SlackManagedSetupService['getAppSettings'];
+	updateManagedAppSettings: SlackManagedSetupService['updateAppSettings'];
+	deleteManagedAppForCredential: SlackManagedSetupService['deleteAppForCredential'];
+}
 
 function makeController({
 	agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>(),
@@ -50,6 +65,17 @@ function makeController({
 				}) as never,
 		);
 	}
+	if (!chatIntegrationRegistry.get.getMockImplementation()) {
+		chatIntegrationRegistry.get.mockImplementation((type: string) =>
+			type === 'slack'
+				? ({
+						onRemove: async (
+							options: Parameters<SlackAppSetupService['deleteManagedAppForCredential']>[0],
+						) => await slackAppSetupService.deleteManagedAppForCredential(options),
+					} as never)
+				: undefined,
+		);
+	}
 
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -57,17 +83,54 @@ function makeController({
 		agentPublishService,
 	);
 
+	const managementService = new AgentIntegrationManagementService(
+		agentIntegrationPersistenceService,
+		agentPublishService,
+		credentialsService,
+		chatIntegrationService,
+		chatIntegrationRegistry,
+	);
+	const integrationsController = new AgentIntegrationsController(
+		managementService,
+		chatIntegrationService,
+		agentRepository,
+		chatIntegrationRegistry,
+		agentRunnableStateService,
+	);
+	const slackController = new AgentSlackIntegrationsController(
+		{
+			createApp: async (options: Parameters<SlackAppSetupService['createApp']>[0]) =>
+				await slackAppSetupService.createApp(options),
+			getManifest: async (options: Parameters<SlackAppSetupService['getManualManifest']>[0]) =>
+				await slackAppSetupService.getManualManifest(options),
+			completeInstall: async (options: Parameters<SlackAppSetupService['completeInstall']>[0]) =>
+				await slackAppSetupService.completeInstall(options),
+		} as never,
+		{
+			getSetupState: async (options: Parameters<SlackAppSetupService['getManagedSetupState']>[0]) =>
+				await slackAppSetupService.getManagedSetupState(options),
+			createManagerCredential: async (
+				options: Parameters<SlackAppSetupService['createManagerCredential']>[0],
+			) => await slackAppSetupService.createManagerCredential(options),
+			installApp: async (options: Parameters<SlackAppSetupService['installManagedApp']>[0]) =>
+				await slackAppSetupService.installManagedApp(options),
+			getAppSettings: async (
+				options: Parameters<SlackAppSetupService['getManagedAppSettings']>[0],
+			) => await slackAppSetupService.getManagedAppSettings(options),
+			updateAppSettings: async (
+				options: Parameters<SlackAppSetupService['updateManagedAppSettings']>[0],
+			) => await slackAppSetupService.updateManagedAppSettings(options),
+		} as never,
+	);
+	const controller = new Proxy(integrationsController, {
+		get: (target, property, receiver) =>
+			Reflect.has(target, property)
+				? Reflect.get(target, property, receiver)
+				: Reflect.get(slackController, property, slackController),
+	}) as AgentIntegrationsController & AgentSlackIntegrationsController;
+
 	return {
-		controller: new AgentIntegrationsController(
-			agentIntegrationPersistenceService,
-			agentPublishService,
-			credentialsService,
-			chatIntegrationService,
-			agentRepository,
-			chatIntegrationRegistry,
-			slackAppSetupService,
-			agentRunnableStateService,
-		),
+		controller,
 		agentIntegrationPersistenceService,
 		agentPublishService,
 		credentialsService,
@@ -86,18 +149,18 @@ describe('AgentIntegrationsController route access scopes', () => {
 
 	it.each([
 		['connectIntegration', 'agent:update'],
-		['createSlackApp', 'agent:update'],
-		['getSlackAppManifest', 'agent:read'],
-		['getManagedSlackSetup', 'agent:read'],
-		['createManagedSlackCredential', 'agent:update'],
-		['installManagedSlackApp', 'agent:update'],
-		['getManagedSlackAppSettings', 'agent:read'],
-		['updateManagedSlackAppSettings', 'agent:update'],
 		['disconnectIntegration', 'agent:update'],
 		['integrationStatus', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
+});
+
+describe('AgentSlackIntegrationsController route access scopes', () => {
+	expectProjectScopedAgentRoutes(
+		AgentSlackIntegrationsController,
+		new Set(['handleSlackAppOAuthCallback']),
+	);
 });
 
 describe('AgentIntegrationsController integration credentials', () => {
@@ -152,24 +215,6 @@ describe('AgentIntegrationsController integration credentials', () => {
 			{ id: 'user-1' },
 			{ projectId: 'project-1' },
 		);
-		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
-	});
-
-	it('requires Telegram settings when connecting Telegram', async () => {
-		const { controller, chatIntegrationService } = makeController();
-
-		await expect(
-			controller.connectIntegration(
-				{
-					params: { projectId: 'project-1' },
-					user: { id: 'user-1' },
-					body: { type: 'telegram', credentialId: 'cred-telegram' },
-				} as never,
-				undefined as never,
-				'agent-1',
-			),
-		).rejects.toThrow(BadRequestError);
-
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
@@ -307,6 +352,11 @@ describe('AgentIntegrationsController integration credentials', () => {
 			credentialId: 'cred-telegram',
 			settings,
 		};
+		expect(chatIntegrationService.validateBeforeConnect).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'project-1',
+		);
 		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 			agent,
 			integration,
@@ -326,11 +376,15 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			integration,
 			'project-1',
+			{ skipBeforeConnect: true },
 		);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			'agent-1',
 			integration,
 			'connect',
+		);
+		expect(chatIntegrationService.validateBeforeConnect.mock.invocationCallOrder[0]).toBeLessThan(
+			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
 		);
 		expect(
 			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
@@ -440,6 +494,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'agent-1',
 			integration,
 			'project-1',
+			{ skipBeforeConnect: true },
 		);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			'agent-1',
@@ -663,9 +718,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
 		const slackAppSetupService = mock<SlackAppSetupService>();
 		slackAppSetupService.deleteManagedAppForCredential.mockResolvedValue({
-			code: 'slack_app_not_deleted',
-			appId: 'A123',
-			appConfigurationUrl: 'https://api.slack.com/apps/A123',
+			integrationType: 'slack',
+			code: 'app_not_deleted',
+			action: { type: 'open_url', url: 'https://api.slack.com/apps/A123' },
+			details: { appId: 'A123' },
 		});
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
@@ -689,9 +745,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		).resolves.toEqual({
 			status: 'disconnected',
 			warning: {
-				code: 'slack_app_not_deleted',
-				appId: 'A123',
-				appConfigurationUrl: 'https://api.slack.com/apps/A123',
+				integrationType: 'slack',
+				code: 'app_not_deleted',
+				action: { type: 'open_url', url: 'https://api.slack.com/apps/A123' },
+				details: { appId: 'A123' },
 			},
 		});
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalled();

@@ -1,0 +1,130 @@
+import {
+	AgentIntegrationSchema,
+	type AgentIntegrationConfig,
+	type AgentIntegrationRemovalWarning,
+} from '@n8n/api-types';
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import type { Agent } from './entities/agent.entity';
+import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
+import { AgentPublishService } from './agent-publish.service';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
+
+@Service()
+export class AgentIntegrationManagementService {
+	constructor(
+		private readonly persistenceService: AgentIntegrationPersistenceService,
+		private readonly publishService: AgentPublishService,
+		private readonly credentialsService: CredentialsService,
+		private readonly chatService: ChatIntegrationService,
+		private readonly registry: ChatIntegrationRegistry,
+	) {}
+
+	async validateConfig(integration: unknown): Promise<AgentIntegrationConfig> {
+		const parsed = await AgentIntegrationSchema.safeParseAsync(integration);
+		if (!parsed.success) throw new BadRequestError(parsed.error.message);
+		const result = parsed.data;
+		this.registry.require(result.type).validateConfig?.(result);
+		return result;
+	}
+
+	async connect(options: {
+		agent: Agent;
+		user: User;
+		integration: unknown;
+	}): Promise<{
+		integration: AgentIntegrationConfig;
+		savedAgent: Agent;
+		publishedAgent: Agent;
+		draftValidation: Awaited<ReturnType<AgentPublishService['publishAgent']>>['draftValidation'];
+	}> {
+		const integration = await this.validateConfig(options.integration);
+		const implementation = this.registry.require(integration.type);
+
+		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			options.user,
+			{
+				projectId: options.agent.projectId,
+			},
+		);
+		const credential = usableCredentials.find((item) => item.id === integration.credentialId);
+		if (!credential) {
+			throw new NotFoundError(`Credential "${integration.credentialId}" not found`);
+		}
+		if (!implementation.credentialTypes.includes(credential.type)) {
+			throw new BadRequestError(
+				`${implementation.displayLabel} integrations do not support ${credential.type} credentials`,
+			);
+		}
+
+		await this.chatService.validateBeforeConnect(
+			options.agent.id,
+			integration,
+			options.agent.projectId,
+		);
+		const savedAgent = await this.persistenceService.saveCredentialIntegration(
+			options.agent,
+			integration,
+			{ broadcast: false },
+		);
+		const { agent: publishedAgent, draftValidation } = await this.publishService.publishAgent(
+			options.agent.id,
+			options.agent.projectId,
+			options.user,
+			'channel_connect',
+			undefined,
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
+		);
+		await this.chatService.connect(options.agent.id, integration, options.agent.projectId, {
+			skipBeforeConnect: true,
+		});
+		await this.chatService.broadcastIntegrationChange(options.agent.id, integration, 'connect');
+		return { integration, savedAgent, publishedAgent, draftValidation };
+	}
+
+	async disconnect(options: {
+		agent: Agent;
+		user: User;
+		type: string;
+		credentialId: string;
+	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationRemovalWarning }> {
+		const persisted = (options.agent.integrations ?? []).find(
+			(item) => item.type === options.type && item.credentialId === options.credentialId,
+		);
+		const parsed = AgentIntegrationSchema.safeParse({
+			type: options.type,
+			credentialId: options.credentialId,
+		});
+		const integration = persisted ?? (parsed.success ? parsed.data : undefined);
+		const warning = persisted
+			? await this.registry.get(options.type)?.onRemove?.({
+					agentId: options.agent.id,
+					projectId: options.agent.projectId,
+					credentialId: options.credentialId,
+					user: options.user,
+				})
+			: undefined;
+
+		if (integration) {
+			await this.chatService.disconnectChannel(options.agent.id, integration);
+		} else {
+			await this.chatService.disconnect(options.agent.id, {
+				type: options.type,
+				credentialId: options.credentialId,
+			});
+		}
+		const savedAgent = await this.persistenceService.removeCredentialIntegration(
+			options.agent,
+			options.type,
+			options.credentialId,
+			{ broadcast: false },
+		);
+		return { savedAgent, ...(warning ? { warning } : {}) };
+	}
+}

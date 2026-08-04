@@ -7773,6 +7773,7 @@
 	"agents.channels.slack.managed.settings.alwaysOnline": "Always show my bot as online",
 	"agents.channels.slack.managed.settings.openSlack": "Open app settings in Slack",
 	"agents.channels.slack.managed.settings.loadError": "Slack app settings couldn't be loaded. Try again.",
+	"agents.channels.slack.managed.settings.serviceLimitsExceeded": "This Slack workspace has reached its app limit. Upgrade your Slack plan, then try again.",
 	"agents.channels.slack.managed.settings.nameRequired": "Enter a bot name.",
 	"agents.channels.slack.managed.settings.nameTooLong": "Bot name must be 80 characters or fewer.",
 	"agents.channels.slack.managed.settings.descriptionRequired": "Enter a description.",

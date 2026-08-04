@@ -5,13 +5,14 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { computed } from 'vue';
+import type { AgentChannelConnectAction } from '../channels/types';
 
 type ChannelAction = 'edit' | 'disconnect';
 
 interface Props {
 	integration: ChatIntegrationDescriptor;
 	connected: boolean;
-	managedSlackSetup?: boolean;
+	connectAction: AgentChannelConnectAction;
 	loading?: boolean;
 }
 
@@ -104,14 +105,10 @@ function handleConnectedAction(action: ChannelAction) {
 					v-else
 					variant="subtle"
 					size="medium"
-					:icon="managedSlackSetup ? 'slack' : undefined"
+					:icon="connectAction.icon"
 					@click="emit('setup', integration.type)"
 				>
-					{{
-						i18n.baseText(
-							managedSlackSetup ? 'agents.channels.slack.managed.addToSlack' : 'generic.connect',
-						)
-					}}
+					{{ connectAction.label }}
 				</N8nButton>
 			</div>
 		</template>
