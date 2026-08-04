@@ -28,6 +28,7 @@ export * from './node-validation';
 export * from './node-grouping-validation';
 export * from './mcp-helpers';
 export * from './tool-helpers';
+export * from './trigger-credential-gate';
 export * from './trigger-identity';
 export * from './n8n-oauth2-auth';
 export * from './node-reference-parser-utils';

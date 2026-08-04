@@ -16,6 +16,7 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 	NodeTypeAndVersion,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -28,6 +29,7 @@ import {
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
 	UnexpectedError,
+	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -1207,6 +1209,30 @@ export async function formWebhook(
 		return {
 			noWebhookResponse: true,
 		};
+	}
+
+	// Submit-time readiness gate. The connect experience works off the state at render
+	// time, so a required credential can be revoked — or the page simply left open —
+	// between render and submit. Re-check here, after identity establishment and before
+	// the execution is enqueued, so a stale page can't spawn a run that dies at
+	// credential resolution. Scoped to the trigger: the Wait node shares `formWebhook`,
+	// but its form resume continues an already-running execution.
+	if (node.type === FORM_TRIGGER_NODE_TYPE) {
+		let readiness: CredentialCheckResult | undefined;
+		try {
+			readiness = await context.checkTriggerCredentialStatus();
+		} catch (error) {
+			// Fail closed. Throwing here is swallowed by the webhook layer, which then
+			// enqueues the execution anyway — exactly the doomed run we're preventing.
+			context.logger.error('Form submit credential readiness check failed', { error });
+			res.status(503).json({ status: 'credential_readiness_check_failed' });
+			return { noWebhookResponse: true };
+		}
+
+		if (readiness && !readiness.readyToExecute) {
+			res.status(409).json(buildCredentialConnectionsRequiredResponse(readiness));
+			return { noWebhookResponse: true };
+		}
 	}
 
 	let { useWorkflowTimezone } = options;
