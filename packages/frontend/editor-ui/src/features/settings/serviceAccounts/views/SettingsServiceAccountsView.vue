@@ -19,9 +19,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import ActAsServiceAccountDialog from '../components/ActAsServiceAccountDialog.vue';
-import CreateServiceAccountCredentialModal from '../components/CreateServiceAccountCredentialModal.vue';
 import CreateServiceAccountModal from '../components/CreateServiceAccountModal.vue';
 import DeleteServiceAccountDialog from '../components/DeleteServiceAccountDialog.vue';
+import ServiceAccountCredentialsModal from '../components/ServiceAccountCredentialsModal.vue';
 import ServiceAccountsTable from '../components/ServiceAccountsTable.vue';
 import { useImpersonationStore } from '../impersonation.store';
 import {
@@ -87,8 +87,8 @@ const actions = computed<Array<UserAction<ServiceAccount>>>(() => [
 		guard: (row) => canUpdate.value && Boolean(row.disabled),
 	},
 	{
-		label: i18n.baseText('settings.serviceAccounts.actions.createCredential'),
-		value: SERVICE_ACCOUNT_ACTIONS.CREATE_CREDENTIAL,
+		label: i18n.baseText('settings.serviceAccounts.actions.credentials'),
+		value: SERVICE_ACCOUNT_ACTIONS.CREDENTIALS,
 		guard: () => canManageCredentials.value,
 	},
 	{
@@ -198,7 +198,7 @@ const onAction = async ({ action, userId }: { action: string; userId: string }) 
 		case SERVICE_ACCOUNT_ACTIONS.DELETE:
 			deleteTarget.value = serviceAccount;
 			break;
-		case SERVICE_ACCOUNT_ACTIONS.CREATE_CREDENTIAL:
+		case SERVICE_ACCOUNT_ACTIONS.CREDENTIALS:
 			credentialTarget.value = serviceAccount;
 			break;
 	}
@@ -303,7 +303,7 @@ const openCreateModal = () => uiStore.openModal(CREATE_SERVICE_ACCOUNT_MODAL_KEY
 			@cancel="deleteTarget = null"
 			@update:open="!$event && (deleteTarget = null)"
 		/>
-		<CreateServiceAccountCredentialModal
+		<ServiceAccountCredentialsModal
 			:service-account="credentialTarget"
 			:open="credentialTarget !== null"
 			@update:open="!$event && (credentialTarget = null)"

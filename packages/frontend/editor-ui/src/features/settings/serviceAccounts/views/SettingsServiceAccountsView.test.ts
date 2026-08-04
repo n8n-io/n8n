@@ -1,6 +1,7 @@
-import type { ServiceAccountsList } from '@n8n/api-types';
+import { ROLE, type ServiceAccountsList } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 
 import { renderComponent } from '@/__tests__/render';
@@ -9,6 +10,7 @@ import SettingsServiceAccountsView from './SettingsServiceAccountsView.vue';
 import { useServiceAccountsStore } from '../serviceAccounts.store';
 
 const grantedScopes = vi.hoisted(() => ({ value: [] as string[] }));
+const grantedRoles = vi.hoisted(() => ({ value: [] as string[] }));
 
 vi.mock('@n8n/stores/roles.store', () => ({
 	useRolesStore: () => ({
@@ -20,7 +22,13 @@ vi.mock('@n8n/stores/roles.store', () => ({
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: (_checks: string[], options?: { rbac?: { scope?: string | string[] } }) => {
+	hasPermission: (
+		checks: string[],
+		options?: { rbac?: { scope?: string | string[] }; role?: string[] },
+	) => {
+		if (checks.includes('role')) {
+			return (options?.role ?? []).some((role) => grantedRoles.value.includes(role));
+		}
 		const scope = options?.rbac?.scope;
 		const scopes = Array.isArray(scope) ? scope : [scope];
 		return scopes.every((s) => s !== undefined && grantedScopes.value.includes(s));
@@ -51,6 +59,7 @@ const renderView = async (list: ServiceAccountsList) => {
 		return list;
 	}) as never;
 	Object.assign(store.serviceAccountsList.state, list);
+	store.listCredentials = vi.fn(async () => []);
 
 	const rendered = renderComponent(SettingsServiceAccountsView, { pinia });
 	await waitFor(() => expect(screen.getByTestId('service-accounts-header')).toBeInTheDocument());
@@ -66,6 +75,7 @@ describe('SettingsServiceAccountsView', () => {
 			'serviceAccount:delete',
 			'serviceAccount:impersonate',
 		];
+		grantedRoles.value = [];
 	});
 
 	it('shows the empty state with a create action when there are none', async () => {
@@ -101,5 +111,27 @@ describe('SettingsServiceAccountsView', () => {
 		await renderView(makeList([{ ...serviceAccount, disabled: true }]));
 
 		expect(screen.getByText('Disabled')).toBeInTheDocument();
+	});
+
+	it('opens the credentials modal from the row action', async () => {
+		grantedRoles.value = [ROLE.Owner];
+		const { store } = await renderView(makeList([serviceAccount]));
+		const user = userEvent.setup();
+
+		await user.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
+		await user.click(await screen.findByTestId('action-credentials'));
+
+		expect(await screen.findByTestId('service-account-credentials-modal')).toBeInTheDocument();
+		expect(store.listCredentials).toHaveBeenCalledWith(serviceAccount.id);
+	});
+
+	it('hides the credentials action for non-owner/admin roles', async () => {
+		await renderView(makeList([serviceAccount]));
+		const user = userEvent.setup();
+
+		await user.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
+
+		expect(await screen.findByTestId('action-impersonate')).toBeInTheDocument();
+		expect(screen.queryByTestId('action-credentials')).not.toBeInTheDocument();
 	});
 });

@@ -9,8 +9,14 @@ import { makeRestApiRequest } from '../utils';
 
 export async function getServiceAccountCredentials(
 	context: IRestApiContext,
+	userId?: string,
 ): Promise<ServiceAccountCredential[]> {
-	return await makeRestApiRequest(context, 'GET', '/service-account-credentials');
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		'/service-account-credentials',
+		userId ? { userId } : undefined,
+	);
 }
 
 export async function createServiceAccountCredential(
