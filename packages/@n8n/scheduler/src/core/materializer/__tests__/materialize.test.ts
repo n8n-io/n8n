@@ -24,6 +24,7 @@ const makeJob = (id: number): ScheduledJob => ({
 	maxAttempts: 1,
 	misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 	misfireGraceSeconds: 60,
+	ownerKey: null,
 });
 
 const makeSkipJob = (id: number): ScheduledJob => ({
@@ -110,6 +111,8 @@ describe('materialize', () => {
 			occurrences: [NOW],
 			skippedOccurrences: 0,
 			catchUpAt: null,
+			retireBefore: null,
+			groupedCatchUps: 0,
 			nextRunAt: new Date('2026-01-01T00:00:10.000Z'),
 			lastFiredAt: NOW,
 		};

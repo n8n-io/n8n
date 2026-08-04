@@ -172,7 +172,7 @@ function toNewOccurrences(planned: PlannedJob[], now: Date): NewOccurrence[] {
 /** The jobs whose plan recorded a catch-up run, paired with that instant. */
 function toSuperseded(planned: PlannedJob[]): SupersededOccurrences[] {
 	return planned.flatMap(({ job, plan }) =>
-		plan.catchUpAt === null ? [] : [{ jobId: job.id, before: plan.catchUpAt }],
+		plan.retireBefore === null ? [] : [{ jobId: job.id, before: plan.retireBefore }],
 	);
 }
 
@@ -228,6 +228,8 @@ function planOrDeferJob(
 					occurrences: [],
 					skippedOccurrences: 0,
 					catchUpAt: null,
+					retireBefore: null,
+					groupedCatchUps: 0,
 					nextRunAt: retryAt,
 					lastFiredAt: job.lastFiredAt,
 				},

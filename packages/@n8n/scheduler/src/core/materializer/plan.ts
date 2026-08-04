@@ -29,6 +29,15 @@ export interface OccurrencePlan {
 	catchUpAt: Date | null;
 
 	/**
+	 * The instant before which this job's already-recorded pending occurrences
+	 * should be retired.
+	 */
+	retireBefore: Date | null;
+
+	/** How many catch-up runs were dropped because a sibling won the group. */
+	groupedCatchUps: number;
+
+	/**
 	 * The next instant not yet recorded,
 	 * or `null` once the schedule has no more fires.
 	 */
@@ -56,6 +65,8 @@ export function planOccurrences(
 			occurrences: [],
 			skippedOccurrences: 0,
 			catchUpAt: null,
+			retireBefore: null,
+			groupedCatchUps: 0,
 			nextRunAt: null,
 			lastFiredAt: job.lastFiredAt,
 		};
@@ -78,6 +89,8 @@ export function planOccurrences(
 		occurrences,
 		skippedOccurrences: due.length - occurrences.length,
 		catchUpAt,
+		retireBefore: catchUpAt,
+		groupedCatchUps: 0,
 		nextRunAt: fire.done ? null : fire.value,
 		// Tracks every instant this pass consumed, not only the recorded ones: a
 		// discarded occurrence is still one the schedule has moved past.

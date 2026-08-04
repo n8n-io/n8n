@@ -60,6 +60,7 @@ export const RecurringCronUnitList = Object.values(RecurringCronUnit);
  */
 export const ScheduledJobMisfirePolicy = {
 	Coalesce: 'coalesce',
+	CoalesceOwner: 'coalesce_owner',
 	Skip: 'skip',
 } as const;
 

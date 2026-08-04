@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
@@ -161,6 +162,10 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 	}
 }
 
+export function withOwnerKey(claimed: { now: Date; jobs: ScheduledJobEntity[] }) {
+	return { now: claimed.now, jobs: claimed.jobs.map((job) => ({ ...job, ownerKey: null })) };
+}
+
 export function buildMaterializerTransaction(
 	dataSource: DataSource,
 	jobs: ScheduledJobRepository,
@@ -170,8 +175,10 @@ export function buildMaterializerTransaction(
 		await dataSource.transaction(
 			async (manager) =>
 				await work({
-					claimDueJobs: async (limit, lookaheadMs) =>
-						await jobs.claimDue(manager, limit, lookaheadMs),
+					claimDueJobs: async (limit, lookaheadMs) => {
+						const claimed = await jobs.claimDue(manager, limit, lookaheadMs);
+						return claimed === undefined ? undefined : withOwnerKey(claimed);
+					},
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
 					retireSuperseded: async (superseded) => await tasks.updateToMissed(manager, superseded),
