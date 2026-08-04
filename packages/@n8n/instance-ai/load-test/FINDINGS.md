@@ -31,9 +31,10 @@ provider, or the model.
 - **Validated on cloud, including an OOM and its fix.** On a **640 MB** limit: N=5
   passed (604 MB, 94%), N=10 × 2 turns passed with an 18 MB margin (622 MB, 97%),
   and N=10 × 4 turns **OOM-crashed twice**. Raising the limit to **1280 MB** made the
-  same workload pass at **687–745 MB (54–58%)**, which quantifies the crash: it
-  wanted ~690–750 MB and had 640. **640 MB supports ~5 concurrent builders; 1280 MB
-  supports 10.** Cloud looked flatter
+  same workload pass at **736–745 MB (58%)** across three runs, which quantifies the
+  crash: idle alone is **495 MB**, load adds **~240 MB**, and a 640 MB pod was ~96 MB
+  short. **640 MB supports ~5 concurrent builders; 1280 MB supports 10.** Idle cost
+  dominates, so small plans are baseline-constrained rather than per-user-constrained. Cloud looked flatter
   than local above N=5 only because local's 664 MB exceeds the limit; that is the
   ceiling, not efficiency. See
   [Cloud validation](#cloud-validation--local-numbers-hold).
@@ -145,20 +146,25 @@ N=10 × 4-turn configuration that had crashed twice was re-run:
 
 | limit | N | turns | peak | outcome |
 | --: | --: | --: | --: | --- |
-| 640 MB | 10 | 4 | wants 687–745 | **OOM, 2 of 2** |
-| 1280 MB | 10 | 4 | **687 MB** (54%) | pass — 10/10, all `runs=4/4` |
-| 1280 MB | 10 | 4 | **745 MB** (58%) | pass — 10/10, all `runs=4/4` |
+| 640 MB | 10 | 4 | wants 736–745 | **OOM, 2 of 2** |
+| 1280 MB | 10 | 4 | 687 MB (54%) | pass — still warming |
+| 1280 MB | 10 | 4 | **745 MB** (58%) | pass |
+| 1280 MB | 10 | 4 | **736 MB** (58%) | pass — from a settled 495 MB baseline |
+
+All three passed 10/10 with every user completing all four turns.
 
 **This closes the OOM explanation quantitatively: the workload wants 687–745 MB and
 the pod had 640.** A 47–105 MB shortfall, and it manifested in turn 1 because that
 is where the concurrent start-up peak lands.
 
-**Two identical back-to-back runs spread 58 MB (8%)**, and the second stayed
-elevated afterwards. That is the RSS high-water-mark behaviour characterised
-locally (see [RSS is a high-water mark](#rss-is-a-high-water-mark)) — run 2 began
-from run 1's watermark and climbed further. It is not a leak: locally heap returned
-to baseline while RSS held its pages, and RSS did eventually release when idle
-(697 → 383 MB).
+**The peak plateaus at ~736–745 MB and memory is released afterwards.** Runs 2 and
+3 agree within 1.2%, and run 3 reached 736 MB starting from a **settled 495 MB
+baseline** rather than inheriting a watermark — so the figure is a real ceiling, not
+accumulation. Run 1's 687 MB was the low outlier of an instance still warming.
+
+After load the instance **stabilises back at 495 MB**, i.e. it gives back ~240 MB.
+Consistent with the local finding that RSS holds pages transiently but does release
+(697 → 383 MB when idle). No accumulation across repeated runs.
 
 Consequences:
 
@@ -167,21 +173,43 @@ Consequences:
   local and cloud as equivalent for sizing.
 - **Quote a range, not a point.** N=10 × 4 turns wants **~690–750 MB** on this
   configuration.
-- **Unknown: does the watermark plateau?** 687 → 745 across two runs does not
-  distinguish "settles" from "keeps climbing". Every cloud run so far has been a
-  single burst then idle, so **sustained load is untested** — the relevant question
-  for an instance serving real traffic all day.
+- **The watermark plateaus** — three runs, the last from a settled baseline, all
+  landing at 736–745 MB (bar the first, still warming). Repeated bursts do not
+  accumulate. Genuinely sustained/continuous load is still untested, but the
+  burst-then-idle cycle is now well characterised.
+
+### The budget, decomposed
+
+| quantity | measured |
+| --- | --: |
+| idle baseline (no users connected) | **495 MB** |
+| peak at N=10 × 4-turn conversations | **736–745 MB** |
+| load-induced growth | **~241 MB for 10 builders (~24 MB/user)** |
+
+This decomposition explains the OOM arithmetically. On a 640 MB pod, a 495 MB idle
+baseline leaves ~145 MB for a load that needs ~241 MB — **roughly 96 MB short**,
+which is why it died, and why it died during concurrent start-up rather than later.
+
+**Idle cost dominates.** Roughly 500 MB is consumed before any user arrives, so
+small plans are constrained by the baseline rather than by per-user cost. That is
+also why doubling to 1280 MB worked so decisively: it doubles headroom for load
+while the fixed cost stays put.
+
+Note the ~24 MB/user here is *peak-minus-idle at fixed N*, not the marginal
+per-user figure (~12 MB, see
+[Per-user cost](#per-user-cost--what-can-and-cannot-be-said)) — the difference is
+fixed per-run overhead that the first builder pays.
 
 Sizing guidance for cloud, measured:
 
-| limit | supported concurrent builders (4-turn conversations) |
-| --- | --- |
-| 640 MB | **~5** |
-| 1280 MB | **10** at 54–58% utilisation |
+| limit | supported concurrent builders (4-turn conversations) | utilisation |
+| --- | --- | --- |
+| 640 MB | **~5** | ~94% at N=5 |
+| 1280 MB | **10** | 57–58% at N=10 |
 
-Latency at N=10 × 4 turns: median 128–137 s, max 142–173 s. The fully-warm second
-run had the tighter tail (142 s vs 173 s), suggesting the first run was still
-paying some lazy initialisation.
+Latency at N=10 × 4 turns across the three runs: median 128 / 137 / 143 s, max
+173 / 142 / 183 s. Drift within noise rather than a trend, and as everywhere else
+in this work it is the tail that moves while the median holds.
 
 ### The workable ceiling is 5 concurrent builders
 
