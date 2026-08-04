@@ -105,10 +105,17 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	private async spawnAndMonitor() {
 		const grantToken = await this.authService.createGrantToken();
 		const taskBrokerUri = `http://127.0.0.1:${this.runnerConfig.port}`;
+		const runnerProcess = await this.startProcess(grantToken, taskBrokerUri);
 
-		this.process = await this.startProcess(grantToken, taskBrokerUri);
-		forwardToLogger(this.logger, this.process, `[${this.name}] `);
-		this.monitorProcess(this.process);
+		try {
+			forwardToLogger(this.logger, runnerProcess, `[${this.name}] `);
+			this.monitorProcess(runnerProcess);
+		} catch (error) {
+			runnerProcess.kill();
+			throw error;
+		}
+
+		this.process = runnerProcess;
 	}
 
 	/** Stops the runner and prevents any further relaunch. */
@@ -163,9 +170,9 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 	}
 
 	protected monitorProcess(taskRunnerProcess: ChildProcess) {
-		this._runPromise = new Promise((resolve) => {
-			this.setupProcessMonitoring?.(taskRunnerProcess);
+		this.setupProcessMonitoring?.(taskRunnerProcess);
 
+		this._runPromise = new Promise((resolve) => {
 			let exited = false;
 			const onExit = (code: number | null) => {
 				if (!exited) {

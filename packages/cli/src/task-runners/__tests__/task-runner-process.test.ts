@@ -285,6 +285,54 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(2);
 		});
 
+		it('should keep retrying when a relaunch fails after the spawn', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			const unwirableChild = Object.assign(new EventEmitter(), {
+				pid: 43,
+				stdout: {
+					on: () => {
+						throw new Error('stream closed');
+					},
+				},
+				stderr: new EventEmitter(),
+				kill: vi.fn(),
+			}) as unknown as ChildProcess;
+			spawnMock.mockReturnValueOnce(unwirableChild);
+
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(unwirableChild.kill).toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(spawnMock).toHaveBeenCalledTimes(3);
+			expect(taskRunnerProcess.isRunning).toBe(true);
+		});
+
+		it('should keep retrying when setting up process monitoring fails', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+
+			const unmonitorableChild = createChildProcess(43);
+			spawnMock.mockReturnValueOnce(unmonitorableChild);
+			vi.spyOn(taskRunnerProcess, 'setupProcessMonitoring').mockImplementationOnce(() => {
+				throw new Error('failed to attach monitoring');
+			});
+
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(unmonitorableChild.kill).toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(5_000);
+
+			expect(spawnMock).toHaveBeenCalledTimes(3);
+			expect(taskRunnerProcess.isRunning).toBe(true);
+		});
+
 		it('should relaunch the runner when it errors without exiting', async () => {
 			const failedSpawn = createChildProcess(undefined);
 			const child = createChildProcess(42);
