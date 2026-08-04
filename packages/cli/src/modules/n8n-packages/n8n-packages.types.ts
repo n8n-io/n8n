@@ -113,7 +113,7 @@ export const TagConflictPolicy = {
 	Skip: 'skip',
 	/** Blocks the import when any referenced tag conflicts. */
 	Fail: 'fail',
-	/** Renames a drifted target tag (same id, different name) to the package name; a name held by another tag still fails. */
+	/** Renames a drifted target tag (same id, different name) to the package name; reconciles a name collision (id absent, name held) by re-keying the holder to the package id. A drifted tag whose package name is held by another tag still fails. */
 	Rename: 'rename',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -259,6 +259,7 @@ export type ImportPackageEventCounts = {
 		matched: number;
 		created: number;
 		renamed: number;
+		reconciled: number;
 		skipped: number;
 		requirements: number;
 	};
@@ -419,6 +420,8 @@ export interface ImportTagSummary {
 	matched: string[];
 	created: string[];
 	renamed: string[];
+	/** Existing target tags re-keyed to the package (source) id on a name collision. */
+	reconciled: string[];
 	skipped: string[];
 }
 
