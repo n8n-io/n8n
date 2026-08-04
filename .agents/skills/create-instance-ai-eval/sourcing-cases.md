@@ -62,6 +62,124 @@ connected.)
    its trace is pruned or deleted — so it has no durable home; that's exactly why
    step 4 turns the confirmed failure into a durable synthetic case.
 
+## Scrubbing a real workflow into a synthetic seed
+
+A reviewed real conversation becomes a durable `inline` seed by being scrubbed
+**once, at authoring time, with a human reading it** — that is what makes the
+committed artifact synthetic by construction, with no run-time gate to trust.
+Nothing downstream saves you: the harness strips node credentials on restore and
+never seeds data-table rows, but message text, tool-call bodies, node parameters and
+sticky notes are restored **verbatim**. What you paste is what runs.
+
+### Get the pre-anchor workflow
+
+Scrub the state the live turn opened on — the last build **before** your anchor turn,
+not the thread's final state.
+
+- **The agent built it.** `list_conversation_workflow_builds` returns one row per
+  workflow per turn with `seq` / `turnRunId`, so you can identify that pre-anchor
+  build; `get_conversation_workflow_build` then returns its content. Read
+  `contentStatus` — about one SDK-source build in five stored no JSON, so coverage is
+  not a given: `stored-json` is ready to scrub, `compilable-source` means the recorded
+  SDK source survived whole and compiles with
+  [`parseSeedWorkflowCode`](../../../packages/@n8n/instance-ai/evaluations/harness/parse-seed-workflow.ts),
+  and `unrecoverable` / `unrecoverable-intermediate` have nothing to give. **Never
+  substitute a later final build** — that is a different workflow state, and the case
+  would test the repair rather than the defect.
+- **The user brought it.** The editor handed the workflow over and the agent resolved
+  it by id, so the workflow is the *output* of the `workflows[get]` call whose input
+  carries that id.
+- **Nothing recoverable.** A thread imported before build persistence existed has no
+  rows at all, and the read says so in a `note` rather than returning an empty list —
+  an empty answer is never "the user had no workflow". Hand-author the smallest
+  topology that can exhibit the complaint instead. The scrub rule below then has
+  nothing to diff against, so the pre-ship checks carry the whole load.
+
+### The rule: scrub values, never shape
+
+| Must survive untouched — this *is* the test | Fair to replace |
+|---|---|
+| node `type` and `typeVersion` | URLs, hostnames, webhook paths |
+| `connections` topology, and the node `name`s that key it | emails, person names, channel names |
+| parameter *keys*, and expression structure (`={{ $json.url }}`, `$('Prepare rows')`) | spreadsheet / document / data-table ids |
+| structural values: `batchSize`, `resource` / `operation` / `mode`, condition shape | sticky notes, node notes, Code-node literals, sample data |
+
+**Replace type-preserving** — a URL stays a URL, an id keeps its shape and length.
+Two reasons beyond readability. Restore validates every node (`id`, `name`, `type`,
+numeric `typeVersion`, a two-number `position`, an object `parameters`) and refuses
+the whole seed if one is missing, so don't drop fields while you are in there. And
+the id remaps are blind whole-document `replaceAll`s: seed workflow and data-table
+ids under 8 characters are refused outright, and a short-but-legal token is precisely
+how you rewrite an unrelated substring.
+
+**Trim while you scrub.** The seed is one case field — drop `load_skill` bodies and
+any tool output the history doesn't need (the storage ceiling is 256KB serialized).
+Keep the tool-call blocks the story needs, and keep each one's `output.workflowId`
+matching a workflow the seed declares, per [`case-shapes.md`](case-shapes.md).
+
+### Three traps
+
+**Node names are references.** A rename has to reach every `connections` key, every
+`$('Old Name')` in an expression, and every mention inside recorded SDK source and
+prose — miss one and the workflow silently breaks, which is the over-scrub that makes
+the eval pointless. Default to **not renaming**; a node name is rarely identifying on
+its own. If you must, `grep -c 'Old Name' <case>.json` has to return 0. (Seeded
+*workflow* names are rewritten per run by the harness, which deliberately leaves node
+names and tool-call payloads alone for the same reason — and refuses two seeded
+workflows that share a name, because the rewrite can't tell which mention means
+which.)
+
+**Sometimes the value IS the test.** `queue.fal.run` is load-bearing in
+`http-keep-generic-credential-unknown-service`: the case exists because that host has
+no dedicated n8n credential, so swapping it for a household hostname grades the
+opposite steering. Same for the guessed column identifiers in
+`flags-unverified-sql-identifiers`. Expectations also quote values — "posts to
+`#growth`", a specific model name — so a replacement has to land in both places, or
+be hedged the way the corpus hedges values that aren't the point ("an unset or
+placeholder value is acceptable — it's a value to fill in at setup, not a build
+mistake"). Scrubbing safely means knowing what the case asserts, which is why this is
+a human step and not a blind pass.
+
+**`typeVersion` is not tidying.** Split In Batches v2 declares
+`outputNames: ['loop', 'done']`; v3 declares `['done', 'loop']`. Same two outputs,
+opposite meaning — so "modernizing" a seeded node's version silently rewires the loop
+while the topology stays byte-identical. Leave every version at what the conversation
+had.
+
+### The check: only string leaves moved
+
+Diff the `workflowJson` you started from against the workflow you authored into the
+case:
+
+```bash
+leaves() { jq -r '{nodes,connections} | paths(scalars) as $p | "\($p|map(tostring)|join("."))\t\(getpath($p)|tojson)"' | sort; }
+diff <(leaves < original-workflow.json) <(jq '.seed.workflows[0]' <case>.json | leaves)
+```
+
+Every line in the diff must be a value you replaced on purpose. A `type`,
+`typeVersion`, `connections.*` or structural-parameter line means you moved shape
+rather than values; a path on one side only means you dropped or added a leaf.
+Non-graph keys (`settings`, `meta`, `pinData`) are ignored, so a raw build JSON
+compares cleanly against the trimmed seed workflow. This is the third of
+[Before you ship a seeded case](case-shapes.md#before-you-ship-a-seeded-case--three-checks);
+the other two — the defect still bites, and the case fails without the seed — are what
+catch a scrub that kept the shape and lost the point.
+
+### What the harness already handles
+
+Don't redo these by hand:
+
+- **Node credentials are stripped on restore.** The case's `credentials[]` plus the
+  thread's credential pin own that view, and a credential's display name goes with it.
+- **Data tables are schema-only, always.** The seed schema has no `rows` field, and a
+  `rows` key is refused rather than stripped — so row values, the most sensitive part
+  of a trace, cannot ride along by accident.
+- **Ids and workflow names are per-run.** Seeded workflow ids are remapped and names
+  take a `[seed <8hex>]` suffix, with mentions rewritten in prose and `workflowName`
+  fields — but not inside `workflows[].nodes` or tool-call payloads.
+
+Everything else in the seed is yours to sanitise.
+
 ## Sourcing a regression baseline (successful builds)
 
 The discover→verify→encode flow above hunts **failures**. The complementary need
