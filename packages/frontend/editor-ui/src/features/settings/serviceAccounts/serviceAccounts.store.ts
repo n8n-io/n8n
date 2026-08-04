@@ -36,10 +36,19 @@ export const useServiceAccountsStore = defineStore(STORES.SERVICE_ACCOUNTS, () =
 	const remove = async (id: string) =>
 		await serviceAccountsApi.deleteServiceAccount(rootStore.restApiContext, id);
 
+	const listCredentials = async (userId: string) =>
+		await serviceAccountCredentialsApi.getServiceAccountCredentials(
+			rootStore.restApiContext,
+			userId,
+		);
+
 	const createCredential = async (userId: string) =>
 		await serviceAccountCredentialsApi.createServiceAccountCredential(rootStore.restApiContext, {
 			userId,
 		});
+
+	const deleteCredential = async (id: string) =>
+		await serviceAccountCredentialsApi.deleteServiceAccountCredential(rootStore.restApiContext, id);
 
 	return {
 		serviceAccountsList,
@@ -47,6 +56,8 @@ export const useServiceAccountsStore = defineStore(STORES.SERVICE_ACCOUNTS, () =
 		update,
 		changeRole,
 		remove,
+		listCredentials,
 		createCredential,
+		deleteCredential,
 	};
 });
