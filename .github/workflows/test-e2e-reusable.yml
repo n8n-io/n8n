@@ -108,7 +108,7 @@ jobs:
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
-        run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
+        run: pnpm --filter n8n-containers exec tsx pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Filter specs to previous-attempt failures
         if: github.run_attempt > 1 && matrix.specs != ''
