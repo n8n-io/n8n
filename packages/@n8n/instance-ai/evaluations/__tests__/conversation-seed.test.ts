@@ -459,6 +459,21 @@ describe('remapSeedArtifactIds', () => {
 		seed.agents[0].id = 'ag1';
 		expect(() => remapSeedArtifactIds(seed)).toThrow(/too short to remap/);
 	});
+
+	it('follows a seeded workflow id into an agent config that attaches it as a tool', () => {
+		// The restore creates workflows before agents, so the tool ref has to land on
+		// the SAME fresh id — otherwise the seeded agent points at a workflow that was
+		// never restored, and the case grades an agent with a dead tool.
+		const seed = makeAgentSeed();
+		seed.workflows = makeSeed().workflows;
+		seed.agents[0].config.tools = [{ type: 'workflow', workflow: WF_ID, name: 'Look up a ticket' }];
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		const tool = remapped.agents[0].config.tools?.[0];
+		expect(tool).toMatchObject({ type: 'workflow', workflow: remapped.workflows[0].id });
+		expect(JSON.stringify(remapped)).not.toContain(WF_ID);
+	});
 });
 
 describe('transcriptPrefixFromSeed', () => {

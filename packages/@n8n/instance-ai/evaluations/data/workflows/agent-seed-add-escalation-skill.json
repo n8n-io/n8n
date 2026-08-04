@@ -6,7 +6,6 @@
 			"text": "Add a skill to Support Triage that escalates anything mentioning a refund straight to the billing team, and say so in the ticket reply."
 		}
 	],
-	"messageBudget": 6,
 	"complexity": "simple",
 	"tags": ["agent", "seeded", "skills", "edit-existing"],
 	"datasets": ["seeded"],
