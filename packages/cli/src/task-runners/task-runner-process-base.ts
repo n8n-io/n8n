@@ -12,7 +12,12 @@ import { TaskRunnerLifecycleEvents } from './task-runner-lifecycle-events';
 
 export type ChildProcess = ReturnType<typeof spawn>;
 
-const RESTART_RETRY_DELAY_MS = 5_000;
+const RESTART_RETRY_BASE_DELAY_MS = 5_000;
+const RESTART_RETRY_MAX_DELAY_MS = 30_000;
+
+export function restartRetryDelay(attempt: number): number {
+	return Math.min(RESTART_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1), RESTART_RETRY_MAX_DELAY_MS);
+}
 
 export type ExitReason = 'unknown' | 'oom';
 
@@ -139,15 +144,17 @@ export abstract class TaskRunnerProcessBase extends TypedEmitter<TaskRunnerProce
 
 	private async startWithRetries() {
 		let started = false;
+		let failedAttempts = 0;
+
 		while (!this.isShuttingDown && !started) {
 			try {
 				await this.start();
 				started = true;
 			} catch (error) {
-				this.logger.error(`Failed to start ${this.name}, retrying in ${RESTART_RETRY_DELAY_MS}ms`, {
-					error,
-				});
-				await sleep(RESTART_RETRY_DELAY_MS);
+				failedAttempts++;
+				const delayMs = restartRetryDelay(failedAttempts);
+				this.logger.error(`Failed to start ${this.name}, retrying in ${delayMs}ms`, { error });
+				await sleep(delayMs);
 			}
 		}
 	}

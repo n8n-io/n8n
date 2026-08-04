@@ -9,6 +9,7 @@ import type { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
 
 import { TaskRunnerLifecycleEvents } from '../task-runner-lifecycle-events';
+import { restartRetryDelay } from '../task-runner-process-base';
 
 // Source imports `spawn` from `node:child_process` as an ESM binding, so mutating
 // `require('child_process').spawn` does not intercept it — mock the module instead.
@@ -265,6 +266,25 @@ describe('TaskRunnerProcess', () => {
 			expect(spawnMock).toHaveBeenCalledTimes(2);
 		});
 
+		it('should back off between failed relaunch attempts', async () => {
+			const child = createChildProcess(42);
+			spawnMock.mockReturnValue(child);
+			await taskRunnerProcess.start();
+			auth.createGrantToken
+				.mockRejectedValueOnce(new Error('grant token unavailable'))
+				.mockRejectedValueOnce(new Error('grant token unavailable'));
+
+			child.emit('exit', 1);
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(spawnMock).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(spawnMock).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			expect(spawnMock).toHaveBeenCalledTimes(2);
+		});
+
 		it('should relaunch the runner when it errors without exiting', async () => {
 			const failedSpawn = createChildProcess(undefined);
 			const child = createChildProcess(42);
@@ -424,6 +444,14 @@ describe('TaskRunnerProcess', () => {
 
 			expect(child.kill).not.toHaveBeenCalled();
 			expect(spawnMock).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('restartRetryDelay', () => {
+		it('should double the delay up to a ceiling', () => {
+			expect([1, 2, 3, 4, 5, 6].map(restartRetryDelay)).toEqual([
+				5_000, 10_000, 20_000, 30_000, 30_000, 30_000,
+			]);
 		});
 	});
 });
