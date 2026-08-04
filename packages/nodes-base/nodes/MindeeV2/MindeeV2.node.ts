@@ -5,8 +5,8 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	NodeConnectionTypes,
 	NodeApiError,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -20,7 +20,6 @@ import {
 import { getModels } from './SearchFunctions';
 
 const ROOT_URL = 'https://api-v2.mindee.net/v2';
-const API_URL = `${ROOT_URL}/inferences/enqueue`;
 
 export class MindeeV2 implements INodeType {
 	methods = {
@@ -66,14 +65,40 @@ export class MindeeV2 implements INodeType {
 				options: [
 					{
 						name: 'Document Data Extraction',
-						value: 'fileEnqueueAndPoll',
+						value: 'extraction',
 						description:
 							'Extract data from a document file and return the result.' +
-							" Use any of the models you've built on Mindee.",
-						action: 'Extract Document Data',
+							"Use any extraction model you've built on the Mindee platform.",
+						action: 'Extract document data',
+					},
+					{
+						name: 'Document Classification',
+						value: 'classification',
+						description: 'Classify documents using your Mindee classification utility model.',
+						action: 'Classify a document',
+					},
+					{
+						name: 'Document Crop Operation',
+						value: 'crop',
+						description:
+							'Crop pages in a document using your Mindee Crop model. Can be chained with an Extraction model.',
+						action: 'Crop a document',
+					},
+					{
+						name: 'Raw Text Reading (OCR)',
+						value: 'ocr',
+						description: 'Extract raw document text using your Mindee OCR model.',
+						action: 'Extract all text from a document',
+					},
+					{
+						name: 'Document Splitting Operation',
+						value: 'split',
+						description:
+							'Split document pages using your Mindee split model. Can be chained with an Extraction model.',
+						action: 'Extract sub-documents from a multi-page document.',
 					},
 				],
-				default: 'fileEnqueueAndPoll',
+				default: 'extraction',
 			},
 			{
 				displayName: 'Binary Property Name',
@@ -85,7 +110,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['fileEnqueueAndPoll'],
+						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
 					},
 				},
 			},
@@ -103,7 +128,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['fileEnqueueAndPoll'],
+						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
 					},
 				},
 				modes: [
@@ -136,7 +161,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['fileEnqueueAndPoll'],
+						operation: ['extraction', 'classification', 'crop', 'ocr', 'split'],
 					},
 				},
 				default: 180,
@@ -152,7 +177,7 @@ export class MindeeV2 implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['document'],
-						operation: ['fileEnqueueAndPoll'],
+						operation: ['extraction'],
 					},
 				},
 				options: [
@@ -255,6 +280,8 @@ export class MindeeV2 implements INodeType {
 			try {
 				let result: IDataObject[] | undefined = undefined;
 				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
+				const slug = operation as string;
 
 				if (resource === 'document') {
 					const params = readUIParams(this, i);
@@ -264,7 +291,14 @@ export class MindeeV2 implements INodeType {
 						...form.getHeaders?.(),
 						'User-Agent': `mindee-api-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
 					} as IDataObject;
-					const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
+					const enqueue = await mindeeApiRequest.call(
+						this,
+						'POST',
+						`${ROOT_URL}/products/${slug}/enqueue`,
+						form,
+						{},
+						headers,
+					);
 					const pollingUrl = extractPollingUrl(this, enqueue);
 					result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
 				}
