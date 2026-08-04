@@ -446,7 +446,11 @@ jobs:
             [ -n "$name" ] || continue
             pct="${cpu%\%}"
             pct="${pct%.*}"
-            [ "${pct:-0}" -ge 70 ] || continue
+            # `docker stats` can emit a non-numeric CPUPerc (e.g. mid restart). With
+            # `-e`/pipefail an arithmetic compare on that aborts the whole step — and
+            # this step exists precisely to report on adverse conditions.
+            case "$pct" in ''|*[!0-9]*) continue ;; esac
+            [ "$pct" -ge 70 ] || continue
             HOT_LANES="$HOT_LANES $name"
             echo ""
             echo "=== $name at $cpu — per-process snapshot ==="

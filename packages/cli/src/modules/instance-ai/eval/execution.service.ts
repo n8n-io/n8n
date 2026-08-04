@@ -974,17 +974,13 @@ export class EvalExecutionService {
 						this.logger.warn(
 							`[EvalMock] Execution ${executionId} exceeded its ${seconds}s budget — stopping it`,
 						);
-						try {
-							this.activeExecutions.stopExecution(
-								executionId,
-								new TimeoutExecutionCancelledError(executionId),
-							);
-						} catch (error) {
-							// Already gone (finished between the timer firing and this call).
-							this.logger.debug(
-								`[EvalMock] Could not stop execution ${executionId}: ${error instanceof Error ? error.message : String(error)}`,
-							);
-						}
+						// No try/catch: `stopExecution` returns early for an unknown id
+						// rather than throwing, so an execution that finished between the
+						// timer firing and this call needs no handling here.
+						this.activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
 						reject(budgetError());
 					}, remainingMs);
 				}),

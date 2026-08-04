@@ -75,12 +75,15 @@ describe('server-side budget stop', () => {
 		expect(String(failure)).not.toMatch(/eval budget|operation was aborted/i);
 	});
 
-	// The agent path forwards the same server budget, so it needs the same guard.
+	// The agent path stops a run for time on its OWN abort signal, so it reports in its
+	// own words. This fixture used to carry the workflow path's exact string — which
+	// `EvalAgentExecutionService` never produces — so it passed while a real timed-out
+	// agent run still fell through to the judge as a builder failure.
 	it('throws onto the timeout path for a stopped agent run', async () => {
 		const client = mock<N8nClient>();
 		client.getPersonalProjectId.mockResolvedValue('proj-1');
 		client.executeAgentWithLlmMock.mockResolvedValue(
-			agentResult(['Execution exceeded its 895s eval budget and was stopped']),
+			agentResult(['Agent run exceeded its 600s eval budget and was stopped']),
 		);
 
 		await expect(

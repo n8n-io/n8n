@@ -1,0 +1,67 @@
+{
+	"is_error": false,
+	"duration_api_ms": 370609,
+	"num_turns": 15,
+	"stop_reason": "end_turn",
+	"session_id": "3ae6a9e9-be59-457c-b50a-770e166d7740",
+	"total_cost_usd": 1.93363725,
+	"usage": {
+		"input_tokens": 18,
+		"cache_creation_input_tokens": 122435,
+		"cache_read_input_tokens": 805117,
+		"output_tokens": 30601,
+		"server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+		"service_tier": "standard",
+		"cache_creation": { "ephemeral_1h_input_tokens": 0, "ephemeral_5m_input_tokens": 122435 },
+		"inference_geo": "global",
+		"iterations": [
+			{
+				"input_tokens": 1,
+				"output_tokens": 505,
+				"cache_read_input_tokens": 135111,
+				"cache_creation_input_tokens": 4721,
+				"cache_creation": { "ephemeral_5m_input_tokens": 4721, "ephemeral_1h_input_tokens": 0 },
+				"type": "message"
+			}
+		],
+		"speed": "standard"
+	},
+	"modelUsage": {
+		"claude-haiku-4-5-20251001": {
+			"inputTokens": 680,
+			"outputTokens": 13,
+			"cacheReadInputTokens": 0,
+			"cacheCreationInputTokens": 0,
+			"webSearchRequests": 0,
+			"costUSD": 0.000745,
+			"contextWindow": 200000,
+			"maxOutputTokens": 32000,
+			"canonicalModel": "claude-haiku-4-5",
+			"provider": "firstParty"
+		},
+		"claude-opus-4-8": {
+			"inputTokens": 18,
+			"outputTokens": 30601,
+			"cacheReadInputTokens": 805117,
+			"cacheCreationInputTokens": 122435,
+			"webSearchRequests": 0,
+			"costUSD": 1.9328922500000003,
+			"contextWindow": 1000000,
+			"maxOutputTokens": 64000,
+			"canonicalModel": "claude-opus-4-8",
+			"provider": "firstParty"
+		}
+	},
+	"permission_denials": [],
+	"terminal_reason": "completed",
+	"fast_mode_state": "off",
+	"subtype": "success",
+	"api_error_status": null,
+	"result": "Created and validated. Workflow is in your personal project.\n\n**What it does** (runs daily at 07:00):\n1. **Every Morning 07:00** — Schedule Trigger.\n2. **Fetch Exchange Emails (EWS)** — HTTP POST to your on-premise Exchange EWS endpoint (SOAP `FindItem`), filtered to messages received in the last 24h. Uses Basic Auth (standard for on-prem Exchange).\n3. **Parse EWS XML → Normalize Emails** — turns the SOAP response into a clean text list of sender/subject/received/body.\n4. **Extract & Prioritize Action Items** — AI Agent with an OpenAI Chat Model; extracts action items and ranks them High/Medium/Low, returning an HTML digest.\n5. **Send Daily Digest** — Send Email (SMTP) delivers the structured digest.\n\n**Key call:** you asked to swap Gmail for **Outlook/Exchange on-premise**. n8n's Microsoft Outlook node is cloud/Graph-only and won't reach an on-prem server, so I used **EWS over HTTP** (reading) + **SMTP** (sending) — the correct on-prem path.\n\n**Before activating**, set these (all left as credentials/placeholders per your note):\n- EWS endpoint URL + Basic Auth credential\n- OpenAI credential\n- SMTP credential + the from/to email addresses\n\nWORKFLOW_ID=Euiurz9YzdUHYPG5",
+	"ttft_ms": 5345,
+	"ttft_stream_ms": 2175,
+	"time_to_request_ms": 392,
+	"type": "result",
+	"duration_ms": 370717,
+	"uuid": "ecebd8b8-c231-4f76-9440-8388b629d8ff"
+}

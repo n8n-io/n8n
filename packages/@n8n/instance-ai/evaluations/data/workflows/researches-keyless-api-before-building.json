@@ -1,0 +1,28 @@
+{
+	"description": "Exercises the builder's own web-search (Brave/SearXNG) research path. The user rules out the obvious default (USGS) and names no replacement, so the agent cannot satisfy the request from a remembered endpoint — it has to search for candidate sources, then read the docs of whichever it picks. The exclusion is load-bearing: an earlier draft without it passed by fetching the USGS docs URL straight from memory, never searching at all. Build-only on purpose: what's under test is whether research happened and shaped the build, not whether the run executes. Requires INSTANCE_AI_BRAVE_SEARCH_API_KEY (or N8N_INSTANCE_AI_SEARXNG_URL) on the target instance — without a provider the web-search action returns zero results and the non-empty-results expectation reds for environment reasons, not agent behaviour.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every weekday morning around 8am I want a Slack message in #quake-watch listing any earthquake of magnitude 5 or above from the last 24 hours near Japan. We've had reliability trouble with the USGS feed so I'd rather not depend on it — find a different source that's free and works without an API key, and check its current docs for the request it expects."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "research", "web-search", "http-request", "schedule", "slack"],
+	"triggerType": "schedule",
+	"credentials": [{ "type": "slackApi" }],
+	"processExpectations": [
+		"The agent researched the data source with its research tool (web search, optionally followed by fetching a docs page) before writing the HTTP request — the user named no provider and asked it to find one, so picking an endpoint straight from memory without looking anything up does not satisfy this.",
+		"The web-search call returned a non-empty set of real results that the agent went on to use. An empty result set — which is what an unconfigured search provider returns — does not satisfy this, even though the agent may still finish the build from other sources.",
+		"The agent did not ask the user which API to use, what the endpoint is, or what the query parameters are — the user already said they don't know and asked the agent to find out.",
+		"The agent named the source it settled on and said it is free and usable without an API key, rather than leaving the choice unexplained."
+	],
+	"outcomeExpectations": [
+		"A Schedule Trigger fires the workflow on a recurring weekday-morning cadence.",
+		"An HTTP Request node queries a public earthquake feed that needs no API key or credential, and it is not the USGS feed the user ruled out.",
+		"The request constrains results to roughly the last 24 hours using a value computed at run time (an expression over the current date), not a hardcoded past date.",
+		"The request or a downstream filter restricts results to magnitude 5 and above and to the Japan region, rather than passing every worldwide quake through.",
+		"Quake details are read out of the response's actual nested shape (the per-event records and their magnitude/location/time fields), not from invented top-level field names.",
+		"One Slack message summarizing the matching quakes is posted to the #quake-watch channel the user named.",
+		"The workflow handles the no-quakes case without posting a misleading empty alert — either a conditional gate before the Slack step or a message that states nothing was found."
+	]
+}

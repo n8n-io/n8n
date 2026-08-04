@@ -896,11 +896,20 @@ export class N8nClient {
 
 		const method = options.method ?? 'GET';
 
+		// A bare `?? DEFAULT` would turn `timeoutMs: 0` into `AbortSignal.timeout(0)` —
+		// an instant abort, where the old truthiness check meant "unbounded". No caller
+		// passes one, and unbounded is what this path exists to remove, so a
+		// non-positive value falls back to the default: bounded either way.
+		const timeoutMs =
+			options.timeoutMs !== undefined && options.timeoutMs > 0
+				? options.timeoutMs
+				: DEFAULT_REQUEST_TIMEOUT_MS;
+
 		const res = await fetch(`${this.baseUrl}${path}`, {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
-			signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS),
+			signal: AbortSignal.timeout(timeoutMs),
 		});
 
 		if (!res.ok) {

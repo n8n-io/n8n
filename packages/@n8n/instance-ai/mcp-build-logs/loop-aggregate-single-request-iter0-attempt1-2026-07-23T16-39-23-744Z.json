@@ -1,0 +1,67 @@
+{
+	"is_error": false,
+	"duration_api_ms": 81417,
+	"num_turns": 12,
+	"stop_reason": "end_turn",
+	"session_id": "5380f2f7-0f4e-4a61-9a47-188646482970",
+	"total_cost_usd": 0.7768200000000001,
+	"usage": {
+		"input_tokens": 14,
+		"cache_creation_input_tokens": 74082,
+		"cache_read_input_tokens": 450093,
+		"output_tokens": 3519,
+		"server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+		"service_tier": "standard",
+		"cache_creation": { "ephemeral_1h_input_tokens": 0, "ephemeral_5m_input_tokens": 74082 },
+		"inference_geo": "global",
+		"iterations": [
+			{
+				"input_tokens": 2,
+				"output_tokens": 228,
+				"cache_read_input_tokens": 88412,
+				"cache_creation_input_tokens": 942,
+				"cache_creation": { "ephemeral_5m_input_tokens": 942, "ephemeral_1h_input_tokens": 0 },
+				"type": "message"
+			}
+		],
+		"speed": "standard"
+	},
+	"modelUsage": {
+		"claude-haiku-4-5-20251001": {
+			"inputTokens": 636,
+			"outputTokens": 16,
+			"cacheReadInputTokens": 0,
+			"cacheCreationInputTokens": 0,
+			"webSearchRequests": 0,
+			"costUSD": 0.000716,
+			"contextWindow": 200000,
+			"maxOutputTokens": 32000,
+			"canonicalModel": "claude-haiku-4-5",
+			"provider": "firstParty"
+		},
+		"claude-opus-4-8": {
+			"inputTokens": 14,
+			"outputTokens": 3519,
+			"cacheReadInputTokens": 450093,
+			"cacheCreationInputTokens": 74082,
+			"webSearchRequests": 0,
+			"costUSD": 0.7761040000000001,
+			"contextWindow": 1000000,
+			"maxOutputTokens": 64000,
+			"canonicalModel": "claude-opus-4-8",
+			"provider": "firstParty"
+		}
+	},
+	"permission_denials": [],
+	"terminal_reason": "completed",
+	"fast_mode_state": "off",
+	"subtype": "success",
+	"api_error_status": null,
+	"result": "Created **Quote Line Items** in your personal project (*Eval Owner*). Two nodes:\n\n- **Quote Webhook** — POST at path `quote`\n- **Send All Line Items** — one POST to `https://api.example.com/quote` with body `{ \"items\": [...] }`, using `executeOnce` so the entire `line_items` array goes in a single request (not one call per line). It reads from `$json.body.line_items` with a fallback to `$json.line_items`.\n\nThe HTTP node needs no credentials, but note the URL is unauthenticated as written — add auth if the real endpoint requires it.\n\nWORKFLOW_ID=nd1W3ZrHWwfCGdjK",
+	"ttft_ms": 5327,
+	"ttft_stream_ms": 2342,
+	"time_to_request_ms": 370,
+	"type": "result",
+	"duration_ms": 80390,
+	"uuid": "9db897d4-2466-4776-839b-f2487f7a952c"
+}

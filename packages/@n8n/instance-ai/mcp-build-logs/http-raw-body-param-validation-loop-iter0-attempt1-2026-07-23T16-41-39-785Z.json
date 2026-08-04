@@ -1,0 +1,67 @@
+{
+	"is_error": false,
+	"duration_api_ms": 319383,
+	"num_turns": 12,
+	"stop_reason": "end_turn",
+	"session_id": "5452af58-2953-41f4-865d-71dcec7a2590",
+	"total_cost_usd": 1.5977985000000001,
+	"usage": {
+		"input_tokens": 15,
+		"cache_creation_input_tokens": 99942,
+		"cache_read_input_tokens": 535580,
+		"output_tokens": 28180,
+		"server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+		"service_tier": "standard",
+		"cache_creation": { "ephemeral_1h_input_tokens": 0, "ephemeral_5m_input_tokens": 99942 },
+		"inference_geo": "global",
+		"iterations": [
+			{
+				"input_tokens": 2,
+				"output_tokens": 610,
+				"cache_read_input_tokens": 112573,
+				"cache_creation_input_tokens": 4766,
+				"cache_creation": { "ephemeral_5m_input_tokens": 4766, "ephemeral_1h_input_tokens": 0 },
+				"type": "message"
+			}
+		],
+		"speed": "standard"
+	},
+	"modelUsage": {
+		"claude-haiku-4-5-20251001": {
+			"inputTokens": 721,
+			"outputTokens": 15,
+			"cacheReadInputTokens": 0,
+			"cacheCreationInputTokens": 0,
+			"webSearchRequests": 0,
+			"costUSD": 0.0007959999999999999,
+			"contextWindow": 200000,
+			"maxOutputTokens": 32000,
+			"canonicalModel": "claude-haiku-4-5",
+			"provider": "firstParty"
+		},
+		"claude-opus-4-8": {
+			"inputTokens": 15,
+			"outputTokens": 28180,
+			"cacheReadInputTokens": 535580,
+			"cacheCreationInputTokens": 99942,
+			"webSearchRequests": 0,
+			"costUSD": 1.5970024999999999,
+			"contextWindow": 1000000,
+			"maxOutputTokens": 64000,
+			"canonicalModel": "claude-opus-4-8",
+			"provider": "firstParty"
+		}
+	},
+	"permission_denials": [],
+	"terminal_reason": "completed",
+	"fast_mode_state": "off",
+	"subtype": "success",
+	"api_error_status": null,
+	"result": "Done. Created in your personal project.\n\n**What it does** — a scheduled workflow that runs daily at 08:00 and talks to Exchange over EWS (no Gmail, no OpenAI/AI nodes):\n\n1. **Every Morning 8AM** — Schedule Trigger, daily at 08:00.\n2. **Digest Settings** — holds the recipient address (placeholder for you to fill).\n3. **Build FindItem Request** — computes the last-24h cutoff and builds the raw EWS SOAP `FindItem` body (inbox, restricted to `DateTimeReceived >= now-24h`, requesting Subject/From/DateTimeReceived).\n4. **Fetch Inbox via EWS** — HTTP Request POST to `https://mail.example.com/EWS/Exchange.asmx`, raw `text/xml` body, Basic Auth.\n5. **Parse EWS Response** — XML node converts the SOAP response to JSON.\n6. **Build Digest Email** — extracts sender, subject, received time per message, builds an HTML digest table (handles the \"no mail\" case), and assembles the raw EWS SOAP `CreateItem` (SendAndSaveCopy) body.\n7. **Send Digest via EWS** — HTTP Request POST of the CreateItem SOAP to the same endpoint.\n\n**You still need to** set the recipient in *Digest Settings* and attach the \"Exchange EWS\" Basic Auth credential to both HTTP Request nodes (they were skipped in auto-assign, as expected).\n\nOne note: EWS commonly uses NTLM rather than Basic auth — I used Basic since the HTTP Request node supports it directly. If your server requires NTLM, that'll need a proxy or custom header setup.\n\nWORKFLOW_ID=wvZPxiBiWccwoapW",
+	"ttft_ms": 7526,
+	"ttft_stream_ms": 3250,
+	"time_to_request_ms": 654,
+	"type": "result",
+	"duration_ms": 318418,
+	"uuid": "0b5b19eb-284d-44a0-b713-ccbb0427d9b6"
+}

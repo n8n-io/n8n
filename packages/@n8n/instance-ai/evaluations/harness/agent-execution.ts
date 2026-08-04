@@ -15,7 +15,7 @@ import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
 import {
-	isServerBudgetStop,
+	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
 } from './transient-error';
@@ -103,9 +103,7 @@ export async function executeAgentScenario(
 		);
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
-	if (!evalResult.success && isServerBudgetStop(evalResult.errors)) {
-		throw new Error(`The operation was aborted due to timeout: ${evalResult.errors.join('; ')}`);
-	}
+	throwIfServerBudgetStop(evalResult);
 
 	const execMs = Date.now() - execStart;
 

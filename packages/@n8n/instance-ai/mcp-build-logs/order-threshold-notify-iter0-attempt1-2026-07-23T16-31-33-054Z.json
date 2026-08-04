@@ -1,0 +1,67 @@
+{
+	"is_error": false,
+	"duration_api_ms": 59426,
+	"num_turns": 12,
+	"stop_reason": "end_turn",
+	"session_id": "01bd7379-3dd1-42a3-bc13-4417052bc598",
+	"total_cost_usd": 0.7488569999999999,
+	"usage": {
+		"input_tokens": 17,
+		"cache_creation_input_tokens": 67814,
+		"cache_read_input_tokens": 495369,
+		"output_tokens": 3061,
+		"server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+		"service_tier": "standard",
+		"cache_creation": { "ephemeral_1h_input_tokens": 0, "ephemeral_5m_input_tokens": 67814 },
+		"inference_geo": "global",
+		"iterations": [
+			{
+				"input_tokens": 2,
+				"output_tokens": 212,
+				"cache_read_input_tokens": 81982,
+				"cache_creation_input_tokens": 1104,
+				"cache_creation": { "ephemeral_5m_input_tokens": 1104, "ephemeral_1h_input_tokens": 0 },
+				"type": "message"
+			}
+		],
+		"speed": "standard"
+	},
+	"modelUsage": {
+		"claude-haiku-4-5-20251001": {
+			"inputTokens": 655,
+			"outputTokens": 14,
+			"cacheReadInputTokens": 0,
+			"cacheCreationInputTokens": 0,
+			"webSearchRequests": 0,
+			"costUSD": 0.000725,
+			"contextWindow": 200000,
+			"maxOutputTokens": 32000,
+			"canonicalModel": "claude-haiku-4-5",
+			"provider": "firstParty"
+		},
+		"claude-opus-4-8": {
+			"inputTokens": 17,
+			"outputTokens": 3061,
+			"cacheReadInputTokens": 495369,
+			"cacheCreationInputTokens": 67814,
+			"webSearchRequests": 0,
+			"costUSD": 0.748132,
+			"contextWindow": 1000000,
+			"maxOutputTokens": 64000,
+			"canonicalModel": "claude-opus-4-8",
+			"provider": "firstParty"
+		}
+	},
+	"permission_denials": [],
+	"terminal_reason": "completed",
+	"fast_mode_state": "off",
+	"subtype": "success",
+	"api_error_status": null,
+	"result": "Done. Created the workflow **Notify On High-Value Orders** in your personal project.\n\n**How it works** (3 nodes):\n1. **Order Webhook** — POST endpoint at `/order`, receives the order JSON.\n2. **Total Over 100?** — IF node; passes only when `total > 100` (reads `body.total` with a top-level fallback).\n3. **Send Order Notification** — POSTs `{ id, total }` to `https://hooks.example.com/notify`. Orders ≤ 100 hit the unwired false branch and are ignored.\n\nWORKFLOW_ID=dNlFR3fLtY9stYUI",
+	"ttft_ms": 4024,
+	"ttft_stream_ms": 2953,
+	"time_to_request_ms": 385,
+	"type": "result",
+	"duration_ms": 59109,
+	"uuid": "510bcd7d-94d3-4be4-a843-0ce905f20e25"
+}
