@@ -20,6 +20,13 @@ defineOptions({
  * the emitted declarations. Mirrors RouterLink's runtime prop declarations
  * exactly, except that `to` is optional here — without it the component falls
  * back to an `<a>` or to the bare slot.
+ *
+ * Deliberately absent: `viewTransition`. It is in the `RouterLinkProps` *type*
+ * but is not one of RouterLink's declared props — it is a `useLink()` option, and
+ * `RouterLinkImpl.setup` passes only the declared props to `useLink`, so it is
+ * unreachable through `<RouterLink>` itself (vue-router 4.5.0). Declaring it here
+ * would add a prop RouterLink does not have and bind it as a stray DOM attribute.
+ * `ConditionalRouterLink.test.ts` pins both lists so this cannot drift silently.
  */
 const props = defineProps({
 	to: {
