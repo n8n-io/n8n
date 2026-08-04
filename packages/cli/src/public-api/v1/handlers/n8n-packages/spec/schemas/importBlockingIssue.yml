@@ -149,6 +149,29 @@ oneOf:
         description: 'For `id-in-other-project`: the project that already owns the id.'
   - type: object
     description: >
+      A workflow that `folderConflictPolicy=overwrite` would remove, because the package
+      does not contain it, but the caller lacks `workflow:delete` on. Reported instead of
+      removing a subset, which would leave the project matching neither the package nor
+      its previous state.
+    required:
+      - type
+      - workflowId
+      - name
+      - projectId
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-removal-forbidden
+      workflowId:
+        type: string
+      name:
+        type: string
+      projectId:
+        type: string
+        description: Project the workflow was being reconciled against.
+  - type: object
+    description: >
       A node type — or a version of a node type — used by a package workflow that
       this instance does not have, under `missingNodeTypeMode=fail`. One issue is
       reported per missing `(nodeType, typeVersion)` pair.

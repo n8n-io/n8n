@@ -31,7 +31,10 @@ import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	FolderConflictPolicy,
 	MissingWorkflowDependencyPolicy,
+	ProjectConflictPolicy,
+	resolveFolderConflictPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
@@ -302,9 +305,37 @@ export class N8nPackagesService {
 					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
 				);
 			}
-			return await this.projectPackageImporter.import(request, reader, manifest);
+			// Removing workflows is the most destructive thing an import can do, so it takes both
+			// policies saying `overwrite`. Only an explicit mismatch gets here — an omitted folder
+			// policy inherits the project's — and rejecting it beats guessing which half was meant.
+			if (
+				request.folderConflictPolicy === FolderConflictPolicy.Overwrite &&
+				request.projectConflictPolicy !== ProjectConflictPolicy.Overwrite
+			) {
+				throw new BadRequestError(
+					`folderConflictPolicy=overwrite removes workflows the package does not contain, so it requires projectConflictPolicy=overwrite (got "${request.projectConflictPolicy}").`,
+				);
+			}
+			return await this.projectPackageImporter.import(
+				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
+				reader,
+				manifest,
+			);
 		}
-		return await this.workflowPackageImporter.import(request, reader, manifest);
+
+		const folderConflictPolicy = resolveFolderConflictPolicy(request, 'workflow');
+		// A workflow package describes only the workflows it carries, not the whole target scope, so
+		// it cannot tell an unpackaged workflow apart from one that was never meant to be in scope.
+		if (folderConflictPolicy === FolderConflictPolicy.Overwrite) {
+			throw new BadRequestError(
+				'folderConflictPolicy=overwrite is only supported for project packages, which describe the whole project scope. Use merge or fail.',
+			);
+		}
+		return await this.workflowPackageImporter.import(
+			{ ...request, folderConflictPolicy },
+			reader,
+			manifest,
+		);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {

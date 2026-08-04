@@ -8,6 +8,7 @@ type BlockingIssue =
 			name: string;
 	  }
 	| { type: 'project-conflict'; sourceProjectId: string; name: string }
+	| { type: 'workflow-removal-forbidden'; workflowId: string; name: string; projectId: string }
 	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] }
 	| { type: 'variable-unresolved'; name: string; usedByWorkflows: string[] }
 	| { type: 'variable-conflict'; name: string; projectId?: string; usedByWorkflows: string[] }
@@ -42,6 +43,9 @@ function formatIssue(issue: unknown): string {
 	}
 	if (it.type === 'project-conflict') {
 		return `project "${it.name}" (source ${it.sourceProjectId}) already exists on this instance`;
+	}
+	if (it.type === 'workflow-removal-forbidden') {
+		return `workflow "${it.name}" (${it.workflowId}) in project ${it.projectId} is not in the package and would be removed, but you lack permission to remove it`;
 	}
 	if (it.type === 'credential-unresolved') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';

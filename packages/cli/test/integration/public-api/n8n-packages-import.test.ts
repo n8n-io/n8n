@@ -246,6 +246,8 @@ describe('POST /n8n-packages/import', () => {
 					status: 'created',
 				},
 			],
+			removedWorkflows: [],
+			removedFolders: [],
 			folders: [],
 			projects: [],
 			bindings: {
