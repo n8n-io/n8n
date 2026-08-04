@@ -1,0 +1,53 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
+  s_9e3fb7eb7b1034::t_d0a4109cf9df0c 302-310,312,318,324,331,337,344,351,358,365,372,385-432
+  s_9e3fb7eb7b1034::t_e9fad31caf1e1e 13,15-28
+  s_9e3fb7eb7b1034::t_eab280f5b9aa51 433
+packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
+  s_9e3fb7eb7b1034::t_e253a5cb087af5 62-70,142
+  s_9e3fb7eb7b1034::t_aa25afc389970d 143-154,165-166
+  s_9e3fb7eb7b1034::t_59d5102493ae95 227-229
+  s_9e3fb7eb7b1034::t_dece4832d1d1e0 288-290
+  s_9e3fb7eb7b1034::t_0e66a539ee66ba 23-28
+  s_9e3fb7eb7b1034::t_d146cee4cc46ac 99-104
+  s_9e3fb7eb7b1034::t_de053033c6be6e 167,336-338
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/task/getAll.servicePrincipal.test.ts
+  s_9e3fb7eb7b1034::t_e25462176f6b84 1-38
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_9e3fb7eb7b1034::t_bc22a2bf2dc834 6,8-22
+packages/nodes-base/nodes/Microsoft/Teams/test/credentials.ts
+  s_9e3fb7eb7b1034::t_d99999ac5bd8bb 1-5,13-19
+  s_9e3fb7eb7b1034::t_6b00bba3167ec3 20
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/task/getAll.servicePrincipal.workflow.json
+  s_9e3fb7eb7b1034::t_445cf021a4c941 1-103
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_9e3fb7eb7b1034::t_9044ce5a322cca 100-105,108,113-114,137-139,171-180,196-198,211-225
+  s_9e3fb7eb7b1034::t_648ed0de867fd4 7-13,23
+  s_9e3fb7eb7b1034::t_fe98bcb494ae55 226
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_9e3fb7eb7b1034::t_972dc8aade8a8f 59-62
+  s_9e3fb7eb7b1034::t_02144093ea7587 1-58,63-142
+packages/nodes-base/nodes/Microsoft/Teams/test/authentication.test.ts
+  s_9e3fb7eb7b1034::t_96295d45e3f00c 40,46
+  s_9e3fb7eb7b1034::t_87e11c6f3b0619 5
+  s_9e3fb7eb7b1034::t_a852a259906f0a 69-75
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channel/getAll.servicePrincipal.test.ts
+  s_9e3fb7eb7b1034::t_1610d2ec66b1d8 1-46
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/channel/getAll.servicePrincipal.workflow.json
+  s_9e3fb7eb7b1034::t_ebacd4556c3488 1-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "ffebd67b10d00018dd1a83c5df1d0fdd37a4cb3c",
+  "prompts": {},
+  "sessions": {
+    "s_9e3fb7eb7b1034": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba225abc-2d80-4c6a-af99-cceaa9f6df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

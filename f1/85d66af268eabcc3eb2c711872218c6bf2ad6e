@@ -1,0 +1,25 @@
+packages/cli/src/active-workflow-manager.ts
+  s_e95b35fb409eb7::t_8762df8ef97451 80-85
+packages/cli/src/workflows/workflow-trigger-activation.service.ts
+  s_e95b35fb409eb7::t_a8c03617697f86 38
+  s_e95b35fb409eb7::t_267c5f34b161ee 313
+  s_e95b35fb409eb7::t_4d49bc5c7eced9 284,292
+  s_e95b35fb409eb7::t_9d291ce1895099 131-135
+  s_e95b35fb409eb7::t_45598415b65a38 156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f185d66af268eabcc3eb2c711872218c6bf2ad6e",
+  "prompts": {},
+  "sessions": {
+    "s_e95b35fb409eb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21609de-fc2d-47b9-ba4f-e0166bea0bf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_71a9050357a4e8::t_1c765140aac2b1 95-102
+packages/@n8n/config/test/config.test.ts
+  s_71a9050357a4e8::t_ae1a516d7d4424 243-244
+packages/cli/src/metrics/prometheus/__tests__/webhook-and-form-metrics.service.test.ts
+  s_71a9050357a4e8::t_b4eb778c537e77 1-194
+packages/cli/src/webhooks/live-webhooks.ts
+  s_71a9050357a4e8::t_1277e195cf5b1c 93-94
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_71a9050357a4e8::t_af2128acee347a 22
+  s_71a9050357a4e8::t_0345c67cc4b280 48
+  s_71a9050357a4e8::t_57c826c694badd 49,68-69
+  s_71a9050357a4e8::t_0d71854948647e 20
+packages/cli/src/metrics/prometheus/workflow-info-metrics.service.ts
+  s_71a9050357a4e8::t_48442fe422ef2b 1-60
+packages/cli/src/webhooks/webhook-request-handler.ts
+  s_71a9050357a4e8::t_93fc8a397a4e90 238,249-254,256-278
+  s_71a9050357a4e8::t_4d5b6e10151049 255
+  s_71a9050357a4e8::t_f7a887f84eafd8 9
+packages/cli/src/metrics/prometheus/__tests__/workflow-info-metrics.service.test.ts
+  s_71a9050357a4e8::t_324e7eac9f8de2 1-178
+packages/cli/src/abstract-server.ts
+  s_71a9050357a4e8::t_5fc553a5cf2f6b 277,281
+  s_71a9050357a4e8::t_81a10a0cda1efa 242-245,250,253,256,259,262,266-269
+  s_71a9050357a4e8::t_9e711ab4778d27 285-288
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_71a9050357a4e8::t_8cd5a38d4eeaf5 129
+  s_71a9050357a4e8::t_6bee700008a45f 21,47,100
+  s_71a9050357a4e8::t_e172fb7c8e59ed 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c579ac9dc2df70fdc7497d4cd85a7fb04615489e",
+  "prompts": {},
+  "sessions": {
+    "s_71a9050357a4e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ce73914-c531-4d9b-91c9-a27434a0bc43",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

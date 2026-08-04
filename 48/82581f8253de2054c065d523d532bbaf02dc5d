@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/common.descriptions.test.ts
+  s_37e451fff42af7::t_1e55204f70aede 12-16
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/workbook/getAll.everything.test.ts
+  s_37e451fff42af7::t_1e0d02662b483d 1-38
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/workbook/getAll.test.ts
+  s_37e451fff42af7::t_fcd3e9620a5486 7-9
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_37e451fff42af7::t_e9e22691fe9d19 7
+  s_37e451fff42af7::t_ebfa6d9ffb2ea9 18-19
+  s_37e451fff42af7::t_0d4a06ed2a73f9 8
+  s_37e451fff42af7::t_4c07797e1f789a 40-50
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/workbook/getAll.everything.workflow.json
+  s_37e451fff42af7::t_43ae371babf858 1-59
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/getAll.operation.ts
+  s_37e451fff42af7::t_136f6cf24cba20 15-19,29-40,64,85-162,171-173,175-184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "4882581f8253de2054c065d523d532bbaf02dc5d",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

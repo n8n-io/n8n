@@ -1,0 +1,38 @@
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_96efff3c0110dd::t_98c070bcd99f53 191-197
+  s_96efff3c0110dd::t_50b9373d60f73d 278,280
+  s_96efff3c0110dd::t_aabedcbad6a9a7 299-305
+  s_96efff3c0110dd::t_2d603dcc5b355d 227-233
+packages/cli/src/permissions.ee/__tests__/check-access.test.ts
+  s_96efff3c0110dd::t_c59039c560ccbd 188
+  s_96efff3c0110dd::t_562374e71790ae 249
+  s_96efff3c0110dd::t_246942c76a111e 144
+  s_96efff3c0110dd::t_e80901b29cff01 166
+  s_96efff3c0110dd::t_158731c1bb0a8f 230
+  s_96efff3c0110dd::t_e7b222eb8cf968 353
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_96efff3c0110dd::t_d2120347e5f103 172-176,178
+  s_96efff3c0110dd::t_0234e4c22b0910 177
+packages/cli/src/permissions.ee/check-access.ts
+  s_96efff3c0110dd::t_33807b0ec9aec4 1-9
+  s_96efff3c0110dd::t_f0b11aa7addf93 49
+  s_96efff3c0110dd::t_b180edc3b8187a 73-77
+  s_96efff3c0110dd::t_6c9bddfd4fe0db 42,50-53,55,82,117
+  s_96efff3c0110dd::t_f30c46ed03bd5b 107-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "a39de57b70881c6753edcb917da350f1b35e0170",
+  "prompts": {},
+  "sessions": {
+    "s_96efff3c0110dd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b678bea9-05dd-4f33-b723-5103e3ca2388",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

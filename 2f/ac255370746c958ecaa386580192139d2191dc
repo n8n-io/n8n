@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Box/BoxTrigger.node.ts
+  b7f4838cc4338ca5 10,265,271-278,281,283-284,286-297,299
+packages/nodes-base/nodes/Box/GenericFunctions.ts
+  b7f4838cc4338ca5 72-93
+packages/nodes-base/nodes/Box/__test__/BoxTrigger.node.test.ts
+  b7f4838cc4338ca5 3,12-13,36-37,40-41,43,45-48,58-60,64-65,68,70-73,83-84,86,89-92,102,106,110-113,123-140,142-152,154-157,162-164,166,169,171-174,180-182,188-191,195-206,211-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "2fac255370746c958ecaa386580192139d2191dc",
+  "prompts": {
+    "b7f4838cc4338ca5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2de51b21-7f2c-44ab-a03d-1a8f29824f48",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 269,
+      "total_deletions": 189,
+      "accepted_lines": 196,
+      "overriden_lines": 0
+    }
+  }
+}

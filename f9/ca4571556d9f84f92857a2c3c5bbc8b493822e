@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_7f79453e3897c7::t_4fdc51a74e83e5 146,162
+  s_7f79453e3897c7::t_24ee37b0a78e7b 147-150
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_7f79453e3897c7::t_357ee4b1cc3422 1010
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_7f79453e3897c7::t_b17f5e541f417b 579
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_7f79453e3897c7::t_2047050ebcc1ba 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f9ca4571556d9f84f92857a2c3c5bbc8b493822e",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7f79453e3897c7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "545083d9-9d79-4840-9720-65d9218b6739",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_906c63569e790a::t_fea1144243802d 138-156
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_906c63569e790a::t_b14a28beae5783 88
+  s_906c63569e790a::t_626df9fc732a14 178-183
+  s_906c63569e790a::t_552323d699604e 333,339,344,347-348,351,355
+  s_906c63569e790a::t_d638612e132d55 369
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ddbe11fd56418476d5e85a701f89afb30db4742d",
+  "prompts": {},
+  "sessions": {
+    "s_906c63569e790a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5a5300c-7aa8-492b-b221-853272f61e6e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

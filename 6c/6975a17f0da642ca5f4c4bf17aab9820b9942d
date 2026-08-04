@@ -1,0 +1,30 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_1da5aca4f31b39::t_866f4d0b5e576d 126
+  s_1da5aca4f31b39::t_7dd1e53d5460e1 210-211
+  s_1da5aca4f31b39::t_863fe92f800b72 120-122
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_1da5aca4f31b39::t_f58040b74789a5 26
+  s_1da5aca4f31b39::t_7176d11b860887 594-787,789-818
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-requirement.exporter.test.ts
+  s_1da5aca4f31b39::t_91f68f574e9189 1-5,9-10,15-24,26-27,29-30,57-62,64-65,78-82,85-86,88-89,95
+  s_1da5aca4f31b39::t_3ba6dd63f4877c 63,66-77
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_1da5aca4f31b39::t_105ac2e2d500f0 1,4-5,11,22-26,41-44,50,62-77
+  s_1da5aca4f31b39::t_aeee2216a621ce 47-49,51-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6c6975a17f0da642ca5f4c4bf17aab9820b9942d",
+  "prompts": {},
+  "sessions": {
+    "s_1da5aca4f31b39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3452aa4-968e-4380-aaf8-be8227ce8dbf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

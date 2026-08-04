@@ -1,0 +1,46 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b50db03aa6059c::t_a3d15c4c9c7c69 3068-3072
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_b50db03aa6059c::t_0ce0d484455531 294
+  s_b50db03aa6059c::t_0cf4a3eced8bdf 25-26,28,31,34,36-38
+  s_b50db03aa6059c::t_32704b6d495b93 7
+packages/frontend/@n8n/stores/package.json
+  s_b50db03aa6059c::t_82a30ae596c705 40
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_b50db03aa6059c::t_94580370b44288 4
+  s_b50db03aa6059c::t_90ea4dd1f3932e 199-202
+  s_b50db03aa6059c::t_281d1a8670ca2c 191
+  s_b50db03aa6059c::t_919b913c76498e 2
+  s_b50db03aa6059c::t_434991dd8bbca3 173
+  s_b50db03aa6059c::t_0dd440e2381ce5 172
+  s_b50db03aa6059c::t_30d32495f3b553 174-176,188-190
+  s_b50db03aa6059c::t_6c84e452f41035 192-194,196-198
+  s_b50db03aa6059c::t_6d0ae647a13535 203-205
+  s_495f8152979774::t_04fbd39e36729e 177-187,195,206-221
+pnpm-lock.yaml
+  s_b50db03aa6059c::t_047264507932d8 5383-5385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "efa37b98e54c755b13404aaec6bcdcaf5272d373",
+  "prompts": {},
+  "sessions": {
+    "s_495f8152979774": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "450f2223-609a-4015-9ba7-a433acca763a",
+        "model": "unknown"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_b50db03aa6059c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e8e1e000-8abd-4790-a720-f00dd1cc84dc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

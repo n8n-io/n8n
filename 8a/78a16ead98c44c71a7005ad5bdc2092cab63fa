@@ -1,0 +1,24 @@
+packages/cli/src/services/__tests__/auth.roles.service.test.ts
+  s_65bcaedfaa228f::t_fef21cba3b9f9b 245-246
+  s_65bcaedfaa228f::t_83971e47477d88 214-215
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_65bcaedfaa228f::t_ce1e6aa74f4c62 180
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_65bcaedfaa228f::t_6c0f8e323eb660 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "8a78a16ead98c44c71a7005ad5bdc2092cab63fa",
+  "prompts": {},
+  "sessions": {
+    "s_65bcaedfaa228f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a10600ed-0bf3-4b64-ace9-d7d2424b6c6e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

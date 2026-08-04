@@ -1,0 +1,21 @@
+cubic.yaml
+  s_964efe5af58bf4::t_d02b92f1080241 354
+  s_964efe5af58bf4::t_33a3b93d8b3e67 330-333,338,345,351,355,361-362,365-367
+  s_964efe5af58bf4::t_0ecf7e6a9146e6 334-337,339-344,346-350,352-353,356-360,363-364,368-369
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0cd8a668080661a9840bf55238a33768273f2524",
+  "prompts": {},
+  "sessions": {
+    "s_964efe5af58bf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80cff970-639b-4c3e-b4ed-1a9e2b79ddca",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

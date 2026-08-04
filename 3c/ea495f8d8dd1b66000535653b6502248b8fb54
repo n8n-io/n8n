@@ -1,0 +1,64 @@
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-test-resource.resolver.ts
+  s_1c7d6881d5389f::t_4906c695d4b849 12
+  s_1c7d6881d5389f::t_7df16a4cebd97b 42-45
+packages/nodes-base/nodes/Form/test/utils.test.ts
+  s_7f4926b30475aa::t_37dc12b464f4f9 1029-1080,1082-1176
+  s_7f4926b30475aa::t_0603e21cab0cf7 1081
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-test-resource.resolver.api.test.ts
+  s_1c7d6881d5389f::t_56c268928ba4c1 37
+  s_1c7d6881d5389f::t_3a53616a1b8c86 83,91-92
+  s_1c7d6881d5389f::t_256dc36429755f 93-94
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_1c7d6881d5389f::t_3b8ce81b59597a 771
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_1c7d6881d5389f::t_41368cbac824e1 46
+  s_1c7d6881d5389f::t_c120f3c74556fa 89,99-100
+  s_1c7d6881d5389f::t_e00d9731dc61f3 101-102
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-check-proxy.service.test.ts
+  s_7f4926b30475aa::t_ac063c68ce978c 3
+  s_7f4926b30475aa::t_8c4974f6c4cbe2 4-6
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/credential-check-helper-functions.test.ts
+  s_7f4926b30475aa::t_3be259309facab 32
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_7f4926b30475aa::t_6f177840a413ac 1176-1184,1186,1188-1193
+packages/core/src/execution-engine/execution-context.service.ts
+  s_7f4926b30475aa::t_a3ba55edf7a64a 18
+  s_7f4926b30475aa::t_69396d088662bb 19
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-resource.resolver.ts
+  s_1c7d6881d5389f::t_dd44e706472395 13
+  s_1c7d6881d5389f::t_b224ba22fe5ff7 43-46
+packages/core/src/execution-engine/__tests__/workflow-execute-process-process-run-execution-data.test.ts
+  s_7f4926b30475aa::t_a1722538f90fae 43
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_1c7d6881d5389f::t_134c5c8576640c 11-19
+packages/cli/src/modules/oauth-server/__tests__/form-trigger-resource.resolver.api.test.ts
+  s_1c7d6881d5389f::t_970c2756149c7f 82,88-89
+  s_1c7d6881d5389f::t_b350260b15210f 107
+  s_1c7d6881d5389f::t_056a4b18891bcd 36
+  s_7f4926b30475aa::t_7e2608ea54b382 150-162
+  s_1c7d6881d5389f::t_84fbb5221200a3 90-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3cea495f8d8dd1b66000535653b6502248b8fb54",
+  "prompts": {},
+  "sessions": {
+    "s_1c7d6881d5389f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6fb1635-0c7b-4726-a4c8-0d421801fa19",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_7f4926b30475aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c04de74e-1077-45a2-8601-77f8a3d5667f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

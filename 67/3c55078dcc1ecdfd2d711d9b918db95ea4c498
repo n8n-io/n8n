@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_6e06771097abf4::t_84fb1296ddcfe5 97-107
+packages/@n8n/api-types/src/agents/rich-card.schema.ts
+  s_6e06771097abf4::t_cc0f7c0b7b3c55 137-139
+packages/frontend/editor-ui/src/features/agents/components/interactive/N8nChatActionCard.vue
+  s_6e06771097abf4::t_cc0f7c0b7b3c55 135-139
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/n8nChatInteraction.ts
+  s_6e06771097abf4::t_cc0f7c0b7b3c55 92-93
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_6e06771097abf4::t_84fb1296ddcfe5 102-112,114-119
+  s_6e06771097abf4::t_c6f427b86e21b0 113
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/n8nChatInteraction.test.ts
+  s_6e06771097abf4::t_84fb1296ddcfe5 63-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "673c55078dcc1ecdfd2d711d9b918db95ea4c498",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

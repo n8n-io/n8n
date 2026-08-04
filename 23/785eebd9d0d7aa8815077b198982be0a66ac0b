@@ -1,0 +1,49 @@
+packages/cli/src/evaluation.ee/__tests__/evaluation-collection.service.test.ts
+  s_5d6be4e6bc70a6::t_274cae27bf4116 3,5
+  s_5d6be4e6bc70a6::t_78078e25c96808 349,355-362,365-370,372,374-376
+  s_5d6be4e6bc70a6::t_7b2664f05ddf95 116
+  s_5d6be4e6bc70a6::t_8df195a53fa9d2 128-132
+  s_5d6be4e6bc70a6::t_1af880de472cda 149
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_5d6be4e6bc70a6::t_1cb284d775e97e 18
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.test.ts
+  s_5d6be4e6bc70a6::t_699343aacb8611 221
+  s_5d6be4e6bc70a6::t_f2e10709d79137 202
+  s_5d6be4e6bc70a6::t_19d27c0c012848 201,203-220,222-227
+packages/@n8n/db/src/repositories/test-case-execution.repository.ee.ts
+  s_5d6be4e6bc70a6::t_3e127e7c546019 97
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_8da6fa67654818 220-224
+  s_5d6be4e6bc70a6::t_1e7ca6aa23cdd1 203-209,216-219,232-235,242-252
+  s_5d6be4e6bc70a6::t_b4e2f76f5c8912 75-84,86,97,99,102,112-114
+  s_5d6be4e6bc70a6::t_0ee4f517272e21 202
+  s_5d6be4e6bc70a6::t_a7e69ddcb24bd3 7
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_37e6174c80b18a 288-289
+packages/cli/src/evaluation.ee/evaluation-collection.service.ts
+  s_5d6be4e6bc70a6::t_47164df7254052 82
+  s_5d6be4e6bc70a6::t_3934d4a65eff4a 15-16
+  s_5d6be4e6bc70a6::t_145cfee210ea79 37-49
+  s_5d6be4e6bc70a6::t_beb779b6ebd7ed 331-337,340-341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "23785eebd9d0d7aa8815077b198982be0a66ac0b",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

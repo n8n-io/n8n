@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_eee06423d12f4c::t_b35a7bd2de5821 15,34,63,207
+packages/cli/src/modules/instance-ai/__tests__/workflow-templates.service.test.ts
+  ai_agent 6-9
+  s_eee06423d12f4c::t_7796fa8dd6f3e0 2,11-12,14,18,22-34,37,43-48,55,59,68,77
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_eee06423d12f4c::t_922619bacd8aba 2,18-19,23-29,39-41,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "486d0d80a3c5474738037416ee4b13037dd7c292",
+  "prompts": {},
+  "sessions": {
+    "s_eee06423d12f4c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3c8f-60d1-7763-a2e2-9f630282b49e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

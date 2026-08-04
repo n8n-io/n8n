@@ -1,0 +1,38 @@
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_64390ec65834a0::t_e9d40a20340969 54-62,76-82,85-93,96-97,100,111
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_64390ec65834a0::t_446c455cfd1cb3 153-161,163-167
+  s_64390ec65834a0::t_8147fc8cfba11f 162
+  s_64390ec65834a0::t_bced0631b1fe32 246,260-267
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_64390ec65834a0::t_ef9a6efb7f19d5 113,115,124-144
+packages/@n8n/api-types/src/dto/workflow-history/workflow-history-list-item.dto.ts
+  s_64390ec65834a0::t_112ed62e6b5657 11-12
+packages/@n8n/api-types/src/dto/tag/tag-public.dto.ts
+  s_64390ec65834a0::t_3668e94cfe4c8a 8-9,15-16
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_64390ec65834a0::t_fe7deb126c5398 140-189,192
+  s_64390ec65834a0::t_7c59ef7161d8f6 1,6,9-10,15,19-20
+  s_64390ec65834a0::t_a025699ab44d3d 190-191
+  s_64390ec65834a0::t_834bed1d852b76 21
+packages/cli/src/public-api/v1/openapi-gen/__tests__/schema-registry.test.ts
+  s_64390ec65834a0::t_bd3af458dd8862 58-61
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_64390ec65834a0::t_b05b7c4ea52599 100-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f5beb42a083cd98e49b4b29381ff9791ca0920db",
+  "prompts": {},
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_b8d0273386475c::t_0cbb3de212e030 1,5-15,17-18,21-32,35-40,46-50,52-57,60-67,71,100-109,113,123,126,129,131-134,138,152-155,161,182-186,189,203,209,218-219,222,224-227,230,245,252,254,257,263-265,269,271,274,277,281-283,287,289,298-300,304,313,316,318,321,323-324,329-331,336,338-342,344,346-347,359-363,365,367-370,372-373,375-389,392-394,396-399,401-404,406,408-410,412-417,420-422,424-427,429-439,441-445,447-480,483-488,492,505,511-534
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_b8d0273386475c::t_f93f40e1602def 1-3
+  s_b8d0273386475c::t_bdd715ea1a1672 294,299-311,319,322-324,328-334,337-344,346-350,360-363
+  s_b8d0273386475c::t_51aa3b2d9faf17 353,355,357-358
+  s_b8d0273386475c::t_b03171e282971e 270
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  s_b8d0273386475c::t_201a8b64ba95e2 8-22,24-30,54-59
+packages/nodes-base/credentials/test/aws-assume-role-utils.test.ts
+  s_b8d0273386475c::t_027d76c0049e04 145-151
+  s_b8d0273386475c::t_bea06937d063f5 5-14,17-36,93,95-101,103-109,112-116,119,121-144,153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "b2640b0d0d0493c3f0f663e0f9c236814922d9ba",
+  "prompts": {},
+  "sessions": {
+    "s_b8d0273386475c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fafbcaa6-e0cd-4eee-8ba9-496bd316ad65",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

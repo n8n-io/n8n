@@ -1,0 +1,32 @@
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_7fd2ecc4a3637f::t_537602b931723f 49,53-54,56-57,59,61-65
+  s_7fd2ecc4a3637f::t_d2bf9caf227d5f 3
+  s_7fd2ecc4a3637f::t_04679feb633512 48,50-52,55,58,60,66-71
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.test.ts
+  s_7fd2ecc4a3637f::t_e1772b0ef06af7 128-135
+  s_7fd2ecc4a3637f::t_64065641a9b27a 8-15
+  s_7fd2ecc4a3637f::t_a53b9879872659 85
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_7fd2ecc4a3637f::t_ef75bb5f125a0e 113
+  s_7fd2ecc4a3637f::t_08ed1594a6195e 803-804
+  s_7fd2ecc4a3637f::t_7cdf0b12fa0611 373-374,383-384,393
+  s_7fd2ecc4a3637f::t_f2fc71398eefb4 18-24
+  s_7fd2ecc4a3637f::t_bef54cf5b30054 690,700-701,703,730,737-738
+  s_7fd2ecc4a3637f::t_1357924cd6954b 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4f60503607c39c21e6f6e8faf59f678f5b60bb5e",
+  "prompts": {},
+  "sessions": {
+    "s_7fd2ecc4a3637f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f3ced4c7-c658-456d-a980-a8ffb6c9be9c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

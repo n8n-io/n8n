@@ -1,0 +1,28 @@
+packages/@n8n/workflow-sdk/src/validation/build-config-schema.ts
+  s_b23ddd6c26be4b::t_b1339d4121bb57 2-18
+packages/cli/src/node-catalog/node-catalog.service.ts
+  s_b23ddd6c26be4b::t_e79ea1514189c1 16
+  s_b23ddd6c26be4b::t_d559def3e37188 303-313,315
+  s_b23ddd6c26be4b::t_4795f7caeb6ec4 7-8,14,19-29,49-52,74-80,96,166,168-170,173-180,215,219,230-232,234,240,244-261,272-302,317-350
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_b23ddd6c26be4b::t_3bc06b85136151 340-347,349,351-354,356-362
+packages/@n8n/workflow-sdk/src/validation/build-config-schema.equivalence.test.ts
+  s_b23ddd6c26be4b::t_5f5e389dd527f8 155-156,159
+  s_b23ddd6c26be4b::t_acfe71e18d7cda 80-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "6843276b2251eecf1f9f6a6df257272c9dae7493",
+  "prompts": {},
+  "sessions": {
+    "s_b23ddd6c26be4b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22f69aef-f72a-4edc-bb09-de2743566e30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

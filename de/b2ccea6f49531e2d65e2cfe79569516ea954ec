@@ -1,0 +1,21 @@
+packages/cli/src/workflows/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_22a3bb691f57a1::t_108f1168c90e29 116-142
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  s_22a3bb691f57a1::t_d4cfbf639a40eb 34-35,53,55,62-63,81,84-90,97,110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "deb2ccea6f49531e2d65e2cfe79569516ea954ec",
+  "prompts": {},
+  "sessions": {
+    "s_22a3bb691f57a1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9754-7178-7c51-adc0-ab6f3b0f9aed",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

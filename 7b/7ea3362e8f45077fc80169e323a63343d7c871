@@ -1,0 +1,20 @@
+scripts/check-boundaries.mjs
+  s_768f033e6fe33a::t_de87229019a085 48-50
+  s_768f033e6fe33a::t_a24b0004d03d36 35-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "7b7ea3362e8f45077fc80169e323a63343d7c871",
+  "prompts": {},
+  "sessions": {
+    "s_768f033e6fe33a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da0be38a-3d09-4b8c-91c9-2a290c191b69",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

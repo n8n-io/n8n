@@ -1,0 +1,27 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_26ed639af6e113::t_406536306e8739 809-826
+packages/frontend/editor-ui/src/features/environments/components/EnvironmentSelector.vue
+  s_26ed639af6e113::t_7ae62f17624a2b 11-13,15-16,18-19
+packages/cli/src/services/project-environment.service.ts
+  s_26ed639af6e113::t_24bf08128e2509 42-46
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowPublishModal.vue
+  s_26ed639af6e113::t_beb000a4ac94d4 469,472
+  s_26ed639af6e113::t_a41955ad010d0e 376-384,386,389-399,402-435
+  s_26ed639af6e113::t_4081b4c47bdede 243-246,260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "bdf28068f5bac3c73d09649ea45f1ecf23e55375",
+  "prompts": {},
+  "sessions": {
+    "s_26ed639af6e113": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0185a959-5753-4cfb-8236-d27a593bc0c2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/string-utils.test.ts
+  ai_agent 288-290
+  s_c77c9c67421351::t_e948b77f5de815 280-287,291-308
+  s_c77c9c67421351::t_961bb3dcd3f5dd 12
+packages/@n8n/workflow-sdk/src/node-groups.test.ts
+  s_c77c9c67421351::t_288a60b0130dcb 144-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "85c4dda3803fd53e54dae21941984e4d44612173",
+  "prompts": {},
+  "sessions": {
+    "s_c77c9c67421351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd7b1752-695a-4039-902a-08408f1d312e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

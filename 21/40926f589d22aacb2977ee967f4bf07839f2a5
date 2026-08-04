@@ -1,0 +1,37 @@
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_bfe08920dde21c::t_f2c499380f58e5 1,8-14,17-49,62-225,231-232,234-360,365-409,411-428,430-431,434-439,444-448,450-452,454-460
+  ai_agent 15
+  s_bfe08920dde21c::t_767a52477273bc 410
+  s_bfe08920dde21c::t_49bb3299e0ad80 2-7,226-229
+  s_bfe08920dde21c::t_6c4b4039f2d6ec 51-56
+  s_bfe08920dde21c::t_c2da3e18d28b8c 57-61
+  s_bfe08920dde21c::t_ef640672a6d33a 429,432-433,440-443,449,453
+  s_bfe08920dde21c::t_4c76e03d8485cf 230,233
+  h_32d8cd6a0d6aad 16,50
+  s_bfe08920dde21c::t_a2a6a4cb8ce89e 361-364
+packages/cli/test/integration/scheduling/README.md
+  s_bfe08920dde21c::t_be3cc308c0d678 119-129,131-195
+  s_bfe08920dde21c::t_dd4f60adc232b8 3,9-17
+  h_32d8cd6a0d6aad 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2140926f589d22aacb2977ee967f4bf07839f2a5",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bfe08920dde21c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37754ac8-ac05-47aa-9a77-c3b4e18360ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

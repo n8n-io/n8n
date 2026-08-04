@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  ai_agent 29,32-53,56
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_ddb70a7092f02b::t_5a7185a1a9ab48 316-387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "75ec8d491a058de95a9161934e1eb37528a05173",
+  "prompts": {},
+  "sessions": {
+    "s_ddb70a7092f02b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad143469-37e4-41a7-981b-d978a09bcd18",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

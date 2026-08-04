@@ -1,0 +1,46 @@
+packages/@n8n/cli/docs/commands/package.md
+  s_77d5f5543ad845::t_89a782403697f2 49
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_77d5f5543ad845::t_b7558751499484 19
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_77d5f5543ad845::t_ade0fa021a9d2d 148
+  s_77d5f5543ad845::t_86734c89c17710 33-34
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_77d5f5543ad845::t_500d0c2ca47d87 329,346,350
+  s_77d5f5543ad845::t_77024992e9c0cc 43
+  s_77d5f5543ad845::t_feff32e70cd6b3 216,226
+packages/cli/src/modules/n8n-packages/entities/folder/folder-conflict-policy.ts
+  s_77d5f5543ad845::t_a4b070441caae6 5-7,14-15,18
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_77d5f5543ad845::t_9e0a681c5d0418 132,134,137-142
+  s_77d5f5543ad845::t_109399015dfe35 260
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_77d5f5543ad845::t_ccf8580dca022a 83
+packages/@n8n/cli/src/commands/package/import.ts
+  s_77d5f5543ad845::t_481dcccd3134e8 39
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_77d5f5543ad845::t_94c0918d36f6ef 78,87,89
+  s_77d5f5543ad845::t_fa6185378d05ab 6
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-conflict-policy.test.ts
+  s_77d5f5543ad845::t_e8859b5dec304a 1,3-5,9
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_77d5f5543ad845::t_0985fb26130f6a 15,35,57,78
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_77d5f5543ad845::t_77b798782d906c 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "48bfdef4a4912ebb9568bf1edcecc0d4b5749f91",
+  "prompts": {},
+  "sessions": {
+    "s_77d5f5543ad845": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da180840-23ce-41df-a8b0-b2aed4ec08dc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

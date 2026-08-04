@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.test.ts
+  s_daaf7502b5ecf5::t_a52f8d01986a75 80,83,85,87-89,92,95,97,99,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "1df468a8b0df7aae1a74b8220d8f00f371466c0b",
+  "prompts": {},
+  "sessions": {
+    "s_daaf7502b5ecf5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3c428ae8-f59a-432d-a662-e695b5873551",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

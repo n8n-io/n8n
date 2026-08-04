@@ -1,0 +1,32 @@
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_3e31ec08b26a81::t_0624aa90ab75b9 193-195,202-204
+  s_3e31ec08b26a81::t_49e5b1d4a71401 10,168-192,196-201,205-206
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_3e31ec08b26a81::t_2c277ae85cd71d 31-36,38-46,48-51,410-415,417-425,427-430,865-870,872-880,882-885,1021-1026,1028-1036,1038-1041
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_3e31ec08b26a81::t_2c277ae85cd71d 31-36,38-46,48-51
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_3e31ec08b26a81::t_2c277ae85cd71d 31-36,38-46,48-51,486-491,493-501,503-506,640-645,647-655,657-660
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_3e31ec08b26a81::t_0b6c24ff5ba2fa 42-77
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_3e31ec08b26a81::t_2c277ae85cd71d 31-36,38-46,48-51,448-453,455-463,465-468,602-607,609-617,619-622
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_3e31ec08b26a81::t_2c277ae85cd71d 31-36,38-46,48-51,410-415,417-425,427-430,564-569,571-579,581-584,983-988,990-998,1000-1003,1141-1146,1148-1156,1158-1161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "265d1b3828aa5de49b3535a815518455c7b7da7b",
+  "prompts": {},
+  "sessions": {
+    "s_3e31ec08b26a81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f81af-e9a0-7ed0-9878-9dbf7e2960a0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

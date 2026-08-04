@@ -1,0 +1,60 @@
+packages/@n8n/local-gateway/src/main/index.ts
+  s_53b05fe21441a7::t_467fd47f4ba3bb 144
+packages/@n8n/local-gateway/src/shared/types.ts
+  s_53b05fe21441a7::t_86628cd4adff18 278-279
+packages/@n8n/local-gateway/src/main/notifications.ts
+  s_53b05fe21441a7::t_a2e3eb7462986d 20-21
+  s_53b05fe21441a7::t_55b0edf3cb92aa 52-55
+packages/@n8n/local-gateway/src/renderer/components/TaskResultCard.vue
+  s_53b05fe21441a7::t_6c6194a72cfd45 1-280
+packages/@n8n/local-gateway/src/renderer/views/HomeView.vue
+  s_53b05fe21441a7::t_0b850fb11ba769 238-239
+  s_53b05fe21441a7::t_5bb7919be00aba 4,11
+  s_53b05fe21441a7::t_98aa35cb71ab31 19-28
+packages/@n8n/local-gateway/src/main/preload.ts
+  s_53b05fe21441a7::t_3816008c783f95 204-207
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  s_53b05fe21441a7::t_225bab2785205b 100-104
+  s_53b05fe21441a7::t_7176c5895bf439 62
+packages/@n8n/local-gateway/src/renderer/App.vue
+  s_53b05fe21441a7::t_e969dbba33fbd7 34-44
+  s_53b05fe21441a7::t_9ad146221a8166 79
+  s_53b05fe21441a7::t_902b5f7f8a393b 128-129,131,135,141-145
+  s_53b05fe21441a7::t_94e0234be76cfe 7
+  s_53b05fe21441a7::t_112d7d12f45754 195-197
+  s_53b05fe21441a7::t_7b5e37dfb8d866 16,18
+packages/@n8n/local-gateway/src/renderer/components/TaskComposer.vue
+  s_53b05fe21441a7::t_e11c22ecd4d2a1 12-16
+  s_53b05fe21441a7::t_c58e0d002c6017 134
+  s_53b05fe21441a7::t_6918e7593f4ced 74-94
+  s_53b05fe21441a7::t_62ab401c7edb0d 204-205
+  s_53b05fe21441a7::t_432ecc240e298f 4,24-27
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_53b05fe21441a7::t_2d14fb15c45b8d 408-412
+  s_53b05fe21441a7::t_d618aca269dac5 138
+  s_53b05fe21441a7::t_05304a07b4af47 55
+  s_53b05fe21441a7::t_7328d8c4bb6596 14
+packages/@n8n/local-gateway/src/renderer/assistant/task-result-store.ts
+  s_53b05fe21441a7::t_8c24a7516cd5bf 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "1ddc0dc19e7f01dce829b26375b18c2299fd600e",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53b05fe21441a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d914a37-639d-493f-bf19-e3d7e4014518",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

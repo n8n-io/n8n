@@ -1,0 +1,67 @@
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_770a4f5233186c::t_301531cf5a5b5e 186,193-203,205-217,222-229,234,239-244,248,253-257
+  s_1ef72897374beb::t_400450e45af918 204,218-221
+  s_63922c16247082::t_8ab963d8e020ba 164,176
+  s_1ef72897374beb::t_84b4d20caa4276 235,237
+  s_d8236b8b5400e8::t_d8624da6429b48 230-233,236,238,249-252
+  s_1ef72897374beb::t_24e966b9ea53aa 245-247
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_770a4f5233186c::t_93105334c24842 1,19-24,28-57
+  s_770a4f5233186c::t_531485facce310 114-115,125,129
+  s_770a4f5233186c::t_fe366d466e534b 97-99
+  s_770a4f5233186c::t_e93d55ec7ae3f1 25-27
+  s_813e262a61f3c4::t_6ec0488e422cf1 58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "abcd49f51250d2ffc910abceda1f268906119bb3",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1ef72897374beb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e495e5d-7657-49d3-9e14-471f81cd06f2",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_63922c16247082": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b337778-08d5-4266-bf43-54422800dd01",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    },
+    "s_813e262a61f3c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b40806b-1b79-457f-8546-5d2b9b1d3ad1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d8236b8b5400e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    }
+  }
+}

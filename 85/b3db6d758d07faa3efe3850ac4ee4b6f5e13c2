@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-06-11-workflow-context-user-needs.md
+  s_bb17b049fc2e2d::t_a4535963a45f4e 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "85b3db6d758d07faa3efe3850ac4ee4b6f5e13c2",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_9537b4b5347bce::t_36907edfa5d3c3 334
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_9537b4b5347bce::t_b58f3030d54fdc 319-349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2020dcc6d8d8e7197e08f4a58cb6d44cd43979d4",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9537b4b5347bce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8348ce0-c711-476f-8dc5-fcb69cfde379",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

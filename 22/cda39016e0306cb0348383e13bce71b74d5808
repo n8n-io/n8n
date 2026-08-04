@@ -1,0 +1,19 @@
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_e8519a0ce8a335::t_94b204c0e45540 1910
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "22cda39016e0306cb0348383e13bce71b74d5808",
+  "prompts": {},
+  "sessions": {
+    "s_e8519a0ce8a335": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d3e3e2-1397-4c61-a5d4-0922e7f3b3ec",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

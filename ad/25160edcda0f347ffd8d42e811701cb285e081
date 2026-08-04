@@ -1,0 +1,28 @@
+packages/cli/src/execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts
+  s_b58f6cfcaecfb8::t_adb2c6a54a4c2a 455
+packages/cli/src/execution-lifecycle/execution-lifecycle-hooks.ts
+  s_b58f6cfcaecfb8::t_9c15fdf50c7ec6 480
+packages/cli/src/external-hooks.ts
+  s_b58f6cfcaecfb8::t_5501555146bd0f 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad25160edcda0f347ffd8d42e811701cb285e081",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b58f6cfcaecfb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "134fb621-70a1-4d20-a21e-83104c4c7f41",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

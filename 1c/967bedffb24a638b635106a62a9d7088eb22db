@@ -1,0 +1,17 @@
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  7cbfc1cdcaa4dfa2 23-28,31-32,66-73,90,101,132,135,141,156,208-219
+packages/cli/src/modules/mcp/mcp.types.ts
+  7cbfc1cdcaa4dfa2 73
+packages/cli/src/modules/mcp/tools/schemas.ts
+  f4b7080cbf6919b0 145
+  7cbfc1cdcaa4dfa2 104-105,121-127,143,148
+packages/cli/src/modules/mcp/__tests__/get-workflow-details.tool.test.ts
+  7cbfc1cdcaa4dfa2 97,134-175
+  f4b7080cbf6919b0 131,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1c967bedffb24a638b635106a62a9d7088eb22db",
+  "prompts": {}
+}

@@ -1,0 +1,62 @@
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 111,222
+packages/cli/src/auth/auth.service.ts
+  s_e3051b84ddaf92::t_f4ad95405791b2 271,273,277,279-280,282,290-292,294-296,303
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 276,278,281,283-289,293,299
+packages/workflow/src/interfaces.ts
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 3144
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_e3051b84ddaf92::t_12b1c5cb4894de 1370-1456
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_e3051b84ddaf92::t_8473b5039ee205 176-249
+packages/cli/src/workflows/workflows.controller.ts
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 59,72,528-529,535
+packages/core/src/execution-engine/execution-context.service.ts
+  s_e3051b84ddaf92::t_c914c2c6e1f8ed 55-56
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 4,42-54
+packages/cli/src/workflow-runner.ts
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 24
+  s_e3051b84ddaf92::t_337dfa2126a4cd 377
+packages/core/src/execution-engine/index.ts
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 83
+packages/core/src/execution-engine/__tests__/execution-context.service.test.ts
+  s_e3051b84ddaf92::t_db34e1d4b188f4 301-323
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_e3051b84ddaf92::t_d141d395b92763 1,16,1211-1332
+  s_e3051b84ddaf92::t_5a94e43b79f7a8 1333-1334
+packages/cli/test/integration/shared/utils/node-types-data.ts
+  s_e3051b84ddaf92::t_7e1a110ee147fd 1-5
+  s_e3051b84ddaf92::t_86dd625a508497 9-26
+  s_e3051b84ddaf92::t_b2c92a5cb5317a 6-7
+packages/cli/test/integration/insights/insights-vs-workflow-statistics.integration.test.ts
+  s_e3051b84ddaf92::t_f0b21d70b26fbe 14,25
+packages/cli/test/integration/execution-context-propagation.test.ts
+  s_e3051b84ddaf92::t_03472d2c7234e7 10,16
+packages/core/src/execution-engine/execution-context.ts
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 141-145
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_e3051b84ddaf92::t_5faf5bc7ccb801 8-13,19-20,26-31,42,49-56
+packages/cli/test/integration/manual-execution-credential-context.test.ts
+  s_e3051b84ddaf92::t_7b84b0b13615c7 30-35
+  s_e3051b84ddaf92::t_cd6868798b35d1 18,27
+  s_e3051b84ddaf92::t_63ed00464b63a6 14
+  s_e3051b84ddaf92::t_623b7723cd943c 1-12,16,20-26,28-29,36-48,51-206
+  s_e3051b84ddaf92::t_e1bf2bcca6ef28 49-50
+  s_e3051b84ddaf92::t_3e76f92e593241 13,17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.10",
+  "base_commit_sha": "92ab6311d3f7934f2fd714bddd2d19495bf25950",
+  "prompts": {},
+  "sessions": {
+    "s_e3051b84ddaf92": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3b343744-4979-4006-839a-04b2b3d50282",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

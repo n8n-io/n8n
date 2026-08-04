@@ -1,0 +1,91 @@
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowCreate.yml
+  s_ce8fb446b6e6f9::t_1655fa415841aa 16-23
+packages/cli/src/workflows/__tests__/workflow-external-id.service.test.ts
+  s_ce8fb446b6e6f9::t_31f09d1f847b2b 1-106
+packages/@n8n/config/src/index.ts
+  s_ce8fb446b6e6f9::t_5832bf79dc053f 141-142
+  s_ce8fb446b6e6f9::t_25e9214697bce7 25
+  s_ce8fb446b6e6f9::t_06424257b2143b 75
+  s_ce8fb446b6e6f9::t_24457cd2d92bd0 140
+packages/@n8n/config/src/configs/external-id.config.ts
+  s_ce8fb446b6e6f9::t_69871c6c5df0de 1-18
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_ce8fb446b6e6f9::t_cfee026da473af 43
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_ce8fb446b6e6f9::t_3d998da4064944 401-405
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflow.yml
+  s_ce8fb446b6e6f9::t_a1f5b2b6edac96 20-27
+packages/cli/src/workflows/workflow-entity-mapper.ts
+  s_ce8fb446b6e6f9::t_ab552ec366c4ec 18
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_ce8fb446b6e6f9::t_f93bd5d6f6d70d 50
+  s_ce8fb446b6e6f9::t_a7e32c6b5e29bb 1
+  s_ce8fb446b6e6f9::t_e9f216d0ba1f46 226-229,231-235
+  s_ce8fb446b6e6f9::t_fa517d60b6aeed 198-199,201-204,214
+packages/cli/src/workflows/workflow.service.ts
+  s_ce8fb446b6e6f9::t_324083c1a11ea9 370-376
+  s_ce8fb446b6e6f9::t_d2c0b333d20c5a 95
+  s_ce8fb446b6e6f9::t_dd5e8855d02cbc 62
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.serializer.ts
+  s_ce8fb446b6e6f9::t_c2a27801693bf7 13,29
+  s_ce8fb446b6e6f9::t_d797d6c008d86d 50
+packages/frontend/@n8n/rest-api-client/src/api/workflows.ts
+  s_ce8fb446b6e6f9::t_ae16e8ff5a321b 49
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_ce8fb446b6e6f9::t_58c7ddfe1e53df 26
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_ce8fb446b6e6f9::t_b54f01bd648af2 96,358,1055,1285
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_ce8fb446b6e6f9::t_b05bad893ac98e 425
+  s_ce8fb446b6e6f9::t_4c5fc909b5f2a2 212
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.serializer.test.ts
+  s_ce8fb446b6e6f9::t_9a80f6ff4547c2 22
+  s_ce8fb446b6e6f9::t_58d3e655107542 66-71
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_ce8fb446b6e6f9::t_7274152e97721e 95
+  s_ce8fb446b6e6f9::t_77bdb83432bc5a 34
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_ce8fb446b6e6f9::t_68b8cf4089e33d 52
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_ce8fb446b6e6f9::t_e5ef966ad39f8c 73
+  s_ce8fb446b6e6f9::t_9df46f052ecc00 17
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_ce8fb446b6e6f9::t_faaa51e0c299b7 98-99
+  s_ce8fb446b6e6f9::t_383e3e165bdfeb 36
+  s_ce8fb446b6e6f9::t_ee6981fc01a8fd 63
+packages/@n8n/db/src/migrations/common/1784000000043-AddExternalIdToWorkflow.ts
+  s_ce8fb446b6e6f9::t_f6f4f3b4883d0a 1-11,13-24
+  s_ce8fb446b6e6f9::t_89bfd9fe75baf4 12
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  s_ce8fb446b6e6f9::t_9a9e4dd3d81f05 132
+  s_ce8fb446b6e6f9::t_3b3008aebbb977 24-33
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_ce8fb446b6e6f9::t_ebb2446e436f40 220
+  s_ce8fb446b6e6f9::t_5d90e1a0198c6b 443
+packages/cli/src/workflows/workflow-external-id.service.ts
+  s_ce8fb446b6e6f9::t_90641d5509d7e8 38-43
+  s_ce8fb446b6e6f9::t_07447af8059672 1-37,44-63
+packages/@n8n/db/src/entities/workflow-entity.ts
+  s_ce8fb446b6e6f9::t_b98ed0b90bfb98 138-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0179604523d6296105b8c08bb5badac8f285766f",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ce8fb446b6e6f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a25c3681-60c8-448c-b7f5-842c52bcd385",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

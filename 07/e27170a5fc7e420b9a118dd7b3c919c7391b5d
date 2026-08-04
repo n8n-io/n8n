@@ -1,0 +1,30 @@
+packages/cli/src/credentials/credential-connection-status-provider.interface.ts
+  s_5e08291555be26::t_5c12d2feab77a9 40
+packages/cli/src/services/project.service.ee.ts
+  s_5e08291555be26::t_488bf769fa7c26 426
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/credential-connection-status.service.test.ts
+  s_5e08291555be26::t_948692fde3d6de 81-83
+  s_5e08291555be26::t_4cb5ccc8fd9ba2 113
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts
+  s_5e08291555be26::t_e45d54cf1134bc 98
+  s_5e08291555be26::t_806674204d5c95 16
+  s_5e08291555be26::t_8d20b2811d9d67 116-123
+  s_5e08291555be26::t_e90abad5b39c6b 137
+  s_5e08291555be26::t_f11faa2b801c85 147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07e27170a5fc7e420b9a118dd7b3c919c7391b5d",
+  "prompts": {},
+  "sessions": {
+    "s_5e08291555be26": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b8351560-a3d5-4227-a0c7-c6529655359d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialsSelect.vue
+  s_53cef6894d9656::t_63a01db6ac4861 150
+  s_53cef6894d9656::t_39adcf02cb0ece 63-73
+packages/frontend/editor-ui/src/features/credentials/components/CredentialsSelect.test.ts
+  s_53cef6894d9656::t_90ed74c7ee5833 1-6,8-82,85-124
+  s_53cef6894d9656::t_a3b1e382d66ed9 84
+  s_53cef6894d9656::t_004b1f9ff77622 83
+  s_53cef6894d9656::t_0a04144495e63e 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "93ed669cdc7e4df954ff6979424d2287f99432cc",
+  "prompts": {},
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

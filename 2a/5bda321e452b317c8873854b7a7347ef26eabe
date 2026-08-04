@@ -1,0 +1,29 @@
+packages/workflow/src/utils.ts
+  s_ebb695373970de::t_4d8becea08d516 244-245
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_ebb695373970de::t_4d8becea08d516 26,53
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-definition.ts
+  s_ebb695373970de::t_4d8becea08d516 7,11
+packages/@n8n/eslint-config/src/rules/no-restricted-sleep-definition.test.ts
+  s_ebb695373970de::t_4d8becea08d516 2,6,9-11
+packages/@n8n/utils/src/sleep.test.ts
+  s_ebb695373970de::t_673d4e41d14f1a 14,20,26,29
+packages/@n8n/eslint-config/src/plugin.ts
+  s_ebb695373970de::t_4d8becea08d516 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a5bda321e452b317c8873854b7a7347ef26eabe",
+  "prompts": {},
+  "sessions": {
+    "s_ebb695373970de": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa7c6-99fe-70f3-b814-911af7547978",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

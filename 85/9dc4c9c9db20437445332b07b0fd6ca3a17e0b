@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_81289fdc7c42f4::t_db7e7f06010763 3048
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "859dc4c9c9db20437445332b07b0fd6ca3a17e0b",
+  "prompts": {},
+  "sessions": {
+    "s_81289fdc7c42f4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "16f4c187-5a34-4c4d-a41a-237343cd5f5c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

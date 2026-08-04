@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/evaluations/__tests__/assertion-judge.test.ts
+  s_842425d35fc733::t_7eec5eca142228 80-82
+packages/@n8n/instance-ai/evaluations/build-expectations/assertion-judge.ts
+  s_842425d35fc733::t_bdc79504867be0 15-19
+  s_842425d35fc733::t_9ca437d16c25e7 83-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d158f1c75e7f0af6c110dd3d830ba1d6f147758a",
+  "prompts": {},
+  "sessions": {
+    "s_842425d35fc733": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a760909-ed85-4b6f-894c-5d7b2d1c8180",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

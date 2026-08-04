@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nCallout/Callout.test.ts
+  s_e89eb3ef550467::t_f8cc52ef39a9ae 100-107,113,115-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f70d615c41fc65ec78ddf017bceb8dd454359774",
+  "prompts": {},
+  "sessions": {
+    "s_e89eb3ef550467": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf34f719-a996-4f38-8781-2fe4d0253f19",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

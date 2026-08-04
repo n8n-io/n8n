@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_016909303f0252::t_31a62ead6c299e 137
+  s_016909303f0252::t_cfbb17afc9a04b 85-88
+  s_016909303f0252::t_46623edd4a8d50 7
+packages/frontend/editor-ui/src/experiments/utils.ts
+  s_016909303f0252::t_94b36e8124210c 44
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.test.ts
+  s_016909303f0252::t_c45be7798de34d 18-23
+  s_016909303f0252::t_15a7be9c718c0e 34
+  s_016909303f0252::t_5bffb8f4b676df 70-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0c8fc22ae00ca69ac15994c39acff75db95d2c0",
+  "prompts": {},
+  "sessions": {
+    "s_016909303f0252": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13f237f5-5620-4811-93b0-d8dad4a05b6b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+packages/@n8n/config/test/config.test.ts
+  s_314b485ec0128f::t_4d39eb3c6698fa 465
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.test.ts
+  s_314b485ec0128f::t_e91d551369f4c1 347-402
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_314b485ec0128f::t_a5d66bb13db6ee 43,48
+  s_314b485ec0128f::t_3a3b02ea6893b6 88-92,94,98-103,105,109-114,116,120
+  s_314b485ec0128f::t_fc6d7caa7cef17 93,104,115,117-119
+  s_314b485ec0128f::t_a95765e15d5c3a 95-97,106-108
+  s_314b485ec0128f::t_11e24c9fdd619c 40-42,44
+packages/@n8n/config/src/configs/__tests__/scheduler.config.test.ts
+  s_314b485ec0128f::t_ca133784bd14f7 42
+  s_314b485ec0128f::t_72499416b515c6 43
+  s_314b485ec0128f::t_fa335873c76130 92-93,97
+  s_314b485ec0128f::t_990cb795bf3f28 94-96,98-99
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_314b485ec0128f::t_2bc17471526140 131-132,135-139
+  h_32d8cd6a0d6aad 133
+  s_314b485ec0128f::t_0102b3a40b440c 103-104
+  s_314b485ec0128f::t_e811a2cab11e71 105
+  s_314b485ec0128f::t_524967833b476e 116
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  s_314b485ec0128f::t_fa5d8edd8c664b 429,433,435-436,439-441
+  s_314b485ec0128f::t_c647d0c6debc0a 430-432,434,438
+  h_32d8cd6a0d6aad 437
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_314b485ec0128f::t_66c9b32e3f12d0 254-255,258,263-269
+  s_314b485ec0128f::t_b92cb1294e3441 256-257,259-262,270-271
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.ts
+  s_314b485ec0128f::t_8cf2e8183740c2 35
+  s_314b485ec0128f::t_e82a341bc4f894 63
+  s_314b485ec0128f::t_910d697624823f 205-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a449a55dabace79f33357d0da2b276490c71dea",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_314b485ec0128f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27918f6d-3518-402f-807d-9c0a4010c4d1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+packages/@n8n/config/test/config.test.ts
+  s_a41904ba5a5dee::t_ce8f8921088a0e 667
+packages/@n8n/config/src/configs/agents.config.ts
+  s_a41904ba5a5dee::t_113697c99084ee 86-89,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bb38c4310d5f21049f4005ffe057f7f4f00d53d3",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a41904ba5a5dee": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ed5a5f23-a3cf-4bc9-900f-51c5c907fb2f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

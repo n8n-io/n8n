@@ -1,0 +1,11 @@
+packages/@n8n/utils/src/json/json-size-exceeds.test.ts
+  ai_agent 1-178
+packages/@n8n/utils/src/json/json-size-exceeds.ts
+  ai_agent 1-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0283b890362d48caef7518e2b41b03f98e556d05",
+  "prompts": {}
+}

@@ -1,0 +1,34 @@
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_ace7f3de59d727::t_d438eb27a6077e 28
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_ace7f3de59d727::t_53e03d3051b271 4
+  s_ace7f3de59d727::t_5dabbac701a445 155-166
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_ace7f3de59d727::t_7e59319f44a0f7 242,245-246,252-253,255
+  s_ace7f3de59d727::t_6ea023c5fbc00a 1,3-6,21-30,33-34
+  s_ace7f3de59d727::t_2120aea861afad 210-241,243-244,247-251,254,256-297
+packages/cli/src/scaling/constants.ts
+  s_ace7f3de59d727::t_0106faf992ccad 35
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  ai_agent 103-106
+  s_ace7f3de59d727::t_cfa3904726975e 1-2,5,9-10,14-17,30-35,40-44,46-60,77-102,107-110,116-118
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_ace7f3de59d727::t_a40d6aa79726df 62
+  s_ace7f3de59d727::t_084d43a75076a5 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6300618b2744b2ed3bc5cae7a9eaf7cd4b4bada",
+  "prompts": {},
+  "sessions": {
+    "s_ace7f3de59d727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "129c5f75-239b-49e1-babf-779653683eac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

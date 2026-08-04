@@ -1,0 +1,42 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_b5492dab26fa62::t_2a6b0a4dbbd3cf 50
+  s_b5492dab26fa62::t_1226f590e22982 10
+  s_b5492dab26fa62::t_5cf9c8f3e4f116 69-73,76
+  s_b5492dab26fa62::t_19f58713d69318 28
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_b5492dab26fa62::t_fa88a12aa26e1c 1-36
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_b5492dab26fa62::t_633d02f776b356 9
+  s_b5492dab26fa62::t_7611e553eacc4e 162,164-165,187,189,196
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b5492dab26fa62::t_9f591f42f9cbd3 12
+  s_b5492dab26fa62::t_22bf277053b6d1 146
+  s_b5492dab26fa62::t_8b162f23720dcb 162,165
+  s_b5492dab26fa62::t_802af16b7e56c4 32-33
+  s_b5492dab26fa62::t_4c9e658465c742 124
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_b5492dab26fa62::t_f733fbb49d9153 1-24
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_b5492dab26fa62::t_5ef5c05ffa8f3c 87,89
+  s_b5492dab26fa62::t_f2cccdd7272023 63-71
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b5492dab26fa62::t_b90e695abf7de6 76-81,85
+  s_b5492dab26fa62::t_7b62ab51b19b33 12
+  s_b5492dab26fa62::t_7ff1b01e391b89 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb62f080a3448ce6ffa80ffcc9f4b0c8e3a9ea87",
+  "prompts": {},
+  "sessions": {
+    "s_b5492dab26fa62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d595c16-51de-497f-bc0a-a54af1c9257e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

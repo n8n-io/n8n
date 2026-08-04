@@ -1,0 +1,22 @@
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_f92fcf69681560::t_537391ee24772b 169-172,178
+packages/cli/src/task-runners/task-broker/__tests__/task-broker-ws-server.test.ts
+  s_f92fcf69681560::t_00843a5b4b3d37 67-86
+  s_f92fcf69681560::t_d0b7466963148f 44-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2a9a767a8e2fa48b10574fc4a5dd81f7db7603a7",
+  "prompts": {},
+  "sessions": {
+    "s_f92fcf69681560": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84e70c92-808f-49ec-bff2-eee25cb54df5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

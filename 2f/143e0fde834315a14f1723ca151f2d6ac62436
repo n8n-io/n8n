@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequestsSidebar.test.ts
+  s_ea8b7997bcf83a::t_ddfe944be0298d 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2f143e0fde834315a14f1723ca151f2d6ac62436",
+  "prompts": {},
+  "sessions": {
+    "s_ea8b7997bcf83a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e683f6b1-11a8-464b-9a26-e4f792a3e4b6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

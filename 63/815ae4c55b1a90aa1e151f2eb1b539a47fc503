@@ -1,0 +1,59 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-variables.integration.test.ts
+  s_0237a66f4d3f8f::t_e4e2ba0d5f3ea4 75,125,159,198,299,319,346,456,521
+  s_0237a66f4d3f8f::t_efccfa43cc8f84 499
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_0237a66f4d3f8f::t_40db99553c2e7a 279-285
+  s_0237a66f4d3f8f::t_ecf2ac051e1ff1 318-324
+  s_0237a66f4d3f8f::t_9d4aad1e8188b8 111-162
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_0237a66f4d3f8f::t_e4e2ba0d5f3ea4 79,199,246
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_0237a66f4d3f8f::t_c17a6d4ccd3098 79-87
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_0237a66f4d3f8f::t_e4e2ba0d5f3ea4 411
+  s_0237a66f4d3f8f::t_b9aa0876f9a360 373-375
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_0237a66f4d3f8f::t_4887b6c8b56ac2 86,89
+  s_0237a66f4d3f8f::t_b091fcaec61142 14
+  s_0237a66f4d3f8f::t_9519959bb2894e 64
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_0237a66f4d3f8f::t_e4e2ba0d5f3ea4 316,351
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_0237a66f4d3f8f::t_4e21c33574d67a 74
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_0237a66f4d3f8f::t_5459dacfb3dd3a 11-15,21
+  s_0237a66f4d3f8f::t_dfab6453789f31 42-57
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_0237a66f4d3f8f::t_6f14d5b18a036e 4,10-11,20
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_0237a66f4d3f8f::t_a93a91b6c403c5 22-31
+  s_0237a66f4d3f8f::t_92527b97428b82 87-97,104
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_0237a66f4d3f8f::t_6e46274afb76b7 1,6,9-10,16-21,23-26,28-29
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_0237a66f4d3f8f::t_0aebecaa396761 5,24-27,35,41,48,58,66,70-75
+packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
+  s_0237a66f4d3f8f::t_73769ce8810e45 1-45
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_0237a66f4d3f8f::t_e4e2ba0d5f3ea4 75
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_0237a66f4d3f8f::t_66219583f256b6 249,251,258
+  s_0237a66f4d3f8f::t_378458d7d02655 180
+  s_0237a66f4d3f8f::t_e82497b3bcb338 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63815ae4c55b1a90aa1e151f2eb1b539a47fc503",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

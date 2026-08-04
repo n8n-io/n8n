@@ -1,0 +1,27 @@
+packages/cli/test/integration/scheduling/scheduler-query-benchmarks.test.ts
+  s_07e6e9dae07dde::t_480c767257d86d 480
+  s_07e6e9dae07dde::t_277f3f66930f31 55-56,58-59
+packages/cli/test/integration/scheduling/README.md
+  s_07e6e9dae07dde::t_7f1dbc3d76e8f2 3-27,31-32,35,43,47-49,56,58,76-91,95,102,104-105,107,109-115,117,121-122,124,127-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c14721339f702c9cfaaf35cdc118c63ef314e08",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_07e6e9dae07dde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1ef3290-bd35-49a5-9d95-749d9af799b4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

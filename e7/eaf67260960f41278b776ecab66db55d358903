@@ -1,0 +1,20 @@
+packages/@n8n/db/scripts/schema-docs.mjs
+  s_87a9b3d772cc59::t_7ed0f0880c44c2 85-96,102-108,167-168,170,172-175
+  s_87a9b3d772cc59::t_b613d0cad70ff7 97-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e7eaf67260960f41278b776ecab66db55d358903",
+  "prompts": {},
+  "sessions": {
+    "s_87a9b3d772cc59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019efedf-fc0c-7c71-9b7a-3c4707f74af9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

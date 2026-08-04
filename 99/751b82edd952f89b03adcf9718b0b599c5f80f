@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.ts
+  s_a662970bb19717::t_880b3226efecd5 156-169
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupDrag.test.ts
+  s_a662970bb19717::t_e520e1f5729abd 66
+  s_a662970bb19717::t_7bcf6e6274fd38 88
+  s_a662970bb19717::t_deefbbc5edce42 299-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99751b82edd952f89b03adcf9718b0b599c5f80f",
+  "prompts": {},
+  "sessions": {
+    "s_a662970bb19717": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293ac5cb-316a-48b2-86f5-eed6c50c793c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_70fb4223a7d1db::t_36572f1d3aed79 677
+  s_70fb4223a7d1db::t_f2efece8b84b87 46
+  s_70fb4223a7d1db::t_3deb003d3174be 314-316
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_70fb4223a7d1db::t_2737ff541f6d37 35
+  s_70fb4223a7d1db::t_b97fe5e512a293 72,100
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_70fb4223a7d1db::t_3ebb456b445f95 112,117
+  s_70fb4223a7d1db::t_e66cea7640d9a5 73
+  s_70fb4223a7d1db::t_5b1fb2bbb36e4b 53-56
+  s_70fb4223a7d1db::t_4b927cf531ef8c 6
+  s_70fb4223a7d1db::t_e254456806aa93 87-111,118-119
+  s_70fb4223a7d1db::t_12fa27eb14293d 39-47
+packages/cli/src/modules/agents/__tests__/agent-model-catalog.service.test.ts
+  s_70fb4223a7d1db::t_2d25fadbbb062f 51,89
+  s_70fb4223a7d1db::t_3083a2b9fbfd42 62,64,86,88,90-92,97-98
+  s_70fb4223a7d1db::t_7cea2e875121ad 6
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_70fb4223a7d1db::t_b13e43030b8775 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "784a038d642f0b446a070da70dfc42161fc29148",
+  "prompts": {},
+  "sessions": {
+    "s_70fb4223a7d1db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf21fcf-13a0-4245-8181-bb4439b4ca9f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

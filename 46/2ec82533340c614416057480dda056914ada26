@@ -1,0 +1,37 @@
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_27a37efeb25aa2::t_4b4b85d4180256 9
+  s_27a37efeb25aa2::t_b6f89844cadd68 93-107
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-result.test.ts
+  s_27a37efeb25aa2::t_9f6b8f73899d63 2
+  ai_agent 9-14,41-43
+  s_27a37efeb25aa2::t_a4972f90ff8bfe 1,3-8,15-23,25-40,44-66
+  s_27a37efeb25aa2::t_f71132b9b9dc81 24
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_27a37efeb25aa2::t_c6810e86cdedcd 113-118,120,123-126
+  s_27a37efeb25aa2::t_da5208e0a86482 29
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_27a37efeb25aa2::t_faeda5975230ce 36-38
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_27a37efeb25aa2::t_801a2aabfd4b67 5,8,74-82,115,119,121,150
+  s_27a37efeb25aa2::t_9f6b8f73899d63 12-13
+  s_27a37efeb25aa2::t_9165de55652119 1-4,6-7,9-11,14-73,83-114,116-118,120,122-149,151-152
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_27a37efeb25aa2::t_197630777be56d 108
+  s_27a37efeb25aa2::t_03f6d09619b0c1 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "462ec82533340c614416057480dda056914ada26",
+  "prompts": {},
+  "sessions": {
+    "s_27a37efeb25aa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9dd04fd-970f-466c-abee-0209e2f4bd7a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

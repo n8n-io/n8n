@@ -1,0 +1,1403 @@
+packages/cli/src/credentials/external-secrets.utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 7-8,10-12,15-18,20,40-41,45-46,48,54-55,57,60
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/splits-a-resolved-tool-call-into-assistant-tool-modelmessages.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/reports-per-server-errors-for-partially-failing-multi-server-configs.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-if-both-url-and-command-are-provided.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/backend-network/src/http/fake-outbound-http.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-145
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 334-342,840-849
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/generates-with-model-config-object.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/cli/src/credentials/__tests__/validation.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 142-172,423-468
+packages/core/src/binary-data/binary-data.config.ts
+  s_af57ef0512d15f::t_401952f01f435b 8
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  s_af57ef0512d15f::t_401952f01f435b 84-93,228-229,233
+packages/@n8n/agents/src/__tests__/integration/cassettes/execution-options/calls-onstepstart-and-onstepfinish-for-generate-and-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-120
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/passes-an-aborting-signal-to-tool-context-during-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-77
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 531-539,541
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 7,34-37,50,64,94-102,184-187,197-238
+packages/@n8n/agents/src/__tests__/integration/cassettes/multi-tool-calls/correctly-merges-results-when-the-same-tool-is-called-multiple-times.json
+  s_af57ef0512d15f::t_401952f01f435b 1-228
+packages/frontend/editor-ui/src/app/components/FocusPanel.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 29-37
+packages/nodes-base/nodes/MySql/test/v2/utils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 8,172-196
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_af57ef0512d15f::t_401952f01f435b 2,21-22,38-39,41,49,132-159,174-180
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-chat-basics.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 7
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/persists-maxiterations-together-with-completed-iteration-count-in-checkpoints-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-86
+packages/@n8n/agents/src/__tests__/integration/cassettes/multimodal/passes-image-content-through-the-run-path-non-streaming.json
+  s_af57ef0512d15f::t_401952f01f435b 1-66
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.ts
+  s_af57ef0512d15f::t_401952f01f435b 25,50-51
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-metadata/result-contains-usage-metadata-from-the-provider.json
+  s_af57ef0512d15f::t_401952f01f435b 1-52
+packages/@n8n/agents/src/__tests__/integration/cassettes/execution-options/increments-executioncounter-for-messages-tool-calls-and-tokens.json
+  s_af57ef0512d15f::t_401952f01f435b 1-191
+packages/nodes-base/credentials/common/aws/regions.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-206
+packages/nodes-base/nodes/Facebook/__tests__/FacebookGraphApi.node.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3-8,116-259
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/tomessage-returns-a-user-message-with-file-part-for-image-results.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/sets-inputschema-as-raw-json-schema-not-zod-and-sets-mcptool-flag.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_af57ef0512d15f::t_401952f01f435b 10-11,71-86,349
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-333
+packages/cli/src/auth/auth.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 158
+packages/frontend/editor-ui/src/app/stores/webhooks.store.ts
+  s_af57ef0512d15f::t_401952f01f435b 14,17,19,22
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 197-202,212-257
+packages/testing/code-health/src/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 57,60-90
+packages/testing/janitor/src/types.ts
+  s_af57ef0512d15f::t_401952f01f435b 31-33
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-preview.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 9
+packages/@n8n/agents/src/__tests__/integration/tool-approval.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-177
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/stream-tool-suspends-twice-then-completes-on-second-resume.json
+  s_af57ef0512d15f::t_401952f01f435b 1-200
+packages/@n8n/eslint-config/src/plugin.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-12
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/tomessage-returns-a-user-message-with-file-part-for-image-results.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_af57ef0512d15f::t_401952f01f435b 1-1294
+packages/@n8n/agents/src/__tests__/integration/cassettes/multi-tool-calls/correctly-merges-results-via-the-run-path.json
+  s_af57ef0512d15f::t_401952f01f435b 1-210
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/cancels-a-suspended-delete-file-tool-call-and-continues.json
+  s_af57ef0512d15f::t_401952f01f435b 1-186
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/prefixes-tool-names-with-the-server-name.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-attachments.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 11
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/oauth2-userinfo-identifier.ts
+  s_af57ef0512d15f::t_401952f01f435b 10
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/oauth2-introspection-identifier.ts
+  s_af57ef0512d15f::t_401952f01f435b 8
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_af57ef0512d15f::t_401952f01f435b 126
+packages/@n8n/agents/AGENTS.md
+  s_af57ef0512d15f::t_401952f01f435b 123-138
+packages/cli/src/webhooks/webhook.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 193-197,253
+packages/cli/src/workflow-helpers.ts
+  s_af57ef0512d15f::t_401952f01f435b 7,386-390
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 285-299
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/disconnects-cleanly-without-throwing.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-and-cost-on-generate-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1-52
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/deletes-two-files-sequentially-and-stops-after-second-resume-with-length-in-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-86
+packages/@n8n/task-runner/src/config/base-runner-config.ts
+  s_af57ef0512d15f::t_401952f01f435b 42-59
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/calls-image-tool-and-returns-mixed-text-image-content.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/resumes-a-suspended-deferred-tool-after-loading-it.json
+  s_af57ef0512d15f::t_401952f01f435b 1-594
+packages/testing/playwright/.janitor-baseline.json
+  s_af57ef0512d15f::t_401952f01f435b 3-4,865,871
+packages/cli/package.json
+  s_af57ef0512d15f::t_401952f01f435b 95
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-list-files-for-a-pre-existing-directory.json
+  s_af57ef0512d15f::t_401952f01f435b 1-803
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-suspend-a-tool-not-listed-in-config-requireapproval.json
+  s_af57ef0512d15f::t_401952f01f435b 1-243
+packages/@n8n/agents/src/__tests__/integration/memory-custom-backend.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-185
+packages/@n8n/agents/src/__tests__/integration/runtime-skills.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-137
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/provides-tool-call-inputs-and-outputs-as-json-objects-not-strings.json
+  s_af57ef0512d15f::t_401952f01f435b 1-180
+packages/cli/src/utils/__tests__/ai-proxy-fetch.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-72
+packages/nodes-base/nodes/Snowflake/__tests__/GenericFunctions.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 57-106
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/oauth2-metadata-http-client.ts
+  s_af57ef0512d15f::t_401952f01f435b 13,44
+packages/cli/test/integration/shared/utils/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 126-131
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-behavior/uses-tool-systeminstruction-to-decide-to-call-a-tool.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/backend-network/src/http/axios/__tests__/ssrf-redirect.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 59-63
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.requests.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 95-118,132-143
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 369-371,5090-5092
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_af57ef0512d15f::t_401952f01f435b 5,8,35-126,140-141,144,146-147,177-181,194-199
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/round-trips-type-value-shaped-tool-json-without-unwrapping-it.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/backend-network/src/testing.ts
+  s_af57ef0512d15f::t_401952f01f435b 13-17
+packages/cli/src/webhooks/__tests__/webhook.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 341-352
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/stream-emits-sub-agent-lifecycle-chunks-and-events.json
+  s_af57ef0512d15f::t_401952f01f435b 1-307
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_af57ef0512d15f::t_401952f01f435b 886
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/recalls-previous-messages-within-the-same-thread.json
+  s_af57ef0512d15f::t_401952f01f435b 1-140
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/disconnects-cleanly-terminating-the-child-process.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/generate-tool-suspends-twice-denial-on-second-resume-completes-without-deploying.json
+  s_af57ef0512d15f::t_401952f01f435b 1-186
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/recalls-previous-messages-across-turns.json
+  s_af57ef0512d15f::t_401952f01f435b 1-132
+packages/cli/src/commands/base-command.ts
+  s_af57ef0512d15f::t_401952f01f435b 256,271-286,341-345,347,384-385
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/resumes-each-pending-tool-call-one-by-one-when-multiple-tool-calls-are-suspended.json
+  s_af57ef0512d15f::t_401952f01f435b 1-212
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/suspends-all-interruptible-tool-calls-concurrently-and-returns-them-as-an-array-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-79
+packages/cli/src/modules/external-secrets.ee/providers/aws-secrets-manager.ts
+  s_af57ef0512d15f::t_401952f01f435b 125-129
+packages/cli/test/integration/token-exchange/trusted-key.service.integration.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 465-515
+packages/testing/playwright/tests/performance/memory-consumption-instance-ai.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 15
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/sends-the-transformed-output-to-the-llm-while-preserving-raw-output-in-toolcalls.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/second-call-with-call-level-cachecontrol-reports-cacheread-tokens.json
+  s_af57ef0512d15f::t_401952f01f435b 1-61
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/does-not-crash-when-a-tool-throws-generate-returns-finishreason-stop.json
+  s_af57ef0512d15f::t_401952f01f435b 1-183
+packages/nodes-base/credentials/common/aws/system-credentials-utils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 33-34,80-81,100,113,835,872,881,911,941,959,976,979-1027
+packages/@n8n/backend-network/src/http/client-default-headers.ts
+  s_af57ef0512d15f::t_401952f01f435b 13-15,22,24,34-37,40-56
+packages/testing/playwright/services/mcp-oauth-api-helper.ts
+  s_af57ef0512d15f::t_401952f01f435b 72-80,240-245,251,268,288
+packages/@n8n/backend-network/package.json
+  s_af57ef0512d15f::t_401952f01f435b 37-41,51-53
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-throw-and-calls-client-close-exactly-once-when-disconnect-is-called-concurrently.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/isolates-separate-threads.json
+  s_af57ef0512d15f::t_401952f01f435b 1-114
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,123-147
+packages/@n8n/api-types/src/dto/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 181-185
+packages/testing/rules-engine/src/suppress.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,27,34-35
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_af57ef0512d15f::t_401952f01f435b 1-780
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/merges-static-tools-and-mcp-tools-in-the-same-agent.json
+  s_af57ef0512d15f::t_401952f01f435b 1-275
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/second-stream-with-cached-instructions-reports-cacheread-tokens-in-finish-chunk.json
+  s_af57ef0512d15f::t_401952f01f435b 1-132
+packages/frontend/editor-ui/src/features/agents/components/AgentChipButton.vue
+  s_af57ef0512d15f::t_401952f01f435b 71,97-99,108,129-131
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 15,17-23,300,337
+packages/@n8n/constants/src/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 23
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-transform-error-resilience/tomodeloutput-throwing-during-normal-tool-call-in-stream-stream-finishes-with-stop-not-error.json
+  s_af57ef0512d15f::t_401952f01f435b 1-197
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/prefixes-tool-names-with-the-server-name.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/api-types/src/dto/roles/role-project-members-response.dto.ts
+  s_af57ef0512d15f::t_401952f01f435b 3,6,9
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_af57ef0512d15f::t_401952f01f435b 24,39,140-164,187,278
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_af57ef0512d15f::t_401952f01f435b 75
+packages/@n8n/nodes-langchain/utils/aws/resolveAwsCredentials.ts
+  s_af57ef0512d15f::t_401952f01f435b 4,10,40-42,56,82
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_af57ef0512d15f::t_401952f01f435b 1-407
+packages/@n8n/agents/src/__tests__/integration/cassettes/orphaned-tool-messages/handles-history-containing-settled-tool-call-blocks.json
+  s_af57ef0512d15f::t_401952f01f435b 1-78
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/llm-can-self-correct-by-retrying-a-flaky-tool.json
+  s_af57ef0512d15f::t_401952f01f435b 1-317
+packages/@n8n/computer-use/src/tools/shell/build-shell-resource.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3-5,17,29,49,59,68,77,87,96
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 11,19,41-44,55,79-80,82-83,91-109,166,168,192-193,208
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/emits-reasoning-delta-chunks-when-thinking-is-enabled.json
+  s_af57ef0512d15f::t_401952f01f435b 1-68
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts
+  s_af57ef0512d15f::t_401952f01f435b 12,69,85
+packages/@n8n/computer-use/src/gateway-client.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 43-49,54,144-166,239-273
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/calls-add-tool-and-returns-calculated-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+scripts/mutation-health/emit-payload.mjs
+  s_af57ef0512d15f::t_401952f01f435b 33-42,197-232,322-337,339-350
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-metadata/finish-reason-is-stop-for-a-normal-completion.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/cli/src/events/maps/relay.event-map.ts
+  s_af57ef0512d15f::t_401952f01f435b 899-905
+packages/nodes-base/credentials/common/aws/types.ts
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 600-660
+packages/@n8n/agents/src/__tests__/integration/helpers.ts
+  s_af57ef0512d15f::t_401952f01f435b 17-19,26-27
+packages/testing/playwright/tests/e2e/api/wait-form-resume.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 6-60,64-66,68-69,71-76,78-79,81,83-84,86-88,90-91,93-94,96-98,100-101
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 2-4,23-24,46,135-136,248-253,299,311,396
+packages/@n8n/backend-network/src/http/http-proxy.ts
+  s_af57ef0512d15f::t_401952f01f435b 7
+packages/@n8n/config/src/configs/ssrf-protection.config.ts
+  s_af57ef0512d15f::t_401952f01f435b 52-71,74-87,92-97,102-110,114-121,125-130
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/approve-stream-runs-the-approved-tool-and-completes.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 5,398-521
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 11,33-34,44-45,75-80,297-319
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_af57ef0512d15f::t_401952f01f435b 9-10
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-setup.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 457
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/includes-cost-in-stream-finish-chunk.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/cli/src/security-audit/risk-reporters/instance-risk-reporter.ts
+  s_af57ef0512d15f::t_401952f01f435b 36,164,169
+packages/@n8n/backend-network/src/http/axios/__tests__/legacy.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 71,84,107,172-177
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/connects-and-returns-tools-when-server-is-reachable.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/workflow-execute-additional-data.ts
+  s_af57ef0512d15f::t_401952f01f435b 524-525
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 120
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 225-276
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/generate-interim-message-does-not-break-provider-message-ordering.json
+  s_af57ef0512d15f::t_401952f01f435b 1-238
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/auto-generates-a-thread-title-after-stream-on-a-new-thread.json
+  s_af57ef0512d15f::t_401952f01f435b 1-120
+packages/@n8n/backend-network/src/proxy/proxy-resolution.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-81
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 252-278
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/require-mit-license.md
+  s_af57ef0512d15f::t_401952f01f435b 1-38
+packages/cli/src/modules/dynamic-credentials.ee/services/resolver-config-expression.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 23-26,41-43
+packages/@n8n/mcp-browser-extension/src/relayConnection.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 883-927
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/does-not-overwrite-a-pre-existing-thread-title.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/frontend/editor-ui/src/app/stores/focusPanel.store.ts
+  s_af57ef0512d15f::t_401952f01f435b 12,48,50,56,65,107
+packages/@n8n/mcp-browser-extension/src/relayConnection.ts
+  s_af57ef0512d15f::t_401952f01f435b 56,92,107-108,225-237,242
+packages/@n8n/agents/vitest.integration.setup.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-213
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/TestCaseForm.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 12-20
+packages/frontend/editor-ui/src/app/components/FocusSidebar.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 58-66
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/returns-empty-array-when-no-servers-are-configured.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/tool-behavior.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-108
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-on-stream-finish-chunk.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/accepts-valid-url-based-config.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/resume-generate-result-includes-the-resumed-tool-call-in-toolcalls.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 65
+packages/@n8n/api-types/src/dto/binary-data/binary-data-query.dto.ts
+  s_af57ef0512d15f::t_401952f01f435b 14
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_af57ef0512d15f::t_401952f01f435b 85,88
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/prefixes-tool-names-with-the-server-name.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_af57ef0512d15f::t_401952f01f435b 293,309,930-933,958-959,1041-1042,1045,1054
+packages/frontend/@n8n/stores/src/useRootStore.ts
+  s_af57ef0512d15f::t_401952f01f435b 35
+packages/frontend/editor-ui/src/app/composables/useDebugInfo.ts
+  s_af57ef0512d15f::t_401952f01f435b 38
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-431
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/workflow-loop-controller.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 162,192-223
+packages/@n8n/agents/eslint.config.mjs
+  s_af57ef0512d15f::t_401952f01f435b 8
+packages/@n8n/agents/src/__tests__/integration/evaluate.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 12-21,33,36-38
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loads-a-matching-skill-and-follows-its-instructions-with-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-222
+packages/@n8n/agents/src/__tests__/integration/cassettes/zod-validation-error/includes-the-zod-error-text-in-the-tool-result-visible-to-the-llm.json
+  s_af57ef0512d15f::t_401952f01f435b 1-331
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/throws-when-calltool-is-called-without-connecting-first.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/utils/ai-proxy-fetch.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-2,46-60
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-31
+packages/nodes-base/nodes/Webhook/error.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,3
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/works-with-stream-path.json
+  s_af57ef0512d15f::t_401952f01f435b 1-138
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/handler-calls-the-tool-and-returns-the-mcp-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/credentials/__tests__/external-secrets.utils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 78-92,108-127
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_af57ef0512d15f::t_401952f01f435b 211-214,234-237
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/keeps-type-value-shaped-tool-json-wrapped-when-building-tool-modelmessages.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/does-not-generate-a-title-when-titlegeneration-is-not-configured.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/backend-network/src/proxy/no-proxy-patch.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-104
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/throws-when-listtools-is-called-without-connecting-first.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-result-to-message/emits-tocontent-result-as-a-content-chunk-in-the-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-205
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/pagination.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-8,10,155-250
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-90
+packages/frontend/editor-ui/src/features/collaboration/projects/components/RoleHoverPopover.vue
+  s_af57ef0512d15f::t_401952f01f435b 12
+packages/@n8n/backend-network/src/http/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 5-6,20,24
+packages/testing/playwright/tests/performance/canvas/canvas-interactions.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 28
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/resume-resolves-one-tool-at-a-time-carrying-forward-the-rest-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/accumulates-higher-token-counts-with-more-complex-prompts.json
+  s_af57ef0512d15f::t_401952f01f435b 1-126
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-mit-license.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-65
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/preserves-content-tool-outputs-when-building-tool-modelmessages.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/suspends-all-interruptible-tool-calls-concurrently-and-emits-multiple-chunks-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-86
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/emits-one-tool-modelmessage-per-settled-block-in-the-same-assistant-turn.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/backend-network/src/proxy/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-19
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/bounded-concurrency-suspends-first-batch-and-saves-unexecuted-tools-then-resumes-all-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-218
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_af57ef0512d15f::t_401952f01f435b 12-14,20-21,40-41,43,61,109,112,118
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 19-27
+packages/testing/playwright/pages/SettingsLogStreamingPage.ts
+  s_af57ef0512d15f::t_401952f01f435b 4,8-9,67,235-327
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 108,278-312
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/generate-tool-suspends-twice-then-completes-on-second-resume.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-build-routing.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 24-55
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 51,978,982-985,992-994,996-998,1775,1777-1779
+packages/frontend/editor-ui/src/features/setupPanel/components/FocusSidebarTabs.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 25-33
+packages/@n8n/agents/src/__tests__/integration/mcp-runtime.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3,5
+packages/frontend/editor-ui/src/features/agents/components/AgentChatQuickActions.vue
+  s_af57ef0512d15f::t_401952f01f435b 24,42-43,60-61,86,95
+packages/frontend/editor-ui/src/features/roles/instance/components/ScopeGroupSelector.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-99
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-tools-that-are-not-in-the-requireapproval-list.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/task-runner/src/js-task-runner/__tests__/task-runner.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 26-27,93,347,355-356,370-389,396,412-521,535-549,582-602
+packages/cli/test/integration/public-api/users.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 493
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/includes-model-id-in-generate-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/testing/playwright/tests/dev-server-smoke/dev-server-boots.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 85
+packages/testing/playwright/tests/performance/canvas/canvas-load.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 21
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/provider-tool-executes-without-interruption-while-a-mixed-in-interruptible-tool-suspends.json
+  s_af57ef0512d15f::t_401952f01f435b 1-212
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/auto-resumes-interruptible-tool-calls-during-eval.json
+  s_af57ef0512d15f::t_401952f01f435b 1-214
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/resumes-the-stream-after-resume-with-approval.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/@n8n/task-runner/src/start.ts
+  s_af57ef0512d15f::t_401952f01f435b 19-25,31-34,50,89-91,102-109
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/calls-echo-tool-and-returns-text-content.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/instance-ai/evaluations/data/workflows/carry-accumulated-facts-across-long-thread.json
+  s_af57ef0512d15f::t_401952f01f435b 1-52
+packages/@n8n/agents/src/__tests__/integration/delegate-sub-agent.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3,6,9,19-26,37,49-51,70-132,151
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/encodes-rejected-tool-call-as-error-text-in-the-tool-modelmessage.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/generate-the-model-calls-the-web-search-provider-tool.json
+  s_af57ef0512d15f::t_401952f01f435b 1-67
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/llm-self-correction-stream-mode-flaky-tool-succeeds-on-retry.json
+  s_af57ef0512d15f::t_401952f01f435b 1-338
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/works-alongside-tomessage-both-transforms-apply-independently.json
+  s_af57ef0512d15f::t_401952f01f435b 1-191
+packages/nodes-base/nodes/Snowflake/__tests__/update.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 42-46
+packages/frontend/editor-ui/src/features/collaboration/projects/components/RoleHoverPopover.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 11
+packages/testing/playwright/services/mcp-api-helper.ts
+  s_af57ef0512d15f::t_401952f01f435b 558,570,633,644
+packages/testing/playwright/tests/e2e/workflows/executions/preview-isolation.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 3-65
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-metadata/includes-finishreason-in-finish-chunks.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 166-229,937-953
+packages/cli/src/services/role.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-5,68-73
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-131
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-on-generate-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/testing/playwright/pages/DataTableView.ts
+  s_af57ef0512d15f::t_401952f01f435b 2,13,52
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-edits-files-with-append-copy-move-delete-and-rmdir-tools.json
+  s_af57ef0512d15f::t_401952f01f435b 1-2775
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/supports-endpoint-shorthand-auto-appends-otel-v1-traces.json
+  s_af57ef0512d15f::t_401952f01f435b 1-187
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 47-55
+packages/@n8n/mcp-browser-extension/package.json
+  s_af57ef0512d15f::t_401952f01f435b 3
+packages/testing/playwright/tests/e2e/nodes/send-and-wait.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 132-157,159-168,170-172,174-175,177,179-180,182-207,209-214,216-218,220-221,223,225-226,228-230,232,234,236,238,240-244,246-254,256-257,259-260,262-263,265-266,268,270-274
+.github/actions/ci-filter/__tests__/ci-filter.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 275,396-399
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/error-tool-result-appears-in-the-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-197
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 329-331
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/round-trip-is-structurally-equivalent-for-a-resolved-tool-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-tool-use-via-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-246
+packages/testing/janitor/README.md
+  s_af57ef0512d15f::t_401952f01f435b 476-509
+packages/@n8n/backend-network/src/proxy/__tests__/proxy-subpath-purity.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-113
+packages/frontend/editor-ui/src/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 88-96
+packages/@n8n/agents/src/__tests__/integration/cassettes/state-restore-after-suspension/correctly-restores-message-history-so-the-llm-has-full-context.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/does-not-affect-the-llm-output-when-tomodeloutput-is-not-set.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/nodes-base/nodes/Facebook/FacebookGraphApi.node.ts
+  s_af57ef0512d15f::t_401952f01f435b 511,523,527
+packages/testing/playwright/AGENTS.md
+  s_af57ef0512d15f::t_401952f01f435b 67
+packages/cli/src/modules/community-packages/community-packages.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 80,206,211
+packages/frontend/editor-ui/src/app/router.ts
+  s_af57ef0512d15f::t_401952f01f435b 804,826,858,872,877
+packages/@n8n/backend-common/src/license-state.ts
+  s_af57ef0512d15f::t_401952f01f435b 129-132
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/preserves-provider-metadata-on-replayed-assistant-tool-call-parts.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-mkdir-and-workspace-list-files-together.json
+  s_af57ef0512d15f::t_401952f01f435b 1-810
+packages/nodes-base/nodes/HttpRequest/test/node/HttpRequestV3.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 922-996
+packages/@n8n/agents/src/__tests__/integration/cassettes/custom-message-suspend-resume/preserves-custom-tool-message-in-stream-after-resume-complete.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-timeline.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 7
+packages/testing/rules-engine/src/suppress.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-56
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/deletes-two-files-sequentially-and-stops-after-second-resume-with-length-in-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/recalls-tool-results-with-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-315
+packages/@n8n/instance-ai/evaluations/build-expectations/verifier.ts
+  s_af57ef0512d15f::t_401952f01f435b 9,153-155,165-167
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_af57ef0512d15f::t_401952f01f435b 10,236-245
+packages/testing/playwright/tests/e2e/settings/log-streaming/log-streaming.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 77-98
+packages/core/src/binary-data/utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 8
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-only-the-listed-tool-when-config-requireapproval-is-a-string-array.json
+  s_af57ef0512d15f::t_401952f01f435b 1-118
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 127
+packages/cli/src/executions/execution-data/azure-store.ee.ts
+  s_af57ef0512d15f::t_401952f01f435b 34,46
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/includes-tool-call-spans-in-the-trace.json
+  s_af57ef0512d15f::t_401952f01f435b 1-187
+packages/@n8n/nodes-langchain/utils/aws/test/resolveAwsCredentials.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 211-219,284-299
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-agentstart-and-agentend-around-a-generate-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/mcp-browser-extension/manifest.json
+  s_af57ef0512d15f::t_401952f01f435b 5,9-21
+packages/@n8n/instance-ai/src/workflow-loop/verification-obligation.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,59-60,118,122
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-126
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 9,68-69,146-147,153,158,254,264
+packages/nodes-base/nodes/Code/ExecutionError.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,3
+packages/@n8n/agents/src/__tests__/integration/cassettes/delegate-sub-agent/lets-a-real-parent-agent-call-delegate-subagent-and-use-its-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1-293
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-transform-error-resilience/tomodeloutput-throwing-during-resumed-tool-call-stream-does-not-close-with-error-and-messages-are-saved-to-memory.json
+  s_af57ef0512d15f::t_401952f01f435b 1-197
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-remediation-guard.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 229
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_af57ef0512d15f::t_401952f01f435b 1-1187
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 2722,2741-2742,2744-2746
+packages/@n8n/db/src/entities/types-db.ts
+  s_af57ef0512d15f::t_401952f01f435b 476
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-198
+packages/@n8n/agents/src/__tests__/integration/vcr.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-42
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/auto-executes-non-interruptible-tools-while-suspending-interruptible-ones.json
+  s_af57ef0512d15f::t_401952f01f435b 1-234
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/cancels-one-of-multiple-suspended-delete-file-tool-calls-and-resolves-the-batch.json
+  s_af57ef0512d15f::t_401952f01f435b 1-202
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/deny-generate-declines-without-running-the-original-handler.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-resume-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-232
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/toolexecutionend-carries-the-correct-toolcallid-matching-toolexecutionstart.json
+  s_af57ef0512d15f::t_401952f01f435b 1-187
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-all-tools-when-requireapproval-true-in-server-config.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/nodes-base/nodes/MySql/test/v1/executeQuery.queryReplacement.workflow.json
+  s_af57ef0512d15f::t_401952f01f435b 1-114
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_af57ef0512d15f::t_401952f01f435b 109
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.ssrf.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 136-140
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3-8,10,127-128
+packages/frontend/editor-ui/src/features/execution/logs/components/LogsPanel.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 76-84
+packages/core/src/binary-data/azure-blob/azure-blob.service.ee.ts
+  s_af57ef0512d15f::t_401952f01f435b 7,10-11,73,76-79,86-93,95-152
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_af57ef0512d15f::t_401952f01f435b 218-219,297-299,327-328
+packages/testing/playwright/tests/e2e/dynamic-credentials/mcp-trigger-credential-gate.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-246
+packages/workflow/src/run-execution-data/run-execution-data.v0.ts
+  s_af57ef0512d15f::t_401952f01f435b 54
+packages/@n8n/agents/package.json
+  s_af57ef0512d15f::t_401952f01f435b 57-59,78,111-112
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 39,42,89,92
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_af57ef0512d15f::t_401952f01f435b 137-163
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/rejects-when-mcp-server-is-unreachable.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/testing/janitor/src/rules/valid-owner-annotation.rule.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-180
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/stream-result-state-is-running-before-the-stream-is-drained.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/both-thinking-and-prompt-caching-work-simultaneously.json
+  s_af57ef0512d15f::t_401952f01f435b 1-140
+packages/@n8n/instance-ai/evaluations/utils/conversation-text.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-2,60-90
+packages/@n8n/agents/src/__tests__/integration/memory-observational.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-96
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 15,202,300,303
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/returns-success-after-a-successful-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 155,158-163,4224
+packages/frontend/editor-ui/src/features/ndv/parameters/components/WorkflowSelectorParameterInput/WorkflowSelectorParameterInput.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 49-60,75
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_af57ef0512d15f::t_401952f01f435b 129-148
+packages/cli/src/oauth/oauth.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 136
+packages/cli/src/workflow-runner.ts
+  s_af57ef0512d15f::t_401952f01f435b 381
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/auto-generates-a-thread-title-after-generate-on-a-new-thread.json
+  s_af57ef0512d15f::t_401952f01f435b 1-114
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 109-117
+packages/@n8n/task-runner/src/js-task-runner/__tests__/require-resolver-global-modules.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 61-63
+.github/OWNERS
+  s_af57ef0512d15f::t_401952f01f435b 14
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/calls-image-tool-and-returns-mixed-text-image-content.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 29,88-89,99
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  s_af57ef0512d15f::t_401952f01f435b 5-8,10
+packages/frontend/editor-ui/src/features/roles/project/RoleProjectMembersModal.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-143
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_af57ef0512d15f::t_401952f01f435b 544,568
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-artifacts.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 7
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-param-default.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-89
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-121
+packages/@n8n/instance-ai/evaluations/harness/runner.ts
+  s_af57ef0512d15f::t_401952f01f435b 60,711,1171-1172,1182
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 2-8,95-96,108,211-233,358-463
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/preserves-chronological-ordering-of-messages-in-memory-after-resume.json
+  s_af57ef0512d15f::t_401952f01f435b 1-238
+packages/@n8n/task-runner/src/task-runner.ts
+  s_af57ef0512d15f::t_401952f01f435b 89-98,107-109,118,173-177,179-186,276,309,552-593,597-606,610-616,627-630
+packages/@n8n/instance-ai/evaluations/data/workflows/applies-each-change-when-asked.json
+  s_af57ef0512d15f::t_401952f01f435b 2,15-24,30,34-36,43
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.ts
+  s_af57ef0512d15f::t_401952f01f435b 4,61-62,130-135,186-188,297-298
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/returns-success-after-a-completed-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-deterministic-evals-against-a-fruit-bowl-agent.json
+  s_af57ef0512d15f::t_401952f01f435b 1-180
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-tool-use-via-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-232
+packages/@n8n/agents/src/__tests__/integration/cassettes/title-generation/accepts-a-custom-model-for-title-generation.json
+  s_af57ef0512d15f::t_401952f01f435b 1-114
+packages/cli/src/services/dynamic-templates.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 21,30,35
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 10
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-when-a-static-tool-and-an-mcp-tool-share-the-same-prefixed-name.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/evaluate-includes-hitl-tool-calls-in-toolcalls-passed-to-eval-scorers.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/emits-nothing-for-an-assistant-message-whose-only-blocks-are-all-pending.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 33-41
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/normal-tools-with-bounded-concurrency-complete-without-errors-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-214
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/calls-echo-tool-and-returns-text-content.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/recalls-tool-results-with-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-617
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-web-search-provider-tool-can-be-attached-without-suspending.json
+  s_af57ef0512d15f::t_401952f01f435b 1-60
+packages/@n8n/api-types/src/dto/roles/role-members-response.dto.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-11
+packages/@n8n/backend-network/src/http/__tests__/transport-subpath-purity.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-109
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 2-3,527-563
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-all-mcp-tools-when-config-requireapproval-true.json
+  s_af57ef0512d15f::t_401952f01f435b 1-118
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-multiple-listed-tools-when-requireapproval-names-several-tools.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/computer-use/src/tools/shell/shell-execute.ts
+  s_af57ef0512d15f::t_401952f01f435b 4,37-40,46-49,53-54,59
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/accepts-multiple-servers-with-distinct-names.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/calls-add-tool-and-returns-calculated-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/backend-network/src/http/__tests__/client-request-error.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3,87-97
+packages/@n8n/backend-network/src/ssrf/__tests__/ssrf-protection.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 38,145,690
+packages/@n8n/agents/src/__tests__/integration/cassettes/state-restore-after-suspension/resumes-with-generate-after-agent-instance-is-destroyed-and-recreated.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/eslint-config/src/plugin.ts
+  s_af57ef0512d15f::t_401952f01f435b 29
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/reports-per-server-errors-for-partially-failing-multi-server-configs.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/instance-ai/src/workflow-loop/setup-verification-policy.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-29
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loads-and-follows-a-skill-in-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-238
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_af57ef0512d15f::t_401952f01f435b 237-240,246
+packages/@n8n/typescript-config/tsconfig.common.json
+  s_af57ef0512d15f::t_401952f01f435b 9
+packages/cli/src/license/license.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 41,99-103,113
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/llm-receives-the-error-message-and-acknowledges-it-in-the-response.json
+  s_af57ef0512d15f::t_401952f01f435b 1-197
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/recalls-tool-results-with-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-641
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/bounded-concurrency-suspends-first-batch-and-saves-unexecuted-tools-then-resumes-all-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-228
+packages/testing/playwright/pages/components/ActionToggle.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-25
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-throw-and-does-not-call-client-close-again-when-disconnect-is-called-on-an-already-closed-connection.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/needsapprovalfn-suspends-only-matching-inputs.json
+  s_af57ef0512d15f::t_401952f01f435b 1-259
+packages/@n8n/agents/src/__tests__/integration/memory-conversation.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-151
+packages/testing/playwright/pages/WorkflowsPage.ts
+  s_af57ef0512d15f::t_401952f01f435b 4,15,123,127
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/resumes-the-stream-after-resume-with-denial.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.authorization.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 173,191-195
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 107,418,570-584,959,1026,1140,1687-1691,1696,2300-2302,2783,3136,3147,3229,3300,3353,4047,4055,4134,4196,4246,4398
+packages/cli/src/modules/quick-connect/handlers/firecrawl.handler.ts
+  s_af57ef0512d15f::t_401952f01f435b 26,36,45
+packages/@n8n/instance-ai/evaluations/data/workflows/product-page-agent-question-tool.json
+  s_af57ef0512d15f::t_401952f01f435b 1-37
+packages/testing/playwright/services/dynamic-credential-api-helper.ts
+  s_af57ef0512d15f::t_401952f01f435b 206-224
+packages/cli/src/task-runners/task-managers/data-request-response-builder.ts
+  s_af57ef0512d15f::t_401952f01f435b 53
+packages/frontend/editor-ui/src/features/roles/project/RoleAssignmentsTab.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-185
+packages/nodes-base/nodes/Snowflake/GenericFunctions.ts
+  s_af57ef0512d15f::t_401952f01f435b 18,57-61
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/fires-telemetryintegration-hooks-alongside-langsmith-traces.json
+  s_af57ef0512d15f::t_401952f01f435b 1-187
+packages/@n8n/agents/src/sdk/__tests__/agent-mcp-validation.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-68
+packages/@n8n/permissions/src/constants.ee.ts
+  s_af57ef0512d15f::t_401952f01f435b 65
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-114
+packages/cli/src/modules/instance-ai/instance-ai-terminal-outcome.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-570
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/returns-cached-tools-on-subsequent-calls-without-reconnecting.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/frontend/editor-ui/src/features/roles/project/projectRoleScopes.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-106
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-agentstart-and-agentend-around-a-stream-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-612
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 17-23,123-124
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatQuickActions.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 89-107
+packages/cli/src/services/user.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 17,27,326-336
+packages/@n8n/instance-ai/evaluations/binaryChecks/types.ts
+  s_af57ef0512d15f::t_401952f01f435b 41-47,62
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-terminal-outcome.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-497
+packages/@n8n/agents/src/__tests__/integration/cassettes/batched-tool-execution/normal-tools-with-bounded-concurrency-complete-without-errors-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-228
+packages/nodes-base/credentials/Snowflake.credentials.ts
+  s_af57ef0512d15f::t_401952f01f435b 114-119
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-call-upsert/after-resume-thread-has-exactly-one-resolved-tool-call-block-no-duplicate-rows.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-248
+packages/@n8n/mcp-browser-extension/src/ui/composables/useConnection.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 642-660
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/round-trips-content-tool-outputs-from-ai-sdk-tool-messages.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-llm-as-judge-correctness-eval.json
+  s_af57ef0512d15f::t_401952f01f435b 1-114
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/passes-an-aborting-signal-to-tool-context-during-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-84
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/calls-add-tool-and-returns-calculated-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/sanitizes-replayed-non-object-tool-call-inputs-for-provider-requests.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/calls-echo-tool-and-returns-text-content.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/backend-network/eslint.config.mjs
+  s_af57ef0512d15f::t_401952f01f435b 4-35,37
+packages/@n8n/agents/src/__tests__/integration/execution-options.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-104
+packages/cli/src/security-audit/risk-reporters/__tests__/instance-risk-reporter.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 35
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_af57ef0512d15f::t_401952f01f435b 58-61,81-83,87,214
+packages/frontend/editor-ui/src/app/utils/typesUtils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-7,66-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/works-when-passed-directly-to-agent-memory-as-bare-builtmemory.json
+  s_af57ef0512d15f::t_401952f01f435b 1-132
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_af57ef0512d15f::t_401952f01f435b 1243
+packages/nodes-base/nodes/MySql/test/v1/executeQuery.quotedLiteral.workflow.json
+  s_af57ef0512d15f::t_401952f01f435b 1-84
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-toolexecutionstart-and-toolexecutionend-during-streaming.json
+  s_af57ef0512d15f::t_401952f01f435b 1-201
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/cancels-a-stream-call-via-external-abortsignal.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 64-65,254-255,257,572-573
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/handler-invokes-the-child-process-tool-and-returns-mcp-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-structuredoutput-after-resume-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-239
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/resume-generate-result-includes-the-resumed-tool-call-when-denied.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/api-types/src/dto/binary-data/__tests__/binary-data-query.dto.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 36-44
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-when-requireapproval-string-is-set-without-a-checkpoint-store.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-2
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/cancels-a-generate-call-via-external-abortsignal.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_af57ef0512d15f::t_401952f01f435b 117-123
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-all-tools-when-config-requireapproval-true.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/frontend/editor-ui/src/app/composables/useRunWorkflow.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 271-279
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3,257-329
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/agentend-data-contains-the-response-messages.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/testing/playwright/workflows/mcp-trigger/mcp-trigger-n8n-oauth2-private-cred.json
+  s_af57ef0512d15f::t_401952f01f435b 1-66
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/recalls-tool-results-with-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-303
+packages/@n8n/backend-network/src/transport.ts
+  s_af57ef0512d15f::t_401952f01f435b 5-9
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/ignores-the-removed-legacy-global-flag-and-only-uses-server-approval-config.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/core/src/binary-data/__tests__/azure-blob.manager.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-171
+packages/@n8n/agents/src/__tests__/integration/cassettes/telemetry-langsmith/sends-trace-data-to-langsmith-using-langsmithtelemetry.json
+  s_af57ef0512d15f::t_401952f01f435b 1-187
+packages/@n8n/agents/src/__tests__/integration/cassettes/multi-tool-calls/correctly-merges-results-when-different-tools-are-called-in-sequence.json
+  s_af57ef0512d15f::t_401952f01f435b 1-256
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-and-clears-cache-when-server-is-unreachable.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-parsed-structuredoutput-via-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-83
+packages/@n8n/nodes-langchain/package.json
+  s_af57ef0512d15f::t_401952f01f435b 215
+packages/@n8n/agents/src/__tests__/integration/cassettes/multimodal/accepts-an-image-via-binary-data-and-references-it-in-the-response.json
+  s_af57ef0512d15f::t_401952f01f435b 1-72
+packages/@n8n/backend-network/src/http/client-request-error.ts
+  s_af57ef0512d15f::t_401952f01f435b 23-38
+packages/core/src/binary-data/azure-blob/__tests__/azure-blob.service.ee.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-103
+packages/@n8n/computer-use/src/tools/shell/shell-execute.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 234-294,464,466
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/vault.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 2,78,100-107
+packages/@n8n/task-runner/src/runner-types.ts
+  s_af57ef0512d15f::t_401952f01f435b 102-103
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-if-neither-url-nor-command-is-provided.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 71-79
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/TestCaseHeader.vue
+  s_af57ef0512d15f::t_401952f01f435b 92-93,110-117
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-multiple-dataset-rows-in-parallel.json
+  s_af57ef0512d15f::t_401952f01f435b 1-358
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/persists-maxiterations-together-with-completed-iteration-count-in-checkpoints-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-79
+packages/nodes-base/nodes/Snowflake/__tests__/configure.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-53
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 129-151
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-built-in-string-similarity-eval.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/matches-tool-names-without-prefix-when-requireapproval-contains-un-prefixed-names.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-throw-when-requireapproval-true-is-set-with-a-checkpoint-store.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-265
+packages/cli/src/modules/external-secrets.ee/providers/__tests__/infisical.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 2,68,79-84
+packages/cli/src/task-runners/task-runner-process-js.ts
+  s_af57ef0512d15f::t_401952f01f435b 81-84
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/connects-and-returns-tools-when-server-is-reachable.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/includes-estimated-cost-from-models-dev-pricing.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/emits-finish-chunks-with-token-usage-in-the-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/cli/test/integration/token-exchange/identity-resolution.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 11-16,25-26,35-36,47-50,63-65,70-72,94,169,201,275-277,299,332,340,357,377,406-408,436-501
+packages/core/package.json
+  s_af57ef0512d15f::t_401952f01f435b 45
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 629-642
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  s_af57ef0512d15f::t_401952f01f435b 97,109
+pnpm-workspace.yaml
+  s_af57ef0512d15f::t_401952f01f435b 102,148
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/connects-to-a-streamable-http-server-and-lists-tools.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/provider-options.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 4,171,173,190
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/searches-loads-and-uses-a-deferred-tool-in-generate-mode.json
+  s_af57ef0512d15f::t_401952f01f435b 1-603
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-any-tools-when-requireapproval-is-false.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3,786,935,950,2224-2260
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-streamable-http-transport/disconnects-cleanly-without-throwing.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/deduplicates-concurrent-connect-calls-both-resolve-via-the-same-promise.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-param-default.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-227
+packages/frontend/editor-ui/src/features/roles/RolesView.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-57
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_af57ef0512d15f::t_401952f01f435b 5-16,206,209-210
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  s_af57ef0512d15f::t_401952f01f435b 15-16,44-74,140-143
+packages/@n8n/backend-network/README.md
+  s_af57ef0512d15f::t_401952f01f435b 7,9,13,15-17,21,24-25,29-124,147
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,8,11,19,31,69-104
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue
+  s_af57ef0512d15f::t_401952f01f435b 92-106
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 432-448
+packages/@n8n/backend-network/src/http/client-options.ts
+  s_af57ef0512d15f::t_401952f01f435b 23-29
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-custom-backend/isolates-threads-in-the-custom-backend.json
+  s_af57ef0512d15f::t_401952f01f435b 1-114
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 13,230-378
+packages/@n8n/api-types/src/dto/roles/role-member.schema.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-9
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_af57ef0512d15f::t_401952f01f435b 30-34,45-89,93,99,102,104-112,128-131
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-execute-command-tool.json
+  s_af57ef0512d15f::t_401952f01f435b 1-802
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/rejects-when-mcp-server-is-unreachable.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/oauth2-metadata-http-client.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 41,49-52
+packages/core/src/binary-data/azure-blob/azure-blob.config.ts
+  s_af57ef0512d15f::t_401952f01f435b 20
+packages/nodes-base/nodes/MySql/test/v1/executeQuery.quotedLiteral.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-29
+packages/nodes-base/nodes/MySql/v2/helpers/utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 125-143,154
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-sidebar.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 7
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-call-upsert/after-resume-with-denial-thread-has-exactly-one-resolved-tool-call-block.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/@n8n/backend-network/src/http/axios/__tests__/request.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 21,33,45,108,130,154,205-207,339
+packages/testing/playwright/tests/e2e/settings/log-streaming/log-streaming-delivery.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-313
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/structuredoutput-conforms-to-the-schema.json
+  s_af57ef0512d15f::t_401952f01f435b 1-89
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-parsed-structuredoutput-in-stream-finish-chunk.json
+  s_af57ef0512d15f::t_401952f01f435b 1-89
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-any-tools-when-requireapproval-is-not-set.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/workspace-instructions-are-appended-to-agent-instructions.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_af57ef0512d15f::t_401952f01f435b 79,156-222
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_af57ef0512d15f::t_401952f01f435b 1-818
+packages/testing/playwright/pages/components/Breadcrumbs.ts
+  s_af57ef0512d15f::t_401952f01f435b 3-4,6-10,32
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/returns-cached-tools-on-subsequent-calls-without-reconnecting.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/sdk/__tests__/mcp-client.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-47
+packages/@n8n/agents/src/__tests__/integration/cassettes/double-suspension/stream-no-suspended-chunks-leak-into-the-final-completion-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-120
+packages/@n8n/eslint-plugin-community-nodes/src/rules/require-mit-license.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-67
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/no-excessive-build-failures.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-103
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-file-stat-to-get-file-metadata.json
+  s_af57ef0512d15f::t_401952f01f435b 1-794
+packages/@n8n/task-runner/src/js-task-runner/built-ins-parser/__tests__/built-ins-parser.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 287
+packages/@n8n/agents/src/__tests__/integration/cassettes/json-schema-validation/allows-the-llm-to-self-correct-after-receiving-a-json-schema-validation-error.json
+  s_af57ef0512d15f::t_401952f01f435b 1-325
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-when-requireapproval-true-is-set-without-a-checkpoint-store.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/merges-role-tool-modelmessages-into-the-preceding-assistant-tool-call-block.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/orphaned-tool-messages/handles-pending-tool-call-blocks-interrupted-turn-in-history.json
+  s_af57ef0512d15f::t_401952f01f435b 1-78
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/stream-agent-writes-a-file-and-streams-the-response.json
+  s_af57ef0512d15f::t_401952f01f435b 1-845
+packages/@n8n/agents/vitest.integration.config.mjs
+  s_af57ef0512d15f::t_401952f01f435b 12
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/tomessage-returns-undefined-for-text-only-results.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/backend-network/src/http/axios/request.ts
+  s_af57ef0512d15f::t_401952f01f435b 87,159
+packages/@n8n/backend-network/src/http/axios/__tests__/utils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 31
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_af57ef0512d15f::t_401952f01f435b 5-9,175-176
+packages/cli/test/integration/database/repositories/role.repository.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 602-667
+packages/@n8n/agents/src/__tests__/integration/cassettes/stream-timing/tool-input-delta-chunks-arrive-incrementally-not-all-buffered.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/cli/src/executions/execution-data/__tests__/azure-store.ee.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 7,27-28,45,48,60,65,88,108,122-123
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 3,230-358
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/calls-an-mcp-tool-during-generation-and-returns-the-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1-242
+packages/core/src/binary-data/azure-blob.manager.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-93
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/WizardSidepanel/EvaluationsWizardSidepanel.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 11,110-120,126
+packages/nodes-base/credentials/common/aws/descriptions.ts
+  s_af57ef0512d15f::t_401952f01f435b 2
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-timeouts.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 4-12,14-19,21,23-32
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/returns-empty-array-when-no-servers-are-configured.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderChatColumn.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-97
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-error-handling/does-not-crash-when-a-tool-throws-stream-completes-with-a-finish-chunk.json
+  s_af57ef0512d15f::t_401952f01f435b 1-197
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/searches-loads-and-uses-a-deferred-tool-in-stream-mode.json
+  s_af57ef0512d15f::t_401952f01f435b 1-628
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-approval/stream-suspends-with-approval-payload-before-running-a-requireapproval-tool.json
+  s_af57ef0512d15f::t_401952f01f435b 1-86
+packages/cli/src/modules/quick-connect/handlers/__tests__/firecrawl.handler.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 26
+packages/core/src/errors/error-reporter.ts
+  s_af57ef0512d15f::t_401952f01f435b 2,305
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_af57ef0512d15f::t_401952f01f435b 123-125,304
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/returns-length-not-error-when-iteration-limit-is-reached-in-resumed-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-86
+packages/nodes-base/nodes/MySql/test/v1/executeQuery.queryReplacement.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-26
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/throws-when-a-static-tool-and-an-mcp-tool-share-the-same-prefixed-name.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/json-schema-validation/passes-valid-input-to-the-handler-and-returns-a-successful-tool-result.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 20,300-302,505-535
+packages/frontend/editor-ui/src/app/utils/typesUtils.ts
+  s_af57ef0512d15f::t_401952f01f435b 40-41,43-44,46-48,50-56
+packages/cli/test/integration/token-exchange/embed-auth.api.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 13,199,216-218
+packages/testing/playwright/tests/evals/instance-ai/weather-alert.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 51-60,62-71
+packages/@n8n/agents/src/__tests__/integration/cassettes/max-iterations/returns-length-not-error-when-iteration-limit-is-reached-in-resumed-generate.json
+  s_af57ef0512d15f::t_401952f01f435b 1-79
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/stream-the-model-calls-the-web-search-provider-tool-without-suspending.json
+  s_af57ef0512d15f::t_401952f01f435b 1-73
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 8,338
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/no-excessive-build-failures.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-23
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/wraps-only-the-listed-tool-when-requireapproval-names-a-single-tool.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 76-77,83-88,159-170
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-throw-when-requireapproval-is-an-empty-array-without-a-checkpoint-store.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/throws-if-a-duplicate-server-name-is-registered.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/cli/src/utils/strapi-utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 87,90,92
+packages/core/src/binary-data/__tests__/binary-data-service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 10,62-74
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-turnstart-and-turnend-for-each-llm-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/cli/test/integration/task-runners/task-runner-process.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 27-31,33,41-45
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/interim-message-ordering-tool-result-is-inserted-right-after-its-tool-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/backend-network/src/proxy/__tests__/no-proxy-patch.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-207
+packages/testing/janitor/src/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 213,229
+packages/frontend/editor-ui/src/app/components/DependencyPill.vue
+  s_af57ef0512d15f::t_401952f01f435b 204
+packages/nodes-base/nodes/MySql/v1/MySqlV1.node.ts
+  s_af57ef0512d15f::t_401952f01f435b 20-21,92-94,153,157,159-173,181-185,208-212,345-364
+packages/core/src/execution-engine/node-execution-context/utils/get-additional-keys.ts
+  s_af57ef0512d15f::t_401952f01f435b 24,44-48,50,64,68
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/evaluate-output-is-non-empty-when-agent-only-uses-an-interruptible-tool-no-text-response.json
+  s_af57ef0512d15f::t_401952f01f435b 1-180
+packages/nodes-base/nodes/Code/ValidationError.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,3
+packages/cli/test/integration/external-secrets/external-secrets.expression-access.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-288
+packages/cli/test/integration/users.api.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1719
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/loaded-skill-drives-a-domain-tool-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1-423
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-write-file-and-workspace-read-file-tools.json
+  s_af57ef0512d15f::t_401952f01f435b 1-823
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 4,128,150,173
+packages/@n8n/agents/src/__tests__/integration/cassettes/state-restore-after-suspension/resumes-with-stream-after-agent-instance-is-destroyed-and-recreated.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/@n8n/agents/src/__tests__/integration/provider-tools.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 15,24-26,134-169
+packages/@n8n/agents/src/__tests__/integration/cassettes/execution-options/uses-agent-modelfetch-for-model-requests.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/backend-network/src/http/undici/transport.ts
+  s_af57ef0512d15f::t_401952f01f435b 244-251
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/verification-obligation.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,73-96
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-throw-when-requireapproval-false-is-set-without-a-checkpoint-store.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-image-generation-provider-tool-can-be-attached-and-does-not-use-hitl-suspension.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/cli/src/controllers/role.controller.ts
+  s_af57ef0512d15f::t_401952f01f435b 6,10-14,79-87
+packages/cli/src/modules/external-secrets.ee/providers/infisical.ts
+  s_af57ef0512d15f::t_401952f01f435b 172,263,272,307,315
+packages/core/src/nodes-loader/__tests__/custom-directory-loader.hot-reload.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-123
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_af57ef0512d15f::t_401952f01f435b 1726,2796-2820
+packages/testing/playwright/tests/e2e/api/waiting-endpoint-security.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 14-70,74-138,141-142
+packages/testing/playwright/tests/e2e/workflows/editor/execution/executions-list-infinite-scroll.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 19-22
+scripts/mutation-health/emit-payload.test.mjs
+  s_af57ef0512d15f::t_401952f01f435b 1-158
+packages/@n8n/agents/src/__tests__/workspace/test-utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 23-24,187-188,198-199
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-controller.ts
+  s_af57ef0512d15f::t_401952f01f435b 22-25,92-94,106-107,117,188,191
+packages/@n8n/agents/src/__tests__/integration/cassettes/runtime-skills/discovers-skills-with-list-skills-before-loading-a-category-match.json
+  s_af57ef0512d15f::t_401952f01f435b 1-375
+packages/cli/src/modules/external-secrets.ee/providers/vault.ts
+  s_af57ef0512d15f::t_401952f01f435b 285,287,381,386,396,401,440,457,460,491,494
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/TestRunDetailView.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 209-220
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/is-idempotent-calling-connect-twice-resolves-without-starting-a-second-connection.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-options/second-call-with-cached-instructions-reports-cacheread-tokens.json
+  s_af57ef0512d15f::t_401952f01f435b 1-120
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/auto-executes-non-interruptible-tools-concurrently-while-suspending-interruptible-ones.json
+  s_af57ef0512d15f::t_401952f01f435b 1-103
+packages/@n8n/backend-network/src/http/__tests__/http-proxy.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 9,72
+packages/@n8n/backend-network/src/http/__tests__/outbound-http.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 20
+packages/@n8n/computer-use/src/tools/shell/build-shell-resource.ts
+  s_af57ef0512d15f::t_401952f01f435b 17-20,31,34-36,50-52,58,63,65
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/reports-token-usage-on-a-simple-text-response-via-streamtext.json
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/generate-resumes-all-tools-and-receives-a-final-text-response.json
+  s_af57ef0512d15f::t_401952f01f435b 1-198
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/reflects-resourceid-and-threadid-from-runoptions.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/accepts-valid-command-based-config.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/works-with-reasoning-model-and-thinking-enabled.json
+  s_af57ef0512d15f::t_401952f01f435b 1-51
+packages/@n8n/mcp-browser-extension/src/relayAllowlist.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-64
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-behavior/handlecancellation-routes-cancellation-into-the-tool-handler.json
+  s_af57ef0512d15f::t_401952f01f435b 1-182
+packages/cli/src/utils/__tests__/strapi-utils.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 102,123
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-result-to-message/adds-a-custom-message-to-generate-result-that-is-visible-to-user-but-not-to-the-llm.json
+  s_af57ef0512d15f::t_401952f01f435b 1-191
+packages/testing/playwright/tests/performance/canvas/canvas-execution.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 60
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-conversation/recalls-previous-messages-within-the-same-thread.json
+  s_af57ef0512d15f::t_401952f01f435b 1-132
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-call-upsert/if-same-thread-is-resumed-twice-re-suspend-then-resume-again-still-no-duplicate-rows.json
+  s_af57ef0512d15f::t_401952f01f435b 1-180
+packages/cli/src/workflows/workflows.controller.ts
+  s_af57ef0512d15f::t_401952f01f435b 12,15,18-19,41,50,56,690,695
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/emits-toolexecutionstart-and-toolexecutionend-when-a-tool-runs.json
+  s_af57ef0512d15f::t_401952f01f435b 1-187
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory/isolates-separate-threads.json
+  s_af57ef0512d15f::t_401952f01f435b 1-122
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/require-param-default.md
+  s_af57ef0512d15f::t_401952f01f435b 1-60
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_af57ef0512d15f::t_401952f01f435b 390-396
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_af57ef0512d15f::t_401952f01f435b 20
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/streams-a-response-that-includes-an-mcp-tool-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1-260
+packages/cli/src/credentials-helper.ts
+  s_af57ef0512d15f::t_401952f01f435b 532-534
+packages/nodes-base/credentials/common/aws/system-credentials-utils.ts
+  s_af57ef0512d15f::t_401952f01f435b 6-7,22-28,31-32,44,49-59,62,64-67,301,329,331
+packages/nodes-base/nodes/Code/errors/WrappedExecutionError.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,10
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_af57ef0512d15f::t_401952f01f435b 720-721,729-730
+packages/@n8n/agents/src/__tests__/integration/cassettes/multimodal/accepts-multiple-content-blocks-text-image-in-a-single-message.json
+  s_af57ef0512d15f::t_401952f01f435b 1-76
+packages/testing/janitor/src/rules/valid-owner-annotation.rule.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-140
+packages/testing/playwright/tests/evals/_smoke/langsmith-fixture.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 6-13,15-23,25-38
+packages/testing/playwright/services/api-helper.ts
+  s_af57ef0512d15f::t_401952f01f435b 475-523
+packages/cli/src/modules/instance-ai/trigger-run-data.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-33
+packages/workflow/src/interfaces.ts
+  s_af57ef0512d15f::t_401952f01f435b 906,2823,3270-3271,3381-3382
+.github/workflows/mutation-health-nightly.yml
+  s_af57ef0512d15f::t_401952f01f435b 142-154,178-191
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 165-168,230-234,329-331,531,658-683,1058,1089,2263,2439-2458
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-execution.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 40
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-routing.ts
+  s_af57ef0512d15f::t_401952f01f435b 8,18,69
+packages/@n8n/agents/src/__tests__/integration/workspace-agent.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-407
+packages/@n8n/backend-network/src/proxy/__tests__/proxy-resolution.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-52
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/cli.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 184-190
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-691
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-616
+packages/testing/playwright/services/public-api-helper.ts
+  s_af57ef0512d15f::t_401952f01f435b 73-82
+packages/cli/src/scaling/job-processor.ts
+  s_af57ef0512d15f::t_401952f01f435b 168
+packages/@n8n/mcp-browser-extension/src/background.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-150
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 27-28,37-38,142-143,236,238-243,250
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/reports-token-usage-after-a-multi-step-tool-call.json
+  s_af57ef0512d15f::t_401952f01f435b 1-205
+packages/core/src/nodes-loader/directory-loader.ts
+  s_af57ef0512d15f::t_401952f01f435b 21,534-538,540,546-610
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/calls-image-tool-and-returns-mixed-text-image-content.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-handles-multi-step-workflow-mkdir-write-list-read.json
+  s_af57ef0512d15f::t_401952f01f435b 1-1303
+packages/cli/src/utils/auth-fetch.ts
+  s_af57ef0512d15f::t_401952f01f435b 1,3-6,18-23,33-63,79,83,100-106
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 7-13,105-106,116,235-242
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderChatColumn.vue
+  s_af57ef0512d15f::t_401952f01f435b 29,98,109
+packages/cli/src/task-runners/task-managers/__tests__/data-request-response-builder.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 27,112
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 747-792
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_af57ef0512d15f::t_401952f01f435b 130,1124-1126
+packages/nodes-base/credentials/Aws.credentials.ts
+  s_af57ef0512d15f::t_401952f01f435b 8-9
+packages/@n8n/agents/src/__tests__/integration/cassettes/token-usage/reports-token-usage-on-a-simple-text-response-via-run.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/agents/src/__tests__/integration/mcp-client-boundary.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-104
+packages/@n8n/backend-network/src/http/__tests__/transport-integration.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 78,94,104,116,139,161,196
+packages/nodes-base/nodes/Snowflake/__tests__/insert.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 37,42-56,66-88
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-applies-single-and-batch-string-replacements.json
+  s_af57ef0512d15f::t_401952f01f435b 1-830
+packages/cli/test/integration/services/role.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 22,493-539
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  s_af57ef0512d15f::t_401952f01f435b 11,58-64,78-81,87,89,91,93,95-97,103-105,175,177,179-180,182-183,185-186
+packages/cli/src/utils/__tests__/auth-fetch.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 2,17-20,128-226
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-261
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-confirmations.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 156
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/skips-legacy-tool-call-blocks-that-have-no-state-field-and-emits-nothing-when-they-are-the-only-content.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/to-model-output/works-with-stream-llm-receives-transformed-output.json
+  s_af57ef0512d15f::t_401952f01f435b 1-196
+packages/@n8n/agents/src/__tests__/integration/cassettes/events-and-abort/multiple-handlers-on-the-same-event-are-all-called.json
+  s_af57ef0512d15f::t_401952f01f435b 1-58
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-client-boundary/throws-and-clears-cache-when-server-is-unreachable.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/mcp-browser-extension/src/background.ts
+  s_af57ef0512d15f::t_401952f01f435b 9,158,162,278-283
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_af57ef0512d15f::t_401952f01f435b 59,62,111,114
+packages/cli/src/executions/execution.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 277,279-281,285
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-stdio-transport/connects-to-a-stdio-server-and-lists-tools.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-interrupt/pauses-the-stream-when-a-tool-suspends.json
+  s_af57ef0512d15f::t_401952f01f435b 1-86
+packages/cli/src/services/__tests__/dynamic-templates.service.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 31
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  s_af57ef0512d15f::t_401952f01f435b 206-208,212,245-247
+packages/@n8n/agents/src/__tests__/integration/cassettes/concurrent-tool-execution/resumes-all-suspended-tools-one-by-one-until-the-llm-loop-continues-stream.json
+  s_af57ef0512d15f::t_401952f01f435b 1-212
+packages/@n8n/agents/src/__tests__/integration/cassettes/structured-output/returns-parsed-structuredoutput-when-configured-with-a-raw-json-schema.json
+  s_af57ef0512d15f::t_401952f01f435b 1-82
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-372
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_af57ef0512d15f::t_401952f01f435b 21,44
+packages/@n8n/agents/src/__tests__/integration/cassettes/agent-runtime-conversion/drops-pending-tool-call-blocks-from-both-assistant-and-tool-modelmessages.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-connection/does-not-wrap-any-tools-when-requireapproval-is-an-empty-array.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/tool-transform-error-resilience/tomodeloutput-throwing-during-normal-tool-call-agent-continues-and-finishes-cleanly.json
+  s_af57ef0512d15f::t_401952f01f435b 1-183
+packages/frontend/editor-ui/src/features/roles/components/RolesTable.vue
+  s_af57ef0512d15f::t_401952f01f435b 1-262
+packages/@n8n/ai-utilities/package.json
+  s_af57ef0512d15f::t_401952f01f435b 108
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_af57ef0512d15f::t_401952f01f435b 18-19,33,267-268,634-638
+packages/@n8n/agents/src/__tests__/integration/cassettes/evaluate/runs-llm-correctness-eval-on-fruit-bowl-agent-with-expected-output.json
+  s_af57ef0512d15f::t_401952f01f435b 1-290
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/mcp-connections-persist-across-multiple-generate-calls.json
+  s_af57ef0512d15f::t_401952f01f435b 1-484
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/stream-interim-message-does-not-break-provider-message-ordering.json
+  s_af57ef0512d15f::t_401952f01f435b 1-245
+packages/testing/playwright/tests/evals/_smoke/anthropic.spec.ts
+  s_af57ef0512d15f::t_401952f01f435b 8-12,14-15,17-31,34-39
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-sse-transport/connects-to-an-sse-server-and-lists-tools.json
+  s_af57ef0512d15f::t_401952f01f435b 1
+packages/@n8n/nodes-langchain/utils/aws/test/aws-sdk-client-credentials.test.ts
+  s_af57ef0512d15f::t_401952f01f435b 1-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8680c063670038e8b97f911f244ca1c028df8f97",
+  "prompts": {},
+  "sessions": {
+    "s_af57ef0512d15f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef949-e0c1-7a13-974f-c91b2b6eb3b7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

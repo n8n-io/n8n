@@ -1,0 +1,2983 @@
+packages/@n8n/instance-ai/src/parsers/__tests__/pdf-parser.test.ts
+  ai_agent 4-6,9-15
+.github/workflows/release-push-to-channel.yml
+  ai_agent 170,174
+packages/frontend/@n8n/design-system/package.json
+  ai_agent 4,11
+packages/@n8n/agents/src/__tests__/integration/concurrent-tool-execution.test.ts
+  ai_agent 11,103-145
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  ai_agent 10-11,24-34
+packages/testing/playwright/expectations/instance-ai/should-clear-required-parameter-issue-indicator-when-the-field-is-filled/trace.jsonl
+  ai_agent 1-3
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0001-1780315686812-unknown-host-POST-_v1_messages-e3a14f01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0010-1780165175584-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100,108
+packages/core/src/encryption/__tests__/cipher.test.ts
+  ai_agent 13-23,66,68-71,102,104-107
+packages/@n8n/instance-ai/src/tools/__tests__/workspace.tool.test.ts
+  ai_agent 2,16-24,27-33,36-39,42-44,47-57,60-64,87,101,133,151,185,203-206,222-225,227,250-252,254,273
+packages/@n8n/mcp-apps/src/server/resource-loader.ts
+  ai_agent 1-43
+packages/frontend/@n8n/i18n/package.json
+  ai_agent 4,24,27
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0009-1780315686818-unknown-host-POST-_v1_messages-b91e8d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0003-1780165038483-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/evaluations/cli/args.ts
+  ai_agent 54-58,81,108,132,236-239
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0010-1780160837146-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-rename-thread-via-double-click/0000-1780098264849-unknown-host-POST-_v1_messages-f134c753.json
+  ai_agent 1-131
+packages/@n8n/computer-use/src/tools/filesystem/delete.test.ts
+  ai_agent 3,8,13,17,22,27-28,61,74,87
+packages/cli/src/modules/agents/integrations/integrations-sync.ts
+  ai_agent 2,8-10,15-16,27
+packages/testing/playwright/expectations/instance-ai/should-route-back-to-an-earlier-unhandled-card-when-user-skips-a-later-one/0000-1780098643107-unknown-host-POST-_v1_messages-e1313108.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0006-1780313871359-unknown-host-POST-_v1_messages-1ae37285.json
+  ai_agent 1-108
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/csv-prompt-loader.test.ts
+  ai_agent 163
+packages/@n8n/mcp-apps/eslint.config.mjs
+  ai_agent 1-30
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/__snapshots__/ChatInput.test.ts.snap
+  ai_agent 3,13-14,17-21,26-27,29,31,33-41,43-79,81,84,90,100-101,104-108,113-114,116,118,120-126,128-164,166,169
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 1040,1070,1144-1145,1149-1151,1242-1252,1361-1364,1377,1426,1869,1989,2227,2589,3903-3917,3951,3984,3989,3992,4014,4160,4551-4557,6071,6133-6146,6149-6150,6194,6325-6336,6386-6434,6477,6479
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/SalesforceCardVisualization.vue
+  ai_agent 1-156
+packages/@n8n/agents/src/sdk/catalog.ts
+  ai_agent 3-13,81-84,138-145
+packages/@n8n/agents/src/runtime/stream.ts
+  ai_agent 111-122
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/connect-nodes.tool.test.ts
+  ai_agent 3,25-29,35,38,45
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.vue
+  ai_agent 78-79,244-245,254-255,357-359
+packages/@n8n/mcp-apps/src/apps-manifest.ts
+  ai_agent 1-24
+packages/cli/src/controllers/security-settings.controller.ts
+  ai_agent 48,94-96
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  ai_agent 79-107
+packages/@n8n/config/src/configs/endpoints.config.ts
+  ai_agent 137-144
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  ai_agent 3-5,7-8,15,23-26,29-30,36-37,43-44,50,68,84
+packages/frontend/@n8n/chat/package.json
+  ai_agent 3,5,8
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  ai_agent 12,201,215
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  ai_agent 464,466-470
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0002-1780158501169-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/cli/src/task-runners/task-managers/__tests__/task-manager.test.ts
+  ai_agent 9,152-179
+packages/nodes-base/nodes/Trello/TrelloTrigger.node.ts
+  ai_agent 30-35,53-62,78-114,134-136,146-153,170-180,183
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0011-1780158556268-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/split-in-batches-handler.test.ts
+  ai_agent 71,78,287,393,402,463,472,508,517
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillViewer.test.ts
+  ai_agent 75-76
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  ai_agent 16,47,56,83,95,129-133,141-246,406,950,995,1029
+packages/cli/src/modules/n8n-packages/utils/import-package-upload.ts
+  ai_agent 21
+packages/@n8n/benchmark/scenarios/binary-data/binary-data.script.js
+  ai_agent 5,14-15,29
+packages/@n8n/ai-workflow-builder.ee/test/test-utils.ts
+  ai_agent 2,17-19,31-37,345,381-382,393,493,764-765
+packages/testing/playwright/expectations/instance-ai/should-mark-a-skipped-card-and-keep-the-wizard-open-while-other-cards-are-unhandled/0001-1780098632839-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/parse-validate-handler.test.ts
+  ai_agent 7,12-16,20-22,28,43-46,69-70,75-76,100-101,106-107,128-131,156-159,187-190,218-221,329,352,364,390-391,423,435,451,467
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  ai_agent 3,20,40,67-76,99-107,240,243,245,286,292
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/index.ts
+  ai_agent 1-9
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0000-1780098746213-unknown-host-POST-_v1_messages-18169388.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0007-1780158556266-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-files.test.ts
+  ai_agent 11,16,22,49-71,75
+packages/@n8n/agents/src/runtime/tool-adapter.ts
+  ai_agent 6,123,128-129,134-135,145-146
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/subgraph-helpers.test.ts
+  ai_agent 458
+packages/cli/src/modules/agents/builder/skills/index.ts
+  ai_agent 6,13
+packages/testing/playwright/tests/e2e/mcp/mcp-service.spec.ts
+  ai_agent 22
+packages/cli/src/modules/mcp-registry/__tests__/node-description-transform.test.ts
+  ai_agent 4,350-359
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  ai_agent 1-458
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/AskAssistantChat.vue
+  ai_agent 19,297,616,634,637,684,703,706
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 1-6,13-17,23-24,43-45
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/0002-1780098669103-unknown-host-POST-_v1_messages-595b716b.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/insertOperation.test.ts
+  ai_agent 7-8,17-18,44-45,48,52,60-62,65,131-133,138
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/0002-1780098620820-unknown-host-POST-_v1_messages-595b716b.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/docs/tools.md
+  ai_agent 46
+packages/testing/playwright/expectations/instance-ai/should-persist-a-manually-selected-existing-credential-from-the-dropdown/0001-1780098706727-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  ai_agent 22-23,131-134,138,150
+packages/@n8n/instance-ai/src/source-map-filter.ts
+  ai_agent 13
+packages/cli/src/__tests__/load-nodes-and-credentials.test.ts
+  ai_agent 133-140
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/HoverCard.stories.ts
+  ai_agent 1-368
+packages/testing/playwright/expectations/instance-ai/should-extract-text-from-an-html-attachment-and-answer-from-it/0000-1780098094577-unknown-host-POST-_v1_messages-74b04bc1.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/scripts/coverage-pipeline.test.ts
+  ai_agent 1-62
+packages/testing/playwright/tests/e2e/ai/assistant-support-chat.spec.ts
+  ai_agent 95,102
+CHANGELOG.md
+  ai_agent 1-108
+packages/cli/src/modules/mcp-registry/registry/__tests__/mcp-registry.service.test.ts
+  ai_agent 134-151
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/__snapshots__/HoverCard.test.ts.snap
+  ai_agent 1-12
+packages/nodes-base/nodes/Compression/decompress/BoundedUnzip.ts
+  ai_agent 1-90
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  ai_agent 15,34,145-147,229-262,951,1007,1281-1283,1288-1349,1404-1406,1601,1638-1640,1645-1715,1761-1763,2129-2133,2146-2177,2978-2999
+packages/cli/src/modules/agents/repositories/agent-task.repository.ts
+  ai_agent 1-19
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/n8n-credential-resolver.ts
+  ai_agent 117-127
+packages/@n8n/db/src/connection/db-connection-options.ts
+  ai_agent 115-126
+packages/@n8n/agents/src/runtime/__tests__/stream.test.ts
+  ai_agent 6,142-160
+packages/cli/src/modules/mcp/mcp-oauth-authorization-code.service.ts
+  ai_agent 7,29,41,65,70,76-103,107,127,134-149,151-154
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0003-1780158638829-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 1-108
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsModal.vue
+  ai_agent 1-219
+packages/testing/playwright/expectations/instance-ai/should-display-user-and-assistant-messages-in-timeline/trace.jsonl
+  ai_agent 1
+packages/cli/src/evaluation.ee/__tests__/test-runs.controller.ee.test.ts
+  ai_agent 271-276,282-318
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  ai_agent 49,52-53
+packages/nodes-base/nodes/Zulip/GenericFunctions.ts
+  ai_agent 59-80
+packages/@n8n/ai-workflow-builder.ee/vitest.config.base.ts
+  ai_agent 1-33
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/trace.jsonl
+  ai_agent 1-3
+packages/frontend/editor-ui/src/app/composables/useWorkflowState.ts
+  ai_agent 1
+packages/@n8n/mcp-browser/src/redaction/patterns.ts
+  ai_agent 1-11,21,28-29,33,36-44,46,49-59,66-72,79-90,95-100,105-117
+packages/@n8n/instance-ai/src/tools/orchestration/plan.tool.ts
+  ai_agent 49-53,204
+packages/@n8n/instance-ai/evaluations/__tests__/prebuilt-workflows.test.ts
+  ai_agent 4-5,104,116,132,146
+packages/@n8n/mcp-apps/src/apps/workflow-preview/index.html
+  ai_agent 1-12
+packages/cli/src/modules/mcp/mcp.controller.ts
+  ai_agent 90-91,123,137,146-154,159,194,200
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0007-1780165207179-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0009-1780158556266-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 1-108
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  ai_agent 1-11
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V1/execute.ts
+  ai_agent 9,137,140,145
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  ai_agent 20,30,42-45,167,189,311-312,322-323,331,339,365,368-370,453-457,464,470,479,485,492,496,509,514-542,551,554-556,563,593,599,607,612,621,967-968,972-989,1001,1004-1010,1013-1020,1024-1033,1059-1061,1094,1103
+packages/@n8n/workflow-sdk/package.json
+  ai_agent 3,47,54-56,91,94-96
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-best-practices.tool.ts
+  ai_agent 2-7,10-12,16,19-20,22,26-31,33-37,39-46,49-99,101-102,104,108,111,115,122,125-126,130-131,135-138,143-144
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  ai_agent 26-27
+packages/@n8n/instance-ai/src/runtime/__tests__/background-task-manager.test.ts
+  ai_agent 20,42-43,135-136,159-160,175-176,197,220-221,242,260,301,326,372,403,450
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0004-1780158501171-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 6-7,17-19,24,27,33,42,51,60,75,87,91,95-96,100
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-workflow-overview.tool.test.ts
+  ai_agent 2,17-21,26,29
+packages/@n8n/config/src/configs/scaling-mode.config.ts
+  ai_agent 1-2,42,46,49,86,90,101,105,109
+packages/@n8n/engine/package.json
+  ai_agent 3,9
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/submit-workflow-identity.test.ts
+  ai_agent 214,218,263-264,302,332,382-383,387
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0003-1780158595425-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/frontend/@n8n/design-system/src/components/index.ts
+  ai_agent 44,70,77-82
+packages/@n8n/instance-ai/evaluations/data/workflows/telegram-chatbot-memory-session.json
+  ai_agent 27
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0012-1780158595429-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/@n8n/agents/src/__tests__/workspace/workspace.test.ts
+  ai_agent 1-2,12-22,92,98,119,131,143-144,147,160,165,175,199,205,226,229,290
+packages/@n8n/instance-ai/src/storage/__tests__/terminal-outcome-storage.test.ts
+  ai_agent 1-3,9-10,46
+packages/@n8n/task-runner/tsconfig.json
+  ai_agent 9
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  ai_agent 2671-2672,2685-2686,2700-2701,2714-2715,2720,2729-2730,2743-2744
+packages/cli/src/modules/agents/agents.module.ts
+  ai_agent 44,54,57,59,68-69,74,97-99,126-128
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0006-1780098352155-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/cli/src/modules/agents/agent-task.service.ts
+  ai_agent 1,4-5,7,11,14-46,48-50,55-57,60-62,65,67-69,72-82,84-93,96-97,99-101,104-105,108-124,126-132,135-136,138,140-146,149,152-159,162-164,167-201,203-217,219-237,242-244,246,249,251,259-263,267-273,276,280-303,305,309,311,314,317-321,326-331,334,336-341,343-357,359-378,381-400,403-406,410-414,420,424,426-427,430,433-441,444,450-451,453,458,460-461,464,466-481,484,486-503,505-516,518,521-522,527-528,534-572,575,584-610
+packages/frontend/editor-ui/src/features/agents/composables/useModelCatalog.ts
+  ai_agent 1,4-10,12-40,44-54,57-75,85-106
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-persistence.test.ts
+  ai_agent 22,50
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 36-37,145
+packages/cli/src/workflows/workflow-validation.service.ts
+  ai_agent 268,276
+packages/@n8n/api-types/src/agents/index.ts
+  ai_agent 4-5,7,9,24,34
+packages/@n8n/codemirror-lang-sql/package.json
+  ai_agent 11
+packages/frontend/@n8n/design-system/src/components/N8nSendStopButton/N8nSendStopButton.vue
+  ai_agent 12-13,19,21-22,48,60
+packages/cli/src/task-runners/task-managers/task-requester.ts
+  ai_agent 26,242
+packages/frontend/@n8n/design-system/src/composables/useAutosizeTextarea.ts
+  ai_agent 1-179
+packages/@n8n/task-runner/src/__tests__/task-runner-sentry.test.ts
+  ai_agent 3,17
+packages/nodes-base/nodes/Compression/decompress/GunzipOutputAccumulator.ts
+  ai_agent 1-30
+packages/nodes-base/nodes/TheHiveProject/test/utils.test.ts
+  ai_agent 1-7,27-66
+packages/@n8n/db/src/connection/__tests__/db-connection-monitor.test.ts
+  ai_agent 1-655
+packages/@n8n/mcp-apps/tsconfig.build.json
+  ai_agent 1-14
+packages/cli/src/controllers/__tests__/api-keys.controller.test.ts
+  ai_agent 90-92,94,96-99,117-118,125
+packages/node-dev/package.json
+  ai_agent 15,17
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/add-node.tool.test.ts
+  ai_agent 3-4,26-28,30-31,35-37,43,46,53
+packages/@n8n/config/package.json
+  ai_agent 3,9,26
+packages/@n8n/config/src/configs/cache.config.ts
+  ai_agent 1,17,28
+packages/testing/playwright/expectations/instance-ai/should-mark-a-skipped-card-and-keep-the-wizard-open-while-other-cards-are-unhandled/trace.jsonl
+  ai_agent 1-3
+packages/workflow/test/find-ai-root-node-names.test.ts
+  ai_agent 1-416
+packages/frontend/editor-ui/src/features/execution/executions/components/global/AgentSessionsList.vue
+  ai_agent 93-98,131,148
+packages/testing/playwright/tests/e2e/instance-ai/fixtures.ts
+  ai_agent 102,212-219,317-321
+packages/cli/src/modules/instance-ai/mcp/index.ts
+  ai_agent 1
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-consent.service.test.ts
+  ai_agent 165,191,218-225
+packages/@n8n/ai-workflow-builder.ee/vitest.config.integration.ts
+  ai_agent 1-2,4-8,10
+packages/cli/src/workflows/workflow-finder.service.ts
+  ai_agent 32,49-92
+packages/frontend/editor-ui/src/features/settings/communityNodes/composables/useInstallNode.test.ts
+  ai_agent 19
+packages/workflow/src/workflow-data-proxy.ts
+  ai_agent 1424-1426,1439-1441
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  ai_agent 2,15,18,46-47,51-62,71,75-83,86,183-186,192-193,199-201,204-221,224,231-233,236-237,239-240,252-267,356,359-419,465,492,541,547,585-589,627,653-655,664-674,690-693,695,698,755,779-877,886,913,943,963,990,1015,1017,1039-1153
+packages/@n8n/api-types/src/dto/evaluations/__tests__/evaluation-config.dto.test.ts
+  ai_agent 99-158
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  ai_agent 13,89
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/agent-iteration-handler.test.ts
+  ai_agent 13,19,34,61,75,94,106,135,158-159,171,195,207,233
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/WhatsAppChatVisualization.vue
+  ai_agent 1-230
+packages/@n8n/agents/src/runtime/__tests__/scoped-memory-task-runner.test.ts
+  ai_agent 21,74,76,138,170-173
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  ai_agent 6-7,10,22-23,35-50,75-201
+packages/testing/janitor/src/core/coverage-map.ts
+  ai_agent 1-293
+packages/@n8n/cli/package.json
+  ai_agent 21
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  ai_agent 3-8,34-52,55-60,87-89
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0004-1780313871358-unknown-host-POST-_v1_messages-1d173938.json
+  ai_agent 1-108
+packages/nodes-base/nodes/Linear/test/workflow/apiRequest.ts
+  ai_agent 1-5,7,15,24,32,44,51,59,72
+packages/@n8n/api-types/src/agents/dto.ts
+  ai_agent 5,21-32
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/text-editor-handler.test.ts
+  ai_agent 750
+packages/nodes-base/nodes/Compression/decompress/ZipOutputAccumulator.ts
+  ai_agent 1-64
+packages/@n8n/instance-ai/evaluations/subagent/runner.ts
+  ai_agent 2,4-5,11-13,18-19,28,32-33,36-40,43-44,47-54,57-58,61,64,68,71,73,77,81,83,88,98,108-115,119-151,166
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0000-1780158683733-unknown-host-POST-_v1_messages-86db2663.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/credentials/components/CredentialCard.test.ts
+  ai_agent 344,358-365,375,384-385,387
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  ai_agent 1-7,10-42,44-45,47-52,54-56,60-62,65-72,76-87,89-95,97,99-105,107-111,115-121,124-125,127-128,130,132,134-135,137,141-146,148-152,154-156,159,161,163,165,167-187,190-208,210-214,216-221,224-240,242-256,258-273
+packages/core/src/execution-engine/workflow-execute.ts
+  ai_agent 50,1196,1439,1900-1902,1904-1916,1919,1926-1930,1962-1973
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  ai_agent 1-221
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0007-1780313871360-unknown-host-POST-_v1_messages-6c90f4d1.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0003-1780165175580-unknown-host-POST-_v1_messages-abb905a1.json
+  ai_agent 1-108
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  ai_agent 5,25,71-72,97-98,545-546,868-869,2331-2332,2410-2411,2509-2510,2607-2615,2748-2749
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  ai_agent 64,76-83,85-86,148,386
+packages/nodes-base/nodes/Compression/Compression.node.ts
+  ai_agent 1-2,16-18,265,293-297,305,310,327
+packages/@n8n/db/src/migrations/common/1784000000024-AddResourceToOAuthAuthorizationCodes.ts
+  ai_agent 1-23
+packages/@n8n/ai-utilities/src/__tests__/memory/windowed-chat-memory.test.ts
+  ai_agent 14-15,19,23
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file.tool.test.ts
+  ai_agent 17-29,32-39,42-45,48-50,53-63
+packages/@n8n/nodes-langchain/utils/output_parsers/langchainParserError.test.ts
+  ai_agent 1-44
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/__snapshots__/createVectorStoreNode.test.ts.snap
+  ai_agent 1,3,279
+packages/nodes-base/nodes/Aws/Textract/test/GenericFunctions.test.ts
+  ai_agent 1-10,13-57
+packages/@n8n/instance-ai/evaluations/data/workflows/schema.ts
+  ai_agent 23-29
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0003-1780098352153-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 1-108
+packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts
+  ai_agent 1-48
+packages/nodes-base/nodes/If/V2/IfV2.node.ts
+  ai_agent 4,140
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-builder-agent-pre-validate.test.ts
+  ai_agent 10-13,15,19,22-25,31-33,37-38,58-61,73-74,81
+packages/@n8n/agents/src/sdk/provider-capabilities.ts
+  ai_agent 35
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  ai_agent 5,14-16,18-19,22,194-222
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0004-1780158595425-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/rules-engine/package.json
+  ai_agent 12,14
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-builder-agent-tracing.test.ts
+  ai_agent 12-16,21-24,28-30,34-35,65-66,73-76,111,178-179
+packages/cli/src/modules/agents/entities/agent-task-run-lock.entity.ts
+  ai_agent 1-35
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0006-1780315686816-unknown-host-POST-_v1_messages-1ae37285.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ReActAgent/execute.ts
+  ai_agent 14,121,123-126,130
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  ai_agent 2,4,6,8-15,17,19,24-49,54-87,93-166,182-183,188-196,201-202,207-215,217-218,222-226,230,234-238,242,246-271,278,288-303
+packages/@n8n/agents/docs/agent-runtime-architecture.md
+  ai_agent 15,26,74-107,387,417,434
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0008-1780315686817-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0010-1780165207181-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  ai_agent 22-40,75-77,88-94,96,98-102,104
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  ai_agent 22,71-73,86
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0011-1780158683743-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  ai_agent 24,68
+packages/@n8n/computer-use/src/tools/filesystem/get-file-tree.test.ts
+  ai_agent 3,8,28,32,40-41
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentWorkflowObject.ts
+  ai_agent 5
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+  ai_agent 653-669
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ModelSelector.vue
+  ai_agent 35,191,194-203,207-212,215,221,223
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0004-1780160837142-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 1-108
+packages/@n8n/config/src/configs/compression.config.ts
+  ai_agent 1,4-11
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  ai_agent 1-5,12-75
+packages/@n8n/vitest-config/package.json
+  ai_agent 3,46
+packages/frontend/editor-ui/src/app/constants/workflows.ts
+  ai_agent 1-3,6-9
+packages/@n8n/benchmark/scripts/n8n-setups/sqlite/docker-compose.yml
+  ai_agent 16-18
+packages/nodes-base/credentials/test/Aws.credentials.test.ts
+  ai_agent 147-191
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  ai_agent 12,14-15,326-330,349,371,396,413,447,462
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  ai_agent 6
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  ai_agent 18-20,23-24,222-224,309,379,414-416,741-743
+packages/@n8n/api-types/src/index.ts
+  ai_agent 382,405-411,427-431
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderTelemetry.ts
+  ai_agent 3,83
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/test/TextClassifier.node.test.ts
+  ai_agent 199-218
+packages/cli/src/controllers/oauth/__tests__/oauth1-credential.controller.test.ts
+  ai_agent 25-26,90-119,134,137,146,177,230,267,303,340,375,387
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  ai_agent 10,12,17
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/trace.jsonl
+  ai_agent 1
+packages/@n8n/config/test/config.test.ts
+  ai_agent 99-101,119,246,272-275,567-568,616
+packages/@n8n/tournament/package.json
+  ai_agent 17,19,21
+packages/workflow/package.json
+  ai_agent 3,27
+packages/nodes-base/nodes/Google/CloudStorage/GoogleCloudStorage.node.ts
+  ai_agent 4,29-37,41-45,59-82
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  ai_agent 14-15
+packages/@n8n/instance-ai/src/storage/__tests__/planned-task-storage.test.ts
+  ai_agent 1-2,8-9,13,17-18,22,57
+packages/@n8n/constants/src/time.ts
+  ai_agent 15
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  ai_agent 2,10-15,19-20,31-32,43,48-53,56-62,65-68,71-73,76-86,104,170-173,198-200,216-219,240,264-265,291,314,351,366,376,399,429,461,465,483-484,549,553,571,576,635,656,677,701,717,728,756,760,778,782,793,859,862,881,898-899,902,947,951
+packages/frontend/editor-ui/src/features/agents/composables/useProjectAgentsList.ts
+  ai_agent 7,30-33,66-87
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/message.operation.ts
+  ai_agent 16,319
+packages/core/src/execution-engine/triggers-and-pollers.ts
+  ai_agent 24,26,93,95
+packages/frontend/@n8n/rest-api-client/src/api/roleMappingRule.ts
+  ai_agent 34-40,44-62
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  ai_agent 9,17-20,27,41,43,45,65-87,103,106-113,155
+packages/frontend/@n8n/composables/package.json
+  ai_agent 4,16,19
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts
+  ai_agent 9-14,444-447
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0000-1780165038481-unknown-host-POST-_v1_messages-962a9768.json
+  ai_agent 1-108
+packages/@n8n/ai-workflow-builder.ee/src/assistant/test/assistant-handler.test.ts
+  ai_agent 59
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  ai_agent 2-3,5-6,12-16,21-26,33-47,78-95,98-326,330-332,334-362,376-390,395-397,403-434,439-457,461-464,545,557-564,566-625,628-650,656-665,672-673
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/executeBatch.ts
+  ai_agent 6,110
+packages/@n8n/instance-ai/src/tracing/__tests__/trace-replay.test.ts
+  ai_agent 275
+packages/@n8n/ai-utilities/src/__tests__/utils/tokenizer/token-estimator.test.ts
+  ai_agent 3,11-19
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  ai_agent 2,5,8,13,18,25,27-29,31,49,52-56,59-66,76,80,82-83,106,116,166,179,198,206,230,237-337
+packages/@n8n/mcp-apps/tsconfig.json
+  ai_agent 1-24
+packages/@n8n/instance-ai/src/workspace/workspace-files.ts
+  ai_agent 40-41,43
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/loadOperation.test.ts
+  ai_agent 9-10,17-18,21-22,84-86,91
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/text-editor-tool-handler.test.ts
+  ai_agent 8,40-43,47-50
+packages/@n8n/instance-ai/src/parsers/__tests__/docx-parser.test.ts
+  ai_agent 4-6,8
+packages/@n8n/mcp-apps/README.md
+  ai_agent 1-132
+packages/@n8n/instance-ai/evaluations/system-prompts/mock-execution-verify.ts
+  ai_agent 18-22,24,26-41,62,67
+packages/@n8n/utils/src/search/sublimeSearch.test.ts
+  ai_agent 40-57
+packages/cli/src/modules/redaction/__tests__/redaction-policy.test.ts
+  ai_agent 1-47
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  ai_agent 207-223
+packages/@n8n/instance-ai/src/tools/nodes/node-search-engine.ts
+  ai_agent 98-129,141-144,157,172-177,187,191-204,254-258,274-275,291-294,307,326-327,332,335,354-355
+packages/frontend/editor-ui/src/features/agents/__tests__/scheduleBuilder.test.ts
+  ai_agent 1-60
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  ai_agent 14-89
+packages/@n8n/instance-ai/src/workspace/__tests__/scoped-workspace.test.ts
+  ai_agent 7,17-18,21,24,27,30,33,36,39-41,56,107,125
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/session-chat-handler.test.ts
+  ai_agent 4,11-12,16-19,23-25,28,31-35,38-40,43-47,52,99,137,230
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0007-1780165038485-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  ai_agent 10,27,31,36-39,379,388-389
+packages/cli/src/interfaces.ts
+  ai_agent 188
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/workflows/schedule-social-posts.ts
+  ai_agent 1-104
+packages/@n8n/ai-node-sdk/vitest.config.ts
+  ai_agent 1-3
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  ai_agent 68-126
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  ai_agent 1-67
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0001-1780165207176-unknown-host-POST-_v1_messages-b8fb8ca2.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0005-1780165038484-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  ai_agent 28
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/trace.jsonl
+  ai_agent 1-3
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0012-1780158556269-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0011-1780158595428-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  ai_agent 192-194,196-197,391-395
+packages/testing/playwright/tests/infrastructure/benchmarks/webhook/webhook-save-data-overhead.spec.ts
+  ai_agent 7,12-16,20,36,61
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatPrompt.test.ts
+  ai_agent 171,176,181,186
+packages/@n8n/instance-ai/src/knowledge-base/__tests__/materialize-knowledge-base.test.ts
+  ai_agent 22,26,29
+packages/testing/playwright/expectations/instance-ai/should-delete-thread-via-action-menu/0000-1780098273351-unknown-host-POST-_v1_messages-90e02a7f.json
+  ai_agent 1-108
+packages/@n8n/create-node/package.json
+  ai_agent 3
+packages/cli/src/executions/execution-data/__tests__/db-store.integration.test.ts
+  ai_agent 96-124
+packages/@n8n/ai-utilities/src/utils/vector-store/MemoryManager/test/MemoryCalculator.test.ts
+  ai_agent 3
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/workflows/whatsapp-support.ts
+  ai_agent 1-90
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/trace.jsonl
+  ai_agent 1-3
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  ai_agent 2,205,224-230
+packages/extensions/insights/package.json
+  ai_agent 31,42
+packages/nodes-base/nodes/Slack/test/v1/GenericFunctions.test.ts
+  ai_agent 3-8,155-176
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-workflow-builder.test.ts
+  ai_agent 15-17,51-54,79,185-188,234-237
+packages/cli/test/integration/api-keys.api.test.ts
+  ai_agent 14-20,247,275-283,294,297,308,325-326,481-489,500,503,514,531-532,545-635
+packages/@n8n/local-gateway/vite.config.ts
+  ai_agent 1-6
+packages/testing/code-health/package.json
+  ai_agent 15,18
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  ai_agent 184
+packages/@n8n/api-types/src/agents/agent-task.schema.ts
+  ai_agent 1-29
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0003-1780160837142-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 1-108
+packages/@n8n/mcp-browser/src/tools/credential.test.ts
+  ai_agent 1-2,11,15,19-20,272,287
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0007-1780158595426-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/janitor/package.json
+  ai_agent 4-54
+packages/@n8n/api-types/src/agents/sub-agent.schema.ts
+  ai_agent 1-52
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/0000-1780098604381-unknown-host-POST-_v1_messages-1a07624f.json
+  ai_agent 1-108
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/plan-mode-discovery.integration.test.ts
+  ai_agent 21,89,92
+packages/@n8n/mcp-apps/src/i18n/index.test.ts
+  ai_agent 1-20,23-37,41-49,52-54
+packages/@n8n/agents/src/types/sdk/agent.ts
+  ai_agent 7-12,97-112,120,134-135,160,175
+packages/cli/src/modules/n8n-packages/entities/credential/credential-resolution-error.ts
+  ai_agent 1-19
+packages/@n8n/instance-ai/src/tools/evals/__tests__/evals.tool.test.ts
+  ai_agent 2,4-5,12,221-222,225,231,237,244-247,255,274,287,300,334,363,386,414-415,534,557,613,822,929,944,961,986,1032,1035,1053
+packages/cli/src/modules/redaction/redaction-channels.ts
+  ai_agent 1-44
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0004-1780158638830-unknown-host-POST-_v1_messages-3397aec1.json
+  ai_agent 1-108
+packages/workflow/test/expression.test.ts
+  ai_agent 1295-1354
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/9999-1780165069697-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0004-1780165069700-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 1-108
+packages/@n8n/agents/src/sdk/tool.ts
+  ai_agent 74,81,139-140,230-238,306
+packages/core/src/execution-engine/node-execution-context/utils/request-helper-functions.ts
+  ai_agent 17,775-794,823-833
+packages/frontend/@n8n/storybook/package.json
+  ai_agent 7,10
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  ai_agent 3,15-26,29-30,40,45-51,58-80,122-169
+packages/cli/src/modules/redaction/__tests__/instance-redaction-enforcement.service.test.ts
+  ai_agent 1,67-68,78-79,82,88,98,103,107-108,111,114,122,127,132,137,147,156-157,169
+packages/frontend/editor-ui/src/features/credentials/views/CredentialsView.test.ts
+  ai_agent 450,460
+packages/cli/src/modules/agents/integrations/integration-tools.ts
+  ai_agent 4,55,789,791,825
+packages/testing/playwright/expectations/instance-ai/should-create-new-credentials-across-two-setup-cards-and-persist-them-on-apply/0000-1780098591759-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  ai_agent 3,6-7,10,62,104-105,122,140-142,146,167,206,233,355,465,474,566,596,605-622,627,631-658,960,987,1044,1153
+packages/cli/src/modules/mcp-registry/mcp-registry.controller.ts
+  ai_agent 1-37
+packages/nodes-base/nodes/Google/CloudStorage/GenericFunctions.ts
+  ai_agent 1-43,63-82
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  ai_agent 1-459
+packages/@n8n/instance-ai/vite.config.ts
+  ai_agent 1-111
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0014-1780160837150-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0000-1780158501168-unknown-host-POST-_v1_messages-3b53cf28.json
+  ai_agent 1-108
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  ai_agent 1,3-7,9,11-12,14-20,23-45,48-73,76-103,107,110-130,133-141,144-147,150
+packages/frontend/editor-ui/src/features/ai/instanceAi/useTimelineGrouping.ts
+  ai_agent 89-96,120-131,141,162
+packages/cli/src/modules/mcp/__tests__/mcp.service.test.ts
+  ai_agent 15-31,41,94,135,294-383,388,431,434,474,477,482-579
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-image-context.test.ts
+  ai_agent 1-83
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-connection.controller.ts
+  ai_agent 1-157
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  ai_agent 1,4,7,11-24,27-30,138-139,218,263,304-305,339-343,1575,1580,1928,2115
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 8-9,165,169-170,173,177,181-183,185-187,191,195-198,200-215,219,223-225,228
+packages/@n8n/api-types/src/dto/workflows/base-workflow.dto.ts
+  ai_agent 36-65
+packages/@n8n/mcp-apps/src/server/register-mcp-app-tool.ts
+  ai_agent 1-57
+packages/frontend/editor-ui/src/features/agents/components/AgentAddTriggerModal.vue
+  ai_agent 20,189
+packages/@n8n/agents/src/runtime/model-factory.ts
+  ai_agent 129-141
+packages/@n8n/ai-utilities/src/__tests__/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.test.ts
+  ai_agent 3,9,19,27,37,56
+packages/@n8n/workflow-sdk/tsconfig.json
+  ai_agent 4
+packages/@n8n/instance-ai/src/workspace/__tests__/create-workspace.test.ts
+  ai_agent 92
+packages/@n8n/instance-ai/evaluations/data/workflows/workflow-data-table.json
+  ai_agent 28
+packages/testing/playwright/services/api-helper.ts
+  ai_agent 43-49,347-358,376-384
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-episodic.test.ts
+  ai_agent 22,46-51
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/index.ts
+  ai_agent 41,46
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  ai_agent 21-23,25-26,85-87,273
+packages/@n8n/db/src/migrations/common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads.ts
+  ai_agent 1-86
+packages/@n8n/mcp-browser/src/tools/session.test.ts
+  ai_agent 2-3,91,106,162
+packages/cli/src/modules/otel/otel.config.ts
+  ai_agent 32-34
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner.test.ts
+  ai_agent 27,35,48,82,108,123,156,167,187,193,217,230,256,273,279,293,299,316,322,339,352,372,378,392,398,419,425
+packages/@n8n/instance-ai/src/workspace/__tests__/daytona-auth-manager.test.ts
+  ai_agent 1-3,5,11,72,84,97,115,135,152,176,191,211
+packages/@n8n/task-runner/src/js-task-runner/__tests__/task-runner.test.ts
+  ai_agent 1,11,40,86,90,98,127,163,190,196,226,243-244,249,256,287,307-308,313,320,353,391,394,405-406,419-420
+packages/cli/src/modules/instance-ai/eval/eval-mocked-credentials-helper.ts
+  ai_agent 34-37,144,186
+packages/@n8n/mcp-apps/src/i18n/index.ts
+  ai_agent 1-3,6-10,12-26,29-31,33-38,40-41,45-46,48-55
+packages/cli/src/modules/instance-ai/repositories/instance-ai-mcp-registry-connection.repository.ts
+  ai_agent 1-11
+packages/@n8n/backend-test-utils/package.json
+  ai_agent 3,9
+packages/@n8n/mcp-apps/src/apps/workflow-preview/shims-vue.d.ts
+  ai_agent 1-7
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0001-1780165175578-unknown-host-POST-_v1_messages-1bceada7.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/nodes-base/nodes/Compression/decompress/DecompressedSizeExceededError.ts
+  ai_agent 1-8
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0003-1780158683736-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/db/src/migrations/common/1784000000021-CreateAgentTaskDefinitionTable.ts
+  ai_agent 1-118
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  ai_agent 8,26-33,45-48,61-62,64-69,85-93,98-106,111-115,183,186-192,231-235,260-280
+packages/@n8n/computer-use/src/tools/screenshot/screenshot.test.ts
+  ai_agent 2,7,9-12,20,27-28,35-36,44-45,52-58,72-78,83-84,92,97,112,121,138,142,153,157,165,170,195,213,233,253,258,265,272,277
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskQuestionCard.vue
+  ai_agent 54-67,183,194
+packages/@n8n/computer-use/src/tools/shell/shell-execute.test.ts
+  ai_agent 4,13-15,18-19,23,25,33-34,39-40,44,51,72,164,175,190
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/tracing-utils.test.ts
+  ai_agent 1,4,6,9-11,14,18,32
+packages/@n8n/api-types/src/agents/model-providers.ts
+  ai_agent 1-23
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  ai_agent 32,41-42,49,71-83,142
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/node-search.tool.test.ts
+  ai_agent 18-22,30,82
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  ai_agent 2-6,9,12,15,19,21,23-26,28-31,33-61,64,66-87,89-100,103-118,122,124-130,132-134,137-139,141-143,145-165,167-169,172-176,178-195,198-215,218-221,223,225-227,229-232,234-236,240-249,251-252,254-261,263-266,268,273,275,277-283,286-293,295-300,302-303,305-308,316-353,358-368,370-372,374-386,388-502,504-505,507,509,512-513,516,518-519,521-525,527-528,530-532,538,541,545-546,550,554-555,558,564-567,570-573,576-578,581-585,588-589,592-593,596-597,600-602,605-607,609-610,613-614,617,623
+packages/@n8n/agents/src/__tests__/langsmith-telemetry.test.ts
+  ai_agent 6-7,12-15,18-19,21-24,27-28,32,35,42-43,46-49,56,58,64-65,71-72,136-137,191-192
+packages/@n8n/chat-hub/package.json
+  ai_agent 3,9,15-17,26-29
+packages/@n8n/config/src/index.ts
+  ai_agent 11,85,269-270
+packages/@n8n/utils/package.json
+  ai_agent 4,29,32
+packages/cli/src/modules/agents/repositories/agent-task-snapshot.repository.ts
+  ai_agent 1-41
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0013-1780158501176-unknown-host-POST-_v1_messages-0551ad71.json
+  ai_agent 1-108
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  ai_agent 10,16,71-96,105-118,134,164,181,184,187,193,202,211
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatPromptCompact.vue
+  ai_agent 3,31,54-67,69-103,112-114,120-121,136
+packages/@n8n/ai-utilities/src/__tests__/suppliers/supplyModel.test.ts
+  ai_agent 1,4,6-8,10-12,14-15,21-22,25-26,31-32,35-38,41-45,47,51-54,58,211-213,229-231,245-247
+packages/@n8n/ai-workflow-builder.ee/package.json
+  ai_agent 3,8,13-23,85,88,92-94
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  ai_agent 1-90
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/binary-checks/__tests__/index.test.ts
+  ai_agent 45
+packages/nodes-base/nodes/Slack/V1/SlackV1.node.ts
+  ai_agent 19-24,375,434,515,1086,1156
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/9999-1780165175578-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/web-fetch.utils.test.ts
+  ai_agent 6,17,19,24-26,43,83,140
+packages/testing/containers/services/load-balancer.ts
+  ai_agent 9-10,22-34,45-52,59-80,91,105,108-114,117
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-settings.service.test.ts
+  ai_agent 359-369
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0001-1780158513967-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0001-1780158612747-unknown-host-POST-_v1_messages-0551ad71.json
+  ai_agent 1-108
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/tool-executor.test.ts
+  ai_agent 5,18,30,39-42,63,67,71,372,408,442,472,507
+packages/@n8n/node-cli/package.json
+  ai_agent 3,28
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/pairwise/judge-panel.test.ts
+  ai_agent 3,9,11,21
+packages/@n8n/mcp-apps/src/server/register-mcp-app-tool.test.ts
+  ai_agent 1-110
+packages/cli/src/evaluation.ee/__tests__/evaluation-config-validator.test.ts
+  ai_agent 560-615
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  ai_agent 140-143,187-190
+packages/@n8n/instance-ai/src/storage/__tests__/thread-iteration-log-storage.test.ts
+  ai_agent 1-2,8-9,13,17-18,22,40,102,118,132,139
+packages/cli/src/modules/agents/__tests__/model-catalog.test.ts
+  ai_agent 1-29
+packages/core/src/execution-engine/node-execution-context/__tests__/local-load-options-context.test.ts
+  ai_agent 8,32,37,40,47,50,57
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  ai_agent 178
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  ai_agent 5,8,21,29,41-42,192-193,271-273,379-381,418-419,428-437,439-448,462,523-530,533-539,543-544,557-558,574-645,696
+packages/cli/src/executions/__tests__/execution-persistence.integration.test.ts
+  ai_agent 4,6,61-117
+packages/cli/src/modules/agents/entities/agent-task-snapshot.entity.ts
+  ai_agent 1-49
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  ai_agent 1,3-20,23-27,29-30,32-44,46-53,55,57-66,68-70,72,74-85,87-93,95,97-102,104-105,107-111
+packages/cli/src/modules/instance-ai/entities/instance-ai-mcp-registry-connection.entity.ts
+  ai_agent 1-26
+packages/cli/src/modules/mcp/mcp-oauth-service.ts
+  ai_agent 6,167-168,174,179-192,214,216,222-244,248,266-268,273,275-280,287-306,378-386
+packages/frontend/@n8n/design-system/src/components/N8nSwitch/Switch.vue
+  ai_agent 62
+packages/frontend/editor-ui/src/features/agents/__tests__/AskLlmCard.test.ts
+  ai_agent 6-9,12-17,39-42,47-57,60-61,64,66,68,70,76-81,101,103,120,123,170,173-174
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0003-1780313871357-unknown-host-POST-_v1_messages-a43eb1b5.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/agents/src/types/sdk/message.ts
+  ai_agent 108
+packages/testing/playwright/scripts/emit-spec-lcovs.ts
+  ai_agent 2-5,7-8,10-11,13,15,17,20-63
+packages/nodes-base/nodes/Trello/GenericFunctions.ts
+  ai_agent 35-42
+packages/nodes-base/credentials/TrelloOAuth1Api.credentials.ts
+  ai_agent 1-39
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/0002-1780098604383-unknown-host-POST-_v1_messages-595b716b.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/ai/assistant/components/FocusedNodes/ChatInputWithMention.test.ts
+  ai_agent 31,36-37,57-61
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0012-1780158501175-unknown-host-POST-_v1_messages-f0ce1c1f.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/tools/orchestration/submit-plan.tool.ts
+  ai_agent 19-23,114
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/trace.jsonl
+  ai_agent 1
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry.controller.test.ts
+  ai_agent 1-47
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  ai_agent 6,11-13,15-21,23,36-42,61-68,73-100,135-137,139-141,165-168,214-220,223
+packages/nodes-base/nodes/Slack/V1/GenericFunctions.ts
+  ai_agent 13-32
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0004-1780158556263-unknown-host-POST-_v1_messages-abb905a1.json
+  ai_agent 7,18,24,27,33,36,42,51,54,60,63,75,87,91,95-96,100
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-token.service.test.ts
+  ai_agent 73,98-108,182-204,276-325,474-498
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  ai_agent 38-57
+packages/@n8n/instance-ai/src/tools/orchestration/plan-agent-prompt.ts
+  ai_agent 8,10-37,43,47,61,105,109-112
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0006-1780165038484-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  ai_agent 1-38,40-89,91,93-96,98-103,105,107-108,110,112-115,117,119-120,122-126,128-131,135-238,240,242-243,245-251,253-254,256,258-260,262-263,265-275,277,279,289-291,293,295,297,299,307,311-314,316,318-320,324-469,471-475,477-478,480-481,483,485-489,491-498,500,502-517,519-557
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/load-nodes.test.ts
+  ai_agent 3,6-8,11-12,19
+packages/@n8n/db/src/utils/validators/no-url.validator.ts
+  ai_agent 13
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  ai_agent 3-13,24-28,33-52,55,59-62,67,72-117,160-165,176-222
+packages/@n8n/instance-ai/evaluations/data/workflows/notification-router.json
+  ai_agent 28
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewNode.vue
+  ai_agent 1-188
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0001-1780158595424-unknown-host-POST-_v1_messages-0551ad71.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/cli/src/errors/credential-missing-id.error.ts
+  ai_agent 3-8
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  ai_agent 59,81-89,646-650,1573,1587,1878-1919,2177-2190
+packages/@n8n/mcp-apps/src/server/apps/workflow-preview.test.ts
+  ai_agent 1-63
+packages/@n8n/computer-use/vite.config.ts
+  ai_agent 1-23
+packages/@n8n/extension-sdk/package.json
+  ai_agent 39
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0000-1780158612746-unknown-host-POST-_v1_messages-f0ce1c1f.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  ai_agent 776
+packages/@n8n/computer-use/src/tools/filesystem/read-file.test.ts
+  ai_agent 3,8,13,17,22-23
+packages/@n8n/instance-ai/evaluations/outcome/event-parser.ts
+  ai_agent 20
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  ai_agent 261,506-508
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-fs.test.ts
+  ai_agent 1-2,11-12,43,57,62,87,102,128,141,160,180,202,220,233
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0014-1780158501177-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/instance-ai/evaluations/langsmith/dataset-sync.ts
+  ai_agent 95-98,118-119,124-125,131,139,190-191,220,276-283
+packages/cli/jest.config.js
+  ai_agent 1-4,7,18-26
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0004-1780158612748-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/tools/evals/__tests__/extract-rows-from-history.service.test.ts
+  ai_agent 13-16,18-23,91-94,96,98-100,120-123,129,131-133,154-157,159,161-163,182-185,187,189-191,211-214,216-219,235-236,240,242-244,263-266,268,270-272,291-294,296-299,321-324,326-329
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0005-1780158556265-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/computer-use/src/settings-store.test.ts
+  ai_agent 4,6-8,40,60,84,99,116
+packages/@n8n/instance-ai/docs/configuration.md
+  ai_agent 17-18
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/discovery-subgraph.integration.test.ts
+  ai_agent 185,190
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/submit-workflow.tool.test.ts
+  ai_agent 1,4,20-21,24,26,212,260,601,649
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  ai_agent 575-582
+packages/frontend/editor-ui/src/features/resolvers/ResolversView.vue
+  ai_agent 120
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  ai_agent 21-23,25-26,89-91,254
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/tool-dispatch-handler.test.ts
+  ai_agent 66,73,127,156,186,214,280,289,297,493,515,567,602,642,690,694,736,740,776,813,849,883,917,951
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-workflow-builder-integration.test.ts
+  ai_agent 10,13-14,16-18,23-24,26-27,29-30,32-33,35-36,38-39,43-44,47-49,53-57,80,83-85,89-92,96-98
+packages/@n8n/computer-use/src/__mocks__/@inquirer/prompts.ts
+  ai_agent 1-3
+packages/@n8n/config/src/configs/data-table.config.ts
+  ai_agent 1,25,34,36,43
+packages/@n8n/db/src/repositories/test-run.repository.ee.ts
+  ai_agent 7-8,73
+packages/cli/src/modules/agents/agents.controller.ts
+  ai_agent 5,24-26,62,69,104-107,127,132,287,1008-1014,1016,1020-1022,1025,1027,1031-1034,1037,1039,1043-1047,1050,1052,1056-1061,1063-1073,1086-1090,1092-1093
+packages/@n8n/ai-utilities/src/__tests__/utils/follow-redirects.test.ts
+  ai_agent 1-2,13,51,66
+packages/cli/src/modules/otel/otel.constants.ts
+  ai_agent 16
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  ai_agent 1-413
+packages/cli/src/load-nodes-and-credentials.ts
+  ai_agent 248-253,255
+packages/nodes-base/nodes/Google/GenericFunctions.ts
+  ai_agent 6,61-64,71-76
+packages/cli/src/response-helper.ts
+  ai_agent 2,95-115
+packages/testing/containers/n8n-start-stack.ts
+  ai_agent 66,158,204,279
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0003-1780315686814-unknown-host-POST-_v1_messages-b91e8d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/mcp-browser/vite.config.ts
+  ai_agent 1-6,8
+packages/frontend/editor-ui/src/app/api/workflows.ts
+  ai_agent 2,13-14,22,39-62
+packages/testing/playwright/expectations/instance-ai/should-create-new-thread-via-sidebar-button/0000-1780098255011-unknown-host-POST-_v1_messages-0a045463.json
+  ai_agent 1-108
+packages/nodes-base/nodes/Trello/Trello.node.ts
+  ai_agent 49-54,58-67
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0002-1780165069698-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 1-108
+packages/nodes-base/nodes/Switch/V3/SwitchV3.node.ts
+  ai_agent 13,487
+packages/@n8n/ai-utilities/src/__tests__/utils/tokenizer/tiktoken.test.ts
+  ai_agent 1,3-5,9-11,14-15,18-19,23-24,27,47-49,59-61,71-73,83-85,95-97,107-109,119-121,131-133,136,155,159-161,164,176,181-183,186
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  ai_agent 13-15,20-23,47-63,74,121-171
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/trace.jsonl
+  ai_agent 1-10
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0014-1780158556270-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/core/src/execution-engine/node-execution-context/local-load-options-context.ts
+  ai_agent 2,27-30,33
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  ai_agent 2,23-35,38-45,48-51,54-56,59-69,103,108,124,140,143,154,157,168,171,177,187,190,196,209,212,218,237,240,244,263,274,277,290,293,307,312,327,339,356,369,385,397,406,424,427,436,453,462,477,480,484,499,503,520,539,544,577,580,590,593,597,608-609,613,616,627-628,632,635,653,656,661,664,678-679,684,689,692,714,719,729,758,766,778,810,818,827,848,853,863,904,924,940,962,967,980,1006-1007,1010,1028-1030,1042-1043,1047,1069-1070,1079,1083,1099-1100,1104,1108,1114,1134-1135,1139,1148,1172-1173,1177,1181,1247,1274,1306,1329,1361-1362,1382-1383,1402-1403,1425-1426,1448
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  ai_agent 2-6,10,21,39-40,55-56,59,155-201,265-305,340-369,718-739,779-780,782-790,792-877,879-910
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/workflows/types.ts
+  ai_agent 1-5,7-8,10-53
+packages/nodes-base/package.json
+  ai_agent 3,12,384,971
+packages/testing/playwright/expectations/instance-ai/should-route-back-to-an-earlier-unhandled-card-when-user-skips-a-later-one/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/nodes-langchain/nodes/Guardrails/helpers/model.ts
+  ai_agent 3,9-12,123-124
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0002-1780098352153-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/agent/__tests__/mcp-tool-name-validation.test.ts
+  ai_agent 27
+packages/testing/playwright/expectations/instance-ai/should-display-user-and-assistant-messages-in-timeline/0001-1780098118266-unknown-host-POST-_v1_messages-3d4cba9e.json
+  ai_agent 1-108
+packages/testing/playwright/package.json
+  ai_agent 21,28-32,75,79-80
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  ai_agent 890,902-906
+packages/core/package.json
+  ai_agent 3,17
+packages/testing/janitor/src/core/coverage-map.test.ts
+  ai_agent 1-409
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/trace.jsonl
+  ai_agent 1
+packages/@n8n/config/src/configs/database.config.ts
+  ai_agent 1,92-104,134-150,165-172
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-execution.spec.ts
+  ai_agent 10-18,124,143-148,155-156,158-160
+packages/@n8n/instance-ai/src/parsers/structured-file-parser.ts
+  ai_agent 20
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatPromptFull.vue
+  ai_agent 4,38,48,58,60,64-66,68-69,72-87,102-103,121,123-136,161
+packages/cli/src/executions/execution-data/__tests__/fs-store.integration.test.ts
+  ai_agent 1-2,24,29,34,154-210
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/trace.jsonl
+  ai_agent 1-3
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  ai_agent 50-51
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  ai_agent 2,11-12,18,34,45,50-52,71,348-519
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  ai_agent 3,15,17-20,22,29,32-33,38-39,47-48,55-57,62,65-67,79-81,86-87,89-91,95,97-98,102-104,109,112-118,125-126,138,146-147,153-154,163-164,168-173,175-176,178,182-184,198-203,205-206,208,212-215,232-237,239-240,242,246-248,265-270,272-273,275,279-281,284-285,296-301,303-304,306,310-312,326-331,333-334,336,340-341,359-364,371-372,374,378-379,407,413-418,420-424,457-458,469-470,486-487,493,498-500,503-509,511-515,517,522-524,531-534,608,633,653,660,679,681,695,705,715-718,724-726
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  ai_agent 14,21,48,50,52,102-119,130,134,140,243-244,246-247,260-264,266-267,271-325,330,332,364,444-493,546-670,725
+packages/core/src/nodes-loader/__tests__/directory-loader.test.ts
+  ai_agent 112-119
+packages/@n8n/ai-utilities/src/__tests__/adapters/langchain-memory-adapter.test.ts
+  ai_agent 15-18,22-24
+packages/@n8n/ai-utilities/src/web-search/__tests__/brave-search.test.ts
+  ai_agent 3
+packages/nodes-base/credentials/test/AwsAssumeRole.credentials.test.ts
+  ai_agent 1-72
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0010-1780165069703-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/evaluations/__tests__/runner-prebuilt.test.ts
+  ai_agent 1-3,34,36,38-43,70,75,102,107
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0005-1780165175581-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/testing/janitor/vitest.config.ts
+  ai_agent 8-13
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0005-1780313871359-unknown-host-POST-_v1_messages-1d173938.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/update-node-parameters.tool.test.ts
+  ai_agent 4-6,28-32,36-37,43-44,48,52-53,57-59,66,634
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  ai_agent 2,20,26-29,309
+packages/@n8n/instance-ai/src/storage/planned-task-storage.ts
+  ai_agent 33
+packages/@n8n/instance-ai/src/workspace/__tests__/prebaked-workspace-bundle.test.ts
+  ai_agent 18,22,25,169,174
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/trace.jsonl
+  ai_agent 1-3
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/re-review.md
+  ai_agent 1-55
+packages/@n8n/computer-use/package.json
+  ai_agent 3,16,22-24,44,58,60-62
+packages/@n8n/mcp-apps/src/server/sdk-version.test.ts
+  ai_agent 1-95
+packages/@n8n/task-runner/package.json
+  ai_agent 3,11,14-16,55-59
+packages/cli/src/services/import.service.ts
+  ai_agent 2,10,13,17-18,27,30,36-40,75-76,87-88,92-96,130-131,133,211-216,226-289,291-317,319
+packages/testing/playwright/expectations/instance-ai/should-extract-text-from-an-html-attachment-and-answer-from-it/trace.jsonl
+  ai_agent 1
+packages/@n8n/instance-ai/evaluations/data/discovery/data-table-skill-loading.json
+  ai_agent 18,25
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/constants.ts
+  ai_agent 96-100,136-139
+packages/@n8n/config/src/configs/__tests__/compression.config.test.ts
+  ai_agent 1-37
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0005-1780160837143-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/9999-1780165135205-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/db/src/utils/validators/no-xss.validator.ts
+  ai_agent 19
+packages/@n8n/agents/src/runtime/message-list.ts
+  ai_agent 149-153,163-167
+packages/@n8n/instance-ai/evaluations/data/discovery/data-table-workflow-skill-loading.json
+  ai_agent 5,10-13,18
+packages/frontend/editor-ui/src/features/ai/modelSelector/AiModelSelectorDropdown.vue
+  ai_agent 1-271
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  ai_agent 4,15
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0006-1780165207179-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  ai_agent 11-12,28,32-43,60,64,68-69,84,102,120,139,158,175
+pnpm-lock.yaml
+  ai_agent 33-35,105-110,199-200,234-236,343-344,351-353,495,508,518,559,738-740,748,773,784-786,790-798,809-814,820,823,826,829,832,850,870-872,879-881,891-896,902,905,908,911,950,953,973-975,982-984,997-1002,1027,1030,1033,1091,1094,1097,1127,1136,1179-1187,1222,1225,1228,1253,1299,1333,1347,1383-1385,1392-1397,1401-1403,1422,1425,1428,1453,1456,1523,1576,1595,1598,1601,1635,1828,1841,1856,1902,1908,1947,1990,1993,2000-2002,2012-2014,2018-2023,2038,2041,2044,2067-2069,2073-2075,2088-2153,2161,2200-2202,2212-2217,2239,2248,2254,2327,2330,2334-2336,2348,2366,2369,2372,2375,2378,2381,2384,2387,2390,2393,2396,2399,2402,2405,2408,2411,2414,2417,2432,2440,2471,2478-2480,2528,2552,2616,2625,2628,2644,2647,2650,2670,2673-2674,2681,2709,2718,2721,2737,2743,2746,2790-2792,2796-2804,2880,2883,2892,2895,2910,2921-2923,2930-2932,2936-2938,2976,3026-3028,3291,3322,3419,3467,3565-3566,3572,3609,3615,3618,3621,3624,3643,3655,3682,3710,3713,3716,3722,3725,3728,3758,3773,3776,3903,3930,3933,3948,3954,3957,3960,3997,4012,4015,4079,4082,4113,4131,4134,4449,4462,4517,4571,4574,4577,4580,4607,4610,4613,4619,4622,4862,4884,4981,4996,5008,5020,5076-5078,5096,5105,5177,5181-5183,5208-5210,5222,5231,5288,5295,5310,5313,5334,5337,6070-6073,6161-6164,6672-6675,6758-6759,8279-8280,8282-8283,8287-8288,8298-8299,8303-8304,8308-8309,8313-8314,8318-8319,8323-8324,8328-8329,8428-8441,10727-10728,10730-10731,11004-11005,11168-11170,11369-11371,11522-11524,12098-12101,12106-12109,13210-13213,13241-13244,13309-13311,13446-13448,14056-14058,14470-14473,14634-14637,14832-14835,14895-14898,14950-14953,16224-16226,16425-16426,16736-16738,17408-17414,18813-18814,20237-20238,20702-20705,20843-20844,20915-20924,21068-21069,21386-21397,21593-21594,21756,22918,22924,22999,23263,23287,23321,23369,23587-23593,23690,23730-23731,24078,24345-24346,24368,24413,24415,24425,24428,24432-24433,24435,24490,24517,24521,24629,24633-24634,24682,24687,24713,24716,24748,24769,24893,25094,25098,25102-25103,25223,25274-25282,25290-25296,25309-25320,25329-25336,25344-25350,25358-25364,25374-25380,25388-25394,25403-25410,25426-25440,25448-25454,25463-25470,25480-25488,25493-25496,25547,25588-25622,25667,25817,25820,25823,25829,25833,25835-25837,25847,25855,25857,25864,25866,25868-25870,25875,25877,25883-25884,25908,25915,25917,25919-25921,25926,25928,25935-25936,25972,25979,25987,25999,26001,26004,26006,26012,26015,26018,26020,26025,26027,26032,26034,26037,26043,26047,26054,26059,26061-26063,26067,26072,26074-26076,26089,26091-26093,26098,26106,26108-26109,26119,26121,26125,26127,26138,26140,26144,26146,26148,26153,26155,26157,26162,26164,26169,26171,26177,26179,26182,26184,26187,26189,26234,26237,26245,26250,26253,26259,26271,26277,26280,26283,26286,26289,26292,26295,26443,26445-26446,26451,26454,26507,26511,26515,26517,26520,26522-26523,26551,26555-26562,26572,26581,27530,27532-27533,28077,28093,28098,28104,28111,28113,28116,28118,28120,28351,28357,28360,28373,28448,28453,28459,28480,28485,28492,28498,28515,28682,28737,28840-28852,28862-28870,28905-28921,28928,28937,28939,28988,28991,28995,29028,29084,29106,29111,29174-29175,29185-29186,29210,29423,29533,29542,29548,29576,29594-29597,29602,29608,29624,29651,29668,29729,29735,29807,29811,29818-29821,29847,29882,29890,29900,29917,29922,29937,29941,30009-30011,30040,30050,30286,30301,30310-30314,30345-30358,30398-30405,30422-30429,30776-30779,30784-30787,31241,31427,32005,32067-32068,32083-32085,32170-32171,32298-32312,32353-32359,33013-33014,33089,33305-33306,33599,33650-33653,33789,33829,33862,33888,33907-33910,33947,33995,34115,34118,34120,34179-34184,34257-34265,34268,34789,34869-34870,35286,35288,35366,35405-35423,35455-35516,35556,35568,35617-35622,35661,35689,35754,35763,35780-35791,35969-35974,36071,36073-36076,36092,36094-36097,36123,36130-36131,36212,36217-36225,36466-36467,37491-37507,38111,38113,38620,38626,38698,39084,39525,39879,39959-39960,40377,40659,40742,40761,40871,40931,40933,41098-41118,41125,41290,41410-41411,41524,41571,41623,41625,41636,41642,41646,41650-41655,41661,41686-41703,41710-41716,41720,41752-41780,41819,41848,42152,42159,42164,42200-42204,42350,42377
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  ai_agent 159-161,417,461,543
+packages/@n8n/syslog-client/package.json
+  ai_agent 9
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/plan.tool.test.ts
+  ai_agent 1-2,7,11-15,29-34,36,40-41,44,95,109-111,135,143,158,167,179,207,248-249,326,335,348,359,371,382,397,407,422,426,453,463
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  ai_agent 1041,1069-1096
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  ai_agent 168
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  ai_agent 337-341,347
+packages/@n8n/instance-ai/evaluations/subagent/cli.ts
+  ai_agent 3,8,18-23,55,57,110,123,129,138,142,157,197,215-216,228,243,254,276-277,279,289,298,301,314,333,342-347
+packages/@n8n/instance-ai/src/workspace/snapshot-image-context.ts
+  ai_agent 1-55
+packages/cli/src/modules/n8n-packages/entities/credential/id-based-credential-matcher.ts
+  ai_agent 1-61
+packages/cli/src/modules/agents/builder/interactive/ask-question.tool.ts
+  ai_agent 14-19,30-35
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  ai_agent 34,530,605,696,1104,1229
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/0000-1780098669102-unknown-host-POST-_v1_messages-3c003bc2.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0002-1780165038482-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/cli/src/workflows/workflow.service.ts
+  ai_agent 349
+packages/testing/playwright/expectations/instance-ai/should-persist-messages-after-page-reload/trace.jsonl
+  ai_agent 1
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  ai_agent 11-19,23-24,49,134,156,179,206,254
+packages/@n8n/backend-common/package.json
+  ai_agent 3,9
+packages/nodes-base/nodes/Linear/Queries.ts
+  ai_agent 69,79-83,112-113,123-127,159,169-173,219,229-233
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/updateOperation.test.ts
+  ai_agent 6-8,16-17,20-21,24-27,30-31,65,98-100,105,110
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0010-1780098746215-unknown-host-POST-_v1_messages-595b716b.json
+  ai_agent 1-108
+packages/@n8n/agents/src/types/runtime/event.ts
+  ai_agent 1,4-33,41-42,59-60
+packages/cli/src/executions/execution-data/db-store.ts
+  ai_agent 1,4,14-16,41-65
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  ai_agent 1270-1272,1277
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  ai_agent 1-28
+packages/core/src/execution-engine/__tests__/workflow-execute-run-node.test.ts
+  ai_agent 109,938,962,973,997,1014,1038,1058,1082,1555
+packages/cli/src/modules/mcp/oauth-session.service.ts
+  ai_agent 12
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0012-1780158683744-unknown-host-POST-_v1_messages-f0ce1c1f.json
+  ai_agent 1-108
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  ai_agent 70,100-107,112-119,140-172,176-191,204-208,216-234,298-305,352
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV1.test.ts
+  ai_agent 130-174
+packages/core/src/execution-engine/__tests__/triggers-and-pollers.test.ts
+  ai_agent 35,42,115,120
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0002-1780158683735-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/frontend/editor-ui/src/features/agents/utils/scheduleBuilder.ts
+  ai_agent 3-8,10-19,22-28,30-47,50-95,98,110-142
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveOperation.test.ts
+  ai_agent 6-7,14-15,18-19,48-50,55
+packages/@n8n/ai-workflow-builder.ee/src/test/workflow-builder-agent.test.ts
+  ai_agent 8-9,11-13,16-20,23-27,30-33,42-46,50,70,76-78,82-85,89-91,184,322,332,352,492,828
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.test.ts
+  ai_agent 426-473
+packages/@n8n/constants/package.json
+  ai_agent 9
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/webhook.test.ts
+  ai_agent 18,21-23,29-35,64
+packages/@n8n/json-schema-to-zod/package.json
+  ai_agent 30
+packages/cli/src/modules/mcp/mcp.service.ts
+  ai_agent 2,13-17,48,54,63,72,86-90,123,126-140,341,351,369,371-373,379-381,393-411
+packages/frontend/editor-ui/src/features/agents/utils/__tests__/delegate-tool.test.ts
+  ai_agent 1-33
+packages/frontend/editor-ui/src/features/ai/chatHub/ChatView.test.ts
+  ai_agent 688
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.store.ts
+  ai_agent 42,67,310-320,327,329-332,493
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.test.ts
+  ai_agent 7,11,14-17,348-388
+packages/nodes-base/utils/__tests__/utilities.test.ts
+  ai_agent 9,88-206
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0012-1780160837149-unknown-host-POST-_v1_messages-f0ce1c1f.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionListItem.vue
+  ai_agent 11
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0006-1780165175582-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0000-1780315686811-unknown-host-POST-_v1_messages-302c00c6.json
+  ai_agent 1-108
+packages/@n8n/workflow-sdk/src/workflow-builder-plugins.test.ts
+  ai_agent 42,55,304,406,445,476,616,649,682,777
+packages/nodes-base/credentials/common/aws/utils.ts
+  ai_agent 43-55,82-112,155,253-254,266,293
+packages/@n8n/mcp-browser/src/redaction/__tests__/redact.test.ts
+  ai_agent 45-105,159-165
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  ai_agent 8-12,33-35,44-46,61-63,85-86,88-89
+packages/cli/src/webhooks/webhook-server.ts
+  ai_agent 1,6-14
+packages/cli/src/__tests__/workflow-runner.test.ts
+  ai_agent 280-340
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  ai_agent 37-47,58,64,66,118-231
+packages/frontend/editor-ui/src/features/resolvers/ResolversView.test.ts
+  ai_agent 127,138
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0005-1780158612749-unknown-host-POST-_v1_messages-3397aec1.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0006-1780158683738-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/imap/package.json
+  ai_agent 9
+packages/testing/playwright/vitest.config.ts
+  ai_agent 1-11
+packages/cli/src/controllers/project.controller.ts
+  ai_agent 260,266-273
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts
+  ai_agent 1-69
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0009-1780313871361-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/pairwise.test.ts
+  ai_agent 9,16,19,77
+packages/@n8n/ai-workflow-builder.ee/vite.config.ts
+  ai_agent 1-11
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/similarity.test.ts
+  ai_agent 11-12,15,43
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/write-sandbox-file.tool.test.ts
+  ai_agent 1-2,13-14,17-18,21-22,31,44
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  ai_agent 1-6,14-15,32
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory-defaults.test.ts
+  ai_agent 22-24,26-27,35,180-182
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveAsToolExecuteOperation.test.ts
+  ai_agent 10-11,18-19,22-23,93-95,100
+packages/cli/src/modules/instance-ai/__tests__/message-parser.test.ts
+  ai_agent 603
+packages/cli/src/modules/mcp/__tests__/mcp.controller.test.ts
+  ai_agent 52-55,61-69,85-114,128,134-137,158-229,231-255,282-285,293-297
+packages/nodes-base/nodes/Compression/test/node/BoundedUnzip.test.ts
+  ai_agent 1-110
+packages/testing/playwright/expectations/instance-ai/should-create-new-credentials-across-two-setup-cards-and-persist-them-on-apply/0001-1780098591760-unknown-host-POST-_v1_messages-5543a1e1.json
+  ai_agent 1-108
+turbo.json
+  ai_agent 10-13,19-20
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  ai_agent 7
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/remove-connection.tool.test.ts
+  ai_agent 2,20-24,29,32,37
+packages/@n8n/api-types/src/dto/api-keys/update-api-key-request.dto.ts
+  ai_agent 14-16
+packages/@n8n/chat-hub/tsconfig.json
+  ai_agent 4
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0001-1780160837141-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 1-108
+packages/core/src/execution-engine/index.ts
+  ai_agent 85-97
+packages/@n8n/mcp-browser/src/tools/navigation.test.ts
+  ai_agent 2-3,98
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  ai_agent 33,188,197,253-284
+packages/testing/janitor/src/core/tcr-executor.test.ts
+  ai_agent 163-169
+packages/testing/playwright/expectations/instance-ai/should-apply-parameter-and-credential-edits-and-persist-them-to-the-workflow/0001-1780098669102-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0005-1780098746214-api.openai.com-GET-_v1_models-2ef5ce20.json
+  ai_agent 1-88
+packages/@n8n/ai-workflow-builder.ee/src/utils/test/state-modifier.test.ts
+  ai_agent 2,13-14,16,19,25,250
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-workflow-examples.tool.test.ts
+  ai_agent 2,20-21,23-25,29,33-35,38,43
+packages/@n8n/db/src/connection/__tests__/db-connection-options.test.ts
+  ai_agent 81-92,110-115,117-118,121-124,142-157
+packages/cli/src/modules/agents/builder/interactive/llm-provider-defaults.ts
+  ai_agent 6-7,94-99
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  ai_agent 24-25,81-85,87,92-99,103-107,109,111-115,119-125,127-131
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  ai_agent 6,48,150-151,452,621,624,656,742,976-982,1188,1204-1205,1213-1216,1220
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  ai_agent 47,884-894,2445,2471,2485-2490,2513-2516,2826,3173-3174
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0004-1780315686814-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 1-108
+packages/@n8n/nodes-langchain/package.json
+  ai_agent 3,32,229,264,278
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0006-1780165135209-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-timeline.spec.ts
+  ai_agent 10-11,21
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0001-1780165135206-unknown-host-POST-_v1_messages-7ab402c8.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  ai_agent 12,14,26,50,60,70,80,90,100,110,121,134,145-157,175-176,212-213,303-313
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/label-flow.md
+  ai_agent 1-92
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  ai_agent 1-792
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/branch-handler-utils.test.ts
+  ai_agent 61,67,74,82,91,101,110,120,131,141,152
+packages/@n8n/nodes-langchain/nodes/chains/InformationExtractor/processItem.ts
+  ai_agent 7,49-53
+packages/@n8n/mcp-apps/src/server/index.ts
+  ai_agent 2-7
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentSettings.test.ts
+  ai_agent 2-3
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0012-1780313871363-unknown-host-POST-_v1_messages-b91e8d01.json
+  ai_agent 1-108
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  ai_agent 1-152
+packages/frontend/editor-ui/src/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue
+  ai_agent 4,32,118,122,124
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow.dto.test.ts
+  ai_agent 110-147,187-265
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/credentials.test.ts
+  ai_agent 2
+packages/@n8n/instance-ai/tsconfig.json
+  ai_agent 15
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  ai_agent 13,15,82-94,109-116
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0009-1780160837145-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  ai_agent 10,12,17
+packages/workflow/test/execution-context.test.ts
+  ai_agent 1-51
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  ai_agent 1,173
+packages/@n8n/ai-workflow-builder.ee/src/test/ai-workflow-builder-agent.service.test.ts
+  ai_agent 8-9,23-24,26,28,32,34,39-43,45-46,49-53,57,60,71,160,164,168-169,183-185,189-191,195-197,201-205,207-208,212,214,227,546-547,551,575,596,611,632,656,675,713,739
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/node-details.tool.test.ts
+  ai_agent 3,25-29,32,35-36,48,65
+packages/@n8n/api-types/src/api-keys.ts
+  ai_agent 6-12,24-25,30-33
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  ai_agent 8-9,11-12
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-compare.test.ts
+  ai_agent 1-2,138
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-binary-loader.test.ts
+  ai_agent 6-7,9,13-14,18-23,26-31,34-39,42-47,50-55,58-63,66,69,83-85,87-89,91,97,475
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0006-1780160837143-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/task-runner/vite.config.ts
+  ai_agent 1-3,5-15,17,19
+packages/cli/src/services/__tests__/import.service.test.ts
+  ai_agent 2,10,43-44,57-58,110-111,1243-1467
+packages/testing/playwright/scripts/sizing-matrix-aggregate.ts
+  ai_agent 1-414
+packages/@n8n/ai-utilities/tsconfig.json
+  ai_agent 13-14
+packages/cli/test/migration/1784000000025-migrate-redaction-enforcement-to-floor.test.ts
+  ai_agent 1-113
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-llm-tracing.test.ts
+  ai_agent 6,8,10,13-14,17-18,21-22,25,39-44,48,62,76,238,277,318,475,567,604,643,680,692-696,723,748
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/plan-agent-prompt.test.ts
+  ai_agent 3-5,7,9
+packages/@n8n/mcp-browser/src/__tests__/cdp-relay.test.ts
+  ai_agent 110,117,121,179,188,199,205,209,217,221
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-remediation-guard.spec.ts
+  ai_agent 6-7,28,32,36-45,56-72,81-92,94-102,105-113,135-141,144-152,155,158-179,184,188,191-193,196,198-199,202,208-213,215-228,262-263,265,268-271,273,275-279,282,286-294,296-298,301-302,304-307
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  ai_agent 122
+packages/cli/src/evaluation.ee/evaluation-config-validator.ts
+  ai_agent 41,48-66,269-320
+packages/testing/playwright/utils/benchmark/throughput-measure.ts
+  ai_agent 67-69,192-193
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  ai_agent 4,179
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  ai_agent 110-111,132,136-137,139,157,163-169,191,194-196,202,238-246,250,255,281-293
+packages/@n8n/agents/src/runtime/sdk-owned-tool.ts
+  ai_agent 1-17
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  ai_agent 1-4,6-9,11,13-14,16-22,25-34,36-39,42-44,47,49-52,54,56-61,63,65-67,69-70,72,74-76,78,80-81,84-110,113-117,120-138,140-141,144-146,148-150,152-158,161-162,164,166,169-170,172-175,177,179-180,183-185,187-188,190-197,200-206,208,210,213-217,220,222-223,226-230,233,235-237,240-243,246-247,249-251,253-255
+packages/nodes-base/nodes/Slack/test/v2/Slack.node.test.ts
+  ai_agent 154-203,371-396,1495-1540
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  ai_agent 11,13
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-resource-locator-options.tool.test.ts
+  ai_agent 3,21-25,29,33,255,259,283,288
+packages/@n8n/benchmark/scripts/n8n-setups/postgres/docker-compose.yml
+  ai_agent 35-37
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  ai_agent 342,1326-1374
+packages/@n8n/instance-ai/evaluations/harness/runner.ts
+  ai_agent 59-60,95,255-256,283-284,430,443-450,459,476,575,586,618-728,731,743,779,783,788-790,792-795,800-803,811,817-822,839-841,849-859
+packages/@n8n/nodes-langchain/nodes/Guardrails/test/helpers/model.test.ts
+  ai_agent 35,198-227
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0005-1780165135209-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  ai_agent 1-360
+packages/cli/src/modules/mcp/database/entities/oauth-authorization-code.entity.ts
+  ai_agent 41-43
+packages/@n8n/api-types/src/redaction-enforcement.ts
+  ai_agent 1,3
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  ai_agent 70
+packages/nodes-base/nodes/Google/Sheet/v2/actions/sheet/append.operation.ts
+  ai_agent 254-269
+packages/cli/src/modules/agents/builder/task-objective-template.ts
+  ai_agent 1-42
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0010-1780165135211-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/trace.jsonl
+  ai_agent 1
+packages/testing/containers/services/n8n.ts
+  ai_agent 1-2,17-20,68-69,79-80,82,95,102,136-137,140,152,161-166,172-174,182-185,187,190,198-213,229,235,237-238,265,271,273,287,296-310,314,319,325-342,361,366,379-381
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  ai_agent 4-16,18-26,28-32,34-35,37-39,41-43,45-52,55-57,60-61,64-78,80-81,83-87,89,92-107,109,111-112,114-115,117,119-122,126-144,146,148,150-154,157-163,165-171,173-179,181-184,186,189-211,213-216,218-219,221-224,226-234,237,240-264,266-268,270-275,277-280,282-294,297-325,327-329,331-334,336,338-351,354,357-389,391-393,395-396,398-405,407-412,414-422,424-440,443-458,461-463,465-466,468-471
+packages/workflow/src/constants.ts
+  ai_agent 129
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0002-1780158556259-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 7,18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/trace.jsonl
+  ai_agent 1
+packages/cli/src/modules/instance-ai/eval/__tests__/eval-mocked-credentials-helper.test.ts
+  ai_agent 14,16,93-106,118-156,472-473,491-492,502-510,632-676
+packages/frontend/@n8n/design-system/src/components/N8nSendStopButton/N8nSendStopButton.test.ts
+  ai_agent 23,25,43,45,220,233,248,250
+packages/@n8n/ai-workflow-builder.ee/src/tools/web/test/integration/templates.integration.test.ts
+  ai_agent 20
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowSettings.yml
+  ai_agent 52-67,86-98
+packages/@n8n/ai-utilities/src/__tests__/utils/loaders/n8n-pdf-loader.test.ts
+  ai_agent 5-9,11,13,25-27
+packages/testing/playwright/expectations/instance-ai/should-create-new-thread-via-sidebar-button/0001-1780098255012-unknown-host-POST-_v1_messages-1d741d30.json
+  ai_agent 1-108
+packages/@n8n/benchmark/scripts/n8n-setups/scaling-single-main/docker-compose.yml
+  ai_agent 42-44,89-91
+packages/@n8n/db/src/migrations/common/1784000000020-CreateWorkflowPublicationOutboxTable.ts
+  ai_agent 9,37-46
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0011-1780165175584-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/testing/playwright/fixtures/base.ts
+  ai_agent 18,83,117-119
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/trigger.test.ts
+  ai_agent 2
+packages/cli/src/oauth/oauth.service.ts
+  ai_agent 841-843,845-851,861-915
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  ai_agent 40,183-197,833,841,866,873,906-912,915-926,929-959,1059-1061,1079-1117,1120,1122-1123,1126,1128
+packages/@n8n/instance-ai/evaluations/data/workflows/rest-api-data-pipeline.json
+  ai_agent 28
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0013-1780158683746-unknown-host-POST-_v1_messages-0551ad71.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0009-1780098352156-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0004-1780165038483-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/agents/vite.config.ts
+  ai_agent 1-64
+packages/@n8n/computer-use/src/tools/filesystem/list-files.test.ts
+  ai_agent 3,8,28,32,37-38,176
+packages/@n8n/instance-ai/evaluations/tsconfig.json
+  ai_agent 11
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/registry.test.ts
+  ai_agent 11,26,36,221-223
+packages/cli/test/integration/public-api/users.test.ts
+  ai_agent 75,83-113,164-189
+packages/frontend/editor-ui/src/app/components/KeyboardShortcutTooltip.vue
+  ai_agent 3,9
+packages/frontend/editor-ui/src/app/router.ts
+  ai_agent 869
+packages/@n8n/mcp-browser-extension/package.json
+  ai_agent 9
+packages/cli/src/public-api/v1/handlers/users/users.service.ee.ts
+  ai_agent 64
+packages/frontend/editor-ui/src/app/components/WorkflowCard.vue
+  ai_agent 635
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/useInstanceAiWorkflowPreviewSuggestionsExperiment.ts
+  ai_agent 1-16
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  ai_agent 259,267,269,276,278,288,318,330,335,343,383,395-396,403,415-416,423
+packages/frontend/editor-ui/src/features/agents/__tests__/AskQuestionCard.test.ts
+  ai_agent 58-71
+packages/frontend/@n8n/stores/package.json
+  ai_agent 4,24,27
+packages/frontend/editor-ui/src/features/agents/__tests__/useModelCatalog.test.ts
+  ai_agent 1-94
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  ai_agent 18-19,26,36-43,67-77,185,218-230
+packages/@n8n/db/src/connection/__tests__/db-connection.test.ts
+  ai_agent 12,22-23,42-43,49,64-71,118-120,124
+packages/cli/src/modules/n8n-packages/__tests__/utils/import-package-upload.test.ts
+  ai_agent 29
+packages/@n8n/ai-utilities/src/utils/vector-store/MemoryManager/test/StoreCleanupService.test.ts
+  ai_agent 2-3,12,35
+packages/testing/playwright/expectations/instance-ai/should-clear-required-parameter-issue-indicator-when-the-field-is-filled/0000-1780098653595-unknown-host-POST-_v1_messages-0854c325.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0002-1780160837141-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  ai_agent 4,1052-1073,1077,1102-1111
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/index.ts
+  ai_agent 1-3
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilder.readonly.test.ts
+  ai_agent 5,12-18,47,51-54,56-58,60,99-100,147
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0008-1780165038485-unknown-host-POST-_v1_messages-f134c753.json
+  ai_agent 1-131
+packages/@n8n/instance-ai/evaluations/subagent/langsmith.ts
+  ai_agent 2,7,75,80,84-85,91
+packages/@n8n/mcp-apps/.gitignore
+  ai_agent 1-2
+packages/testing/playwright/scripts/emit-shard-coverage.ts
+  ai_agent 1-185
+packages/@n8n/ai-workflow-builder.ee/src/prompts/builder/prompt-builder.test.ts
+  ai_agent 28,36,62,69,358
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/composables/useMarkdownEditor.ts
+  ai_agent 126-130
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0004-1780098352154-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 1-108
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  ai_agent 93-108,187-201,212-218,311-323,332-352,355,368-374
+packages/testing/playwright/expectations/instance-ai/should-switch-between-threads/trace.jsonl
+  ai_agent 1-2
+scripts/grind.mjs
+  ai_agent 101,105-106,108-116
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  ai_agent 16,58,246,252-253,255-260,264,267,297,304-305
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  ai_agent 1-424
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  ai_agent 69-70
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/node.yml
+  ai_agent 57-73
+packages/@n8n/ai-utilities/src/__tests__/adapters/langchain-history-adapter.test.ts
+  ai_agent 14-17
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-authorization-code.service.test.ts
+  ai_agent 28,38,50,70,103,118,165,230,233-242
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  ai_agent 11-26
+packages/cli/src/workflows/workflow-creation.service.ts
+  ai_agent 1,4,6,10,25-26,34,38,60,164-165,184-190,258-304
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/web-fetch-security.test.ts
+  ai_agent 14-15,19-20,25
+packages/@n8n/config/src/configs/chat-hub.config.ts
+  ai_agent 1-2,13,20
+packages/testing/playwright/expectations/instance-ai/should-create-new-thread-via-sidebar-button/trace.jsonl
+  ai_agent 1-2
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0013-1780158556269-unknown-host-POST-_v1_messages-f134c753.json
+  ai_agent 1-131
+packages/testing/playwright/scripts/aggregate-coverage.mjs
+  ai_agent 1-82
+packages/testing/playwright/expectations/instance-ai/should-persist-messages-after-page-reload/0001-1780098125472-unknown-host-POST-_v1_messages-58e8a842.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.test.ts
+  ai_agent 45-49,142
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0010-1780158556267-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/instance-ai/evaluations/__tests__/subagent-runner.test.ts
+  ai_agent 1-142
+packages/@n8n/api-types/src/dto/evaluations/evaluation-error-code.ts
+  ai_agent 29-31
+packages/cli/src/modules/instance-ai/entities/index.ts
+  ai_agent 10
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/trace.jsonl
+  ai_agent 1
+packages/core/vite.config.ts
+  ai_agent 19-21,24
+packages/@n8n/chat-hub/vite.config.ts
+  ai_agent 1-7
+packages/frontend/editor-ui/src/app/composables/useDataSchema.ts
+  ai_agent 29
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0001-1780158638827-unknown-host-POST-_v1_messages-28ad2287.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-mcp-create-connection-request.dto.ts
+  ai_agent 1-8
+packages/@n8n/instance-ai/evaluations/cli/index.ts
+  ai_agent 149-150,217,285,591,628,707,710,714,831,892,907,943
+packages/@n8n/computer-use/src/tools/filesystem/edit-file.test.ts
+  ai_agent 3,8,13,17,21,26-27
+packages/cli/src/modules/redaction/executions/execution-redaction.interfaces.ts
+  ai_agent 15-18
+packages/cli/src/public-api/v1/handlers/users/spec/schemas/user.yml
+  ai_agent 43-47
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  ai_agent 29
+packages/@n8n/workflow-sdk/src/utils/code-helpers.test.ts
+  ai_agent 113-115
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0011-1780158501175-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/@n8n/agents/src/sdk/__tests__/tool-name-collisions.test.ts
+  ai_agent 1-52
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/chat-setup-handler.test.ts
+  ai_agent 5,20,90-91,102,117-118,128,143-144,155,170,182-183,205,217-218,235,247-248,276,288-289,341-342
+packages/testing/containers/services/types.ts
+  ai_agent 56,73-74,80-81,85-86,88-89,94-100
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0014-1780158683747-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,39,42,45,51,54,57,60,63,66,75,87,91,95-96,100
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  ai_agent 64
+packages/cli/src/utils/auth-fetch.ts
+  ai_agent 1-54
+packages/@n8n/workflow-sdk/src/ast-interpreter/interpreter.test.ts
+  ai_agent 4-5,18,25,29,33,37,41,44-48,50,53-54,56,61-79,82,106,719,765,810-811
+packages/testing/playwright/expectations/instance-ai/should-mark-a-skipped-card-and-keep-the-wizard-open-while-other-cards-are-unhandled/0000-1780098632838-unknown-host-POST-_v1_messages-bf551cce.json
+  ai_agent 1-108
+packages/workflow/test/node-helpers.test.ts
+  ai_agent 29,4399-4436
+packages/testing/playwright/expectations/instance-ai/should-delete-thread-via-action-menu/trace.jsonl
+  ai_agent 1
+packages/@n8n/instance-ai/src/planned-tasks/planned-task-service.ts
+  ai_agent 125-129,139,316-330,340,501-503
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0005-1780098352154-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/cli/src/modules/mcp/__tests__/get-workflow-best-practices.tool.test.ts
+  ai_agent 1-101
+packages/nodes-base/credentials/test/TrelloOAuth1Api.credentials.test.ts
+  ai_agent 1-28
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/pin-data-generator.test.ts
+  ai_agent 2,356,399,448
+packages/frontend/editor-ui/src/app/composables/useNodeHelpers.test.ts
+  ai_agent 810,867,877-879,895,913,1010-1019,1213,1222-1224
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/remove-node.tool.test.ts
+  ai_agent 2,22-26,31,34,39
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  ai_agent 50-52,69-72
+packages/@n8n/ai-utilities/src/__tests__/adapters/langchain-chat-model.test.ts
+  ai_agent 4,6,8-9,13-14,22-23,28-29,32-35,40-42,45-47,63,69-70,207,210,251,279,302
+packages/frontend/editor-ui/src/features/agents/utils/delegate-tool.ts
+  ai_agent 1-128
+packages/testing/playwright/expectations/instance-ai/should-persist-a-manually-selected-existing-credential-from-the-dropdown/0000-1780098706727-unknown-host-POST-_v1_messages-a66d5d8c.json
+  ai_agent 1-108
+packages/@n8n/ai-utilities/src/utils/vector-store/MemoryManager/test/MemoryVectorStoreManager.test.ts
+  ai_agent 5,14,17,20,32,36,39,46-47,89,98,103,115,136,161,165,177,187-188
+packages/core/src/execution-engine/__tests__/workflow-execute-process-process-run-execution-data.test.ts
+  ai_agent 259
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  ai_agent 6,14,16,29,75,334-349,411-412,436-439,448,450-451,455-476,671,686-728,735,745,871-1275
+packages/frontend/editor-ui/src/features/agents/utils/write-todos-tool.ts
+  ai_agent 1-143
+packages/@n8n/mcp-apps/src/apps/workflow-preview/url.test.ts
+  ai_agent 1-56
+packages/frontend/@n8n/design-system/src/components/N8nInput/Input.vue
+  ai_agent 2,7,150-153,155-158
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0002-1780313871357-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/pages/InstanceAiPage.ts
+  ai_agent 202-212,241-248,250
+packages/@n8n/instance-ai/src/tools/research.tool.ts
+  ai_agent 217
+packages/@n8n/instance-ai/docs/memory.md
+  ai_agent 96
+.github/actions/setup-nodejs/action.yml
+  ai_agent 20,104,108-109
+packages/frontend/editor-ui/src/app/api/workflows.test.ts
+  ai_agent 1-2,67-135
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  ai_agent 3,92-123
+packages/nodes-base/nodes/Aws/Transcribe/test/GenericFunctions.test.ts
+  ai_agent 1-70
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0006-1780165069701-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/agents/src/__tests__/workspace/lifecycle.test.ts
+  ai_agent 6-7,18,28-29,40-41,52-53,71,81
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0006-1780158501172-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/di/package.json
+  ai_agent 9
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0008-1780165175583-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/cli/src/commands/start.ts
+  ai_agent 103
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0009-1780158595427-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 1-108
+packages/testing/playwright/utils/benchmark/sizing-matrix.ts
+  ai_agent 1-622
+packages/cli/src/modules/agents/repositories/agent-task-run-lock.repository.ts
+  ai_agent 1-76
+packages/@n8n/ai-workflow-builder.ee/src/agents/test/responder.agent.test.ts
+  ai_agent 3,14,40,59
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  ai_agent 10-11,25-29,48,64,87
+packages/@n8n/agents/src/runtime/provider-credentials.ts
+  ai_agent 24
+packages/cli/src/modules/mcp-registry/node-description-transform.ts
+  ai_agent 27
+packages/@n8n/agents/package.json
+  ai_agent 3,41,47-49,63,66,96-100
+packages/testing/playwright/.janitor-baseline.json
+  ai_agent 3,53,59,2559,2567,2575,2583,2588,2591-2601,2608-2609
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.test.ts
+  ai_agent 1-407
+packages/cli/test/integration/external-secrets/secret-providers-connections.api.test.ts
+  ai_agent 207
+packages/@n8n/agents/src/runtime/write-todos-tool.ts
+  ai_agent 3-7,9-13,15,17,19-24,26-31,33-51,53-57,59-60,62-82,84-95,97-102,104-105
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0010-1780158501174-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  ai_agent 4,133-143
+packages/@n8n/instance-ai/src/tools/index.ts
+  ai_agent 110-112,116,123,125
+packages/nodes-base/nodes/TheHiveProject/helpers/utils.ts
+  ai_agent 15-26
+packages/@n8n/scan-community-package/package.json
+  ai_agent 3,20
+packages/@n8n/codemirror-lang/package.json
+  ai_agent 34
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-execution-schema.tool.test.ts
+  ai_agent 2,17-21,26,29
+packages/@n8n/instance-ai/evaluations/data/workflows/weather-alert.json
+  ai_agent 28
+packages/@n8n/task-runner/src/js-task-runner/__tests__/js-task-runner.test.ts
+  ai_agent 33,81,86,239,305,780,802,1350-1354,1377,1381,1387,1389,1392,1401,1403,1412,1417,1425-1426,1430,1435,1438,1444,1446,1454,1459,1767-1771,1820,1961
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0011-1780313871362-unknown-host-POST-_v1_messages-70b0f918.json
+  ai_agent 1-108
+packages/cli/src/controllers/debug.controller.ts
+  ai_agent 35
+packages/frontend/@n8n/rest-api-client/package.json
+  ai_agent 4,24,27
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  ai_agent 9,11,136,1423,1482,1488,1492-1506,1519-1537
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  ai_agent 19,58,726
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  ai_agent 1-6,8,10,12,14-18,20-22,24-29,31-32,34-52,54-68,71-76,80-84,86-89,91,95-101,103-104,107-111,113-122
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.store.ts
+  ai_agent 10-11,14-17,37-55,60-63,69-73,83-85,92-94
+packages/@n8n/instance-ai/src/planned-tasks/__tests__/planned-task-service.test.ts
+  ai_agent 1-2,7,9-13,49,53,80-88,631-644,659-675,760-761,818-820
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  ai_agent 10,35-41
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  ai_agent 9-10,24-36,72,78,189-210,237-304,324,409,440,545,639,708,720,733,742-743
+packages/@n8n/instance-ai/package.json
+  ai_agent 3,8,11-13,87,91-94
+packages/cli/src/executions/execution-data/fs-store.ts
+  ai_agent 3,19-21,76-91,125-141
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0002-1780315686813-unknown-host-POST-_v1_messages-b91e8d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/agents/examples/basic-agent.ts
+  ai_agent 6,13,67,79-82,124-125,127-128
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  ai_agent 185-189
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  ai_agent 7-8,70-79
+packages/cli/src/evaluation.ee/test-runner/__tests__/workflow-compiler.service.test.ts
+  ai_agent 183-284
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  ai_agent 2-11,14-15,18,21,49,69-70,74-149,199-200,211-212,219,226-313,329-338,447-515
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  ai_agent 4,7,17,19-30,48-49,51-52,90-151,155-156,173-175,203-204,298-347,376,437-478,535-555,678-810,814,818,821-826,829-833,837,841,844-875,892-895,965-1006,1060,1154,1173,1394-1397,1415,1420,1422,1428-1429,1431-1435,1444-1445,1447-1451,1660,1712,1714,1717-1723,1807-1832,2669-2670,2672-2673,2710,2716,2740,2851-2854,2856,2868,2890-2892,2894,2901
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  ai_agent 2,6,9,15,17-24,27-38,46-53,58,64-68,76-83,93-94,96,106,125-127,130,136,154-156,165,189,206,229,246,264,275,289,305,328-331,334,357,372,374-376,389-392,394,407,409-410,426-512
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0007-1780315686816-unknown-host-POST-_v1_messages-6c90f4d1.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0012-1780165175585-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  ai_agent 3-8,10,19,24-27,45,51-52,55-57,60,82-83,86-88,93,108-109,114-116,118,128-129,132-133,136,141,154-155,158-160,162,176-177,180-182,187
+packages/@n8n/nodes-langchain/nodes/code/Code.node.ts
+  ai_agent 226
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/final-response-handler.test.ts
+  ai_agent 14-15,23
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/TextClassifier.node.ts
+  ai_agent 15,270,278,319,322,329
+packages/@n8n/mcp-browser/package.json
+  ai_agent 3,16,22-24,28,43,46-48
+packages/@n8n/instance-ai/src/tools/evals/__tests__/create-empty-eval-data-table.test.ts
+  ai_agent 21,23-25,28-33,55,57-59,64-69,89,91-93,99-104,116,118-120,125-130
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  ai_agent 60-61,105-106
+packages/cli/src/modules/redaction/redaction-enforcement.service.ts
+  ai_agent 6-7,10-11,13-16,20-22,24,27-28,30,33-37
+packages/@n8n/instance-ai/evaluations/__tests__/data-discovery.test.ts
+  ai_agent 26,37
+packages/@n8n/instance-ai/src/tools/evals/__tests__/generate-sample-rows.service.test.ts
+  ai_agent 2,4,6-7,21-22,25,32,35,47,91,139,183,197,266,474,477,487,504,523
+packages/workflow/src/node-helpers.ts
+  ai_agent 1274-1300
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/programmatic.test.ts
+  ai_agent 13,16,69
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-node-context.tool.test.ts
+  ai_agent 2,21-25,30,33
+packages/workflow/test/get-child-nodes.test.ts
+  ai_agent 1-3,5-8,10-11,13-14,16,18-28,30,32-110
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/component-hover-card.md
+  ai_agent 1-211
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0005-1780315686815-unknown-host-POST-_v1_messages-1d173938.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-create-new-credentials-across-two-setup-cards-and-persist-them-on-apply/trace.jsonl
+  ai_agent 1
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/0000-1780098620818-unknown-host-POST-_v1_messages-9db5700e.json
+  ai_agent 1-108
+packages/@n8n/decorators/src/credential-resolver/credential-resolver.ts
+  ai_agent 100-113
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/lifecycle.test.ts
+  ai_agent 6,23-25,32,71,91-92,117-118,557-558,597,622-623,638,652,667,680,691,704-705,720-721,737-738,756-757,773-774,797-798,823,827
+packages/cli/src/modules/instance-ai/__tests__/agent-tree-builder.test.ts
+  ai_agent 341
+packages/@n8n/api-types/src/agents/sanitize-agent-json-config.ts
+  ai_agent 1,3-5,7-11,13-16,18-21,23-25,27-36,39-40,42-46,49-50,53-54,57-58,61
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/agent-prompt.test.ts
+  ai_agent 1
+.github/workflows/clean-stale-branches.yml
+  ai_agent 1-26
+packages/@n8n/instance-ai/src/runtime/__tests__/run-state-registry.test.ts
+  ai_agent 13-14,17,680,698,718,746,774,791,822,838,869-870,901,970-971,995,1001,1018,1078,1085,1108,1129
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  ai_agent 10,126-131,147,150-156,328-329,403
+packages/cli/src/evaluation.ee/test-runner/evaluation-metrics.ee.ts
+  ai_agent 1,42
+packages/@n8n/agents/tsconfig.json
+  ai_agent 4
+packages/@n8n/ai-utilities/src/__tests__/converters/tool.test.ts
+  ai_agent 2,13,31,123,135
+packages/@n8n/agents/src/__tests__/integration/tool-interrupt.test.ts
+  ai_agent 11,92-117
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/question-quality.integration.test.ts
+  ai_agent 25,331,334
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/validate-workflow.service.test.ts
+  ai_agent 2,15-25,28-34,37-40,43-46,49-59,120,140,145,160,165,179,184,201,225,262,282,303,306,323,328,346,361,375-376,398,407,447,495,517,533,556,570,595,604,607,625,628,643,646,658,676,679,697,700,712,715,739,742,767,776,779,801,804,820,823
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  ai_agent 55-56,65-71,82-83
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/workflows/score-my-leads.ts
+  ai_agent 1-90
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  ai_agent 6,242-314
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-expression-data-mapping.tool.test.ts
+  ai_agent 2,15-19,24,27
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  ai_agent 414,426-427
+packages/nodes-base/nodes/Google/Sheet/v2/actions/sheet/appendOrUpdate.operation.ts
+  ai_agent 328-349
+packages/@n8n/mcp-apps/src/apps/workflow-preview/main.ts
+  ai_agent 1-7
+packages/cli/package.json
+  ai_agent 3,11,114,131,219
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  ai_agent 12,171,175,180
+packages/frontend/editor-ui/src/features/ai/chatHub/model-selector.utils.ts
+  ai_agent 12,29-33
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/web-fetch.tool.test.ts
+  ai_agent 5,13,15-16,21-25,28-29,32,37-39,59-64,79,88,103,118-119,173,216-217,300,410,416,426,442,491,518,522,563,603,621,649,677,719,767-768,808,835
+packages/nodes-base/utils/utilities.ts
+  ai_agent 290-311,325-329
+packages/testing/containers/stack.ts
+  ai_agent 82,88,91-92,97-98,122-123,137,220,230,232,239,322,365,368-372,376
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0001-1780165069698-unknown-host-POST-_v1_messages-5eb30c4c.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0008-1780158556266-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/storage/__tests__/iteration-log.test.ts
+  ai_agent 10,31
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionList.test.ts
+  ai_agent 1-78
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/runner-langsmith.test.ts
+  ai_agent 17,26-27,30-31,44,102,107,113,141,145,195,204,238,252,294,302,308,345,351,393,399,446,452,487,496,502,539,542-543,561,599,624,666,685,708
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/complete-checkpoint.tool.test.ts
+  ai_agent 6,9-11,13-15,19-21,26-29,38-43,45,48,50-79,84-87,90,111-165,168,189,219,236,254,279
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0007-1780165135210-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/testing/playwright/tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-baseline.spec.ts
+  ai_agent 1-58
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  ai_agent 1-93
+packages/testing/playwright/fixtures/v8-coverage.ts
+  ai_agent 1-89
+packages/workflow/src/execution-context.ts
+  ai_agent 123-148,204-214
+packages/@n8n/ai-utilities/src/__tests__/utils/embeddings-input-validation.test.ts
+  ai_agent 30,62
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/0000-1780098683375-unknown-host-POST-_v1_messages-fcbc85d4.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0002-1780098746213-api.openai.com-GET-_v1_models-2ef5ce20.json
+  ai_agent 1-88
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0001-1780158683734-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 7,18,24,27,33,36,42,45,51,54,60,63,75,87,91,95-96,100
+packages/nodes-base/nodes/DynamicCredentialCheck/DynamicCredentialCheck.node.ts
+  ai_agent 17
+packages/@n8n/ai-workflow-builder.ee/src/chains/test/integration/prompt-categorization.integration.test.ts
+  ai_agent 123
+packages/@n8n/config/src/configs/executions.config.ts
+  ai_agent 1,102
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  ai_agent 25,38,40-43,68-69,347,350-356,370,372-373
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.utils.ts
+  ai_agent 60
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0011-1780165135212-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0002-1780158612747-unknown-host-POST-_v1_messages-7da6160c.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/workspace/__tests__/n8n-sandbox-sandbox.test.ts
+  ai_agent 9-12,14,72
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  ai_agent 9,24
+packages/@n8n/ai-utilities/src/__tests__/utils/fromai-tool-factory.test.ts
+  ai_agent 174
+packages/cli/src/modules/redaction/__tests__/redaction-enforcement.service.test.ts
+  ai_agent 1-4,7,11-14,17-20,23-25,28-35,38-55,58-74,77-80,84-86,90-93
+packages/frontend/@n8n/design-system/src/composables/useAutosizeTextarea.test.ts
+  ai_agent 1-164
+packages/frontend/editor-ui/src/features/agents/__tests__/useProjectAgentsList.test.ts
+  ai_agent 17-18,80-113
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  ai_agent 1-3,8,36-49,66,78,83-87,103-118,132-136,309-382
+packages/@n8n/mcp-apps/src/apps/workflow-preview/url.ts
+  ai_agent 1-30
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/trace.jsonl
+  ai_agent 1
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  ai_agent 199-203,405-409
+packages/nodes-base/nodes/Slack/test/v2/utils.test.ts
+  ai_agent 4-8,25-59
+packages/@n8n/computer-use/tsconfig.json
+  ai_agent 4
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  ai_agent 2,18,21-28,38,41,63,78,109,148,152,180,182,225,255,257,276,299,303,323-324,337-356,381,406,430,469,494,534,557
+packages/@n8n/agents/src/runtime/runtime-helpers.ts
+  ai_agent 5
+.github/workflows/ci-pull-requests.yml
+  ai_agent 132
+packages/@n8n/instance-ai/src/storage/__tests__/workflow-loop-storage.test.ts
+  ai_agent 1-2,8-9,13,17-18,22,63,72,87,98,155,172,185
+packages/@n8n/instance-ai/src/tools/__tests__/task-control.tool.test.ts
+  ai_agent 1-2,19-20,22,26-27,29-30,121,147,167
+packages/@n8n/instance-ai/src/tools/orchestration/planner-run-coordinator.ts
+  ai_agent 1,4-6,8-16,18-20,22,26-27,30-32,36-37,39,43,45-50,52-58,62-66,71-81,83-84,86-92,96-118,120-121,125-149,151-155,157-159,162-164,167-169,171,174-175,177-181,183-194,196-203,205,208-213,216-221,223-224,226-227,229,231,233,235-237,239-243,246-249,251-258,260-267,269-283,286-302,304-313,315-325,327,330-334,336-337,339-341,343-351,353-354,356-363,365-371,373-383,385-403,405-408,410-431,434,436-452,455-462,464-470,472,476-481,483-487,490-495,497-498,501,504-510,513-518,521-522,524-525,527
+packages/cli/src/events/maps/relay.event-map.ts
+  ai_agent 1,93,573,575,989-990,1022-1029
+packages/@n8n/agents/src/runtime/__tests__/title-generation.test.ts
+  ai_agent 14-16,18-19,161-163
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/auto-finalize-handler.test.ts
+  ai_agent 14-16,25
+packages/@n8n/instance-ai/evaluations/data/discovery/data-table-natural-list-skill-loading.json
+  ai_agent 18,25
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0013-1780158595429-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,17-19,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0009-1780158683740-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluators/llm-judge.test.ts
+  ai_agent 10,15,18,61
+packages/@n8n/instance-ai/evaluations/report/workflow-report.ts
+  ai_agent 37-48,53-69,72,82,96,212-214,216-228,551,560-564,574,692-693
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/useChatInputAutoFocus.ts
+  ai_agent 1-64
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-missing-mode.test.ts
+  ai_agent 1-63
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/nodes.test.ts
+  ai_agent 2
+packages/@n8n/instance-ai/evaluations/outcome/workflow-discovery.ts
+  ai_agent 14
+packages/cli/src/workflows/workflow-execution.service.ts
+  ai_agent 428,458
+packages/@n8n/instance-ai/docs/architecture.md
+  ai_agent 142,147-148,163-164,169,183
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  ai_agent 1-191
+packages/nodes-base/nodes/Trello/test/TrelloTriggerHelpers.test.ts
+  ai_agent 18,114-138
+.github/workflows/ci-master.yml
+  ai_agent 23-25
+packages/nodes-base/nodes/Slack/V2/MessageDescription.ts
+  ai_agent 100,102-103
+packages/cli/src/__tests__/response-helper.test.ts
+  ai_agent 1,6,55-126
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/report-verification-verdict.tool.test.ts
+  ai_agent 7,9,11-13,18,32-37,39,43-44,73,94,185,265,305,318-319,328,350
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/workflows/index.ts
+  ai_agent 1-27
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  ai_agent 20-27,44-45,81-92,140,164,166,169,178-189,218,233,293-297
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  ai_agent 6-7,31-71
+packages/@n8n/instance-ai/evaluations/README.md
+  ai_agent 8,10,14,20,117-119,134,144,148-160,334,337-338,345-347,351,354,359,361-363,366-370,377-378,388-389,400,403-404,471,474-476,478,571-572,574
+packages/cli/src/modules/mcp/mcp-oauth-token.service.ts
+  ai_agent 27-28,43-52,62,64-65,68,108,138,168-169,172-173,178-183,194,197,202,204,206-209,272-304
+packages/@n8n/config/src/configs/ai.config.ts
+  ai_agent 1-2,14,17
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/suggestions.ts
+  ai_agent 1-52
+packages/frontend/editor-ui/src/features/agents/components/AgentMarkdownChunk.vue
+  ai_agent 1-19
+packages/nodes-base/nodes/Google/CloudStorage/test/GenericFunctions.test.ts
+  ai_agent 3-7,9-10,13-21,28-31,122-258
+packages/core/src/execution-engine/__tests__/active-workflows.test.ts
+  ai_agent 90,92,96,114,119,129,137,143,152-156,169-170,218-219,225,235,238,249,253,260-261,288,296,305,311,340-344,351,365,447,451
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0001-1780165038481-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 1-108
+packages/frontend/editor-ui/src/features/agents/__tests__/tool-call-details.spec.ts
+  ai_agent 1-211
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  ai_agent 4-12,19-22,36-37,49-53,57-66
+packages/cli/test/integration/active-workflow-manager.test.ts
+  ai_agent 148,154,159,162,265,267,269,275
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  ai_agent 2,7-13,17,25,253,257
+packages/@n8n/instance-ai/evaluations/cli/build-mcp-manifest.ts
+  ai_agent 367-386,411
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentWorkflowObject.test.ts
+  ai_agent 9
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatInputBase.vue
+  ai_agent 3,35,77-80,87,101,107-113,117,122,133,137,139-143,145-151,153-154,169,171-185,199
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0004-1780165207178-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 7,17-19,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/instance-ai/src/workspace/__tests__/builder-templates-service.test.ts
+  ai_agent 5,59-60,198,276,427,551,568,622
+packages/@n8n/ai-workflow-builder.ee/src/subgraphs/test/integration/responder-limitations.integration.test.ts
+  ai_agent 29,33
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0001-1780313871354-unknown-host-POST-_v1_messages-e3a14f01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  ai_agent 1-20
+.github/workflows/test-e2e-infrastructure-reusable.yml
+  ai_agent 29-32
+packages/@n8n/computer-use/src/tools/filesystem/copy-file.test.ts
+  ai_agent 2,7,12,16,21-22
+packages/@n8n/instance-ai/src/index.ts
+  ai_agent 6,9-18,21-24,26,28-29,31-33,36-38,84-86,90,94-95,100-103,108-112,120,127-169,182-184,186-187,220-235,279-289,293-320,340-351,364-369,393-404,406-411,413-414,416-422,437-440,442-448,454-457,467-470,476-477,488-505,512-532,540-549,615-623,631-641
+packages/@n8n/agents/src/__tests__/workspace/base-sandbox.test.ts
+  ai_agent 1-2,45,48,51-53,55,63-65,220,229,238,248
+packages/@n8n/agents/src/sdk/__tests__/catalog.test.ts
+  ai_agent 1-73
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/teams.md
+  ai_agent 1-104
+packages/nodes-base/credentials/common/aws/utils.test.ts
+  ai_agent 2,16,753-891
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentSettings.ts
+  ai_agent 3,5
+packages/nodes-base/nodes/Filter/V2/FilterV2.node.ts
+  ai_agent 4,140
+packages/nodes-base/nodes/Aws/Textract/GenericFunctions.ts
+  ai_agent 19,25,34
+packages/@n8n/agents/src/sdk/__tests__/telemetry.test.ts
+  ai_agent 38,45,50-51,89,154,159,174,178,191-192
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/switch-case-handler.test.ts
+  ai_agent 52,59
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0004-1780165135208-unknown-host-POST-_v1_messages-abb905a1.json
+  ai_agent 1-108
+packages/@n8n/agents/src/__tests__/workspace/base-filesystem.test.ts
+  ai_agent 21-22,179,188,197
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows.test.ts
+  ai_agent 1-6,10,14-15,43,139-198
+packages/@n8n/workflow-sdk/src/types/aliases.test.ts
+  ai_agent 20-24,26
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  ai_agent 111,113,122,131,133,147,171,209,237
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  ai_agent 85,117,160-166,650,2406,2408-2412,2455-2465,2486,2501,3140-3147,3191-3192,3194-3213,3216,3221-3223,3233-3236,3243,3286,3322,3402-3444,3531,3570-3572,3584-3593,3595,3614-3624,3626-3644,3679-3681,3914,4024-4026,4189-4190,4384-4423,4730,4791-4793,4809,4835,4919,5021-5023,5163-5164,5261
+packages/@n8n/ai-utilities/src/web-search/__tests__/searxng-search.test.ts
+  ai_agent 3
+packages/cli/src/modules/otel/execution-level-tracer.types.ts
+  ai_agent 5,8-15
+packages/nodes-base/nodes/TheHiveProject/actions/observable/executeAnalyzer.operation.ts
+  ai_agent 11,53
+packages/frontend/editor-ui/src/features/agents/composables/useSubAgentNames.ts
+  ai_agent 1-28
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  ai_agent 3-5,7,13-15,17-25,27-28,31,34-39,48,50-93,95-97,101-102,104-105,110-111,113,153-159
+packages/core/src/nodes-loader/directory-loader.ts
+  ai_agent 427-429,431,437-441
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/AskAssistantBuild.vue
+  ai_agent 872,910
+packages/@n8n/instance-ai/src/runtime/__tests__/stream-runner.test.ts
+  ai_agent 6-9,13,20,25-30,56,63,92,99,124,126,186,196,229,239,242
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  ai_agent 8,41,56,63-64
+packages/testing/janitor/src/cli/arg-parser.ts
+  ai_agent 21-23,68-73,89-90,220-233
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  ai_agent 127,129
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0009-1780165135210-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/workflow/src/interfaces.ts
+  ai_agent 1389-1393,1412,3250,3311-3318,3361
+packages/@n8n/db/src/entities/types-db.ts
+  ai_agent 338-361,364
+packages/cli/src/modules/instance-ai/repositories/index.ts
+  ai_agent 10
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewCanvas.vue
+  ai_agent 1-517
+packages/testing/containers/service-stack.ts
+  ai_agent 11,26,34
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  ai_agent 1-308
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  ai_agent 176-201,442-505
+pnpm-workspace.yaml
+  ai_agent 17,46-47,78,94,130,138,141
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-matcher.test.ts
+  ai_agent 1-195
+packages/testing/containers/services/victoria-metrics.ts
+  ai_agent 68,80-84
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-manager.test.ts
+  ai_agent 1-9,26,29,34-38,47-50,56-57,79-80,126-127,140,145-147,149,151-178,300,398,415,426
+packages/@n8n/instance-ai/src/workflow-builder/__tests__/parse-validate.test.ts
+  ai_agent 1-3,6-7,12,17-19,23-25,32,55,88
+packages/@n8n/computer-use/src/tools/filesystem/move.test.ts
+  ai_agent 2,7,12,16,21-22
+packages/cli/src/active-workflow-manager.ts
+  ai_agent 656,662,664,670,672-675,678,680-683,685,726,769,791-792,804-805,873,1084-1085,1089,1093,1105,1107,1113,1120,1122,1167,1190,1193,1195
+packages/testing/playwright/expectations/instance-ai/should-send-message-and-receive-assistant-response/0000-1780098112048-unknown-host-POST-_v1_messages-e90e08b4.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/workflow-sdk/src/generate-types/generate-node-defs-cli.test.ts
+  ai_agent 4,111,165
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/composite-handlers/if-else-handler.test.ts
+  ai_agent 56,63
+packages/@n8n/db/src/connection/db-connection.ts
+  ai_agent 1,7,9,23,48-55,73-81,92-93
+packages/@n8n/instance-ai/src/mcp/__tests__/mcp-client-manager.test.ts
+  ai_agent 1-10,13-14,17,20,24-25,28,45,47-48,53,112,142,231,250-289,310-315,340-345
+packages/cli/src/modules/agents/utils/agent-resource-id.ts
+  ai_agent 3
+packages/frontend/editor-ui/src/features/agents/utils/tool-call-details.ts
+  ai_agent 1-65
+packages/@n8n/instance-ai/evaluations/data/workflows/index.ts
+  ai_agent 74,76,80-89
+packages/cli/src/modules/agents/entities/agent-task.entity.ts
+  ai_agent 1-52
+packages/@n8n/local-gateway/tsconfig.json
+  ai_agent 5
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0007-1780098746214-api.openai.com-GET-_v1_models-2ef5ce20.json
+  ai_agent 1-88
+packages/testing/playwright/scripts/run-coverage-shard.mjs
+  ai_agent 1-47
+packages/@n8n/api-types/src/dto/evaluations/evaluation-config.dto.ts
+  ai_agent 21-24,51-76,90-106
+packages/testing/playwright/scripts/select-affected-e2e.mjs
+  ai_agent 1-46
+packages/cli/src/modules/dynamic-credentials.ee/services/__tests__/dynamic-credential.service.test.ts
+  ai_agent 318-388
+packages/@n8n/instance-ai/evaluations/__tests__/verification-artifact.test.ts
+  ai_agent 1,3-5,7-9,11-16,20-25,27-29,31-40,42,46-110,114,116-118,120-121,124-169,171-213,217,219-246,248-250,252,255-312,314-315
+packages/testing/playwright/playwright-projects.ts
+  ai_agent 53,71-74,101-102,125-126,151
+packages/@n8n/agents/src/sdk/__tests__/agent-telemetry.test.ts
+  ai_agent 1-3,8,15-16,19,23-24,51,57,72
+packages/@n8n/instance-ai/evaluations/harness/in-memory-event-bus.ts
+  ai_agent 15-16,19-21,26,31,35-36,39,41-42
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0007-1780160837144-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  ai_agent 8,129,139,166-169
+packages/@n8n/db/src/migrations/sqlite/1784000000021-CreateAgentTaskDefinitionTable.ts
+  ai_agent 1-11
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/workflows/process-invoices.ts
+  ai_agent 1-79
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/workflow-similarity.test.ts
+  ai_agent 1-2,12-13,16,18,20-21,26,30,72
+packages/@n8n/agents/src/runtime/delegate-sub-agent-tool.ts
+  ai_agent 1-532
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0007-1780165069701-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/testing/playwright/tests/infrastructure/benchmarks/webhook/webhook-single-instance.spec.ts
+  ai_agent 12-14
+packages/@n8n/client-oauth2/package.json
+  ai_agent 9
+packages/@n8n/ai-workflow-builder.ee/evaluations/support/workflow-executor.test.ts
+  ai_agent 11-12,15,17-18,50,108,113
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-schemas.test.ts
+  ai_agent 310,338,355,386,401,420,443,466
+.gitignore
+  ai_agent 7
+packages/@n8n/instance-ai/src/stream/__tests__/consume-with-hitl.test.ts
+  ai_agent 13-18,23,41,65
+packages/frontend/editor-ui/src/features/agents/__tests__/write-todos-tool.spec.ts
+  ai_agent 1-216
+.github/workflows/test-evals-instance-ai.yml
+  ai_agent 77,287-293,304-305
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 2002-2059
+packages/@n8n/workflow-sdk/src/validation/test-schema-setup.ts
+  ai_agent 17,20-23
+packages/cli/src/modules/agents/agents.service.ts
+  ai_agent 1-2,11,14,29,32,61,68-69,71-72,74,130,136-151,163-164,279-280,287,545,560,574-584,616-622,651,656-659,765-767,769,839,1194-1195,1197-1198,1200,1205,1216-1242,1254-1265,1312-1313,1353-1368,1377,1389-1395,1522,1574-1583,1588,1591-1606,1628,1649,1652,1657,1696-1705,1728,1731,1738-1741,1743,1747,1776,1787,1957-1980,1982-1996,2037-2117,2128-2129,2131,2133,2141-2147
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  ai_agent 4,257
+packages/cli/src/commands/import/workflow.ts
+  ai_agent 134-139,150
+packages/nodes-base/nodes/Google/CloudStorage/ObjectDescription.ts
+  ai_agent 12-13,251-273,293
+packages/cli/src/workflows/utils.ts
+  ai_agent 1,41-45
+packages/nodes-base/nodes/Slack/test/v1/SlackV1.node.test.ts
+  ai_agent 1-281
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0005-1780165069700-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 1-108
+packages/cli/src/modules/instance-ai/__tests__/trace-replay-state.test.ts
+  ai_agent 187-200,239,243-254,269,276
+packages/frontend/editor-ui/vite.config.mts
+  ai_agent 237-239
+packages/frontend/editor-ui/src/app/stores/workflows.store.ts
+  ai_agent 551
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0006-1780158595426-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/planner-run-coordinator.test.ts
+  ai_agent 1-182
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/0011-1780315686819-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/computer-use/src/tools/filesystem/create-directory.test.ts
+  ai_agent 2,7,12,17-18,64
+packages/cli/src/controllers/oauth/oauth1-credential.controller.ts
+  ai_agent 48,51-54,56-60,63-66
+packages/@n8n/agents/src/runtime/__tests__/sub-agent-task-path.test.ts
+  ai_agent 1-64
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/AskAssistantChat.test.ts
+  ai_agent 47,286,1487,1493,1496-1497,1534
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  ai_agent 17,202,226
+packages/@n8n/computer-use/src/tools/mouse-keyboard/mouse-keyboard.test.ts
+  ai_agent 2,16,19-27,31-32,35,41,114-115,118,183,188,193,198,272,298-303,305-309,311
+packages/cli/src/modules/agents/__tests__/agent-config-composition.test.ts
+  ai_agent 47
+package.json
+  ai_agent 3,14,117,130,140,181
+packages/@n8n/eslint-config/package.json
+  ai_agent 22
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useTimelineGrouping.test.ts
+  ai_agent 1-92
+packages/testing/playwright/coverage-options.ts
+  ai_agent 1-57
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  ai_agent 56,60,67,71,82-85,90,102-114,591-629,679,688,736-835
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0005-1780158683738-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/processItem.ts
+  ai_agent 7,61-65
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  ai_agent 28-31
+packages/@n8n/ai-workflow-builder.ee/src/test/session-manager.service.test.ts
+  ai_agent 5-6,13-14,16-18,26,28,47-49,52,63,85-87,117,209,240,261,286,300,312,334,355,385,417,442,482,500,524,555,597-598,643-644,650,676-677,703,738-739,769-770,798-799,833-834,868-869,925,929,981-982,1010,1231,1236-1238,1378,1387,1408,1424,1440,1475,1499-1500,1529-1530,1549,1561,1578,1606,1661,1664
+packages/@n8n/codemirror-lang-html/package.json
+  ai_agent 6,10
+packages/@n8n/expression-runtime/package.json
+  ai_agent 3,17,19
+packages/@n8n/db/package.json
+  ai_agent 3,9
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  ai_agent 2,118,159,338-339,367,671
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/cli.test.ts
+  ai_agent 11-12,17-32,35,44,50,55,63,67-68,71,73,76,80-87,103,156-157,181,185-186,204-207
+packages/cli/src/controllers/api-keys.controller.ts
+  ai_agent 1,11,40,64-66,68,70-74,78-79,81,84,92-93,95,112
+packages/@n8n/db/src/utils/validators/__tests__/no-xss.validator.test.ts
+  ai_agent 33-35,116-118
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  ai_agent 5-6,9-10,13,15,18,20,25-26,29-30,35-36,39-40,43-44,47-48,51-52,55-56,59-60,63-64,67-68,71-72,75-76,79,81,84-85,88-89,92-93,96-97,102-103,106-107,116,123-124,146,152,159,161,164-168,184
+packages/cli/test/integration/import.service.test.ts
+  ai_agent 19,28,37,57,59,70-71,93,106,124,140,169,189,210,229,245,247,249-253,259,281,294,300,302-306,309-311,316,318,329-334,355,359-363,367,375,384,388,393,402,405-408,415,419-428,431-433,438,442-448,451-453,461,465-476
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0001-1780098352152-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0001-1780158556254-unknown-host-POST-_v1_messages-ee2dd1d8.json
+  ai_agent 1-108
+packages/core/src/errors/workflow-has-issues.error.ts
+  ai_agent 1-32,35-41
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_e388ed4f8e4dda::t_eab1b0cda0c820 1-2,5,12,17,24,31,43-44,47-51,53,62-66,116-118,147-200,364,491,633,655,1181-1314,1626-1699,1707,1783-1856,1863,1977,2045,2049-2050,2073-2074,2094-2095,2160,2207,2323,2361,2365,2405,2448,2494,2532,2644,2701,2744,2780,2887,2922,2927,2967,3005,3007-3008,3080,3092,3281,3351,3473,3483,3537-3539,3542,3582,3601,3615-3617,3620,3757-3760,3764,3769-3772,3882-4105
+packages/@n8n/computer-use/src/tools/filesystem/fs-utils.test.ts
+  ai_agent 3,13,20,28,37,45,48,151,178-179,199,202,225
+packages/frontend/@n8n/design-system/src/components/N8nScrollArea/N8nScrollArea.vue
+  ai_agent 227,231
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  ai_agent 10,19,47-58,200-215,219-230,240,246-247,620,658,863-865,1033-1035,1059,1158,1238,1362,1366-1373
+packages/cli/src/executions/execution-persistence.ts
+  ai_agent 1,8,10-11,15,18-20,25-30,61,126-306,375-394,450-453,482-527
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  ai_agent 31,43-44,67-68,87-102,105-109,111,121,139,231,237-240
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0010-1780313871362-unknown-host-POST-_v1_messages-eef90b77.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  ai_agent 163-168
+packages/cli/src/errors/http-error-serializers.ts
+  ai_agent 18-25,28,30
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/operationHandlers.test.ts
+  ai_agent 6-7,66-68
+packages/@n8n/instance-ai/evaluations/types.ts
+  ai_agent 187-188,219-221
+packages/frontend/editor-ui/src/features/ndv/panel/components/RedactedDataState.test.ts
+  ai_agent 23
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+  ai_agent 46,128
+packages/@n8n/ai-workflow-builder.ee/src/test/checkpoint-persistence.test.ts
+  ai_agent 199-205
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0005-1780158501171-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/workflow/test/get-node-by-name.test.ts
+  ai_agent 1-128
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  ai_agent 54-55,57-58,63-112
+packages/@n8n/computer-use/src/gateway-client.test.ts
+  ai_agent 1,15-23,27-28,30,34-35,37-38,40-41,66,69-70,77-84,86,102-103,112,144,156,167,177,189,199-200,209-210,223,250,266,279,292,295-296
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/rename-node.tool.test.ts
+  ai_agent 2,20-24,29,32,37
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0002-1780158595424-unknown-host-POST-_v1_messages-3681d9c1.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  ai_agent 6-11,26-27
+packages/frontend/editor-ui/src/app/composables/useWorkflowInitialization.ts
+  ai_agent 10-11,49,314-315
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher-factory.ts
+  ai_agent 1-28
+packages/@n8n/instance-ai/src/tools/__tests__/research.tool.test.ts
+  ai_agent 2,23-24,33-34,55,74,106,138,170,202,219,232,234-240,246,267-273,277,279,292-298,302,319-325,328,344-350,353,381,414,453,455-458,517,540-543,548,566-569,601-604,609,633-636,641,665-668,673,675,699,733-743,750
+packages/testing/playwright/expectations/instance-ai/should-preserve-a-submitted-workflow-when-mocked-credential-verification-needs-setup/0000-1780313871353-unknown-host-POST-_v1_messages-a942b0c9.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  ai_agent 1,4-5,13-17,53-59,147,154
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0008-1780158595427-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-partially-apply-credentials-when-user-completes-one-card-and-skips-the-last/0001-1780098620819-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/runtime/__tests__/resumable-stream-executor.test.ts
+  ai_agent 6-11,16,95,181,237,251,255,318,366,370,430,434-435
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  ai_agent 22,407
+packages/@n8n/ai-workflow-builder.ee/eslint.config.mjs
+  ai_agent 5-9
+packages/@n8n/ai-workflow-builder.ee/tsconfig.json
+  ai_agent 15
+packages/@n8n/ai-workflow-builder.ee/src/tools/helpers/test/progress.test.ts
+  ai_agent 3,16,20
+packages/@n8n/crdt/package.json
+  ai_agent 10
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  ai_agent 1,5,43-53,62-90
+packages/frontend/editor-ui/src/features/agents/session-timeline.styles.ts
+  ai_agent 2-4,14-15,30-31,33-35
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  ai_agent 216-267
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-apply-after-approval/0003-1780158612748-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0011-1780160837148-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,17-19,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/ai-utilities/src/__tests__/utils/log-ai-event.test.ts
+  ai_agent 2,7-8,12,16,18,22
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/code-builder-agent-validate-loop.test.ts
+  ai_agent 14-18,24-28,32-34,38-39,59-62,72-73,121
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/delegate.tool.test.ts
+  ai_agent 1,7-8,10,25-30,32,41-42
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0005-1780165207179-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 1-108
+packages/@n8n/mcp-apps/src/locales/en.json
+  ai_agent 1-5
+packages/cli/test/integration/evaluation/test-runs.api.test.ts
+  ai_agent 292-294,299
+packages/@n8n/api-types/src/dto/workflows/__tests__/update-workflow.dto.test.ts
+  ai_agent 87-114,149-209
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0000-1780158638826-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,17-19,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/computer-use/src/gateway-session.test.ts
+  ai_agent 1-2,17,19,23-25
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0005-1780158638831-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0007-1780165175582-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/utils/src/search/sublimeSearch.ts
+  ai_agent 222-230,235,237-242,245-252,254-256,258-259,261-265,267-276,278-279,281,283
+packages/@n8n/instance-ai/src/tools/orchestration/plan-with-agent.tool.ts
+  ai_agent 15,18,80,82-85,87,89-90,94-96,99,101
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/HoverCard.test.ts
+  ai_agent 1-131
+packages/@n8n/instance-ai/src/utils/__tests__/stream-helpers.test.ts
+  ai_agent 129,138
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  ai_agent 2,14-17,30-32,149,154-181
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  ai_agent 63,97,4818-4822,5376-5408,5478,5502-5506,6181,6187-6191,6247,6252-6256
+packages/frontend/@n8n/rest-api-client/src/api/roleMappingRule.test.ts
+  ai_agent 1-84
+packages/frontend/editor-ui/src/features/agents/__tests__/delegate-tool.spec.ts
+  ai_agent 1-157
+packages/testing/playwright/pages/ChatHubChatPage.ts
+  ai_agent 63
+packages/core/src/execution-engine/active-workflows.ts
+  ai_agent 79,83,85,108,110,112,114,123-124,140,142,158,160-161,180,206,215,244-245,247,263,279,292
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/InvoiceSpreadsheetVisualization.vue
+  ai_agent 1-235
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0000-1780160837140-unknown-host-POST-_v1_messages-7da59ccc.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/@n8n/agents/src/index.ts
+  ai_agent 100-101,200-228
+packages/cli/src/modules/agents/builder/skill-body-template.ts
+  ai_agent 1-50
+packages/@n8n/api-types/src/agent-sse.ts
+  ai_agent 72-86,94
+packages/nodes-base/nodes/Compression/test/node/Decompression.test.ts
+  ai_agent 6-18,20-25,71-73,80,101,112-115,122,158-159,166,180,201,207,224,235,241,253,264,270,317,323,336,368,390,410,450,456,493-494,501,527,552,558
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/verify-built-workflow.tool.test.ts
+  ai_agent 1-2,33-35,44-45,57-60,69,72,80-81,91,102,121,128,139,157,161-164,175,204,237,263,292,310,337,365-372,378,409,414,431,465,471,483-486,491-493,497
+packages/@n8n/nodes-langchain/utils/output_parsers/N8nStructuredOutputParser.ts
+  ai_agent 10-13,99,103
+packages/@n8n/ai-workflow-builder.ee/src/index.ts
+  ai_agent 32,37
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0010-1780158683741-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  ai_agent 16,39-112,128-130
+packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/evaluators/connections.test.ts
+  ai_agent 8
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/createVectorStoreNode.test.ts
+  ai_agent 13,18-19,22-23,26-27,62,75,79,83-84,242-244,248
+.github/scripts/grind-changed-tests.mjs
+  ai_agent 115-116,118,122,136-157,166
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  ai_agent 40,51-54,62-64,268
+packages/@n8n/stylelint-config/package.json
+  ai_agent 18
+packages/cli/src/controllers/__tests__/project.controller.test.ts
+  ai_agent 120-160
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0005-1780158595426-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/validate-tool-handler.test.ts
+  ai_agent 7,25-26,31-32
+packages/@n8n/mcp-apps/src/apps/workflow-preview/App.vue
+  ai_agent 1-141
+packages/cli/src/workflow-execute-additional-data.ts
+  ai_agent 2,48,57,62,269,303-304,313,320-326
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0002-1780165135207-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 1-108
+packages/@n8n/config/src/configs/runners.config.ts
+  ai_agent 1,55
+packages/@n8n/instance-ai/src/agent/sub-agent-briefing.ts
+  ai_agent 20,37-39,62
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/0000-1780158595423-unknown-host-POST-_v1_messages-f0ce1c1f.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0002-1780158513968-unknown-host-POST-_v1_messages-a8db0847.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/ai/assistant/components/FocusedNodes/ChatInputWithMention.vue
+  ai_agent 3,63,178,198,265-269,282-287,333
+packages/cli/src/modules/instance-ai/trace-replay-state.ts
+  ai_agent 8-16,88-91,115
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  ai_agent 30
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  ai_agent 15,110-112,114-117,123-129,159-160,162-163,165,167,172,175-187,191-192,202,244,252,279-298,319-324,329-335
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.ts
+  ai_agent 13-14,240,376
+packages/@n8n/mcp-apps/src/server/constants.ts
+  ai_agent 1-4
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.test.ts
+  ai_agent 1,23-24,27-30,36-42,44,46,49-50,52,54,57-58,60,62,64,66-68,70,72,75-76,78,80,83-84,88,90,92-96,98,100-102
+packages/nodes-base/nodes/Trello/TrelloTriggerHelpers.ts
+  ai_agent 7-11,13-16
+packages/cli/src/modules/redaction/executions/strategies/__tests__/node-defined-field-redaction.strategy.test.ts
+  ai_agent 15
+packages/@n8n/client-oauth2/src/index.ts
+  ai_agent 5
+packages/testing/playwright/currents.config.ts
+  ai_agent 6-7
+packages/cli/src/evaluation.ee/test-runner/workflow-compiler.service.ts
+  ai_agent 245-271,276
+packages/testing/playwright/expectations/instance-ai/should-create-new-credentials-across-two-setup-cards-and-persist-them-on-apply/0002-1780098591760-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/nodes-base/nodes/Compression/test/node/BoundedGunzip.test.ts
+  ai_agent 1-44
+packages/@n8n/instance-ai/src/__tests__/index.test.ts
+  ai_agent 1-393
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/db/src/utils/validators/__tests__/no-url.validator.test.ts
+  ai_agent 23
+.github/workflows/test-e2e-reusable.yml
+  ai_agent 151-152
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ConversationalAgent/execute.ts
+  ai_agent 9,113,116-119,123
+packages/testing/playwright/expectations/instance-ai/should-persist-a-manually-selected-existing-credential-from-the-dropdown/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/api-types/package.json
+  ai_agent 3,9
+packages/@n8n/task-runner/src/data-request/data-request-response-reconstruct.ts
+  ai_agent 22-27,32
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0003-1780158556261-unknown-host-POST-_v1_messages-abb905a1.json
+  ai_agent 1-108
+packages/@n8n/workflow-sdk/vitest.config.ts
+  ai_agent 1-7
+packages/@n8n/instance-ai/evaluations/data/workflows/airtable-split-to-slack.json
+  ai_agent 28
+packages/@n8n/mcp-apps/src/apps/workflow-preview/tokens.scss
+  ai_agent 1-42
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-execution-logs.tool.test.ts
+  ai_agent 2,17-21,26,29
+packages/cli/test/integration/public-api/workflows.test.ts
+  ai_agent 1419-1440,1452-1455,1498-1499,1781-1786,1800-1803,1845-1846
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  ai_agent 342-346,493,513-672
+packages/@n8n/local-gateway/src/main/settings-store.test.ts
+  ai_agent 1-2,5,9,11,15,17-18,22-27,31,33,37,41-44
+packages/cli/src/modules/agents/execution-recorder.ts
+  ai_agent 249-254,274,376-415,459,464-468
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0008-1780165207180-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  ai_agent 34-47
+packages/testing/playwright/expectations/instance-ai/should-extract-text-from-an-html-attachment-and-answer-from-it/0001-1780098094578-unknown-host-POST-_v1_messages-2477a9bb.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0002-1780165207177-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 7,17-19,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/cli/src/modules/agents/model-catalog.ts
+  ai_agent 1-16
+packages/@n8n/ai-workflow-builder.ee/src/chains/test/conversation-compact.test.ts
+  ai_agent 29
+packages/frontend/editor-ui/src/features/ai/modelSelector/types.ts
+  ai_agent 1-11
+packages/nodes-base/nodes/Google/Sheet/v2/actions/sheet/update.operation.ts
+  ai_agent 303-322
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  ai_agent 29,31-32,72-89
+packages/cli/src/executions/execution-data/types.ts
+  ai_agent 37-38
+packages/@n8n/config/src/configs/agents.config.ts
+  ai_agent 1-2,33-41
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  ai_agent 1-2,5-42,44-50,52,55-69,73-75,78-90,93-123,125,127-145,147-152,155-156,158-160,163-165,167-174,176-178
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue
+  ai_agent 1-466
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  ai_agent 43
+packages/cli/src/credentials-helper.ts
+  ai_agent 43,295,432-434
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  ai_agent 333,435-448
+packages/cli/src/evaluation.ee/test-runs.controller.ee.ts
+  ai_agent 169-170,175-180
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0007-1780098352155-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  ai_agent 1-2,11-19,22-28,31-34,37-40,43-53,77,124,138-225,254,314-318,349
+packages/@n8n/instance-ai/src/parsers/__tests__/validate-attachments.test.ts
+  ai_agent 100
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  ai_agent 2,22-28,39,51,156,176,191,218,234,260,283,303,321,343,400,424,443,502,528,565,567,598,600,631,633,654,656,674,683,694,702,710,712,774,777,828,846,863,865,894,912,929
+packages/testing/playwright/expectations/instance-ai/should-clear-required-parameter-issue-indicator-when-the-field-is-filled/0001-1780098653595-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-json-config.test.ts
+  ai_agent 1-185
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0008-1780165135210-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  ai_agent 227,234-235,283,291-292
+packages/@n8n/mcp-apps/src/server/apps/workflow-preview.ts
+  ai_agent 1-24
+packages/@n8n/mcp-apps/vite.config.mts
+  ai_agent 1-80
+packages/@n8n/agents/AGENTS.md
+  ai_agent 12-14,114,135
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatPrompt.vue
+  ai_agent 143,208,222
+packages/@n8n/agents/eslint.config.mjs
+  ai_agent 47-53
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 191-194
+packages/@n8n/instance-ai/src/tools/nodes/__tests__/node-search-engine.test.ts
+  ai_agent 168-184
+packages/cli/src/modules/redaction/redaction-context-hook.ts
+  ai_agent 10,29-35,37-41,43-53,58-60
+packages/@n8n/ai-utilities/vite.config.ts
+  ai_agent 1-29
+packages/frontend/@n8n/rest-api-client/src/api/api-keys.ts
+  ai_agent 4,12-16
+packages/frontend/editor-ui/package.json
+  ai_agent 3,10-11,95
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  ai_agent 28-33
+packages/@n8n/computer-use/src/startup-config-cli.test.ts
+  ai_agent 4,6-8,91,95
+packages/@n8n/instance-ai/src/tools/evals/__tests__/generate-tool-ref-pin-data.service.test.ts
+  ai_agent 2,4-6,13-14,17,52,155
+packages/@n8n/instance-ai/evaluations/checklist/verifier.ts
+  ai_agent 1,4-5,34,39-56,74
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/0002-1780098683376-unknown-host-POST-_v1_messages-595b716b.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+  ai_agent 371-377
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 254-263,745-746,783-801,851,859,868-872,915-917,952,956-962
+packages/cli/src/telemetry/index.ts
+  ai_agent 309-310
+packages/@n8n/api-types/src/agents/types.ts
+  ai_agent 141,143-146
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  ai_agent 22,53,804,816,833,845,861,874,878-933
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  ai_agent 10,32,75,103
+packages/@n8n/agents/src/runtime/__tests__/write-todos-tool.test.ts
+  ai_agent 1-70
+packages/cli/src/services/public-api-key.service.ts
+  ai_agent 6,10-12,51-54,56-63,65-68,71-84,107-119
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/eval-data-agent.tool.test.ts
+  ai_agent 2,107,112-115,119-122,130-131,145-146,168-169,196,206,211,228,231-233,287,290,304,326,329,351,367,370,381,387-389,408,414-416,426,429,440-441,453,474,480,499,502
+packages/@n8n/api-types/src/agent-builder-interactive.ts
+  ai_agent 86,109-115,120
+packages/@n8n/db/src/migrations/common/1784000000025-MigrateRedactionEnforcementToFloor.ts
+  ai_agent 1-99
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  ai_agent 2-11,13-15,17-55,58-59,62-70,73-76,79-80,83-85,87-92,94-95,97-220,223-226,228-247,250-288,290-300,302-327,330-331,333-336,340-347,349-381
+packages/testing/janitor/src/cli.ts
+  ai_agent 48-55,657-726,785-790
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  ai_agent 41-42,46,53-54,58
+packages/testing/playwright/tests/infrastructure/benchmarks/README.md
+  ai_agent 21,23,27,33,35,37-40,51,55-62,72
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/builder-tools.test.ts
+  ai_agent 7,14,21-22,28,35,42,49,56,63,70,77,84,91,98,105,112,119,126,133,140,167
+packages/frontend/editor-ui/src/features/agents/components/settings/AgentBuilderModelSection.vue
+  ai_agent 7-9,14-21,28,30-32,34,38-40,60-61,64,67-73,75-76,80-83,87,98,100,104,109,202-203,205-207
+packages/cli/src/workflow-runner.ts
+  ai_agent 410-413
+packages/@n8n/mcp-browser/tsconfig.json
+  ai_agent 4
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  ai_agent 473-492,573,576,661,664,3268-3296
+packages/cli/src/modules/otel/otel-lifecycle-handler.ts
+  ai_agent 9,11,14,19-37,54,58,88,99,128,135,149,163,184-202
+packages/@n8n/instance-ai/src/storage/__tests__/thread-task-storage.test.ts
+  ai_agent 2,9-10,14,18-19,23,42,49,63,76,82
+packages/@n8n/api-types/src/schemas/evaluations.schema.ts
+  ai_agent 13-20
+packages/@n8n/local-gateway/package.json
+  ai_agent 9,21-23,33,35,39-40
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/pairwise/judge-chain.test.ts
+  ai_agent 2,10-12,33,45,76,90
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0003-1780158501170-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 6-7,17-19,24,27,33,42,51,60,75,87,91,95-96,100
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  ai_agent 80-81
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  ai_agent 1-225
+packages/cli/src/services/dynamic-node-parameters.service.ts
+  ai_agent 27,162-163,356
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0004-1780165175580-unknown-host-POST-_v1_messages-abb905a1.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100,108
+packages/@n8n/nodes-langchain/vite.config.ts
+  ai_agent 15-18
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential.service.ts
+  ai_agent 119-124,129,146-159,161
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0008-1780165069702-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 1-108
+packages/@n8n/computer-use/src/tools/filesystem/write-file.test.ts
+  ai_agent 2,7,12,16,21-22
+packages/nodes-base/nodes/Compression/decompress/BoundedGunzip.ts
+  ai_agent 1-51
+packages/testing/playwright/expectations/instance-ai/should-display-artifact-card-in-timeline-after-workflow-build/0013-1780160837149-unknown-host-POST-_v1_messages-0551ad71.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/testing/playwright/expectations/instance-ai/should-display-canvas-nodes-in-preview-iframe/0003-1780165135207-unknown-host-POST-_v1_messages-abb905a1.json
+  ai_agent 1-108
+AGENTS.md
+  ai_agent 231-233
+packages/@n8n/errors/package.json
+  ai_agent 9
+packages/testing/playwright/expectations/instance-ai/should-defer-all-setup-when-user-skips-every-card-without-persisting-credentials/0001-1780098604382-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  ai_agent 107-109,363-381,808-825,1336,1343,1349,1421,1428,1434
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatToolSteps.test.ts
+  ai_agent 1-115
+packages/@n8n/instance-ai/src/storage/__tests__/thread-patch.test.ts
+  ai_agent 1-2,20-21,27,29,36,55,57,69-70,72,92,102,104,114,119,130,141
+packages/@n8n/instance-ai/src/workspace/__tests__/daytona-sandbox.test.ts
+  ai_agent 1-2,12-17,23-25,28-105,134-152,155-157,172,177-180,189,195,267,314,322,334,336-341,350,363,368,370-375,381,387,398-399,406,413
+packages/@n8n/instance-ai/src/runtime/terminal-response-guard.ts
+  ai_agent 37,71-75,104-119,207,218-225
+packages/frontend/editor-ui/src/features/agents/composables/useAgentModelCredentials.ts
+  ai_agent 1-27,29,31-33,35-46,48-50,52-63,65-83,85-90,93-101,103-109
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  ai_agent 4,6,10-11,15,17,34-35,37,51-52,56-57,62-65,70,80-81,90-147,465-506,552-553
+packages/nodes-base/nodes/Compression/decompress/FeedInChunks.ts
+  ai_agent 1-19
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0001-1780098746213-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-create-and-apply-a-mocked-testable-slack-credential-from-setup/0001-1780098683376-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/@n8n/api-types/src/dto/user/user-update-request.dto.ts
+  ai_agent 21,24
+packages/@n8n/agents/src/sdk/cancellation.ts
+  ai_agent 2-3,5-7,10,12-29
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/__tests__/utils.test.ts
+  ai_agent 73-74,91-92,108-109,128-129,149-150,172-173
+packages/testing/playwright/expectations/instance-ai/should-execute-workflow-from-run-button-and-show-success-indicators/0009-1780165038486-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-connection.controller.test.ts
+  ai_agent 1-207
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/validate-configuration.tool.test.ts
+  ai_agent 3,20-24,28,33
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  ai_agent 37-38
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-service.test.ts
+  ai_agent 6,46,210,222,254-288,292-326,412,415,430,435-442,473,476,484-489,491-493,498-531,557-562,567,571-657,845-853
+packages/@n8n/computer-use/src/logger.test.ts
+  ai_agent 1-2,19,27,30
+packages/core/src/errors/__tests__/workflow-has-issues.error.test.ts
+  ai_agent 1,3-87
+packages/frontend/editor-ui/src/app/stores/workflowDocument.store.test.ts
+  ai_agent 19
+packages/cli/src/modules/mcp/tools/workflow-builder/constants.ts
+  ai_agent 9,14
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  ai_agent 7,9
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillViewer.vue
+  ai_agent 2,4,85-88,209-216
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/9999-1780165207175-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/testing/playwright/tests/infrastructure/benchmarks/webhook/webhook-dedicated-proc-2wp-2w.spec.ts
+  ai_agent 6-7,9-10,15-21,24,29,33
+packages/testing/playwright/expectations/instance-ai/should-list-archived-workflows-and-restore-one-via-instance-ai/0000-1780158513967-unknown-host-POST-_v1_messages-8e142571.json
+  ai_agent 1-108
+packages/cli/src/modules/redaction/instance-redaction-enforcement.service.ts
+  ai_agent 1,21-27,31,36-37,40,45,66-67,71,83
+packages/testing/playwright/expectations/instance-ai/should-switch-between-threads/0000-1780098263242-unknown-host-POST-_v1_messages-149508ca.json
+  ai_agent 7,18,24,27,33,36,42,45,51,60,63,75,87,91,95-96,100
+packages/@n8n/instance-ai/src/tools/filesystem/__tests__/create-tools-from-mcp-server.test.ts
+  ai_agent 3,85,87-89,104,107,137,157,177,197,217,313,325,331,344,360,366
+packages/@n8n/ai-utilities/package.json
+  ai_agent 3,66,72-74,81-84
+packages/core/src/errors/error-reporter.ts
+  ai_agent 59-60,231
+packages/@n8n/instance-ai/src/utils/eval-agents.ts
+  ai_agent 35-39,41
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  ai_agent 8,26,32,40,43,67-68,84-86,95-103,105-106,109-117,120,132,290,299-319,325-326,341-360,362-363,365-372,375-381,384,460-462,471-506,559-560,595-597,634-636,672-674,745,754-756,760-765,770-789,791-793,804-805,809,811,813-814,836-922
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0007-1780158501172-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 7,18,24,27,33,36,39,42,51,54,57,60,63,66,75,87,91,95-96,100
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-node.tool.ts
+  ai_agent 1-164
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.vue
+  ai_agent 4,12,16,24,26,28,33-37,42,56-60,77-80,82-88,99-104,108,120,123-124,128,136-137,144-152,155-157,167,185-192,197,239-248,254,276,280,282,284,288-309,311-320,322-336,340-342,348-349,351-354,360-362,367-370,376-377,384-386,389,395-398,405-415,417,424-425,429-431,434,437-438,452-466
+.claude/plugins/n8n/skills/community-pr-readiness-check/SKILL.md
+  ai_agent 1-239
+packages/@n8n/instance-ai/src/tools/orchestration/planner-briefing.ts
+  ai_agent 1-510
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  ai_agent 16,18,52
+packages/testing/playwright/expectations/instance-ai/should-create-new-credentials-across-two-setup-cards-and-persist-them-on-apply/0003-1780098591761-unknown-host-POST-_v1_messages-595b716b.json
+  ai_agent 1-108
+packages/workflow/src/type-validation.ts
+  ai_agent 4,19,44,67,111,119,138,142,154,158,164,217,229,243,254,265,267,292,298-299,306
+packages/@n8n/benchmark/scenarios/binary-data/binary-data.json
+  ai_agent 32,43-46
+packages/@n8n/mcp-apps/package.json
+  ai_agent 1-64
+packages/@n8n/nodes-langchain/nodes/chains/InformationExtractor/InformationExtractor.node.ts
+  ai_agent 22,296,304,323,325-328,332
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/trace.jsonl
+  ai_agent 1-3
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  ai_agent 121,131-150,209
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/request-helper-functions.test.ts
+  ai_agent 1343-1420
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  ai_agent 1-97
+packages/cli/test/integration/execution-redaction.test.ts
+  ai_agent 65,68-77,102,108,119,121-125,317-379
+packages/testing/playwright/expectations/instance-ai/should-switch-between-threads/0002-1780098263243-unknown-host-POST-_v1_messages-a589f4ca.json
+  ai_agent 1-108
+packages/@n8n/instance-ai/src/tools/__tests__/data-tables.tool.test.ts
+  ai_agent 2,22-32,39,79,90,108,128,135,163,189,208,227,245,252,300,306,319-324,327,337,347,363,393,404,433,439,450,459,523,529,541,557,598,604,670,676,747,753,764,779,804,848,854,865,881,930,936,947,965,974,1000
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-deny-workflow-execution/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/agents/src/runtime/sub-agent-task-path.ts
+  ai_agent 1-132
+packages/cli/src/modules/mcp-registry/registry/mcp-registry.service.ts
+  ai_agent 93-101
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  ai_agent 71,103-104
+packages/@n8n/instance-ai/src/mcp/mcp-client-manager.ts
+  ai_agent 36-41,199
+packages/testing/playwright/expectations/instance-ai/should-show-approval-panel-and-approve-workflow-execution/0006-1780158556265-unknown-host-POST-_v1_messages-1dbdec66.json
+  ai_agent 1-108
+packages/@n8n/mcp-browser/src/adapters/agent-browser.test.ts
+  ai_agent 12,16-18,20-22,24,27
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-artifacts.spec.ts
+  ai_agent 10-11,23,38
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-preview.spec.ts
+  ai_agent 3,5,12-13,18,33-39,55,82
+packages/cli/src/utils/__tests__/auth-fetch.test.ts
+  ai_agent 1-119
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0002-1780165175579-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 1-108
+packages/@n8n/agents/src/sdk/agent.ts
+  ai_agent 2,8,11-22,24-25,63-73,221,232,757,787-802,810,823,829-935,942-948,957-966
+packages/@n8n/ai-node-sdk/tsconfig.json
+  ai_agent 7
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/test-case-generator.test.ts
+  ai_agent 9-10,29,64,67,69,86,260,262
+packages/nodes-base/nodes/Google/CloudStorage/test/ObjectDescription.resumableUpload.test.ts
+  ai_agent 10,13-20,222-329
+packages/testing/playwright/expectations/instance-ai/should-execute-individual-node-from-node-toolbar/0003-1780165069699-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 1-108
+packages/testing/playwright/scripts/distribute-tests.mjs
+  ai_agent 27-33,145,160
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  ai_agent 1,23-24,285,323-373
+.claude/plugins/n8n/skills/human-like-code-review/SKILL.md
+  ai_agent 1-150
+packages/@n8n/db/src/migrations/common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable.ts
+  ai_agent 1-40
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  ai_agent 51-56,67,92-102,209-212,534
+packages/@n8n/mcp-apps/src/server/resource-loader.test.ts
+  ai_agent 1-26
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  ai_agent 1-82
+packages/cli/src/controllers/telemetry.controller.ts
+  ai_agent 33-36
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  ai_agent 121-124,155
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/validate-structure.tool.test.ts
+  ai_agent 3,17-21,25,30
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  ai_agent 5,9-15,77,85-88,90,110-112,243-253,255-277,397,400
+packages/testing/playwright/expectations/instance-ai/should-require-approval-before-editing-an-existing-workflow-and-keep-it-unchanged-when-denied/0002-1780158638828-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-route-back-to-an-earlier-unhandled-card-when-user-skips-a-later-one/0001-1780098643108-unknown-host-POST-_v1_messages-1f2f17ee.json
+  ai_agent 1-108
+packages/testing/playwright/expectations/instance-ai/should-send-message-and-receive-assistant-response/trace.jsonl
+  ai_agent 1
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/eval-setup-agent.tools.test.ts
+  ai_agent 3,20,23-24,36,52,107
+packages/@n8n/agents/src/runtime/agent-runtime.ts
+  ai_agent 56,82,291-297,522-523,716-717,1119,1123-1152,1155-1157,1178-1180,1251,1332-1351,1354-1362,1420,2002-2037,2167-2191,2242-2243,2277,2283,2287,2297,2528
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  ai_agent 1-3,5-13,17-19,22-32,35,43,47-48,57,65,68,79-80,83-85,88-89,92-101,107-108,175,178-180,185-186,215-241,243,262-280,298-299,331,366,395
+scripts/mutation-health/pick-next.mjs
+  ai_agent 70-74,77-79,91,138-142
+packages/testing/playwright/expectations/instance-ai/should-mark-all-nodes-as-success-after-execution-completes/0009-1780165175583-unknown-host-POST-_v1_messages-99f25b5d.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/@n8n/ai-workflow-builder.ee/src/tools/test/get-node-examples.tool.test.ts
+  ai_agent 3,21-22,24-26,30,32-34,39
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0009-1780158501173-unknown-host-POST-_v1_messages-8fbf0619.json
+  ai_agent 1-108
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-confirmations.spec.ts
+  ai_agent 8-9,176,180-183,212-215
+packages/@n8n/instance-ai/evaluations/cli/pairwise.ts
+  ai_agent 4-6,13,34,36-38,41,61-62,104-105,242,248-272,279-281,284-287,289-292,294-297,305,308-312,314,318,320,322,328,342-343,349-387,430,440,591,640,643-647,697,710-719,735
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/workflow-task-service.test.ts
+  ai_agent 9,16
+packages/@n8n/mcp-browser/src/tools/test-helpers.ts
+  ai_agent 38-39,42-45,48,51-52,55,58-60,63-71,74-75,85-86,90-94,97,100-105,108,111,114-116,138-139,143
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode-factory.ts
+  ai_agent 1-30
+packages/@n8n/benchmark/package.json
+  ai_agent 7,9
+packages/cli/src/workflows/__tests__/utils.test.ts
+  ai_agent 1-31
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0007-1780158683739-unknown-host-POST-_v1_messages-35b38ebe.json
+  ai_agent 1-108
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  ai_agent 34-35
+packages/@n8n/permissions/src/constants.ee.ts
+  ai_agent 71
+packages/testing/playwright/scripts/impact-map.mjs
+  ai_agent 1-123
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  ai_agent 15,18,30,38,40,42,44-46
+packages/@n8n/nodes-langchain/nodes/chains/InformationExtractor/test/InformationExtraction.node.test.ts
+  ai_agent 378,417-419
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/test/triage.agent.test.ts
+  ai_agent 3,28,35,49,157,282,311,331,360,362,393,395,471,539,594,613,699-700,766,832,834,884,886,912,914,953
+packages/cli/test/integration/commands/import.cmd.test.ts
+  ai_agent 11,18-19,27,392-412,438,469,474
+packages/nodes-base/nodes/Zulip/Zulip.node.ts
+  ai_agent 13,141
+packages/testing/playwright/expectations/instance-ai/should-show-artifact-cards-after-workflow-build-completes/0004-1780158683737-unknown-host-POST-_v1_messages-410bd654.json
+  ai_agent 6-7,14-18,24,27,33,42,51,60,75,87,91,95-96,100
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  ai_agent 1-79
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  ai_agent 5,17,212-260
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  ai_agent 1-2,69,81,85,105,109,113
+packages/testing/playwright/expectations/instance-ai/should-render-ai-agent-subnodes-as-one-group-step-with-separate-sections/0009-1780098746214-api.openai.com-GET-_v1_models-2ef5ce20.json
+  ai_agent 1-88
+.claude/plugins/n8n/skills/community-pr-readiness-check/reference/checks.md
+  ai_agent 1-16,19,21,23,25,27-28,30,32,34,36,38,40-44,46,48,50,52-53,55,57-61,68,73-81,83,85,87-93,95-99,102,104-111,116,121-122,124,128,130,132-134,137,139-140
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-question.tool.test.ts
+  ai_agent 28-41,57-59
+packages/cli/src/credentials/credential-resolution-provider.interface.ts
+  ai_agent 20-27
+packages/@n8n/ai-node-sdk/package.json
+  ai_agent 3,21,27-29,38-40
+packages/@n8n/db/src/entities/workflow-publication-outbox.ts
+  ai_agent 1,13-16
+packages/cli/src/modules/agents/__tests__/agents-service-sync.test.ts
+  ai_agent 4,59-60
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  ai_agent 13,15,20,25
+packages/frontend/editor-ui/src/features/agents/components/AgentTypingIndicator.vue
+  ai_agent 1-29
+packages/@n8n/decorators/package.json
+  ai_agent 3,9
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionList.vue
+  ai_agent 14,50
+packages/frontend/editor-ui/src/features/agents/composables/useAgentProjectId.ts
+  ai_agent 1-27
+packages/@n8n/task-runner/src/data-request/__tests__/data-request-response-reconstruct.test.ts
+  ai_agent 7,35
+packages/@n8n/agents/src/__tests__/integration/delegate-sub-agent.test.ts
+  ai_agent 3,5-9,13,15-20,22-29,31,33-36,38-39,41,43-44,46-49,51-60,62-66,68-70,72-91
+packages/nodes-base/nodes/Compression/decompress/ZipEntryDecompressor.ts
+  ai_agent 1-71
+packages/nodes-base/nodes/Zulip/test/GenericFunctions.test.ts
+  ai_agent 1-46
+packages/testing/playwright/expectations/instance-ai/should-open-workflow-preview-when-clicking-artifact-card/0001-1780158501169-unknown-host-POST-_v1_messages-dfbf05a9.json
+  ai_agent 7,18,24,27,33,36,42,51,54,60,63,75,87,91,95-96,100
+packages/nodes-base/nodes/Trello/test/TrelloTrigger.node.test.ts
+  ai_agent 7-11,15,82-161
+packages/core/src/execution-engine/__tests__/workflow-execute-node-error-reporting.test.ts
+  ai_agent 1-240
+packages/@n8n/mcp-apps/vitest.config.mts
+  ai_agent 1-3
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/index.ts
+  ai_agent 1-9
+packages/testing/playwright/expectations/instance-ai/should-show-run-workflow-button-in-preview/0000-1780098352152-unknown-host-POST-_v1_messages-dd9996b0.json
+  ai_agent 1-108
+packages/frontend/@n8n/design-system/src/components/AskAssistantChat/__snapshots__/AskAssistantChat.test.ts.snap
+  ai_agent 88,90,93,99,101,337,339,342,348,350,443,445,448,454,456,601,603,606,612,614,740,742,745,751,753,879,881,884,890,892,1018,1020,1023,1029,1031
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/visualizations/SlackMessageVisualization.vue
+  ai_agent 1-136
+packages/@n8n/instance-ai/evaluations/__tests__/runner-workflow-checks.test.ts
+  ai_agent 1-4,13,24,51
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-json-loader.test.ts
+  ai_agent 5,7,11-12,15,18,32-34,40,56,227
+packages/@n8n/instance-ai/evaluations/subagent/types.ts
+  ai_agent 2,19,21,24,33,36,45,47,49,63,65,68
+packages/@n8n/nodes-langchain/utils/output_parsers/langchainParserError.ts
+  ai_agent 1-57
+packages/cli/src/modules/mcp/mcp.types.ts
+  ai_agent 81-82,90-91
+packages/frontend/@n8n/design-system/src/components/N8nHoverCard/HoverCard.vue
+  ai_agent 1-234
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/operations/__tests__/retrieveAsToolOperation.test.ts
+  ai_agent 11-12,19-20,23-24,90-92,97
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  ai_agent 116,153,156-166,173,177,219
+.github/test-metrics/e2e-impact-map.json
+  ai_agent 1
+packages/@n8n/api-types/src/dto/evaluations/__tests__/evaluation-error-code.test.ts
+  ai_agent 29
+packages/testing/playwright/expectations/instance-ai/should-auto-open-preview-panel-when-workflow-is-built/trace.jsonl
+  ai_agent 1-3
+packages/@n8n/agents/src/sdk/__tests__/cancellation.test.ts
+  ai_agent 1-55
+packages/@n8n/permissions/package.json
+  ai_agent 3,9
+packages/cli/src/modules/agents/agent-execution.service.ts
+  ai_agent 5,9-10,21,23-28,54-65,73-75
+packages/cli/src/modules/redaction/redaction-policy.ts
+  ai_agent 1-50
+packages/@n8n/instance-ai/src/runtime/__tests__/terminal-response-guard.test.ts
+  ai_agent 45-53,93-113
+packages/testing/playwright/expectations/instance-ai/should-close-preview-panel-via-close-button/0003-1780165207177-unknown-host-POST-_v1_messages-a2e65d01.json
+  ai_agent 7,18,24,27,33,36,42,51,60,63,75,87,91,95-96,100,108
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskLlmCard.vue
+  ai_agent 5,8-10,12-17,23,37,40-44,46,50-52,57-58,61-62,65-66,69,71,74,83,98,100,102-104
+packages/cli/src/modules/redaction/__tests__/redaction-channels.test.ts
+  ai_agent 1-17,20-22,25-26,29-30,33-34,38-41
+packages/@n8n/ai-workflow-builder.ee/evaluations/__tests__/evaluation-helpers.test.ts
+  ai_agent 16,38,46
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-mcp-update-connection-request.dto.ts
+  ai_agent 1-9
+packages/nodes-base/nodes/Aws/Transcribe/GenericFunctions.ts
+  ai_agent 18-19,24,33
+packages/cli/src/modules/mcp/__tests__/validate-node.tool.test.ts
+  ai_agent 1-307
+packages/cli/src/modules/mcp/mcp-oauth-consent.service.ts
+  ai_agent 101
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  ai_agent 17-18,21,38,54-58,63-71,90,107
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  ai_agent 5-9,12-13
+packages/@n8n/local-gateway/src/main/daemon-controller.test.ts
+  ai_agent 1-5,14-18,20,22,31-38,41-43,52,54-57,91-92,172,186
+packages/@n8n/workflow-sdk/src/pin-data-utils.test.ts
+  ai_agent 12-14,16,87,151
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  ai_agent 3-4,7,22-23,53,88,91-96,101,107,109,127,129,131,137,139,143,149,153-158,190,203,229,233-235,237,241,243,247
+packages/@n8n/instance-ai/evaluations/__tests__/dataset-sync.test.ts
+  ai_agent 1-6,16,33,58,68-70,72-80,88-91,101-104,111,173-201
+packages/@n8n/benchmark/scripts/n8n-setups/scaling-multi-main/docker-compose.yml
+  ai_agent 44-46,93-95
+packages/@n8n/agents/src/types/sdk/tool.ts
+  ai_agent 5,22-29,39,41-44,54,56-57,64,66-69,88-90
+packages/@n8n/workflow-sdk/scripts/extract-workflows.ts
+  ai_agent 6
+packages/cli/src/task-runners/errors/task-cancelled.error.ts
+  ai_agent 1-7
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  ai_agent 3279-3282,3361-3445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3690da3575029ed008bfed3747b95d025c978396",
+  "prompts": {},
+  "sessions": {
+    "s_e388ed4f8e4dda": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e8f39-99b2-73f0-b24a-d344bcc9dff9",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

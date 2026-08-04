@@ -1,0 +1,19 @@
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_785d0fc4f80141::t_58188899b10cd5 1003-1005
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42d7f5aafadfd258542706408bf86af5485db2c7",
+  "prompts": {},
+  "sessions": {
+    "s_785d0fc4f80141": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2be2c5ac-421e-465f-a960-5042d7d978bd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

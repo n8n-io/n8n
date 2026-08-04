@@ -1,0 +1,19 @@
+cloud-preview-smoke-test-5.md
+  s_d3c1811a100242::t_43e077fddf746d 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8af558efe9f486440421a18583a78acfcda223fb",
+  "prompts": {},
+  "sessions": {
+    "s_d3c1811a100242": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1924c6e0-f6c7-4f59-aab1-fb422b0bcb35",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/test/integration/public-api/users.test.ts
+  s_a5197812b6fe00::t_930ff3ed836f43 493
+packages/cli/src/services/user.service.ts
+  s_a5197812b6fe00::t_0e65e5177d521b 326-328
+  s_a5197812b6fe00::t_d6aa98e7981a27 329-332
+  s_a5197812b6fe00::t_ae9de6f0e141de 17
+packages/cli/test/integration/users.api.test.ts
+  s_a5197812b6fe00::t_3a5fdecca44f3e 1719
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "7dfcdd91a237020594f10b6f7d013f320ce11124",
+  "prompts": {},
+  "sessions": {
+    "s_a5197812b6fe00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fca82f8-5371-4cc1-9159-2d29bef80f15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

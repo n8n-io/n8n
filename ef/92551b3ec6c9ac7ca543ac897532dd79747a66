@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  h_9b272a633435fb 94
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  h_9b272a633435fb 27,76
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  h_9b272a633435fb 156,181
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  h_9b272a633435fb 85,129
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  h_9b272a633435fb 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ef92551b3ec6c9ac7ca543ac897532dd79747a66",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

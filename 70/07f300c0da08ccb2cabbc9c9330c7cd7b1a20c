@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  c2b2d2000357fc3a 185,206,227,264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7007f300c0da08ccb2cabbc9c9330c7cd7b1a20c",
+  "prompts": {
+    "8f0cd2fabbd04d86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bb5790-df8a-4c6d-bd41-cd0302029761",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 42174,
+      "total_deletions": 0,
+      "accepted_lines": 42170,
+      "overriden_lines": 0
+    },
+    "c2b2d2000357fc3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd56c80c-b8f1-4dea-b64a-83d0ac33ab91",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 279,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

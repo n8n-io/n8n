@@ -1,0 +1,14 @@
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  h_44f8d1c0f2f8c4 47,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "cb5106456bc43710d48521c96a9d25ea849562b0",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

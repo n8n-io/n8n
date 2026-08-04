@@ -1,0 +1,45 @@
+packages/@n8n/db/src/services/__tests__/db-lock.service.test.ts
+  ai_agent 225-228
+  s_5d6be4e6bc70a6::t_17233cabfe98f9 316-341
+  s_5d6be4e6bc70a6::t_eac499295f4926 216-224,229-241
+packages/@n8n/api-types/src/schemas/eval-collections.schema.ts
+  s_5d6be4e6bc70a6::t_b32fff62f125f2 198-202
+packages/cli/src/evaluation.ee/evaluation-collection.service.ts
+  s_5d6be4e6bc70a6::t_b91bbadfffd66e 331-341,350-352,357-359,361-364
+  s_5d6be4e6bc70a6::t_27a44e1af9fe57 25
+  s_5d6be4e6bc70a6::t_6ff39fb85a25a3 346-349,353-356,360
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_5d6be4e6bc70a6::t_626ebe86e526a2 272-273
+  s_5d6be4e6bc70a6::t_8b5fae685579cb 281-283
+  s_5d6be4e6bc70a6::t_9aeee6610b9b75 175,177-179
+  s_5d6be4e6bc70a6::t_6ac7e023562e5e 182-186,188,197,199-202,205-207
+packages/cli/src/evaluation.ee/__tests__/evaluation-collection.service.test.ts
+  s_5d6be4e6bc70a6::t_2873ecd31a5f1a 132
+  s_5d6be4e6bc70a6::t_9a1a79bff5949b 19
+  s_5d6be4e6bc70a6::t_de73e672344c8f 356-359,366-370,372-374,384
+  s_5d6be4e6bc70a6::t_8b5fae685579cb 371
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CasesTable.vue
+  s_5d6be4e6bc70a6::t_d729660c7c226e 202-203
+  s_5d6be4e6bc70a6::t_f3d75f604c4455 258-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eaf3637672cc5b11d5a23c2ded1f90c03a60251d",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

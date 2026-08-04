@@ -1,0 +1,40 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_a1c4aafd7954bc::t_fb2541bbad86a1 1886-1892
+  s_a1c4aafd7954bc::t_acda9bf792802f 1814-1885,1893-1908
+  s_a1c4aafd7954bc::t_6828a219f5e1f1 1673
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_a1c4aafd7954bc::t_a5695e07b8ed65 445-495
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_a1c4aafd7954bc::t_e00a2fac3fef46 1338-1368
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_a1c4aafd7954bc::t_7ec80ad7758efd 433-447,449-471
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_a1c4aafd7954bc::t_87bc2ab618ca50 283-284,294-295
+  s_a1c4aafd7954bc::t_9e6750aead043d 254-258,266-267
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_a1c4aafd7954bc::t_fb2541bbad86a1 197-198
+  s_a1c4aafd7954bc::t_f00d6144307cc8 87-102
+  s_a1c4aafd7954bc::t_ab20f1aabf9df6 547,551,556-563
+  s_a1c4aafd7954bc::t_512c7becbf8afe 626
+  s_a1c4aafd7954bc::t_9ec738912c54e2 667
+  s_a1c4aafd7954bc::t_d9b7433cd08d11 179-196,199-207,564-565
+  s_a1c4aafd7954bc::t_e84f2989ecac12 401
+  s_a1c4aafd7954bc::t_a61e33b96e7d35 638
+  s_a1c4aafd7954bc::t_88ee4e453190df 566
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4ef78c55ecaa977e9a8f3a5e61feee87be5708fa",
+  "prompts": {},
+  "sessions": {
+    "s_a1c4aafd7954bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b56cb72-36c3-4d3e-a4bb-c508f92690e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

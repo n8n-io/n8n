@@ -1,0 +1,9 @@
+lefthook.yml
+  ai_agent 50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c535912835e864d894bc23347e182333ab71dc47",
+  "prompts": {}
+}

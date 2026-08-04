@@ -1,0 +1,84 @@
+packages/workflow/test/trigger-identity.test.ts
+  s_0bfa65df1483fd::t_9b6b2cda6360ee 63,65,67-76
+  s_0bfa65df1483fd::t_660e61891e71b4 64,66
+packages/nodes-base/nodes/Webhook/description.ts
+  s_0bfa65df1483fd::t_7228794a9bb4eb 10-15,18
+  s_0bfa65df1483fd::t_59f707209f26a8 1-6,16-17,19-21
+  s_0bfa65df1483fd::t_4278a450f4e6bc 104-109
+  s_0bfa65df1483fd::t_fb3b7d62fb3d6e 97
+  s_0bfa65df1483fd::t_2ee33e691f5e54 74-75,78,80
+  s_0bfa65df1483fd::t_96108258c1d35e 76-77,79
+  s_0bfa65df1483fd::t_d2d495f4f723d7 22
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_0bfa65df1483fd::t_e2877c75ed335b 191
+  s_0bfa65df1483fd::t_af9c3d3a324e23 176
+  s_0bfa65df1483fd::t_fcd748af61c7cc 32-41,43-48
+  s_0bfa65df1483fd::t_f5f1967029d3a6 198,202
+  s_0bfa65df1483fd::t_b64c6cfd7f4857 207
+  s_0bfa65df1483fd::t_1efa95abea41e1 177-190,192-197,199-200,203-206,208-273
+  s_0bfa65df1483fd::t_660e61891e71b4 42,49,201
+  s_0bfa65df1483fd::t_887db184e72784 175
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_0bfa65df1483fd::t_58f2a2b2e026fe 251
+  s_0bfa65df1483fd::t_e87edaa4b5c722 146
+  s_0bfa65df1483fd::t_91541ac5c61eb9 13
+  s_0bfa65df1483fd::t_7bcc567816bdff 249
+  s_0bfa65df1483fd::t_8b4be126fe5a4f 247-248,250,252-257
+  s_0bfa65df1483fd::t_a0801e62ea7700 245-246
+packages/frontend/editor-ui/src/app/utils/nodes/nodeTransforms.test.ts
+  s_0bfa65df1483fd::t_f2496117a7a3b3 10-17
+  s_0bfa65df1483fd::t_9aa1f899b98b4c 246-272
+  s_0bfa65df1483fd::t_e73b2435a53b37 43-48
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_0bfa65df1483fd::t_321867b4166fbb 431
+  s_0bfa65df1483fd::t_c6614718e023eb 637-638
+  s_0bfa65df1483fd::t_4e6bff848d66ea 369-370,375
+  s_0bfa65df1483fd::t_8cad9b681d3c46 363-368,371-374,376-378
+  s_0bfa65df1483fd::t_8d95a4cf2ef2ec 379-408
+  s_0bfa65df1483fd::t_935152fef148c7 54
+packages/workflow/src/n8n-oauth2-auth.ts
+  s_0bfa65df1483fd::t_30ae37e97b8775 48
+  s_0bfa65df1483fd::t_a6aaea5e084f70 85
+  s_0bfa65df1483fd::t_387d56458b3657 34-35
+  s_0bfa65df1483fd::t_1302605818c869 32-33
+  s_0bfa65df1483fd::t_7d36bb4b71e5da 36-38,45-47
+  s_0bfa65df1483fd::t_d93a8acfa4c745 1-2,21,25,39-44,50,72,74,81,83,89
+packages/workflow/src/index.ts
+  s_0bfa65df1483fd::t_a43f546e4af628 31
+packages/workflow/test/n8n-oauth2-auth.test.ts
+  s_0bfa65df1483fd::t_b5661f22726478 17-18
+  s_0bfa65df1483fd::t_a04b1852aa529c 1-16,19-84,87-96
+  s_0bfa65df1483fd::t_7d7108aece4be2 85-86
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_0bfa65df1483fd::t_99eb351bc8000b 769-771,776,792-793,805-815,817-819,822-864
+  s_0bfa65df1483fd::t_9ea4e74e33196e 763-765,767-768,772-775,777-791,794-804,821,865-866
+  s_0bfa65df1483fd::t_660e61891e71b4 762,766,816,820
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_0bfa65df1483fd::t_b9a70f9e590d2e 179
+  s_0bfa65df1483fd::t_feca73d309dcbc 9
+packages/frontend/editor-ui/src/app/utils/nodes/nodeTransforms.ts
+  s_0bfa65df1483fd::t_10ff532e5f29b5 24
+  s_0bfa65df1483fd::t_50aa71068af120 147-148,160-164
+packages/workflow/src/trigger-identity.ts
+  s_0bfa65df1483fd::t_e3c3c031a54855 6
+  s_0bfa65df1483fd::t_b231992f2cee9d 59-63
+packages/workflow/src/interfaces.ts
+  s_0bfa65df1483fd::t_c158fc45639ba1 2059,2061
+  s_0bfa65df1483fd::t_84ca5a464a085a 2060
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7fda1c45010f9eb186897c19dc9793ec99860bb7",
+  "prompts": {},
+  "sessions": {
+    "s_0bfa65df1483fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6431814-906d-402f-8378-ef3dda678863",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

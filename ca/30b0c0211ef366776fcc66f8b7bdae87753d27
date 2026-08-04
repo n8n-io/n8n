@@ -1,0 +1,24 @@
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_2df5bb80907049::t_d5335c90451bd1 83
+packages/cli/src/modules/agents/integrations/integration-tool-definitions.ts
+  s_2df5bb80907049::t_d5335c90451bd1 177-189,262-270,282
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_2df5bb80907049::t_9f1ae6cdd935b4 30-34,458-521
+  s_2df5bb80907049::t_45c2969b245bac 522-523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ca30b0c0211ef366776fcc66f8b7bdae87753d27",
+  "prompts": {},
+  "sessions": {
+    "s_2df5bb80907049": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa973-8fa0-7ea0-97af-f07c3b2abc9e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

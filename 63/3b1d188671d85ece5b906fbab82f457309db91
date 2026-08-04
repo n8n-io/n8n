@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_0bf6d2ccb779ff::t_3ab02de4e4e739 56-58
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_0bf6d2ccb779ff::t_3c24282aa77c6b 143-145
+  s_0bf6d2ccb779ff::t_1b7ca3c9f84a5b 101-115
+  s_0bf6d2ccb779ff::t_9b1849413663c8 19-24
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_0bf6d2ccb779ff::t_5806340f205a72 571-576
+packages/cli/src/modules/agents/builder/interactive/__tests__/ask-credential.tool.test.ts
+  s_0bf6d2ccb779ff::t_86d238b1c086cd 189-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "633b1d188671d85ece5b906fbab82f457309db91",
+  "prompts": {},
+  "sessions": {
+    "s_0bf6d2ccb779ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d96b4f2b-f082-42a2-bd81-8d59d0458b78",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

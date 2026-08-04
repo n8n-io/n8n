@@ -1,0 +1,31 @@
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_2dea95bbfc8e4e::t_2bd3c1178b9189 183-184,186,189,191
+  s_2dea95bbfc8e4e::t_c11f05a594344b 185,187-188,190
+packages/@n8n/instance-ai/evaluations/data/workflows/surfaces-infeasible-bank-bill-payment.json
+  s_2dea95bbfc8e4e::t_cb1aaa274b2563 2
+packages/@n8n/instance-ai/evaluations/data/workflows/surfaces-infeasible-core-capability.json
+  s_2dea95bbfc8e4e::t_387e69d995414b 2
+  s_2dea95bbfc8e4e::t_8f5fbd09230160 15-16,18,21-23,27-30
+  s_2dea95bbfc8e4e::t_be671d2bbe6f6f 1,3-14,17,19-20,24-26,31-33
+packages/@n8n/instance-ai/evaluations/data/workflows/feasible-job-digest-no-spurious-friction.json
+  s_2dea95bbfc8e4e::t_0610c20630a88b 1-29,34-36
+  s_2dea95bbfc8e4e::t_b3efb0c86ec4c2 30-33
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_2dea95bbfc8e4e::t_fdf27f6398e7a0 265-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "705eddc02f33777e539fd76f44db27f4cdf2a2a3",
+  "prompts": {},
+  "sessions": {
+    "s_2dea95bbfc8e4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e921958-e631-4e53-ad34-3328c9ef66c7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/@n8n/instance-ai/src/types.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 920-921
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 171-175
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 1040-1123
+  ai_agent 103,105-110
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 413-442
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 277-278
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 10-14,1895-1922
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 409-424
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 51,530-631
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 636-680,685-686,691-698,707,709-717,722-733,738-752,757-773
+  ai_agent 681-684,687-690,699-706,708,718-721,734-737,753-756
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 103-105,110-114
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 410-431,627-634,637-641
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_bd5e00752d3a7c::t_4faadf570f4dbd 48,111,207-220,352-355,361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "434660c5cb5050d0cd53b9613dec910c62081021",
+  "prompts": {},
+  "sessions": {
+    "s_bd5e00752d3a7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa620a07-35cd-44d4-b670-56b0556c4d80",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

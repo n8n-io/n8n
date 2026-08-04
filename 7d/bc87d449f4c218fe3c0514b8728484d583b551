@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Telegram/hitl/setup.ts
+  s_60ce6e746ce9d3::t_00b7d36e06477b 60,80,85,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "7dbc87d449f4c218fe3c0514b8728484d583b551",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

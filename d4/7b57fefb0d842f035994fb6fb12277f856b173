@@ -1,0 +1,21 @@
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_f066721bbfd491::t_36c7be78640f83 15-21,29-35,63-66,78-81,94-97,108-110,114-126
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_f066721bbfd491::t_36c7be78640f83 89-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d47b57fefb0d842f035994fb6fb12277f856b173",
+  "prompts": {},
+  "sessions": {
+    "s_f066721bbfd491": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4161-0a6a-70a2-88e5-eed58ce13450",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

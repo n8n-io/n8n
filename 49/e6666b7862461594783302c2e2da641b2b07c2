@@ -1,0 +1,15 @@
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  ai_agent 45,163-174,176
+  h_8fb27e0cdf6d1e 162,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "49e6666b7862461594783302c2e2da641b2b07c2",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

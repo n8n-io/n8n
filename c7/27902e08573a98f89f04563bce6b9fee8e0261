@@ -1,0 +1,44 @@
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_35ff0cdc101872::t_a911cf2eb89c79 68-70
+  s_f5e2bfa214eb0b::t_c6c07fb19c7d0c 78-81
+  s_f5e2bfa214eb0b::t_c4128410d22b5e 91-92
+  s_f5e2bfa214eb0b::t_f9b3b703320523 93-101
+packages/@n8n/instance-ai/skills/credential-recipe-research/SKILL.md
+  s_f5e2bfa214eb0b::t_0ca5b0d5c5ac08 1-47,55-87
+  s_f5e2bfa214eb0b::t_7aba3785aafb8f 48-54
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_f5e2bfa214eb0b::t_3d4a1ea5ec13c4 323-326
+  s_35ff0cdc101872::t_0dd15a24eab1bd 327-329,332-333
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_f5e2bfa214eb0b::t_cfda2cdd1c39e5 60
+  s_f5e2bfa214eb0b::t_b40381b94d5b22 41-59,61-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c727902e08573a98f89f04563bce6b9fee8e0261",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_35ff0cdc101872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a04eec4b-d326-42e4-9d03-3bf1fc1651d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f5e2bfa214eb0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f8a4da8-579e-4485-b05b-d3e4651913e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

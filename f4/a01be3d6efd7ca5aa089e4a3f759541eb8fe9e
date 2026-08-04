@@ -1,0 +1,35 @@
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  s_22a80fe2452f63::t_97c6c4714ee3a6 88-91
+  s_22a80fe2452f63::t_8e3faba7d5d46c 124-127
+  s_22a80fe2452f63::t_5628db5473d656 67-69,71-75,79-83,85
+  s_22a80fe2452f63::t_ff93ac76f3d404 2
+  s_22a80fe2452f63::t_772ea745cb219d 63-66,70,76-78,84,86-87
+  s_22a80fe2452f63::t_c84f9fd9831b31 111-112,120
+  s_22a80fe2452f63::t_795a970bf1671d 113-119
+packages/cli/src/modules/instance-ai/__tests__/output-redaction-config.test.ts
+  s_22a80fe2452f63::t_4ba69a080da7aa 38
+  s_22a80fe2452f63::t_7fcb377ddf8e67 41
+packages/@n8n/agents/src/types/sdk/guardrail.ts
+  s_22a80fe2452f63::t_c8831aa968a7e2 3
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_22a80fe2452f63::t_a97c91acbccde7 151
+packages/@n8n/agents/src/sdk/__tests__/guardrails.test.ts
+  s_22a80fe2452f63::t_4989aa1462a516 81,83-85,89-90,94-95
+  s_22a80fe2452f63::t_0fa1b0685e48bd 82,86-88,91-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f4a01be3d6efd7ca5aa089e4a3f759541eb8fe9e",
+  "prompts": {},
+  "sessions": {
+    "s_22a80fe2452f63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79671750-1f7e-4915-8c6e-da075fdef4b5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

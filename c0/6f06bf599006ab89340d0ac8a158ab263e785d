@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.ts
+  s_9412036cb02fc4::t_783c41a62f6ba1 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "c06f06bf599006ab89340d0ac8a158ab263e785d",
+  "prompts": {},
+  "sessions": {
+    "s_9412036cb02fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a47dd9c-8df0-42f0-8f23-9f47fc6c27e8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

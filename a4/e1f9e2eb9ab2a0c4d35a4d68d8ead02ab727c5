@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/builder/prompts/planner-todos.prompt.ts
+  s_b86e35def3d3c6::t_30f18ff0454df2 23
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_b86e35def3d3c6::t_398804acd9c518 48
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_b86e35def3d3c6::t_e0a41d08d5de05 714-728
+  s_b86e35def3d3c6::t_d0cfb23acf44f3 752,755
+  s_b86e35def3d3c6::t_aabc98ef59b970 634-635
+  s_b86e35def3d3c6::t_70b3197f17a072 679-682
+  s_b86e35def3d3c6::t_9a5f12a0f292f6 161-171
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_b86e35def3d3c6::t_f49090fecc0a50 441-444,446-450
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_b86e35def3d3c6::t_b6c41c8bdec7c4 1031-1077
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_b86e35def3d3c6::t_42608938450ef5 192,212-221,225-227,229-232
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChannelSetup.test.ts
+  s_b86e35def3d3c6::t_b8ec84abfcee49 22-25
+  s_b86e35def3d3c6::t_2da62c172b93b6 104-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a4e1f9e2eb9ab2a0c4d35a4d68d8ead02ab727c5",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b86e35def3d3c6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c960d672-03d2-4dc0-8124-dafe018fd246",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

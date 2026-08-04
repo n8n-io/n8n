@@ -1,0 +1,35 @@
+.agents/skills/public-api/SKILL.md
+  s_2518c7e469bbd2::t_7ca2fa98d22eb6 49,57-59
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_2518c7e469bbd2::t_e28b280fc7cb06 3-10
+  s_2518c7e469bbd2::t_c708ed66592ef7 24
+packages/@n8n/decorators/src/controller/types.ts
+  s_2518c7e469bbd2::t_d0bec54f62eb71 56-57
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_2518c7e469bbd2::t_f2ff031924bdf5 146
+packages/@n8n/decorators/src/controller/api-description.ts
+  s_2518c7e469bbd2::t_3342f3c4cdbb93 1-29
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_2518c7e469bbd2::t_8aa0266a483afb 37
+  s_2518c7e469bbd2::t_b25f0ecded8918 134
+packages/@n8n/decorators/src/controller/index.ts
+  s_2518c7e469bbd2::t_e665bf28b5a380 7
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
+  s_2518c7e469bbd2::t_fb43bd26beeefa 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "30d82a1d3d8ebbce7bd99d885d5de625cd3b6f0b",
+  "prompts": {},
+  "sessions": {
+    "s_2518c7e469bbd2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30e73753-7124-4cb8-b799-467a0f9d476d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

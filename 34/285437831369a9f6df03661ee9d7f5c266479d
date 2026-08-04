@@ -1,0 +1,39 @@
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_3b81b577ff8298::t_ac84a3b1315217 1020
+  s_3b81b577ff8298::t_6e2146c6547d52 48
+  s_6e0ae5c16da307::t_0dbcf0edad56b6 1024
+  s_3b81b577ff8298::t_d711519157e496 1025-1053
+  s_3b81b577ff8298::t_205116a10a1095 1-5
+  s_3b81b577ff8298::t_40c4ebce9fa39d 1021-1023
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_6e0ae5c16da307::t_d58d6d51c35f10 485
+  s_6e0ae5c16da307::t_c34b3f24b35a0a 192
+  s_3b81b577ff8298::t_7445a969565933 486-497
+  s_3b81b577ff8298::t_9b15717b9f15b9 189-191
+  s_3b81b577ff8298::t_426a364847e568 692-694
+  s_3b81b577ff8298::t_c4c7af3a182bcb 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "34285437831369a9f6df03661ee9d7f5c266479d",
+  "prompts": {},
+  "sessions": {
+    "s_3b81b577ff8298": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2d465b48-1ff1-476e-90bd-d25d1dce59aa",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_6e0ae5c16da307": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "119f9adc-2c53-4c45-bad9-bf049fcc5354",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/WorkflowCanvas.vue
+  s_11118301bfe1e2::t_e131abe6f5c5cd 9
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.vue
+  s_5eaba6ef0c17d0::t_e9e07a347a29cf 2,93-96
+  s_11118301bfe1e2::t_6df2df7a5fa52a 27,32
+  s_5eaba6ef0c17d0::t_3bf395bf78bcec 28,48-50,86-87,98
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  h_df158766ffbd97 1259
+  s_11118301bfe1e2::t_6ae11000661916 251
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/groups/CanvasNodeGroupTitleBar.test.ts
+  s_5eaba6ef0c17d0::t_7ff5fdf8527159 3,54,63,120-146
+  s_11118301bfe1e2::t_8f9560b30ad611 53,62
+  s_11118301bfe1e2::t_0f3b7928848b7d 117-118
+  s_5eaba6ef0c17d0::t_179e5a6e2d7af1 119,147,149-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "91ca0686aaf703fdd4baa2441988c7a58e546077",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_11118301bfe1e2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ebf4b11b-95b1-4e4c-b2a0-00cc74bb6550",
+        "model": "composer-2.5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    },
+    "s_5eaba6ef0c17d0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e96bb-aa7c-7572-9988-03b189071ed7",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

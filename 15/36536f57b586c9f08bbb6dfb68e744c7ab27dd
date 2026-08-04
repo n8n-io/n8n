@@ -1,0 +1,21 @@
+packages/nodes-base/credentials/MicrosoftOAuth2Api.credentials.ts
+  s_e8519a0ce8a335::t_74c48cea384113 40
+packages/nodes-base/credentials/test/MicrosoftOAuth2Api.credentials.test.ts
+  s_e8519a0ce8a335::t_86412bf329169d 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "1536536f57b586c9f08bbb6dfb68e744c7ab27dd",
+  "prompts": {},
+  "sessions": {
+    "s_e8519a0ce8a335": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d3e3e2-1397-4c61-a5d4-0922e7f3b3ec",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

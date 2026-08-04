@@ -1,0 +1,23 @@
+packages/testing/playwright/pages/VariablesPage.ts
+  s_794a1be4bba94d::t_424291e24345ff 23-25
+packages/testing/playwright/pages/CredentialsPage.ts
+  s_794a1be4bba94d::t_1495e76a88416c 16-18
+packages/testing/playwright/pages/DataTableView.ts
+  s_794a1be4bba94d::t_6b5a61c796e417 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c81a73f527213a3dd8cf743fbfe18f568d43253",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

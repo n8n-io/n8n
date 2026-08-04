@@ -1,0 +1,21 @@
+packages/@n8n/config/src/configs/security.config.ts
+  s_3d207dda725269::t_d812d1dd49eeb0 24
+packages/@n8n/config/src/configs/__tests__/security.config.test.ts
+  s_3d207dda725269::t_b8cf6c85768cfd 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "3c2ecf64ec8121ad15e6ab6adf5a70fd25043d33",
+  "prompts": {},
+  "sessions": {
+    "s_3d207dda725269": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aaa5a934-174d-46b7-ae75-dd401cfe62e4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

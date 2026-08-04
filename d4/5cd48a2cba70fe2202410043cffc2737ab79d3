@@ -1,0 +1,100 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  ai_agent 1,3-10,12-19,21-32,34-45,47-56,58-141
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestDetailPlaceholder.vue
+  ai_agent 1-14
+packages/@n8n/api-types/src/dto/index.ts
+  ai_agent 297
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-inbox.dto.ts
+  ai_agent 1-43
+packages/frontend/editor-ui/src/features/workflowReviews/composables/useWorkflowReviewsAvailable.ts
+  ai_agent 1-20
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request.repository.test.ts
+  ai_agent 2-4,14-15,18-30,82,139-235
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 5092-5099
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  ai_agent 330-334
+packages/frontend/editor-ui/src/features/workflowReviews/constants.ts
+  ai_agent 1
+packages/frontend/editor-ui/src/features/workflowReviews/module.descriptor.ts
+  ai_agent 1-29
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useProjectPages.ts
+  ai_agent 4-5,26-27,32
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  ai_agent 1-261
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.test.ts
+  ai_agent 1-144
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.api.ts
+  ai_agent 1-26
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  ai_agent 5,40-55
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsDisclaimer.vue
+  ai_agent 1-20
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.vue
+  ai_agent 1-155
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.store.ts
+  ai_agent 1-206
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.store.test.ts
+  ai_agent 1-208
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  ai_agent 26,49-50,65-66,73-74
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  ai_agent 12-23,110-160
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_a2967ec392b10a::t_c88cbb8f6925d1 32,34,37,52-54,74,76-79,82
+  s_a2967ec392b10a::t_1eaa0322af9e4a 416,561-580,582-608,610-613,615-631,633-640,642-653,655-662,664-689,691-713,715-716,718-726
+  s_659d89565dd06e::t_a00352e6087c20 581
+  s_278b5dc3633c05::t_060c199c7b9a79 609,614,632,641,654,663,690,714,717
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  ai_agent 1-2,6-10,25,30,46-47,89,180-269
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  ai_agent 9,22
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  ai_agent 24-25,34-40
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  ai_agent 18-19,128-136,194-199
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_278b5dc3633c05::t_14e71601275869 4-6,40-44,46-51,60
+  s_782e56c14c8ff8::t_463c3982d89327 7,9-10,39,45
+  s_659d89565dd06e::t_9b75777233e743 56-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d45cd48a2cba70fe2202410043cffc2737ab79d3",
+  "prompts": {},
+  "sessions": {
+    "s_278b5dc3633c05": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b77dc33-92bf-492b-8614-c5fa327f6901",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_659d89565dd06e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9438224-5514-4a69-9edd-5631763dfabc",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_782e56c14c8ff8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "479a1e88-da05-4f1f-88bf-0e188b32ec02",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

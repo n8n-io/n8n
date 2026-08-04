@@ -1,0 +1,20 @@
+packages/@n8n/api-types/src/__tests__/helpers/zod-object-keys-match.ts
+  s_77088cb56e2173::t_a1072a8521bbe6 2,21-24,60,65-66
+  s_77088cb56e2173::t_d4d85aa83c4559 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "995f18696b76dbddca4d5ee1abb6027dfdab3dc5",
+  "prompts": {},
+  "sessions": {
+    "s_77088cb56e2173": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "13874058-b776-4971-b8ba-45ace7a4f281",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

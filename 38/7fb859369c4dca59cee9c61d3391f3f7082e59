@@ -1,0 +1,20 @@
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  h_2f80f0e06f710c 103,106,109,113
+packages/@n8n/instance-ai/docs/configuration.md
+  h_2f80f0e06f710c 77-78
+packages/@n8n/instance-ai/docs/sandboxing.md
+  h_2f80f0e06f710c 253-254
+packages/@n8n/config/test/config.test.ts
+  h_2f80f0e06f710c 326-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "387fb859369c4dca59cee9c61d3391f3f7082e59",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

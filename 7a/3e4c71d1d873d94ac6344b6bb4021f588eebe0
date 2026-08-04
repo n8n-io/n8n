@@ -1,0 +1,24 @@
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-workflow-setup.spec.ts
+  s_ada89a76285e54::t_395c07319626c9 463-466
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-confirmations.spec.ts
+  s_ada89a76285e54::t_b80c0d693ea160 288-293
+  s_ada89a76285e54::t_1ae74be395ea64 229-234
+packages/testing/playwright/tests/e2e/instance-ai/instance-ai-background-lifecycle.spec.ts
+  s_ada89a76285e54::t_b50cb6d9e3a80a 16-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a3e4c71d1d873d94ac6344b6bb4021f588eebe0",
+  "prompts": {},
+  "sessions": {
+    "s_ada89a76285e54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "559ea97f-ae60-4dd2-b195-bff0516ef7ef",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

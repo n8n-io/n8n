@@ -1,0 +1,72 @@
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_4ee530e0a1dff5::t_42777509dcc3af 222,225,233-236,249,255-258
+  s_4ee530e0a1dff5::t_4474afb3208a59 437
+  s_4ee530e0a1dff5::t_bb668d51d650c7 577-590
+  s_4ee530e0a1dff5::t_c68c66f6623b70 238-240,243-245,252-254,259-261,350-352,371-373,401-403
+  s_4ee530e0a1dff5::t_28e3c6f81425d3 226-231
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_4ee530e0a1dff5::t_199804d835cead 177,179,337,446-447
+  s_4ee530e0a1dff5::t_82faf67602edfc 196,209,236,269,288,311,331,352,367,388,405,424,472,487,502,517,535,550,560,574,588,602,631,694
+  s_4ee530e0a1dff5::t_91458c5ef307b0 217
+  s_4ee530e0a1dff5::t_f13abc3014aff2 227-235,237-268,270-287,289-310,312-327
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_4ee530e0a1dff5::t_298c7f2a5176f3 72-74
+  s_4ee530e0a1dff5::t_cd56bc58967d9f 46
+packages/@n8n/scheduler/src/observability/executor-tracing.ts
+  s_4ee530e0a1dff5::t_724e601d9047d4 68-70,82
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.property.test.ts
+  s_4ee530e0a1dff5::t_199804d835cead 29,34,54
+  s_4ee530e0a1dff5::t_82faf67602edfc 57
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_4ee530e0a1dff5::t_e9503bedd1432c 284
+  s_4ee530e0a1dff5::t_b0510e2dab2159 59-60
+  s_4ee530e0a1dff5::t_eab29f8a78cbbb 206-209,218-220,225-230,235-249,254,256
+  s_4ee530e0a1dff5::t_c5da91a3aa99ae 56-58,61
+  s_4ee530e0a1dff5::t_b25c5bab1efb88 217,221
+packages/@n8n/scheduler/src/core/executor/task-handler.ts
+  s_4ee530e0a1dff5::t_d8927526f140c3 8-14,17
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_4ee530e0a1dff5::t_cf34145430f255 40,42-44
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_4ee530e0a1dff5::t_afa497cc505ee0 296-312
+  s_4ee530e0a1dff5::t_82da9dda15705a 466-471
+  s_4ee530e0a1dff5::t_cf0664086553c4 287-292,294-295
+packages/@n8n/db/src/entities/scheduled-task.ts
+  s_4ee530e0a1dff5::t_d59646aa64c81d 33-36
+  s_4ee530e0a1dff5::t_5d9974463f4854 27,31-32
+packages/@n8n/scheduler/src/core/types/task.ts
+  s_4ee530e0a1dff5::t_f0a3611af6730d 6-14
+  s_4ee530e0a1dff5::t_f24fcc3283654e 2-5
+packages/@n8n/scheduler/src/core/executor/store.ts
+  s_4ee530e0a1dff5::t_931be0cf077594 48-49,51
+  s_4ee530e0a1dff5::t_1dd67dec85ea7f 47,50,52-57
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_4ee530e0a1dff5::t_91916d13404420 43-45
+  s_4ee530e0a1dff5::t_c68c66f6623b70 177-179
+  s_4ee530e0a1dff5::t_2eae54d78df78d 94,110,124,134,143,204,212,221,232,242
+  s_4ee530e0a1dff5::t_2c6166392a492f 195-196
+  s_4ee530e0a1dff5::t_6f8460c093c47c 152-166
+packages/@n8n/scheduler/src/observability/__tests__/executor-tracing.test.ts
+  s_4ee530e0a1dff5::t_ca5590ab3f709d 168-170
+  s_4ee530e0a1dff5::t_30d7ab53f721ad 147,149,151-152
+packages/@n8n/scheduler/src/core/__tests__/executor-lookahead.test.ts
+  s_4ee530e0a1dff5::t_76d340c3db6557 107,109
+  s_4ee530e0a1dff5::t_6bb36b8601094b 71-72
+  s_4ee530e0a1dff5::t_8aca03dc40eaa1 73-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4b6c52cd68e272d53ff896ab59bed3e5fa1669f",
+  "prompts": {},
+  "sessions": {
+    "s_4ee530e0a1dff5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f28b5cb-2006-4bb1-8bdd-f25bc20db78d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

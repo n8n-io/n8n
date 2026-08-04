@@ -1,0 +1,30 @@
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_f26e4f77514a24::t_31e548d2075b05 28-38
+  s_f26e4f77514a24::t_213e9014bd5b98 172
+  s_f26e4f77514a24::t_0b374f0a7c98c6 84-88
+  s_f26e4f77514a24::t_a1cc2c3cdc49b3 245-249
+  s_f26e4f77514a24::t_c2e575a5885bbb 183-187
+packages/cli/src/task-runners/task-broker/__tests__/task-broker-ws-server.test.ts
+  s_f26e4f77514a24::t_6d10211dde8467 153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc3ca8e159383b9178f2151cfd10e1f33a34d8d8",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f26e4f77514a24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df012466-5f0e-43c9-8807-1e593f0ff1d0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

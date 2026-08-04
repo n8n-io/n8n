@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Kafka/utils.ts
+  s_04b8fe92354c24::t_90ce348f4f2079 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "813505756d82081f83a8e55f005acc5034afb3ac",
+  "prompts": {},
+  "sessions": {
+    "s_04b8fe92354c24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cd8da67-a7ad-4818-ad1c-f223fa4de7d8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

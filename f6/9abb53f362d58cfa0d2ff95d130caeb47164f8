@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Google/Gmail/v2/hitl/email.ts
+  s_2f64531d4927ce::t_ae6e93462a4cf7 41-43
+packages/nodes-base/nodes/Google/Gmail/test/v2/hitl.email.test.ts
+  s_2f64531d4927ce::t_8892a4b45920b5 140
+  s_2f64531d4927ce::t_fc24d83e02a96e 149-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f69abb53f362d58cfa0d2ff95d130caeb47164f8",
+  "prompts": {},
+  "sessions": {
+    "s_2f64531d4927ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ebc7f5c-6cc6-415c-a9e3-59aec8d97ec5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.ts
+  s_4c9018992022bf::t_c22dc90cee3977 1-125
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_4c9018992022bf::t_4638b16d35ce0f 43
+  s_4c9018992022bf::t_4a39b53542d0d8 21
+packages/@n8n/eslint-config/src/plugin.ts
+  s_4c9018992022bf::t_7bd456456013e1 29
+packages/@n8n/eslint-config/src/plugin.test.ts
+  s_4c9018992022bf::t_5f9939906bca0f 1-12
+packages/@n8n/eslint-config/src/rules/no-aws-credential-discovery-imports.test.ts
+  s_4c9018992022bf::t_d6a963141ad101 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "c967f28208aaebc6b1cf28acdbc40f3d5bdea171",
+  "prompts": {},
+  "sessions": {
+    "s_4c9018992022bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a2e73215-528d-402b-98e1-c147c0745f14",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

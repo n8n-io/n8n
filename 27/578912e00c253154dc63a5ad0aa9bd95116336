@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-23-mcp-bug-bash-fixes-design.md
+  s_60e43f07473cd0::t_8a770453361ad3 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "27578912e00c253154dc63a5ad0aa9bd95116336",
+  "prompts": {},
+  "sessions": {
+    "s_60e43f07473cd0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fe1-c76f-71c3-8e47-b42265a08f6b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

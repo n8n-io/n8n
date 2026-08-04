@@ -1,0 +1,19 @@
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_7e260be078ba21::t_e7158ae6219ca3 48-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "abc5df832bcc57532cf01ae31c346880bad8f67a",
+  "prompts": {},
+  "sessions": {
+    "s_7e260be078ba21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "563ddd4e-d5e2-48ee-aac3-3b7c03d27616",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

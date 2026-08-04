@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_ff5f64df21e3e0::t_963fa1ad2e8953 1310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "fe9ce2f933ad010541b77456ec17a131bd1b4ce4",
+  "prompts": {},
+  "sessions": {
+    "s_ff5f64df21e3e0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c3b9fbef-886c-40d9-a205-0e22a7d98cc2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

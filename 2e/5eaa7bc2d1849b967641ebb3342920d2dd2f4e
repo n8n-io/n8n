@@ -1,0 +1,26 @@
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_d26e62eef498c8::t_55b69dd6e9b025 682
+  s_d26e62eef498c8::t_19762388aa65aa 699
+  s_d26e62eef498c8::t_0c04a43401b73f 746
+packages/@n8n/api-types/src/dto/evaluations/public-api-test-run.dto.ts
+  s_d26e62eef498c8::t_e3eb1cbdd43ed8 44-47
+packages/cli/test/integration/public-api/evaluations.test.ts
+  s_d26e62eef498c8::t_8399e7cfb33444 272-273
+  s_d26e62eef498c8::t_db3bc35f835e77 395-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e5eaa7bc2d1849b967641ebb3342920d2dd2f4e",
+  "prompts": {},
+  "sessions": {
+    "s_d26e62eef498c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17aca575-f423-43bf-9edf-6b87edf0cb2d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

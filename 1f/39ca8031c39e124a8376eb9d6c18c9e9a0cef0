@@ -1,0 +1,56 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_51def3912d3fc1::t_0930f00d4782e2 1-2,6-310,415-421
+  s_51def3912d3fc1::t_3b0de2bfea1b7a 422
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/move.test.ts
+  s_51def3912d3fc1::t_0aa368c3080b42 1-30
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAll.test.ts
+  s_51def3912d3fc1::t_b3717f5215622c 1-38
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/draftSend.test.ts
+  s_51def3912d3fc1::t_6dc8aba91b19f9 1-31
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/eventGetAll.workflow.json
+  s_51def3912d3fc1::t_a8b78ff7bc6090 1-86
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/eventGetAll.test.ts
+  s_51def3912d3fc1::t_087f52efc722c8 1-44
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/addLargeAttachment.test.ts
+  s_51def3912d3fc1::t_785fd40f597c87 1-111
+packages/nodes-base/nodes/Microsoft/Outlook/v2/helpers/utils.ts
+  s_51def3912d3fc1::t_b930b441a8ceb2 16-18,20
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/getAll.test.ts
+  s_51def3912d3fc1::t_2e1e74685cfe05 1-71
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/send.workflow.json
+  s_51def3912d3fc1::t_72b92a37794f0f 1-75
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/move.workflow.json
+  s_51def3912d3fc1::t_c2c97769291768 1-77
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/getAll.workflow.json
+  s_51def3912d3fc1::t_e64176021a7b18 1-21,23-89
+  s_51def3912d3fc1::t_856f7e17b4a122 22
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/send.test.ts
+  s_51def3912d3fc1::t_159faeb976361a 1-35
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAll.workflow.json
+  s_51def3912d3fc1::t_a3b9287ccf2948 1-77
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/contactCreate.workflow.json
+  s_51def3912d3fc1::t_e526dbbce40f97 1-74
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/draftSend.workflow.json
+  s_51def3912d3fc1::t_6222f8080109fd 1-74
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/contactCreate.test.ts
+  s_51def3912d3fc1::t_fd177299c714bd 1-31
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/utils/utils.test.ts
+  s_51def3912d3fc1::t_a6e09c63dd8ce6 250-322
+  s_51def3912d3fc1::t_c4d7efb1abe9f4 1-3,10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.1",
+  "base_commit_sha": "1f39ca8031c39e124a8376eb9d6c18c9e9a0cef0",
+  "prompts": {},
+  "sessions": {
+    "s_51def3912d3fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31afa3d2-fd0e-4f42-93c3-95839cb0136c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

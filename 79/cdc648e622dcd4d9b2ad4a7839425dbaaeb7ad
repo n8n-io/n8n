@@ -1,0 +1,25 @@
+packages/cli/src/environments.ee/variables/variables.service.ee.ts
+  s_c345592441274b::t_bcfe2c20e547fd 185-192,198-199
+  s_c345592441274b::t_de059241550ed3 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "79cdc648e622dcd4d9b2ad4a7839425dbaaeb7ad",
+  "prompts": {},
+  "humans": {
+    "h_ce2c4b90496ac9": {
+      "author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c345592441274b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44d4b7e1-ff47-45f4-90e1-e74bbf6568a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

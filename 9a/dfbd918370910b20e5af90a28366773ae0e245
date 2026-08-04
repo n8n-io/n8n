@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_82905b798a48d7::t_a80d1fd5e4b424 223-231
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_81213d1da29d1d::t_e3c1d13581a8dc 319-322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "9adfbd918370910b20e5af90a28366773ae0e245",
+  "prompts": {},
+  "humans": {
+    "h_63d8ce7f01339b": {
+      "author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_81213d1da29d1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "673cf223-a5a6-4615-8557-e12c5e003a3f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_82905b798a48d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "645101dd-fe74-402c-960a-b67fcf2a96e1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

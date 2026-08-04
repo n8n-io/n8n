@@ -1,0 +1,26 @@
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_34811779c9d586::t_dd3f3199300e90 135-139
+  s_34811779c9d586::t_e665290ec32a6c 20-25
+  s_34811779c9d586::t_7bc770814f7bb7 119-121,131,146-148
+  s_34811779c9d586::t_fda75d5c6cddf2 177,186
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_34811779c9d586::t_185e0c6ec14143 81-82,91-96
+  s_34811779c9d586::t_fe1e59c3fde768 74-75
+  s_34811779c9d586::t_c94be6ffc2c91c 188,200-201,204,218-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "527c4fc3ab4cb24def4e78643a4f3d587355cfba",
+  "prompts": {},
+  "sessions": {
+    "s_34811779c9d586": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "395804aa-73ad-495d-ad85-228a556bbfab",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

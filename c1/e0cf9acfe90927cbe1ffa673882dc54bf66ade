@@ -1,0 +1,80 @@
+packages/frontend/editor-ui/src/features/agents/components/interactive/N8nChatActionCard.vue
+  s_6e06771097abf4::t_94d7adb9e9e8ca 1-19,26,28-34,37-55,73-84,86-98,103-211
+  s_6e06771097abf4::t_b69e5e67d29a0b 56-72,85
+  s_6e06771097abf4::t_979198732601bb 21-22,25,27,35-36
+  s_6e06771097abf4::t_a94317c1f88698 20,23-24
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  s_6e06771097abf4::t_1e5cbac65bcbee 9
+  s_6e06771097abf4::t_075663cd880e24 11
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/n8nChatInteraction.ts
+  s_6e06771097abf4::t_1fda5413193428 1-39,42-71,77-93
+  s_6e06771097abf4::t_85fe8f5d5dbd80 72-76
+  s_6e06771097abf4::t_fd9068de052f12 40-41
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_6e06771097abf4::t_d6ef17d05c6297 779-837
+  s_6e06771097abf4::t_7183f3e5b09787 738-744
+  s_6e06771097abf4::t_92e8c894045ef0 8
+  s_6e06771097abf4::t_32c632e126cf8d 24-35
+  s_6e06771097abf4::t_106048b83c059b 691-737,745-777
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_6e06771097abf4::t_d54cbe78d65971 17-20
+  s_6e06771097abf4::t_5f885c78704d0b 51,53,59-60
+  s_6e06771097abf4::t_d31689e148dec7 52,54-58
+  s_6e06771097abf4::t_ceb1c26535fea1 114-142,173-255
+  s_6e06771097abf4::t_c5950f5b01882b 143-172
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_6e06771097abf4::t_23fc7b799e2eaf 358-362,369-373,380-382
+  s_6e06771097abf4::t_667f65bb645893 22-23
+  s_6e06771097abf4::t_10b8ea1290f1cd 104,110-111,113,118-119
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_6e06771097abf4::t_d58ad41aaa0c93 3
+  s_6e06771097abf4::t_01995634b01b80 463-464,475-476
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_6e06771097abf4::t_62881005d702b9 6
+  s_6e06771097abf4::t_af86a60989b79b 97-101
+  s_6e06771097abf4::t_ce23ce3604218d 38-43
+  s_6e06771097abf4::t_5f1a7c04dccb4c 15
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/n8nChatInteraction.test.ts
+  s_6e06771097abf4::t_648198701f8a8a 88-187
+  s_6e06771097abf4::t_69e3563faff48c 1,3-4,6-87,188
+  s_6e06771097abf4::t_6c47360ee376a4 2,5
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_6e06771097abf4::t_8b809d5583a862 218-221,223-224,227
+  s_6e06771097abf4::t_858ca9bf7463ed 93-107
+  s_6e06771097abf4::t_e67a81f3e8bb35 43-47
+  s_6e06771097abf4::t_9c362d61dfbd71 39
+  s_6e06771097abf4::t_1e86db3f24c7e9 6,17-21
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_6e06771097abf4::t_1ccd381a2c6667 20
+  s_6e06771097abf4::t_08c799d0870765 113-124
+  s_6e06771097abf4::t_2e4807f46c42a9 8
+packages/frontend/editor-ui/src/features/agents/__tests__/N8nChatActionCard.test.ts
+  s_6e06771097abf4::t_2b3ad4e39dcd32 90-94,96-116,118-138
+  s_6e06771097abf4::t_aaaa4af01a9431 1-71,139
+  s_6e06771097abf4::t_6a1b641a03a6a5 72-89
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_6e06771097abf4::t_c4754eb832f652 43,45-49,54-62
+  s_6e06771097abf4::t_f77eef5d32794b 34-35
+  s_6e06771097abf4::t_1d0a3aaaf40925 438-451
+  s_6e06771097abf4::t_81b26551ee0acb 3,5-6,13,21
+  s_6e06771097abf4::t_e5f7a73b54afd4 357-370
+  s_6e06771097abf4::t_9c362d61dfbd71 9,44,50-53
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6e06771097abf4::t_ca489440e68e4d 6287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "c1e0cf9acfe90927cbe1ffa673882dc54bf66ade",
+  "prompts": {},
+  "sessions": {
+    "s_6e06771097abf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b3c7bb4-2a4f-497e-966d-6b2a50495f9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

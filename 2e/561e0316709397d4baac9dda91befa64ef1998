@@ -1,0 +1,90 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_f3c9e6db456d8f::t_6b8c9b9bb0dc3c 1-8,10,22-29,34-37,43-56,58,63-92,94-112,125-129,131-133,138-142,146-149,182-197,199-200,218,151-152,154-159,118,121
+  s_f3c9e6db456d8f::t_8ee12131344ac3 11-14,18-21,30-33
+  ai_agent 15-17
+  s_f3c9e6db456d8f::t_61d7c98bae3934 38-42
+  s_f3c9e6db456d8f::t_6854a5751e433f 57
+  s_f3c9e6db456d8f::t_a70833f8fde864 93
+  s_f3c9e6db456d8f::t_3687924b49547b 124,130,134-137,143-145
+  s_f3c9e6db456d8f::t_16de2fdebf6c12 198,201-208
+  s_3c8860b713ddc9::t_4c6090ef767d77 209,160,162,167-168,172,174,180-181,122-123,210,213,215,217
+  s_f3c9e6db456d8f::t_18bfa8a42671a3 150,153,163-164
+  s_bfe6a865a3bf73::t_f629349d9e9545 161,165-166,169-171,173,175-179
+  s_f3c9e6db456d8f::t_3e0b2d81ff7a2b 211-212,214,216
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-9,11-13,16-31,33-35,37,53-77,80-89,92-109,127,131-145,153,155-162,166-171,185-187,204,257-268,280,290-291,339-374,387,391-392,394,398-411,419-420,449,467,417,151,385
+  s_f3c9e6db456d8f::t_215638f4be1e5f 10
+  s_f3c9e6db456d8f::t_2a2c426e89a273 14
+  s_f3c9e6db456d8f::t_8e341613919eae 32
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 36
+  s_f3c9e6db456d8f::t_546f61ee1155e0 38-40
+  s_f3c9e6db456d8f::t_489963625ad545 42-52,188-193,292-293
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 110-112,114-117
+  s_f3c9e6db456d8f::t_715b40c294a666 120-126,128-130
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 194-203,205-216
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 275,283
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 284-286,306-314,332-333
+  s_f3c9e6db456d8f::t_495bf9bc203fff 287,299-303
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 375-376,377-379,381,383-384,388-389
+  s_f3c9e6db456d8f::t_1e453de502744e 395,397
+  s_05cd7ab5f956cf::t_35616ad850b841 396
+  s_f3c9e6db456d8f::t_40d80601d668de 412-413,91,414-416,418,152,386
+  s_f3c9e6db456d8f::t_b923d23f7ad7e1 455
+  h_7555c3ee6524cf 315,317,321,323,327-331,334-335
+  s_05cd7ab5f956cf::t_d576ddf1e82633 316,322,326
+  s_05cd7ab5f956cf::t_a89fd654b5e082 318-319,324-325
+  s_f3c9e6db456d8f::t_341d441fc1aa70 90
+  s_f3c9e6db456d8f::t_bfe4881e1ecc7b 241
+  s_bfe6a865a3bf73::t_e9293ef5a348ba 172-184
+  s_f3c9e6db456d8f::t_b908cf851754d0 217-219
+  ai_agent 220-223,226-240,245-251,253,255-256
+  s_f3c9e6db456d8f::t_173aa9faa6c0c2 277-279
+  s_f3c9e6db456d8f::t_0758910a50cc74 382,390
+  s_f3c9e6db456d8f::t_4ce1ef0cd4469b 424,428
+  s_f3c9e6db456d8f::t_ee8ffe0dde1b9c 434-437,443-444,447-448,452-453,458,461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e561e0316709397d4baac9dda91befa64ef1998",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_3c8860b713ddc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdaa2f6a-d47e-49df-930b-860d7d20015f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bfe6a865a3bf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "430bf789-cf05-4910-9dda-8fa7dfba9d21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

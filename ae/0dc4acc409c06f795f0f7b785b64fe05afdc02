@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.test.ts
+  s_bd512c15a75761::t_c54081f60bee45 54,301,311,323,325,333,371,395,427,451,486,490,525,555,566-567,598,644-645,667,684,691,696,708,715,718
+packages/testing/playwright/tests/e2e/workflows/editor/canvas/node-groups.spec.ts
+  s_bd512c15a75761::t_c35b69ec135883 195-197
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupLayout.test.ts
+  s_bd512c15a75761::t_e13cf1a1f924c5 186-187
+  s_bd512c15a75761::t_b47b857d442d27 166-167
+  s_bd512c15a75761::t_92f4da2b154d9a 486-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae0dc4acc409c06f795f0f7b785b64fe05afdc02",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_bd512c15a75761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bcad01f-6ba9-4ce9-a629-25e2b0fb8da2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

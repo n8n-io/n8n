@@ -1,0 +1,28 @@
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_13c1e4f119e39a::t_be7f1d930f76c1 232-272,275,277-284,312-313
+  s_13c1e4f119e39a::t_3875f5eda02d60 37
+  s_13c1e4f119e39a::t_a779455fcb6053 225-231
+  s_13c1e4f119e39a::t_4742a1196f1223 344-357,359-360,362-364,366-371,373-375,378,388,399,402
+  s_13c1e4f119e39a::t_dbcae0aa16d5e6 273-274,285-292,303,311
+  s_13c1e4f119e39a::t_b5bdf69b65cee3 401
+  s_13c1e4f119e39a::t_b14eb794472ada 276
+  s_13c1e4f119e39a::t_8b8d145867442f 358,361,365,372
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_13c1e4f119e39a::t_6d565301a00ed7 366-468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b635643b253b5f48813b3e63e56016038cf44cab",
+  "prompts": {},
+  "sessions": {
+    "s_13c1e4f119e39a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa0f6b89-d719-4f10-abee-71e063c95ea7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

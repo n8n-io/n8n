@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOAuth.ts
+  s_ea05c8e6b2ca57::t_aa9c27b2b67d0a 261-270
+  s_ea05c8e6b2ca57::t_118ad62429576a 221
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_ea05c8e6b2ca57::t_632a4c9a1a2edf 1362
+  s_ea05c8e6b2ca57::t_8d9c5f681c8c3b 1426-1435
+  s_ea05c8e6b2ca57::t_ed9ceb846b125e 1356
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "f4ab82eb752bade01975fc09e60c1cb385acd9fb",
+  "prompts": {},
+  "sessions": {
+    "s_ea05c8e6b2ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fec4873c-59a7-4758-afbf-c630fbf43398",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

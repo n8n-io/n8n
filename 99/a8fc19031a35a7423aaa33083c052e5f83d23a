@@ -1,0 +1,30 @@
+packages/cli/package.json
+  s_fe79996699ca9b::t_ec6aa744313393 194
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_fe79996699ca9b::t_ca6c7ab522e985 466-489
+  s_fe79996699ca9b::t_a2fe3319dbc874 20
+  s_fe79996699ca9b::t_cc3cd0a85d998d 257
+  s_fe79996699ca9b::t_7384824a6f0c64 60-72
+  s_fe79996699ca9b::t_24af27b0571f43 432
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_fe79996699ca9b::t_c6f549e7099266 364-374,384-389,393-409
+  ai_agent 375-383,390-392
+pnpm-lock.yaml
+  ai_agent 2972-2973,17179-17181,17293-17294,36713-36714,36831,36834
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99a8fc19031a35a7423aaa33083c052e5f83d23a",
+  "prompts": {},
+  "sessions": {
+    "s_fe79996699ca9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9779d03-88bc-478d-b26f-5d92048ba3c8",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

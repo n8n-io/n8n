@@ -1,0 +1,24 @@
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_a1c4aafd7954bc::t_2397cfdd367239 68,78,90,93-101
+  s_a1c4aafd7954bc::t_20ee7ba5885530 102
+packages/cli/src/modules/instance-ai/event-bus/__tests__/durable-event-log.test.ts
+  s_a1c4aafd7954bc::t_2397cfdd367239 138-146,239,249,255-259,261,263-271
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-event-log.repository.test.ts
+  s_a1c4aafd7954bc::t_bb15815981f061 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b263dcf9f83f3690562431a80b41605bb6ee52fd",
+  "prompts": {},
+  "sessions": {
+    "s_a1c4aafd7954bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b56cb72-36c3-4d3e-a4bb-c508f92690e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

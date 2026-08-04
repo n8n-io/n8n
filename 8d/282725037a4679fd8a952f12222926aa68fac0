@@ -1,0 +1,14 @@
+packages/cli/src/webhooks/webhook-helpers.ts
+  h_435b1d7d3e52c0 62-63,534-537,541
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "8d282725037a4679fd8a952f12222926aa68fac0",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

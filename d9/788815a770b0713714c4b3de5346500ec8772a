@@ -1,0 +1,390 @@
+packages/@n8n/db/src/migrations/common/1784815940111-AddInstanceCredentials.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-47
+docs/generated/sqlite-schema/agent_execution.md
+  s_e74d274ac16379::t_8f620f97203fe6 9,31,42,77
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_e74d274ac16379::t_8f620f97203fe6 229-230,462-463
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/no-silent-error-swallowing.md
+  s_e74d274ac16379::t_8f620f97203fe6 1-72
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_e74d274ac16379::t_8f620f97203fe6 37-45,49-53,70-79,99-125,739-772,778-781
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e74d274ac16379::t_8f620f97203fe6 231-232
+packages/@n8n/instance-ai/src/tools/__tests__/task-control.tool.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 37-45
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-only-the-listed-tool-when-config-requireapproval-is-a-string-array.json
+  s_e74d274ac16379::t_8f620f97203fe6 39-40,58-59,73-74
+packages/cli/src/modules/agents/builder/__tests__/verify-mcp-server.tool.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 52-62,87-109
+  s_e74d274ac16379::t_0109028c451577 110
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-6,83-86
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_e74d274ac16379::t_8f620f97203fe6 58-66,75
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 20,38,610-613,641-642,655-658,671
+packages/frontend/@n8n/frontend-constants/src/z-indexes.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-32
+packages/@n8n/instance-ai/src/tools/orchestration/verification/prepare-run.ts
+  s_e74d274ac16379::t_8f620f97203fe6 8-9,42,47-52,59,67,77-105
+packages/cli/src/modules/agents/agent-runtime-instrumentation.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1,11-14,27-28
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 13-17,56-61
+  s_e74d274ac16379::t_706643358b9e9a 62
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_e74d274ac16379::t_8f620f97203fe6 6,31,128
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1813-1822,1826
+packages/@n8n/agents/src/types/sdk/mcp.ts
+  s_e74d274ac16379::t_8f620f97203fe6 6,8-9
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 3,154-175,224,247-339
+  s_e74d274ac16379::t_e67e84936b8b14 340
+packages/@n8n/eslint-plugin-community-nodes/src/utils/index.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2-3
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_e74d274ac16379::t_8f620f97203fe6 52,76,827,882-890
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 25,1262-1304
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 103,215,223,228,231,237-238,241-243,245-248,251,255-257,261,266,283,287,293-295,297-298,316,319-326
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/does-not-suspend-a-tool-not-listed-in-config-requireapproval.json
+  s_e74d274ac16379::t_8f620f97203fe6 39-40,58-59,73-74,175-176,194-195,209-210
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_e74d274ac16379::t_8f620f97203fe6 230-231,234-235
+docs/generated/postgres-schema/public.agent_execution.md
+  s_e74d274ac16379::t_8f620f97203fe6 20,33,40,72
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/MicrosoftExcelSharePoint.node.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 23,25-43
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-unnecessary-password.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-105
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/create.operation.ts
+  s_e74d274ac16379::t_8f620f97203fe6 9-14,60-61,71,74
+packages/@n8n/agents/src/types/sdk/provider.ts
+  s_e74d274ac16379::t_8f620f97203fe6 38-39
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-test.controller.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 71,73,75-77
+packages/@n8n/instance-ai/docs/configuration.md
+  s_e74d274ac16379::t_8f620f97203fe6 79
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_e74d274ac16379::t_8f620f97203fe6 173,183,193-197,200-204
+packages/@n8n/instance-ai/src/tools/task-control.tool.ts
+  s_e74d274ac16379::t_8f620f97203fe6 16-18,98-100
+packages/cli/src/services/project.service.ee.ts
+  s_e74d274ac16379::t_8f620f97203fe6 126-131,241,244,259
+docs/generated/sqlite-schema/credential_dependency.md
+  s_e74d274ac16379::t_8f620f97203fe6 65
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_e74d274ac16379::t_8f620f97203fe6 68
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_e74d274ac16379::t_8f620f97203fe6 23-28,217-247,316,320-322,364
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_e74d274ac16379::t_8f620f97203fe6 59
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/getAll.operation.ts
+  s_e74d274ac16379::t_8f620f97203fe6 9-10,141,144
+packages/cli/src/modules/agents/execution-log/agent-execution-log-store.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-55
+packages/@n8n/instance-ai/src/agent/__tests__/apply-agent-thinking.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 28-31,37-40,49-52
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_e74d274ac16379::t_8f620f97203fe6 748-755
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_e74d274ac16379::t_8f620f97203fe6 60
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_e74d274ac16379::t_8f620f97203fe6 9,18,24,37,59,75,139-143
+  s_e74d274ac16379::t_4ca5a418b64312 144
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_e74d274ac16379::t_8f620f97203fe6 46,111-112,136,144,179
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/reconcile-simulation-plan.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 383-460
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_e74d274ac16379::t_8f620f97203fe6 110
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-password-field.ts
+  s_e74d274ac16379::t_8f620f97203fe6 9-10,54
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_e74d274ac16379::t_8f620f97203fe6 221-222,444-445
+packages/@n8n/eslint-plugin-community-nodes/src/rules/credential-unnecessary-password.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-72
+packages/@n8n/instance-ai/src/utils/__tests__/eval-agents.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 106
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_e74d274ac16379::t_8f620f97203fe6 2016,2050,2244-2250
+  s_e74d274ac16379::t_6863ba346a9044 2251
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-silent-error-swallowing.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-127
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_e74d274ac16379::t_8f620f97203fe6 27,40,71,84
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 640
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_e74d274ac16379::t_8f620f97203fe6 203-214,238-239
+packages/nodes-base/nodes/MessageAnAgent/v2/MessageAnAgentV2.node.ts
+  s_e74d274ac16379::t_8f620f97203fe6 18-21
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_e74d274ac16379::t_8f620f97203fe6 76-77,83,90,125,139
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 4,12,62-64,75-77,85-87,92-195,513,522-582,625,640-658,675-689
+  s_e74d274ac16379::t_ed025e88125bae 690
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2,86-105
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_e74d274ac16379::t_8f620f97203fe6 134
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_e74d274ac16379::t_8f620f97203fe6 44-46
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_e74d274ac16379::t_8f620f97203fe6 85
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_e74d274ac16379::t_8f620f97203fe6 9,25,53,60
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 6,38,197,201-204,568-589,598,620,624-625,628-637
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_e74d274ac16379::t_8f620f97203fe6 73
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/calls-an-mcp-tool-during-generation-and-returns-the-result.json
+  s_e74d274ac16379::t_8f620f97203fe6 39-40,58-59,73-74,174-175,193-194,208-209
+packages/@n8n/eslint-plugin-community-nodes/src/rules/webhook-lifecycle-complete.ts
+  s_e74d274ac16379::t_8f620f97203fe6 8-9,41-42
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/update.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-475
+packages/@n8n/agents/src/sdk/agent.ts
+  s_e74d274ac16379::t_8f620f97203fe6 13,911
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 178-195,218-232
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_e74d274ac16379::t_8f620f97203fe6 64
+packages/cli/src/modules/agents/execution-log/__tests__/agent-execution-log-store.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-25
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_e74d274ac16379::t_8f620f97203fe6 74
+packages/nodes-base/nodes/HttpRequest/test/node/HttpRequestV3.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2-7,10,654-877
+  s_e74d274ac16379::t_4056aa8636f731 878-879
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e74d274ac16379::t_8f620f97203fe6 367-373
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 203-242
+packages/frontend/@n8n/composables/src/useStyles.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-31
+docs/generated/postgres-schema/public.instance_credential_assignment.md
+  s_e74d274ac16379::t_8f620f97203fe6 1-61
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/merges-static-tools-and-mcp-tools-in-the-same-agent.json
+  s_e74d274ac16379::t_8f620f97203fe6 55-56,74-75,89-90,207-208,226-227,241-242
+packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts
+  s_e74d274ac16379::t_8f620f97203fe6 47
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_e74d274ac16379::t_8f620f97203fe6 53,55,71
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_e74d274ac16379::t_8f620f97203fe6 81-82,118,142
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_e74d274ac16379::t_8f620f97203fe6 160,175,209
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  s_e74d274ac16379::t_8f620f97203fe6 16
+packages/@n8n/eslint-plugin-community-nodes/src/rules/no-silent-error-swallowing.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-245
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
+  s_e74d274ac16379::t_8f620f97203fe6 39-42
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_e74d274ac16379::t_8f620f97203fe6 83
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/NodeRecommendationModal.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-83
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_e74d274ac16379::t_8f620f97203fe6 62
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 580-706,819,822-823,863,866,868,870,895-914,917
+  s_e74d274ac16379::t_f94d203533f31e 915-916,918
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1
+packages/frontend/editor-ui/src/app/composables/useStyles.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-9
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_e74d274ac16379::t_8f620f97203fe6 104
+packages/cli/src/errors/response-errors/workflow-deactivation-bad-request.error.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-15
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/prepare-run.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-88
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_e74d274ac16379::t_8f620f97203fe6 47
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_e74d274ac16379::t_8f620f97203fe6 201-204
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-9,12-16,18,89-192
+packages/nodes-base/nodes/HttpRequest/V3/utils/error-details.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-68
+packages/cli/src/modules/agents/execution-log/corrupted-agent-execution-log.error.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-13
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/helpers/utils.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 5,51-79
+  s_e74d274ac16379::t_e99726177c3802 80
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_e74d274ac16379::t_8f620f97203fe6 36
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/suspends-all-mcp-tools-when-config-requireapproval-true.json
+  s_e74d274ac16379::t_8f620f97203fe6 39-40,58-59,73-74
+packages/@n8n/utils/src/json/to-json-value.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-180
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1139-1140,1157-1159
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/index.ts
+  s_e74d274ac16379::t_8f620f97203fe6 7,9,47-52,61
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/mcp-connections-persist-across-multiple-generate-calls.json
+  s_e74d274ac16379::t_8f620f97203fe6 39-40,58-59,73-74,175-176,194-195,209-210,284-285,303-304,318-319,420-421,439-440,454-455
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.discovery.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2-4,13,26,28,30-32,36,38
+packages/@n8n/eslint-plugin-community-nodes/src/utils/constants.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-21
+packages/cli/src/modules/agents/execution-log/agent-execution-log-write.error.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-13
+packages/nodes-base/nodes/MessageAnAgent/generateSchemaFromExample.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-50
+packages/cli/src/modules/mcp-registry/mcp-registry-test.controller.ts
+  s_e74d274ac16379::t_8f620f97203fe6 39
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 62-83
+docs/generated/sqlite-schema/instance_credential_assignment.md
+  s_e74d274ac16379::t_8f620f97203fe6 1-69
+packages/@n8n/utils/src/json/to-json-value.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-72
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/MappingFields.vue
+  s_e74d274ac16379::t_8f620f97203fe6 273
+packages/@n8n/instance-ai/src/tools/__tests__/research.tool.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 44-52
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_e74d274ac16379::t_8f620f97203fe6 245-250
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/credential-password-field.md
+  s_e74d274ac16379::t_8f620f97203fe6 1,13
+  s_e74d274ac16379::t_25d2fe30a6e501 14
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 564-582
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2,4-6,14,55-57,64-66,120-121,136-137,144-156,263,274-277,279-284,288-307,355,359-401,410-413
+  s_e74d274ac16379::t_826e68c3b2a532 414
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 25,47,257-400
+  s_e74d274ac16379::t_4d4f34f7d59186 401
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_e74d274ac16379::t_8f620f97203fe6 17,25-26,29
+packages/@n8n/instance-ai/src/tools/research.tool.ts
+  s_e74d274ac16379::t_8f620f97203fe6 252-257
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/NodeRecommendationModal.vue
+  s_e74d274ac16379::t_8f620f97203fe6 3,6,32,70-73,78-80
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/node.type.ts
+  s_e74d274ac16379::t_8f620f97203fe6 6
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_e74d274ac16379::t_8f620f97203fe6 43-44,72-73,129-130
+packages/cli/src/modules/agents/agents.module.ts
+  s_e74d274ac16379::t_8f620f97203fe6 37-63
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_e74d274ac16379::t_8f620f97203fe6 3,6,12-20,28,32,42,58,65-124
+  s_e74d274ac16379::t_3dfdc0282260b0 125
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 305
+packages/cli/src/workflows/workflow.service.ts
+  s_e74d274ac16379::t_8f620f97203fe6 35,987-992
+  s_e74d274ac16379::t_7bb7dece007513 993-994
+packages/@n8n/instance-ai/src/tools/workflows/workflow-json-utils.ts
+  s_e74d274ac16379::t_8f620f97203fe6 51-99
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/utils.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2,45-91
+  s_e74d274ac16379::t_50f248f005dce5 92
+packages/@n8n/instance-ai/src/tools/workflows/reconcile-simulation-plan.ts
+  s_e74d274ac16379::t_8f620f97203fe6 21,147,162-163
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_e74d274ac16379::t_8f620f97203fe6 174
+packages/@n8n/agents/src/sdk/mcp-client.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2,215
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_e74d274ac16379::t_8f620f97203fe6 67
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_e74d274ac16379::t_8f620f97203fe6 72
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 39,43-60
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/analyze-result.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-79
+docs/generated/sqlite-schema/credentials_entity.md
+  s_e74d274ac16379::t_8f620f97203fe6 9,20,29,35,59,75,139-143
+  s_e74d274ac16379::t_fbcf1aea7890c1 144
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 145-162
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_e74d274ac16379::t_8f620f97203fe6 66
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-5,42-46,177-181,197-200,204-226,268-270,381
+docs/generated/sqlite-schema/README.md
+  s_e74d274ac16379::t_8f620f97203fe6 13,43,80,238,337,650,992-996
+  s_e74d274ac16379::t_ea6e033868d0da 997
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 322-430
+packages/frontend/@n8n/composables/src/useStyles.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-14
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 268-279
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2983,2987-2998
+  s_e74d274ac16379::t_052954c9fca0a3 2999-3000
+packages/@n8n/db/src/migrations/common/1784815940110-AddStoredAtToAgentExecution.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-20
+packages/cli/src/modules/agents/agents.service.ts
+  s_e74d274ac16379::t_8f620f97203fe6 16,38,215
+  s_e74d274ac16379::t_82366952661a94 216
+packages/@n8n/agents/src/__tests__/integration/cassettes/mcp-runtime/streams-a-response-that-includes-an-mcp-tool-call.json
+  s_e74d274ac16379::t_8f620f97203fe6 39-40,58-59,73-74,180-181,199-200,214-215
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 11,54,74,88
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 214,217,226-232,244
+packages/cli/src/external-hooks.ts
+  s_e74d274ac16379::t_8f620f97203fe6 74
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 272-284,316-317
+docs/generated/postgres-schema/README.md
+  s_e74d274ac16379::t_8f620f97203fe6 13,43,80,255,350,663,1005-1009
+  s_e74d274ac16379::t_e25a03fb8e3ae6 1010
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_e74d274ac16379::t_8f620f97203fe6 227,230-241,296-297,301,339-344
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_e74d274ac16379::t_8f620f97203fe6 111
+packages/@n8n/agents/src/sdk/__tests__/agent-mcp-validation.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 4-5,11-32,92-102
+  s_e74d274ac16379::t_1817ae8acb9bdd 103
+docs/generated/sqlite-schema/shared_credentials.md
+  s_e74d274ac16379::t_8f620f97203fe6 67
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-json-utils.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 8-9,744-803
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 343
+packages/@n8n/instance-ai/src/workspace/pack-workspace-sdk.ts
+  s_e74d274ac16379::t_8f620f97203fe6 2-3,9-16,37-40,43-44,50,53-55,62,64,66-69,71,78,83,88,91,104,108,111,117-158
+  s_e74d274ac16379::t_e3a7db65371e17 159
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_e74d274ac16379::t_8f620f97203fe6 39-40,176,185-186,189-191,193,197-205,208-210,213,217,221,224-229
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  s_e74d274ac16379::t_8f620f97203fe6 255-286
+packages/nodes-base/nodes/HttpRequest/HttpRequest.node.ts
+  s_e74d274ac16379::t_8f620f97203fe6 18,34
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_e74d274ac16379::t_8f620f97203fe6 14-15,55-69,79-136,141,150-169,242,245-246,286-346
+  s_e74d274ac16379::t_614e4aea695c0b 347-348
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/update.operation.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-122
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/credential-unnecessary-password.md
+  s_e74d274ac16379::t_8f620f97203fe6 1-46
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_e74d274ac16379::t_8f620f97203fe6 100
+packages/@n8n/eslint-plugin-community-nodes/src/utils/credential-fields.ts
+  s_e74d274ac16379::t_8f620f97203fe6 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d9788815a770b0713714c4b3de5346500ec8772a",
+  "prompts": {},
+  "sessions": {
+    "s_e74d274ac16379": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4db9e29e-4ad4-4c4d-91ef-5133e5ef8103",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

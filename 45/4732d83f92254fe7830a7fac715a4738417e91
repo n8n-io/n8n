@@ -1,0 +1,50 @@
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.test.ts
+  s_d080cd0071e0f4::t_d73dd75b278259 1
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_d080cd0071e0f4::t_2fa7bef2616fa0 25
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_d080cd0071e0f4::t_f2830cde9f2e9d 18-19,24-27,30,41-43
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_d080cd0071e0f4::t_0de767fdc5fada 66,71,91,108,118,128,245,307,324
+  s_d080cd0071e0f4::t_ef04fd266caa17 8
+  s_d080cd0071e0f4::t_7b544820c08351 29,39,45
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_d080cd0071e0f4::t_8853efd17249d6 15
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_d080cd0071e0f4::t_8853efd17249d6 16
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_d080cd0071e0f4::t_656981ea8aff11 5
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_d080cd0071e0f4::t_733d31bb3abab1 56
+  s_d080cd0071e0f4::t_252d8c1f089d7c 8-12,29
+packages/cli/src/services/oauth-token-verifier.ts
+  s_d080cd0071e0f4::t_a40d738c1e33b7 2,28-60
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_d080cd0071e0f4::t_8853efd17249d6 1-2
+packages/cli/src/modules/mcp/mcp.module.ts
+  s_d080cd0071e0f4::t_ed1d937bbb23dc 21
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_d080cd0071e0f4::t_29064d9bf86548 1,9
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_d080cd0071e0f4::t_8be6985758e297 3
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_d080cd0071e0f4::t_2fa7bef2616fa0 18
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_d080cd0071e0f4::t_92fc8a71c9e3df 3,19-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "454732d83f92254fe7830a7fac715a4738417e91",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

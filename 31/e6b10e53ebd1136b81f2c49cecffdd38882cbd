@@ -1,0 +1,22 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_794a1be4bba94d::t_74274516dda1b5 1139
+  s_794a1be4bba94d::t_dfb5865044804b 4635
+  s_794a1be4bba94d::t_526ba2546587fe 4556
+  s_794a1be4bba94d::t_3a9093b73d063f 4455-4457
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31e6b10e53ebd1136b81f2c49cecffdd38882cbd",
+  "prompts": {},
+  "sessions": {
+    "s_794a1be4bba94d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1140a42c-88bd-49d1-8bf3-fc6f97744b2f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

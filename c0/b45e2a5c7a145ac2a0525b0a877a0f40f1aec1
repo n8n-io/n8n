@@ -1,0 +1,118 @@
+packages/@n8n/workflow-sdk/src/workflow-builder/string-utils.ts
+  s_c77c9c67421351::t_c6a79e5fb16d5c 322-323,325-326,337-348,358
+  s_d89ef7d5347224::t_ddf4267a1daede 350-357,359
+packages/cli/src/modules/mcp/tools/workflow-builder/workflow-operations.ts
+  s_d89ef7d5347224::t_c60a65cfd96154 7
+  s_d89ef7d5347224::t_8475d0957a71e4 611-619
+  s_d89ef7d5347224::t_06fb86be3ece61 188-201
+  s_d89ef7d5347224::t_89a8185a3dda14 211-212
+  s_d89ef7d5347224::t_2b05e59e49ffb1 238
+  s_d89ef7d5347224::t_8046d3ce2477c5 674
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowCreate.yml
+  s_d89ef7d5347224::t_85141cbe0a14e6 45-49
+packages/cli/src/workflow-helpers.ts
+  ai_agent 181-183
+  s_d89ef7d5347224::t_9bda8438c36237 210-212
+  s_d89ef7d5347224::t_fa4c9feb95c924 209,214
+  s_d89ef7d5347224::t_9b83ab93e32c12 9,11,13,18,20
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_d89ef7d5347224::t_8a24f91619f8d4 516-587
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_d89ef7d5347224::t_c68ac1cb4653b7 564
+  s_d89ef7d5347224::t_8f1f574a11cbc5 501-514,518,522-529
+  s_d89ef7d5347224::t_63acc8da110e5f 60-61,72
+  ai_agent 83-85
+  s_d89ef7d5347224::t_dc63c2dfabb3f3 10
+  s_d89ef7d5347224::t_6e811590e4c4e1 515-517,519-521
+  s_d89ef7d5347224::t_8a5bc8970fb4c8 1361-1362
+packages/@n8n/workflow-sdk/src/workflow-builder/workflow-import.ts
+  s_d89ef7d5347224::t_5d630f798df425 33-34
+  s_d89ef7d5347224::t_66ef08006c92c4 123-126
+  s_d89ef7d5347224::t_06d154bbc3fbe8 172-184,193
+  s_d89ef7d5347224::t_e5c530c3c9fe0a 45-46
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_d89ef7d5347224::t_1848c570203b13 125-128
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_d89ef7d5347224::t_a6fe68debee473 99,104
+  s_d89ef7d5347224::t_b6e1aee897ad30 73-80
+packages/@n8n/workflow-sdk/src/prompts/sdk-reference/sdk-language.ts
+  s_d89ef7d5347224::t_ccf426b32c7d6b 69-89
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflow.yml
+  s_d89ef7d5347224::t_85141cbe0a14e6 49-53
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowVersion.yml
+  s_d89ef7d5347224::t_85141cbe0a14e6 31-36
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_d89ef7d5347224::t_b768fce28e25d5 276-294
+  s_d89ef7d5347224::t_d3182c2f07ee2e 24
+packages/@n8n/workflow-sdk/src/node-groups.test.ts
+  s_d89ef7d5347224::t_c8246c1eb0e368 1-56,58-70,72-99,120-159,163-195
+  ai_agent 57,71,111,160-162
+  s_d89ef7d5347224::t_8ceb840112cfd2 100-110,112-119
+packages/@n8n/workflow-sdk/src/ast-interpreter/validators.ts
+  s_d89ef7d5347224::t_69ab995d23c7b1 85
+packages/@n8n/workflow-sdk/src/codegen/code-generator.ts
+  s_d89ef7d5347224::t_f6c06a322279da 1449-1465
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_d89ef7d5347224::t_d67f8705c90770 121-130
+  s_d89ef7d5347224::t_11f62422d002d7 52
+  s_d89ef7d5347224::t_98162cdd7c7642 357-360,369
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_d89ef7d5347224::t_f58172da6a2576 1506-1553
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowNodeGroup.yml
+  s_d89ef7d5347224::t_ba1d6afedc3c8c 1-20
+packages/cli/src/public-api/v1/shared/spec/schemas/_index.yml
+  s_d89ef7d5347224::t_2c37b9a4674317 9-10
+packages/cli/src/modules/mcp/__tests__/workflow-operations.test.ts
+  s_d89ef7d5347224::t_58f4ae2a98994f 874-881,885-933
+  ai_agent 882-884
+  s_d89ef7d5347224::t_c4183f9598cba3 6
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_d89ef7d5347224::t_ba11cf6396453d 786-788
+  s_d89ef7d5347224::t_c9a7d118029300 3161
+  s_d89ef7d5347224::t_72433cb9439a70 593-595,684-686
+packages/@n8n/workflow-sdk/src/types/base.ts
+  s_d89ef7d5347224::t_c57ae7b53f2d15 7-8,12
+  s_d89ef7d5347224::t_7ad558d75ef397 337-342
+  s_d89ef7d5347224::t_26dafb8d721344 1014-1023
+  s_d89ef7d5347224::t_95cfdc70c16dc6 1097-1114
+packages/cli/src/workflows/workflow.service.ts
+  s_d89ef7d5347224::t_88b8a0b4cc5acf 396-400,403
+  s_d89ef7d5347224::t_12a6fdbc1835ad 415-427
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_d89ef7d5347224::t_1542825d2423ac 354-360
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_d89ef7d5347224::t_1b5d3f16cc6c39 192,202
+  s_d89ef7d5347224::t_034d7cc0db6b83 221
+  s_d89ef7d5347224::t_74e61171d14482 339,341-342,344-345
+  s_d89ef7d5347224::t_86ca4da07c6828 340,343
+  s_d89ef7d5347224::t_43a59800fb8f0f 348-372
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/activeVersion.yml
+  s_d89ef7d5347224::t_85141cbe0a14e6 25-30
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_d89ef7d5347224::t_5d00e0401d9cc8 167
+  s_d89ef7d5347224::t_af544866ae4d65 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c0b45e2a5c7a145ac2a0525b0a877a0f40f1aec1",
+  "prompts": {},
+  "sessions": {
+    "s_c77c9c67421351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd7b1752-695a-4039-902a-08408f1d312e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    },
+    "s_d89ef7d5347224": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57247f3f-fd52-4322-ad91-92156bcb4f0d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

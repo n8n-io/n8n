@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/RoleHoverPopover.test.ts
+  s_17f4bd024238e4::t_1b399af72206ca 95
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_17f4bd024238e4::t_d580ddb5e49c11 1180
+  s_17f4bd024238e4::t_0d96a3fc1ee079 1153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "952d72c131a3e2acba886ea1b277f40a32fca6db",
+  "prompts": {},
+  "sessions": {
+    "s_17f4bd024238e4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8c94e547-f111-498a-aa11-262ed3929bb1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

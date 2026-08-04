@@ -1,0 +1,19 @@
+packages/cli/test/integration/task-runners/task-runner-process.test.ts
+  s_e13999f349af77::t_9ee270b7622ab7 87-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "21f04f69cd0ef9ddab114a12bb28d933a4485d29",
+  "prompts": {},
+  "sessions": {
+    "s_e13999f349af77": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d92055f-8d29-4cd1-a150-353f16e20f48",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

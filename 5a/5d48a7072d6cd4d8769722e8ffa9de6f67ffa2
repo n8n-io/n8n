@@ -1,0 +1,44 @@
+packages/@n8n/instance-ai/src/workspace/__tests__/lazy-runtime-workspace.test.ts
+  s_992f408b182e30::t_cc13358f0a54f6 191
+  s_992f408b182e30::t_d557a306353c1c 174-177,180-182,187-189,192,197-198
+  s_992f408b182e30::t_4fe70a27ff8232 173,178-179,183-186,190,193-196
+packages/@n8n/agents/src/workspace/sandbox/index.ts
+  s_992f408b182e30::t_1699fb0f6b98d2 13
+  s_992f408b182e30::t_0494f1f7562954 12
+packages/@n8n/agents/src/__tests__/workspace/sandbox/workspace-root.test.ts
+  s_992f408b182e30::t_871c474112cc9a 5,21-27
+packages/@n8n/agents/src/workspace/sandbox/workspace-root.ts
+  s_992f408b182e30::t_1604811100e598 19-34
+  s_992f408b182e30::t_2e997229e2988d 35-50
+packages/@n8n/instance-ai/src/index.ts
+  s_992f408b182e30::t_e974bc6ed0fb5b 442-443
+  s_992f408b182e30::t_da08734ba91b1b 444-445
+packages/@n8n/instance-ai/src/workspace/lazy-runtime-workspace.ts
+  s_992f408b182e30::t_27c93cd9cda44f 194-199
+  s_992f408b182e30::t_3caae7769a8d84 45-46,53-54
+  s_992f408b182e30::t_d9c754c19bba61 27-31,34-35
+  s_992f408b182e30::t_94de2767b65dfb 162-165
+  s_992f408b182e30::t_3f84a550ccc485 26,32-33
+  s_992f408b182e30::t_0f971f124c16b5 270-273
+  s_992f408b182e30::t_2500abaa538c42 326-332
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_992f408b182e30::t_c2b59eed651335 1941-1945
+  s_992f408b182e30::t_06e59ca325b430 29
+  s_992f408b182e30::t_331297793317b0 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5a5d48a7072d6cd4d8769722e8ffa9de6f67ffa2",
+  "prompts": {},
+  "sessions": {
+    "s_992f408b182e30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c629714-9cb2-4bc1-bc69-9a12458bfbaf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

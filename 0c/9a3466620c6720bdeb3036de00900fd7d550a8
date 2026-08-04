@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.vue
+  s_1fe7bfa2338c7c::t_2dc7ce49c11561 119,122-123,125
+  s_1fe7bfa2338c7c::t_94875918dfa720 118,120-121,124,126-127,132
+  s_1fe7bfa2338c7c::t_7e7d14a2d82163 11
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsDashboard.test.ts
+  s_1fe7bfa2338c7c::t_80b9f6dc6731f8 733-743,747,749-751
+  s_1fe7bfa2338c7c::t_b189b69e9d0754 268-307,319
+  s_1fe7bfa2338c7c::t_21624375cd4a34 84
+  s_1fe7bfa2338c7c::t_5aa77172a52ae3 725-732,744-746,748,752-753
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "0c9a3466620c6720bdeb3036de00900fd7d550a8",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1fe7bfa2338c7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4134d54-40d0-4fd3-be10-2da86040ea09",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

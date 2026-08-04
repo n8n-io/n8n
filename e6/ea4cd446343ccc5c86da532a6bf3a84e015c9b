@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_d2f51f65588286::t_fad04c315a6179 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "e6ea4cd446343ccc5c86da532a6bf3a84e015c9b",
+  "prompts": {},
+  "sessions": {
+    "s_d2f51f65588286": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1b507ab-747c-4626-93f3-b7482ef31b97",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

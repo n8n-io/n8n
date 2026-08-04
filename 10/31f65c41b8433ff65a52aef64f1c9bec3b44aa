@@ -1,0 +1,31 @@
+packages/cli/src/modules/mcp/tools/workflow-builder/validate-node.tool.ts
+  b2b88cac62e4c060 78-79,88
+packages/cli/src/modules/mcp/__tests__/workflow-validation.utils.test.ts
+  b2b88cac62e4c060 23
+packages/testing/playwright/tests/e2e/mcp/mcp-service.spec.ts
+  b2b88cac62e4c060 9,23
+packages/cli/src/modules/mcp/tools/workflow-builder/connection-structure-check.ts
+  b2b88cac62e4c060 154-155
+packages/workflow/src/node-grouping-validation.ts
+  b2b88cac62e4c060 214
+packages/cli/src/modules/mcp/__tests__/create-workflow-from-code.tool.test.ts
+  b2b88cac62e4c060 281-339,1011-1049,1051-1052,1054,1056,1059-1071,1074,1084,1088,1090,1102,1115-1129,1131-1142,1144-1147,1157-1160,1162-1167
+packages/cli/src/modules/mcp/tools/workflow-validation.utils.ts
+  b2b88cac62e4c060 7,28
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/parse-validate-handler.test.ts
+  b2b88cac62e4c060 107-110,139-140,200-203
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  b2b88cac62e4c060 96,98,100,102
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/types.ts
+  b2b88cac62e4c060 81-87
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/parse-validate-handler.ts
+  b2b88cac62e4c060 59-67,229-233,245,275,306
+packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts
+  b2b88cac62e4c060 5,13,41-44,65,188-189,273-336,530
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1031f65c41b8433ff65a52aef64f1c9bec3b44aa",
+  "prompts": {}
+}

@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiChannelSetup.vue
+  s_81a7b3dfd1f412::t_c9bd1c2aeb377c 119-123
+  s_81a7b3dfd1f412::t_35d0038742438e 52-71,85,87
+  s_81a7b3dfd1f412::t_c827ef0e9fa703 5,9-10
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiChannelSetup.test.ts
+  s_81a7b3dfd1f412::t_3e474cc088738e 213-243
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChannelSetup.ts
+  s_81a7b3dfd1f412::t_79c1caee6302b2 44,85,236-242
+  s_81a7b3dfd1f412::t_61c91921cc5519 17
+  s_81a7b3dfd1f412::t_2bdca6d3d00978 1-16,18-43,45-84,86-235,243-269
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_81a7b3dfd1f412::t_b5a8cedbe243e1 98-118,124
+  s_81a7b3dfd1f412::t_f09ca2b8006b02 208-210
+  s_81a7b3dfd1f412::t_938974bae24b9b 15
+  s_81a7b3dfd1f412::t_fed306442a1a2a 125-126
+  s_81a7b3dfd1f412::t_9d44d4276b33fb 211-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "eee4a50cec82b4c73018d0dd628a09045ee6d5ce",
+  "prompts": {},
+  "sessions": {
+    "s_81a7b3dfd1f412": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f423b-0e52-7c21-be92-8fde7fd2b611",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

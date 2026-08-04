@@ -1,0 +1,25 @@
+packages/@n8n/config/src/configs/package-import.config.ts
+  s_f92fc24510291c::t_f1efeba09174b5 7,9,11,13,15,17,19,21
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_f92fc24510291c::t_65a18a700824bc 2,6,9,15,17-23,46-53,58,64-68,76-83,93-94,96,125-127,136,154-156,246,328-331,374-376,389-392,394,409-410,426-512
+packages/cli/src/modules/n8n-packages/io/__tests__/utils/raw-tar-builder.ts
+  s_f92fc24510291c::t_f1efeba09174b5 1,6,16-20,25-33,35-38,42-45,48-51
+packages/@n8n/config/src/index.ts
+  s_f92fc24510291c::t_f1efeba09174b5 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d30813d0ff077cba7da2a8adb340d48bc74f0a26",
+  "prompts": {},
+  "sessions": {
+    "s_f92fc24510291c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b385e69-5a11-4569-bd9f-745a14d5d4a0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

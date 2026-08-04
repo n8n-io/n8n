@@ -1,0 +1,74 @@
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/createGetAllOperation.ts
+  s_d57dc1bdefde8e::t_d5ca097c5e6358 1-132
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableGetAll.sp.test.ts
+  s_d57dc1bdefde8e::t_9aee38bdc97321 1-31
+  s_d57dc1bdefde8e::t_0734396273f43a 32-33
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/worksheet/getAll.operation.ts
+  s_d57dc1bdefde8e::t_cbb864f5721269 2
+  s_d57dc1bdefde8e::t_ef2bd7394b0431 1,3-7
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/MicrosoftExcelSharePoint.node.ts
+  s_d57dc1bdefde8e::t_91818bdd923a34 9-10,12
+  s_d57dc1bdefde8e::t_b2ff3d5f063f35 85-88,103-108,118-137,140-141,145-146,155-160
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheetGetAll.harness.test.ts
+  s_d57dc1bdefde8e::t_7bbcffaff1ccff 1-54
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/constants.ts
+  s_d57dc1bdefde8e::t_b345290b23c5c5 13-20
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheetGetAll.workflow.json
+  s_d57dc1bdefde8e::t_28ec65e465287c 1-69
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/utils.ts
+  s_d57dc1bdefde8e::t_d37228104692dd 35-39
+  s_d57dc1bdefde8e::t_6c8c274ea2ba1a 41
+  s_d57dc1bdefde8e::t_214c2d1df369fd 1,4,9
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/transport.test.ts
+  s_d57dc1bdefde8e::t_64a54279c201c6 160-205
+  s_d57dc1bdefde8e::t_0c18afdc222959 7
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/actions/table/getAll.operation.ts
+  s_d57dc1bdefde8e::t_a2292c5f7821f0 1,3-7
+  s_d57dc1bdefde8e::t_4f3f767ec2e4cd 2
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/methods/listSearch.test.ts
+  s_d57dc1bdefde8e::t_ffffd7f8bc479a 1-135
+  s_d57dc1bdefde8e::t_8fdd7ab0f98826 136-137
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableGetAll.harness.test.ts
+  s_d57dc1bdefde8e::t_08c9a305036e61 1-35
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableGetAll.workflow.json
+  s_d57dc1bdefde8e::t_9f6f4fb20aadab 1-77
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/table/getAll.test.ts
+  s_d57dc1bdefde8e::t_4202da5bca97f1 10-13,19
+  s_d57dc1bdefde8e::t_22a01ed0494b93 1-9,14-18,20-31,33-79,81,83-85,88-122
+  s_d57dc1bdefde8e::t_daaa8833335b7e 80,82,86-87
+  s_d57dc1bdefde8e::t_f9486f8e66d3bc 32
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/helpers/listSearch.ts
+  s_d57dc1bdefde8e::t_a35548e79b8c81 1-37
+  s_d57dc1bdefde8e::t_284e28cc57ac6d 38-41
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/methods/listSearch.ts
+  s_d57dc1bdefde8e::t_ff3df9a471b346 1-41
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/worksheet/getAll.test.ts
+  s_d57dc1bdefde8e::t_651d3db7143002 10-13,19
+  s_d57dc1bdefde8e::t_ce821b89304a9e 32
+  s_d57dc1bdefde8e::t_ae55899a4e432a 80,82,86-87
+  s_d57dc1bdefde8e::t_6c49f60e3dc129 1-9,14-18,20-31,33-79,81,83-85,88-122
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/test/tableGetAll.sp.workflow.json
+  s_d57dc1bdefde8e::t_4ddde6b1d5d641 1-71
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/descriptions/common.descriptions.ts
+  s_d57dc1bdefde8e::t_27ddf76e37721c 3-4
+  s_d57dc1bdefde8e::t_d3fa08d71056d8 121-122
+  s_d57dc1bdefde8e::t_3c2e406f920321 77,80-88,97-120
+packages/nodes-base/nodes/Microsoft/ExcelSharePoint/transport/index.ts
+  s_d57dc1bdefde8e::t_5ae16475227d10 47-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e51752a01a1185e3b274dd32008e4c80f8d98f49",
+  "prompts": {},
+  "sessions": {
+    "s_d57dc1bdefde8e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7bb02aa9-ecfd-4bd9-ad13-9c30e50de22b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

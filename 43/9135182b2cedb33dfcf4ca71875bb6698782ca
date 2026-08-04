@@ -1,0 +1,90 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_e147ac69a1b555::t_9c44d83c971994 72
+  s_e147ac69a1b555::t_8c4eade12d784c 181
+packages/cli/src/modules/agents/goal-graph/create-goal-graph-runtime.ts
+  s_e147ac69a1b555::t_e451935a032e71 1-5,7,9-10,17-29,32-35,37-95,102-103,15
+  s_e147ac69a1b555::t_d4c788bae751a6 6
+  ai_agent 36
+  s_e147ac69a1b555::t_668e019817b39f 96,16,97-101
+  s_e147ac69a1b555::t_ce9da3ebbb907a 8,11-14
+  s_e147ac69a1b555::t_73efc542a9feda 30-31
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e147ac69a1b555::t_0c4be6eccb5a28 7116-7117
+  s_e147ac69a1b555::t_65af0e4f2566e2 7118-7124
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewChatPage.vue
+  s_e147ac69a1b555::t_ed69a557b7a07f 2,12,22,25,27,59-84,86,90-91,93-103,106,163-170,189-200
+  s_e147ac69a1b555::t_7ec7e1f1b4eda1 85
+packages/cli/src/modules/agents/goal-graph/index.ts
+  s_e147ac69a1b555::t_81142e7e91e63c 1-5,7-13,15
+  s_e147ac69a1b555::t_09286a6be8ab51 6
+  s_e147ac69a1b555::t_c13570446f9ea2 14
+packages/frontend/editor-ui/src/features/agents/components/goal-graph/AgentGoalGraphCanvas.vue
+  s_e147ac69a1b555::t_c6166237a64b57 1,4-6,8-54,56-70,72-96,102-109,115-127,129-131,136-148,151-153,155,158-168,173-174,184-185,195-233,238,250-253,258-267,275-278,288,293,298-305,313-314,322-327,334,339-345,375-550,552-555,559-563,565,578-601,603,606-608,615-617,623-626,644-648,650-664,667-679,681-686,688-691,693-695,697-699,703-709,712-713
+  s_e147ac69a1b555::t_b4b2e1837ec886 2-3,7
+  s_e147ac69a1b555::t_7ba9b5ca128f1e 55,71
+  ai_agent 97-101,110-114,132-135,169-172,175-183,186-194,234-237,239-249,254-257,268-274,279-287,289-292,294-297,315-321,328-333,335-338,361-366
+  s_e147ac69a1b555::t_f936dd95b7a5c1 128
+  s_e147ac69a1b555::t_72009879cacb38 149-150,154,156-157
+  s_e147ac69a1b555::t_cb8cafed53f732 306-312
+  s_e147ac69a1b555::t_2df526cac472e6 346-360,367-374
+  s_e147ac69a1b555::t_5ba397fa239990 551,556-558,564,566-577
+  s_e147ac69a1b555::t_4fd24f34164afb 602,604-605,609-614,618-622,627-643,649,665-666,680,687,692,696,700-702,710-711
+packages/frontend/editor-ui/src/features/agents/components/goal-graph/goalGraphLayout.ts
+  s_e147ac69a1b555::t_2396b5141f9b8d 1-16,23-83,85-107
+  s_e147ac69a1b555::t_7ed2774e74a92e 17-22
+  s_e147ac69a1b555::t_4a48439986ccb1 84
+packages/cli/src/modules/agents/goal-graph/expressions.ts
+  s_e147ac69a1b555::t_cdc34d5d3f9dcd 1-3,5-8,10-39,41-104,108-110,114,118-122,140,165
+  s_e147ac69a1b555::t_ea71cf085787f3 4
+  s_e147ac69a1b555::t_7f2e4893d22172 9
+  s_e147ac69a1b555::t_bb0e586b9a021b 40
+  s_e147ac69a1b555::t_f2228a23f168f7 105-107,111-113,115-117
+  s_e147ac69a1b555::t_731aed7bb008f9 123-126
+  s_e147ac69a1b555::t_18b2b7552124fd 127-139,141-164
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_e147ac69a1b555::t_48d37fa705bec2 34-35,39-45
+  s_e147ac69a1b555::t_7d3eeae1fd1935 74,94,38,49,78,95-100,102-106,108-109,112-119,121-131
+  s_e147ac69a1b555::t_9356179dc850fc 456,461-465,120
+  s_e147ac69a1b555::t_45839eebe1a995 9
+  s_e147ac69a1b555::t_1b49e394a22d3c 36-37,46-47
+  s_e147ac69a1b555::t_6973e3a9fc863c 48,75-77
+  s_e147ac69a1b555::t_3d059f9e2da757 101,107,110-111
+  s_e147ac69a1b555::t_07c32cc6af18b2 141-144
+  s_e147ac69a1b555::t_0599a615828e46 353
+  s_e147ac69a1b555::t_773beaa5c56767 373
+  s_e147ac69a1b555::t_a130a81d296d28 457-460
+  s_e147ac69a1b555::t_b0bfed3ca24cf0 530-535
+  s_e147ac69a1b555::t_1191126c43d751 753
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_e147ac69a1b555::t_956f1826c752c7 37
+packages/cli/src/modules/agents/goal-graph/__tests__/validate-goal-graph-config.test.ts
+  s_e147ac69a1b555::t_49799d5c60a9f2 1-2,4-72
+  s_e147ac69a1b555::t_108371a2b3eabe 73-74,75-96
+  s_e147ac69a1b555::t_cd99a2bd77467b 3
+packages/cli/src/modules/agents/goal-graph/__tests__/expressions.test.ts
+  s_e147ac69a1b555::t_1efed761b678cc 1-5,9-60,77,79-80,68,74
+  ai_agent 6-8
+  s_e147ac69a1b555::t_0043424520e4a7 61-67,69-73,75-76,78
+packages/cli/src/modules/agents/goal-graph/validate-goal-graph-config.ts
+  ai_agent 1-11,15-52,79-103,74-78
+  s_e147ac69a1b555::t_396359cb313e28 12-14
+  s_e147ac69a1b555::t_3cb26e27efbfa2 53-73
+packages/frontend/editor-ui/src/features/agents/components/goal-graph/__tests__/goalGraphLayout.test.ts
+  s_e147ac69a1b555::t_62782bb0de358c 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "439135182b2cedb33dfcf4ca71875bb6698782ca",
+  "prompts": {},
+  "sessions": {
+    "s_e147ac69a1b555": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7562036f-e467-4db1-896f-cf0793efaf64",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+packages/cli/src/public-api/v1/handlers/otel/otel.handler.ts
+  s_28e3aecbeec6e1::t_dc47834c1e61ab 6
+  s_28e3aecbeec6e1::t_dc677478e3135a 42-57
+  s_28e3aecbeec6e1::t_47e66a966b4a2b 1-5,7-41,58-85
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_28e3aecbeec6e1::t_82306998e39e5a 258-264
+packages/cli/test/integration/public-api/otel-settings.test.ts
+  s_28e3aecbeec6e1::t_697e3d090b3104 7-8
+  s_28e3aecbeec6e1::t_6f403a41bc07f4 223-286
+  s_28e3aecbeec6e1::t_fca0d4c51b200b 1-6,9-222,287-333
+packages/cli/src/public-api/v1/handlers/otel/spec/paths/settings.otel.test-connection.yml
+  s_28e3aecbeec6e1::t_f36520cc04904f 1-32
+packages/cli/test/integration/shared/types.ts
+  s_28e3aecbeec6e1::t_52d68bc84bf70c 25
+packages/cli/src/public-api/v1/handlers/otel/spec/paths/settings.otel.yml
+  s_28e3aecbeec6e1::t_c82c507386c4a6 33-35
+  s_28e3aecbeec6e1::t_eec54294c72208 1-32,36-55
+  s_28e3aecbeec6e1::t_191107fd4e8a28 56-57
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-settings.yml
+  s_28e3aecbeec6e1::t_8304913f184229 1-39,45-71
+  s_28e3aecbeec6e1::t_334c3a8b503ab0 40-44
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-test-connection-result.yml
+  s_28e3aecbeec6e1::t_e0df96b4521d27 1-15
+packages/cli/src/public-api/v1/openapi.yml
+  s_28e3aecbeec6e1::t_0787a6bad95e16 72-75
+  s_28e3aecbeec6e1::t_c80a67db1a4a4d 52-53
+packages/cli/src/public-api/v1/handlers/otel/otel.mapper.ts
+  s_28e3aecbeec6e1::t_51ca9c606c56fd 1-27
+packages/@n8n/api-types/src/dto/otel/__tests__/update-otel-settings.dto.test.ts
+  ai_agent 37-40
+  s_28e3aecbeec6e1::t_ef125bcfa9f661 1-36,41-73
+packages/cli/src/public-api/types.ts
+  s_28e3aecbeec6e1::t_777279ff94933f 12-13
+  s_28e3aecbeec6e1::t_9b81727cc79d33 424-433
+packages/@n8n/permissions/src/constants.ee.ts
+  s_28e3aecbeec6e1::t_ee5f3833bd32a3 95
+packages/cli/src/public-api/v1/handlers/otel/spec/schemas/otel-test-connection.yml
+  s_28e3aecbeec6e1::t_e54c5392f1712a 1-29,35-39
+  s_28e3aecbeec6e1::t_1dda5450d1c18d 30-34
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_28e3aecbeec6e1::t_acbb800eb40a6a 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "82e79ed5289f68c51a6abc5a7a08e8ad3fda0c6b",
+  "prompts": {},
+  "sessions": {
+    "s_28e3aecbeec6e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8838811c-a7e8-4192-b146-69d6c6738eb1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

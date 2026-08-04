@@ -1,0 +1,61 @@
+packages/@n8n/utils/src/create-event-queue.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 1
+packages/frontend/editor-ui/src/features/execution/insights/components/InsightsSummary.vue
+  s_41f082141e3fb9::t_bd2f9323095321 13
+packages/@n8n/utils/src/search/sublime-search.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 1,3
+packages/frontend/editor-ui/src/features/execution/insights/chartjs.utils.ts
+  s_41f082141e3fb9::t_bd2f9323095321 4
+packages/frontend/editor-ui/src/features/execution/insights/components/tables/InsightsTableWorkflows.vue
+  s_41f082141e3fb9::t_bd2f9323095321 11
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerCard.vue
+  s_41f082141e3fb9::t_bd2f9323095321 11
+packages/@n8n/utils/src/get-jwt-expiry.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 3
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_41f082141e3fb9::t_bd2f9323095321 30
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_41f082141e3fb9::t_bd2f9323095321 7
+packages/@n8n/utils/eslint.config.mjs
+  s_41f082141e3fb9::t_a7b4255cc203f8 9
+packages/frontend/editor-ui/src/features/execution/insights/components/charts/InsightsChartFailureRate.vue
+  s_41f082141e3fb9::t_bd2f9323095321 9
+packages/frontend/editor-ui/src/features/execution/insights/components/charts/InsightsChartAverageRuntime.vue
+  s_41f082141e3fb9::t_bd2f9323095321 12
+packages/@n8n/utils/src/sort/sort-by-property.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 1
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_41f082141e3fb9::t_bd2f9323095321 35-36
+packages/@n8n/utils/src/search/re-rank-search-results.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 1,3
+packages/frontend/@n8n/design-system/src/directives/n8n-smart-decimal.ts
+  s_41f082141e3fb9::t_bd2f9323095321 1
+packages/@n8n/utils/src/files/sanitize-filename.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 3
+packages/@n8n/utils/src/index.ts
+  s_41f082141e3fb9::t_feb6ee08b5639e 3,5-9,11-12,14,17
+packages/@n8n/utils/src/number/smart-decimal.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 1
+packages/@n8n/utils/src/files/is-windows-file-path.test.ts
+  s_41f082141e3fb9::t_8219cdad6f4bbb 3
+packages/frontend/editor-ui/src/features/execution/insights/components/charts/InsightsChartFailed.vue
+  s_41f082141e3fb9::t_bd2f9323095321 5
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/components/AppSelectionGrid.vue
+  s_41f082141e3fb9::t_bd2f9323095321 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1b2d66cedbd475fd138714dba7dcc12bb14253c",
+  "prompts": {},
+  "sessions": {
+    "s_41f082141e3fb9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ca2937d-ba08-406c-a402-6ef3a24d917f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

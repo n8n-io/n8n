@@ -1,0 +1,79 @@
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/get-additional-keys.test.ts
+  h_c63dce324dfc7b 7
+packages/cli/test/integration/external-secrets/external-secrets.expression-access.test.ts
+  s_913d6f59b15276::t_18b6b63ebae37f 212
+  s_7daa8186c9b268::t_554db1f202134f 227,229-236,238-267,269-281,283-291
+  s_da8144f22e829f::t_b99e82b11ab1c7 145
+  s_da8144f22e829f::t_2ae030c22d4822 14,49,72-87,122-130,217-218,221,228
+  s_7daa8186c9b268::t_95fda19b928c62 40-48,50-67,88
+  s_da8144f22e829f::t_e04e9017ab1c04 104
+  s_b900d4c0282340::t_17f95b6fa4305a 215
+  s_da8144f22e829f::t_9c227e4a1c88d7 10
+  s_da8144f22e829f::t_adff0c44171082 22
+  s_2915916120870e::t_84199dc2cc9737 5-7,12
+  s_2915916120870e::t_f15ff84d9a66a6 25,30,90,97,100-101,108,120,152-161,163,167-168,180-184,186,188-190,192-197,199-202,204,206
+  s_da8144f22e829f::t_a864846264df55 37
+  s_b900d4c0282340::t_cdd7a33d937ba3 98
+  s_7daa8186c9b268::t_3799afd5378d0a 99,102-103,112-116
+  s_7daa8186c9b268::t_f01c0d0aeb770a 15-21,24,27
+  s_2915916120870e::t_338347b0a2da64 1-4,8-9,13,23,26,28-29,31-35,89,91-96,117-119,121,131-144,146-151,162,187,191,198,203,205,207-210,226,292
+  s_b900d4c0282340::t_5cdd9724f3b23e 164-166,169-179,185
+  h_c63dce324dfc7b 36,68-71,211,213-214,224-225,237,268,282
+  s_da8144f22e829f::t_659038434ffca2 38-39
+  s_da8144f22e829f::t_ad7714881a93ae 219-220
+  s_da8144f22e829f::t_cde672312baad5 11
+  s_da8144f22e829f::t_10b27fe77144bb 222-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "5735d9a6d28ad71a8ed4baf8ffde1d33b7538ee3",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2915916120870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9068cf52-c931-4eac-9cf7-1537f360553b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    },
+    "s_7daa8186c9b268": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a498124-29af-413d-954f-0519aa744bbe",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    },
+    "s_913d6f59b15276": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76e1a3ff-e36c-46ec-a53d-8e6e889ae18d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    },
+    "s_b900d4c0282340": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "490160cb-740b-41b0-925c-8a02cc38bcf4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    },
+    "s_da8144f22e829f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2addffba-88a5-48b3-9df0-2e90f336b5b1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

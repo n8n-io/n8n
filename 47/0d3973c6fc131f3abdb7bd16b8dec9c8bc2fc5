@@ -1,0 +1,19 @@
+packages/nodes-base/credentials/common/aws/utils.ts
+  s_4e4d35fc3c6eda::t_d46248d8190faa 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "470d3973c6fc131f3abdb7bd16b8dec9c8bc2fc5",
+  "prompts": {},
+  "sessions": {
+    "s_4e4d35fc3c6eda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e69715dd-f6fa-4374-9ed1-fc0395f28dac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

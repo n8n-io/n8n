@@ -1,0 +1,104 @@
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.vue
+  s_ef8a5261c3ee87::t_33198bd83ebcf7 10,12,79-84,88,93-94,99-102,104,199
+  s_ef8a5261c3ee87::t_b6c82446bbc34c 78
+  s_ef8a5261c3ee87::t_21afd5e3a625e4 95-98
+  s_ef8a5261c3ee87::t_0f20531cd093f3 103
+  s_ef8a5261c3ee87::t_b131c8704ad2ab 9,11,87,105
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.vue
+  s_93bfa2eb2d7de3::t_e03ba09e01487c 102
+  s_ef8a5261c3ee87::t_8dfc733c61fa2f 176,415,550,622
+  s_ef8a5261c3ee87::t_4de5831ea7bb01 132,155
+  s_93bfa2eb2d7de3::t_d0c62783912cbd 194-196
+  s_93bfa2eb2d7de3::t_c727b66ccb21c8 209-211
+  s_93bfa2eb2d7de3::t_e2f37a06bd002a 224-226
+  s_93bfa2eb2d7de3::t_63cc9c36f26ad9 296-298
+  s_93bfa2eb2d7de3::t_53d1455c27e835 335-337
+  s_ef8a5261c3ee87::t_a58b884c025544 442-443,451
+  s_93bfa2eb2d7de3::t_834e9a7acf0e9a 477-499
+  s_ef8a5261c3ee87::t_bd5d812efbf56c 116,120,129-130,133-137,139-145,153,156-160,162,391-392,394-400
+  s_93bfa2eb2d7de3::t_0697f1a32e3f41 366
+  s_93bfa2eb2d7de3::t_cfbd608c823871 424,426-427,429,433-435
+  s_93bfa2eb2d7de3::t_b77c561c6fe544 138
+  s_ef8a5261c3ee87::t_b993c14a04c791 121,164-165,388,393,412-414
+  s_ef8a5261c3ee87::t_3618c8240b0636 173,416
+  s_93bfa2eb2d7de3::t_604c06d4b48ecc 79,81-84,86-95,97-100
+  s_93bfa2eb2d7de3::t_609380596e8e53 5
+  s_93bfa2eb2d7de3::t_bd9091bef16331 75,80,85,96
+  s_93bfa2eb2d7de3::t_547e80315cb845 8-16
+  s_93bfa2eb2d7de3::t_ee7d910a66208a 161
+  s_ef8a5261c3ee87::t_494080af0c3d16 131,154,401-411
+  s_ef8a5261c3ee87::t_33198bd83ebcf7 19,44-45
+  s_ef8a5261c3ee87::t_801a295e42630f 117-118,167-172,244,257,304-310,390,621,623-625
+  s_93bfa2eb2d7de3::t_4d64730299022f 122-128
+packages/frontend/editor-ui/src/features/shared/banners/components/banners/TrialBanner.test.ts
+  s_ef8a5261c3ee87::t_33198bd83ebcf7 39-40,42-44,51
+  s_ef8a5261c3ee87::t_0f20531cd093f3 41
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_558c1f68befb47::t_fbb076440969b0 183,734-754,764,782
+  s_ef8a5261c3ee87::t_0f20531cd093f3 173,2209-2212,2214
+packages/frontend/editor-ui/src/experiments/trialIntroModal/components/TrialIntroModal.test.ts
+  s_ef8a5261c3ee87::t_8dfc733c61fa2f 114
+  s_93bfa2eb2d7de3::t_acea159c11386d 251
+  s_93bfa2eb2d7de3::t_541429a39d6260 277-284,286-296,298-307,309-334,336-337
+  s_ef8a5261c3ee87::t_58c3536782bc45 116,118
+  s_93bfa2eb2d7de3::t_dabf2e9d34bbca 6
+  s_ef8a5261c3ee87::t_bd5d812efbf56c 15,29,36,72,81,146-153
+  s_93bfa2eb2d7de3::t_9d5854d9ebb843 285,297
+  s_ef8a5261c3ee87::t_801a295e42630f 28,31-35,135-145
+  s_93bfa2eb2d7de3::t_51a374fb10603d 335
+  s_93bfa2eb2d7de3::t_e44dc4d70c147e 308
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ef8a5261c3ee87::t_8dfc733c61fa2f 3329
+packages/frontend/editor-ui/src/app/views/WorkflowsView.test.ts
+  s_558c1f68befb47::t_906c8a20868e9d 13,473,475-478,481-486,488-490
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.test.ts
+  s_93bfa2eb2d7de3::t_b840fe8b04a7ae 45-47
+  s_93bfa2eb2d7de3::t_0a0ac4f14d7821 70
+  s_93bfa2eb2d7de3::t_601daf3dc3a01c 407,422,427-433,463,466,468,488-505
+  s_93bfa2eb2d7de3::t_bb97f384c37f04 421,465,467
+  s_558c1f68befb47::t_d30215170cbe7a 211-231
+  s_93bfa2eb2d7de3::t_18998071dc3750 423-426,434-462,464,469-487
+packages/frontend/editor-ui/src/experiments/trialIntroModal/stores/trialIntroModal.store.ts
+  s_93bfa2eb2d7de3::t_6d0de522100c14 130,132,136
+  s_ef8a5261c3ee87::t_21afd5e3a625e4 61-62,105,113
+  s_93bfa2eb2d7de3::t_276d4b3bc7ca56 128,131,133,135,137,173
+  s_93bfa2eb2d7de3::t_94618b72578e1f 129,134,138-152
+  s_93bfa2eb2d7de3::t_1e7de4f91bd4e5 174
+  s_93bfa2eb2d7de3::t_edd8c6e4248647 28-35
+  s_ef8a5261c3ee87::t_0f20531cd093f3 63,165
+  s_ef8a5261c3ee87::t_59a54594efb8d7 64
+  s_558c1f68befb47::t_0d2b8b22e4c825 65-66,104
+  s_ef8a5261c3ee87::t_33198bd83ebcf7 67,112,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bb65ace1caa446b04f643a0153d3370d58e2297a",
+  "prompts": {},
+  "sessions": {
+    "s_558c1f68befb47": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89ae-7942-7e80-a0d6-9a40c074d8b6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_93bfa2eb2d7de3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08d8eb2b-ca0b-4614-a078-4e0fa184fa9f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    },
+    "s_ef8a5261c3ee87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f858e-628d-7482-b469-6b09d890dfbb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

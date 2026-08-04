@@ -1,0 +1,53 @@
+packages/cli/src/modules/agents/agent-setup-completion.service.ts
+  s_b46dfbf0288c6a::t_fb85c9e5033145 11,19-20,28-32,39
+  s_b46dfbf0288c6a::t_0ffea82fd67774 126
+  s_b46dfbf0288c6a::t_ad509466147772 63
+  s_b46dfbf0288c6a::t_baf134239270ff 85
+  s_b46dfbf0288c6a::t_43f085fd51dca0 93,99,101,103,105-106
+  s_b46dfbf0288c6a::t_2ae0fd1af1006e 102,104
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_b46dfbf0288c6a::t_3f9237a1026353 242-243
+  s_b46dfbf0288c6a::t_31f758de57683d 253
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_b46dfbf0288c6a::t_70d843b453b775 186
+  s_b46dfbf0288c6a::t_e25cbecaae83cf 140
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_b46dfbf0288c6a::t_4bd7b3eda33701 668
+  s_b46dfbf0288c6a::t_d623c2446341c7 86
+  s_b46dfbf0288c6a::t_5281c6f7e6d773 66
+  s_b46dfbf0288c6a::t_57a344b84684e8 637
+  s_b46dfbf0288c6a::t_4dcc9a3a49b4d7 647
+packages/cli/src/modules/agents/__tests__/agent-setup-completion.service.test.ts
+  s_b46dfbf0288c6a::t_2d07a626191ceb 77-78,83-84
+  s_b46dfbf0288c6a::t_4462a5bbfd64b0 102-104,106-118
+  s_b46dfbf0288c6a::t_6895f3fa0fd207 65-66
+  s_b46dfbf0288c6a::t_89f74caa8c3597 12
+  s_b46dfbf0288c6a::t_e69d9e8c89f410 49
+  s_b46dfbf0288c6a::t_74b8ea7adbd414 81
+  s_b46dfbf0288c6a::t_fea63fbf77f1d8 105
+  s_b46dfbf0288c6a::t_cef8bb99f1e78f 42,48,52,55
+  s_b46dfbf0288c6a::t_54014add6588c4 192,207
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_b46dfbf0288c6a::t_ade6b77639aac1 3
+  s_b46dfbf0288c6a::t_a9701dfe0fd0ad 210-220
+  s_b46dfbf0288c6a::t_f17e27c6495231 221-223
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_b46dfbf0288c6a::t_39a1b19e073b94 119
+  s_b46dfbf0288c6a::t_b3dcfe3d4af655 151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "1d3dda0bffa98e70a6f78387d891277d53a38a13",
+  "prompts": {},
+  "sessions": {
+    "s_b46dfbf0288c6a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b6b39429-e783-485e-8343-d66a3e6781d3",
+        "model": "claude-opus-5-thinking-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

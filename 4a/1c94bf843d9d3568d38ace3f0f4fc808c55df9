@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyScopes.vue
+  s_03493995b85f3a::t_5797d8501fd87f 215
+  s_03493995b85f3a::t_abe2715b1411bd 173
+packages/frontend/editor-ui/src/features/settings/apiKeys/apiKeys.constants.ts
+  s_03493995b85f3a::t_3571b5ab3a2758 23-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "4a1c94bf843d9d3568d38ace3f0f4fc808c55df9",
+  "prompts": {},
+  "sessions": {
+    "s_03493995b85f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59ef906-85f1-48b6-bc09-9185151a943a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

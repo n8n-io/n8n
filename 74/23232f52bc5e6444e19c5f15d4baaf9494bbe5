@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_7d5b418df88cbb::t_1ea71555483615 128-140
+  s_7d5b418df88cbb::t_d9bf826b27b98a 83,89
+  s_7d5b418df88cbb::t_e691fc39babaf1 158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7423232f52bc5e6444e19c5f15d4baaf9494bbe5",
+  "prompts": {},
+  "sessions": {
+    "s_7d5b418df88cbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c084e852-91a7-4f75-9fe0-e9fe131514c6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

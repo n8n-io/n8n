@@ -1,0 +1,35 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpTrigger.node.ts
+  s_8729a801870f57::t_3a7ed79a993d42 1,21-34,222-225,238-241,279-282
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/__tests__/McpTrigger.node.test.ts
+  s_8729a801870f57::t_a03da5c24d3f97 10-11,304-343
+packages/cli/src/__tests__/utils.test.ts
+  s_8729a801870f57::t_2136b687aaf359 2
+packages/cli/src/utils.ts
+  s_8729a801870f57::t_fa8e325feb16bf 177
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_8729a801870f57::t_76ce83626faf1e 106-109
+packages/workflow/src/expression.ts
+  s_8729a801870f57::t_6ff81552805e5a 292-301
+packages/workflow/src/interfaces.ts
+  s_8729a801870f57::t_4183d783b7762a 1524-1528
+packages/workflow/src/workflow-expression.ts
+  s_8729a801870f57::t_a3bdfc07ddb0b4 281-284
+packages/workflow/test/expression.test.ts
+  s_8729a801870f57::t_5f1512649db844 1402-1444
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "213977a881852c7d47c123246dfa1b8b0bf7c289",
+  "prompts": {},
+  "sessions": {
+    "s_8729a801870f57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8729a801870f57",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

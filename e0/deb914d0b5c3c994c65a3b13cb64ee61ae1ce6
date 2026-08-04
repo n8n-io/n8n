@@ -1,0 +1,49 @@
+.github/WORKFLOWS.md
+  s_d8ed300529e078::t_1a397d8c44de25 182
+.github/workflows/util-sync-api-docs.yml
+  s_d8ed300529e078::t_badb5fac4e1b44 12-17,42-46,116-119
+packages/@n8n/api-types/src/dto/data-table/list-data-table-query.dto.ts
+  s_d8ed300529e078::t_39d2ca1cf8fd4c 64-65
+packages/@n8n/api-types/src/dto/data-table/public-api-create-data-table.dto.ts
+  s_d8ed300529e078::t_8a05912396d0a5 9,12-17
+packages/@n8n/api-types/src/schemas/data-table.schema.ts
+  s_d8ed300529e078::t_c2115925ae811a 7-12,29-33
+packages/cli/package.json
+  s_d8ed300529e078::t_78b0ef0de85dd1 281
+packages/cli/scripts/build.mjs
+  s_d8ed300529e078::t_d09ba09fc3cc7b 3,24-28,67-90
+packages/cli/src/public-api/v1/handlers/data-tables/spec/schemas/createDataTableRequest.generated.yml
+  s_d8ed300529e078::t_cec8f94f2ad40a 1-43
+packages/cli/src/public-api/v1/openapi-gen/data-tables.path.ts
+  s_d8ed300529e078::t_97de5944e14c56 1-134
+packages/cli/src/public-api/v1/openapi-gen/data-tables.schemas.ts
+  s_d8ed300529e078::t_3b23aea38a77eb 1-15
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_d8ed300529e078::t_83265e72028957 1-101
+packages/cli/src/public-api/v1/openapi-gen/zod-extend.ts
+  s_d8ed300529e078::t_e743369a050164 1-8
+packages/cli/src/public-api/v1/openapi.yml
+  s_d8ed300529e078::t_bd193df41a5938 137
+pnpm-workspace.yaml
+  s_d8ed300529e078::t_8df16343c8fc21 213
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/data-tables.generated.yml
+  s_d8ed300529e078::t_3071d5a3b6b845 1-105
+pnpm-lock.yaml
+  s_d8ed300529e078::t_e8c8cebf0cf2b0 546-548,4316-4318,22665-22670,42334-42337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e0deb914d0b5c3c994c65a3b13cb64ee61ae1ce6",
+  "prompts": {},
+  "sessions": {
+    "s_d8ed300529e078": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eecbddea-2084-4432-846e-23aea5392cb3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

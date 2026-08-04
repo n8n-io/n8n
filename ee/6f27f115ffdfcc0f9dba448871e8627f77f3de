@@ -1,0 +1,25 @@
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
+  s_2a235a6e9347be::t_d664c830aa7f1c 19,23-24,26-29,31
+packages/cli/test/migration/1784000000049-create-workflow-review-request-tables.test.ts
+  s_2a235a6e9347be::t_d664c830aa7f1c 135,240,244-254
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_2a235a6e9347be::t_d664c830aa7f1c 385
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  s_2a235a6e9347be::t_d664c830aa7f1c 5,20-21,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ee6f27f115ffdfcc0f9dba448871e8627f77f3de",
+  "prompts": {},
+  "sessions": {
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

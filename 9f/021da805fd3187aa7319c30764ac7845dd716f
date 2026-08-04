@@ -1,0 +1,137 @@
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 46,111-112,136,144,179
+packages/@n8n/instance-ai/src/workspace/pack-workspace-sdk.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 2-3,9-16,37-40,43-44,50,53-55,62,64,66-69,71,78,83,88,91,104,108,111,117-157
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_11ba49d204ef08::t_03c3b943f4e153 9,18,24,37,59,75,139-143
+docs/generated/sqlite-schema/credentials_entity.md
+  s_11ba49d204ef08::t_03c3b943f4e153 9,20,29,35,59,75,139-143
+docs/generated/postgres-schema/public.dynamic_credential_resolver.md
+  s_11ba49d204ef08::t_03c3b943f4e153 62
+packages/@n8n/agents/src/types/sdk/provider.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 38-39
+packages/@n8n/instance-ai/src/tools/task-control.tool.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 16-18,98-100
+packages/@n8n/instance-ai/src/workspace/__tests__/sandbox-setup.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 6,38,197,201-204,568-589,598,620,624-625,628-637
+packages/@n8n/instance-ai/src/workspace/sandbox-setup.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 39-40,176,185-186,189-191,193,197-205,208-210,213,217,221,224-229
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 103,215,223,228,231,237-238,241-243,245-248,251,255-257,261,266,283,287,293-295,297-298,316,319-326
+packages/@n8n/instance-ai/src/utils/__tests__/eval-agents.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 106
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 47
+packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 47
+packages/@n8n/instance-ai/src/agent/__tests__/apply-agent-thinking.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 28-31,37-40,49-52
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 640
+packages/nodes-base/nodes/HttpRequest/test/node/HttpRequestV3.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 2-7,10,654-876
+packages/cli/src/modules/mcp-registry/__tests__/mcp-registry-test.controller.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 71,73,75-77
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.discovery.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 2-4,13,26,28,30-32,36,38
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 268-279
+docs/generated/postgres-schema/public.instance_ai_mcp_registry_connections.md
+  s_11ba49d204ef08::t_03c3b943f4e153 67
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 230-231,234-235
+docs/generated/sqlite-schema/shared_credentials.md
+  s_11ba49d204ef08::t_03c3b943f4e153 67
+packages/@n8n/utils/src/json/to-json-value.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 1,3-15,33-36,60-65
+packages/cli/src/modules/mcp-registry/mcp-registry-test.controller.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 39
+packages/cli/src/modules/mcp-registry/mcp-registry.module.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 16
+docs/generated/postgres-schema/public.dynamic_credential_entry.md
+  s_11ba49d204ef08::t_03c3b943f4e153 64
+docs/generated/postgres-schema/public.instance_credential_assignment.md
+  s_11ba49d204ef08::t_03c3b943f4e153 1-61
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 748-755
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_11ba49d204ef08::t_03c3b943f4e153 37-45,49-53,70-79,99-125,739-772,778-781
+docs/generated/sqlite-schema/instance_ai_mcp_registry_connections.md
+  s_11ba49d204ef08::t_03c3b943f4e153 73
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 1
+packages/@n8n/instance-ai/src/tools/research.tool.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 252-257
+packages/@n8n/db/src/migrations/common/1784815940112-CreateAgentEvalTables.ts
+  s_11ba49d204ef08::t_de58fbc3dcaf87 20
+packages/@n8n/utils/src/json/to-json-value.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 1-180
+packages/nodes-base/nodes/HttpRequest/V3/utils/error-details.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 1-68
+docs/generated/sqlite-schema/chat_hub_sessions.md
+  s_11ba49d204ef08::t_03c3b943f4e153 104
+docs/generated/sqlite-schema/chat_hub_agents.md
+  s_11ba49d204ef08::t_03c3b943f4e153 85
+docs/generated/postgres-schema/public.credential_dependency.md
+  s_11ba49d204ef08::t_03c3b943f4e153 60
+docs/generated/postgres-schema/public.chat_hub_agents.md
+  s_11ba49d204ef08::t_03c3b943f4e153 83
+docs/generated/sqlite-schema/dynamic_credential_resolver.md
+  s_11ba49d204ef08::t_03c3b943f4e153 68
+docs/generated/postgres-schema/public.shared_credentials.md
+  s_11ba49d204ef08::t_03c3b943f4e153 59
+docs/generated/sqlite-schema/README.md
+  s_11ba49d204ef08::t_03c3b943f4e153 47,84,249,716,1058-1062
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 36
+packages/@n8n/instance-ai/src/tools/__tests__/research.tool.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 44-52
+docs/generated/sqlite-schema/dynamic_credential_entry.md
+  s_11ba49d204ef08::t_03c3b943f4e153 72
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 39,43-60
+docs/generated/postgres-schema/README.md
+  s_11ba49d204ef08::t_03c3b943f4e153 47,84,266,729,1071-1075
+docs/generated/sqlite-schema/instance_credential_assignment.md
+  s_11ba49d204ef08::t_03c3b943f4e153 1-69
+docs/generated/postgres-schema/public.dynamic_credential_user_entry.md
+  s_11ba49d204ef08::t_03c3b943f4e153 66
+packages/@n8n/instance-ai/skills/planning/SKILL.md
+  s_11ba49d204ef08::t_03c3b943f4e153 58-66,75
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 272-284,316-317
+docs/generated/sqlite-schema/credential_dependency.md
+  s_11ba49d204ef08::t_03c3b943f4e153 65
+packages/@n8n/db/src/migrations/common/1784815940111-AddInstanceCredentials.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 1-47
+packages/nodes-base/nodes/HttpRequest/HttpRequest.node.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 18,34
+packages/nodes-base/nodes/HttpRequest/V3/HttpRequestV3.node.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 52,76,827,882-890
+docs/generated/sqlite-schema/dynamic_credential_user_entry.md
+  s_11ba49d204ef08::t_03c3b943f4e153 74
+packages/@n8n/instance-ai/docs/configuration.md
+  s_11ba49d204ef08::t_03c3b943f4e153 79
+packages/cli/test/migration/1784815940112-create-agent-eval-tables.test.ts
+  s_11ba49d204ef08::t_8f79d230c6d7ee 13
+packages/@n8n/instance-ai/src/tools/__tests__/task-control.tool.test.ts
+  s_11ba49d204ef08::t_03c3b943f4e153 37-45
+docs/generated/postgres-schema/public.chat_hub_sessions.md
+  s_11ba49d204ef08::t_03c3b943f4e153 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9f021da805fd3187aa7319c30764ac7845dd716f",
+  "prompts": {},
+  "sessions": {
+    "s_11ba49d204ef08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59bb11ab-f3bf-4848-ace9-b287f30e1721",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

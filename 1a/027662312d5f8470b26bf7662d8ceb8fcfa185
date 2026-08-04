@@ -1,0 +1,21 @@
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_bb17b049fc2e2d::t_66864f32651b1a 180-186
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_bb17b049fc2e2d::t_c66c48a056f35e 410-472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1a027662312d5f8470b26bf7662d8ceb8fcfa185",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

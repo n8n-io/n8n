@@ -1,0 +1,20 @@
+packages/cli/src/executions/execution-recovery.service.ts
+  s_52a6680ca581de::t_27d05798ed9e3c 15
+  s_52a6680ca581de::t_dac98b464a6358 72-79,81-85,87-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "283c0fa23170adcdfb89b6fc5ec2671859f0130d",
+  "prompts": {},
+  "sessions": {
+    "s_52a6680ca581de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b22a0e5-3b38-4d39-a4e1-9ab25b68e9a0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_874a0c5affc5fe::t_a7dec4330da238 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "66b2e7746407d4303f77eadfeb0e67d37ea20689",
+  "prompts": {},
+  "sessions": {
+    "s_874a0c5affc5fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3d8-256c-7972-b467-0a43adf82ffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

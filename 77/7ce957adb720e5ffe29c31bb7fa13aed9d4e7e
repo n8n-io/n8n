@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-31-sub-agent-hitl-cascade-design.md
+  s_874a0c5affc5fe::t_3a33a167132266 1-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "777ce957adb720e5ffe29c31bb7fa13aed9d4e7e",
+  "prompts": {},
+  "sessions": {
+    "s_874a0c5affc5fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3d8-256c-7972-b467-0a43adf82ffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilder.readonly.test.ts
+  s_798363dfaf6eb7::t_3e753c88aecd60 165-169,181
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_798363dfaf6eb7::t_3e753c88aecd60 286,290,313
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_798363dfaf6eb7::t_3e753c88aecd60 210-215
+  s_798363dfaf6eb7::t_39cfbc82cd2063 216-218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8297c5919de89936cc09d8cdcf4bca9ee895530a",
+  "prompts": {},
+  "sessions": {
+    "s_798363dfaf6eb7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "30b47aba-1944-408e-8f41-4faa5d03f044",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

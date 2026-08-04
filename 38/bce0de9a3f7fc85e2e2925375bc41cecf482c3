@@ -1,0 +1,21 @@
+packages/@n8n/db/src/services/__tests__/db-lock.service.test.ts
+  s_f54320ffeba384::t_58716eaf2dd13d 261-289
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_f54320ffeba384::t_352bfb6bc1f0a0 46-49,98,117-118,120-121,129,203-208,241-243,298-300,303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "38bce0de9a3f7fc85e2e2925375bc41cecf482c3",
+  "prompts": {},
+  "sessions": {
+    "s_f54320ffeba384": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f54320ffeba384",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

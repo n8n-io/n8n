@@ -1,0 +1,67 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_f4037ec3e84992::t_dfbcf2b264a871 27-30
+  s_f4037ec3e84992::t_f005da6b164557 71
+  s_f4037ec3e84992::t_d0d676020485cb 973-1050
+  s_f4037ec3e84992::t_a3bc1742d6e231 1270,1278,1284-1339
+  s_f4037ec3e84992::t_fb95d02424cd5c 1106,1111,1124,1129,1131,1140,1146
+  s_f4037ec3e84992::t_648dce25b531d6 882-889
+packages/@n8n/computer-use/src/gateway-client.test.ts
+  s_f4037ec3e84992::t_4635cda275501c 323-354,357-419
+  s_f4037ec3e84992::t_6e89278281ed9f 355-356
+packages/@n8n/local-gateway/src/main/index.ts
+  s_f4037ec3e84992::t_834617a224e70d 14
+  s_f4037ec3e84992::t_ae8a6d7e5191bd 135-137
+  s_f4037ec3e84992::t_8d6640429feb5c 58-83
+  s_f4037ec3e84992::t_07e7bb145962c2 92-93
+packages/@n8n/local-gateway/src/main/daemon-controller.test.ts
+  s_f4037ec3e84992::t_ef8292e61a31d6 124
+  s_f4037ec3e84992::t_b52fe3b8102ec4 75,77
+  s_f4037ec3e84992::t_a2348690234ca2 76
+  s_f4037ec3e84992::t_8053f98d70fb33 9
+  s_f4037ec3e84992::t_066803e0ad29ed 114,133,163,183,197
+  s_f4037ec3e84992::t_4c3b895624c9b2 175-176
+  s_f4037ec3e84992::t_2c52fc5b2f3fc4 142,156
+  s_f4037ec3e84992::t_204457a6724cc5 122-123,125-130
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_f4037ec3e84992::t_e40a4e2b54abca 22
+  s_f4037ec3e84992::t_f26a8974571d1a 725-727
+  s_f4037ec3e84992::t_e633df9be47f94 805
+  s_f4037ec3e84992::t_9f7e5662ecc6cd 948-997
+  s_f4037ec3e84992::t_871278d2c6b603 779,785
+  s_f4037ec3e84992::t_97c24bd0764327 660
+  s_f4037ec3e84992::t_51a9ec24d791ee 1040-1041
+  s_f4037ec3e84992::t_d3b843d29fffde 762-763
+  s_f4037ec3e84992::t_23a0b8691cccbd 749-756
+packages/@n8n/computer-use/src/gateway-client.ts
+  s_f4037ec3e84992::t_682948c0439468 361,365
+  s_f4037ec3e84992::t_cb3bd83ea67154 326
+  s_f4037ec3e84992::t_b0b4fbf5e2218a 346-347,350
+  s_f4037ec3e84992::t_d0c4848d8ec8c3 130-142
+  h_44f8d1c0f2f8c4 55,66-79
+  s_f4037ec3e84992::t_11301880995e99 494
+  s_f4037ec3e84992::t_c8a6153d4a9674 575
+  s_f4037ec3e84992::t_e1c1376b46f4ab 187
+packages/@n8n/local-gateway/src/main/daemon-controller.ts
+  s_f4037ec3e84992::t_300a2db833edc1 71-75,77,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "4fde89bb8164c8ee850440c52dc1945687d9cecd",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f4037ec3e84992": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c047bb52-f9ff-424b-8fe6-ebf66afb06bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

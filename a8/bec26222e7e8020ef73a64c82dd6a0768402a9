@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeSettingsIcons.test.ts
+  s_5f4662b7d25c67::t_f22694aee7c4c9 73-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8bec26222e7e8020ef73a64c82dd6a0768402a9",
+  "prompts": {},
+  "sessions": {
+    "s_5f4662b7d25c67": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f3235c62-b3dc-413d-b3ca-b58617a3a408",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/components/interactive/InteractiveCard.vue
+  s_7b16f513886b0b::t_b64a15f182c65a 4,9
+packages/frontend/editor-ui/src/features/agents/composables/agentChatMessages.ts
+  s_7b16f513886b0b::t_b64a15f182c65a 5
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_7b16f513886b0b::t_b64a15f182c65a 7
+  s_7b16f513886b0b::t_337852f7af787a 3
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_7b16f513886b0b::t_b64a15f182c65a 4-9
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_7b16f513886b0b::t_337852f7af787a 5
+packages/@n8n/api-types/src/agents/index.ts
+  s_7b16f513886b0b::t_b64a15f182c65a 16
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_7b16f513886b0b::t_b64a15f182c65a 6
+packages/@n8n/api-types/src/agent-builder-interactive.ts
+  s_7b16f513886b0b::t_b64a15f182c65a 14-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "9156b260b436bfe478b803a54957283b413e35a2",
+  "prompts": {},
+  "sessions": {
+    "s_7b16f513886b0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e9304-76d7-74f1-b63c-5a944947c0e0",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

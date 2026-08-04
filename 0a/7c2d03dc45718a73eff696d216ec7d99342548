@@ -1,0 +1,37 @@
+packages/frontend/@n8n/design-system/src/composables/useMessage.ts
+  s_54f44f88f4a743::t_69855b3f2d1b69 6
+  s_54f44f88f4a743::t_456698b9b9bf7b 1-5
+  s_54f44f88f4a743::t_d02c00f40bdd86 7-141
+packages/frontend/@n8n/design-system/vite.config.mts
+  s_54f44f88f4a743::t_76b1295284f09e 43
+packages/frontend/editor-ui/src/app/composables/useMessage.ts
+  s_54f44f88f4a743::t_1a6fdc62fdbdb1 1-8
+packages/frontend/@n8n/design-system/package.json
+  s_54f44f88f4a743::t_bfbcca85b30638 66
+packages/frontend/@n8n/design-system/src/index.ts
+  s_54f44f88f4a743::t_08b0a45b81091f 12-13
+packages/frontend/@n8n/design-system/tsconfig.json
+  s_54f44f88f4a743::t_baedd838300ac3 11
+packages/frontend/@n8n/design-system/src/composables/useMessage.test.ts
+  s_54f44f88f4a743::t_649c61d78d3fd2 70-74
+  s_54f44f88f4a743::t_456698b9b9bf7b 3
+  s_54f44f88f4a743::t_9ee1697290f28d 1-2,4-69,75-87
+pnpm-lock.yaml
+  s_54f44f88f4a743::t_ffc4017292513f 4897-4899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0a7c2d03dc45718a73eff696d216ec7d99342548",
+  "prompts": {},
+  "sessions": {
+    "s_54f44f88f4a743": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f825bd7-be35-4f1b-92f8-f4daddeebcfe",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_e10fd469482272::t_bcc708c9273ba4 11
+.code-health-baseline.json
+  s_e10fd469482272::t_baea860e8bdaed 4
+  s_e10fd469482272::t_5862d5de055a93 550-551
+  s_e10fd469482272::t_5ed0831f88854e 566-575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e537d8692a086c665d6cf047433802e2bf2a40d7",
+  "prompts": {},
+  "sessions": {
+    "s_e10fd469482272": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aba543b3-07d6-4030-875e-4bc72a725517",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

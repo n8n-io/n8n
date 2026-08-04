@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_4684d59d5a9b58::t_c70e8935662c79 677
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_4684d59d5a9b58::t_9575c2414d09f6 19,239-244,246-262
+  s_4684d59d5a9b58::t_dda0940cc25740 245
+  s_4684d59d5a9b58::t_b50689982b1c85 263-264
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.test.ts
+  s_4684d59d5a9b58::t_ddd930fdc6c14a 565-608
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasAgentNodeGeometry.ts
+  s_4684d59d5a9b58::t_c70e8935662c79 55-64,66,69
+  s_4684d59d5a9b58::t_734eb6ed1a7325 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "33e094dceff90575479baf795c45989a17174cfe",
+  "prompts": {},
+  "sessions": {
+    "s_4684d59d5a9b58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6806-99e9-71a1-bddc-3d0429f2069e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

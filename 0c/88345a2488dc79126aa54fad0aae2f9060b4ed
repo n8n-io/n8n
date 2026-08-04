@@ -1,0 +1,16 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  h_c63dce324dfc7b 213,427
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  h_c63dce324dfc7b 221,445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0c88345a2488dc79126aa54fad0aae2f9060b4ed",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

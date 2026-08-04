@@ -1,0 +1,33 @@
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/test/parse-validate-handler.test.ts
+  s_c77c9c67421351::t_899cbe3cf8b0b9 279-311
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/types.ts
+  s_c77c9c67421351::t_4c2995173a7a87 361-367
+packages/@n8n/workflow-sdk/src/node-groups.test.ts
+  s_c77c9c67421351::t_b3e8fdec277e0f 228-230,236
+  s_c77c9c67421351::t_2429ac7b7d6e9a 209-227,237-239
+  ai_agent 231-235
+packages/@n8n/workflow-sdk/src/workflow-builder/plugins/serializers/json-serializer.ts
+  s_c77c9c67421351::t_f19eacfea0859b 277-279,284-286
+packages/@n8n/workflow-sdk/src/workflow-builder.ts
+  s_c77c9c67421351::t_1346e3ca5a977b 561
+packages/@n8n/ai-workflow-builder.ee/src/code-builder/handlers/parse-validate-handler.ts
+  s_c77c9c67421351::t_b5bfca8b7b41be 250-255,257
+packages/@n8n/workflow-sdk/src/types/base.ts
+  s_c77c9c67421351::t_1a78fd9c74328e 1009-1014
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "31a0d85cc1735d16b86bd740a6f819575286cae0",
+  "prompts": {},
+  "sessions": {
+    "s_c77c9c67421351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd7b1752-695a-4039-902a-08408f1d312e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_3f4c240f5a4957::t_96502edd7edf64 29-42
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_3f4c240f5a4957::t_fd2862bfbaeaa0 1-252
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_3f4c240f5a4957::t_fe34e217c8cc38 9-14
+  s_3f4c240f5a4957::t_f201f30ed90f11 86-122
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_3f4c240f5a4957::t_0cd501150bd991 28-32
+packages/cli/src/metrics/prometheus/instance-ai-metrics.service.ts
+  s_3f4c240f5a4957::t_85fe2b36bcf78f 127-134,157
+  s_3f4c240f5a4957::t_e1e09ff89053a7 155-156
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_3f4c240f5a4957::t_de61e69ef0a193 1-180
+packages/cli/src/modules/instance-ai/event-bus/durable-log-metrics.ts
+  s_3f4c240f5a4957::t_d947f93296a668 98-106,108-111
+  s_3f4c240f5a4957::t_526db89192e3ab 107
+  s_3f4c240f5a4957::t_7bca7d911bf255 45-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5feb1e12d789b2a682d3fb5a68125073262dd6e0",
+  "prompts": {},
+  "sessions": {
+    "s_3f4c240f5a4957": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ee24e3b-53fe-4691-8e67-e34f81479930",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

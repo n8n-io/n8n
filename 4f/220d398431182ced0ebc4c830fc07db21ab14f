@@ -1,0 +1,66 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_7d48ada9cf20b6::t_00ca9197d93a29 1,13
+  s_7d48ada9cf20b6::t_e1823715206302 2-3,5-10,12,14-33,36-39,41-64,66-127,129-157,184-203,209-285,310-353,392-509,511-581,612-635,726,289-291,293-294,296-297,300,302-303,360-362,364,366,368-369,372-376,378-381,383,387,163,168-170,172-173,179
+  s_7d48ada9cf20b6::t_cdd62b5e9fea8a 34-35,40
+  s_7d48ada9cf20b6::t_76c7074afc29d2 204-208
+  ai_agent 286-287,354,715-717,65,288,292,304,359,363,365,377,382,384-385,171
+  s_7d48ada9cf20b6::t_45b2a3eb4bad01 510
+  s_4f484cebd2507c::t_02d7edb0735d21 582,584,586-589,599-601,603,607,609
+  s_f38eb6a6383110::t_0fb86745863c42 636-640,641-714,718-725,295,298-299,301,305-309,367,370-371,386,388-391,165-166,174,178,180-181,583,591-595,597-598,602,604-606,608,610-611
+  s_f38eb6a6383110::t_521a8fa487a480 4
+  s_f38eb6a6383110::t_f90b9973c53e5c 11
+  s_f38eb6a6383110::t_c752118a7fdb3c 128
+  s_7d48ada9cf20b6::t_daa67f0230e4eb 159-162,164,167,175-177
+  s_4f484cebd2507c::t_a708c69fe9768f 585,590,596
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_7d48ada9cf20b6::t_3a9f9aca11f2e2 17-18
+  s_7d48ada9cf20b6::t_a7935fee2648b6 66-71,73-76
+  s_321997152caa68::t_594681aa5cf5cf 132,139,146-147,148-154,156,158-164,177-178,166,175
+  s_321997152caa68::t_569e86210255cf 72
+  s_4f484cebd2507c::t_873b50de3f2241 165,155,157,167-174,176
+packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
+  s_7d48ada9cf20b6::t_2f794ad10da100 1-6,18,28-29
+  s_4f484cebd2507c::t_90b838b416ccec 7,10-15,24-25,32-52
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/data-table.schema.test.ts
+  s_4f484cebd2507c::t_cfc1893274840c 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f220d398431182ced0ebc4c830fc07db21ab14f",
+  "prompts": {},
+  "sessions": {
+    "s_321997152caa68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5146bb18-ca65-47aa-a153-2d4903e46a5c",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_4f484cebd2507c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ce06b02-5fda-45ed-a633-e5af29754e23",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_f38eb6a6383110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6210298e-5c34-4114-aa5a-a990cfea49fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

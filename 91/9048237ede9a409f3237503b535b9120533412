@@ -1,0 +1,19 @@
+packages/cli/src/modules/redaction/__tests__/instance-redaction-enforcement.service.test.ts
+  s_c73d2faeeb035c::t_79d022ff63a74a 73-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.3",
+  "base_commit_sha": "919048237ede9a409f3237503b535b9120533412",
+  "prompts": {},
+  "sessions": {
+    "s_c73d2faeeb035c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9567005-ae1e-47c9-a7a1-d008c96effb6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

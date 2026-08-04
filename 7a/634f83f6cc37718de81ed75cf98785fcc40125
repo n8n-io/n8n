@@ -1,0 +1,133 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_3c8860b713ddc9::t_30d9f281a0079f 33
+  s_3c8860b713ddc9::t_35075459d62bb3 57
+  s_3c8860b713ddc9::t_5566db0e50c1d4 407-443,447-471
+  s_3c8860b713ddc9::t_2f464f68b94e06 444-446
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_3c8860b713ddc9::t_4705d9765f0ada 40
+  s_3c8860b713ddc9::t_496154ae1de262 145
+  s_3c8860b713ddc9::t_5b3003703a16f6 207
+  s_3c8860b713ddc9::t_6fe6fb9facea98 1098-1101,1103,1120-1126
+packages/frontend/editor-ui/src/features/agents/agentCanvasCard.store.test.ts
+  s_3c8860b713ddc9::t_44eefc4328af0b 1-26
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_f3c9e6db456d8f::t_524d20aeb36dd8 41-45
+  s_f3c9e6db456d8f::t_778edbc2d838b3 63
+  h_7555c3ee6524cf 187,248
+  s_f3c9e6db456d8f::t_1291cd595575e3 339-340,343
+  s_f3c9e6db456d8f::t_f1f97cd947f4ee 438-446,142,262-264,279
+  s_f3c9e6db456d8f::t_281cc81a02ce65 23-25
+  s_f3c9e6db456d8f::t_9086cb51d37444 77
+  s_f3c9e6db456d8f::t_c34fda7633f55f 139,141
+  s_f3c9e6db456d8f::t_c5486258a4b8f2 168,170
+  s_f3c9e6db456d8f::t_e406e6cfb7c8ac 249
+  s_3c8860b713ddc9::t_78cd7d8e2d2c17 46-51
+  s_3c8860b713ddc9::t_046b5af2e17b3b 64
+  s_3c8860b713ddc9::t_eae12fa0ff58c3 256-261,269,276-278
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-9,11,13-14,17-32,34-36,38,54-78,96-105,108-125,143,147-162,166-173,175-180,194-196,213,261-272,281,288-289,338-373,386,390-391,393,397-410,418-419,446,464,416,384,165
+  s_f3c9e6db456d8f::t_215638f4be1e5f 10
+  s_f3c9e6db456d8f::t_2a2c426e89a273 15
+  s_f3c9e6db456d8f::t_8e341613919eae 33
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 37
+  s_f3c9e6db456d8f::t_546f61ee1155e0 39-41
+  s_f3c9e6db456d8f::t_489963625ad545 43-53,197-202,290-291
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 126-128,130-133
+  s_f3c9e6db456d8f::t_715b40c294a666 136-142,144-146
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 203-212,214-225
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 275,282
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 283-285,305-313,331-332
+  s_f3c9e6db456d8f::t_495bf9bc203fff 286,297-301
+  s_f3c9e6db456d8f::t_c2fcc6f66f43ab 374-375,376-378,380,382-383,387-388
+  s_f3c9e6db456d8f::t_1e453de502744e 394,396
+  s_05cd7ab5f956cf::t_35616ad850b841 395
+  s_f3c9e6db456d8f::t_40d80601d668de 411-412,107,413-415,417,385,174,276,302,80,95
+  s_f3c9e6db456d8f::t_b923d23f7ad7e1 452
+  h_7555c3ee6524cf 314,316,320,322,326-330,333-334,129,135,287,379
+  s_05cd7ab5f956cf::t_d576ddf1e82633 315,321,325
+  s_05cd7ab5f956cf::t_a89fd654b5e082 317-318,323-324
+  s_f3c9e6db456d8f::t_341d441fc1aa70 106
+  s_f3c9e6db456d8f::t_bfe4881e1ecc7b 248
+  s_bfe6a865a3bf73::t_e9293ef5a348ba 181-193,85,92-94
+  s_f3c9e6db456d8f::t_b908cf851754d0 226-228
+  ai_agent 229-247,250-254,256-260,163
+  s_f3c9e6db456d8f::t_173aa9faa6c0c2 278-280
+  s_f3c9e6db456d8f::t_0758910a50cc74 381,389
+  s_f3c9e6db456d8f::t_4ce1ef0cd4469b 423,425
+  s_f3c9e6db456d8f::t_ee8ffe0dde1b9c 431-434,440-441,444-445,449-450,455,458
+  s_f3c9e6db456d8f::t_41d81852c0cb47 16
+  s_3c8860b713ddc9::t_755c98718e442b 2
+  s_3c8860b713ddc9::t_cc22927ffce6fe 12
+  s_3c8860b713ddc9::t_6b9223a9e5ffe2 79,81-84,86-91
+  s_3c8860b713ddc9::t_175ac9df7161b4 255
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_f3c9e6db456d8f::t_3d32c16c813f34 41-42,43-45
+  s_f3c9e6db456d8f::t_86b676e26d3d4d 219-235
+  s_3c8860b713ddc9::t_b9ad24a3d25dcb 236,189-190,193,200-201,22,46,76,199,237-265
+  s_f3c9e6db456d8f::t_e04d6e04cb69ad 188,191-192,194-195
+  s_f3c9e6db456d8f::t_231e7bad87e6d6 10,21
+  s_f3c9e6db456d8f::t_bd31dfe70abc9c 75,172-173,183-185,196-198
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_f3c9e6db456d8f::t_6b8c9b9bb0dc3c 1-8,11,23-30,35-38,44-57,59,63-92,94-112,114-118,120-122,127-131,135-138,171-186,188-189,231,140-141,143-148
+  s_f3c9e6db456d8f::t_8ee12131344ac3 12-15,19-22,31-34
+  ai_agent 16-18
+  s_f3c9e6db456d8f::t_61d7c98bae3934 39-43
+  s_f3c9e6db456d8f::t_6854a5751e433f 58
+  s_f3c9e6db456d8f::t_a70833f8fde864 93
+  s_f3c9e6db456d8f::t_3687924b49547b 113,119,123-126,132-134
+  s_f3c9e6db456d8f::t_16de2fdebf6c12 187,190-197
+  s_3c8860b713ddc9::t_4c6090ef767d77 198,149,151,156-157,161,163,169-170,199,202,204,206,207-230
+  s_f3c9e6db456d8f::t_18bfa8a42671a3 139,142,152-153
+  s_bfe6a865a3bf73::t_f629349d9e9545 150,154-155,158-160,162,164-168
+  s_f3c9e6db456d8f::t_3e0b2d81ff7a2b 200-201,203,205
+  s_f3c9e6db456d8f::t_58a3f0265bf54b 9
+  s_3c8860b713ddc9::t_14612526eaba95 10
+  s_3c8860b713ddc9::t_f4777ca2744bc2 60-62
+packages/frontend/editor-ui/src/features/agents/agentCanvasCard.store.ts
+  s_3c8860b713ddc9::t_bc12664c4fba81 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a634f83f6cc37718de81ed75cf98785fcc40125",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_3c8860b713ddc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdaa2f6a-d47e-49df-930b-860d7d20015f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bfe6a865a3bf73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "430bf789-cf05-4910-9dda-8fa7dfba9d21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

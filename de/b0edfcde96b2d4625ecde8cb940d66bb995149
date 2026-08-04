@@ -1,0 +1,76 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCard.test.ts
+  s_a1a3795aa23388::t_440c59433fbc33 306-321
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_a1a3795aa23388::t_0cda49d48f41da 67,69-70
+  s_a1a3795aa23388::t_af31e5aa08e479 111-113
+packages/cli/src/modules/agents/agents.service.ts
+  s_a1a3795aa23388::t_88d464aa87325c 179
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.test.ts
+  s_a1a3795aa23388::t_87740f25fdef1f 4,11,20,28,32-39
+  s_a1a3795aa23388::t_98972fdfd54325 1-3,5-10,12-19,21-27,29-31,40-42
+packages/cli/src/modules/agents/agent-mcp-access.service.ts
+  s_a1a3795aa23388::t_87740f25fdef1f 32-33,35,42-45
+  s_a1a3795aa23388::t_f651e7ae90396d 20-22,61-62,68,70
+  ai_agent 57
+  s_a1a3795aa23388::t_cf471adae0443d 2,6,28,39,60,66-67,69,93,101-105,107-108
+  s_a1a3795aa23388::t_92b38afa49ac2c 63-64
+packages/cli/src/permissions.ee/project-scope.service.ts
+  s_a1a3795aa23388::t_02432c2aed1044 1-24
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_a1a3795aa23388::t_6134bcb81709fe 24,58,366,438,443
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_a1a3795aa23388::t_0cda49d48f41da 80-84
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.test.ts
+  s_a1a3795aa23388::t_2697cd81471e8d 67-99
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_a1a3795aa23388::t_21cf7494395f27 148-156,217-237,263-270
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_a1a3795aa23388::t_87740f25fdef1f 20,115,118,371
+packages/cli/src/permissions.ee/__tests__/project-scope.service.test.ts
+  ai_agent 46-49
+  s_a1a3795aa23388::t_02432c2aed1044 1-45,50-52
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_a1a3795aa23388::t_440c59433fbc33 2,66-68
+packages/cli/src/modules/agents/__tests__/agent-mcp-access.service.test.ts
+  s_a1a3795aa23388::t_3332e7ea172494 2,4,19-20,24,33-36,38-43,45-47,123,142-156,160,173
+  s_a1a3795aa23388::t_92b38afa49ac2c 157-159,161-169
+  s_a1a3795aa23388::t_e35375c22181db 27,29-31,44,50-53,56-60,64-80
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts
+  s_a1a3795aa23388::t_87740f25fdef1f 172,174,178-179,181,189-190
+  s_a1a3795aa23388::t_92b38afa49ac2c 38-42
+  ai_agent 180
+  s_a1a3795aa23388::t_98972fdfd54325 177
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_a1a3795aa23388::t_a7449da432d48f 6,45,111,136,148,771,782-789,791
+  ai_agent 790
+packages/cli/src/modules/agents/agent-mcp-access.controller.ts
+  s_a1a3795aa23388::t_87740f25fdef1f 23
+  ai_agent 22
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_a1a3795aa23388::t_88d464aa87325c 39,42,55-57,75,78,84,86-88,176,178-187,190
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPAgentsSelect.vue
+  ai_agent 122-127
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.ts
+  s_a1a3795aa23388::t_bcbcb9b43a1626 69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "deb0edfcde96b2d4625ecde8cb940d66bb995149",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a1a3795aa23388": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa35e-7225-7a60-a893-f38ec7aab7f8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

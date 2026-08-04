@@ -1,0 +1,21 @@
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/stream-interim-message-does-not-break-provider-message-ordering.json
+  s_e261fef06e553c::t_e9b693f7406ec9 49,53,56,59,62,64,68-69,71,73,96-99,109,113,116,119,122,124,128-129,131,133,167,183,215,220,223,226,229,232,237-238,240,242
+packages/@n8n/agents/src/__tests__/integration/cassettes/interim-user-message-during-suspend/generate-interim-message-does-not-break-provider-message-ordering.json
+  s_e261fef06e553c::t_e9b693f7406ec9 49,53,56,59,62,64,68-69,71,73,96-99,109,113,116,119,122,124,128-129,131,133,167,183,212,216,219,222,225,227,231-232,234,236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4df5b76e7d3e3b849d46e651eb611fd3398f589",
+  "prompts": {},
+  "sessions": {
+    "s_e261fef06e553c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f09a581b-fd2f-4107-965c-de4045d7a2ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

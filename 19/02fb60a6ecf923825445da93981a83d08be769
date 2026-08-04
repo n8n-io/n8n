@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/RadioGroup.vue
+  s_03493995b85f3a::t_e4ab084ff20d03 168-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "1902fb60a6ecf923825445da93981a83d08be769",
+  "prompts": {},
+  "sessions": {
+    "s_03493995b85f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59ef906-85f1-48b6-bc09-9185151a943a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

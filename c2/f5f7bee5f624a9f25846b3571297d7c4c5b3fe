@@ -1,0 +1,58 @@
+packages/cli/src/services/user.service.ts
+  h_435b1d7d3e52c0 26,325-329
+packages/@n8n/api-types/src/dto/roles/role-members-response.dto.ts
+  h_435b1d7d3e52c0 1-11
+packages/@n8n/permissions/src/constants.ee.ts
+  h_435b1d7d3e52c0 65
+packages/cli/src/controllers/role.controller.ts
+  h_435b1d7d3e52c0 6,12-13,79-89
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_a5197812b6fe00::t_ec89fcf830691f 747-792
+packages/@n8n/api-types/src/dto/roles/role-member.schema.ts
+  h_435b1d7d3e52c0 1-9
+packages/cli/test/integration/database/repositories/role.repository.test.ts
+  s_a5197812b6fe00::t_5f1bc549325e01 602-667
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_a5197812b6fe00::t_a2c6cb45afda8b 8
+  s_a5197812b6fe00::t_f0ae3ad68ec5b5 69-105
+  s_a5197812b6fe00::t_c2061e450d98d3 19,31
+  s_a5197812b6fe00::t_089073472e0ee7 1,11
+packages/@n8n/api-types/src/dto/index.ts
+  h_435b1d7d3e52c0 181-185
+packages/cli/src/services/role.service.ts
+  h_435b1d7d3e52c0 3-4,68-73
+packages/cli/test/integration/services/role.service.test.ts
+  s_a5197812b6fe00::t_cc0d57e9cc07cf 22
+  s_a5197812b6fe00::t_1a263d3b891961 493-542
+packages/@n8n/db/src/repositories/role.repository.ts
+  h_435b1d7d3e52c0 129-148
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_a5197812b6fe00::t_848835d8b9baf6 20
+  s_a5197812b6fe00::t_43a93a5a974c9d 300-302
+  s_a5197812b6fe00::t_d4e261dd7aa5e3 505-536
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  h_435b1d7d3e52c0 126
+packages/@n8n/api-types/src/dto/roles/role-project-members-response.dto.ts
+  h_435b1d7d3e52c0 3,6,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "c2f5f7bee5f624a9f25846b3571297d7c4c5b3fe",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a5197812b6fe00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fca82f8-5371-4cc1-9159-2d29bef80f15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_37e7e009dac989::t_e1777bd9fe7378 1,10
+  s_37e7e009dac989::t_f04e8af3adacae 73,86
+packages/cli/src/modules/mcp/tools/workflow-builder/search-workflow-nodes.tool.ts
+  s_37e7e009dac989::t_1502290d0fad2d 107,109
+  s_37e7e009dac989::t_38a44b32a16bfa 59-60
+  s_37e7e009dac989::t_0f0813dafa8cd0 93
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_37e7e009dac989::t_22d01557adba8d 215-233
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_37e7e009dac989::t_c9c7ad6cab4bc1 1090,1095-1104
+  s_37e7e009dac989::t_57d2cda438ce0f 34,37-38,42
+  s_37e7e009dac989::t_6715434efad83b 747,751-760
+  s_37e7e009dac989::t_4dbec41d5624fe 896-904,907,909
+  s_37e7e009dac989::t_f7e96f2932216c 767-772,776-777,780-788,797-803,813,820,824,841,847,851,860-861,863-869,873
+  s_37e7e009dac989::t_b92647aa59c676 984,987-1009
+  s_37e7e009dac989::t_72a02ce3720a4b 712-713,715
+  s_37e7e009dac989::t_a9ada11191ebd7 392
+  s_37e7e009dac989::t_c89526273664fb 2,11
+  s_37e7e009dac989::t_5fbc594184871e 675
+  s_37e7e009dac989::t_54c6d9429051c6 439,455-457
+  s_37e7e009dac989::t_40073bee30467a 1014-1018,1020-1030,1033-1042,1044,1056-1058
+  s_37e7e009dac989::t_c853a157b15c41 701-707
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_37e7e009dac989::t_6f79606389fd21 242
+  s_37e7e009dac989::t_d8c4edd0945e6d 153
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_37e7e009dac989::t_3743eebcc1781e 38
+  s_37e7e009dac989::t_75006329aaafc2 32
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_37e7e009dac989::t_baa30b7b077a22 30-31
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_37e7e009dac989::t_58561b9db96bf5 122
+  s_37e7e009dac989::t_c8337e7d18304b 1
+packages/cli/src/modules/mcp/__tests__/search-workflow-nodes.tool.test.ts
+  s_37e7e009dac989::t_da60fa50890238 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0ddde9a36d7b98ae5dc2ee97eb42748e22d34480",
+  "prompts": {},
+  "sessions": {
+    "s_37e7e009dac989": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf9e4bdb-0783-479f-b65f-482c8d4674a0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

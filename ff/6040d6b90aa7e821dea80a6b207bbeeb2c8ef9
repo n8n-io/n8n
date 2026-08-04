@@ -1,0 +1,48 @@
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_64390ec65834a0::t_e59afa5101d736 27
+  s_64390ec65834a0::t_e82cf851591da3 8
+packages/@n8n/decorators/src/controller/index.ts
+  s_64390ec65834a0::t_877dfdb06129a8 9
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_64390ec65834a0::t_286ea99ca0f0e8 9
+  s_64390ec65834a0::t_dd5bfac7add083 35
+packages/@n8n/decorators/src/controller/types.ts
+  s_64390ec65834a0::t_0aa4f4b257d3ce 60-61
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_64390ec65834a0::t_3f3c64162e10e8 1-7,35,48,58-81,83,87,123
+  s_64390ec65834a0::t_856fe59d72b5ba 82
+  s_64390ec65834a0::t_a5e96698e9d3b7 103
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_64390ec65834a0::t_af4656e44921b2 8
+  s_64390ec65834a0::t_e366a7af71ec3f 238,244-245,259
+packages/@n8n/decorators/src/controller/__tests__/api-tags.test.ts
+  s_64390ec65834a0::t_e7629cb9b2d834 1-46
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_64390ec65834a0::t_7c840db4a9a757 149
+  s_64390ec65834a0::t_05b609531a7129 39
+.agents/skills/public-api/SKILL.md
+  s_64390ec65834a0::t_9981d12b9b3856 46,55-60,66-71
+packages/@n8n/decorators/src/controller/api-tags.ts
+  s_64390ec65834a0::t_8a34c2a1ddf01f 1-19
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_64390ec65834a0::t_59dde1ca1f11d3 51,56-70
+  s_64390ec65834a0::t_8f251986f7d84d 234
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  s_64390ec65834a0::t_e13363cbffb73f 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ff6040d6b90aa7e821dea80a6b207bbeeb2c8ef9",
+  "prompts": {},
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

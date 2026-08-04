@@ -1,0 +1,19 @@
+packages/cli/src/modules/mcp/tools/execution-utils.ts
+  s_db373aa8669fee::t_460f45f7db22de 21-22,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b721d00ff98c0a41582716c2bd3297cee57ced15",
+  "prompts": {},
+  "sessions": {
+    "s_db373aa8669fee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35803bc6-2a2d-4cbe-82aa-195a9417713e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

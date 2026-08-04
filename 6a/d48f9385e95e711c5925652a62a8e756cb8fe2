@@ -1,0 +1,125 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 2-9,12,21,79,231,799-800,803,838-841,844,864-865,870,964-1044
+packages/@n8n/config/test/config.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 240
+packages/@n8n/client-oauth2/src/client-oauth2-token.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 86
+packages/core/src/ssrf/__tests__/ssrf-protection.service.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 632-699
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 37
+packages/@n8n/nodes-langchain/credentials/McpOAuth2Api.credentials.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 19-27
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 144-148,167-177,180
+packages/core/src/ssrf/index.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 5
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 257-260
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 3,13-23
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 16,43,60
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 17,48,65,87,111,523,533,539-550,554,557,570-576,584-585,600-601,613,619-620
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-2
+packages/@n8n/backend-network/README.md
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-15
+packages/@n8n/backend-network/src/index.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 274,280-289
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.groups.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 385-396
+packages/@n8n/client-oauth2/src/code-flow.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 13,41,101
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 4,30-32,34-38,40,44,50,56,68,72
+packages/@n8n/backend-network/tsconfig.json
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-11
+packages/@n8n/backend-network/tsconfig.build.json
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-11
+packages/cli/src/workflows/workflow.service.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 4,7,15,93,796-823,825,828,832-834,836-850,852,854-859,861-864,866-877,1346-1395
+packages/@n8n/backend-network/package.json
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-35
+packages/cli/src/oauth/types.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 15
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.store.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 6,10-15,17-20,23,234-334
+pnpm-lock.yaml
+  ai_agent 1139-1157,5845,7681,11833,18296,19304-19305,20805-20806,21501,24075,27790,30938,36563,38639,40368
+packages/cli/src/workflows/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 16,34,55
+packages/@n8n/client-oauth2/src/types.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 22,26-32,34-38
+packages/cli/src/commands/start.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 235-241
+packages/@n8n/backend-network/vite.config.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-3
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 17,42,62,89,115
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 150-231
+packages/cli/src/commands/__tests__/start.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 156,210,245,291
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 15,51,56-59
+packages/cli/src/metrics/prometheus/ssrf-metrics.service.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-59
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 86-89
+packages/cli/src/metrics/prometheus/__tests__/ssrf-metrics.service.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-179
+packages/@n8n/backend-network/eslint.config.mjs
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1-21
+packages/cli/src/oauth/oauth.service.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 85-98,131-224,689-757,788-790,794-797,799-805,807-811,862-991,1153,1178,1213-1221
+packages/testing/playwright/tests/e2e/api/workflow-publication-service.spec.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 8-10
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 27-28,3362-3979
+packages/core/src/ssrf/ssrf-protection.service.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 1,17-34,56-57,99-103,107-111,177,199-202,256-297
+  s_1371ac9190b474::t_9c4f2f2f14494a 298-299
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 151-217,294-366,795-849
+packages/@n8n/client-oauth2/test/client-oauth2.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 201-330
+packages/cli/src/errors/response-errors/bad-request.error.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 4-5
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 48-68
+packages/cli/src/controllers/oauth/oauth2-credential.controller.ts
+  s_c392a0bbe09b2e::t_93549b93e5bb6d 52-55,111-114,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6ad48f9385e95e711c5925652a62a8e756cb8fe2",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1371ac9190b474": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c55c637e-3ef3-4c96-828a-78bd7d86191f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    },
+    "s_c392a0bbe09b2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "515506dc-c17e-48da-aab3-9f82e9bec7c3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

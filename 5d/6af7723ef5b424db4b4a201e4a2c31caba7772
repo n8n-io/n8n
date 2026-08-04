@@ -1,0 +1,42 @@
+packages/@n8n/client-oauth2/src/credentials-flow.ts
+  s_aa40f315c412bf::t_44f9c2dc1a2587 44
+  s_aa40f315c412bf::t_2a3b5024078e01 45
+packages/@n8n/client-oauth2/src/client-oauth2-token.ts
+  s_aa40f315c412bf::t_d0b6e7cf447273 90
+  s_aa40f315c412bf::t_48300e2ac4b44c 91
+  s_aa40f315c412bf::t_67154fe84c4758 4
+packages/@n8n/client-oauth2/test/credentials-flow.test.ts
+  s_aa40f315c412bf::t_055c8a4d559191 123,160
+  s_aa40f315c412bf::t_0ac46d664c3c47 156-159,161-168
+packages/@n8n/client-oauth2/src/client-oauth2.ts
+  s_aa40f315c412bf::t_73a987da951e2b 16
+  s_aa40f315c412bf::t_2f1dd4853a461b 35
+  s_aa40f315c412bf::t_03d4f9266757f6 31
+  s_aa40f315c412bf::t_944ba22f26dfd6 11-15,17
+packages/@n8n/client-oauth2/src/types.ts
+  s_aa40f315c412bf::t_70521ddc74aa0c 23
+  s_aa40f315c412bf::t_409706f4216381 5,8,12,14-20,25-26
+  s_aa40f315c412bf::t_eb05f05700f760 9-11,13
+packages/@n8n/client-oauth2/src/code-flow.ts
+  s_aa40f315c412bf::t_b01eb66c293213 107
+  s_aa40f315c412bf::t_44884a1dc6adcf 108
+packages/@n8n/client-oauth2/test/code-flow.test.ts
+  s_aa40f315c412bf::t_bf5ec4f07bfdfe 208,265
+  s_aa40f315c412bf::t_42179293ac57f3 261-264,266-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d6af7723ef5b424db4b4a201e4a2c31caba7772",
+  "prompts": {},
+  "sessions": {
+    "s_aa40f315c412bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d1db2c7-ef71-408d-a28c-9f53a28738b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

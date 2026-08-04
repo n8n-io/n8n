@@ -1,0 +1,49 @@
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_d20909b0237a08::t_42febc05ac2976 70-78,83-84
+  s_d20909b0237a08::t_796dcca984115f 79-82
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_d20909b0237a08::t_42febc05ac2976 80-94,96-99,101-113,115-121,123-126,128-135
+  s_d20909b0237a08::t_cf4c225ce7e8e2 79,95,100,114,122,127
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_d20909b0237a08::t_42febc05ac2976 143-206
+  s_d20909b0237a08::t_cf4c225ce7e8e2 142
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_2f83ef0d3e33ed::t_39e0c5e9194b7e 118-121
+  s_d20909b0237a08::t_42febc05ac2976 175-178,182-185,190-197,199-200,202-207,180-181
+  ai_agent 187-189,179
+  s_d20909b0237a08::t_cf4c225ce7e8e2 102,174,186,198,201
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_2f83ef0d3e33ed::t_d9c295ccba7829 10-27,44-46,54-58,61-65,79,81-146
+  s_2f83ef0d3e33ed::t_1efbe79465da62 28-43
+  s_2f83ef0d3e33ed::t_552fcb9769bb3d 52
+  s_2f83ef0d3e33ed::t_dee33ac224ec45 59-60
+  s_d20909b0237a08::t_42febc05ac2976 66-72,77-78,80
+  s_d20909b0237a08::t_0a860e46bf16f4 73-76
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_d20909b0237a08::t_42febc05ac2976 82-83,86,88-93,95-101,105,107-118
+  s_d20909b0237a08::t_a4cd72970b0089 77-81,84-85,87,94,102-104,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a3857cf99309025c8c6bbf76f8db58d0c1bc6c9a",
+  "prompts": {},
+  "sessions": {
+    "s_2f83ef0d3e33ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "173765c5-38e5-4034-a7cd-a7997e9647c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_d20909b0237a08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce15469-7e3b-47c9-81ba-0d5287f2fa22",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

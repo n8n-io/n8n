@@ -1,0 +1,28 @@
+packages/@n8n/decorators/src/controller/__tests__/api-description.test.ts
+  s_64390ec65834a0::t_d59f929b00c9d5 1-32
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  h_5d40c27a8fdfd1 180-182
+packages/@n8n/decorators/src/controller/api-error-response.ts
+  h_5d40c27a8fdfd1 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2eeda284ce3c0a5f2bd90140067e189cfc0fb5b0",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

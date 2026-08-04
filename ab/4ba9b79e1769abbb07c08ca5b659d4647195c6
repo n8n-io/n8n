@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/sdk/guardrails/redactor.ts
+  s_ffd4ed59d15b86::t_c9ca1fd6d31023 78-81
+  s_ffd4ed59d15b86::t_c7c307e743dd41 50-52
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  s_ffd4ed59d15b86::t_bceee53283a8a2 16-20,28-32,39
+  s_ffd4ed59d15b86::t_b29457cb59c265 69,74,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab4ba9b79e1769abbb07c08ca5b659d4647195c6",
+  "prompts": {},
+  "sessions": {
+    "s_ffd4ed59d15b86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c215eb8-b991-4482-bce5-c59a224c6d2d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

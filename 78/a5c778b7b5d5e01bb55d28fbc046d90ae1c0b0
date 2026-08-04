@@ -1,0 +1,88 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelDiscordSetup.vue
+  s_f35e98570d6579::t_534423e5636cdd 1-359
+packages/@n8n/db/src/migrations/common/1785456000000-AllowDiscordAgentChatSubscriptions.ts
+  s_f35e98570d6579::t_734f7c4d7c6cc6 1-22
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_f35e98570d6579::t_2ba23b2804b930 231
+  s_f35e98570d6579::t_2caf2d5491d7f4 463
+packages/cli/src/modules/agents/agents.module.ts
+  s_f35e98570d6579::t_baa48d9cc874b9 74,80
+packages/cli/test/migration/1785456000000-allow-discord-agent-chat-subscriptions.test.ts
+  s_f35e98570d6579::t_dd6d756f0579c7 1-119
+packages/cli/src/modules/agents/integrations/esm-loader.ts
+  s_f35e98570d6579::t_e044fb63eaf0a4 39-42
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_f35e98570d6579::t_76bb3e28653c35 1-289,293-294,296-360
+  s_f35e98570d6579::t_d64c818a1ef3c0 290-292,295
+pnpm-workspace.yaml
+  s_f35e98570d6579::t_e875434d37c7af 25-28
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_f35e98570d6579::t_bfe12d2dcbc2be 665-681
+  s_f35e98570d6579::t_ae8f3ae4a7f577 287-300
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_f35e98570d6579::t_e46ea0827d7087 111,113-114
+  s_f35e98570d6579::t_2c81597530bcc0 290-292
+  s_f35e98570d6579::t_2de13af2747adf 94
+  s_f35e98570d6579::t_a5a84e7ea5bcd5 23
+  s_37b5f645225d08::t_5430305d3c1e7c 268-289
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_f35e98570d6579::t_9be8e0191d3444 120-121
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_f35e98570d6579::t_7ed27f15567603 239
+  s_f35e98570d6579::t_34f6f246b0fa6b 481
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_f35e98570d6579::t_d4523a33841824 199
+  s_f35e98570d6579::t_b4b43139f0ee79 23,33-35
+  s_f35e98570d6579::t_d7dca93a0eb5be 500-524
+  s_f35e98570d6579::t_ed8b695416e50a 586-601
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_f35e98570d6579::t_677ae9abd3714a 91
+  s_f35e98570d6579::t_5b9558ac2ec9fa 82
+packages/nodes-base/credentials/DiscordBotApi.credentials.ts
+  s_f35e98570d6579::t_dce1bbc6dc2fa2 26-44
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/discord.svg
+  s_f35e98570d6579::t_b15909db0516f8 1
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f35e98570d6579::t_f62885e23dd1a4 7734
+  s_f35e98570d6579::t_c0f59af1041746 7693-7703
+  s_f35e98570d6579::t_4b77a90fc09461 7730
+  s_f35e98570d6579::t_81703db3ff7472 7738
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_f35e98570d6579::t_ac3d9f3a13abe9 5
+  s_f35e98570d6579::t_f0130afba162e6 531
+  s_f35e98570d6579::t_b6ec122f2ac85f 310
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_f35e98570d6579::t_886ffc5040df18 273-290
+packages/cli/package.json
+  s_f35e98570d6579::t_b36e84b7411cdc 134
+docs/generated/postgres-schema/public.agent_chat_subscriptions.md
+  s_f35e98570d6579::t_f8b274643d1a25 18
+docs/generated/sqlite-schema/agent_chat_subscriptions.md
+  s_f35e98570d6579::t_620e20de43a1d6 9,29
+pnpm-lock.yaml
+  s_f35e98570d6579::t_5a53beb872b0d6 54-56,1103,3157,4057-4059,8322-8324,8488-8515,11505-11516,13474-13477,15542-15555,18110-18112,18230-18232,21827-21829,25446-25457,25802-25850,26685,26725,26752,26783,28784-28792,31240-31241,33587-33611,36680-36681,36790-36791,41425-41426
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "78a5c778b7b5d5e01bb55d28fbc046d90ae1c0b0",
+  "prompts": {},
+  "sessions": {
+    "s_37b5f645225d08": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e5d34889-60fe-4c80-aa8f-5be55062b91f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f35e98570d6579": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1c151d1f-ed33-443b-9372-01a177422d31",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
