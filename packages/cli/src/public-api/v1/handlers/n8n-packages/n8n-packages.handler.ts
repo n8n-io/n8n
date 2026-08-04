@@ -207,6 +207,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					missingNodeTypeMode: payload.data.missingNodeTypeMode,
 					projectConflictPolicy: payload.data.projectConflictPolicy,
 					folderConflictPolicy: payload.data.folderConflictPolicy,
+					overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
 					dataTableMatchingMode: payload.data.dataTableMatchingMode,
 					dataTableMissingMode: payload.data.dataTableMissingMode,
 					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
