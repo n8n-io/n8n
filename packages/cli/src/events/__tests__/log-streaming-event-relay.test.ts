@@ -115,6 +115,7 @@ describe('LogStreamingEventRelay', () => {
 						matched: 1,
 						created: 0,
 						renamed: 0,
+						reconciled: 0,
 						skipped: 0,
 						requirements: 1,
 					},

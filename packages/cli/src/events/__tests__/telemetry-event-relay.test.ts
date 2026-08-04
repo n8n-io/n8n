@@ -2274,6 +2274,7 @@ describe('TelemetryEventRelay', () => {
 						matched: 6,
 						created: 7,
 						renamed: 8,
+						reconciled: 11,
 						skipped: 9,
 						requirements: 10,
 					},
@@ -2313,6 +2314,7 @@ describe('TelemetryEventRelay', () => {
 				tags_matched: 6,
 				tags_created: 7,
 				tags_renamed: 8,
+				tags_reconciled: 11,
 				tags_skipped: 9,
 				tags_required: 10,
 			});
