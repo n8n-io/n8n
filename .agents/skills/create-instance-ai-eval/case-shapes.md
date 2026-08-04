@@ -443,13 +443,12 @@ which user turn goes live.
   seeds with **no workflow to inspect**. Reproduce the target workflow yourself
   (a synthetic case whose `executionScenarios` precondition builds the stand-in),
   or grade the live turn with `processExpectations` only.
-- **Can't be pushed to a lang-tracer suite either.** The case-write API has no
-  `seed` field, so `eval:langtracer-push` silently lists any seeded case under
-  `skipped:`. Combined with the don't-commit rule above, a `replay` case has **no
-  durable home by design** — the durable artifact is always the synthetic case you
-  derive from it. (An `inline` seed carries no thread dependency and can't be
-  pushed either, so — unlike a normal case — it's the one exception to the skill's
-  "push, don't commit the JSON" rule: it lives as a committed artifact.)
+- **Can't be pushed to a lang-tracer suite either.** `eval:langtracer-push`
+  refuses a `replay` case and lists it under `skipped:` — a suite is a durable
+  home and this seed isn't. Combined with the don't-commit rule above, a `replay`
+  case has **no durable home by design** — the durable artifact is always the
+  synthetic case you derive from it. (An `inline` seed has no such problem: it
+  pushes with the case and lives in the suite like any other.)
 
 ### `mode: "inline"` — durable synthetic fixture
 
