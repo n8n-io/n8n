@@ -16,11 +16,11 @@ import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-p
  */
 @Service()
 export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
-	readonly name = 'runnner:js';
+	protected readonly name = 'runner:js';
 
-	readonly loggerScope = 'task-runner-js';
+	protected readonly loggerScope = 'task-runner-js';
 
-	readonly taskType = 'javascript';
+	protected readonly taskType = 'javascript';
 
 	private oomDetector: NodeProcessOomDetector | null = null;
 
