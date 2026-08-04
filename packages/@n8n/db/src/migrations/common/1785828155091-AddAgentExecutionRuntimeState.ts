@@ -5,12 +5,20 @@ const statusesBefore = ['success', 'error'];
 const statusesAfter = ['running', 'success', 'error', 'cancelled', 'interrupted'];
 
 export class AddAgentExecutionRuntimeState1785828155091 implements ReversibleMigration {
-	async up({ schemaBuilder }: MigrationContext) {
+	async up(ctx: MigrationContext) {
+		const { schemaBuilder } = ctx;
+
 		await schemaBuilder.dropEnumCheck(executionTable, 'status', { recreatesOnSqlite: true });
 		await schemaBuilder.addEnumCheck(executionTable, 'status', statusesAfter, {
 			recreatesOnSqlite: true,
 		});
-		await schemaBuilder.createIndex(executionTable, ['status']);
+		await schemaBuilder.createIndex(
+			executionTable,
+			['status'],
+			false,
+			undefined,
+			`${ctx.escape.columnName('status')} = 'running'`,
+		);
 	}
 
 	async down(ctx: MigrationContext) {

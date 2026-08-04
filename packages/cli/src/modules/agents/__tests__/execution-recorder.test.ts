@@ -1022,6 +1022,7 @@ describe('ExecutionRecorder — durable timeline events', () => {
 		recorder.record({
 			type: 'tool-execution-end',
 			toolCallId: 'tool-1',
+			toolName: 'lookup',
 			isError: false,
 			endTime: 20,
 		});

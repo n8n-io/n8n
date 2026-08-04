@@ -19,6 +19,9 @@ describe('AddAgentExecutionRuntimeState migration', () => {
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
 		dataSource = Container.get(DataSource);
+	});
+
+	beforeEach(async () => {
 		context = createTestMigrationContext(dataSource);
 		await context.queryRunner.clearDatabase();
 		await context.queryRunner.release();
@@ -84,13 +87,20 @@ describe('AddAgentExecutionRuntimeState migration', () => {
 		}
 		expect(
 			(await ctx.queryRunner.getTable(`${ctx.tablePrefix}agent_execution`))?.indices.some(
-				(index) => index.columnNames[0] === 'status',
+				(index) => index.columnNames[0] === 'status' && index.where?.includes("'running'"),
 			),
 		).toBe(true);
 		await ctx.queryRunner.release();
 	});
 
 	it('maps runtime-only statuses to error on rollback', async () => {
+		const runtimeCtx = createTestMigrationContext(dataSource);
+		await runtimeCtx.runQuery(
+			`UPDATE ${runtimeCtx.escape.tableName('agent_execution')} SET "status" = 'running' WHERE "id" = :id`,
+			{ id: executionId },
+		);
+		await runtimeCtx.queryRunner.release();
+
 		await dataSource.undoLastMigration({ transaction: 'each' });
 		const ctx = createTestMigrationContext(dataSource);
 		const row = await ctx.runQuery<Array<{ status: string }>>(
@@ -104,7 +114,5 @@ describe('AddAgentExecutionRuntimeState migration', () => {
 			),
 		).toBe(false);
 		await ctx.queryRunner.release();
-
-		await runSingleMigration(MIGRATION_NAME);
 	});
 });

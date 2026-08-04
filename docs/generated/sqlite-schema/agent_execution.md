@@ -52,7 +52,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | Name | Definition |
 | ---- | ---------- |
 | IDX_63d3c3a68b9cebf05f967f0b1c | CREATE INDEX "IDX_63d3c3a68b9cebf05f967f0b1c" ON "agent_execution" ("threadId", "createdAt")  |
-| IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON "agent_execution" ("status")  |
+| IDX_agent_execution_status | CREATE INDEX "IDX_agent_execution_status" ON "agent_execution" ("status") WHERE "status" = 'running' |
 | sqlite_autoindex_agent_execution_1 | PRIMARY KEY (id) |
 
 ## Relations
