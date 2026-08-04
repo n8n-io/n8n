@@ -60,12 +60,17 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   s_1a2f017b901928::t_9d361a5c86c0ac 116
   s_1a2f017b901928::t_a01b55f590f295 156-162,180,182
   s_1a2f017b901928::t_e20909bfd239e5 60
+  s_d52091f2d1d4d0::t_5e5e7532204ece 3
+  s_d52091f2d1d4d0::t_bc7f01b8736ac7 31-41
+  s_d52091f2d1d4d0::t_46715d0bab70a3 65-88
 packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
   s_1a2f017b901928::t_e4be24638d213e 182-213
   s_1a2f017b901928::t_c45a6ba3eb8658 31
   s_207230a01b0f33::t_74e9650472dde1 26-30,32-35
   s_207230a01b0f33::t_8b79406126819c 327-364,366-367,369-373,375-381
   s_207230a01b0f33::t_45f3a4cf143ae9 365,368,374
+  s_d52091f2d1d4d0::t_2a19f5ccd0fb90 733-749
+  s_d52091f2d1d4d0::t_4beee52079e9e3 611,614-616,626,629-632,645,648-650
 packages/frontend/@n8n/i18n/src/locales/en.json
   s_1a2f017b901928::t_efe3c4a17123e8 5408
   s_1a2f017b901928::t_970a6dc17660ab 5411-5412
@@ -78,6 +83,11 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
   s_207230a01b0f33::t_4ace58e0e4109d 1-15,18-20,53-90,93-102,104-106,108-125,127-132,133-135,137-149,151-177,180-182,185,304-305
   s_1a2f017b901928::t_ae6b5359b9903a 16-17
   h_9c8f56e3400786 126,178
+  s_d52091f2d1d4d0::t_7588cc477d8a05 21-35
+  s_d52091f2d1d4d0::t_6eee5c8d63a5e6 37-52
+  s_d52091f2d1d4d0::t_30f4b3a088e12e 91-92
+  s_d52091f2d1d4d0::t_3ffff35476226a 188-197,200-234,236-238,242-245,247-256,264-267,269-278,282-303
+  s_d52091f2d1d4d0::t_916a761ff898a2 235,239-241,246,257-263,268,279-281
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -103,6 +113,14 @@ packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowRev
         "tool": "claude",
         "id": "87dbdb9c-45ce-48f0-babc-7748959ee9de",
         "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_d52091f2d1d4d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b00986a-81ff-43c3-a258-e835ed5b4b0e",
+        "model": "claude-opus-5"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
