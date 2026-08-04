@@ -9,7 +9,7 @@
 | data | json |  | true |  |  | Immutable per-type detail, ids only; user references belong in `createdById` so deletion nulls them |
 | groupId | integer |  | true |  | [public.workflow_review_activity](public.workflow_review_activity.md) | Activity entry this one replies to; NULL means top-level |
 | id | integer |  | false | [public.workflow_review_activity](public.workflow_review_activity.md) [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) |  |  |
-| type | varchar(64) |  | false |  |  | Feed entry kind: submitted, comment, changes_requested, version_synced, approved, published |
+| type | varchar(64) |  | false |  |  | Feed entry kind; see WorkflowReviewActivityType in @n8n/db |
 | typeVersion | integer | 1 | false |  |  | Schema version of the `data` payload for this `type` |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
 
@@ -76,7 +76,6 @@ erDiagram
   integer activityId FK
   text body
   timestamp_3__with_time_zone createdAt
-  json data
   timestamp_3__with_time_zone deletedAt
   timestamp_3__with_time_zone updatedAt
 }

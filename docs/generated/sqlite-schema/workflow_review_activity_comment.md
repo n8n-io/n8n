@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_activity_comment" ("activityId" integer PRIMARY KEY NOT NULL, "body" text, "data" text, "updatedAt" datetime(3), "deletedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_3cd755e8ce44ee49bdf7e9222ec" FOREIGN KEY ("activityId") REFERENCES "workflow_review_activity" ("id") ON DELETE CASCADE)
+CREATE TABLE "workflow_review_activity_comment" ("activityId" integer PRIMARY KEY NOT NULL, "body" text, "updatedAt" datetime(3), "deletedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_3cd755e8ce44ee49bdf7e9222ec" FOREIGN KEY ("activityId") REFERENCES "workflow_review_activity" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -18,7 +18,6 @@ CREATE TABLE "workflow_review_activity_comment" ("activityId" integer PRIMARY KE
 | activityId | INTEGER |  | false |  | [workflow_review_activity](workflow_review_activity.md) |  |
 | body | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| data | TEXT |  | true |  |  |  |
 | deletedAt | datetime(3) |  | true |  |  |  |
 | updatedAt | datetime(3) |  | true |  |  |  |
 
@@ -40,7 +39,6 @@ erDiagram
   INTEGER activityId FK
   TEXT body
   datetime_3_ createdAt
-  TEXT data
   datetime_3_ deletedAt
   datetime_3_ updatedAt
 }

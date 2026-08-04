@@ -24,15 +24,11 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 	}: MigrationContext) {
 		await createTable(ACTIVITY_TABLE)
 			.withColumns(
-				// Autoincrement int, deliberately unlike n8n's nanoid ids: the feed orders by id
-				// and pages on it as a cursor. Rows are never updated after insert.
 				column('id').int.primary.autoGenerate2,
 				column('workflowReviewRequestId').varchar(36).notNull,
 				column('type')
 					.varchar(64)
-					.notNull.comment(
-						'Feed entry kind: submitted, comment, changes_requested, version_synced, approved, published',
-					),
+					.notNull.comment('Feed entry kind; see WorkflowReviewActivityType in @n8n/db'),
 				column('typeVersion')
 					.int.notNull.default(1)
 					.comment('Schema version of the `data` payload for this `type`'),
@@ -84,16 +80,9 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 			.withColumns(
 				column('activityId').int.primary,
 				column('body').text.comment('Only user-editable text in the feed; nulled on delete'),
-				column('data').json.comment(
-					'Reserved for comment revision history; cleared alongside `body` on delete',
-				),
 				column('updatedAt').timestampTimezone().comment('Set when the body is edited'),
 				column('deletedAt').timestampTimezone().comment('Set when the comment is deleted'),
 			)
-			// This CASCADE means workflow_review_activity has an incoming cascading FK: any later
-			// addColumns/dropColumns/addNotNull on that table recreates it on SQLite and takes these
-			// comment rows with it. Such a migration needs a sqlite/ subclass with
-			// `withFKsDisabled = true as const`, or a raw ALTER TABLE ADD COLUMN.
 			.withCreatedAt.withForeignKey('activityId', {
 				tableName: ACTIVITY_TABLE,
 				columnName: 'id',

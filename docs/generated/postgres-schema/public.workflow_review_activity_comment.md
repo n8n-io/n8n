@@ -7,7 +7,6 @@
 | activityId | integer |  | false |  | [public.workflow_review_activity](public.workflow_review_activity.md) |  |
 | body | text |  | true |  |  | Only user-editable text in the feed; nulled on delete |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| data | json |  | true |  |  | Reserved for comment revision history; cleared alongside `body` on delete |
 | deletedAt | timestamp(3) with time zone |  | true |  |  | Set when the comment is deleted |
 | updatedAt | timestamp(3) with time zone |  | true |  |  | Set when the body is edited |
 
@@ -37,7 +36,6 @@ erDiagram
   integer activityId FK
   text body
   timestamp_3__with_time_zone createdAt
-  json data
   timestamp_3__with_time_zone deletedAt
   timestamp_3__with_time_zone updatedAt
 }

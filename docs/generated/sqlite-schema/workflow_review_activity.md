@@ -81,7 +81,6 @@ erDiagram
   INTEGER activityId FK
   TEXT body
   datetime_3_ createdAt
-  TEXT data
   datetime_3_ deletedAt
   datetime_3_ updatedAt
 }

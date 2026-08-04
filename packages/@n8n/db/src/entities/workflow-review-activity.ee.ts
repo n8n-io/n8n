@@ -12,14 +12,20 @@ export type WorkflowReviewActivityType =
 	| 'approved'
 	| 'published';
 
+/**
+ * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` holds an
+ * incoming CASCADE FK, so the rebuild takes the comment rows with it: any later migration
+ * touching these columns needs a `sqlite/` subclass with `withFKsDisabled`.
+ */
 @Entity({ name: 'workflow_review_activity' })
 @Index('IDX_workflow_review_activity_request', ['workflowReviewRequestId', 'id'])
 @Index('IDX_workflow_review_activity_group', ['groupId'], { where: '"groupId" IS NOT NULL' })
 export class WorkflowReviewActivity extends WithCreatedAt {
 	/**
 	 * Autoincrement int, not the usual nanoid: the feed orders by id and pages on it as a cursor.
-	 * That cursor is only safe while activity rows are never individually hard-deleted (they die
-	 * with their review request); on SQLite the id is a rowid alias and can be reused otherwise.
+	 * On SQLite `id` is a plain rowid alias with no AUTOINCREMENT, so ids are reused once the top
+	 * rows are deleted — which deleting a review request does. A cursor must therefore never be
+	 * trusted across a deletion, and reads must be scoped by `workflowReviewRequestId`.
 	 */
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -37,7 +43,11 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	@Column({ type: 'int', nullable: true })
 	groupId: number | null;
 
-	/** Immutable per-type detail. Ids only: user references belong in `createdById`. */
+	/**
+	 * Immutable per-type detail. Ids only: user references belong in `createdById`, and a type
+	 * needing a second actor gets its own `SET NULL` column rather than an id in here — a user id
+	 * stored in `data` survives user deletion untouched.
+	 */
 	@JsonColumn({ nullable: true })
 	data: IDataObject | null;
 
