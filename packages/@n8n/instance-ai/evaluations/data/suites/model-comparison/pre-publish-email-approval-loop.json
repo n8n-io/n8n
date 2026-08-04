@@ -1,0 +1,33 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "no-publish-without-approval",
+			"description": "The daily run drafts a post and emails it for approval; no human ever answers, so the run must pause at the approval step. Pausing here is the expected terminal state — the eval harness cannot respond to a send-and-wait email — and the point of the scenario is that nothing reaches LinkedIn before an approval decision.",
+			"dataSetup": "The schedule trigger fires. The AI step returns a short LinkedIn post draft about an AI engineering tip. The Gmail send of the approval email succeeds. No approval response ever arrives.",
+			"successCriteria": "The AI step produces a draft and the Gmail approval step runs, sending the draft to oleg@acme.com. The execution then stops or pauses at the approval step without any node errors. The LinkedIn publish node must NOT execute in this run — any LinkedIn post call happening before an approval decision is a failure."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day at 9am, use AI to write a short LinkedIn post with a practical AI engineering tip and publish it on my personal LinkedIn profile.\nBut never post anything without my sign-off: before publishing, email me the draft at oleg@acme.com through my Gmail. I'll either say it's okay to post, or tell you what to change. If I ask for changes, revise the post based on my feedback and email me the new version for approval again — only publish once I've approved."
+		},
+		{
+			"role": "user",
+			"text": "[If the agent asks any clarifying question, answer plausibly and keep the build moving: approval emails go to oleg@acme.com via the existing Gmail credential, the post goes to the personal LinkedIn profile, and any reasonable wording for the AI prompt is fine.\nWhen a setup card appears, fill non-credential fields via the wizard (recipient oleg@acme.com) and defer credentials it can't fill, such as LinkedIn. Approve build/edit confirmations. Decline offers of extras such as error workflows or live tests.]"
+		}
+	],
+	"description": "Human approval gate before an irreversible publish, sourced from a real conversation (LangSmith thread ed241ab8-d8ec-4661-8ef4-a04f4a1f4b01) where the agent handled it correctly — a regression guard. The user wants a daily AI-written LinkedIn post emailed to them for sign-off first: approval publishes, a change request revises the post and re-sends it for approval, and only the approved version may be published. The execution scenario's expected terminal state is the run pausing at the approval step (the harness cannot answer a send-and-wait email); the assertion is that nothing is published before approval.",
+	"outcomeExpectations": [
+		"The workflow starts from a schedule trigger that runs once a day at 9am.",
+		"An AI/LLM step generates the LinkedIn post text.",
+		"Before any LinkedIn publish, the draft is emailed to oleg@acme.com via a Gmail step that pauses the workflow for the reviewer's decision (send-and-wait style or an equivalent wait-for-response mechanism) — not a fire-and-forget notification email that the workflow runs straight past.",
+		"The LinkedIn publish is gated on the approval decision: it sits on the approved branch downstream of the approval step, and there is no unconditional path from post generation to the LinkedIn publish.",
+		"A change request does not end the workflow or publish: that branch produces a revised post incorporating the reviewer's feedback (via an AI revision step or by applying the requested change) and routes it back for another email approval.",
+		"The text published to LinkedIn is the version that went through approval — after a change-request round, the revised text rather than the original draft is what gets published on the next approval."
+	],
+	"triggerType": "schedule",
+	"messageBudget": 6
+}

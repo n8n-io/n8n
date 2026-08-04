@@ -1,0 +1,25 @@
+{
+	"complexity": "simple",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "daily-quote-sent",
+			"description": "The schedule fires; Claude produces a motivational quote; that quote is sent as a WhatsApp message.",
+			"dataSetup": "The Anthropic/Claude call returns a short motivational quote string (e.g. 'Every sunrise is an invitation to begin again.'). The WhatsApp send endpoint returns a success response with a message id.",
+			"successCriteria": "Exactly one WhatsApp message send is performed, and its text body contains the quote returned by the Claude generation step (not empty and not a static placeholder)."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "build a system to send a message on whatsapp daily 7am with a motivating quote to be delivered using claude"
+		}
+	],
+	"description": "Simple build (thread 5c5dd9ce): a daily motivational quote sent to WhatsApp. One-shot English request naming Claude, WhatsApp, and 7am daily. The real build was a linear 3-node workflow: Schedule Trigger (daily 07:00) -> Anthropic 'Generate Quote' (Claude) -> WhatsApp send, verified end-to-end with both the AI call and WhatsApp send simulated. Expectations pin the user's named constraints (schedule ~7am, Claude/Anthropic) but stay node-agnostic for delivery (WhatsApp Business Cloud node OR HTTP to the Cloud API both pass). A build missing the schedule, missing a Claude generation step, or not sending to WhatsApp fails.",
+	"outcomeExpectations": [
+		"The workflow starts from a Schedule Trigger configured to fire once a day at approximately 07:00 (not a webhook, form, or manual-only trigger).",
+		"An AI/LLM step uses Anthropic Claude to generate a short motivational quote (e.g. the Anthropic node, or an equivalent Claude/Anthropic model step). A non-Claude provider would not honor the user's explicit choice.",
+		"The generated quote is delivered as a WhatsApp message — either via the WhatsApp Business Cloud node or an HTTP request to the WhatsApp Cloud API — and the message body carries the text produced by the Claude step rather than a hardcoded quote."
+	],
+	"triggerType": "schedule"
+}

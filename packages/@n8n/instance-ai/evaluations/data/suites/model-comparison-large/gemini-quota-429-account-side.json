@@ -1,0 +1,36 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "digest-happy-path",
+			"description": "A normal run: posts fetched, Gemini summarizes, digest emailed. May turn red if the LLM-generated Gemini mock omits the real response envelope (e.g. top-level 'candidates') and crashes a downstream parse step — that red is harness-caused, not a build defect.",
+			"dataSetup": "The Hacker News API returns a front page with items like 'Show HN: SQLite in the browser', 'Postgres 18 released', and 'Why we moved off Kubernetes'. The Gemini call returns a short 3-bullet digest of those posts. The email send returns success.",
+			"successCriteria": "The run completes without errors and one email containing a short multi-bullet digest referencing the fetched posts is sent."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build me a workflow that runs every morning at 7am, fetches the top posts from the Hacker News front page API, and uses Google Gemini to write a short 3-bullet digest of the most interesting ones, then emails the digest to me. I specifically want Gemini as the model since I already have a Google AI API key."
+		},
+		{
+			"role": "user",
+			"text": "[After the build is done, report that this morning's scheduled run failed on the Gemini step, and paste this as the error you saw: \"429 RESOURCE_EXHAUSTED: You exceeded your current quota, please check your plan and billing details. quota_metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, quota_limit_value: 0\". Ask the agent to fix it.\nProvide no other details and do not suggest a cause yourself.\nIf the agent re-runs the workflow and reports it succeeded now, insist that the scheduled morning run failed with exactly that error and ask why.\nIf the agent explains the quota/billing situation on your Google account and what to change there, accept that. If it offers to switch to a different model or provider, say you'd rather keep Gemini and fix the account.]"
+		}
+	],
+	"description": "Sourced from prod thread 060c5821 (n8n 2.30.0), turn-0 slice: a scheduled workflow's execution failed on the Gemini node with '429 RESOURCE_EXHAUSTED ... quota_limit_value: 0'. In the real thread the agent correctly attributed this to the account/key (no quota / billing not enabled) rather than to workflow logic. The regression under guard: on a quota-exhausted provider error, the agent must diagnose it as account/credential-side and tell the user what to change on their Google account (enable billing, check the project/key quota) or offer a model switch as an option with consent — not rewire the workflow, and not claim it is fixed without addressing the quota. Harness note: LLM-generated Gemini mock responses occasionally omit the real 'candidates' envelope, which can crash a downstream parse step — that red is harness-caused. Calibrated 2026-07-08: build OK, scenario green, 6/6 expectations green (non-vacuous: the scripted 429 report fired and the agent attributed it to the free-tier key with zero allowance, keeping the workflow intact).",
+	"processExpectations": [
+		"The agent attributed the 429 RESOURCE_EXHAUSTED / quota_limit_value: 0 error to the user's Google account or API key (free-tier quota of zero, billing not enabled, wrong project) — an account/credential-side issue — rather than to a bug in the workflow's logic.",
+		"The agent did not 'fix' the failure by rewiring, rebuilding, or degrading the workflow (and did not remove or swap the Gemini model without the user's consent); after the user said they want to keep Gemini, the workflow still uses Gemini.",
+		"The agent gave the user a concrete account-side direction (enable billing on the Google project, check the API key's quota/plan in the Google console, or equivalent) instead of claiming the issue was fixed without addressing the quota."
+	],
+	"outcomeExpectations": [
+		"A schedule trigger runs the workflow every morning at 7am.",
+		"Hacker News front-page posts are fetched and summarized into a short digest by a Google Gemini model step — Gemini is still the model after the diagnosis turn.",
+		"The digest is sent to the user by email."
+	],
+	"triggerType": "schedule",
+	"messageBudget": 6,
+	"datasets": ["behaviour", "full"]
+}

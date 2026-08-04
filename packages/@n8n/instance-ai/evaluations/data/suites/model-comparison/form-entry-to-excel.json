@@ -1,0 +1,33 @@
+{
+	"complexity": "simple",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "appends-entry",
+			"description": "A form submission appends one row to Excel",
+			"dataSetup": "The form is submitted with fields Date=2026-07-13, Category=Fuel, Amount=42.50. The Excel append returns success.",
+			"successCriteria": "The workflow executes without errors and appends one row to the Excel sheet containing the submitted date, category, and amount."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I make daily entries by hand and I want to automate it. I'd like a workflow where I submit an entry and it automatically gets added as a new row in my Excel sheet, reliably with no errors."
+		},
+		{
+			"role": "assistant",
+			"text": "How do you want to submit each entry, and which Excel workbook and sheet should it append to?"
+		},
+		{
+			"role": "user",
+			"text": "[Say entries should come in through a simple form the workflow provides, and each submission should append a row to a Microsoft Excel workbook. If asked for the specific workbook or worksheet, give a placeholder name and say you'll connect it later.]"
+		}
+	],
+	"description": "Sourced from a real Instance AI conversation (thread 4044ed3e) that built and executed successfully: automating manual daily entries into an Excel sheet. Multi-turn so the vague request doesn't stall. Note: a Microsoft Excel resource-locator left blank for setup may red the append step in-harness; correctness is carried by outcomeExpectations.",
+	"outcomeExpectations": [
+		"The workflow is driven by an n8n Form trigger so the user can submit each daily entry through a form.",
+		"Each submission appends a new row to a Microsoft Excel worksheet with the submitted fields."
+	],
+	"triggerType": "form",
+	"messageBudget": 5
+}

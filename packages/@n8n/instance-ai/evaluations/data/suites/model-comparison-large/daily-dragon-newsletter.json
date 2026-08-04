@@ -1,0 +1,26 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "curate-and-send",
+			"description": "Several stories are fetched, rewritten, and the newsletter is sent.",
+			"dataSetup": "The news source returns four recent story items (title + link + blurb). The email/send call returns a success response.",
+			"successCriteria": "The run completes without errors and sends one newsletter whose body is built from the fetched stories, with headlines and commentary."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build me a daily newsletter called 'The Daily Dragon' with the subtitle 'Top Headlines + Reactions'.\nEvery day it should pull interesting business, tech, startup and AI news stories, then rewrite them into a punchy, funny newsletter — top headlines with short summaries and reaction-style commentary — and send it out to me."
+		}
+	],
+	"description": "Daily curated news newsletter ('The Daily Dragon') that fetches stories, rewrites them in a punchy reaction style, and sends them out. Sourced from a real build+execute thread (langtracer 3a182a7f). Scoped to a single fetch source and one delivery channel; the capability under test is schedule -> fetch stories -> LLM-rewrite -> deliver.",
+	"outcomeExpectations": [
+		"A Schedule trigger runs the workflow once a day.",
+		"News stories are fetched from an external source (an RSS Read or an HTTP Request) rather than being invented by the model.",
+		"An LLM rewrites the fetched stories into newsletter content — headlines, short summaries, and reaction-style commentary — based on the fetched items.",
+		"The assembled newsletter is delivered (an email/Gmail/SMTP send, or equivalent delivery node)."
+	],
+	"triggerType": "schedule"
+}

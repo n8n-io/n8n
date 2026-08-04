@@ -1,0 +1,41 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "adds-only-new-posting",
+			"description": "Only a posting not seen before is added",
+			"dataSetup": "The seen-jobs Data Table already holds two postings ('Backend Engineer @ Company A', 'Designer @ Company B'). The career-page fetch returns those two plus a third new posting 'Data Analyst @ Company A' (location Remote, dated today).",
+			"successCriteria": "The workflow executes without errors and appends only the new 'Data Analyst @ Company A' posting to the sheet, leaving the two already-seen postings unadded."
+		},
+		{
+			"name": "no-new-postings",
+			"description": "Nothing is added when there are no new postings",
+			"dataSetup": "The seen-jobs Data Table holds two postings and the career-page fetch returns exactly those same two postings.",
+			"successCriteria": "The workflow executes without errors and adds no rows to the sheet, because no new postings were found."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to monitor the career pages of a few specific companies for new job postings. When a new job appears, extract the title, company, location and date and add it to a Google Sheet. It should run daily so I keep track of fresh openings."
+		},
+		{
+			"role": "assistant",
+			"text": "Which companies, and how should it tell a genuinely new posting from ones it has already recorded?"
+		},
+		{
+			"role": "user",
+			"text": "[Monitor two example career pages (e.g. company-a.example/careers and company-b.example/careers). Keep the postings already seen in an n8n Data Table so each run can compare and only add postings that are new. Add only the new postings to the sheet.\nCredentials come at setup; don't block on them.]"
+		}
+	],
+	"description": "Sourced from LangTracer thread 18fce6c9 (built + executed, funnelStep 05). Change-detection in the job-hunt domain: monitor specific companies' career pages daily, detect newly-appeared postings, extract fields, and append only the new ones to a store. Distinct from a one-shot fetch because it must compare against previously-seen jobs. Pinned via a Data Table so the seen-state is verifiable (builds that keep last-seen only in workflow static data are unverifiable — eval executions start with empty static data). Calibration finding (genuine builder gap, kept red): the current build added no dedicated persistence/comparison step and instead relied on the Google Sheets appendOrUpdate upsert for dedup, so the 'no-new-postings' scenario still touches every row — the change-detection this case exists to prove is absent. This red is the capability signal, not a harness artefact.",
+	"outcomeExpectations": [
+		"A Schedule Trigger runs the workflow daily.",
+		"It fetches the specified companies' career pages via HTTP Request(s).",
+		"It persists previously-seen postings (e.g. in a Data Table) and compares the freshly-fetched postings against them so only genuinely new postings continue.",
+		"For each new posting it extracts title, company, location and date and appends it to the Google Sheet; already-seen postings are not re-added."
+	],
+	"triggerType": "schedule",
+	"messageBudget": 6
+}

@@ -89,11 +89,15 @@ export interface CliArgs {
 	 *  against its own baselines instead of the Instance AI one. Pair with a
 	 *  dedicated `--dataset` to keep MCP runs fully separate. */
 	baselinePrefix: string;
-	/** Test-case source: `disk` (default) reads data/workflows/, `langtracer` pulls a
+	/** Test-case source: `disk` (default) reads data/workflows/ (+ agents/), `langtracer` pulls a
 	 *  suite over MCP (needs LANGTRACER_URL + LANGTRACER_API_KEY). */
 	source: 'disk' | 'langtracer';
 	/** lang-tracer suite slug (or numeric id) to export when `--source langtracer`. */
 	suite?: string;
+	/** Directory of case `*.json` files for `--source disk`. When set, only this
+	 *  directory is loaded (skips the default data/workflows + data/agents merge).
+	 *  Used for offline suite snapshots under `evaluations/data/suites/<slug>/`. */
+	workflowDir?: string;
 	/** Fused MCP build mode: instead of the Instance AI orchestrator, build each
 	 *  workflow by driving the lane's own MCP server with `claude -p`, then verify
 	 *  it on that same lane. Works across multiple `--base-url` lanes (each lane
@@ -157,6 +161,7 @@ const cliArgsSchema = z.object({
 		.default(BASELINE_EXPERIMENT_PREFIX),
 	source: z.enum(['disk', 'langtracer']).default('disk'),
 	suite: z.string().min(1).optional(),
+	workflowDir: z.string().min(1).optional(),
 	buildViaMcp: z.boolean().default(false),
 	mcpServerName: z.string().min(1).default('n8n-local'),
 	buildModel: z.string().min(1).default('claude-opus-4-8'),
@@ -211,6 +216,9 @@ export function parseCliArgs(argv: string[]): CliArgs {
 	if (validated.source === 'langtracer' && !validated.suite) {
 		throw new Error('--source langtracer requires --suite <slug>');
 	}
+	if (validated.workflowDir && validated.source === 'langtracer') {
+		throw new Error('--workflow-dir only applies to --source disk (omit --source langtracer)');
+	}
 
 	// In langtracer mode, default the dataset + baseline to a suite-scoped, eval-tagged
 	// name so runs don't pollute the shared cohort and re-runs upsert one stable dataset.
@@ -251,6 +259,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		baselinePrefix,
 		source: validated.source,
 		suite: validated.suite,
+		workflowDir: validated.workflowDir,
 		buildViaMcp: validated.buildViaMcp,
 		mcpServerName: validated.mcpServerName,
 		buildModel: validated.buildModel,
@@ -311,6 +320,7 @@ interface RawArgs {
 	baselinePrefix: string;
 	source: string;
 	suite?: string;
+	workflowDir?: string;
 	buildViaMcp: boolean;
 	mcpServerName: string;
 	buildModel: string;
@@ -463,6 +473,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--suite':
 				result.suite = nextArg(argv, i, '--suite');
+				i++;
+				break;
+
+			case '--workflow-dir':
+				result.workflowDir = nextArg(argv, i, '--workflow-dir');
 				i++;
 				break;
 

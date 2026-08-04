@@ -1,0 +1,33 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "posts-to-three",
+			"description": "The provided video is published to all three platforms",
+			"dataSetup": "The input provides a video URL and caption. The Facebook, Instagram, and TikTok publish calls each return success with a post id.",
+			"successCriteria": "The workflow executes without errors and posts the video to Facebook, Instagram, and TikTok."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to automatically post a video to my social media — Facebook, Instagram, and TikTok."
+		},
+		{
+			"role": "assistant",
+			"text": "Where does the video come from, and what triggers a post?"
+		},
+		{
+			"role": "user",
+			"text": "[Say you'll provide the video and a caption through a form/manual input, and each run should publish that same video to Facebook, Instagram, and TikTok. If asked for accounts or credentials, give placeholders and continue.]"
+		}
+	],
+	"description": "Sourced from a real Instance AI conversation (thread 788937d4) that built and executed successfully: publishing one video to three social platforms. Multi-turn so the terse request doesn't stall on a source/trigger question.",
+	"outcomeExpectations": [
+		"The workflow takes a video (and caption) as input via a form/manual trigger.",
+		"It publishes the video to all three platforms — Facebook, Instagram, and TikTok."
+	],
+	"triggerType": "form",
+	"messageBudget": 4
+}

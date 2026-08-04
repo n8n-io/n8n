@@ -1,0 +1,34 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "A topic is submitted and the full text-to-carousel pipeline runs",
+			"dataSetup": "The form is submitted with a topic (e.g. 'never give up on yourself') and an optional watermark. The language model returns several distinct quotes, each with a short scene/style description. The image-generation service returns one generated image per quote. The storage and notification services return success responses.",
+			"successCriteria": "The workflow executes without errors. Multiple quotes are generated from the single topic. Each quote is processed individually and produces its own generated image, resulting in multiple slide images. Every generated slide is saved to storage. The user receives a notification that the carousel is ready to review. No content is posted to any social platform."
+		},
+		{
+			"name": "image-generation-error",
+			"description": "The image-generation service errors for a slide",
+			"dataSetup": "The form is submitted with a valid topic. The language model returns several quotes successfully. The image-generation service returns an error response (e.g. quota or bad-request) when asked to render a slide.",
+			"successCriteria": "The workflow surfaces the image-generation failure instead of silently succeeding, and does not crash before that point — the quotes are still generated and the failure is attributable to the image step, not a wiring bug in the workflow.",
+			"requires": "mock-server"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want an AI workflow that makes a quote carousel for Instagram, Twitter and LinkedIn.\nI type in a topic or theme in a form, and the workflow should use AI to come up with several short punchy quotes about it — one quote per slide — and then generate a moody image for each slide with the quote (and an optional watermark) on it, so together they make up a carousel.\nDon't post them anywhere automatically. Just save the finished slides somewhere and let me know when they're ready so I can review them before I post."
+		}
+	],
+	"description": "Terse, image-referencing real prompt (thread e9d67771) reconstructed self-contained: an AI pipeline that turns a typed topic into a multi-slide quote-image carousel for social platforms, saved for review rather than auto-posted. Real build was form trigger -> LLM quotes -> split per slide -> per-slide image generation -> save to storage -> notify. Image/text vendor and storage kept agnostic (the real conversation churned through 4 image vendors due to account quota, not workflow design).",
+	"outcomeExpectations": [
+		"The workflow starts from a form where the user enters a topic or theme for the carousel.",
+		"A language model generates multiple short quotes from that topic — enough distinct pieces of text to fill several carousel slides, not a single output.",
+		"The per-slide content is fanned out so each quote is processed individually rather than as one lumped item.",
+		"An image-generation step produces one image per slide, yielding a multi-slide set of images (a carousel) rather than a single image.",
+		"The finished slides are saved/stored and the user is notified that they are ready to review; the workflow does NOT auto-post to Instagram, Twitter, or LinkedIn."
+	],
+	"triggerType": "form"
+}

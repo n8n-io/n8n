@@ -1,0 +1,35 @@
+{
+	"complexity": "complex",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "amount-mismatch-flagged",
+			"description": "Invoice amount disagrees with its matching purchase order",
+			"dataSetup": "Gmail returns one recent email containing an invoice (with a PO reference, a vendor, an amount, and a payment due date). Google Sheets returns purchase-order rows including one PO matching that reference but with a DIFFERENT amount. Anthropic returns the extracted invoice fields. Google Calendar and any outbound flag/notification call return success.",
+			"successCriteria": "The discrepancy branch is taken: a flag-for-review action fires for the mismatched invoice, and a Google Calendar event is created for the invoice's payment due date."
+		},
+		{
+			"name": "invoice-matches-po",
+			"description": "Invoice matches its purchase order exactly",
+			"dataSetup": "Gmail returns one recent invoice email whose PO reference, vendor, and amount all match a purchase-order row returned by Google Sheets. Anthropic returns the extracted invoice fields. Google Calendar returns success.",
+			"successCriteria": "No flag-for-review/discrepancy alert action is taken (the negative branch is followed), while a Google Calendar event for the payment due date is still created."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, scan Gmail for new invoices, use Claude to extract details and cross-check them against purchase orders in Google Sheets, flag any discrepancies for review, and add all payment due dates to Google Calendar automatically."
+		}
+	],
+	"description": "Schedule-triggered invoice reconciliation (thread c01c28cd): scan Gmail for invoices, extract details with Claude, cross-check against Google Sheets purchase orders, flag discrepancies, and add payment due dates to Google Calendar. Gmail/Claude/Sheets/Calendar are pinned (the user named them); the flag-for-review channel stays agnostic (the real build emailed a reviewer, but no channel was specified). Defining behaviour is the cross-check plus discrepancy-gated flagging — a workflow that fetches but never compares fails.",
+	"outcomeExpectations": [
+		"The workflow is initiated by a time-based schedule trigger (not a webhook/chat/manual trigger), consistent with running automatically every morning.",
+		"It retrieves new/incoming invoice emails from Gmail.",
+		"It uses Anthropic Claude to extract invoice details from the emails/attachments (the user explicitly named Claude, so an Anthropic node must perform the extraction).",
+		"It reads purchase order data from Google Sheets.",
+		"It cross-checks the extracted invoice details against the purchase orders and branches on whether a discrepancy exists (a conditional/comparison step gating downstream behaviour).",
+		"On the discrepancy path it performs a 'flag for review' action (an alert/notification/logging step surfacing the mismatch); this action is NOT taken when invoice and PO agree.",
+		"It creates Google Calendar events for the invoices' payment due dates."
+	],
+	"triggerType": "schedule"
+}

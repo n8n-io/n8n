@@ -1,0 +1,35 @@
+{
+	"complexity": "complex",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "notifies-only-new",
+			"description": "Only previously-unseen reviews trigger a notification",
+			"dataSetup": "On a scheduled run, the Play Store returns two reviews and the App Store returns one review; one of the Play Store reviews was already seen on a prior run (stored state), the other two are new.",
+			"successCriteria": "The workflow executes without errors and sends notifications only for the two new reviews, not the already-seen one."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want an automation that sends me a push notification whenever users leave new reviews for my app on the Google Play Store and the Apple App Store."
+		},
+		{
+			"role": "assistant",
+			"text": "How should I fetch the reviews, and how do you want to be notified?"
+		},
+		{
+			"role": "user",
+			"text": "[Say it should run on a schedule, fetch recent reviews from both stores (via their APIs / HTTP requests), only notify about reviews it hasn't seen before, and send you a push notification (a push service or a messaging channel is fine). If asked for app IDs or credentials, give placeholders and move on.]"
+		}
+	],
+	"description": "Sourced from a real Instance AI conversation (thread 650b3080) that built and executed successfully: notifying the user of new app-store reviews. Tests change-detection (notify only on unseen reviews). Multi-turn so the vague request doesn't stall. Harness note: if the build dedups via workflow static data (removeItemsSeenInPreviousExecutions) rather than a seedable Data Table read, the in-harness run starts with empty static data so the 'only new' count can't be exercised and the scenario reds — a harness limitation, not a build defect; build correctness is carried by outcomeExpectations.",
+	"outcomeExpectations": [
+		"The workflow runs on a recurring schedule (a Schedule Trigger) to poll for reviews.",
+		"It fetches reviews from both the Google Play Store and the Apple App Store.",
+		"It distinguishes new/unseen reviews from ones already processed (e.g. by comparing against stored state) so only new reviews trigger a notification.",
+		"A push/notification is sent to the user for new reviews."
+	],
+	"triggerType": "schedule",
+	"messageBudget": 5
+}

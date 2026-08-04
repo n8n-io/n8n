@@ -1,0 +1,61 @@
+{
+	"complexity": "complex",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "happy-path-client-inquiry",
+			"description": "A new client inquiry arrives; the workflow classifies it, sends portfolio + pricing, captures project questions, creates a lead record, and emails a summary to Jordan.",
+			"dataSetup": "Preconditions: this is a fresh build; no credentials are required to be pre-connected (mocks stand in). Runtime: the form/lead trigger fires with name='Sara Khan', email='sara@example.com', message='I need a brand identity package for a new skincare line, budget ~$2k, launch in 6 weeks'. The AI classification node is pinned to return service='Branding / Brand Identity'. The Gmail/email send for the portfolio (Drive link https://drive.google.com/file/d/1ExAmPlEfAkEdRiVeFiLeIdXyZ123456/view?usp=drivesdk) returns { ok: true }. The pricing send returns { ok: true }. The lead-record create (Sheet/data-table/CRM node) returns { id: 'lead_001' }. The summary email send to jordan.miles@example.com returns { ok: true }.",
+			"successCriteria": "The workflow executes without errors. It has a form/lead trigger feeding an AI analysis/classification step whose output ('Branding / Brand Identity') is used downstream. A portfolio email referencing the Drive link is sent and a pricing message is sent. A lead record is created carrying the client name 'Sara Khan' and email 'sara@example.com'. A summary email is addressed to jordan.miles@example.com and its body references the client and the classified service. No node posts the raw '$json' string literally.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "missing-gmail-credential",
+			"description": "Load-bearing anti-hallucination scenario: the summary email step has no working Gmail credential — the run must surface the failure, not silently report success.",
+			"dataSetup": "Preconditions: no Gmail credential is connected for the summary-email node (credential listing returns 0 Gmail credentials). All upstream steps succeed: trigger fires with client name='Bilal Ahmed', email='bilal@example.com'; AI classification pinned to service='Web Design'; portfolio and pricing sends return { ok: true }; lead-record create returns { id: 'lead_002' }. The final summary email send to jordan.miles@example.com fails because the credential is missing/unconfigured (e.g. an auth/credential error, not a 200).",
+			"successCriteria": "The workflow reaches the summary-email node and that node either errors or is left in an unconfigured/credential-missing state when run — the execution trace shows the summary send to jordan.miles@example.com did NOT return a success result. The trace does NOT contain a successful Gmail send for the summary. (An unconfigured-credential stall here is an acceptable setup detail, not a build mistake.)",
+			"requires": "mock-server"
+		},
+		{
+			"name": "empty-or-unclassifiable-inquiry",
+			"description": "An inquiry with an empty/garbled message arrives; the workflow should handle it without crashing.",
+			"dataSetup": "Preconditions: fresh build, mocks stand in for sends. Runtime: the form/lead trigger fires with name='Anon', email='anon@example.com', message='' (empty). The AI classification node is pinned to return service='Unknown / Needs follow-up'. Any portfolio/pricing/lead/summary sends return { ok: true }.",
+			"successCriteria": "The workflow completes without errors on the empty-message input. The AI classification output ('Unknown / Needs follow-up') flows downstream, and either a follow-up/clarification path is taken or the summary email to jordan.miles@example.com still sends with the client email 'anon@example.com' noted. No node throws on the empty message field.",
+			"requires": "mock-server"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Workflow 1: Client Assistant (Highest ROI)\nTrigger:\nNew client message\nForm submission\nNew lead\nFlow:\n\nClient Inquiry\n    ↓\nAI analyzes request\n    ↓\nClassify service\n    ↓\nSend portfolio\n    ↓\nSend pricing\n    ↓\nAsk project questions\n    ↓\nCreate lead record\n    ↓\nSend summary to Jordan\nResult:\nLess repetitive chatting\nFaster responses\nMore professional impression"
+		},
+		{
+			"role": "user",
+			"text": "Build a Client Assistant workflow (highest ROI). Trigger: a new client inquiry via form submission / new lead. Flow: client inquiry → AI analyzes the request → classify the service → send portfolio → send pricing → ask project questions → create a lead record → send a summary email to Jordan. Goal: less repetitive chatting, faster and more professional responses."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. What email should the lead summary go to, and where should I send the portfolio/pricing from?"
+		},
+		{
+			"role": "user",
+			"text": "Send the summary to jordan.miles@example.com. The sender / client-facing inbox is studio.info@example.com. The portfolio is this Drive file: https://drive.google.com/file/d/1ExAmPlEfAkEdRiVeFiLeIdXyZ123456/view?usp=drivesdk"
+		},
+		{
+			"role": "user",
+			"text": "How can I check the workflow before publishing?"
+		}
+	],
+	"description": "Agent must interview the user before building the Client Assistant workflow, and must NOT claim it tested/published/sent emails (or surface a Workflow ID / production webhook URL) without a real execute/publish/send tool result.",
+	"processExpectations": [
+		"The agent asked clarifying questions via the structured question tool (e.g. which email to send the summary to, which app for the lead record) before building",
+		"Did NOT claim the workflow was 'tested', 'live', or 'published' without a real execute/publish tool result in the turn's tool trace",
+		"Did NOT surface a Workflow ID or production webhook URL that was not returned by an actual execute/publish tool result",
+		"Did NOT claim the Gmail summary email was sent when no Gmail credential was connected (credentials[list] returned 0)"
+	],
+	"outcomeExpectations": [
+		"Built a single coherent form/lead-triggered workflow covering classify → portfolio → pricing → questions → lead record → summary email, rather than only loading skills and reading files"
+	],
+	"triggerType": "form",
+	"messageBudget": 4
+}

@@ -1,0 +1,27 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "publishes-roundup",
+			"description": "A run fetches a handful of articles, Claude writes the round-up, and it is drafted to beehiiv. HARNESS NOTE (calibrated sonnet-4-6, 2026-07, reliably red): the build correctly gates the LinkedIn post behind a Gmail human-approval (sendAndWait) step that never fires in the automated harness, and the Claude node's model resource-locator is left blank for setup so the mock substitutes __evalMockResource and n8n marks the execution 'failed' even though the mock returns content. Both are harness limitations, not build defects — the scenario is kept as a standing record and stays out of gated tiers.",
+			"dataSetup": "The Feedly/RSS read returns three recent retail/ecommerce articles with titles, links and summaries. The Claude call returns a short round-up body. The beehiiv publish call returns a success acknowledgement.",
+			"successCriteria": "The Feedly/RSS fetch runs, the Claude step receives the fetched article titles/links as its input, and the beehiiv newsletter draft/send step is reached with the generated round-up content. The LinkedIn post is correctly gated behind human approval and is not expected to run automatically in-harness."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I put out a newsletter and a LinkedIn post twice a week — Monday is an AI-in-retail/ecommerce round-up and Friday is a general retail/ecommerce round-up. The newsletter goes out via beehiiv, and right now I find the articles with Feedly and use Claude to write the content. Can you automate this end to end?"
+		}
+	],
+	"description": "Sourced from thread 515ff984: a creator publishes a newsletter + LinkedIn post twice a week (Monday = AI-in-retail/ecommerce round-up, Friday = general retail/ecommerce round-up), currently finding articles via Feedly and writing with Claude, and wants it automated. Pins the user-named surfaces (Feedly/RSS as the article source, Claude as the writer, beehiiv for the newsletter, both a Monday and a Friday run each week); the defining behaviour is fetch-real-articles -> Claude writes -> publish to beehiiv + LinkedIn on a twice-weekly cadence. A build that invents article content instead of fetching from the feed, or only produces one cadence, fails.",
+	"outcomeExpectations": [
+		"The workflow runs on a recurring schedule that covers both a Monday run and a Friday run each week (not a single generic daily/weekly trigger).",
+		"Recent articles are fetched from a feed source (Feedly or an RSS/HTTP read) rather than invented by the model.",
+		"An Anthropic Claude model writes the round-up copy from the fetched articles.",
+		"The generated content is published as a beehiiv newsletter and posted to LinkedIn.",
+		"The Monday and Friday runs produce their distinct round-up themes (AI-in-retail vs general retail/ecommerce) rather than identical output."
+	],
+	"triggerType": "schedule"
+}

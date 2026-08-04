@@ -1,0 +1,34 @@
+{
+	"complexity": "simple",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "extracts-and-appends",
+			"description": "A customer message is parsed into fields and appended to the sheet",
+			"dataSetup": "The webhook receives the message 'Hi, this is Jane Doe, my number is +1 555 0100 and I'm interested in the Pro subscription.' The OpenAI extraction returns name 'Jane Doe', phone '+1 555 0100', product interest 'Pro subscription'. The Google Sheets append returns a success response for the new row.",
+			"successCriteria": "The workflow executes without errors and appends one row whose fields correspond to the extracted name, phone number and product interest."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a workflow that receives a customer message, uses OpenAI to extract the customer name, phone number and product interest, then saves that data into a Google Sheet."
+		},
+		{
+			"role": "assistant",
+			"text": "How does the customer message arrive, and which sheet should the extracted rows go into?"
+		},
+		{
+			"role": "user",
+			"text": "[The message arrives as the body of an incoming webhook request. The extracted rows go into a Google Sheet the user will pick at setup — leave the sheet/document selection for setup and don't block on it.\nCredentials will be added later. If anything else is unspecified, choose a sensible default and build.]"
+		}
+	],
+	"description": "Sourced from LangTracer thread 12b40dc0 (built + executed, funnelStep 05). Free-text-to-structured extraction: an inbound customer message arrives over a webhook, an LLM pulls out name / phone / product interest, and the fields are appended as a row to Google Sheets. Tests that the agent uses an LLM to extract discrete fields (not just echo text) and maps them into the sheet columns. Harness note: the Google Sheets append uses a resource-locator that stays blank for setup, so the execution can red at the Sheets node even on a correct build — carry correctness in the outcome expectations.",
+	"outcomeExpectations": [
+		"The workflow is triggered by an incoming Webhook carrying the customer message.",
+		"An LLM step (OpenAI) extracts the customer name, phone number and product interest from the free-text message, rather than storing the raw message verbatim.",
+		"A Google Sheets append/create-row step writes the extracted name, phone number and product interest into separate columns."
+	],
+	"triggerType": "webhook",
+	"messageBudget": 5
+}

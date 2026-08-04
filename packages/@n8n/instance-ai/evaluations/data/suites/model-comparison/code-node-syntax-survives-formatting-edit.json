@@ -1,0 +1,41 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "formats-and-posts-guide",
+			"description": "A submission whose answers include code flows through the formatter; the Code node must execute without a SyntaxError. Regression path for prod thread 7e471d72, where a formatting edit left the Code node throwing 'Invalid or unexpected token' at runtime.",
+			"dataSetup": "The webhook receives one submission: candidate 'Dana', role 'Backend Engineer', and three question/answer pairs where at least one answer contains a multi-line JavaScript snippet that itself uses a template literal (backticks with ${} interpolation). The Slack message post returns success ({ \"ok\": true }).",
+			"successCriteria": "The run completes with no node error — in particular no Code node fails with 'Invalid or unexpected token' or any other SyntaxError — and one Slack message is posted to #interview-prep containing a markdown guide with the role in the title, an 'Overview' heading, a bullet per question, at least one fenced code block tagged javascript, and the 'Tips' section with its two bullet points."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "My form tool sends interview-question submissions to a webhook. Each submission has the candidate's name, the role, and a list of question/answer pairs — some answers include short code examples.\nFor each submission, turn it into a nicely formatted markdown study guide: a title with the role, an 'Overview' heading, each question as a bullet with its answer underneath, and any code examples wrapped in fenced code blocks so they render properly.\nDon't use an AI model for this — it must be an exact, deterministic reformat of what was submitted, nothing invented. Post the finished guide to Slack in #interview-prep."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — I'll set that up."
+		},
+		{
+			"role": "user",
+			"text": "[After the first successful build, send the following change requests ONE AT A TIME, in this exact order, waiting for the updated build after each before sending the next. Keep each request in one message; don't bundle them.\nChange 1: the fenced code blocks should be tagged as javascript so they get syntax highlighting, and the guide needs a final 'Tips' section with two fixed bullet points — 'Practice answering out loud' and 'Time yourself per question'.\nChange 2: after the Tips section, add a 'Practice Prompt' section that contains the following text verbatim, exactly as written, because students copy-paste it into their AI assistant (it deliberately contains the ${...} placeholders and the triple backticks — those must appear literally in the posted guide, not be substituted or dropped):\nUse this template with your AI assistant, replacing ${ROLE} and ${QUESTION}:\nYou are my interview coach for the ${ROLE} role. Ask me: ${QUESTION}. When you show code, always wrap it in ```javascript fences.\nChange 3: the answers under each question should keep their original line breaks — render every answer as a markdown blockquote (each of its lines prefixed with '> ') instead of plain indented text.\nOnce all three changes are applied you're satisfied. Answer any other questions briefly and plausibly. Approve plans and setup cards that match the goal. Defer credentials — say you'll connect them later. Don't volunteer new requirements.]"
+		}
+	],
+	"description": "Sourced from prod thread 7e471d72 (n8n 2.30.0): a Code node ('Format Doc Content') threw 'Invalid or unexpected token' at runtime because a formatting fix was applied by editing the workflow source with a sandbox script that injected literal newline and backtick characters into the jsCode string literals, and an earlier repair burned 6+ build attempts on a repeated identical syntax error. Rule under test: any Code node the agent writes — and especially one it EDITS repeatedly — stays syntactically valid JavaScript. The build ask (markdown guide with fenced code blocks) makes the jsCode backtick-dense, and the director script then drives THREE sequential edit rounds, each a string-literal hazard: tagging fences (backticks), a verbatim 'Practice Prompt' containing literal ${ROLE}/${QUESTION} placeholders and triple backticks (escaping them inside a template literal is exactly where the prod corruption pattern bites), and a blockquote re-render of multi-line answers (newline surgery). The execution scenario is the runtime proof on the final workflow: the Code node must actually run without a SyntaxError.",
+	"processExpectations": [
+		"Every requested formatting change ended in a successful rebuild: at no point did a turn end with the workflow in a broken state, and if any build attempt failed with a JavaScript/TypeScript syntax error (such as 'Invalid or unexpected token'), the agent changed the offending code before retrying instead of resubmitting an identical failing build.",
+		"The agent never told the user a change was applied or the workflow was fixed while a build or syntax error remained unresolved."
+	],
+	"outcomeExpectations": [
+		"The workflow starts from a webhook trigger that receives the form submission payload.",
+		"The markdown guide is assembled by a deterministic transformation step (a Code node or expression-based nodes — not an AI/LLM node), producing a title containing the role, an 'Overview' heading, one entry per submitted question, code examples wrapped in fenced code blocks tagged as javascript, and a 'Tips' section with the two requested bullet points.",
+		"The guide contains the requested 'Practice Prompt' section with the template text reproduced literally — including the ${ROLE} and ${QUESTION} placeholder tokens and the ```javascript fence marker appearing verbatim in the output, not interpolated, substituted, or dropped.",
+		"Each question's answer is rendered as a markdown blockquote that preserves the answer's original line breaks (every answer line prefixed with '> ').",
+		"Every Code node in the workflow contains syntactically valid JavaScript: all string and template literals are correctly delimited and escaped, with no stray raw backtick, unescaped ${ sequence, or broken line that truncates a literal and would throw 'Invalid or unexpected token' / SyntaxError when the node executes.",
+		"The finished guide is posted as a Slack message to the #interview-prep channel."
+	],
+	"triggerType": "webhook",
+	"messageBudget": 12
+}

@@ -1,0 +1,52 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "happy-path-edit-named-workflow-then-run",
+			"description": "Agent swaps the scoring node to Groq on the correctly-named workflow and then executes it, reporting the run.",
+			"dataSetup": "Preconditions: the instance contains three workflows — 'Europe Job Screening Agent', 'Northwind Talent', and a third 'Typeform → Scoring' variant. 'Northwind Talent' has a scoring step using an OpenAI Chat Model node ('Score Candidate') wired to a Groq-compatible scoring prompt, plus a Manual Trigger and a downstream Set node. A Groq credential is assumed present. Runtime: when the workflow runs, the (now Groq) chat model node returns a mocked scoring response of '{\"score\": 82, \"reason\": \"strong match\"}'. The mocked Groq model echoes model name 'llama3-70b-8192'.",
+			"successCriteria": "The 'Score Candidate' node in the 'Northwind Talent' workflow is a Groq chat model using model 'llama3-70b-8192' (no OpenAI node remains), the workflow is then EXECUTED (an executions run, not a pending HITL), it completes without errors, and the run output reflects the mocked Groq scoring response.",
+			"requires": "data-table"
+		},
+		{
+			"name": "run-directive-not-deferred-to-edit-hitl",
+			"description": "Load-bearing capability_gap: the explicit 're-run the test' directive must produce an actual execution, not a stalled build-edit confirmation.",
+			"dataSetup": "Preconditions: same instance as happy-path; 'Northwind Talent' already has the OpenAI→Groq swap applied (model 'llama3-70b-8192'). The user's directive ends with 're-run the test'. Runtime: when executed, the Groq chat model node returns a mocked response '{\"score\": 64, \"reason\": \"partial fit\"}' and the workflow runs end-to-end.",
+			"successCriteria": "An execution (executions action=run) was actually performed against 'Northwind Talent' and the run completed; the agent reported the run outcome (the mocked score). It did NOT answer the run directive solely with a 'Do you want to edit the workflow?' / pending build-confirmation HITL while leaving the workflow un-executed.",
+			"requires": "data-table"
+		},
+		{
+			"name": "wrong-workflow-not-edited",
+			"description": "Edits must never land on the parked / non-named workflow the user explicitly said to leave alone.",
+			"dataSetup": "Preconditions: instance contains 'Europe Job Screening Agent', 'Northwind Talent', and a 'Typeform → Scoring' variant. The user named 'Northwind Talent' and said 'Do NOT touch Europe Job Screening Agent'. 'Europe Job Screening Agent' contains its own OpenAI-based node that must remain unchanged. Runtime: after the agent's patch, inspect both workflows.",
+			"successCriteria": "After the agent's changes, 'Europe Job Screening Agent' is unmodified (its OpenAI node and credential are unchanged), while only 'Northwind Talent' shows the Groq swap. No patch was applied to a workflow other than the user-named target.",
+			"requires": "data-table"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Please switch the scoring node from OpenAI to Groq. Remove the OpenAI credential and replace it with Groq. Use the model 'llama3-70b-8192' which is free. Here is my Groq API key: gsk_FAKE000000000000000000000000000000000000000000000 Update all nodes that were using OpenAI to use Groq instead, then re-run the test."
+		},
+		{
+			"role": "assistant",
+			"text": "You have a few workflows in this instance. Which one holds the scoring node you want me to change — 'Europe Job Screening Agent' or 'Sedecore'?"
+		},
+		{
+			"role": "user",
+			"text": "Northwind Talent. Do NOT touch Europe Job Screening Agent."
+		}
+	],
+	"description": "When the user gives a concrete directive (publish, run now, edit workflow X, scrape LinkedIn, save to a sheet), the agent must perform the literal action against the named target/source and never silently substitute an adjacent action, the parked workflow, or a different integration.",
+	"processExpectations": [
+		"The agent asked which workflow to edit before patching when multiple workflows existed",
+		"The agent treated 're-run the test' as an actual execution, NOT as a pending edit-approval HITL",
+		"Did NOT silently substitute a different AI provider or a different action than the literal request"
+	],
+	"outcomeExpectations": [
+		"Every node patch targeted the user-named 'Sedecore' workflow, NOT 'Europe Job Screening Agent'"
+	],
+	"triggerType": "manual",
+	"messageBudget": 3
+}

@@ -1,0 +1,34 @@
+{
+	"complexity": "complex",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "generates-and-posts",
+			"description": "A scheduled run ideates, writes, and posts one item",
+			"dataSetup": "On the scheduled run, Gemini returns three post ideas and OpenAI returns finished caption copy for the first idea. The social-posting call returns success.",
+			"successCriteria": "The workflow executes without errors, produces written content from the AI steps, and posts at least one item to the social platform."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day I want to pull this week's content post and reel ideas from Gemini, then use ChatGPT to write tailored content for them, and schedule them to be posted throughout the week — roughly one post per day in varied styles."
+		},
+		{
+			"role": "assistant",
+			"text": "Which platform should these post to, and how should scheduling work?"
+		},
+		{
+			"role": "user",
+			"text": "[Say it should run on a daily schedule, generate ideas with Gemini, write the post copy with ChatGPT/OpenAI, and post one item per day to a social platform — Instagram is fine. Keep it to one post per day; don't build the extra every-2-hours reel loop. If asked for accounts or credentials, say you'll connect them later.]"
+		}
+	],
+	"description": "Sourced from a real Instance AI conversation (thread d3c0e268) that built and executed successfully: a daily content pipeline that ideates with Gemini, writes with ChatGPT, and posts to social. Scope trimmed from the original (1-5 posts/day plus an every-2-hours reel loop) to one post per day so it builds within budget. Harness note: if the build adds a Google Drive resumable-upload step for the image, the Drive upload mock omits the Location header and the node reds — a harness limitation; build correctness is carried by outcomeExpectations.",
+	"outcomeExpectations": [
+		"The workflow runs on a recurring daily schedule (a Schedule Trigger).",
+		"It generates content ideas with a Gemini model and then writes the post copy with an OpenAI/ChatGPT model — two distinct AI steps.",
+		"The written content is posted to a social platform (e.g. Instagram) as the final step."
+	],
+	"triggerType": "schedule",
+	"messageBudget": 5
+}

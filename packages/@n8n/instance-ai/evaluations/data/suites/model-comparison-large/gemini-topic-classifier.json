@@ -1,0 +1,25 @@
+{
+	"complexity": "simple",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "classifies-factual",
+			"description": "A clearly factual topic is classified into one of the three categories",
+			"dataSetup": "The input topic is 'The fall of the Roman Empire'. The Gemini model returns a classification of 'FACTUAL' with a brief rationale.",
+			"successCriteria": "The workflow executes without errors and produces a single category value that is one of FACTUAL, FICTIONAL, or HYBRID for the given topic."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I'm building a Story OS pipeline. I want a workflow where I feed in a topic, title, or idea and a Gemini model classifies it into exactly one of three categories — FACTUAL, FICTIONAL, or HYBRID — so I can route it to the right downstream pipeline. I'll paste the topic in as the input."
+		}
+	],
+	"description": "Sourced from a real Instance AI conversation (thread 1b0b0e1c) that built and executed successfully: a 'Story OS' topic-classification step. Tests that the LLM output is constrained to a fixed enum of categories, not free-form text.",
+	"outcomeExpectations": [
+		"The workflow takes a topic/idea as its input and can be run on demand (e.g. a Manual or Chat trigger).",
+		"It calls a Google Gemini model to classify the input text.",
+		"The classification is constrained to exactly one of the three categories FACTUAL, FICTIONAL, or HYBRID (e.g. via the prompt and/or a structured/parsed output), rather than returning free-form text."
+	],
+	"triggerType": "manual"
+}

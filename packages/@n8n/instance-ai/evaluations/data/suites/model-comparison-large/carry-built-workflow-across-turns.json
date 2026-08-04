@@ -1,0 +1,37 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "A missed inbound call texts the caller back and logs the lead with the call time.",
+			"dataSetup": "The trigger receives a missed inbound call payload (CallStatus 'no-answer', From '+15557890123', call time present). The Twilio SMS and Google Sheets append nodes return success when executed.",
+			"successCriteria": "The workflow builds without errors and contains a missed-call trigger -> a no-answer/missed check -> Twilio SMS to the caller with the text 'Hi, sorry we missed your call! We'll call you back within 15 minutes.' -> Google Sheets append to the 'Leads' sheet logging the caller's number AND the call time. When executed with the sample payload, the SMS is composed to the caller's number and a row containing that number and the call time is appended."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a 'Missed Call Text-Back' automation with Twilio: when we miss an inbound call, automatically text the caller back saying \"Hi, sorry we missed your call! We'll call you back within 15 minutes.\" and log the lead (the caller's number) to my Google Sheet 'Leads'."
+		},
+		{
+			"role": "assistant",
+			"text": "Done — I've built the Missed Call Text-Back workflow: a Twilio missed-call trigger -> send that SMS to the caller -> append the caller's number to your 'Leads' sheet. Want any changes?"
+		},
+		{
+			"role": "user",
+			"text": "Yes — also record the time of the call in the sheet row, alongside the number."
+		}
+	],
+	"description": "After building a workflow, when the user refines the same automation the agent must reference/edit the EXISTING workflow and carry forward facts already given (the SMS text, the target sheet) — not cold-start ('what would you like to build?'), re-ask already-provided details, or build a second workflow from scratch.",
+	"processExpectations": [
+		"On the refinement turn the agent referenced or edited the workflow it had already built earlier in the thread, rather than cold-starting ('what would you like to build?') or building a second workflow from scratch.",
+		"The agent did NOT re-ask for information already provided earlier in the thread — the SMS message text and the target Google Sheet ('Leads') — it carried those facts forward.",
+		"The agent applied the refinement (recording the call time in the sheet row) as an edit to the existing workflow, keeping the agreed SMS text and the caller's number."
+	],
+	"outcomeExpectations": [
+		"Built a single coherent workflow: a Twilio/webhook missed-call trigger -> send the SMS to the caller -> append the lead to the Google Sheet (no duplicate from-scratch build)."
+	],
+	"triggerType": "webhook",
+	"messageBudget": 5
+}

@@ -1,0 +1,25 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "generates-seo-json",
+			"description": "A product URL yields structured Pinterest SEO fields",
+			"dataSetup": "The input is an Amazon product URL for a stainless-steel water bottle. Any product-page fetch returns basic product details (title, features, price), and Gemini returns a JSON object with title, description, keywords, and hashtags fields.",
+			"successCriteria": "The workflow executes without errors and outputs a JSON object containing a Pinterest title, description, keywords, and hashtags for the product."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build me a workflow that takes an Amazon product URL, uses Gemini to generate Pinterest SEO content for it — a title, description, keywords, and hashtags — plus the pin text, and returns it all as JSON. I'll pass the product URL in as input."
+		}
+	],
+	"description": "Sourced from a real Instance AI conversation (thread a430214e) that built and executed successfully: an Amazon URL to Pinterest SEO content generator. Tests structured multi-field AI output returned as JSON. Capability-gap finding: the current build reds the scenario because it references a `$json.output` wrapper that a chained-LLM + structured-output parser doesn't emit (the parsed fields are flat), so the returned JSON resolves to undefined at runtime — a real builder wiring bug the scenario is meant to catch (flips to a regression guard once fixed).",
+	"outcomeExpectations": [
+		"The workflow accepts an Amazon product URL as input.",
+		"It uses a Google Gemini model to generate Pinterest SEO content — a title, description, keywords, and hashtags — from the product.",
+		"The generated SEO fields (and pin text) are returned in a structured JSON shape rather than free-form prose."
+	],
+	"triggerType": "manual"
+}

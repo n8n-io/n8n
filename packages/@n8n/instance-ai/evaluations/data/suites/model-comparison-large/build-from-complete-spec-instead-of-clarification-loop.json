@@ -1,0 +1,51 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "A submitted customer request is classified and appended to Google Sheets.",
+			"dataSetup": "Assume Google Sheets credentials are present and a target spreadsheet with a tab containing columns Name, Email, Request, Classification exists. The Form Trigger receives a submission: Name 'Alex Carter', Email 'alex.carter@example.com', Request 'My invoice for March was charged twice, please refund'. The Advanced AI classifier node returns classification 'Billing'. The Google Sheets node is mocked to accept the append.",
+			"successCriteria": "The workflow contains a Form Trigger feeding an AI classification node feeding a Google Sheets append node; it completes without errors and the Google Sheets node receives a row containing 'Alex Carter', 'alex.carter@example.com', the request text, and classification 'Billing'.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "explicit-go-ahead-commits-to-build",
+			"description": "Load-bearing capability_gap scenario: after the spec plus 'just build it', a structurally-complete workflow exists and runs rather than another ask-user round.",
+			"dataSetup": "The conversation has supplied the trigger (n8n Form Trigger), the classification step (Advanced AI node into Billing / Technical / General), the destination (Google Sheets), the form fields (name, email, request text), and the explicit instruction 'Just build it'. At run time the Form Trigger receives a submission: Name 'Jordan Blake', Email 'jordan.blake@example.com', Request 'The dashboard keeps showing a 500 error on login'. The AI classifier node returns 'Technical'. The Google Sheets node is mocked to accept the append.",
+			"successCriteria": "A workflow was built and executes end-to-end: the Form Trigger → AI classifier → Google Sheets path fires without errors, and the Google Sheets node receives a row with classification 'Technical' for the Jordan Blake submission. The built workflow does NOT consist solely of a trigger awaiting further clarification.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "ai-returns-unknown-category",
+			"description": "Edge case: the AI classifier returns a value outside the three named categories.",
+			"dataSetup": "Same precondition workflow (Form Trigger → AI classifier → Google Sheets, columns Name, Email, Request, Classification). The Form Trigger receives a submission: Name 'Sam Rivera', Email 'sam.rivera@example.com', Request 'Just saying hi, love the product'. The Advanced AI classifier node returns classification 'General'. The Google Sheets node is mocked to accept the append.",
+			"successCriteria": "The workflow completes without errors and the Google Sheets node still receives a row for Sam Rivera with a non-empty Classification value; the workflow does not throw or stall on the classifier output.",
+			"requires": "mock-server"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a workflow that starts with an n8n Form Trigger to collect customer requests, connects to an Advanced AI node to classify the request type, and then saves the results into a Google Sheets node."
+		},
+		{
+			"role": "assistant",
+			"text": "I can build that. What fields should the form collect, and where do classified results go?"
+		},
+		{
+			"role": "user",
+			"text": "Form: customer name, email, and the request text. Classify into Billing / Technical / General. Save name, email, request, and classification to Google Sheets. Just build it."
+		}
+	],
+	"description": "Given a fully-specified, build-ready workflow request (Form Trigger → AI classify → Google Sheets), the orchestrator must commit to sensible defaults and call build-workflow instead of emitting another ask-user round.",
+	"processExpectations": [
+		"The agent did NOT emit a second clarification round re-asking form fields, categories, or destination already given in the spec"
+	],
+	"outcomeExpectations": [
+		"The agent built a workflow with a Form Trigger, an AI classification node, and a Google Sheets node after the user said 'just build it'",
+		"The agent chose sensible defaults for unspecified-but-defaultable parameters (AI provider, sheet column mapping) instead of blocking on them"
+	],
+	"triggerType": "form",
+	"messageBudget": 3
+}

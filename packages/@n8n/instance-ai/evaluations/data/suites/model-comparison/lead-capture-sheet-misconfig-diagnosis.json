@@ -1,0 +1,42 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "new-lead-appended",
+			"description": "A lead with an unseen email arrives; a new row is added. May hard-fail on an empty Google Sheets resource locator (__evalMockResource) — that red is harness-caused.",
+			"dataSetup": "The webhook receives { \"name\": \"Dana Reyes\", \"email\": \"dana@example.com\", \"phone\": \"+1555010199\", \"message\": \"Interested in a quote\" }. The Google Sheets lookup for that email returns no matching rows. The append call returns success.",
+			"successCriteria": "The run completes without errors and performs an append/create of a new row for dana@example.com; no update operation runs on the new-lead path."
+		},
+		{
+			"name": "duplicate-lead-updated",
+			"description": "A lead whose email already exists arrives; the existing row is updated, no duplicate is appended. May hard-fail on an empty Google Sheets resource locator (__evalMockResource) — that red is harness-caused.",
+			"dataSetup": "The webhook receives { \"name\": \"Dana Reyes\", \"email\": \"dana@example.com\", \"phone\": \"+1555010199\", \"message\": \"Following up\" }. The Google Sheets lookup for that email returns one matching row (row 7, same email). The update call returns success.",
+			"successCriteria": "The run completes without errors and updates the existing row for dana@example.com; no new row is appended for the duplicate."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a simple workflow called 'Lead Capture MVP'. A webhook receives new leads from my website form (name, email, phone, message). Clean up the fields, then check my Google Sheets leads spreadsheet whether a lead with the same email already exists. If it exists, update that row instead of adding a duplicate; if not, add a new row."
+		},
+		{
+			"role": "user",
+			"text": "[After the agent finishes the build, tell it you tested the workflow and the sheet lookup step failed with this exact error: \"Sheet with name Leads not found\". Say you definitely have a sheet named 'Leads' in your spreadsheet.\nProvide no other details and do not suggest a cause yourself.\nIf the agent asks you to confirm which spreadsheet document is selected in the node, or asks you to re-pick the sheet, answer that you now see the node points at a different/older spreadsheet document and let it fix the reference.\nDo not accept a response that just rebuilds or restates the workflow is fixed — only accept once the agent has actually looked into the failure and explained what was mismatched.]"
+		}
+	],
+	"description": "Sourced from prod thread 1e8c8582 (n8n 2.30.0): iterative 'Lead Capture MVP' build where a test run failed on the Google Sheets lookup with 'Sheet with name Leads not found'. The regression under guard: when a run fails on a sheet reference, the agent must inspect the actual failed execution and diagnose the user-side configuration mismatch (wrong document/sheet reference in the node), instead of guessing, rewriting the dedup logic, or claiming fixed without a re-run. Harness note: execution scenarios run through Google Sheets resource-locator fields; if the agent leaves the document/sheet for user setup, the mock substitutes __evalMockResource and the run hard-fails before the branch logic — that red is harness-caused, not a build defect. Calibrated 2026-07-08: build OK, 2/2 scenarios green, 6/6 expectations green (non-vacuous: agent inspected via workflows[get-as-code]/executions before rebuilding).",
+	"processExpectations": [
+		"When the user reported the 'Sheet with name Leads not found' failure, the agent inspected the actual state (the failed execution, or the node's sheet/document configuration) before changing anything — it did not guess at a cause or immediately rebuild.",
+		"The agent diagnosed the failure as a configuration mismatch between the node's sheet/document reference and the user's actual spreadsheet (user-side setup, not a workflow logic bug), and either fixed the reference or told the user exactly what to re-select — it did not rewrite or remove the duplicate-check logic in response.",
+		"The agent did not claim the issue was fixed without re-running the workflow or explicitly stating what it could not verify and why."
+	],
+	"outcomeExpectations": [
+		"The workflow starts from a webhook that receives the lead fields (name, email, phone, message).",
+		"Before any row is written, the workflow checks Google Sheets for an existing lead with the same email.",
+		"Existing leads are updated rather than duplicated — either via an explicit lookup with an update/append branch, or via an upsert keyed on the email column."
+	],
+	"triggerType": "webhook",
+	"messageBudget": 8,
+	"datasets": ["behaviour", "full"]
+}

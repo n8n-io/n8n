@@ -1,0 +1,34 @@
+{
+	"complexity": "complex",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "prompt-image-copy-upload",
+			"description": "The full creative pipeline runs end to end",
+			"dataSetup": "On a run, the LLM returns an image prompt, the image API returns an image URL/binary, the LLM returns a caption and headline, and the Meta upload call returns success.",
+			"successCriteria": "The workflow executes without errors end to end: prompt generated, image produced, captions/headlines written, and the asset uploaded to the Meta ad account."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want a workflow where an AI generates image prompts, those prompts feed an AI image-generation API to produce an image, then an AI writes captions and headlines for that image, and finally everything gets uploaded to my Meta (Facebook) business ad account."
+		},
+		{
+			"role": "assistant",
+			"text": "Which image service should I use, and how does the run start?"
+		},
+		{
+			"role": "user",
+			"text": "[Say it can run manually or on a trigger of your choosing; use any AI image API (an HTTP Request is fine), generate the prompt and captions/headlines with an LLM, and upload the image plus copy to a Meta/Facebook business ad account. If asked for accounts or credentials, give placeholders and continue.]"
+		}
+	],
+	"description": "Sourced from a real Instance AI conversation (thread f35836dd) that built and executed successfully: an AI creative pipeline that generates a prompt, an image, and ad copy, then uploads to a Meta business ad account. Note: if an OpenAI image node is used, the mock can omit the image payload and red the node in-harness; using an HTTP-based image API avoids this. Correctness is carried by outcomeExpectations.",
+	"outcomeExpectations": [
+		"An LLM generates the image prompt, which is then passed to an AI image-generation API (e.g. via HTTP Request) that produces an image.",
+		"An LLM step generates captions and headlines/subtitles for the generated image.",
+		"The image together with its generated copy is uploaded to a Meta/Facebook business advertising account."
+	],
+	"triggerType": "manual",
+	"messageBudget": 5
+}

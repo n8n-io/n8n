@@ -1,0 +1,33 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "answers-treatment-faq",
+			"description": "Customer asks a general question about a treatment",
+			"dataSetup": "The chat trigger receives an incoming message asking about a dental treatment, e.g. 'How much does a dental implant cost?'. The chat model returns a helpful natural-language answer describing the treatment. No lead details are supplied in this message.",
+			"successCriteria": "The workflow executes without errors and the AI Agent replies to the customer with an answer to their treatment/FAQ question. The run completes on the conversational path; no lead record needs to be created for a pure informational question."
+		},
+		{
+			"name": "captures-lead-name-and-phone",
+			"description": "Customer provides name and phone and requests an appointment",
+			"dataSetup": "The chat trigger receives an incoming message in which the customer gives their name and phone number and asks for an appointment, e.g. 'My name is Miguel Marti, my number is 600123456, I'd like an appointment for a dental implant.'. The chat model decides to call the lead-capture tool. The storage destination (data table / database / spreadsheet) returns success for the write.",
+			"successCriteria": "The workflow executes without errors and a lead record is created in the storage destination containing the customer's name (Miguel Marti) and phone number (600123456). The AI Agent replies confirming the appointment request has been captured."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build an AI chatbot for a dental clinic that answers frequently asked questions, provides information about treatments, collects the customer's name and phone number, and creates a lead for an appointment request."
+		}
+	],
+	"description": "Chat-triggered conversational AI agent for a dental clinic (thread 88432825) that answers FAQs and treatment questions AND captures the customer's name + phone as a lead record for an appointment request. Distinct from whatsapp-faq-assistant (webhook/WhatsApp trigger + Gemini + Google Sheets FAQ lookup + conditional Notion/Slack ticket routing): this case is a stateful chat assistant whose defining behaviour is structured lead capture into a storage destination, not FAQ-match-and-route. triggerType is 'manual' as the closest enum for a chat trigger.",
+	"outcomeExpectations": [
+		"The workflow is started by a chat trigger that receives incoming chat messages from the customer.",
+		"An AI Agent node connected to a chat model drives the conversation, answering the customer's frequently asked questions and providing information about the clinic's treatments.",
+		"The AI Agent can capture the customer's name and phone number and persist them as a lead / appointment request into a storage destination (e.g. a data table, database, or spreadsheet) rather than only echoing them back in chat.",
+		"The saved lead record includes at least the customer's name and phone number.",
+		"The agent maintains conversation context across messages (e.g. via a memory sub-node) so it can collect the name and phone across a multi-turn exchange."
+	],
+	"triggerType": "manual"
+}

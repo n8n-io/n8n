@@ -1,0 +1,26 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build me a workflow: a form collects a customer request with the fields Name, Email, and Request Text.\nAn AI step then sorts each request into one of exactly three categories — Sales, Tech, or Billing.\nFinally, save each request to Google Sheets with these columns: Timestamp, Name, Email, Request Text, and Category."
+		},
+		{
+			"role": "user",
+			"text": "[You already gave every detail in your first message: the form fields (Name, Email, Request Text), the three categories (Sales, Tech, Billing), and the exact columns to save (Timestamp, Name, Email, Request Text, Category).\nIf the agent asks you again for any of these already-provided details, answer briefly by repeating the same values so it proceeds to build — do not introduce any new requirements.\nIf the agent instead just builds the workflow (or routes you to a setup/credentials card), simply acknowledge.]"
+		}
+	],
+	"description": "Behaviour/process case sourced from a real execution-failure thread (LangTracer fb786519, verdict bad): given a request that already named the trigger, the classification, and the exact columns to save, the agent stacked two ask-user rounds re-requesting the form fields, the meaning of 'classified', and the columns before building anything. This guards against re-asking information the user already provided. Multi-turn with a director note so that if the agent does re-ask, the proxy answers and the build completes (a single-prompt case would hang on the unanswered question and time out with no scored result); the processExpectations then catch the redundant questioning from the transcript.",
+	"processExpectations": [
+		"The agent did not re-ask the user for details the first message already provided — it did not request the form fields, the category set, or the destination columns again, since all three were stated up front.",
+		"The agent proceeded to build the workflow (or route to setup) after at most one consolidated clarification round, rather than stacking multiple ask-user rounds before any workflow was built."
+	],
+	"outcomeExpectations": [
+		"A workflow was actually built: a Form Trigger feeds an AI classification step that sorts each request into Sales, Tech, or Billing, and each request is appended to Google Sheets with the columns Timestamp, Name, Email, Request Text, and Category."
+	],
+	"triggerType": "form",
+	"messageBudget": 6,
+	"datasets": ["behaviour", "full"]
+}

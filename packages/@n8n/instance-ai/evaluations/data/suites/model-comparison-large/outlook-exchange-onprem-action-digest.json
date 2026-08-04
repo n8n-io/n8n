@@ -1,0 +1,48 @@
+{
+	"complexity": "medium",
+	"tags": [],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Daily run fetches last-24h Exchange mail via HTTP Request, OpenAI extracts and prioritizes action items, and a structured digest email is sent.",
+			"dataSetup": "Preconditions: a daily Schedule trigger fires in the morning; Exchange/EWS credentials are assumed present on the HTTP Request node; OpenAI credentials assumed present. Runtime mocks: the HTTP Request node (reading the last 24h of Outlook/Exchange on-premise mail) returns 3 messages — (1) from 'jane@examplecorp.com', subject 'Contract renewal — needs sign-off by Friday', (2) from 'ops@examplecorp.com', subject 'Server migration window confirmed', (3) from 'newsletter@examplenews.com', subject 'Weekly digest'. The OpenAI node returns a structured JSON result with prioritized action items, e.g. [{ task: 'Sign contract renewal', priority: 'high', source: 'jane@examplecorp.com' }, { task: 'Acknowledge migration window', priority: 'medium', source: 'ops@examplecorp.com' }]. The digest-send call (HTTP Request / Microsoft node) returns a success response.",
+			"successCriteria": "The workflow executes without errors. A Schedule trigger fires the run. The mail-fetch HTTP Request returns the 3 messages and feeds them into the OpenAI node. The OpenAI output (prioritized action items) is incorporated into the final digest email body, which references 'Contract renewal' and a high-priority item. The digest is sent via the send step exactly once.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "http-request-body-config-valid",
+			"description": "Load-bearing: the HTTP Request node used to read Exchange mail has a valid, internally consistent body configuration that passes validation.",
+			"dataSetup": "Preconditions: the freshly built workflow contains an HTTP Request node configured to fetch the last 24h of Outlook/Exchange on-premise mail (POST to an EWS/Exchange endpoint). Runtime mock: the endpoint returns a 200 with a list of 2 messages from 'jane@examplecorp.com' and 'ops@examplecorp.com'. This scenario specifically inspects the HTTP Request node's body parameters for consistency, then runs it.",
+			"successCriteria": "The HTTP Request node's body configuration is internally consistent and valid: it is NOT in raw/specifyBody=raw mode while simultaneously carrying structured bodyParameters. If sendBody is true with specifyBody=raw, a single rawContentType is set and the body is a well-formed non-empty string; if structured parameters are used, specifyBody is json or form and every parameter is a well-formed name/value pair (no orphaned/empty body params). The node passes validation and the workflow executes without a submit-workflow or node-parameter validation error, completing the mail fetch.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "no-emails-in-window",
+			"description": "Edge: no messages arrived in the last 24h — the workflow handles the empty result gracefully.",
+			"dataSetup": "Preconditions: same scheduled daily build. Runtime mock: the mail-fetch HTTP Request returns an empty message list (zero items) for the last-24h window. OpenAI is given no action items to extract.",
+			"successCriteria": "The workflow completes without errors. Either no digest is sent, or a digest is sent whose body clearly states there are no action items / no new mail for the period. The OpenAI and send steps do not throw on the empty input.",
+			"requires": "mock-server"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, read all emails received in the last 24 hours from Gmail, use OpenAI to extract action items and prioritize them, then send me a structured daily digest email summarizing what needs my attention."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it — a scheduled morning digest that pulls the last 24h of mail, runs OpenAI to extract and prioritize action items, then emails you the summary. Which mailbox should I read from?"
+		},
+		{
+			"role": "user",
+			"text": "replace gmail by outlook/exchange on-premise"
+		},
+		{
+			"role": "assistant",
+			"text": "On-premise Exchange doesn't have a native n8n node, so I'll read mail via an HTTP Request node hitting your Exchange/EWS endpoint. Should the digest be sent back through the same Exchange server, and how should action items be prioritized?"
+		}
+	],
+	"description": "Daily digest that reads the last 24h of Outlook/Exchange on-premise mail via HTTP Request, extracts action items with OpenAI, and emails a structured summary — guards against a misconfigured HTTP Request body causing submit-workflow validation failures.",
+	"triggerType": "schedule",
+	"messageBudget": 4
+}
