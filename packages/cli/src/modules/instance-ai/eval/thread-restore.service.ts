@@ -36,20 +36,17 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
-/**
- * Empty every `credential` string and `credentials` map, at any depth — the agent
- * counterpart of stripping a seed workflow's node credentials. The ids address the
- * instance the seed came from, and a seed captured from a real conversation would
- * carry a real user's. Emptied rather than deleted: `credential` is a required
- * FIELD on vector stores and episodic memory, and an empty value is what an
- * unconfigured agent already carries.
- */
+/** Empty every `credential`/`credentialId` string and `credentials` map, at any
+ *  depth — they address the instance the seed came from. Emptied rather than
+ *  deleted: both are required fields, and empty is the unconfigured state the
+ *  config schema already models. */
 function blankCredentialValues(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(blankCredentialValues);
 	if (!isRecord(value)) return value;
 	return Object.fromEntries(
 		Object.entries(value).map(([key, entry]) => {
-			if (key === 'credential' && typeof entry === 'string') return [key, ''];
+			if ((key === 'credential' || key === 'credentialId') && typeof entry === 'string')
+				return [key, ''];
 			if (key === 'credentials' && isRecord(entry)) return [key, {}];
 			return [key, blankCredentialValues(entry)];
 		}),
@@ -149,13 +146,9 @@ export class EvalThreadRestoreService {
 		}
 	}
 
-	/**
-	 * Recreate each seed agent, config and skill bodies in one insert — an agent is
-	 * a single row, so there are no skill files to write. Rolls back on failure.
-	 *
-	 * Names are NOT uniquified as seed data tables' are: an agent is addressed by
-	 * id, so a same-named copy can't misdirect the live turn.
-	 */
+	/** Recreate each seed agent, config and skill bodies in one insert — an agent is
+	 *  a single row, so there are no skill files to write. Rolls back on failure.
+	 *  Names are not uniquified as seed data tables' are; see `remapSeedArtifactIds`. */
 	async restoreAgents(agents: InstanceAiEvalSeedAgent[], projectId: string): Promise<string[]> {
 		if (agents.length === 0) return [];
 		const agentsService = this.agentsService();

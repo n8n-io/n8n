@@ -307,6 +307,9 @@ describe('EvalThreadRestoreService', () => {
 						indexName: 'docs',
 					},
 				],
+				// A chat integration names its credential `credentialId`; emptying it is
+				// the draft state the config schema already models.
+				integrations: [{ type: 'slack' as const, credentialId: 'cred-slack' }],
 			};
 
 			await service.restoreAgents([{ ...agent, config }], 'project-1');
@@ -315,6 +318,7 @@ describe('EvalThreadRestoreService', () => {
 			expect(options?.schema).toMatchObject({
 				credential: '',
 				vectorStores: [{ credential: '', embedding: { credential: '' } }],
+				integrations: [{ type: 'slack', credentialId: '' }],
 			});
 			// Everything else survives the blanking untouched.
 			expect(options?.schema).toMatchObject({

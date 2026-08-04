@@ -1064,12 +1064,10 @@ export class InstanceAiController {
 					payload.messages,
 				));
 			}
-			// Bind the thread as the conversation that built these agents would have.
-			// Without it the live turn's first `build-agent` call is rejected (unknown
-			// agentRef) and has to recover from the agent id in its own history — a
-			// wasted turn whose recovery may instead create a second agent. Written
-			// last, and never rolled back: a binding pointing at an agent a failed
-			// restore already deleted would send `build-agent` after a missing id.
+			// Bind the thread as the conversation that built these agents would have,
+			// or the live turn's first `build-agent` call is rejected as an unknown
+			// agentRef. Written last and never rolled back: a binding pointing at an
+			// agent a failed restore already deleted is worse than none.
 			if (createdAgentIds.length > 0) {
 				await this.memoryService.updateThread(payload.threadId, {
 					metadata: agentBuilderTargetMetadata(

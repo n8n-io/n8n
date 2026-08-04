@@ -291,15 +291,13 @@ function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMe
  * iterations don't share (and clobber) one row, and a leftover workflow copy can't
  * be grounded on by name.
  *
- * Agents get the id pass only: they are addressed by id (the restored thread
- * binding, `build-agent`'s `agentId`), and an agent's name appears inside skill
- * prose, where a blanket rename would rewrite instructions the case grades.
+ * Agents get the id pass only: they are addressed by id, and an agent's name
+ * appears inside skill prose, where a blanket rename would rewrite instructions
+ * the case grades.
  *
  * The workflow name rewrite is applied to `messages` ONLY, never inside
- * `workflows[].nodes`. Workflow names are short and human ("Batch loop"), so a
- * blanket replace could hit a node that happens to share the name and silently
- * alter the restored graph — which is exactly the "structural skeleton unchanged"
- * guard a seeded case relies on.
+ * `workflows[].nodes` — names are short and human ("Batch loop"), so a blanket
+ * replace could hit a same-named node and silently alter the restored graph.
  */
 export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	if (seed.workflows.length === 0 && seed.agents.length === 0) return seed;
