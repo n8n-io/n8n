@@ -17,24 +17,30 @@
 // ---------------------------------------------------------------------------
 
 import {
+	expectationUnitKey,
 	hardRegressions,
 	improvements,
+	scenarioUnitKey,
 	softRegressions,
+	unitKeyOf,
 	watchList,
 	type ComparisonOutcome,
 	type ComparisonResult,
+	type EvaluationUnitComparison,
 	type FailureCategoryComparison,
-	type ScenarioComparison,
+	type UnitRef,
 } from './compare';
 import type { GateCriterion, GateResult, GateUnit } from './gate';
 import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS } from '../binaryChecks/types';
-import type {
-	MultiRunEvaluation,
-	TestCaseAggregation,
-	WorkflowTestCase,
-	WorkflowTestCaseResult,
-} from '../types';
+import {
+	countAggregatedUnitTrials,
+	getAggregatedCaseUnits,
+	getCaseRunStatus,
+	getCaseRunStatusLabel,
+	getCheckedRunCount,
+} from '../summary';
+import type { MultiRunEvaluation, TestCaseAggregation, WorkflowTestCase } from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
 /** How to re-run this eval against a PR's latest commit (PR-open runs go stale
@@ -60,6 +66,109 @@ interface FormatOptions {
 	/** Absolute green-gate verdict for curated tiers. When set, the comment renders
 	 *  the gate verdict in place of the baseline comparison. */
 	gate?: GateResult;
+	/** Run-level pass@k / pass^k (terminal k = totalRuns) averaged over measured
+	 *  units (scenarios + build expectations) — same numbers as
+	 *  `summary.passAtK`/`summary.passHatK` in eval-results.json. */
+	passMetrics?: { passAtK: number; passHatK: number };
+	/** LangSmith experiment URL, when the run recorded one. */
+	experimentUrl?: string;
+}
+
+/** `_pass@k … · pass^k … · [LangSmith experiment](…)_` — everything optional. */
+function formatRunMetaLine(totalRuns: number, options: FormatOptions): string | undefined {
+	const parts: string[] = [];
+	if (options.passMetrics) {
+		const { passAtK, passHatK } = options.passMetrics;
+		parts.push(
+			`pass@${String(totalRuns)} ${(passAtK * 100).toFixed(1)}% · pass^${String(totalRuns)} ${(passHatK * 100).toFixed(1)}%`,
+		);
+	}
+	if (options.experimentUrl) {
+		parts.push(`[LangSmith experiment](${options.experimentUrl})`);
+	}
+	return parts.length > 0 ? `_${parts.join(' · ')}_` : undefined;
+}
+
+function evaluatedBuildExpectations(tc: TestCaseAggregation) {
+	return tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0);
+}
+
+function aggregateMeasuredUnits(testCases: TestCaseAggregation[]) {
+	let passed = 0;
+	let total = 0;
+	let scenarios = 0;
+	let expectations = 0;
+
+	for (const tc of testCases) {
+		// Only evaluated runs count — verifier-incomplete runs carry no verdict.
+		const evaluatedScenarios = tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0);
+		scenarios += evaluatedScenarios.length;
+		for (const sa of evaluatedScenarios) {
+			passed += sa.passCount;
+			total += sa.evaluatedCount;
+		}
+
+		const buildExpectations = evaluatedBuildExpectations(tc);
+		expectations += buildExpectations.length;
+		for (const ea of buildExpectations) {
+			passed += ea.passCount;
+			total += ea.evaluatedCount;
+		}
+	}
+
+	return { passed, total, scenarios, expectations };
+}
+
+function unitCountLabel(summary: { scenarios: number; expectations: number }, totalRuns: number) {
+	const scenarioLabel = `${summary.scenarios} scenario${summary.scenarios === 1 ? '' : 's'}`;
+	const expectationLabel =
+		summary.expectations > 0
+			? ` + ${summary.expectations} expectation${summary.expectations === 1 ? '' : 's'}`
+			: '';
+	return `${scenarioLabel}${expectationLabel}, N=${totalRuns}`;
+}
+
+/** Display label for a comparison unit — `file/scenario`, or the
+ *  `file :: expectation-text…` style used by the Failures section. */
+function unitLabel(unit: UnitRef): string {
+	return unit.kind === 'scenario'
+		? `${unit.testCaseFile}/${unit.name}`
+		: `${unit.testCaseFile} :: ${unit.name.slice(0, 60)}`;
+}
+
+/** `${n} units (X scenarios + Y expectations)` — collapses to the legacy
+ *  `${n} scenarios` copy when no expectation units are present. */
+function unitMixLabel(units: Array<{ kind: EvaluationUnitComparison['kind'] }>): string {
+	const scenarios = units.filter((u) => u.kind === 'scenario').length;
+	const expectations = units.length - scenarios;
+	if (expectations === 0) return `${scenarios} scenario${scenarios === 1 ? '' : 's'}`;
+	return `${units.length} units (${scenarios} scenario${scenarios === 1 ? '' : 's'} + ${expectations} expectation${expectations === 1 ? '' : 's'})`;
+}
+
+/** Sentence fragments describing units missing on one side of the comparison.
+ *  Expectations missing from the baseline get their own clause — the usual
+ *  cause is a baseline captured before expectation persistence, not case drift. */
+function describePartialCoverage(comparison: ComparisonResult): string[] {
+	const parts: string[] = [];
+	if (comparison.baselineOnly.length > 0) {
+		const label = comparison.baselineOnly.every((u) => u.kind === 'scenario')
+			? 'baseline scenarios'
+			: 'baseline units';
+		parts.push(`${comparison.baselineOnly.length} ${label} not run by PR`);
+	}
+	const prOnlyScenarios = comparison.prOnly.filter((u) => u.kind === 'scenario').length;
+	const prOnlyExpectations = comparison.prOnly.length - prOnlyScenarios;
+	if (prOnlyScenarios > 0) {
+		parts.push(
+			`${prOnlyScenarios} PR scenarios have no baseline data (added since baseline captured)`,
+		);
+	}
+	if (prOnlyExpectations > 0) {
+		parts.push(
+			`${prOnlyExpectations} PR expectations have no baseline data (baseline predates expectation persistence)`,
+		);
+	}
+	return parts;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,14 +188,23 @@ export function formatComparisonMarkdown(
 	lines.push('');
 	lines.push(renderRerunCallout(options.rerun));
 	lines.push('');
+	const runMetaLine = formatRunMetaLine(evaluation.totalRuns, options);
 	if (gate) {
 		lines.push(formatGateAlertMarkdown(gate));
 		lines.push('');
 		lines.push(...renderGateSummaryMarkdown(gate));
+		if (runMetaLine) {
+			lines.push(runMetaLine);
+			lines.push('');
+		}
+		// Failures (full judge text) go right under the verdict in gate mode — the point
+		// is to see what failed at a glance, not hunt for it at the bottom of the comment.
+		lines.push(...renderFailureDetails(evaluation, options.slugByTestCase));
 	} else {
 		lines.push(formatTopAlert(outcome));
 		lines.push('');
 		lines.push(formatAggregateBlock(evaluation, comparison));
+		if (runMetaLine) lines.push(runMetaLine);
 		lines.push('');
 	}
 
@@ -107,13 +225,11 @@ export function formatComparisonMarkdown(
 			: undefined;
 
 		if (hard.length > 0) {
-			lines.push(
-				...renderScenarioSection('Regressions', '— high-confidence', hard, true, failedIndex),
-			);
+			lines.push(...renderUnitSection('Regressions', '— high-confidence', hard, true, failedIndex));
 		}
 		if (soft.length > 0) {
 			lines.push(
-				...renderScenarioSection(
+				...renderUnitSection(
 					'Likely regressions',
 					'— looser statistical flag, investigate if related to your changes',
 					soft,
@@ -124,7 +240,7 @@ export function formatComparisonMarkdown(
 		}
 		if (watch.length > 0) {
 			lines.push(
-				...renderScenarioSection(
+				...renderUnitSection(
 					'Worth watching',
 					'— large change, not flagged as a regression',
 					watch,
@@ -134,7 +250,7 @@ export function formatComparisonMarkdown(
 			);
 		}
 		if (imps.length > 0) {
-			lines.push(...renderScenarioSection('Improvements', '', imps, true));
+			lines.push(...renderUnitSection('Improvements', '', imps, true));
 		}
 
 		if (renderedAnyTable) {
@@ -161,7 +277,8 @@ export function formatComparisonMarkdown(
 		if (otherFindings.length > 0) lines.push(...otherFindings);
 	}
 
-	const failureDetails = renderFailureDetails(evaluation, options.slugByTestCase);
+	// Gate mode already rendered the Failures section under the verdict (above).
+	const failureDetails = gate ? [] : renderFailureDetails(evaluation, options.slugByTestCase);
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
@@ -188,32 +305,57 @@ function gateFailuresCell(unit: GateUnit): string {
 		.join(', ');
 }
 
-// Units that pass@k but failed at least one run (e.g. 2/3) — green, but worth surfacing.
+// A green unit that failed ≥1 run (e.g. 2/3) — passes the gate, still worth listing.
 function degradedUnits(gate: GateResult): GateUnit[] {
 	return gate.units.filter((u) => u.green && u.passCount < u.total);
 }
 
+// A green unit that failed the *majority* of its runs (passed <50%, e.g. 1/3) — it
+// barely cleared pass@k, one bad run from red. Pass-rate based so it scales across k
+// (3 on PRs, 10 on baselines); a single flaky miss (2/3) is not "barely passed".
+function barelyPassedUnits(gate: GateResult): GateUnit[] {
+	return gate.units.filter((u) => u.green && u.total > 0 && u.passCount / u.total < 0.5);
+}
+
+function pluralUnits(c: number): string {
+	return `${c} unit${c === 1 ? '' : 's'}`;
+}
+
 function formatGateAlertMarkdown(gate: GateResult): string {
 	const n = gate.units.length;
-	const k = gate.totalRuns;
-	const over = `over ${k} run${k === 1 ? '' : 's'}`;
+	const over = `over ${gate.totalRuns} run${gate.totalRuns === 1 ? '' : 's'}`;
 	// Key off failing, not gate.green: under minAggregatePassRate gate.green can be
 	// true via the pooled rate while individual units fail.
 	if (gate.failing.length > 0) {
 		return [
 			'> [!CAUTION]',
-			`> 🔴 ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} not green ${over}.`,
+			`> 🔴 ${gate.failing.length} of ${pluralUnits(n)} not green ${over}.`,
 		].join('\n');
 	}
-	// All units pass@k. Distinguish a clean sweep from green-but-flaky so a 2/3 stays visible.
-	const degraded = degradedUnits(gate);
-	if (degraded.length > 0) {
+	// Zero measured units (e.g. verifier outage excluded everything): red, not clean.
+	if (!gate.green) {
+		return [
+			'> [!CAUTION]',
+			`> 🔴 Gate has no measured units — ${gate.excluded.length} excluded with no verdict. Nothing was actually gated.`,
+		].join('\n');
+	}
+	// All units pass@k. Only warn when a unit *barely* passed (failed most of its runs);
+	// a single flaky miss stays green but is still listed in Failures below.
+	const barely = barelyPassedUnits(gate).length;
+	if (barely > 0) {
 		return [
 			'> [!WARNING]',
-			`> 🟡 All ${n} unit${n === 1 ? '' : 's'} green ${over}, but ${degraded.length} had a failing run — see below.`,
+			`> 🟡 All ${pluralUnits(n)} green ${over}, but ${barely} barely passed (failed most runs) — see Failures below.`,
 		].join('\n');
 	}
-	return ['> [!TIP]', `> 🟢 All ${n} unit${n === 1 ? '' : 's'} green ${over} (clean).`].join('\n');
+	const flaky = degradedUnits(gate).length;
+	if (flaky > 0) {
+		return [
+			'> [!TIP]',
+			`> 🟢 All ${pluralUnits(n)} green ${over}; ${flaky} flaky — see Failures below.`,
+		].join('\n');
+	}
+	return ['> [!TIP]', `> 🟢 All ${pluralUnits(n)} green ${over} (clean).`].join('\n');
 }
 
 function renderGateSummaryMarkdown(gate: GateResult): string[] {
@@ -226,34 +368,30 @@ function renderGateSummaryMarkdown(gate: GateResult): string[] {
 		lines.push(`_${gate.excluded.length} unit(s) not gated (no judge verdict)._`);
 	}
 	lines.push('');
-	const unitTable = (heading: string, units: GateUnit[]): void => {
-		if (units.length === 0) return;
-		lines.push(`#### ${heading}`, '', '| Unit | Pass | Failures |', '|---|---|---|');
-		for (const u of units) {
-			const rateU = u.total > 0 ? Math.round(u.passRate * 100) : 0;
-			lines.push(
-				`| \`${u.slug}\` | ${u.passCount}/${u.total} (${rateU}%) | ${gateFailuresCell(u)} |`,
-			);
-		}
-		lines.push('');
-	};
-	unitTable('Not green', gate.failing);
-	unitTable('Passed with failures', degradedUnits(gate));
+	// Failing / flaky units (with their full judge text) are rendered by the Failures
+	// section below — not a per-unit table here. Build expectations carry no failure
+	// category, which left the old table's Failures column blank.
 	return lines;
 }
 
 function formatTerminalGateLine(gate: GateResult): string {
 	const n = gate.units.length;
-	const k = gate.totalRuns;
-	const over = `over ${k} run${k === 1 ? '' : 's'}`;
+	const over = `over ${gate.totalRuns} run${gate.totalRuns === 1 ? '' : 's'}`;
 	if (gate.failing.length > 0) {
-		return `▶ GATE: ${gate.failing.length} of ${n} unit${n === 1 ? '' : 's'} NOT green ${over}`;
+		return `▶ GATE: ${gate.failing.length} of ${pluralUnits(n)} NOT green ${over}`;
 	}
-	const degraded = degradedUnits(gate).length;
-	if (degraded > 0) {
-		return `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green ${over}, ${degraded} with a failing run`;
+	if (!gate.green) {
+		return `▶ GATE: NO measured units (${gate.excluded.length} excluded, no verdicts) — not green`;
 	}
-	return `▶ GATE: all ${n} unit${n === 1 ? '' : 's'} green ${over} (clean)`;
+	const barely = barelyPassedUnits(gate).length;
+	if (barely > 0) {
+		return `▶ GATE: all ${pluralUnits(n)} green ${over}, ${barely} barely passed`;
+	}
+	const flaky = degradedUnits(gate).length;
+	if (flaky > 0) {
+		return `▶ GATE: all ${pluralUnits(n)} green ${over}, ${flaky} flaky`;
+	}
+	return `▶ GATE: all ${pluralUnits(n)} green ${over} (clean)`;
 }
 
 function formatTerminalGateSummary(gate: GateResult): string[] {
@@ -273,7 +411,8 @@ function formatTerminalGateSummary(gate: GateResult): string[] {
 	}
 	for (const u of degradedUnits(gate)) {
 		const cats = u.failureCategories ? `  [${gateFailuresCell(u)}]` : '';
-		lines.push(TERMINAL_INDENT + `  FLAKY      ${u.slug}  ${u.passCount}/${u.total}${cats}`);
+		const label = u.total > 0 && u.passCount / u.total < 0.5 ? 'BARELY   ' : 'flaky    ';
+		lines.push(TERMINAL_INDENT + `  ${label}  ${u.slug}  ${u.passCount}/${u.total}${cats}`);
 	}
 	return lines;
 }
@@ -286,7 +425,7 @@ function renderRerunCallout(rerun?: RerunHint): string {
 	if (!rerun) {
 		return [
 			'> [!IMPORTANT]',
-			"> **This eval does not re-run on new commits.** Re-run it against the PR's latest commit by dispatching the **CI: Instance AI Evals** workflow with your PR number.",
+			"> **This eval does not re-run on new commits.** Re-run it against the PR's latest commit by dispatching the **Instance AI Evals: PR Gate** workflow with your PR number.",
 		].join('\n');
 	}
 	return [
@@ -315,13 +454,13 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 		rowByName[name] = {
 			dimension: entry.dimension,
 			failed: entry.fails > 0,
-			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${String(entry.errors)} | ${rate} |`,
 		};
 	}
 
 	const header = [
-		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
-		'|---|---|---|---|---|---|---|',
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Error | Pass rate |',
+		'|---|---|---|---|---|---|---|---|',
 	];
 	const rowsWhere = (keep: (name: string) => boolean): string[] => {
 		const byDimension: Record<string, string[]> = {};
@@ -334,7 +473,7 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 	const lines: string[] = [
 		'#### Workflow checks',
 		'',
-		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow. Error = check could not be measured (e.g. judge timeout)._`,
 		'',
 	];
 
@@ -439,11 +578,9 @@ function formatAggregateBlock(
 	comparison?: ComparisonResult,
 ): string {
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
-		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
-		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
-		const rate = total > 0 ? (passed / total) * 100 : 0;
-		return `**Aggregate**: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`;
+		const summary = aggregateMeasuredUnits(evaluation.testCases);
+		const rate = summary.total > 0 ? (summary.passed / summary.total) * 100 : 0;
+		return `**Aggregate**: ${rate.toFixed(1)}% pass (${summary.passed}/${summary.total} trials, ${unitCountLabel(summary, evaluation.totalRuns)})`;
 	}
 
 	const { aggregate } = comparison;
@@ -452,24 +589,13 @@ function formatAggregateBlock(
 	const arrow = delta > 0 ? ' ↑' : delta < 0 ? ' ↓' : '';
 
 	const baselineN = inferBaselineN(comparison);
+	const mixLabel = unitMixLabel(comparison.evaluationUnits);
 	const sampleLine = baselineN
-		? `_${aggregate.intersectionSize} scenarios · N=${evaluation.totalRuns} (PR) vs N=${baselineN} (baseline) · baseline: \`${comparison.baseline.experimentName}\`_`
-		: `_${aggregate.intersectionSize} scenarios · N=${evaluation.totalRuns} (PR) · baseline: \`${comparison.baseline.experimentName}\`_`;
+		? `_${mixLabel} · N=${evaluation.totalRuns} (PR) vs N=${baselineN} (baseline) · baseline: \`${comparison.baseline.experimentName}\`_`
+		: `_${mixLabel} · N=${evaluation.totalRuns} (PR) · baseline: \`${comparison.baseline.experimentName}\`_`;
 
-	const partial = comparison.baselineOnly.length + comparison.prOnly.length;
-	const partialNote =
-		partial > 0
-			? `\n_Partial: ${[
-					comparison.baselineOnly.length > 0
-						? `${comparison.baselineOnly.length} baseline scenarios not run by PR`
-						: null,
-					comparison.prOnly.length > 0
-						? `${comparison.prOnly.length} PR scenarios have no baseline data (added since baseline captured)`
-						: null,
-				]
-					.filter((s) => s !== null)
-					.join(', ')}._`
-			: '';
+	const partialParts = describePartialCoverage(comparison);
+	const partialNote = partialParts.length > 0 ? `\n_Partial: ${partialParts.join(', ')}._` : '';
 
 	return [
 		`**Aggregate**: ${pct(aggregate.prAggregatePassRate)}% PR vs ${pct(aggregate.baselineAggregatePassRate)}% baseline — **${sign}${delta.toFixed(1)}pp${arrow}**`,
@@ -477,29 +603,29 @@ function formatAggregateBlock(
 	].join('\n');
 }
 
-function renderScenarioSection(
+function renderUnitSection(
 	heading: string,
 	subtitle: string,
-	scenarios: ScenarioComparison[],
+	units: EvaluationUnitComparison[],
 	withPValue: boolean,
 	failedIndex?: FailedRunsBySlug,
 ): string[] {
 	const lines: string[] = [];
 	const headingLine = subtitle
-		? `#### ${heading} (${scenarios.length}) ${subtitle}`
-		: `#### ${heading} (${scenarios.length})`;
+		? `#### ${heading} (${units.length}) ${subtitle}`
+		: `#### ${heading} (${units.length})`;
 	lines.push(headingLine);
 	lines.push('');
 	if (withPValue) {
-		lines.push('| Scenario | PR | Baseline | Δ | p |');
+		lines.push('| Unit | PR | Baseline | Δ | p |');
 		lines.push('|---|---|---|---|---|');
 	} else {
-		lines.push('| Scenario | PR | Baseline | Δ |');
+		lines.push('| Unit | PR | Baseline | Δ |');
 		lines.push('|---|---|---|---|');
 	}
-	for (const s of scenarios) {
+	for (const s of units) {
 		const cells = [
-			`\`${s.testCaseFile}/${s.scenarioName}\``,
+			`\`${unitLabel(s)}\``,
 			formatRateCell(s.prPasses, s.prTotal),
 			formatRateCell(s.baselinePasses, s.baselineTotal),
 			formatDeltaCell(s.delta),
@@ -512,25 +638,25 @@ function renderScenarioSection(
 	}
 	lines.push('');
 
-	// Per-scenario failure breakdown — one collapsible per row that had failed
-	// PR runs. Lets the reader drill into each flagged scenario without
+	// Per-unit failure breakdown — one collapsible per row that had failed
+	// PR runs. Lets the reader drill into each flagged unit without
 	// hunting through a separate "Failure details" section.
 	if (failedIndex) {
-		for (const s of scenarios) {
-			const failedRuns = failedIndex.get(`${s.testCaseFile}/${s.scenarioName}`) ?? [];
+		for (const s of units) {
+			const failedRuns = failedIndex.get(unitKeyOf(s)) ?? [];
 			if (failedRuns.length === 0) continue;
-			lines.push(...renderScenarioFailureBreakdown(s, failedRuns));
+			lines.push(...renderUnitFailureBreakdown(s, failedRuns));
 		}
 	}
 
 	return lines;
 }
 
-function renderScenarioFailureBreakdown(
-	s: ScenarioComparison,
+function renderUnitFailureBreakdown(
+	s: EvaluationUnitComparison,
 	failedRuns: FailedRunDetail[],
 ): string[] {
-	const slug = `${s.testCaseFile}/${s.scenarioName}`;
+	const slug = unitLabel(s);
 	const categoryMix = summarizeCategories(failedRuns);
 	const summaryParts = [`${failedRuns.length} of ${s.prTotal} failed`];
 	if (categoryMix) summaryParts.push(categoryMix);
@@ -592,35 +718,39 @@ function renderPerTestCaseDetails(
 		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
-		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
+		lines.push(`| Workflow | Status | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
-			const meanPassAtK = tc.executionScenarios.length
+			const units = [
+				...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
+				...evaluatedBuildExpectations(tc),
+			];
+			const meanPassAtK = units.length
 				? Math.round(
-						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-							tc.executionScenarios.length) *
+						(units.reduce((sum, unit) => sum + (unit.passAtK[unit.passAtK.length - 1] ?? 0), 0) /
+							units.length) *
 							100,
 					)
 				: 0;
-			const meanPassHatK = tc.executionScenarios.length
+			const meanPassHatK = units.length
 				? Math.round(
-						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-							tc.executionScenarios.length) *
+						(units.reduce((sum, unit) => sum + (unit.passHatK[unit.passHatK.length - 1] ?? 0), 0) /
+							units.length) *
 							100,
 					)
 				: 0;
 			lines.push(
-				`| ${renderName(tc)} | ${tc.buildSuccessCount}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
+				`| ${renderName(tc)} | ${getCheckedRunCount(tc)}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
 			);
 		}
 	} else {
-		lines.push('| Workflow | Built | Pass rate |');
+		lines.push('| Workflow | Status | Pass rate |');
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
-			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const passed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
-			const total = tc.executionScenarios.length;
-			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
+			const run = tc.runs[0];
+			const status = run ? getCaseRunStatusLabel(run) : 'NO RUN';
+			const { passCount, totalCount } = countAggregatedUnitTrials(getAggregatedCaseUnits(tc));
+			lines.push(`| ${renderName(tc)} | ${status} | ${passCount}/${totalCount} |`);
 		}
 	}
 	lines.push('');
@@ -645,35 +775,31 @@ function renderOtherFindings(comparison: ComparisonResult): string[] {
 	lines.push(`<details><summary>Other findings: ${summary}</summary>`);
 	lines.push('');
 
-	const stableScenarios = comparison.scenarios.filter((s) => s.verdict === 'stable');
-	const flakyScenarios = comparison.scenarios.filter((s) => s.verdict === 'unreliable_baseline');
-	const noDataScenarios = comparison.scenarios.filter((s) => s.verdict === 'insufficient_data');
+	const stableUnits = comparison.evaluationUnits.filter((s) => s.verdict === 'stable');
+	const flakyUnits = comparison.evaluationUnits.filter((s) => s.verdict === 'unreliable_baseline');
+	const noDataUnits = comparison.evaluationUnits.filter((s) => s.verdict === 'insufficient_data');
 
-	if (flakyScenarios.length > 0) {
+	if (flakyUnits.length > 0) {
 		lines.push('**Confident drop on a flaky baseline (surfaced for visibility, not flagged):**');
 		lines.push('');
-		lines.push('| Scenario | PR | Baseline | Δ |');
+		lines.push('| Unit | PR | Baseline | Δ |');
 		lines.push('|---|---|---|---|');
-		for (const s of flakyScenarios) {
+		for (const s of flakyUnits) {
 			lines.push(
-				`| \`${s.testCaseFile}/${s.scenarioName}\` | ${formatRateCell(s.prPasses, s.prTotal)} | ${formatRateCell(s.baselinePasses, s.baselineTotal)} | ${formatDeltaCell(s.delta)} |`,
+				`| \`${unitLabel(s)}\` | ${formatRateCell(s.prPasses, s.prTotal)} | ${formatRateCell(s.baselinePasses, s.baselineTotal)} | ${formatDeltaCell(s.delta)} |`,
 			);
 		}
 		lines.push('');
 	}
 
-	if (noDataScenarios.length > 0) {
-		lines.push(
-			`**No data:** ${noDataScenarios.map((s) => `\`${s.testCaseFile}/${s.scenarioName}\``).join(', ')}`,
-		);
+	if (noDataUnits.length > 0) {
+		lines.push(`**No data:** ${noDataUnits.map((s) => `\`${unitLabel(s)}\``).join(', ')}`);
 		lines.push('');
 	}
 
-	if (stableScenarios.length > 0) {
-		lines.push(`**Stable (${stableScenarios.length}):**`);
-		lines.push(
-			stableScenarios.map((s) => `\`${s.testCaseFile}/${s.scenarioName}\``).join(', ') + '.',
-		);
+	if (stableUnits.length > 0) {
+		lines.push(`**Stable (${stableUnits.length}):**`);
+		lines.push(stableUnits.map((s) => `\`${unitLabel(s)}\``).join(', ') + '.');
 		lines.push('');
 	}
 
@@ -686,44 +812,72 @@ function renderFailureDetails(
 	evaluation: MultiRunEvaluation,
 	slugByTestCase?: Map<WorkflowTestCase, string>,
 ): string[] {
-	const failed: Array<{
-		tc: WorkflowTestCaseResult;
-		fileSlug: string | undefined;
-		scenarioName: string;
-		failedRuns: Array<{ category?: string; reasoning: string }>;
-	}> = [];
+	interface FailedUnit {
+		slug: string;
+		passCount: number;
+		total: number;
+		runs: Array<{ category?: string; text: string }>;
+	}
+	const units: FailedUnit[] = [];
 	for (const tc of evaluation.testCases) {
-		const fileSlug = slugByTestCase?.get(tc.testCase);
+		const prefix =
+			slugByTestCase?.get(tc.testCase) ?? caseDisplayPrompt(tc.testCase).slice(0, 50).trim();
 		for (const sa of tc.executionScenarios) {
-			const failedRuns = sa.runs
-				.filter((r) => !r.success)
-				.map((r) => ({ category: r.failureCategory, reasoning: r.reasoning }));
+			// Verifier-incomplete runs are shown for visibility but tagged as
+			// excluded — they're outside the passCount/total denominator.
+			const failedRuns = sa.runs.filter((r) => !r.success && !r.incomplete);
+			const excludedRuns = sa.runs.filter((r) => r.incomplete);
+			if (failedRuns.length > 0 || excludedRuns.length > 0) {
+				units.push({
+					slug: `${prefix}/${sa.scenario.name}`,
+					passCount: sa.passCount,
+					total: sa.evaluatedCount,
+					runs: [
+						...failedRuns.map((r) => ({ category: r.failureCategory, text: r.reasoning })),
+						...excludedRuns.map((r) => ({
+							category: 'excluded from scoring — verifier returned no verdict',
+							text: r.reasoning,
+						})),
+					],
+				});
+			}
+		}
+		for (const ea of tc.buildExpectations) {
+			// Only evaluated verdicts count; `incomplete` runs have no judge text to show.
+			const failedRuns = ea.runs.filter((r) => !r.incomplete && !r.pass);
 			if (failedRuns.length > 0) {
-				failed.push({ tc: tc.runs[0], fileSlug, scenarioName: sa.scenario.name, failedRuns });
+				units.push({
+					slug: `${prefix} :: ${ea.expectation.slice(0, 60)}`,
+					passCount: ea.passCount,
+					total: ea.evaluatedCount,
+					runs: failedRuns.map((r) => ({ text: r.reason })),
+				});
 			}
 		}
 	}
-	if (failed.length === 0) return [];
+	if (units.length === 0) return [];
 
-	const lines: string[] = [];
-	lines.push('<details><summary>Failure details</summary>');
-	lines.push('');
-	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
-		const slug = fileSlug
-			? `${fileSlug}/${scenarioName}`
-			: `${caseDisplayPrompt(tc.testCase).slice(0, 50).trim()} / ${scenarioName}`;
-		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
-		for (const fr of failedRuns) {
-			const tag = fr.category ? ` [${fr.category}]` : '';
-			// Show the full reasoning (generous cap for pathological cases); keep any
-			// newlines inside the blockquote so the detail stays readable.
-			const reason = fr.reasoning.length > 1500 ? `${fr.reasoning.slice(0, 1500)}…` : fr.reasoning;
-			lines.push(`> Run${tag}: ${reason.replace(/\n+/g, '\n> ')}`);
+	// Full judge text for every failed run — scenarios and build expectations alike —
+	// so it's easy to see exactly what failed. Open by default but collapsible.
+	const lines: string[] = [`<details open><summary>Failures (${units.length})</summary>`, ''];
+	for (const u of units) {
+		lines.push(`**\`${u.slug}\`** — passed ${u.passCount}/${u.total}`, '');
+		// Collapse identical reasonings — a unit usually fails the same way each run.
+		const byText = new Map<string, { category?: string; text: string; count: number }>();
+		for (const r of u.runs) {
+			const key = `${r.category ?? ''}::${r.text}`;
+			const existing = byText.get(key);
+			if (existing) existing.count++;
+			else byText.set(key, { ...r, count: 1 });
 		}
-		lines.push('');
+		for (const r of byText.values()) {
+			const tag = r.category ? `_[${r.category}]_ ` : '';
+			const mult = r.count > 1 ? ` _(×${r.count})_` : '';
+			const text = (r.text.trim() || '_(judge returned no text)_').replace(/\n+/g, '\n> ');
+			lines.push(`> ${tag}${text}${mult}`, '');
+		}
 	}
-	lines.push('</details>');
-	lines.push('');
+	lines.push('</details>', '');
 	return lines;
 }
 
@@ -758,7 +912,8 @@ function buildFailedRunsIndex(
 		for (const sa of tc.executionScenarios) {
 			const failedRuns: FailedRunDetail[] = [];
 			sa.runs.forEach((r, i) => {
-				if (!r.success) {
+				// Incomplete runs are outside the comparison denominators — skip.
+				if (!r.success && !r.incomplete) {
 					failedRuns.push({
 						category: r.failureCategory,
 						reasoning: r.reasoning,
@@ -767,7 +922,19 @@ function buildFailedRunsIndex(
 				}
 			});
 			if (failedRuns.length > 0) {
-				map.set(`${fileSlug}/${sa.scenario.name}`, failedRuns);
+				map.set(scenarioUnitKey(fileSlug, sa.scenario.name), failedRuns);
+			}
+		}
+		for (const ea of tc.buildExpectations) {
+			const failedRuns: FailedRunDetail[] = [];
+			ea.runs.forEach((r, i) => {
+				// Judge-incomplete verdicts are outside the comparison denominators — skip.
+				if (!r.incomplete && !r.pass) {
+					failedRuns.push({ reasoning: r.reason, runIndex: i + 1 });
+				}
+			});
+			if (failedRuns.length > 0) {
+				map.set(expectationUnitKey(fileSlug, ea.expectation), failedRuns);
 			}
 		}
 	}
@@ -808,17 +975,18 @@ function formatDeltaCell(delta: number): string {
 
 function countByVerdict(
 	comparison: ComparisonResult,
-	verdict: ScenarioComparison['verdict'],
+	verdict: EvaluationUnitComparison['verdict'],
 ): number {
-	return comparison.scenarios.filter((s) => s.verdict === verdict).length;
+	return comparison.evaluationUnits.filter((s) => s.verdict === verdict).length;
 }
 
-/** Best-effort N=baseline iteration count. The comparison only carries trial
- *  totals per scenario; we infer N from the most-common scenario total since
- *  the baseline runs every scenario the same number of times. */
+/** Best-effort N=baseline iteration count, inferred from the most-common
+ *  scenario trial total (the baseline runs every scenario the same number of
+ *  times). Scenario units only — expectation denominators exclude
+ *  judge-incomplete verdicts, so they'd distort the inferred N. */
 function inferBaselineN(comparison: ComparisonResult): number | undefined {
-	const totals = comparison.scenarios
-		.filter((s) => s.baselineTotal > 0)
+	const totals = comparison.evaluationUnits
+		.filter((s) => s.kind === 'scenario' && s.baselineTotal > 0)
 		.map((s) => s.baselineTotal);
 	if (totals.length === 0) return undefined;
 	const counts = new Map<number, number>();
@@ -880,7 +1048,7 @@ export function formatComparisonTerminal(
 				TERMINAL_INDENT +
 					'REGRESSIONS  (high-confidence: large drop on a reliable scenario, unlikely noise)',
 			);
-			lines.push(formatTerminalScenarioTable(hard, true));
+			lines.push(formatTerminalUnitTable(hard, true));
 			lines.push('');
 		}
 		if (soft.length > 0) {
@@ -888,17 +1056,17 @@ export function formatComparisonTerminal(
 				TERMINAL_INDENT +
 					'LIKELY REGRESSIONS  (looser statistical flag — investigate if related to your changes)',
 			);
-			lines.push(formatTerminalScenarioTable(soft, true));
+			lines.push(formatTerminalUnitTable(soft, true));
 			lines.push('');
 		}
 		if (watch.length > 0) {
 			lines.push(TERMINAL_INDENT + 'WORTH WATCHING  (large change, not flagged as a regression)');
-			lines.push(formatTerminalScenarioTable(watch, false));
+			lines.push(formatTerminalUnitTable(watch, false));
 			lines.push('');
 		}
 		if (imps.length > 0) {
 			lines.push(TERMINAL_INDENT + 'IMPROVEMENTS');
-			lines.push(formatTerminalScenarioTable(imps, true));
+			lines.push(formatTerminalUnitTable(imps, true));
 			lines.push('');
 		}
 
@@ -976,13 +1144,11 @@ function formatTerminalAggregate(
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
-		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
-		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
-		const rate = total > 0 ? (passed / total) * 100 : 0;
+		const summary = aggregateMeasuredUnits(evaluation.testCases);
+		const rate = summary.total > 0 ? (summary.passed / summary.total) * 100 : 0;
 		lines.push(
 			TERMINAL_INDENT +
-				`Aggregate: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`,
+				`Aggregate: ${rate.toFixed(1)}% pass (${summary.passed}/${summary.total} trials, ${unitCountLabel(summary, evaluation.totalRuns)})`,
 		);
 		return lines;
 	}
@@ -992,7 +1158,7 @@ function formatTerminalAggregate(
 	const aggDelta = aggregate.delta * 100;
 	const sign = aggDelta >= 0 ? '+' : '';
 	const arrow = aggDelta > 0 ? ' ↑' : aggDelta < 0 ? ' ↓' : '';
-	lines.push(TERMINAL_INDENT + `Aggregate (${aggregate.intersectionSize} scenarios)`);
+	lines.push(TERMINAL_INDENT + `Aggregate (${unitMixLabel(comparison.evaluationUnits)})`);
 	lines.push(
 		TERMINAL_INDENT +
 			`  PR        ${pct(aggregate.prAggregatePassRate)}%   (N=${evaluation.totalRuns})`,
@@ -1007,12 +1173,8 @@ function formatTerminalAggregate(
 	}
 	lines.push(TERMINAL_INDENT + `  Δ         ${sign}${aggDelta.toFixed(1)}pp${arrow}`);
 
-	if (comparison.baselineOnly.length > 0 || comparison.prOnly.length > 0) {
-		const partialParts: string[] = [];
-		if (comparison.baselineOnly.length > 0)
-			partialParts.push(`${comparison.baselineOnly.length} baseline scenarios not run by PR`);
-		if (comparison.prOnly.length > 0)
-			partialParts.push(`${comparison.prOnly.length} PR scenarios have no baseline data`);
+	const partialParts = describePartialCoverage(comparison);
+	if (partialParts.length > 0) {
 		lines.push(TERMINAL_INDENT + `  partial: ${partialParts.join(', ')}`);
 	}
 
@@ -1036,10 +1198,7 @@ function formatTerminalPerTestCase(
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
-			const units = [
-				...tc.executionScenarios,
-				...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
-			];
+			const units = getAggregatedCaseUnits(tc);
 			const meanPassAtK =
 				units.length > 0
 					? Math.round(
@@ -1058,18 +1217,19 @@ function formatTerminalPerTestCase(
 					: 0;
 			return {
 				name: nameOf(tc, 60),
-				builds: `${tc.buildSuccessCount}/${totalRuns}`,
+				status: `${getCheckedRunCount(tc)}/${totalRuns}`,
 				passAtK: `${meanPassAtK}%`,
 				passHatK: `${meanPassHatK}%`,
 			};
 		});
+		const statusHeader = 'status';
 		const nameW = maxWidth(
 			rows.map((r) => r.name),
 			'workflow',
 		);
 		const buildsW = maxWidth(
-			rows.map((r) => r.builds),
-			'builds',
+			rows.map((r) => r.status),
+			statusHeader,
 		);
 		const atKHeader = `pass@${totalRuns}`;
 		const hatKHeader = `pass^${totalRuns}`;
@@ -1083,7 +1243,7 @@ function formatTerminalPerTestCase(
 		);
 		lines.push(
 			TERMINAL_TABLE_INDENT +
-				`${'workflow'.padEnd(nameW)}  ${'builds'.padEnd(buildsW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
+				`${'workflow'.padEnd(nameW)}  ${statusHeader.padEnd(buildsW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
 		);
 		lines.push(
 			TERMINAL_TABLE_INDENT +
@@ -1092,20 +1252,22 @@ function formatTerminalPerTestCase(
 		for (const r of rows) {
 			lines.push(
 				TERMINAL_TABLE_INDENT +
-					`${r.name.padEnd(nameW)}  ${r.builds.padEnd(buildsW)}  ${r.passAtK.padStart(atKW)}  ${r.passHatK.padStart(hatKW)}`,
+					`${r.name.padEnd(nameW)}  ${r.status.padEnd(buildsW)}  ${r.passAtK.padStart(atKW)}  ${r.passHatK.padStart(hatKW)}`,
 			);
 		}
 	} else {
 		for (const tc of testCases) {
 			const r = tc.runs[0];
-			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
+			const buildStatus = getCaseRunStatusLabel(r);
 			lines.push('');
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
-			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
+			if (getCaseRunStatus(r) !== 'checked' && r.buildError) {
+				lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
+			}
 			for (const sa of tc.executionScenarios) {
 				const sr = sa.runs[0];
-				const status = sr.success ? 'PASS' : 'FAIL';
+				const status = sr.incomplete ? 'SKIP (no verdict)' : sr.success ? 'PASS' : 'FAIL';
 				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
 				lines.push(TERMINAL_INDENT + `  ${status}  ${sr.scenario.name}${category}`);
 				if (!sr.success) {
@@ -1131,28 +1293,28 @@ function formatTerminalPerTestCase(
 	return lines;
 }
 
-function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue: boolean): string {
-	const names = scenarios.map((s) => `${s.testCaseFile}/${s.scenarioName}`);
-	const prCells = scenarios.map((s) => `${s.prPasses}/${s.prTotal}`);
-	const baseCells = scenarios.map((s) => `${s.baselinePasses}/${s.baselineTotal}`);
-	const deltaCells = scenarios.map((s) => {
+function formatTerminalUnitTable(units: EvaluationUnitComparison[], withPValue: boolean): string {
+	const names = units.map((s) => unitLabel(s));
+	const prCells = units.map((s) => `${s.prPasses}/${s.prTotal}`);
+	const baseCells = units.map((s) => `${s.baselinePasses}/${s.baselineTotal}`);
+	const deltaCells = units.map((s) => {
 		const d = s.delta * 100;
 		const sign = d >= 0 ? '+' : '';
 		const arrow = d > 0 ? ' ↑' : d < 0 ? ' ↓' : '';
 		return `${sign}${d.toFixed(0)}pp${arrow}`;
 	});
 	const pCells = withPValue
-		? scenarios.map((s) => (s.verdict === 'improvement' ? s.pValueRight : s.pValueLeft).toFixed(3))
+		? units.map((s) => (s.verdict === 'improvement' ? s.pValueRight : s.pValueLeft).toFixed(3))
 		: [];
 
-	const nameW = maxWidth(names, 'scenario');
+	const nameW = maxWidth(names, 'unit');
 	const prW = maxWidth(prCells, 'PR');
 	const baseW = maxWidth(baseCells, 'baseline');
 	const deltaW = maxWidth(deltaCells, 'Δ');
 	const pW = withPValue ? maxWidth(pCells, 'p') : 0;
 
 	const headers = [
-		'scenario'.padEnd(nameW),
+		'unit'.padEnd(nameW),
 		'PR'.padEnd(prW),
 		'baseline'.padEnd(baseW),
 		'Δ'.padEnd(deltaW),
@@ -1161,7 +1323,7 @@ function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue
 	const widths = withPValue ? [nameW, prW, baseW, deltaW, pW] : [nameW, prW, baseW, deltaW];
 	const sep = widths.map((w) => '─'.repeat(w)).join('  ');
 
-	const rows = scenarios.map((_, i) => {
+	const rows = units.map((_, i) => {
 		const cells = [
 			names[i].padEnd(nameW),
 			prCells[i].padEnd(prW),

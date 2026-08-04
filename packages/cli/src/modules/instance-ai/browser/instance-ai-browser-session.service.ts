@@ -24,6 +24,7 @@ import { join } from 'node:path';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';
 import {
@@ -65,6 +66,7 @@ export class InstanceAiBrowserSessionService {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -219,6 +221,7 @@ export class InstanceAiBrowserSessionService {
 			name: 'browser_connect',
 			arguments: {},
 		});
+		this.telemetry.track('Instance AI Browser connected', { user_id: userId });
 		this.logger.info('Browser Use extension connected', { userId });
 		this.pushState(userId);
 	}

@@ -78,6 +78,10 @@ export const mainProperties: INodeProperties[] = [
 			},
 		],
 		default: 'none',
+		builderHint: {
+			propertyHint:
+				'Prefer "predefinedCredentialType" whenever n8n already ships a credential for the target service: it is less setup for the user and authenticates the request the same way. Look it up by the request URL rather than guessing. Use "genericCredentialType" only for services with no dedicated n8n credential. Keep "none" for unauthenticated requests and for inbound triggers.',
+		},
 	},
 	{
 		displayName: 'Credential Type',

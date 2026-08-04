@@ -9,6 +9,8 @@ export * from './directives';
 export type { IconOrEmoji } from './components/N8nIconPicker/types';
 export { IconBodyLoaderKey, useInjectIconBodyLoader } from './composables/useIconBodyLoader';
 export type { IconBodyLoader } from './composables/useIconBodyLoader';
+export { useMessage } from './composables/useMessage';
+export type { MessageBoxConfirmResult } from './composables/useMessage';
 export { default as N8nSelect2 } from './v2/components/Select/Select.vue';
 export { default as N8nSelect2Item } from './v2/components/Select/SelectItem.vue';
 export type * from './v2/components/Select/Select.types';
@@ -20,6 +22,19 @@ export { default as N8nLoading2 } from './v2/components/Loading/Loading.vue';
 export type * from './v2/components/Loading/Loading.types';
 export { default as N8nInputNumber2 } from './v2/components/InputNumber/InputNumber.vue';
 export type * from './v2/components/InputNumber/InputNumber.types';
+export { default as N8nRadioGroupItem } from './v2/components/RadioGroup/RadioGroupItem.vue';
+export { default as N8nRadioGroup } from './v2/components/RadioGroup/RadioGroup.vue';
+export type * from './v2/components/RadioGroup/RadioGroupItem.types';
+export type * from './v2/components/RadioGroup/RadioGroup.types';
+export { default as N8nTree2 } from './v2/components/Tree/Tree.vue';
+export type * from './v2/components/Tree/Tree.types';
+export { default as N8nTagsInput2 } from './v2/components/TagsInput/TagsInput.vue';
+export {
+	TagsInputInput,
+	TagsInputItemDelete,
+	TagsInputItemText,
+} from './v2/components/TagsInput/reka-ui';
+export type * from './v2/components/TagsInput/TagsInput.types';
 export { default as N8nSwitch2 } from './components/N8nSwitch/Switch.vue';
 export type * from './components/N8nSwitch/Switch.types';
 export { createPasswordRules } from './components/N8nFormInput/validators';

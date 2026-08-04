@@ -36,7 +36,7 @@ describe('ProviderLifecycle', () => {
 		});
 
 		it('should call provider init with settings', async () => {
-			const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
+			const initSpy = vi.spyOn(DummyProvider.prototype, 'init');
 
 			await lifecycle.initialize('dummy', providerSettings);
 
@@ -90,7 +90,7 @@ describe('ProviderLifecycle', () => {
 
 			let stateBeforeConnect: string | undefined;
 			const originalConnect = provider.connect.bind(provider);
-			jest.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
+			vi.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
 				stateBeforeConnect = this.state;
 				return await originalConnect();
 			});
@@ -116,7 +116,7 @@ describe('ProviderLifecycle', () => {
 			await provider.init(providerSettings);
 
 			// Mock connect to set state to error
-			jest.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
+			vi.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
 				this.setState('error', new Error('Connection failed'));
 			});
 
@@ -133,7 +133,7 @@ describe('ProviderLifecycle', () => {
 			await provider.init(providerSettings);
 			await provider.connect();
 
-			const disconnectSpy = jest.spyOn(provider, 'disconnect');
+			const disconnectSpy = vi.spyOn(provider, 'disconnect');
 
 			await lifecycle.disconnect(provider);
 
@@ -142,7 +142,7 @@ describe('ProviderLifecycle', () => {
 
 		it('should handle disconnect errors gracefully', async () => {
 			const provider = new DummyProvider();
-			jest.spyOn(provider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
+			vi.spyOn(provider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
 
 			await expect(lifecycle.disconnect(provider)).resolves.not.toThrow();
 		});
@@ -154,7 +154,7 @@ describe('ProviderLifecycle', () => {
 			await provider.init(providerSettings);
 			await provider.connect();
 
-			const disconnectSpy = jest.spyOn(provider, 'disconnect');
+			const disconnectSpy = vi.spyOn(provider, 'disconnect');
 
 			const result = await lifecycle.reload(provider, providerSettings);
 

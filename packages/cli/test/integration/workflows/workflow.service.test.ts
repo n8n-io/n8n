@@ -19,26 +19,29 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { Telemetry } from '@/telemetry';
+import { WebhookService } from '@/webhooks/webhook.service';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
-import { WebhookService } from '@/webhooks/webhook.service';
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
@@ -52,6 +55,7 @@ const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
 const webhookServiceMock = mockInstance(WebhookService);
+const workflowPublishGuard = mock<WorkflowPublishGuardProxy>();
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -69,7 +73,6 @@ beforeAll(async () => {
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
 		mock(),
-		mock(),
 		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
@@ -77,7 +80,7 @@ beforeAll(async () => {
 		activeWorkflowManager,
 		Container.get(RoleService), // roleService
 		Container.get(ProjectService), // projectService
-		mock(), // executionRepository
+		mock(), // executionPersistence
 		mock(), // eventService
 		globalConfig,
 		mock(),
@@ -90,10 +93,17 @@ beforeAll(async () => {
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
+		mock(), // workflowPublicationNotifier
+		mock(), // scheduleTriggerJobRegistrar
+		mock(), // pollTriggerJobRegistrar
+		workflowPublishedVersionRepository,
+		Container.get(WorkflowHookContextService), // workflowHookContextService
+		workflowPublishGuard,
 	);
 });
 
 beforeEach(() => {
+	workflowPublishGuard.assertCanPublish.mockResolvedValue(undefined);
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
@@ -115,16 +125,110 @@ afterEach(async () => {
 		'User',
 	]);
 	await cleanupRolesAndScopes();
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('update()', () => {
+	test('publishes the newly saved version when an active workflow is updated through the API', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const previousActiveVersionId = workflow.activeVersionId;
+
+		const updatedWorkflow = await workflowService.update(
+			owner,
+			{
+				nodes: [
+					{
+						id: 'new-node',
+						name: 'New Node',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			} as WorkflowEntity,
+			workflow.id,
+			{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+		);
+
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(updatedWorkflow.versionId);
+		expect(updatedWorkflow.activeVersionId).not.toBe(previousActiveVersionId);
+		expect(updatedWorkflow.activeVersion?.versionId).toBe(updatedWorkflow.versionId);
+	});
+
+	test('saves the API update as a draft when an open review blocks re-publication', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const previousActiveVersionId = workflow.activeVersionId;
+		workflowPublishGuard.assertCanPublish.mockRejectedValue(
+			new WorkflowPublishBlockedError({
+				reason: 'review_pending',
+				workflowReviewRequestId: 'review-1',
+			}),
+		);
+
+		await expect(
+			workflowService.update(
+				owner,
+				{
+					nodes: [
+						{
+							id: 'new-node',
+							name: 'New Node',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [250, 300],
+							parameters: {},
+						},
+					],
+					connections: {},
+				} as WorkflowEntity,
+				workflow.id,
+				{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+			),
+		).rejects.toMatchObject({
+			httpStatusCode: 409,
+			details: {
+				reason: 'review_pending',
+				workflowReviewRequestId: 'review-1',
+			},
+		});
+
+		const savedWorkflow = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(savedWorkflow.versionId).not.toBe(workflow.versionId);
+		expect(savedWorkflow.activeVersionId).toBe(previousActiveVersionId);
+		await expect(
+			workflowHistoryService.findVersion(workflow.id, savedWorkflow.versionId),
+		).resolves.not.toBeNull();
+	});
+
+	test('re-applies changed settings to the version that is already published', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
+
+		await workflowService.update(
+			owner,
+			{ settings: { timezone: 'Europe/Berlin' } } as WorkflowEntity,
+			workflow.id,
+			{ forceSave: true },
+		);
+
+		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
+			versionId: workflow.activeVersionId,
+			source: 'ui',
+		});
+	});
+
 	test('should save workflow history version with backfilled data when nodes change', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = vi.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
 			nodes: [
@@ -180,8 +284,8 @@ describe('update()', () => {
 			owner,
 		);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = vi.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
 			connections: {
@@ -220,7 +324,7 @@ describe('activateWorkflow()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
@@ -244,7 +348,7 @@ describe('activateWorkflow()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
@@ -438,7 +542,7 @@ describe('activateWorkflow()', () => {
 
 		const oldActiveVersionId = workflow.activeVersionId;
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		// Create a new version to try to activate
 		const newVersionId = uuid();
@@ -630,6 +734,56 @@ describe('workflow publication outbox', () => {
 				where: { workflowId: workflow.id },
 			});
 			expect(publishedVersionAfter).not.toBeNull();
+		});
+
+		test('should reject deletion while the published-version mapping still exists', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			// Simulate the outbox consumer having advanced the published version.
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+			await workflowService.archive(owner, workflow.id);
+
+			// Mapping removal is deferred to the consumer, so deleting now must be
+			// rejected gracefully instead of failing on the mapping's RESTRICT FK.
+			await expect(workflowService.delete(owner, workflow.id)).rejects.toThrowError(
+				'Workflow is still being unpublished. Please try again in a few moments.',
+			);
+
+			const notDeleted = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(notDeleted).not.toBeNull();
+		});
+
+		test('should delete a previously published workflow once the unpublish has drained', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+			await workflowService.deactivateWorkflow(owner, workflow.id);
+			await workflowService.archive(owner, workflow.id);
+			// Simulate the outbox consumer having completed the unpublish.
+			await workflowPublishedVersionRepository.removePublishedVersion(workflow.id);
+
+			await workflowService.delete(owner, workflow.id);
+
+			const deleted = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(deleted).toBeNull();
+		});
+
+		test('should reject deletion of a published workflow', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			await expect(workflowService.delete(owner, workflow.id, true)).rejects.toThrowError(
+				'Cannot delete a published workflow. Unpublish it before deleting.',
+			);
 		});
 	});
 

@@ -47,7 +47,8 @@ type TemplateName =
 	| 'credentials-shared'
 	| 'project-shared'
 	| 'workflow-failure'
-	| 'api-key-revoked';
+	| 'api-key-revoked'
+	| 'mcp-client-revoked';
 
 @Service()
 export class UserManagementMailer {
@@ -122,6 +123,35 @@ export class UserManagementMailer {
 				revokedBy: formatRevokedBy(revoker),
 				revokedAt: formatRevokedAt(new Date()),
 				createApiKeyUrl: `${baseUrl}/settings/api`,
+			}),
+		});
+	}
+
+	async notifyMcpClientRevoked({
+		clientName,
+		owner,
+		revoker,
+	}: {
+		clientName: string;
+		owner: { email: string; firstName?: string | null };
+		revoker: User;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('mcp-client-revoked');
+
+		return await this.mailer.sendMail({
+			emailRecipients: owner.email,
+			subject: 'Your n8n MCP client access was revoked',
+			body: template({
+				...this.basePayload,
+				email: owner.email,
+				firstName: owner.firstName ?? 'there',
+				clientName,
+				revokedBy: formatRevokedBy(revoker),
+				revokedAt: formatRevokedAt(new Date()),
+				mcpSettingsUrl: `${baseUrl}/settings/mcp`,
 			}),
 		});
 	}

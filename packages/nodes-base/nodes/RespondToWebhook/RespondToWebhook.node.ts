@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
 import type {
@@ -574,7 +574,7 @@ export class RespondToWebhook implements INodeType {
 			};
 
 			if (!shouldStream || respondWith === 'binary') {
-				this.sendResponse(response);
+				await this.sendResponse(response);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {

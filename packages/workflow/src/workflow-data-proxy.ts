@@ -29,7 +29,7 @@ import type {
 	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
-import { createResultError, createResultOk } from './result';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
 import { containsUnsafeObjectPropertyToken, deepCopy, isObjectEmpty } from './utils';

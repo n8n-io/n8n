@@ -10,9 +10,17 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 	RuntimeSkill,
+	RuntimeSkillLinkedFiles,
+	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import {
+	getNativeWebSearchProviderTools,
+	getProviderPrefix,
+	hasNativeWebSearchProvider,
+	isNativeWebSearchRequested,
+} from '@n8n/ai-utilities/agent-config';
 import type {
 	AgentSkill,
 	AgentJsonConfig,
@@ -22,17 +30,19 @@ import type {
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
-import { mapCredentialForProvider } from './credential-field-mapping';
-import { resolveCredentialAwareModelConfig } from './model-config';
-import { getProviderPrefix } from './model-id';
 import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-	isNativeWebSearchRequested,
-} from './native-web-search-provider-tools';
+	resolveEmbeddingProviderOptionsFromCredential,
+	type ManagedEmbeddingProviderOptions,
+	type ManagedEmbeddingProviderOptionsResolver,
+} from './embedding-credential';
+import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
+import { buildVectorStore } from './vector-store-factory';
+
+export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({
@@ -41,6 +51,12 @@ const WEB_SEARCH_INPUT_SCHEMA = z.object({
 	includeDomains: z.array(z.string()).optional().describe('Only return results from these domains'),
 	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
 });
+
+const WEB_SEARCH_PLAN_INSTRUCTION =
+	'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.';
+
+export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
+export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
 
 const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
@@ -65,13 +81,6 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
-export interface ManagedEmbeddingProviderOptions {
-	apiKey?: string;
-	baseURL?: string;
-	fetch?: typeof globalThis.fetch;
-}
-export type ManagedEmbeddingProviderOptionsResolver =
-	() => Promise<ManagedEmbeddingProviderOptions | null>;
 
 type MemoryWorkerModelConfig = {
 	model: string;
@@ -100,6 +109,18 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/**
+	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
+	 * tool. When set, the tool is attached without requiring a search provider
+	 * or credential in the config (eval instrumentation only).
+	 */
+	fallbackWebSearch?: FallbackWebSearchHandler;
+	/**
+	 * Attach MCP servers whose credential is still pending instead of skipping
+	 * them. Only safe when MCP traffic cannot reach the real server — set by
+	 * the eval path when its mock MCP transport is injected.
+	 */
+	attachAuthPendingMcpServers?: boolean;
 }
 
 /**
@@ -114,7 +135,7 @@ export async function buildFromJson(
 	toolDescriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
 ): Promise<RuntimeAgent> {
-	const { Agent } = await import('@n8n/agents');
+	const { Agent, createRuntimeSkillRegistry } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
@@ -123,7 +144,11 @@ export async function buildFromJson(
 		agent.modelFetch(options.modelFetch);
 	}
 
-	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
+	const configuredSkillSource = getConfiguredSkillSource(
+		config.skills ?? [],
+		options.skills ?? {},
+		createRuntimeSkillRegistry,
+	);
 	agent.instructions(getInstructionsWithWebSearchPolicy(config));
 
 	// Tools
@@ -138,12 +163,35 @@ export async function buildFromJson(
 
 	if (config.mcpServers?.length && options.buildMcpClient) {
 		for (const server of config.mcpServers) {
+			// Draft MCP connections may not have an endpoint URL yet, or may
+			// require a credential that setup skipped. Attempting to connect
+			// anyway would mean an unauthenticated request to a server that
+			// requires auth, so treat either as an incomplete draft and skip
+			// attaching it rather than risk a connection attempt.
+			if (!server.url.trim()) continue;
+			if (
+				server.authentication !== 'none' &&
+				!server.credential &&
+				!options.attachAuthPendingMcpServers
+			)
+				continue;
+
 			const client = await options.buildMcpClient(server);
 			agent.mcp(client);
 		}
 	}
 
-	agent.skills(configuredSkills);
+	if (config.vectorStores?.length) {
+		for (const vectorStoreConfig of config.vectorStores) {
+			// Draft connections may not have a credential (or embedding credential)
+			// selected yet — skip them rather than failing the whole agent build.
+			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
+			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
+			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
+		}
+	}
+
+	agent.skills(configuredSkillSource);
 
 	// Provider tools
 	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
@@ -153,7 +201,11 @@ export async function buildFromJson(
 			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
-	const fallbackWebSearchTool = buildFallbackWebSearchTool(config, options.credentialProvider);
+	const fallbackWebSearchTool = buildFallbackWebSearchTool(
+		config,
+		options.credentialProvider,
+		options.fallbackWebSearch,
+	);
 	if (fallbackWebSearchTool) {
 		agent.tool(fallbackWebSearchTool);
 	}
@@ -171,9 +223,11 @@ export async function buildFromJson(
 
 	// Config options
 	if (config.config) {
-		if (config.config.thinking) {
-			const { provider, ...rest } = config.config.thinking;
-			agent.thinking(provider, rest);
+		if (config.config.reasoning) {
+			agent.reasoning(config.config.reasoning);
+		}
+		if (config.config.promptCaching) {
+			agent.promptCaching(config.config.promptCaching);
 		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
@@ -244,11 +298,21 @@ export function buildProviderToolsForModel(
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
+	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled) return null;
 	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
+	if (fallbackWebSearch) {
+		return {
+			name: WEB_SEARCH_TOOL_NAME,
+			description: 'Search the web for current information.',
+			systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
+			inputSchema: WEB_SEARCH_INPUT_SCHEMA,
+			handler: async (input) => await fallbackWebSearch(WEB_SEARCH_INPUT_SCHEMA.parse(input)),
+		};
+	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
 		throw new Error('Web search is enabled but no fallback search provider is configured.');
 	}
@@ -260,8 +324,7 @@ function buildFallbackWebSearchTool(
 	return {
 		name: WEB_SEARCH_TOOL_NAME,
 		description: 'Search the web for current information.',
-		systemInstruction:
-			'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.',
+		systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
@@ -291,27 +354,69 @@ function buildFallbackWebSearchTool(
 	};
 }
 
-function getConfiguredSkills(
+function getConfiguredSkillSource(
 	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
-): RuntimeSkill[] {
+	createRegistry: (skills: RuntimeSkill[]) => RuntimeSkillSource['registry'],
+): RuntimeSkillSource {
 	const seen = new Set<string>();
 	const configured: RuntimeSkill[] = [];
+	const referencesBySkillId = new Map<
+		string,
+		Map<string, NonNullable<AgentSkill['references']>[number]>
+	>();
 
 	for (const ref of refs) {
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
+		const linkedFiles = linkedFilesForSkill(skill);
+		referencesBySkillId.set(
+			ref.id,
+			new Map((skill.references ?? []).map((reference) => [reference.path, reference])),
+		);
 		configured.push({
 			id: ref.id,
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
+			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
+			linkedFiles,
 		});
 	}
 
-	return configured;
+	const skillsById = new Map(configured.map((skill) => [skill.id, skill]));
+	return {
+		registry: createRegistry(configured),
+		loadSkill: async (skillId) => (await Promise.resolve(skillsById.get(skillId))) ?? null,
+		loadFile: async (skillId, filePath) => {
+			const reference = referencesBySkillId.get(skillId)?.get(filePath);
+			if (!reference) return await Promise.resolve(null);
+			return await Promise.resolve({
+				skillId,
+				filePath: reference.path,
+				content: reference.content,
+				bytes: Buffer.byteLength(reference.content, 'utf8'),
+				sha256: createHash('sha256').update(reference.content).digest('hex'),
+			});
+		},
+	};
+}
+
+function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+	return {
+		references: (skill.references ?? []).map((reference) => ({
+			path: reference.path,
+			bytes: Buffer.byteLength(reference.content, 'utf8'),
+			sha256: createHash('sha256').update(reference.content).digest('hex'),
+		})),
+		templates: [],
+		scripts: [],
+		assets: [],
+		examples: [],
+		other: [],
+	};
 }
 
 async function resolveToolRef(
@@ -492,19 +597,6 @@ async function resolveEpisodicMemoryJsonConfig(
 	};
 }
 
-async function resolveEmbeddingProviderOptionsFromCredential(
-	credential: string,
-	embeddingModel: string,
-	credentialProvider: CredentialProvider,
-): Promise<ManagedEmbeddingProviderOptions> {
-	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	return {
-		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
-		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
-	};
-}
-
 async function resolveModelConfig(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
@@ -522,6 +614,10 @@ async function resolveMemoryWorkerModelConfig(
 	config: MemoryWorkerModelConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
+	// Mirrors `resolveModelConfig`: an empty credential means "not configured",
+	// which must not reach `resolve('')` and surface as a credential-not-found error.
+	if (!config.credential) return config.model;
+
 	return await resolveCredentialAwareModelConfig(
 		config.model,
 		config.credential,

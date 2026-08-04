@@ -1,5 +1,5 @@
-import { ZodError } from 'zod';
 import { UnexpectedError } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
 import { toPublicApiCredentialResponse } from '../credentials.mapper';
 

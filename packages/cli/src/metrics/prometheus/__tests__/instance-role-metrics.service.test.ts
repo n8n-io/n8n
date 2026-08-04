@@ -1,12 +1,13 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import { PrometheusInstanceRoleMetricsService } from '../instance-role-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusInstanceRoleMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -14,18 +15,18 @@ describe('PrometheusInstanceRoleMetricsService', () => {
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main', isLeader: false });
 	let service: PrometheusInstanceRoleMetricsService;
-	let mockGaugeSet: jest.Mock;
+	let mockGaugeSet: Mock;
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_' });
 		Object.assign(instanceSettings, { instanceType: 'main', isLeader: false });
 		service = new PrometheusInstanceRoleMetricsService(config, instanceSettings);
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -84,7 +85,7 @@ describe('PrometheusInstanceRoleMetricsService', () => {
 	describe('updateOnLeaderTakeover', () => {
 		it('should set gauge to 1 after init', () => {
 			service.init();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			service.updateOnLeaderTakeover();
 
@@ -95,7 +96,7 @@ describe('PrometheusInstanceRoleMetricsService', () => {
 	describe('updateOnLeaderStepdown', () => {
 		it('should set gauge to 0 after init', () => {
 			service.init();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			service.updateOnLeaderStepdown();
 

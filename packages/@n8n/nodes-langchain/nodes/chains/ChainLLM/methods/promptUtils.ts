@@ -147,7 +147,7 @@ export async function createPromptTemplate({
 }
 
 const isMessage = (message: unknown): message is BaseMessage => {
-	return message instanceof BaseMessage;
+	return BaseMessage.isInstance(message);
 };
 
 const isAgentFinish = (value: unknown): value is AgentFinish => {

@@ -7,7 +7,7 @@ import {
 import { createComponentRenderer } from '@/__tests__/render';
 import VirtualSchema from './VirtualSchema.vue';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import * as calloutHelpers from '@/app/composables/useCalloutHelpers';
 import {
 	IF_NODE_TYPE,
@@ -28,12 +28,8 @@ import { userEvent } from '@testing-library/user-event';
 import { cleanup, waitFor } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-import {
-	createResultOk,
-	NodeConnectionTypes,
-	type IBinaryData,
-	type INodeExecutionData,
-} from 'n8n-workflow';
+import { createResultOk } from '@n8n/utils/result';
+import { NodeConnectionTypes, type IBinaryData, type INodeExecutionData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import { defaultSettings } from '@/__tests__/defaults';

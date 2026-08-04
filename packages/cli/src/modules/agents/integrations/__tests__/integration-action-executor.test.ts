@@ -1,19 +1,33 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- mocks the ESM-only Chat SDK card factories */
-type MockFn = jest.Mock<any, any[]>;
-const mockButton: MockFn = jest.fn((opts) => ({ type: 'button', ...opts }));
-const mockCard: MockFn = jest.fn((opts) => ({ type: 'card', ...opts }));
-const mockActions: MockFn = jest.fn((children) => ({ type: 'actions', children }));
-const mockCardText: MockFn = jest.fn((content) => ({ type: 'text', content }));
-const mockSection: MockFn = jest.fn((children) => ({ type: 'section', children }));
-const mockDivider: MockFn = jest.fn(() => ({ type: 'divider' }));
-const mockImage: MockFn = jest.fn((opts) => ({ type: 'image', ...opts }));
-const mockSelect: MockFn = jest.fn((opts) => ({ type: 'select', ...opts }));
-const mockRadioSelect: MockFn = jest.fn((opts) => ({ type: 'radio_select', ...opts }));
-const mockFields: MockFn = jest.fn((children) => ({ type: 'fields', children }));
-const mockField: MockFn = jest.fn((opts) => ({ type: 'field', ...opts }));
+type MockFn = Mock<(...args: any[]) => any>;
+const {
+	mockButton,
+	mockCard,
+	mockActions,
+	mockCardText,
+	mockSection,
+	mockDivider,
+	mockImage,
+	mockSelect,
+	mockRadioSelect,
+	mockFields,
+	mockField,
+} = vi.hoisted(() => ({
+	mockButton: vi.fn((opts) => ({ type: 'button', ...opts })) as MockFn,
+	mockCard: vi.fn((opts) => ({ type: 'card', ...opts })) as MockFn,
+	mockActions: vi.fn((children) => ({ type: 'actions', children })) as MockFn,
+	mockCardText: vi.fn((content) => ({ type: 'text', content })) as MockFn,
+	mockSection: vi.fn((children) => ({ type: 'section', children })) as MockFn,
+	mockDivider: vi.fn(() => ({ type: 'divider' })) as MockFn,
+	mockImage: vi.fn((opts) => ({ type: 'image', ...opts })) as MockFn,
+	mockSelect: vi.fn((opts) => ({ type: 'select', ...opts })) as MockFn,
+	mockRadioSelect: vi.fn((opts) => ({ type: 'radio_select', ...opts })) as MockFn,
+	mockFields: vi.fn((children) => ({ type: 'fields', children })) as MockFn,
+	mockField: vi.fn((opts) => ({ type: 'field', ...opts })) as MockFn,
+}));
 
-jest.mock('../esm-loader', () => ({
-	loadChatSdk: jest.fn().mockResolvedValue({
+vi.mock('../esm-loader', () => ({
+	loadChatSdk: vi.fn().mockResolvedValue({
 		Button: mockButton,
 		Card: mockCard,
 		Actions: mockActions,
@@ -28,10 +42,11 @@ jest.mock('../esm-loader', () => ({
 	}),
 }));
 
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	AgentChatIntegration,
@@ -93,7 +108,7 @@ function buildRegistry(): ChatIntegrationRegistry {
 
 describe('ChatIntegrationActionExecutor', () => {
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('posts channel messages through the selected integration connection and returns message context', async () => {
@@ -102,10 +117,10 @@ describe('ChatIntegrationActionExecutor', () => {
 			threadId: 'slack:C123:123.456',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const sentThread = {
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -152,7 +167,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			id: 'linear-message-1',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -196,25 +211,41 @@ describe('ChatIntegrationActionExecutor', () => {
 		};
 		const thread = {
 			id: 'slack:D123:123.456',
-			post: jest.fn().mockResolvedValue(sentMessage),
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
-		await executor.execute({
+		const result = await executor.execute({
 			descriptor,
 			action: 'send_dm',
 			input: { userId: 'U123', message: { text: 'Hello' } },
 			awaitResponse: false,
 		});
 
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(thread.post).toHaveBeenCalledWith('Hello');
 		expect(thread.subscribe).toHaveBeenCalled();
+		expect(result).toEqual({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'dm',
+					userId: 'U123',
+					threadId: 'slack:D123:123.456',
+				},
+				messageId: '123.456',
+				updatedAt: expect.any(String),
+			},
+		});
 	});
 
 	it('posts generic message card buttons with their labels', async () => {
@@ -223,8 +254,8 @@ describe('ChatIntegrationActionExecutor', () => {
 			threadId: 'slack:C123:123.456',
 		};
 		const thread = {
-			post: jest.fn().mockResolvedValue(sentMessage),
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
@@ -286,18 +317,18 @@ describe('ChatIntegrationActionExecutor', () => {
 			threadId: 'telegram-thread-1',
 		};
 		const thread = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const shortenCallback = jest.fn(async (_actionId: string, _value: string) => ({
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
 			id: 'short1234',
 			value: '',
 		}));
 		Object.assign(chatIntegrationService, {
-			getShortenCallback: jest.fn().mockReturnValue(shortenCallback),
+			getShortenCallback: vi.fn().mockReturnValue(shortenCallback),
 		});
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
@@ -351,9 +382,195 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('edits an explicit message in the current Telegram conversation', async () => {
+		const editMessage = vi.fn().mockResolvedValue({
+			id: '123456:1000',
+			threadId: 'telegram:123456',
+			raw: {},
+		});
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+		const currentMessageContext = {
+			integrationConnectionId: 'telegram:cred-telegram',
+			platform: 'telegram',
+			target: { type: 'thread' as const, threadId: 'telegram:123456' },
+			messageId: '123456:11',
+			interactingUserId: '123456',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
+		expect(editMessage).toHaveBeenCalledWith('telegram:123456', '123456:1000', 'Updated status');
+		expect(result).toEqual({
+			ok: true,
+			messageContext: {
+				...currentMessageContext,
+				messageId: '123456:1000',
+				updatedAt: expect.any(String),
+			},
+		});
+	});
+
+	it('returns a structured error when edit_message has no current thread', async () => {
+		const editMessage = vi.fn();
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'channel', channelId: 'telegram:123456' },
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(chat.getAdapter).not.toHaveBeenCalled();
+		expect(editMessage).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'NO_MESSAGE_CONTEXT',
+				message: 'There is no current conversation to edit. Send a message first, then try again.',
+			},
+		});
+	});
+
+	it('returns a structured error when the active adapter cannot edit messages', async () => {
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({});
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: { messageId: '123456:1000', message: { text: 'Updated status' } },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'thread', threadId: 'telegram:123456' },
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'UNSUPPORTED_ACTION',
+				message: "The telegram integration can't edit messages. Use a supported action instead.",
+			},
+		});
+	});
+
+	it('maps and shortens callbacks when editing a Telegram rich card', async () => {
+		const editMessage = vi.fn().mockResolvedValue({
+			id: '123456:1000',
+			threadId: 'telegram:123456',
+			raw: {},
+		});
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ editMessage });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
+			id: 'short1234',
+			value: '',
+		}));
+		Object.assign(chatIntegrationService, {
+			getShortenCallback: vi.fn().mockReturnValue(shortenCallback),
+		});
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
+			actions: ['respond', 'send_dm', 'edit_message'],
+		}))[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'edit_message',
+			input: {
+				messageId: '123456:1000',
+				message: {
+					text: 'Choose the next step',
+					card: {
+						components: [
+							{ type: 'section', text: 'Review the updated status.' },
+							{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+						],
+					},
+				},
+			},
+			awaitResponse: true,
+			runId: 'run-1',
+			toolCallId: 'tool-1',
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: { type: 'thread', threadId: 'telegram:123456' },
+				messageId: '123456:11',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual(expect.objectContaining({ ok: true }));
+		expect(shortenCallback).toHaveBeenCalledWith(
+			'resume:run-1:tool-1:0',
+			JSON.stringify({ type: 'button', value: 'approve' }),
+		);
+		expect(editMessage).toHaveBeenCalledWith(
+			'telegram:123456',
+			'123456:1000',
+			expect.objectContaining({ card: expect.any(Object) }),
+		);
+		expect(mockButton).toHaveBeenLastCalledWith({
+			id: 'short1234',
+			label: 'Approve',
+			style: 'primary',
+			value: '',
+		});
+	});
+
 	it('adds Slack reactions to the current message context', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -404,7 +621,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('adds Slack reactions to an explicit message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -452,7 +669,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('returns a structured error when a Slack reaction has no message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -521,10 +738,10 @@ describe('ChatIntegrationActionExecutor', () => {
 				isMentionable: true,
 				url: 'https://linear.app/n8n/profiles/user-1',
 			}),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
 		};
 		const linearClient = {
-			createIssue: jest.fn().mockResolvedValue({
+			createIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 				issueId: 'issue-uuid',
 			}),
@@ -624,7 +841,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			}),
 		};
 		const linearClient = {
-			createComment: jest.fn().mockResolvedValue({
+			createComment: vi.fn().mockResolvedValue({
 				comment: Promise.resolve(comment),
 				commentId: 'comment-1',
 			}),
@@ -689,10 +906,10 @@ describe('ChatIntegrationActionExecutor', () => {
 			url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
 			updatedAt: new Date('2026-05-18T10:05:00.000Z'),
 			state: Promise.resolve({ id: 'state-2', name: 'In Progress', type: 'started' }),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
 		};
 		const linearClient = {
-			updateIssue: jest.fn().mockResolvedValue({
+			updateIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 			}),
 		};
@@ -755,6 +972,165 @@ describe('ChatIntegrationActionExecutor', () => {
 				},
 				updatedAt: expect.any(String),
 			},
+		});
+	});
+
+	describe('respond in chat-triggered turns', () => {
+		const chatTurnContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread' as const,
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			replyExpectation: 'required' as const,
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		function buildExecutor() {
+			const thread = { post: vi.fn().mockResolvedValue({ id: '123.457' }) };
+			const chat = mock<ChatInstance>();
+			chat.thread.mockReturnValue(thread as never);
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.getChatInstance.mockReturnValue(chat);
+			const registry = buildRegistry();
+			Container.set(ChatIntegrationRegistry, registry);
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+			return { executor, descriptor, thread };
+		}
+
+		it('rejects a text-only respond because the reply text is already delivered', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Hello again' } },
+				awaitResponse: false,
+				currentMessageContext: chatTurnContext,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'ACTION_FAILED',
+					message: expect.stringContaining('already delivered'),
+				},
+			});
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('allows a respond that carries a card', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: {
+					message: {
+						text: 'Summary',
+						card: { components: [{ type: 'section', text: 'Details' }] },
+					},
+				},
+				awaitResponse: false,
+				currentMessageContext: chatTurnContext,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalled();
+		});
+
+		it('allows a text-only respond outside chat-triggered turns', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Task update' } },
+				awaitResponse: false,
+				currentMessageContext: { ...chatTurnContext, replyExpectation: undefined },
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith('Task update');
+		});
+	});
+
+	describe('do_not_respond', () => {
+		const slackMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread' as const,
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		it('succeeds without touching the chat instance when the reply is optional', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: {},
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'optional' },
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				silent: true,
+				note: expect.stringContaining('No reply will be sent'),
+			});
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the reply expectation is required', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: {},
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'required' },
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'REPLY_REQUIRED', message: expect.stringContaining('reply is expected') },
+			});
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the reply expectation is unset or the message context is missing', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			for (const currentMessageContext of [slackMessageContext, undefined]) {
+				const result = await executor.execute({
+					descriptor,
+					action: 'do_not_respond',
+					input: {},
+					awaitResponse: false,
+					currentMessageContext,
+				});
+
+				expect(result).toEqual({
+					ok: false,
+					error: { code: 'REPLY_REQUIRED', message: expect.any(String) },
+				});
+			}
+			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
 		});
 	});
 });

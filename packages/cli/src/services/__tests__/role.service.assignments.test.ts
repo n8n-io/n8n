@@ -1,13 +1,13 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { RoleRepository, ScopeRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleCacheService } from '@/services/role-cache.service';
 import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
 import { RoleService } from '@/services/role.service';
-import { Logger } from '@n8n/backend-common';
 
 describe('RoleService.getRoleAssignments and getRoleProjectMembers', () => {
 	const licenseState = mock<LicenseState>();
@@ -27,7 +27,7 @@ describe('RoleService.getRoleAssignments and getRoleProjectMembers', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getRoleAssignments', () => {

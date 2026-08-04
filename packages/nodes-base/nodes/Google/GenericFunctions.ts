@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import * as jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
 import moment from 'moment-timezone';
@@ -104,7 +104,6 @@ export async function getGoogleAccessToken(
 		{
 			algorithm: 'RS256',
 			header: {
-				kid: privateKey,
 				typ: 'JWT',
 				alg: 'RS256',
 			},

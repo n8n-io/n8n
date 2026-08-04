@@ -2,12 +2,13 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createExecution } from '@test-integration/db/executions';
-import { createOwner } from '@test-integration/db/users';
 import { stringify, parse } from 'flatted';
 import { DateTime } from 'luxon';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+
+import { createExecution } from '@test-integration/db/executions';
+import { createOwner } from '@test-integration/db/users';
 
 describe('UserRepository', () => {
 	let executionRepository: ExecutionRepository;
@@ -142,6 +143,19 @@ describe('UserRepository', () => {
 				statusUpdate: 'success' as ExecutionStatus,
 				conditions: undefined,
 				updateExpected: true,
+			},
+			// CAT-3862: executions enqueued before a restart are claimed while still `new`
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'new' as ExecutionStatus },
+				updateExpected: true,
+			},
+			{
+				statusInDB: 'new' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'waiting' as ExecutionStatus },
+				updateExpected: false,
 			},
 		])(
 			'should return $updateExpected with status before: "$statusInDB", status after: "$statusUpdate" and conditions: $conditions',

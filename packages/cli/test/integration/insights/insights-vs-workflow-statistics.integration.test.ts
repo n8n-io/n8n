@@ -8,6 +8,7 @@
  */
 
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -98,9 +99,10 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		insightsCompactionService.startCompactionTimer();
 	});
 
-	afterAll(() => {
-		// Stop compaction timer
-		insightsCompactionService.stopCompactionTimer();
+	afterAll(async () => {
+		// Stop compaction timer and wait for any in-flight run to finish before the
+		// sibling afterAll terminates the DB connection.
+		await insightsCompactionService.stopCompactionTimer();
 	});
 
 	beforeEach(async () => {
@@ -146,8 +148,15 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		expectedCount: number,
 		timeout = 10000,
 	): Promise<void> {
+		const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
+			if (isPostgres) {
+				await workflowStatisticsRepository.rollupIncrements(
+					workflowStatisticsRepository.manager,
+					10_000,
+				);
+			}
 			const stats = await workflowStatisticsRepository.findOne({
 				where: {
 					workflowId,

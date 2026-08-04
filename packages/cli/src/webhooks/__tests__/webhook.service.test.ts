@@ -1,6 +1,5 @@
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	INodeProperties,
@@ -10,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, WebhookPathTakenError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import type { NodeTypes } from '@/node-types';
@@ -33,7 +33,7 @@ describe('WebhookService', () => {
 
 	beforeEach(() => {
 		config.load(config.default);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		cacheService.set.mockResolvedValue(undefined);
 	});
 
@@ -135,6 +135,105 @@ describe('WebhookService', () => {
 
 				expect(returnValue).toBeNull();
 			});
+		});
+	});
+
+	describe('findTriggerWebhooksByPath()', () => {
+		const triggerRow = (fields: Partial<WebhookEntity>) =>
+			Object.assign(new WebhookEntity(), {
+				workflowId: 'wf-1',
+				node: 'Webhook',
+				method: 'POST',
+				...fields,
+			}) as WebhookEntity;
+
+		test('should return every method row of the static trigger serving the method', async () => {
+			const get = triggerRow({ webhookPath: 'orders', method: 'GET' });
+			const post = triggerRow({ webhookPath: 'orders', method: 'POST' });
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([get, post]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders', 'GET')).toEqual([get, post]);
+		});
+
+		test('should exclude rows of a different trigger sharing the path', async () => {
+			// two workflows can share a path under disjoint methods (the key is (path, method))
+			const mine = triggerRow({ webhookPath: 'orders', method: 'GET' });
+			const theirs = triggerRow({ webhookPath: 'orders', method: 'POST', workflowId: 'wf-2' });
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([mine, theirs]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders', 'GET')).toEqual([mine]);
+		});
+
+		test('should resolve an unambiguous path without a method', async () => {
+			const only = triggerRow({ webhookPath: 'orders' });
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([only]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders')).toEqual([only]);
+		});
+
+		test('should refuse a selector-less path a dynamic template also serves', async () => {
+			// the concrete path is static on GET and templated on POST, so without a method
+			// there is no single trigger to name — a lone static row must not be accepted
+			const webhookId = uuid();
+			const concretePath = `${webhookId}/orders/42`;
+			const staticGet = triggerRow({ webhookPath: concretePath, method: 'GET' });
+			const dynamicPost = triggerRow({
+				webhookPath: 'orders/:id',
+				method: 'POST',
+				webhookId,
+				workflowId: 'wf-2',
+			});
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([staticGet]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([dynamicPost]);
+
+			expect(await webhookService.findTriggerWebhooksByPath(concretePath)).toEqual([]);
+		});
+
+		test('should fall through to dynamic when no static row serves the method', async () => {
+			// a static row for *another* method must not shadow the routed template
+			const webhookId = uuid();
+			const staticGet = triggerRow({ webhookPath: `${webhookId}/orders`, method: 'GET' });
+			const dynamicPost = triggerRow({
+				webhookPath: 'orders/:id',
+				method: 'POST',
+				webhookId,
+				workflowId: 'wf-2',
+			});
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([staticGet]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([dynamicPost]);
+
+			expect(
+				await webhookService.findTriggerWebhooksByPath(`${webhookId}/orders/42`, 'POST'),
+			).toEqual([dynamicPost]);
+		});
+
+		test('should pick the dynamic template among rows serving the method', async () => {
+			// the winner must come from method-eligible candidates only
+			const webhookId = uuid();
+			const getTemplate = triggerRow({ webhookPath: 'user/:id', method: 'GET', webhookId });
+			const postTemplate = triggerRow({
+				webhookPath: ':id/user',
+				method: 'POST',
+				webhookId,
+				workflowId: 'wf-2',
+			});
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([
+				getTemplate,
+				postTemplate,
+			]);
+
+			expect(
+				await webhookService.findTriggerWebhooksByPath(`${webhookId}/user/user`, 'POST'),
+			).toEqual([postTemplate]);
+		});
+
+		test('should return an empty array when nothing matches', async () => {
+			webhookRepository.findStaticWebhooksByPath.mockResolvedValue([]);
+			webhookRepository.findDynamicWebhooksByWebhookId.mockResolvedValue([]);
+
+			expect(await webhookService.findTriggerWebhooksByPath('orders', 'GET')).toEqual([]);
 		});
 	});
 
@@ -519,8 +618,8 @@ describe('WebhookService', () => {
 		});
 
 		const defaultWebhookMethods = {
-			checkExists: jest.fn(),
-			create: jest.fn(),
+			checkExists: vi.fn(),
+			create: vi.fn(),
 		};
 
 		const nodeType = mock<INodeType>({
@@ -560,7 +659,7 @@ describe('WebhookService', () => {
 		test('should call runWebhookMethod with delete', async () => {
 			const workflow = mock<Workflow>();
 			const webhookData = mock<IWebhookData>();
-			const runWebhookMethodSpy = jest.spyOn(webhookService as any, 'runWebhookMethod');
+			const runWebhookMethodSpy = vi.spyOn(webhookService as any, 'runWebhookMethod');
 
 			await webhookService.deleteWebhook(workflow, webhookData, 'trigger', 'init');
 
@@ -591,7 +690,7 @@ describe('WebhookService', () => {
 
 		test('should execute webhook and return response data', async () => {
 			const nodeType = mock<INodeType>({
-				webhook: jest.fn().mockResolvedValue(responseData),
+				webhook: vi.fn().mockResolvedValue(responseData),
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
@@ -609,9 +708,9 @@ describe('WebhookService', () => {
 		});
 
 		test('should run close functions after webhook completes', async () => {
-			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const closeFunction = vi.fn().mockResolvedValue(undefined);
 			const nodeType = mock<INodeType>({
-				webhook: jest.fn().mockImplementation(async function (this: any) {
+				webhook: vi.fn().mockImplementation(async function (this: any) {
 					this.closeFunctions.push(closeFunction);
 					return responseData;
 				}),
@@ -624,9 +723,9 @@ describe('WebhookService', () => {
 		});
 
 		test('should run close functions even when webhook throws', async () => {
-			const closeFunction = jest.fn().mockResolvedValue(undefined);
+			const closeFunction = vi.fn().mockResolvedValue(undefined);
 			const nodeType = mock<INodeType>({
-				webhook: jest.fn().mockImplementation(async function (this: any) {
+				webhook: vi.fn().mockImplementation(async function (this: any) {
 					this.closeFunctions.push(closeFunction);
 					throw new Error('webhook failed');
 				}),
@@ -716,6 +815,7 @@ describe('WebhookService', () => {
 			const nodeWithWebhookId = mock<INode>({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
+				webhookId: undefined,
 			});
 
 			const nodeType = mock<INodeType>({

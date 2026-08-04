@@ -1,7 +1,8 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { createResultError, createResultOk, ensureError, Result } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import assert from 'node:assert';
 import type { LookupAddress, LookupOptions } from 'node:dns';
 import type { BlockList, LookupFunction } from 'node:net';

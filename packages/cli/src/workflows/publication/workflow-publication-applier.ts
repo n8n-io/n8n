@@ -6,13 +6,17 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
+	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { INode } from 'n8n-workflow';
 
-import type { PublicationResult } from '@/workflows/publication/publication-result';
+import type {
+	PublicationResult,
+	TriggerPublicationStatus,
+} from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import {
 	WorkflowTriggerActivator,
 	type TriggerActivationFailure,
@@ -96,6 +100,7 @@ export class WorkflowPublicationApplier {
 	): Promise<PublicationResult> {
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
 
@@ -127,7 +132,13 @@ export class WorkflowPublicationApplier {
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {
 			await this.advancePublishedVersion(record);
-			return { type: 'completed' };
+			return {
+				type: 'completed',
+				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+					activated: [],
+					failures: [],
+				}),
+			};
 		}
 
 		// Must happen BEFORE advancing the version, using the currently published
@@ -142,7 +153,7 @@ export class WorkflowPublicationApplier {
 		try {
 			if (toAdd.size > 0) {
 				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
-				return this.classifyActivationOutcome(outcome);
+				return this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds);
 			}
 
 			if (toRemove.size > 0) {
@@ -152,7 +163,13 @@ export class WorkflowPublicationApplier {
 			return { type: 'failed', error: ensureError(e) };
 		}
 
-		return { type: 'completed' };
+		return {
+			type: 'completed',
+			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
+				activated: [],
+				failures: [],
+			}),
+		};
 	}
 
 	/**
@@ -160,8 +177,12 @@ export class WorkflowPublicationApplier {
 	 * published version and removing the `workflow_published_version` mapping. The
 	 * version to deactivate comes from the mapping (`oldVersion`), since the
 	 * workflow's `activeVersionId` has already been cleared by the service that
-	 * enqueued this record. A missing mapping means nothing was published on this
-	 * leader, so there is nothing to tear down.
+	 * enqueued this record.
+	 *
+	 * A missing mapping means nothing was published on this leader, so there is
+	 * nothing to tear down. In that case the record still completes as a
+	 * successful `unpublished` to support idempotent retries — the reporter then
+	 * clears any trigger-status rows left behind by an interrupted unpublish.
 	 *
 	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
 	 * so the mapping is only removed once teardown has succeeded.
@@ -171,13 +192,14 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 		record: WorkflowPublicationOutbox,
 	): Promise<PublicationResult> {
-		if (!oldVersion) return { type: 'skipped', reason: 'workflow-inactive' };
-
+		// If there is no oldVersion we may be retrying an unpublish that was
+		// interrupted after removing the mapping: nothing to tear down, but we
+		// still complete as `unpublished`.
 		const toRemove = new Set(
 			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
 		);
 
-		if (toRemove.size > 0) {
+		if (oldVersion && toRemove.size > 0) {
 			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
 		}
 
@@ -191,23 +213,54 @@ export class WorkflowPublicationApplier {
 	}
 
 	/**
-	 * Maps a per-node activation outcomes to a combined publication result.
+	 * Maps per-node activation outcomes to a combined publication result, attaching
+	 * the full desired trigger set's statuses to every version-advancing result.
 	 */
-	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
-		if (outcome.failures.length === 0) return { type: 'completed' };
+	private classifyActivationOutcome(
+		outcome: TriggerActivationOutcome,
+		desiredTriggerNodes: INode[],
+		triggerKinds: Map<INode['id'], WorkflowPublicationTriggerKind>,
+	): PublicationResult {
+		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, outcome);
+		if (outcome.failures.length === 0) return { type: 'completed', triggerStatuses };
 
-		const allDeterministic = outcome.failures.every(
-			(failure) => !isTransientActivationError(failure.error),
-		);
-		if (outcome.activated.length === 0 && allDeterministic) {
-			return { type: 'failed', error: this.toActivationError(outcome.failures) };
+		// Check whether this is a partial or full failure: If at least one trigger
+		// has been activated successfully, it's partial.
+		const hasRunningTrigger = triggerStatuses.some((s) => s.status === 'activated');
+		if (!hasRunningTrigger) {
+			return { type: 'failed', error: this.toActivationError(outcome.failures), triggerStatuses };
 		}
 
-		return {
-			type: 'partial',
-			activatedNodeIds: outcome.activated,
-			failures: outcome.failures,
-		};
+		return { type: 'partial', triggerStatuses };
+	}
+
+	/**
+	 * Builds per-trigger statuses for the full set of desired trigger nodes.
+	 * Nodes in `outcome.failures` are marked `failed`; all others are `activated`,
+	 * including unchanged-but-still-running triggers that were not in `toAdd`.
+	 */
+	private buildTriggerStatuses(
+		desiredTriggerNodes: INode[],
+		triggerKinds: Map<INode['id'], WorkflowPublicationTriggerKind>,
+		outcome: TriggerActivationOutcome,
+	): TriggerPublicationStatus[] {
+		const failureByNodeId = new Map(outcome.failures.map((f) => [f.nodeId, f]));
+		return desiredTriggerNodes.map((node): TriggerPublicationStatus => {
+			// Every desired node is classified by `getTriggerKinds`; the fallback only
+			// guards an unexpected miss, and 'persisted' is the safe one (the reconciler
+			// ignores it) since a stray in-memory guess would re-enqueue forever.
+			const triggerKind = triggerKinds.get(node.id) ?? 'persisted';
+			const failure = failureByNodeId.get(node.id);
+			return failure
+				? {
+						nodeId: node.id,
+						nodeName: node.name,
+						status: 'failed',
+						triggerKind,
+						errorMessage: failure.error.message,
+					}
+				: { nodeId: node.id, nodeName: node.name, status: 'activated', triggerKind };
+		});
 	}
 
 	/**

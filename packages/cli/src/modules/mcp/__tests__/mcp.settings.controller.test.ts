@@ -3,9 +3,10 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -83,11 +84,12 @@ describe('McpSettingsController', () => {
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
 	const workflowService = mock<WorkflowService>();
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
+	const eventService = mock<EventService>();
 
 	let controller: McpSettingsController;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		instanceSettingsLoaderConfig.mcpManagedByEnv = false;
 		Container.set(Logger, logger);
 		Container.set(McpSettingsService, mcpSettingsService);
@@ -95,16 +97,18 @@ describe('McpSettingsController', () => {
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
 		Container.set(WorkflowService, workflowService);
 		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
+		Container.set(EventService, eventService);
 		controller = Container.get(McpSettingsController);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('updateSettings', () => {
 		test('disables MCP access correctly', async () => {
-			const req = createReq({ mcpAccessEnabled: false });
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: false }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: false });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
@@ -114,11 +118,16 @@ describe('McpSettingsController', () => {
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
+				user,
+				enabled: false,
+			});
 			expect(result).toEqual({ mcpAccessEnabled: false });
 		});
 
 		test('enables MCP access correctly', async () => {
-			const req = createReq({ mcpAccessEnabled: true });
+			const user = createUser();
+			const req = createReq({ mcpAccessEnabled: true }, { user });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			mcpSettingsService.setEnabled.mockResolvedValue(undefined);
 			moduleRegistry.refreshModuleSettings.mockResolvedValue(null);
@@ -128,11 +137,15 @@ describe('McpSettingsController', () => {
 
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(true);
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('mcp');
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-access-updated', {
+				user,
+				enabled: true,
+			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
 		});
 
 		test('handles module registry refresh failure gracefully', async () => {
-			const req = createReq({ mcpAccessEnabled: true });
+			const req = createReq({ mcpAccessEnabled: true }, { user: createUser() });
 			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
 			const error = new Error('Registry sync failed');
 
@@ -160,6 +173,7 @@ describe('McpSettingsController', () => {
 			);
 			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
 			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('requires boolean mcpAccessEnabled value', () => {
@@ -475,6 +489,21 @@ describe('McpSettingsController', () => {
 					'http://localhost:3000/callback',
 					'http://127.0.0.1:3000/callback',
 				]);
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
+
+		test('allows http for IPv6 loopback [::1] outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				const dto = new UpdateAllowedRedirectUrisDto({
+					uris: ['http://[::1]:3000/callback'],
+				});
+
+				expect(dto.uris).toEqual(['http://[::1]:3000/callback']);
 			} finally {
 				process.env.NODE_ENV = originalEnv;
 			}

@@ -9,7 +9,7 @@ import * as vueRouter from 'vue-router';
 import type { MockInstance } from 'vitest';
 
 const telemetryTrackMock = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackMock }),
 }));
 

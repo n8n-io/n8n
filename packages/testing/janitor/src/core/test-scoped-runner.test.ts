@@ -6,24 +6,8 @@ import { buildRunnerArgs } from './test-scoped-runner.js';
 const rootDir = '/repo/root';
 
 describe('buildRunnerArgs', () => {
-	it('jest scoped: emits --findRelatedTests with absolute paths', () => {
+	it('scoped: emits `related` with absolute paths and `--run` to avoid watch mode', () => {
 		const args = buildRunnerArgs(
-			'jest',
-			{ kind: 'scoped', files: ['packages/nodes-base/nodes/Foo.node.ts'] },
-			rootDir,
-			['--summarize'],
-		);
-		expect(args[0]).toBe('--findRelatedTests');
-		expect(isAbsolute(args[1])).toBe(true);
-		expect(args[1]).toBe('/repo/root/packages/nodes-base/nodes/Foo.node.ts');
-		// A scoped jest run that resolves to zero related tests must pass, not exit 1.
-		expect(args[2]).toBe('--passWithNoTests');
-		expect(args[3]).toBe('--summarize');
-	});
-
-	it('vitest scoped: emits `related` with absolute paths and `--run` to avoid watch mode', () => {
-		const args = buildRunnerArgs(
-			'vitest',
 			{
 				kind: 'scoped',
 				files: ['packages/frontend/editor-ui/src/x.ts', 'packages/frontend/editor-ui/src/y.ts'],
@@ -41,23 +25,16 @@ describe('buildRunnerArgs', () => {
 
 	it('preserves already-absolute paths', () => {
 		const args = buildRunnerArgs(
-			'jest',
 			{ kind: 'scoped', files: ['/already/absolute/path.ts'] },
 			rootDir,
 			[],
 		);
-		expect(args).toEqual(['--findRelatedTests', '/already/absolute/path.ts', '--passWithNoTests']);
+		expect(args).toEqual(['related', '/already/absolute/path.ts', '--run']);
 	});
 
-	it('jest full: passes through args with no related-tests flag', () => {
-		expect(
-			buildRunnerArgs('jest', { kind: 'full', reason: 'config change' }, rootDir, ['--summarize']),
-		).toEqual(['--summarize']);
-	});
-
-	it('vitest full: prepends `run` subcommand', () => {
-		expect(
-			buildRunnerArgs('vitest', { kind: 'full', reason: 'no signal' }, rootDir, ['--coverage']),
-		).toEqual(['run', '--coverage']);
+	it('full: prepends `run` subcommand', () => {
+		expect(buildRunnerArgs({ kind: 'full', reason: 'no signal' }, rootDir, ['--coverage'])).toEqual(
+			['run', '--coverage'],
+		);
 	});
 });

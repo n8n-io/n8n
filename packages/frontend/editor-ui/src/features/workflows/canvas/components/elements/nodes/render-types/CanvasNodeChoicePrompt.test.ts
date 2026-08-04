@@ -72,4 +72,14 @@ describe('CanvasNodeChoicePrompt', () => {
 		expect(getByTestId('canvas-add-first-step-button')).toBeInTheDocument();
 		expect(queryByTestId('canvas-build-with-ai-button')).not.toBeInTheDocument();
 	});
+
+	it('renders the assistant sparkles icon on the Build with AI tile', () => {
+		const { getByTestId } = renderComponent({
+			pinia: setupStores({ isAiBuilderEnabled: true }),
+		});
+
+		expect(
+			getByTestId('canvas-build-with-ai-button').querySelector('[data-icon="sparkles"]'),
+		).toBeInTheDocument();
+	});
 });

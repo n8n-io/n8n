@@ -52,15 +52,15 @@ function createMocks({
 	nodeTypeDescriptions?: Map<string, INodeTypeDescription>;
 } = {}) {
 	const credentialsService = {
-		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue(usableCredentials),
-		getOne: jest.fn().mockImplementation(async (_user: User, id: string) => {
+		getCredentialsAUserCanUseInAWorkflow: vi.fn().mockResolvedValue(usableCredentials),
+		getOne: vi.fn().mockImplementation(async (_user: User, id: string) => {
 			if (getOneImpl) return await getOneImpl(id);
 			throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
 		}),
 	} as unknown as CredentialsService;
 
 	const nodeTypes = {
-		getByNameAndVersion: jest.fn().mockImplementation((type: string) => {
+		getByNameAndVersion: vi.fn().mockImplementation((type: string) => {
 			const desc = nodeTypeDescriptions.get(type);
 			if (!desc) throw new Error(`Unknown node type: ${type}`);
 			return { description: desc };
@@ -72,10 +72,10 @@ function createMocks({
 
 describe('validateWorkflowCredentialReferences', () => {
 	beforeEach(() => {
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
 	});
 
-	afterEach(() => jest.restoreAllMocks());
+	afterEach(() => vi.restoreAllMocks());
 
 	test('passes when no node has a credential reference', async () => {
 		const { credentialsService, nodeTypes } = createMocks({
@@ -203,7 +203,7 @@ describe('validateWorkflowCredentialReferences', () => {
 	});
 
 	test('skips credential types the node does not actively use', async () => {
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
 		const { credentialsService, nodeTypes } = createMocks({
 			usableCredentials: [],
 			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', makeNodeTypeDescription()]]),

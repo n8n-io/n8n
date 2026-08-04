@@ -563,7 +563,7 @@ describe('VectorStoreOracleDB.node', () => {
 			throw new Error('releaseVectorStoreClient was not captured');
 		}
 
-		const clientCloseSpy = jest
+		const clientCloseSpy = vi
 			.spyOn(lastInstance.client as { close: () => Promise<void> }, 'close')
 			.mockResolvedValue(undefined);
 

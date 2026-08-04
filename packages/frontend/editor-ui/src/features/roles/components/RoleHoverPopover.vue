@@ -6,7 +6,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
 import {
 	UI_VISIBLE_SCOPES,
@@ -38,13 +38,12 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const router = useRouter();
-const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
 const upgradeModalVisible = ref(false);
 
-const isAdminOrOwner = computed(() => usersStore.isInstanceOwner || usersStore.isAdmin);
-const canEditRole = computed(() => isAdminOrOwner.value && !props.role.systemRole);
+const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
+const canEditRole = computed(() => canManageRoles.value && !props.role.systemRole);
 
 // Count only UI-visible scopes (exclude implicit :list, :execute, :listProject)
 const resolvedPermissionCount = computed(
@@ -109,6 +108,7 @@ const onButtonClick = () => {
 					variant="outline"
 					size="small"
 					:class="$style.actionButton"
+					:disabled="!canManageRoles"
 					@click="onButtonClick"
 				>
 					{{ buttonText }}
@@ -158,6 +158,9 @@ const onButtonClick = () => {
 	border: var(--border) !important;
 	border-radius: var(--radius--sm) !important;
 	box-shadow: var(--shadow) !important;
+	/* Must exceed N8nSelect2's SelectContent z-index (999999) so the popover
+	   stays visible if collision-avoidance flips it to the left side. */
+	z-index: 1000000 !important;
 
 	svg {
 		fill: var(--color--background--light-2) !important;

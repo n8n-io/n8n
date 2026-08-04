@@ -31,6 +31,7 @@ type VerifyBuiltWorkflowOutput = {
 	simulationNote?: string;
 	lastNodeExecuted?: string;
 	nodesNotReached?: string[];
+	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	coverageNote?: string;
 	data?: Record<string, unknown>;
 	remediation?: { category: string; shouldEdit: boolean; reason?: string };
@@ -62,7 +63,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		userId: 'user_1',
 		orchestratorAgentId: 'agent_1',
 		modelId: 'test-model',
-		subAgentMaxSteps: 5,
 		eventBus: {} as OrchestrationContext['eventBus'],
 		logger: {
 			debug: vi.fn(),
@@ -435,6 +435,7 @@ type ExecutionRunResult = {
 	data?: Record<string, unknown>;
 	executedNodeNames?: string[];
 	lastNodeExecuted?: string;
+	nodeErrors?: Array<{ nodeName: string; message?: string }>;
 	error?: string;
 };
 
@@ -454,6 +455,7 @@ interface VerifyToolContext {
 		};
 		workflowService?: InstanceAiWorkflowService;
 		dataTableService?: InstanceAiDataTableService;
+		credentialService?: { list: Mock };
 	};
 	logger: { debug: Mock; info: Mock; warn: Mock; error: Mock };
 }
@@ -480,8 +482,15 @@ function makeContext(
 	outcome: WorkflowBuildOutcome | undefined,
 	runResult: ExecutionRunResult,
 	overrides: {
-		workflowNodes?: Array<{ name?: string; type: string; parameters?: Record<string, unknown> }>;
+		workflowNodes?: Array<{
+			name?: string;
+			type: string;
+			parameters?: Record<string, unknown>;
+			credentials?: Record<string, unknown>;
+		}>;
+		workflowConnections?: Record<string, unknown>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
+		availableCredentials?: Array<{ id: string; name: string; type: string }>;
 	} = {},
 ) {
 	const updateBuildOutcome = vi.fn(
@@ -529,9 +538,19 @@ function makeContext(
 	const workflowService = {
 		getAsWorkflowJSON: vi.fn(async () => {
 			await Promise.resolve();
-			return { nodes: overrides.workflowNodes ?? [] };
+			return {
+				nodes: overrides.workflowNodes ?? [],
+				connections: overrides.workflowConnections ?? {},
+			};
 		}),
 	} as unknown as InstanceAiWorkflowService;
+
+	const credentialService = {
+		list: vi.fn(async () => {
+			await Promise.resolve();
+			return overrides.availableCredentials ?? [];
+		}),
+	};
 
 	const dataTableService = {
 		queryRows,
@@ -564,6 +583,7 @@ function makeContext(
 			executionService: { run },
 			workflowService,
 			dataTableService,
+			credentialService,
 		},
 		logger,
 	};
@@ -1176,6 +1196,68 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(ctx.logger.warn).not.toHaveBeenCalled();
 	});
 
+	it('downgrades workflow success when an executed AI tool errored', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-ai-tool-error',
+			status: 'success',
+			data: {
+				'API Request': [{ body: { city: 'Lisbon' } }],
+				'Destination Analyst': [{ output: '{"city":"Lisbon"}' }],
+				'Return Brief': [{ output: '{"city":"Lisbon"}' }],
+			},
+			executedNodeNames: [
+				'API Request',
+				'GPT Model',
+				'geocode_city',
+				'Destination Analyst',
+				'Return Brief',
+			],
+			nodeErrors: [
+				{
+					nodeName: 'geocode_city',
+					message:
+						'The node "@n8n/n8n-nodes-langchain.toolHttpRequest" has a "supplyData" method but no "execute" method.',
+				},
+			],
+			lastNodeExecuted: 'Return Brief',
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.nodeErrors).toHaveLength(1);
+		expect(result.nodeErrors?.[0]?.nodeName).toBe('geocode_city');
+		expect(result.nodeErrors?.[0]?.message).toContain('supplyData');
+		expect(result.error).toContain('geocode_city');
+		const verification = updateBuildOutcome.mock.calls[0][1].verification;
+		expect(verification?.success).toBe(false);
+		expect(verification?.status).toBe('success');
+		expect(verification?.failureSignature).toContain('geocode_city');
+		expect(verification?.evidence?.nodeErrors).toHaveLength(1);
+		expect(verification?.evidence?.nodeErrors?.[0]?.nodeName).toBe('geocode_city');
+		expect(verification?.evidence?.nodeErrors?.[0]?.message).toContain('supplyData');
+		expect(verification?.evidence?.errorMessage).toContain('geocode_city');
+	});
+
+	it('keeps needs_setup routing when a waiting execution also has node errors', async () => {
+		const { ctx } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-waiting-node-error',
+			status: 'waiting',
+			data: {},
+			executedNodeNames: ['Lookup', 'Community Pause'],
+			nodeErrors: [{ nodeName: 'Lookup', message: 'lookup failed' }],
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'execution_waiting',
+		});
+	});
+
 	it('reports planned simulations the execution never reached as unverified (empty-read dead-end)', async () => {
 		// Reproduces the order-fulfillment scenario: a data-table lookup on an
 		// empty table returns zero items mid-chain, so everything downstream —
@@ -1311,5 +1393,106 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		expect(result.success).toBe(true);
 		expect(deleteRows).not.toHaveBeenCalled();
+	});
+});
+
+describe('verify-built-workflow tool — stale mocked-credential plan', () => {
+	const mockedCredentialVerdict = {
+		nodeName: 'Notion',
+		verdict: 'simulate' as const,
+		reason: 'Credentials are not configured for this node',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	};
+	const staleOutcome = () =>
+		makeBuildOutcome({
+			mockedNodeNames: ['Notion'],
+			mockedCredentialTypes: ['notionApi'],
+			mockedCredentialsByNode: { Notion: ['notionApi'] },
+			nodeSimulationPlan: [mockedCredentialVerdict],
+			simulationFixtures: { Notion: [{ page: 'mock' }] },
+		});
+	const notionConnections = {
+		Trigger: { main: [[{ node: 'Notion', type: 'main', index: 0 }]] },
+	};
+
+	it('executes a node for real once its mocked credential was assigned after the build', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			staleOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: {} },
+			{
+				workflowNodes: [
+					{
+						name: 'Notion',
+						type: 'n8n-nodes-base.notion',
+						parameters: { operation: 'get' },
+						credentials: { notionApi: { id: 'cred-1', name: 'Notion' } },
+					},
+				],
+				workflowConnections: notionConnections,
+				availableCredentials: [{ id: 'cred-1', name: 'Notion', type: 'notionApi' }],
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.simulatedNodes).toBeUndefined();
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({ verificationPinData: undefined });
+		expect(updateBuildOutcome).toHaveBeenCalledWith(
+			'wi-1',
+			expect.objectContaining({
+				mockedNodeNames: undefined,
+				mockedCredentialTypes: undefined,
+				mockedCredentialsByNode: undefined,
+				nodeSimulationPlan: [expect.objectContaining({ nodeName: 'Notion', verdict: 'execute' })],
+				simulationFixtures: undefined,
+			}),
+		);
+	});
+
+	it('keeps replaying the stored plan while the credential is still missing', async () => {
+		const { ctx } = makeContext(
+			staleOutcome(),
+			{ executionId: 'exec-1', status: 'success', data: {} },
+			{
+				workflowNodes: [
+					{ name: 'Notion', type: 'n8n-nodes-base.notion', parameters: { operation: 'get' } },
+				],
+				workflowConnections: notionConnections,
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.simulatedNodes).toBeUndefined(); // node not reached in this run result
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { Notion: [{ page: 'mock' }] },
+		});
+	});
+
+	it('proceeds with the stored plan when the live workflow cannot be loaded', async () => {
+		const { ctx } = makeContext(staleOutcome(), {
+			executionId: 'exec-1',
+			status: 'success',
+			data: {},
+		});
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockRejectedValue(
+			new Error('boom'),
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			verificationPinData: { Notion: [{ page: 'mock' }] },
+		});
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: could not reconcile mocked-credential plan',
+			expect.objectContaining({ workItemId: 'wi-1' }),
+		);
 	});
 });

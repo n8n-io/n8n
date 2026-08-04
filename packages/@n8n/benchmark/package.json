@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "2.13.0",
+  "version": "2.17.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
@@ -12,7 +12,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "start": "./bin/n8n-benchmark",
-    "test": "echo \"WARNING: no test specified\" && exit 0",
+    "test": "node -e \"process.exit(0)\"",
     "typecheck": "tsc --noEmit",
     "benchmark": "zx scripts/run.mjs",
     "benchmark-in-cloud": "pnpm benchmark --env cloud",
@@ -44,7 +44,8 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/convict": "^6.1.1",
-    "@types/k6": "^0.52.0"
+    "@types/k6": "^0.52.0",
+    "typescript": "catalog:typescript"
   },
   "bin": {
     "n8n-benchmark": "./bin/n8n-benchmark"

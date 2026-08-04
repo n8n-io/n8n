@@ -1,7 +1,21 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { TextStreamPart, ToolSet } from 'ai';
 
 import type { FinishReason, StreamChunk, TokenUsage } from '../../types';
 import type { JSONValue } from '../../types/utils/json';
+
+/**
+ * OpenAI reports cached tokens only via `providerMetadata.openai.cachedPromptTokens`
+ * (no generic `inputTokenDetails.cacheReadTokens`). Used as a fallback so OpenAI
+ * cache hits still surface through the same `TokenUsage.inputTokenDetails` shape.
+ */
+function getOpenAiCachedPromptTokens(providerMetadata: Record<string, unknown> | undefined) {
+	const openai = providerMetadata?.openai;
+	const cachedPromptTokens = isRecord(openai) ? openai.cachedPromptTokens : undefined;
+	return typeof cachedPromptTokens === 'number' && cachedPromptTokens > 0
+		? cachedPromptTokens
+		: undefined;
+}
 
 /** Map AI SDK v6 LanguageModelUsage to our TokenUsage type. */
 export function toTokenUsage(
@@ -18,6 +32,7 @@ export function toTokenUsage(
 				outputTokenDetails?: { reasoningTokens?: number };
 		  }
 		| undefined,
+	providerMetadata?: Record<string, unknown>,
 ): TokenUsage | undefined {
 	if (!usage) return undefined;
 
@@ -36,6 +51,14 @@ export function toTokenUsage(
 			...(cacheRead && { cacheRead }),
 			...(cacheWrite && { cacheWrite }),
 		};
+	} else {
+		const openaiCacheRead = getOpenAiCachedPromptTokens(providerMetadata);
+		if (openaiCacheRead) {
+			result.inputTokenDetails = {
+				noCache: Math.max(result.promptTokens - openaiCacheRead, 0),
+				cacheRead: openaiCacheRead,
+			};
+		}
 	}
 
 	if (usage.outputTokenDetails?.reasoningTokens !== undefined) {
@@ -46,7 +69,7 @@ export function toTokenUsage(
 }
 
 /**
- * Convert a single AI SDK v6 fullStream chunk to an n8n StreamChunk
+ * Convert a single AI SDK stream chunk to an n8n StreamChunk
  */
 export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefined {
 	switch (c.type) {
@@ -102,7 +125,7 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 		}
 
 		case 'tool-result':
-			// The fullStream emits the raw tool output here, not the
+			// The stream emits the raw tool output here, not the
 			// `{ type, value }` ToolResultOutput wrapper used on the message
 			// side — so pass it through verbatim. Only provider-executed tools
 			// (e.g. native web search) reach this branch; local tool results are

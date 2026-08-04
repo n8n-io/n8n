@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { connect, type IClientOptions, type MqttClient } from 'mqtt';
 import { OperationalError, randomString } from 'n8n-workflow';
 

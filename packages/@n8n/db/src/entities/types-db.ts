@@ -18,7 +18,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { CredentialsEntity } from './credentials-entity';
+import type { CredentialUsageScope, CredentialsEntity } from './credentials-entity';
 import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
@@ -70,6 +70,7 @@ export interface IExecutionBase {
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
 	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
 	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
+	usedPrivateCredentials?: boolean; // see `ExecutionEntity.usedPrivateCredentials`
 }
 
 // Required by PublicUser
@@ -102,6 +103,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	isManaged?: boolean;
+	usageScope?: CredentialUsageScope;
 }
 
 export interface IExecutionResponse extends IExecutionBase {

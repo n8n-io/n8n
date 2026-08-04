@@ -122,7 +122,7 @@ describe('External secrets — expression access', () => {
 	beforeEach(() => {
 		// Clear call history between tests, then re-apply implementations so each
 		// test starts with a clean slate but a fully configured mock.
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		configureMockProxy();
 	});
 

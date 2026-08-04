@@ -1,3 +1,4 @@
+import type { InstanceAiConfirmResponse } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -56,7 +57,7 @@ export interface SuspendedRunRebuilder {
 		requestingUserId: string,
 		requestId: string,
 		data: ConfirmationData,
-	): Promise<boolean>;
+	): Promise<InstanceAiConfirmResponse | null>;
 }
 
 /** The slice of the pending-confirmation repository the restorer reads from. */
@@ -128,7 +129,7 @@ export class SuspendedRunRestorer {
 		userId: string,
 		requestId: string,
 		data: ConfirmationData,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		let orphan: Awaited<ReturnType<OrphanConfirmationStore['claim']>>;
 		try {
 			orphan = await this.pendingConfirmationRepo.claim(requestId, userId);
@@ -137,9 +138,9 @@ export class SuspendedRunRestorer {
 				requestId,
 				error: getErrorMessage(error),
 			});
-			return false;
+			return null;
 		}
-		if (!orphan) return false;
+		if (!orphan) return null;
 
 		this.logger.info('Reclaiming pending confirmation orphaned by a process restart', {
 			requestId,
@@ -151,7 +152,9 @@ export class SuspendedRunRestorer {
 
 		if (orphan.kind === 'suspended' && this.canResumeOrphan(orphan)) {
 			const resumed = await this.tryResumeFromOrphan(orphan, data);
-			if (resumed) return true;
+			if (resumed) {
+				return resumed;
+			}
 		}
 
 		this.finalizeUnresumableOrphan(orphan);
@@ -215,7 +218,7 @@ export class SuspendedRunRestorer {
 	private async tryResumeFromOrphan(
 		orphan: ResumableOrphan,
 		data: ConfirmationData,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		const outcome = await this.rebuilder.rebuildSuspendedRun(orphan);
 		switch (outcome.kind) {
 			case 'ready':
@@ -231,28 +234,28 @@ export class SuspendedRunRestorer {
 					requestId: orphan.requestId,
 					userId: orphan.userId,
 				});
-				return false;
+				return null;
 			case 'no-checkpoint':
 				this.logger.warn('Cannot resume orphaned run: checkpoint missing or unavailable', {
 					requestId: orphan.requestId,
 					checkpointKey: orphan.checkpointKey,
 					...(outcome.error ? { error: getErrorMessage(outcome.error) } : {}),
 				});
-				return false;
+				return null;
 			case 'env-failure':
 				this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
 					requestId: orphan.requestId,
 					threadId: orphan.threadId,
 					error: getErrorMessage(outcome.error),
 				});
-				return false;
+				return null;
 			case 'agent-failure':
 				this.logger.warn('Cannot resume orphaned run: failed to build agent', {
 					requestId: orphan.requestId,
 					threadId: orphan.threadId,
 					error: getErrorMessage(outcome.error),
 				});
-				return false;
+				return null;
 		}
 	}
 }

@@ -1,12 +1,13 @@
+import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { type Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import type { EventService } from '@/events/event.service';
-import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthlessRequest } from '@/requests';
 import type { UrlService } from '@/services/url.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
@@ -18,13 +19,13 @@ import { getServiceProviderConfigTestReturnUrl } from '../service-provider.ee';
 import type { SamlUserAttributes } from '../types';
 
 // Mock the saml-helpers module
-jest.mock('../saml-helpers', () => ({
-	isConnectionTestRequest: jest.fn(),
-	extractTestIdFromRelayState: jest.fn(),
+vi.mock('../saml-helpers', () => ({
+	isConnectionTestRequest: vi.fn(),
+	extractTestIdFromRelayState: vi.fn(),
 }));
 
-jest.mock('@/sso.ee/sso-helpers', () => ({
-	isSamlLicensedAndEnabled: jest.fn(),
+vi.mock('@/sso.ee/sso-helpers', () => ({
+	isSamlLicensedAndEnabled: vi.fn(),
 }));
 
 const authService = mock<AuthService>();
@@ -65,17 +66,17 @@ describe('Test views', () => {
 	const RelayState = getServiceProviderConfigTestReturnUrl();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Mock the helper functions for test connection flow
-		(isConnectionTestRequest as jest.Mock).mockReturnValue(true);
-		(extractTestIdFromRelayState as jest.Mock).mockReturnValue(undefined);
+		(isConnectionTestRequest as Mock).mockReturnValue(true);
+		(extractTestIdFromRelayState as Mock).mockReturnValue(undefined);
 	});
 
 	test('Should render success with template', async () => {
 		const req = mock<AuthlessRequest>();
 		const res = mock<Response>({
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		});
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
@@ -96,8 +97,8 @@ describe('Test views', () => {
 	test('Should render failure with template', async () => {
 		const req = mock<AuthlessRequest>();
 		const res = mock<Response>({
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		});
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
@@ -119,8 +120,8 @@ describe('Test views', () => {
 	test('Should render error with template', async () => {
 		const req = mock<AuthlessRequest>();
 		const res = mock<Response>({
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		});
 
 		samlService.handleSamlLogin.mockRejectedValueOnce(new Error('Test Error'));
@@ -133,14 +134,14 @@ describe('Test views', () => {
 	test('Should pass cached metadata to handleSamlLogin for test connections', async () => {
 		const req = mock<AuthlessRequest>();
 		const res = mock<Response>({
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		});
 		const testId = 'abc123';
 		const metadata = '<EntityDescriptor/>';
 		const RelayStateWithTestId = `${RelayState}?t=${testId}`;
 
-		(extractTestIdFromRelayState as jest.Mock).mockReturnValue(testId);
+		(extractTestIdFromRelayState as Mock).mockReturnValue(testId);
 		samlService.consumePendingTestConfig.mockResolvedValueOnce(metadata);
 		samlService.handleSamlLogin.mockResolvedValueOnce({
 			authenticatedUser: user,
@@ -162,8 +163,8 @@ describe('Test views', () => {
 	test('Should still call handleSamlLogin without override when no test token in RelayState', async () => {
 		const req = mock<AuthlessRequest>();
 		const res = mock<Response>({
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
 		});
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
@@ -182,7 +183,7 @@ describe('Test views', () => {
 
 describe('configTestPost', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 	});
 
@@ -235,11 +236,11 @@ describe('configTestPost', () => {
 
 describe('SAML Login Flow', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Mock the helper functions for actual login flow (not test connections)
-		(isConnectionTestRequest as jest.Mock).mockReturnValue(false);
-		(extractTestIdFromRelayState as jest.Mock).mockReturnValue(undefined);
-		(isSamlLicensedAndEnabled as jest.Mock).mockReturnValue(true);
+		(isConnectionTestRequest as Mock).mockReturnValue(false);
+		(extractTestIdFromRelayState as Mock).mockReturnValue(undefined);
+		(isSamlLicensedAndEnabled as Mock).mockReturnValue(true);
 
 		// Mock URL service
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');

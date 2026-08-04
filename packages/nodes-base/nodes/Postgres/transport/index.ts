@@ -1,6 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
-import { ConnectionPoolManager } from '@utils/connection-pool-manager';
-import { LOCALHOST } from '@utils/constants';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type {
 	IExecuteFunctions,
 	ICredentialTestFunctions,
@@ -10,6 +8,10 @@ import type {
 } from 'n8n-workflow';
 import { createServer, type AddressInfo, type Server } from 'node:net';
 import pgPromise from 'pg-promise';
+
+import { ConnectionPoolManager } from '@utils/connection-pool-manager';
+import { LOCALHOST } from '@utils/constants';
+import { getDateAsStringTypeParsers, parseDateToISO } from '@utils/postgres';
 
 import type {
 	ConnectionsData,
@@ -49,15 +51,6 @@ export function createReceiveHandler(
 		if (largeNumbersOutput !== 'numbers') return;
 		applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
 	};
-}
-
-export function parseDateToISO(value: string) {
-	const parsedDate = new Date(value);
-
-	if (isNaN(parsedDate.getTime())) {
-		return value;
-	}
-	return parsedDate.toISOString();
 }
 
 const getPostgresConfig = (
@@ -135,14 +128,17 @@ export async function configurePostgres(
 			receive: createReceiveHandler(options.largeNumbersOutput),
 		});
 
-		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
-			// Always return dates as ISO strings
+		const dbConfig = getPostgresConfig(credentials, options);
+
+		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.7) {
+			// Also return DATE and date/timestamp array columns as strings
+			dbConfig.types = getDateAsStringTypeParsers(pgp);
+		} else if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
+			// DATE columns still return Date objects on these versions
 			[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 				pgp.pg.types.setTypeParser(type, parseDateToISO);
 			});
 		}
-
-		const dbConfig = getPostgresConfig(credentials, options);
 
 		if (!credentials.sshTunnel) {
 			const db = pgp(dbConfig);

@@ -2,17 +2,20 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
+import { mock } from 'vitest-mock-extended';
+
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
-import type { OAuthRequest } from '@/requests';
-import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
+import { OauthService } from '@/oauth/oauth.service';
+import type { OAuthRequest } from '@/requests';
 
 describe('OAuth1CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
 	const eventService = mockInstance(EventService);
+	const credentialsOverwrites = mockInstance(CredentialsOverwrites);
 
 	mockInstance(Logger);
 	mockInstance(ExternalHooks);
@@ -20,13 +23,13 @@ describe('OAuth1CredentialController', () => {
 	const controller = Container.get(OAuth1CredentialController);
 
 	const timestamp = 1706750625678;
-	jest.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ shouldAdvanceTime: true });
 
 	const accessTokenData = { oauth_token: 'token', oauth_token_secret: 'secret' };
 
 	beforeEach(() => {
-		jest.setSystemTime(new Date(timestamp));
-		jest.clearAllMocks();
+		vi.setSystemTime(new Date(timestamp));
+		vi.clearAllMocks();
 	});
 
 	describe('getAuthUri', () => {
@@ -232,6 +235,8 @@ describe('OAuth1CredentialController', () => {
 			]);
 			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
+			credentialsOverwrites.supportsManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -239,6 +244,8 @@ describe('OAuth1CredentialController', () => {
 				user: { id: 'user-42' },
 				credentialType: 'twitterOAuth1Api',
 				credentialId: 'cred-1',
+				supportsManagedAuth: true,
+				usesManagedAuth: false,
 			});
 		});
 

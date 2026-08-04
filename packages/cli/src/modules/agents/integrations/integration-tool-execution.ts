@@ -1,5 +1,5 @@
 import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
 import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';
@@ -272,6 +272,16 @@ function withPreviousSubject(
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
+			: {}),
+		// The turn's reply policy comes from the inbound message, not from what
+		// the agent sent — keep it through same-thread context rebuilds so
+		// `do_not_respond` stays available after e.g. a card respond. A rebuild
+		// targeting a different thread (send_dm/send_channel_message) drops it:
+		// the streamed reply does not go there, so its delivery rules don't apply.
+		...(!context.replyExpectation &&
+		previousContext.replyExpectation &&
+		context.target.threadId === previousContext.target.threadId
+			? { replyExpectation: previousContext.replyExpectation }
 			: {}),
 	};
 }

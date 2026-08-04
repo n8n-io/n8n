@@ -1,5 +1,3 @@
-import { EventEmitter } from 'node:events';
-import { nanoid } from 'nanoid';
 import type {
 	McpToolCallRequest,
 	McpToolCallResult,
@@ -7,6 +5,8 @@ import type {
 	InstanceAiGatewayCapabilities,
 	ToolCategory,
 } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
+import { EventEmitter } from 'node:events';
 
 const REQUEST_TIMEOUT_MS = 60_000; // 1 minute — tool calls like browser automation and shell execution can be long-running
 
@@ -185,9 +185,12 @@ export class LocalGateway {
 
 	/**
 	 * Dispatch an MCP tool call to the remote client and await its result.
-	 * Throws if not connected or if the request times out.
+	 * Throws if not connected, if the request times out, or if aborted.
 	 */
-	async callTool(toolCall: McpToolCallRequest): Promise<McpToolCallResult> {
+	async callTool(
+		toolCall: McpToolCallRequest,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpToolCallResult> {
 		if (!this._connected) {
 			throw new Error('Local gateway is not connected');
 		}
@@ -200,15 +203,63 @@ export class LocalGateway {
 			};
 		}
 
+		const abortSignal = options?.abortSignal;
+		if (abortSignal?.aborted) {
+			const error = new Error(
+				typeof abortSignal.reason === 'string' ? abortSignal.reason : 'This operation was aborted',
+			);
+			error.name = 'AbortError';
+			throw error;
+		}
+
 		const requestId = `gw_${nanoid()}`;
 
 		return await new Promise<McpToolCallResult>((resolve, reject) => {
-			const timer = setTimeout(() => {
+			let settled = false;
+
+			const settle = (action: () => void) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timer);
+				abortSignal?.removeEventListener('abort', onAbort);
 				this.pendingRequests.delete(requestId);
-				reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+				action();
+			};
+
+			const onAbort = () => {
+				settle(() => {
+					const error = new Error(
+						typeof abortSignal?.reason === 'string'
+							? abortSignal.reason
+							: 'This operation was aborted',
+					);
+					error.name = 'AbortError';
+					reject(error);
+				});
+			};
+
+			const timer = setTimeout(() => {
+				settle(() => {
+					reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+				});
 			}, REQUEST_TIMEOUT_MS);
 
-			this.pendingRequests.set(requestId, { resolve, reject, timer, toolCall });
+			abortSignal?.addEventListener('abort', onAbort, { once: true });
+
+			this.pendingRequests.set(requestId, {
+				resolve: (result) => {
+					settle(() => {
+						resolve(result);
+					});
+				},
+				reject: (error) => {
+					settle(() => {
+						reject(error);
+					});
+				},
+				timer,
+				toolCall,
+			});
 
 			this.emitter.emit('filesystem-request', {
 				type: 'filesystem-request',

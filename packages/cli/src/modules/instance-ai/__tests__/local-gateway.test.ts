@@ -1,6 +1,7 @@
+import type { McpTool } from '@n8n/api-types';
+
 import { LocalGateway } from '../filesystem/local-gateway';
 import type { LocalGatewayRequestEvent } from '../filesystem/local-gateway';
-import type { McpTool } from '@n8n/api-types';
 
 const SAMPLE_TOOL: McpTool = {
 	name: 'read_file',
@@ -160,7 +161,7 @@ describe('LocalGateway', () => {
 		});
 
 		it('should timeout after 60 seconds', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			gateway.init(EMPTY_CAPABILITIES);
 
@@ -169,11 +170,59 @@ describe('LocalGateway', () => {
 				arguments: { filePath: 'slow.ts' },
 			});
 
-			jest.advanceTimersByTime(60_001);
+			vi.advanceTimersByTime(60_001);
 
 			await expect(callPromise).rejects.toThrow('timed out');
 
-			jest.useRealTimers();
+			vi.useRealTimers();
+		});
+
+		it('should reject immediately when abortSignal is already aborted', async () => {
+			gateway.init(EMPTY_CAPABILITIES);
+			const controller = new AbortController();
+			controller.abort('stopped by user');
+
+			const events: LocalGatewayRequestEvent[] = [];
+			gateway.onRequest((event) => events.push(event));
+
+			await expect(
+				gateway.callTool(
+					{ name: 'read_file', arguments: { filePath: 'test.ts' } },
+					{ abortSignal: controller.signal },
+				),
+			).rejects.toMatchObject({ name: 'AbortError', message: 'stopped by user' });
+
+			expect(events).toHaveLength(0);
+		});
+
+		it('should reject with AbortError when abortSignal fires mid-request and ignore later responses', async () => {
+			gateway.init(EMPTY_CAPABILITIES);
+			const controller = new AbortController();
+
+			const events: LocalGatewayRequestEvent[] = [];
+			gateway.onRequest((event) => events.push(event));
+
+			const callPromise = gateway.callTool(
+				{ name: 'read_file', arguments: { filePath: 'test.ts' } },
+				{ abortSignal: controller.signal },
+			);
+
+			expect(events).toHaveLength(1);
+			const requestId = events[0].payload.requestId;
+
+			controller.abort('stopped by user');
+
+			await expect(callPromise).rejects.toMatchObject({
+				name: 'AbortError',
+				message: 'stopped by user',
+			});
+
+			// A late gateway response must not settle a cleaned-up pending request.
+			expect(
+				gateway.resolveRequest(requestId, {
+					content: [{ type: 'text', text: 'late response' }],
+				}),
+			).toBe(false);
 		});
 
 		it('should dispatch different tool names correctly', async () => {

@@ -54,7 +54,7 @@ Use the canonical owners script at `.github/scripts/owners.mjs`. It parses `.git
 | `design`                  | Design                  | `team:design`      |
 | `iam`                     | Identity & Access       | `team:identity`    |
 | `ligo`                    | Lifecycle & Governance  | `team:lifecycle`   |
-| `instance-ai`             | instanceAI              | `team:instance-ai` |
+| `instance-ai`             | AI Assistant            | `team:instance-ai` |
 | `frontend`                | Adore                   | `team:adore`       |
 | `qa-dx`                   | Developer Platform      | `team:qa-dx`       |
 | `migrations-review`       | Catalysts               | `team:cats`        |
@@ -102,3 +102,5 @@ Pass the **child** label name only — Linear silently drops unknown labels, so 
 | any other team   | `Triage`     |
 
 NODES has a dedicated `Review` lane; every other team handles routing inside their own triage.
+
+This same table governs the **issue-ticket** state move when a ready PR is linked onto a referenced issue ticket (SKILL.md step 7B): move the issue ticket to `Review` for NODES, `Triage` otherwise — keyed off the PR's resolved owner team.

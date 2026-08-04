@@ -1,9 +1,11 @@
+import type { Mocked } from 'vitest';
 import type { AgentsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AiService } from '@/services/ai.service';
 
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -18,22 +20,25 @@ function makeController({
 	agentsConfig = {
 		sandboxEnabled: true,
 		sandboxProvider: 'daytona',
-		daytonaVolumeId: 'volume-1',
 	} as AgentsConfig,
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
+	aiService = mock<AiService>({ isProxyEnabled: () => false }),
 }: {
-	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
+	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
 	agentsConfig?: AgentsConfig;
-	runtimeCacheService?: jest.Mocked<AgentRuntimeCacheService>;
+	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
+	aiService?: Mocked<AiService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(
 			agentKnowledgeService,
 			agentsConfig,
 			runtimeCacheService,
+			aiService,
 		),
 		agentKnowledgeService,
 		runtimeCacheService,
+		aiService,
 	};
 }
 
@@ -52,7 +57,7 @@ describe('AgentKnowledgeController route access scopes', () => {
 });
 
 describe('AgentKnowledgeController file uploads', () => {
-	it('passes the authenticated user id to file upload storage and clears runtime cache', async () => {
+	it('uploads files to storage and clears runtime cache', async () => {
 		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
 		const files = [{ path: '/tmp/uploaded-file' }];
 		const uploaded = [{ id: 'file-1', name: 'uploaded-file' }];
@@ -71,12 +76,7 @@ describe('AgentKnowledgeController file uploads', () => {
 			),
 		).resolves.toBe(uploaded);
 
-		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			files,
-			'user-1',
-		);
+		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith('agent-1', 'project-1', files);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('agent-1');
 	});
 
@@ -111,7 +111,7 @@ describe('AgentKnowledgeController file uploads', () => {
 });
 
 describe('AgentKnowledgeController file deletion', () => {
-	it('passes the authenticated user id to file deletion and clears runtime cache', async () => {
+	it('deletes the file and clears runtime cache', async () => {
 		const { controller, agentKnowledgeService, runtimeCacheService } = makeController();
 
 		await expect(
@@ -127,12 +127,7 @@ describe('AgentKnowledgeController file deletion', () => {
 			),
 		).resolves.toEqual({ success: true });
 
-		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			'file-1',
-			'user-1',
-		);
+		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith('agent-1', 'project-1', 'file-1');
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('agent-1');
 	});
 });
@@ -143,7 +138,6 @@ describe('AgentKnowledgeController knowledge base gating', () => {
 			agentsConfig: {
 				sandboxEnabled: false,
 				sandboxProvider: 'daytona',
-				daytonaVolumeId: 'volume-1',
 			} as AgentsConfig,
 		});
 

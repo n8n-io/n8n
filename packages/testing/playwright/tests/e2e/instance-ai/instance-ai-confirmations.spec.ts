@@ -76,10 +76,10 @@ type ApprovalExecutionAssertionContext = {
 	api: { workflows: WorkflowApiForAssertions };
 };
 
-async function hasSuccessfulExecutionForNode(
+async function findWorkflowIdsForNode(
 	workflowsApi: WorkflowApiForAssertions,
 	nodeName: string,
-): Promise<boolean> {
+): Promise<string[]> {
 	const workflows = await workflowsApi.getWorkflows();
 	const workflowIds: string[] = [];
 
@@ -98,12 +98,31 @@ async function hasSuccessfulExecutionForNode(
 		}
 	}
 
-	for (const workflowId of workflowIds) {
+	return workflowIds;
+}
+
+async function hasSuccessfulExecutionForNode(
+	workflowsApi: WorkflowApiForAssertions,
+	nodeName: string,
+): Promise<boolean> {
+	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
 		const executions = await workflowsApi.getExecutions(workflowId, 10);
 		if (executions.some((execution) => execution.status === 'success')) return true;
 	}
 
 	return false;
+}
+
+async function countExecutionsForNode(
+	workflowsApi: WorkflowApiForAssertions,
+	nodeName: string,
+): Promise<number> {
+	let count = 0;
+	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
+		count += (await workflowsApi.getExecutions(workflowId, 10)).length;
+	}
+
+	return count;
 }
 
 async function approveBuildPlanIfRequested({
@@ -216,7 +235,11 @@ test.describe(
 			}
 		});
 
-		test(
+		// Skipped: the replay recording predates the create-tasks load_tool
+		// deferral (#33815), so the recorded direct create-tasks call fails as an
+		// unloaded tool and the approval panel never appears. Unskip once the
+		// recordings are updated (#34055 or a re-record).
+		test.skip(
 			'should show approval panel and approve workflow execution',
 			{
 				annotation: [
@@ -250,7 +273,8 @@ test.describe(
 			},
 		);
 
-		test(
+		// Skipped: same broken recording as the approve variant above (#33815).
+		test.skip(
 			'should show approval panel and deny workflow execution',
 			{
 				annotation: [
@@ -269,12 +293,14 @@ test.describe(
 
 				await approveBuildPlanIfRequested({ n8n, nodeName: 'deny test' });
 				await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
+				// Build verification may already have run the workflow; denying must not add a run.
+				const executionsBeforeDeny = await countExecutionsForNode(n8n.api.workflows, 'deny test');
 				await n8n.instanceAi.getConfirmDenyButton().click();
 				await n8n.instanceAi.waitForResponseComplete();
 
-				await expect
-					.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, 'deny test'))
-					.toBe(false);
+				expect(await countExecutionsForNode(n8n.api.workflows, 'deny test')).toBe(
+					executionsBeforeDeny,
+				);
 				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
 				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
 			},

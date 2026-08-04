@@ -1,9 +1,25 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	OperationalError,
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type INode,
+} from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import * as readRows from '../../actions/worksheet/readRows.operation';
 import { searchWorkbooks } from '../../methods/listSearch';
-import { getExcelCredentialType, microsoftApiRequest } from '../../transport/index';
+import {
+	driveEndpoint,
+	getExcelCredentialType,
+	getServicePrincipalResourceRoot,
+	microsoftApiRequest,
+	microsoftApiRequestAllItemsSkip,
+	resolveScopeRoot,
+	validateResourceTargetId,
+} from '../../transport/index';
 
 describe('Microsoft Excel Transport', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
@@ -44,7 +60,16 @@ describe('Microsoft Excel Transport', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -66,7 +91,16 @@ describe('Microsoft Excel Transport', () => {
 					graphApiBaseUrl: '',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -87,7 +121,16 @@ describe('Microsoft Excel Transport', () => {
 					},
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -109,7 +152,16 @@ describe('Microsoft Excel Transport', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com/',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -131,7 +183,16 @@ describe('Microsoft Excel Transport', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com///',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -153,7 +214,16 @@ describe('Microsoft Excel Transport', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -175,7 +245,16 @@ describe('Microsoft Excel Transport', () => {
 					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -197,7 +276,16 @@ describe('Microsoft Excel Transport', () => {
 					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftExcelOAuth2Api',
@@ -221,7 +309,16 @@ describe('Microsoft Excel Transport', () => {
 			it('should use microsoftExcelOAuth2Api when authentication is not set (backward compatibility)', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftExcelOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
@@ -233,7 +330,16 @@ describe('Microsoft Excel Transport', () => {
 			it('should use microsoftExcelOAuth2Api when explicitly selected', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftExcelOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftExcelOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
@@ -245,7 +351,16 @@ describe('Microsoft Excel Transport', () => {
 			it('should use microsoftOAuth2Api when the generic credential is selected', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
@@ -254,7 +369,16 @@ describe('Microsoft Excel Transport', () => {
 			it('should resolve the credential name from the authentication parameter at index 0', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
 			});
@@ -262,7 +386,16 @@ describe('Microsoft Excel Transport', () => {
 			it('should honor graphApiBaseUrl from the generic credential (sovereign cloud)', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/workbooks');
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
@@ -328,6 +461,470 @@ describe('Microsoft Excel Transport', () => {
 				'microsoftExcelOAuth2Api',
 				expect.anything(),
 			);
+		});
+
+		it('blocks the Service Principal list-search (drive search is unsupported app-only)', async () => {
+			// "From List" must throw under SP (app-only can't search a drive), not issue a request.
+			const loadOptionsRequestWithAuth = vi.fn().mockResolvedValue({ value: [] });
+			mockLoadOptions.helpers.requestWithAuthentication = loadOptionsRequestWithAuth;
+			mockLoadOptions.getNode.mockReturnValue(mockNode);
+			mockLoadOptions.getNodeParameter.mockReturnValue('microsoftEntraServicePrincipalApi');
+
+			await expect(searchWorkbooks.call(mockLoadOptions)).rejects.toThrow(
+				'Search is not supported with the Service Principal credential',
+			);
+			expect(loadOptionsRequestWithAuth).not.toHaveBeenCalled();
+			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Service Principal (app-only) routing', () => {
+		const baseUrl = 'https://graph.microsoft.com';
+		const SCOPED_RESOURCE = '/drive/items/WB/workbook/worksheets/WS/usedRange';
+		let mockRequestWithAuthentication: Mock;
+
+		const setSpParams = (overrides: Record<string, unknown> = {}) => {
+			const params: Record<string, unknown> = {
+				authentication: 'microsoftEntraServicePrincipalApi',
+				resourceTarget: 'user',
+				userTarget: { value: 'jane@contoso.com' },
+				...overrides,
+			};
+			// Honor the 3rd-arg fallback like the real getNodeParameter (return the default, not undefined).
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name, _itemIndex, fallback) =>
+					(name in params ? params[name as string] : fallback) as never,
+			);
+		};
+
+		beforeEach(() => {
+			mockRequestWithAuthentication = vi.fn().mockResolvedValue({ ok: true });
+			mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			setSpParams();
+		});
+
+		it('routes through requestWithAuthentication, never requestOAuth2', async () => {
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				SCOPED_RESOURCE,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+			);
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.anything(),
+			);
+			expect(mockRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('rebases /me onto /users/{id}/drive for the user target', async () => {
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				SCOPED_RESOURCE,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+				}),
+			);
+		});
+
+		it('defaults to the user target when resourceTarget is not persisted (unchanged default)', async () => {
+			// A default-valued option isn't persisted, so an SP node may omit resourceTarget;
+			// resolveScopeRoot must default to 'user' rather than throw.
+			const params: Record<string, unknown> = {
+				authentication: 'microsoftEntraServicePrincipalApi',
+				userTarget: { value: 'jane@contoso.com' },
+			};
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name, _itemIndex, fallback) =>
+					(name in params ? params[name as string] : fallback) as never,
+			);
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				SCOPED_RESOURCE,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+				}),
+			);
+		});
+
+		it('rebases onto /drives/{id} for the drive target (no double /drive)', async () => {
+			setSpParams({ resourceTarget: 'drive', driveTarget: { value: 'b!abc-123_XYZ' } });
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				SCOPED_RESOURCE,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: `${baseUrl}/v1.0/drives/b!abc-123_XYZ/items/WB/workbook/worksheets/WS/usedRange`,
+				}),
+			);
+		});
+
+		it('honors a sovereign graphApiBaseUrl', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				graphApiBaseUrl: 'https://graph.microsoft.us',
+			});
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				SCOPED_RESOURCE,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.us/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange',
+				}),
+			);
+		});
+
+		it('uses an absolute @odata.nextLink uri verbatim (pagination bypasses scoping)', async () => {
+			const nextLink =
+				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/children?$skiptoken=abc';
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/drive/root/children',
+				{},
+				{},
+				nextLink,
+				undefined,
+				0,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({ uri: nextLink }),
+			);
+		});
+
+		// The target RLC accepts expressions, so execute call sites pass the loop index
+		// and the transport must resolve the target at exactly that index.
+		const setSpParamsPerItem = () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				if (name === 'authentication') return 'microsoftEntraServicePrincipalApi' as never;
+				if (name === 'resourceTarget') return 'user' as never;
+				if (name === 'userTarget')
+					return { value: itemIndex === 1 ? 'john@contoso.com' : 'jane@contoso.com' } as never;
+				return fallback as never;
+			});
+		};
+
+		it('resolves the target at the passed itemIndex', async () => {
+			setSpParamsPerItem();
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				SCOPED_RESOURCE,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				SCOPED_RESOURCE,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				1,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+				1,
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+				}),
+			);
+			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: `${baseUrl}/v1.0/users/john%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+				}),
+			);
+		});
+
+		it('keeps the passed itemIndex root on every $skip page (AllItemsSkip)', async () => {
+			setSpParamsPerItem();
+			mockRequestWithAuthentication
+				.mockResolvedValueOnce({ value: [{ id: 'row-1' }] })
+				.mockResolvedValueOnce({ value: [] });
+
+			await microsoftApiRequestAllItemsSkip.call(
+				mockExecuteFunctions,
+				'value',
+				'GET',
+				SCOPED_RESOURCE,
+				{},
+				{},
+				1,
+			);
+
+			const johnUri = `${baseUrl}/v1.0/users/john%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`;
+			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+				1,
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({ uri: johnUri }),
+			);
+			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({ uri: johnUri }),
+			);
+		});
+
+		it('throws OperationalError when a scoped resource does not start with /drive', async () => {
+			await expect(
+				microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/workbooks',
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				),
+			).rejects.toThrow(OperationalError);
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('wraps a transport failure as NodeApiError', async () => {
+			mockRequestWithAuthentication.mockRejectedValue(new Error('boom'));
+
+			await expect(
+				microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					SCOPED_RESOURCE,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					0,
+				),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('preserves method and body for a PATCH write, rebased onto the target drive', async () => {
+			const body = { values: [['updated']] };
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'PATCH',
+				"/drive/items/WB/workbook/worksheets/WS/range(address='A1:A1')",
+				body,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					method: 'PATCH',
+					body,
+					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/range(address='A1:A1')`,
+				}),
+			);
+		});
+
+		it('preserves method and body for a POST write (e.g. add worksheet / append row)', async () => {
+			const body = { name: 'Sheet2' };
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'POST',
+				'/drive/items/WB/workbook/worksheets/add',
+				body,
+				undefined,
+				undefined,
+				undefined,
+				0,
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					method: 'POST',
+					body,
+					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/add`,
+				}),
+			);
+		});
+	});
+
+	describe('getServicePrincipalResourceRoot / validateResourceTargetId', () => {
+		it('builds the user root with an encoded UPN', () => {
+			expect(getServicePrincipalResourceRoot('user', 'jane@contoso.com', mockNode)).toBe(
+				'/users/jane%40contoso.com',
+			);
+		});
+
+		it('builds the drive root', () => {
+			expect(getServicePrincipalResourceRoot('drive', 'b!abc-123_XYZ', mockNode)).toBe(
+				'/drives/b!abc-123_XYZ',
+			);
+		});
+
+		it('rejects an empty id', () => {
+			expect(() => validateResourceTargetId('user', '', mockNode)).toThrow(NodeOperationError);
+		});
+
+		it('rejects a dots-only id', () => {
+			expect(() => validateResourceTargetId('user', '..', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+		});
+
+		it('rejects a user id with a slash (path injection)', () => {
+			expect(() => validateResourceTargetId('user', 'jane/../bob', mockNode)).toThrow(
+				NodeOperationError,
+			);
+		});
+
+		it('never interpolates the id into the error message', () => {
+			let message = '';
+			try {
+				validateResourceTargetId('user', 'super-secret-id/with/slashes', mockNode);
+			} catch (error) {
+				message = (error as Error).message;
+			}
+			expect(message).not.toContain('super-secret-id');
+		});
+	});
+
+	describe('driveEndpoint', () => {
+		it('appends /drive to a user root', () => {
+			expect(driveEndpoint('/users/jane%40contoso.com')).toBe('/users/jane%40contoso.com/drive');
+		});
+
+		it('uses a /drives/{id} root as-is', () => {
+			expect(driveEndpoint('/drives/b!abc')).toBe('/drives/b!abc');
+		});
+	});
+
+	describe('resolveScopeRoot', () => {
+		it('returns undefined for the OAuth2 credential', () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftExcelOAuth2Api');
+
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBeUndefined();
+		});
+
+		it('resolves the user root for the Service Principal credential', () => {
+			const params: Record<string, unknown> = {
+				authentication: 'microsoftEntraServicePrincipalApi',
+				resourceTarget: 'user',
+				userTarget: { value: 'jane@contoso.com' },
+			};
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name) => params[name as string] as never,
+			);
+
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBe('/users/jane%40contoso.com');
+		});
+
+		it('falls back to the user target when resourceTarget is unpersisted', () => {
+			// 3-arg-aware mock: resolveScopeRoot must default to 'user' when resourceTarget is omitted.
+			const params: Record<string, unknown> = {
+				authentication: 'microsoftEntraServicePrincipalApi',
+				userTarget: { value: 'jane@contoso.com' },
+			};
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name, _itemIndex, fallback) =>
+					(name in params ? params[name as string] : fallback) as never,
+			);
+
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBe('/users/jane%40contoso.com');
+		});
+	});
+
+	describe('execute error attribution', () => {
+		it('stamps context.itemIndex on a NodeError from the failing item', async () => {
+			const mockRequestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ values: [['row'], ['jane-row']] });
+			mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+			(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockReturnValue([]);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name, itemIndex, fallback) => {
+				const params: Record<string, unknown> = {
+					authentication: 'microsoftEntraServicePrincipalApi',
+					resourceTarget: 'user',
+					workbook: 'WB',
+					worksheet: 'WS',
+				};
+				if (name === 'userTarget')
+					return { value: itemIndex === 1 ? 'not a user' : 'jane@contoso.com' } as never;
+				return (name in params ? params[name as string] : fallback) as never;
+			});
+
+			let caught: unknown;
+			try {
+				await readRows.execute.call(mockExecuteFunctions, [{ json: {} }, { json: {} }]);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(NodeOperationError);
+			expect((caught as NodeOperationError).message).toBe('The target ID is not valid');
+			expect((caught as NodeOperationError).context.itemIndex).toBe(1);
+			// Item 0 resolved and requested normally before item 1 failed validation.
+			expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		});
 	});
 });

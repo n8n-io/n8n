@@ -1,7 +1,7 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { generatePairedItemData } from '@utils/utilities';
 import { createWriteStream } from 'fs';
-import { BINARY_ENCODING, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { BINARY_ENCODING, deepCopy, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -128,7 +128,7 @@ export class Ftp implements INodeType {
 		icon: 'node:ftp',
 		iconColor: 'dark-blue',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',
 		description: 'Transfer files via FTP or SFTP',
 		defaults: {
@@ -589,6 +589,7 @@ export class Ftp implements INodeType {
 		const items = this.getInputData();
 		let returnItems: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0);
+		const serializeDates = this.getNode().typeVersion >= 1.1;
 
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
@@ -682,8 +683,11 @@ export class Ftp implements INodeType {
 								responseData.forEach((item) => normalizeSFtpItem(item, path));
 							}
 
+							const json = responseData as unknown as IDataObject[];
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+								this.helpers.returnJsonArray(
+									serializeDates ? json.map((item) => deepCopy(item)) : json,
+								),
 								{ itemData: { item: i } },
 							);
 							returnItems = returnItems.concat(executionData);
@@ -808,8 +812,11 @@ export class Ftp implements INodeType {
 								);
 							}
 
+							const json = responseData as unknown as IDataObject[];
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+								this.helpers.returnJsonArray(
+									serializeDates ? json.map((item) => deepCopy(item)) : json,
+								),
 								{ itemData: { item: i } },
 							);
 							returnItems = returnItems.concat(executionData);

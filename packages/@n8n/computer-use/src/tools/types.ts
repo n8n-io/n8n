@@ -2,7 +2,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { CreateCredentialPayload, SecretsBuffer } from '@n8n/mcp-browser';
 import type { z } from 'zod';
 
-import type { ToolGroup } from '../config';
+import type { GatewayConfig, ToolGroup } from '../config';
 
 export type { CallToolResult, CreateCredentialPayload, SecretsBuffer };
 
@@ -85,9 +85,31 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	): AffectedResource[] | Promise<AffectedResource[]>;
 }
 
+/** Inputs a module needs to resolve availability and build its tools. */
+export interface ModuleContext {
+	config: GatewayConfig;
+	dir: string;
+}
+
+/** Result of activating a module: available with tools (+ optional teardown), or unavailable with a reason. */
+export type ModuleActivation =
+	| { supported: true; tools: ToolDefinition[]; shutdown?: () => Promise<void> }
+	| { supported: false; reason: string; hint?: string };
+
+export const ModuleActivation = {
+	supported(tools: ToolDefinition[], shutdown?: () => Promise<void>): ModuleActivation {
+		return { supported: true, tools, ...(shutdown ? { shutdown } : {}) };
+	},
+	unsupported(reason: string, hint?: string): ModuleActivation {
+		return { supported: false, reason, ...(hint ? { hint } : {}) };
+	},
+} as const;
+
 export interface ToolModule {
-	/** Return false if this module cannot run on the current platform or lacks required permissions */
-	isSupported(): boolean | Promise<boolean>;
-	/** Tool definitions provided by this module */
-	definitions: ToolDefinition[];
+	readonly name: string;
+	/** Annotation used to route tools to the correct sub-agent (e.g. 'browser'). */
+	readonly category: string;
+	readonly permissionGroup: ToolGroup;
+	/** Resolve availability once at startup; may do one-time init (native imports, sandbox setup). */
+	activate(context: ModuleContext): ModuleActivation | Promise<ModuleActivation>;
 }

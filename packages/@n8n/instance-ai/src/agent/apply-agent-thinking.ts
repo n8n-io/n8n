@@ -1,6 +1,6 @@
 import type { Agent, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 function normalizeProvider(provider: string): string {
 	return provider.split('.')[0] ?? provider;
@@ -44,7 +44,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'anthropic') {
-		agent.thinking('anthropic', { mode: 'adaptive' });
+		agent.thinking('anthropic', { mode: 'adaptive', effort: 'medium' });
 		return;
 	}
 }

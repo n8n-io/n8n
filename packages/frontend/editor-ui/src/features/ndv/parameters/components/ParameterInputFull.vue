@@ -9,7 +9,7 @@ import FromAiOverrideButton from './ParameterInputOverrides/FromAiOverrideButton
 import FromAiOverrideField from './ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from './ParameterInputOverrides/ParameterOverrideSelectableList.vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getMappedResult } from '@/app/utils/mappingUtils';
 import {
@@ -32,7 +32,7 @@ import {
 	makeOverrideValue,
 	updateFromAIOverrideValues,
 } from '../utils/fromAIOverride.utils';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { inject } from 'vue';
 import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
@@ -121,7 +121,10 @@ const hint = computed(() =>
 );
 
 const isResourceLocator = computed(
-	() => props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector',
+	() =>
+		props.parameter.type === 'resourceLocator' ||
+		props.parameter.type === 'workflowSelector' ||
+		props.parameter.type === 'agentSelector',
 );
 const isDropDisabled = computed(
 	() =>
@@ -380,7 +383,7 @@ function removeOverride(clearField = false) {
 					:hide-issues="hideIssues"
 					:label="label"
 					:event-bus="eventBus"
-					input-size="medium"
+					input-size="small"
 					@update="valueChanged"
 					@text-input="onTextInput"
 					@focus="onFocus"
@@ -496,7 +499,7 @@ function removeOverride(clearField = false) {
 						:event-bus="eventBus"
 						:can-be-overridden="canCreateContentOverride"
 						:hide-label="hideLabel"
-						input-size="medium"
+						input-size="small"
 						@update="valueChanged"
 						@text-input="onTextInput"
 						@focus="onFocus"

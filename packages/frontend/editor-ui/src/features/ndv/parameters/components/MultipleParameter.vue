@@ -166,7 +166,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 					:display-options="true"
 					:hide-label="true"
 					:path="getPath(index)"
-					input-size="medium"
+					input-size="small"
 					:is-read-only="isReadOnly"
 					@update="valueChanged"
 				/>

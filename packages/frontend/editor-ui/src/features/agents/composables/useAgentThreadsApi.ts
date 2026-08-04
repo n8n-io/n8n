@@ -20,6 +20,8 @@ export interface AgentExecutionThread {
 	createdAt: string;
 	updatedAt: string;
 	firstMessage?: string | null;
+	/** Earliest non-null execution source for the thread (e.g. slack, telegram). */
+	source?: string | null;
 }
 
 export type AgentExecutionStatus = 'success' | 'error';
@@ -33,11 +35,12 @@ export type AgentExecutionHitlStatus = 'suspended' | 'resumed';
  */
 export type AgentExecutionTimelineEvent = Record<string, unknown> & { type: string };
 
-export interface AgentExecutionToolCall {
-	toolName: string;
-	input: unknown;
-	output: unknown;
-	[key: string]: unknown;
+/** Metadata of a file attached to the user turn; bytes come from the chat attachment download route. */
+export interface AgentExecutionAttachment {
+	id: string;
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
 }
 
 export interface AgentExecution {
@@ -49,14 +52,13 @@ export interface AgentExecution {
 	startedAt: string | null;
 	stoppedAt: string | null;
 	duration: number;
-	userMessage: string;
-	assistantResponse: string;
+	userMessage: string | null;
+	attachments: AgentExecutionAttachment[] | null;
 	model: string | null;
 	promptTokens: number | null;
 	completionTokens: number | null;
 	totalTokens: number | null;
 	cost: number | null;
-	toolCalls: AgentExecutionToolCall[] | null;
 	timeline: AgentExecutionTimelineEvent[] | null;
 	error: string | null;
 	hitlStatus: AgentExecutionHitlStatus | null;

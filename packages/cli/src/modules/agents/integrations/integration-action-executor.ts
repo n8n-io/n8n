@@ -1,6 +1,7 @@
 import { richMessageSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import type { SentMessage } from 'chat';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Adapter, SentMessage } from 'chat';
 import { z } from 'zod';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
@@ -38,12 +39,18 @@ const sendChannelMessageInputSchema = z.object({
 	channelId: z.string().min(1),
 	message: messageSchema,
 });
+const editMessageInputSchema = z
+	.object({
+		messageId: z.string().min(1),
+		message: messageSchema,
+	})
+	.strict();
 
 type MessagePayload = z.infer<typeof messageSchema>;
 
 /**
  * Dispatches action invocations between cross-platform actions (`respond`,
- * `send_dm`, `send_channel_message`) and platform-specific actions
+ * `send_dm`, `send_channel_message`, `edit_message`) and platform-specific actions
  * (`add_reaction`, `create_issue`, `create_comment`, …) owned by each
  * {@link AgentChatIntegration} subclass.
  */
@@ -66,6 +73,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		currentMessageContext?: IntegrationMessageContext;
 	}): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
+
+		if (params.action === 'do_not_respond') {
+			return this.doNotRespond(params);
+		}
 
 		const unsupportedAction = () =>
 			integrationError(
@@ -98,10 +109,14 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		const chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
+		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
 			type: params.descriptor.integration.type,
 			credentialId,
 		});
+		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+			params.descriptor.agentId,
+			params.descriptor.integration,
+		);
 		if (!chat) return connectionUnavailable();
 
 		try {
@@ -110,6 +125,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			}
 			if (params.action === 'send_dm') {
 				return await this.sendDirectMessage(chat, params);
+			}
+			if (params.action === 'edit_message') {
+				return await this.editMessageInCurrentThread(chat, params);
 			}
 
 			// Platform-specific actions delegate to the integration implementation.
@@ -137,6 +155,25 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		}
 	}
 
+	/**
+	 * End the turn without posting anything. Allowed only when the latest
+	 * inbound message marked the reply as optional.
+	 */
+	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
+		if (params.currentMessageContext?.replyExpectation !== 'optional') {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.REPLY_REQUIRED,
+				'A reply is expected here — this is a direct message, a direct mention, or a conversation you were asked to join. Respond normally instead of staying silent.',
+			);
+		}
+
+		return {
+			ok: true,
+			silent: true,
+			note: 'No reply will be sent. End your turn now without writing any text.',
+		};
+	}
+
 	private async respondInCurrentThread(
 		chat: ChatInstance,
 		params: ExecuteParams,
@@ -147,6 +184,16 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			return integrationError(
 				INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
 				'There is no current message context. Use an explicit send action.',
+			);
+		}
+
+		// `replyExpectation` marks a turn triggered by an inbound chat message,
+		// where the bridge already posts the assistant's reply text to this
+		// thread — a text-only respond would deliver the same content twice.
+		if (!input.message.card && params.currentMessageContext?.replyExpectation) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
 			);
 		}
 
@@ -180,6 +227,44 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				sent,
 				target: { type: 'dm', userId: input.userId, threadId: thread.id },
 			}),
+		};
+	}
+
+	private async editMessageInCurrentThread(
+		chat: ChatInstance,
+		params: ExecuteParams,
+	): Promise<IntegrationActionResult> {
+		const input = editMessageInputSchema.parse(params.input);
+		const currentMessageContext = params.currentMessageContext;
+		const threadId = currentMessageContext?.target.threadId;
+		if (!currentMessageContext || !threadId) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
+				'There is no current conversation to edit. Send a message first, then try again.',
+			);
+		}
+
+		const adapter = chat.getAdapter(params.descriptor.integration.type);
+		if (!supportsMessageEditing(adapter)) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
+				`The ${params.descriptor.integration.type} integration can't edit messages. Use a supported action instead.`,
+			);
+		}
+
+		const edited = await adapter.editMessage(
+			threadId,
+			input.messageId,
+			await this.toPostable(params.descriptor, input.message, params),
+		);
+
+		return {
+			ok: true,
+			messageContext: {
+				...currentMessageContext,
+				messageId: edited.id,
+				updatedAt: new Date().toISOString(),
+			},
 		};
 	}
 
@@ -245,6 +330,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			credentialId,
 		});
 	}
+}
+
+function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'editMessage'> {
+	return isRecord(adapter) && typeof adapter.editMessage === 'function';
 }
 
 interface ExecuteParams {

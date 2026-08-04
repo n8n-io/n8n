@@ -162,6 +162,29 @@ describe('N8nDataTableServer', () => {
 		expect(queryByTestId('pagination')).not.toBeInTheDocument();
 	});
 
+	it('should sync external selection model changes into row checkboxes', async () => {
+		const selectionItems = items.slice(0, 3);
+		const { container, emitted, rerender } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: selectionItems, headers, itemsLength: 3, showSelect: true, selection: [] },
+		});
+
+		const rowCheckboxes = container.querySelectorAll<HTMLElement>('tbody [role="checkbox"]');
+		expect(rowCheckboxes.length).toBe(3);
+
+		await userEvent.click(rowCheckboxes[0]);
+
+		expect(emitted('update:selection').at(-1)).toEqual([[selectionItems[0].id]]);
+		expect(rowCheckboxes[0]).toHaveAttribute('aria-checked', 'true');
+
+		// Clearing the model from the outside must uncheck the rows
+		await rerender({ selection: [] });
+
+		await waitFor(() => {
+			expect(rowCheckboxes[0]).toHaveAttribute('aria-checked', 'false');
+		});
+	});
+
 	it('should adjust page to highest available when page size changes and current page exceeds maximum', async () => {
 		const { emitted, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 106, itemsPerPage: 50, page: 2 },

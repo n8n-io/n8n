@@ -279,12 +279,29 @@ export class Expression {
 		}
 	}
 
-	async acquireIsolate(): Promise<void> {
-		if (Expression.vmEvaluator) await Expression.vmEvaluator.acquire(this);
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		if (Expression.vmEvaluator) return await Expression.vmEvaluator.acquire(this);
+		return false;
 	}
 
 	async releaseIsolate(): Promise<void> {
 		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		const acquired = await this.acquireIsolate();
+		try {
+			return await fn();
+		} finally {
+			if (acquired) {
+				try {
+					await this.releaseIsolate();
+				} catch (error) {
+					LoggerProxy.error('Failed to release expression isolate', { error });
+				}
+			}
+		}
 	}
 
 	/**

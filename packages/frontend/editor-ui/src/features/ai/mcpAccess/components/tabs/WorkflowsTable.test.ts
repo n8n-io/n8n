@@ -102,6 +102,101 @@ describe('WorkflowsTable', () => {
 		});
 	});
 
+	describe('Bulk selection', () => {
+		const selectableWorkflows = () => [
+			createWorkflow({ id: 'wf-1', name: 'Workflow 1' }),
+			createWorkflow({ id: 'wf-2', name: 'Workflow 2' }),
+		];
+
+		const getRowCheckboxes = (container: Element) =>
+			container.querySelectorAll<HTMLElement>('tbody [role="checkbox"]');
+
+		it('should emit bulkRemoveMcpAccess with the selected workflow ids', async () => {
+			const { container, getByTestId, emitted } = createComponent({
+				props: { workflows: selectableWorkflows(), totalCount: 2, loading: false },
+			});
+
+			const rowCheckboxes = getRowCheckboxes(container);
+			expect(rowCheckboxes.length).toBe(2);
+
+			await userEvent.click(rowCheckboxes[0]);
+
+			expect(getByTestId('selected-items-info')).toBeVisible();
+
+			await userEvent.click(getByTestId('mcp-bulk-remove-access-button'));
+
+			expect(emitted('bulkRemoveMcpAccess')).toEqual([[['wf-1']]]);
+		});
+
+		it('should select every selectable row via the header checkbox', async () => {
+			const { container, getByTestId, emitted } = createComponent({
+				props: { workflows: selectableWorkflows(), totalCount: 2, loading: false },
+			});
+
+			const headerCheckbox = container.querySelector<HTMLElement>('thead [role="checkbox"]');
+			expect(headerCheckbox).not.toBeNull();
+			await userEvent.click(headerCheckbox!);
+
+			await userEvent.click(getByTestId('mcp-bulk-remove-access-button'));
+
+			expect(emitted('bulkRemoveMcpAccess')).toEqual([[['wf-1', 'wf-2']]]);
+		});
+
+		it('should disable selection for workflows the user cannot update', () => {
+			const { container } = createComponent({
+				props: {
+					workflows: [
+						createWorkflow({ id: 'wf-1' }),
+						createWorkflow({ id: 'wf-2', scopes: ['workflow:read'] }),
+					],
+					totalCount: 2,
+					loading: false,
+				},
+			});
+
+			const rowCheckboxes = getRowCheckboxes(container);
+			expect(rowCheckboxes[0]).not.toBeDisabled();
+			expect(rowCheckboxes[1]).toBeDisabled();
+		});
+
+		it('should clear the selection from the selection bar', async () => {
+			const { container, getByTestId, queryByTestId } = createComponent({
+				props: { workflows: selectableWorkflows(), totalCount: 2, loading: false },
+			});
+
+			const rowCheckbox = getRowCheckboxes(container)[0];
+			await userEvent.click(rowCheckbox);
+			expect(getByTestId('selected-items-info')).toBeVisible();
+			expect(rowCheckbox).toHaveAttribute('aria-checked', 'true');
+
+			await userEvent.click(getByTestId('clear-selection-button'));
+
+			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
+			await waitFor(() => {
+				expect(rowCheckbox).toHaveAttribute('aria-checked', 'false');
+			});
+		});
+
+		it('should reset the selection when the workflows list reloads', async () => {
+			const { container, getByTestId, queryByTestId, rerender } = createComponent({
+				props: { workflows: selectableWorkflows(), totalCount: 2, loading: false },
+			});
+
+			await userEvent.click(getRowCheckboxes(container)[0]);
+			expect(getByTestId('selected-items-info')).toBeVisible();
+
+			await rerender({
+				workflows: [createWorkflow({ id: 'wf-3', name: 'Workflow 3' })],
+				totalCount: 1,
+				loading: false,
+			});
+
+			await waitFor(() => {
+				expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('Workflow in project root', () => {
 		it('should render workflow with project location only (no folder)', () => {
 			const workflow = createWorkflow({

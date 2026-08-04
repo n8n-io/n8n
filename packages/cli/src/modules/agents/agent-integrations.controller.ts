@@ -1,6 +1,7 @@
 import {
 	AgentDisconnectIntegrationDto,
 	AgentIntegrationSchema,
+	isDraftIntegration,
 	type AgentIntegrationStatusResponse,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -15,10 +16,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
-import { AgentPublishService } from './agent-publish.service';
-import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { channelIntegrationRecorder } from './integrations/recording/channel-integration-recorder';
 import { SlackAppSetupService } from './integrations/slack-app-setup.service';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -26,13 +26,11 @@ import { AgentRepository } from './repositories/agent.repository';
 export class AgentIntegrationsController {
 	constructor(
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly agentPublishService: AgentPublishService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentRepository: AgentRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly slackAppSetupService: SlackAppSetupService,
-		private readonly agentRunnableStateService: AgentRunnableStateService,
 	) {}
 
 	private async validateIntegration(dto: unknown) {
@@ -73,27 +71,17 @@ export class AgentIntegrationsController {
 			);
 		}
 
-		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
-			broadcast: false,
-		});
-		const publishedAgent = await this.agentPublishService.publishAgent(
-			agentId,
-			agent.projectId,
-			req.user,
-			undefined,
-			{ syncIntegrations: false },
+		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+			agent,
+			integration,
+			{ user: req.user, modifiedBy: 'user', broadcast: false },
 		);
-		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+		if (savedAgent.activeVersionId === null) return { status: 'configured' };
+
+		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
-		return {
-			status: 'connected',
-			agent: await this.agentRunnableStateService.addRunnableState(
-				publishedAgent,
-				agent.projectId,
-				req.user,
-			),
-		};
+		return { status: 'connected' };
 	}
 
 	@Post('/:agentId/integrations/slack/app')
@@ -181,12 +169,23 @@ export class AgentIntegrationsController {
 		const { type, credentialId } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
+		const persistedIntegration = agent.integrations?.find(
+			(integration) => integration.type === type && integration.credentialId === credentialId,
+		);
+		const parsedIntegration = AgentIntegrationSchema.safeParse({ type, credentialId });
+		const integration =
+			persistedIntegration ?? (parsedIntegration.success ? parsedIntegration.data : undefined);
+		if (integration) {
+			await this.chatIntegrationService.disconnectChannel(agentId, integration);
+		} else {
+			await this.chatIntegrationService.disconnect(agentId, { type, credentialId });
+		}
 
 		await this.agentIntegrationPersistenceService.removeCredentialIntegration(
 			agent,
 			type,
 			credentialId,
+			{ user: req.user, modifiedBy: 'user', broadcast: false },
 		);
 
 		return { status: 'disconnected' };
@@ -202,13 +201,24 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const chatIntegrations = (agent.integrations ?? []).map((i) => ({
-			type: i.type,
-			credentialId: i.credentialId,
-			...('settings' in i ? { settings: i.settings } : {}),
-		}));
+		// Draft entries (`credentialId: ''`) written during the initial build so
+		// the panel can show a needs-setup chip aren't a real connection — report
+		// them as disconnected so channel-setup UIs don't render an already-
+		// connected state and hide their own setup form.
+		const chatIntegrations = (agent.integrations ?? [])
+			.filter((i) => !isDraftIntegration(i))
+			.map((i) => ({
+				type: i.type,
+				credentialId: i.credentialId,
+				...('settings' in i ? { settings: i.settings } : {}),
+			}));
 		return {
-			status: chatIntegrations.length > 0 ? 'connected' : 'disconnected',
+			status:
+				chatIntegrations.length === 0
+					? 'disconnected'
+					: agent.activeVersionId === null
+						? 'configured'
+						: 'connected',
 			integrations: chatIntegrations,
 		};
 	}
@@ -288,6 +298,7 @@ export class AgentIntegrationsController {
 			headers: sanitizedHeaders,
 			body: requestBody,
 		});
+		await channelIntegrationRecorder.recordWebhook(platform, webRequest.clone());
 
 		// In Express, background tasks just need to not be garbage collected.
 		// We hold references to keep them alive for the lifetime of the process.

@@ -1,31 +1,32 @@
+import type { Mock, Mocked } from 'vitest';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 type ProxyResponse = { headers: Record<string, string> };
 type ProxyErrorResponse = {
 	headersSent?: boolean;
-	writeHead: jest.Mock;
-	end: jest.Mock;
+	writeHead: Mock;
+	end: Mock;
 };
 type ProxyOptions = {
 	on?: {
-		proxyReq?: (proxyReq: { removeHeader: jest.Mock }, req: AuthenticatedRequest) => void;
+		proxyReq?: (proxyReq: { removeHeader: Mock }, req: AuthenticatedRequest) => void;
 		proxyRes?: (proxyRes: ProxyResponse) => void;
 		error?: (error: Error, req: AuthenticatedRequest, res: ProxyErrorResponse) => void;
 	};
 };
 
-const mockProxy = jest.fn();
-const mockFixRequestBody = jest.fn();
+const mockProxy = vi.fn();
+const { mockFixRequestBody } = vi.hoisted(() => ({ mockFixRequestBody: vi.fn() }));
 let mockProxyOptions: ProxyOptions | undefined;
 
-jest.mock('http-proxy-middleware', () => ({
-	createProxyMiddleware: jest.fn((options: ProxyOptions) => {
+vi.mock('http-proxy-middleware', () => ({
+	createProxyMiddleware: vi.fn((options: ProxyOptions) => {
 		mockProxyOptions = options;
 		return mockProxy;
 	}),
@@ -55,14 +56,14 @@ function createController(outboundHttp: OutboundHttp = mock<OutboundHttp>()) {
 
 function createResponse() {
 	const res = {
-		setHeader: jest.fn(),
-		removeHeader: jest.fn(),
-		status: jest.fn(),
-		end: jest.fn(),
-		json: jest.fn(),
+		setHeader: vi.fn(),
+		removeHeader: vi.fn(),
+		status: vi.fn(),
+		end: vi.fn(),
+		json: vi.fn(),
 	};
 	res.status.mockReturnValue(res);
-	return res as unknown as jest.Mocked<Response>;
+	return res as unknown as Mocked<Response>;
 }
 
 function createRequest(headers: Record<string, string> = {}) {
@@ -83,7 +84,7 @@ describe('TelemetryController route access', () => {
 
 describe('TelemetryController', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockProxy.mockResolvedValue(undefined);
 		mockProxyOptions = undefined;
 	});
@@ -116,7 +117,7 @@ describe('TelemetryController', () => {
 		const controller = createController();
 		const req = createRequest();
 		const res = createResponse();
-		const next = jest.fn() as NextFunction;
+		const next = vi.fn() as NextFunction;
 
 		await controller.track(req, res, next);
 
@@ -126,7 +127,7 @@ describe('TelemetryController', () => {
 
 	it('keeps proxy request body handling and strips cookies', () => {
 		createController();
-		const proxyReq = { removeHeader: jest.fn() };
+		const proxyReq = { removeHeader: vi.fn() };
 		const req = createRequest();
 
 		getProxyOptions().on?.proxyReq?.(proxyReq, req);
@@ -161,8 +162,8 @@ describe('TelemetryController', () => {
 		const req = createRequest();
 		const res: ProxyErrorResponse = {
 			headersSent: false,
-			writeHead: jest.fn(),
-			end: jest.fn(),
+			writeHead: vi.fn(),
+			end: vi.fn(),
 		};
 
 		getProxyOptions().on?.error?.(new Error('upstream unavailable'), req, res);
@@ -175,7 +176,7 @@ describe('TelemetryController', () => {
 
 	it('applies CORS while serving RudderStack source config', async () => {
 		const httpClient = mock<HttpRequestClient>();
-		const requestMock = httpClient.request as jest.Mock;
+		const requestMock = httpClient.request as Mock;
 		requestMock.mockResolvedValue({ statusCode: 200, body: { source: 'config' } });
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(httpClient);

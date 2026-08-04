@@ -1,5 +1,6 @@
+import type { Mocked } from 'vitest';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -25,15 +26,15 @@ function makeController({
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 }: {
-	agentsService?: jest.Mocked<
+	agentsService?: Mocked<
 		Pick<
 			AgentsService,
 			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
 		>
 	>;
-	agentPublishService?: jest.Mocked<AgentPublishService>;
-	agentValidationService?: jest.Mocked<AgentValidationService>;
-	credentialsService?: jest.Mocked<CredentialsService>;
+	agentPublishService?: Mocked<AgentPublishService>;
+	agentValidationService?: Mocked<AgentValidationService>;
+	credentialsService?: Mocked<CredentialsService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -64,6 +65,52 @@ describe('AgentsController route access scopes', () => {
 		['delete', 'agent:delete'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
+});
+
+describe('AgentsController create', () => {
+	const req = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
+
+	function makeCreateController(createdId: string) {
+		const agentPublishService = mock<AgentPublishService>();
+		const agentValidationService = mock<AgentValidationService>();
+		const agentsService = mock<Pick<AgentsService, 'create'>>();
+		agentsService.create.mockResolvedValue({ id: createdId, projectId: 'project-1' } as never);
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
+
+		const { controller } = makeController({
+			agentsService: agentsService as never,
+			agentPublishService,
+			agentValidationService,
+		});
+		return { controller, agentsService };
+	}
+
+	it('creates the agent under the id the client minted', async () => {
+		const { controller, agentsService } = makeCreateController('aBcDeFgHiJkLmNoP');
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Support Agent',
+			id: 'aBcDeFgHiJkLmNoP',
+		} as never);
+
+		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			id: 'aBcDeFgHiJkLmNoP',
+		});
+	});
+
+	it('lets the backend mint the id when the client did not supply one', async () => {
+		const { controller, agentsService } = makeCreateController('server-minted');
+
+		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
+
+		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			id: undefined,
+		});
 	});
 });
 
@@ -122,7 +169,10 @@ describe('AgentsController agent resource', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
 		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 
 		const { controller } = makeController({
@@ -146,10 +196,11 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
-		expect(agentValidationService.validateAgentIsRunnable).toHaveBeenCalledWith(
-			'agent-1',
+		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',
 			expect.any(AgentsCredentialProvider),
+			'runtime',
 		);
 	});
 
@@ -162,8 +213,9 @@ describe('AgentsController agent resource', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({
-			missing: ['credential'],
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 		});
 		agentPublishService.hasPublishHistory.mockResolvedValue(false);
 

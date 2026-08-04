@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import { getAllowedDomains } from '../HttpRequest/GenericFunctions';
+
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
@@ -395,6 +397,23 @@ export class GraphQL implements INodeType {
 					{},
 				);
 
+				let allowedDomains: string | undefined;
+				if (httpBasicAuth !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), httpBasicAuth);
+				} else if (httpCustomAuth !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), httpCustomAuth);
+				} else if (httpDigestAuth !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), httpDigestAuth);
+				} else if (httpHeaderAuth !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), httpHeaderAuth);
+				} else if (httpQueryAuth !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), httpQueryAuth);
+				} else if (oAuth1Api !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
+				} else if (oAuth2Api !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), oAuth2Api);
+				}
+
 				requestOptions = {
 					headers: {
 						'content-type': `application/${requestFormat}`,
@@ -404,6 +423,7 @@ export class GraphQL implements INodeType {
 					uri: endpoint,
 					simple: false,
 					rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
+					allowedDomains,
 				};
 
 				// Add credentials if any are set

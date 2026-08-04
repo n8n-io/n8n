@@ -12,7 +12,7 @@
  */
 
 import type { BuiltTool } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import type { InstanceAiToolRegistry } from '../types';

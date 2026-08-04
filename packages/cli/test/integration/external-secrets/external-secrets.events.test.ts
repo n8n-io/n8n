@@ -27,15 +27,15 @@ const testReloadEvent = async (
 	pubsubEventBus: PubSubEventBus,
 	{ connectsAllProviders = false }: { connectsAllProviders?: boolean } = {},
 ) => {
-	const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
-	const connectSpy = jest.spyOn(DummyProvider.prototype, 'connect');
-	const disconnectSpy = jest.spyOn(DummyProvider.prototype, 'disconnect');
-	const updateSpy = jest.spyOn(DummyProvider.prototype, 'update');
+	const initSpy = vi.spyOn(DummyProvider.prototype, 'init');
+	const connectSpy = vi.spyOn(DummyProvider.prototype, 'connect');
+	const disconnectSpy = vi.spyOn(DummyProvider.prototype, 'disconnect');
+	const updateSpy = vi.spyOn(DummyProvider.prototype, 'update');
 
-	const initAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'init');
-	const connectAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'connect');
-	const disconnectAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'disconnect');
-	const updateAnotherSpy = jest.spyOn(AnotherDummyProvider.prototype, 'update');
+	const initAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'init');
+	const connectAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'connect');
+	const disconnectAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'disconnect');
+	const updateAnotherSpy = vi.spyOn(AnotherDummyProvider.prototype, 'update');
 
 	// Emit event and wait for async handler to complete
 	pubsubEventBus.emit('reload-external-secrets-providers');
@@ -73,7 +73,7 @@ describe('External Secrets Event Handling', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterAll(async () => {

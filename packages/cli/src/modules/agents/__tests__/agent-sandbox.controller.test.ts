@@ -2,7 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import type { AiService } from '@/services/ai.service';
 
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentSandboxController } from '../agent-sandbox.controller';
@@ -10,11 +12,15 @@ import { AgentSandboxController } from '../agent-sandbox.controller';
 describe('AgentSandboxController', () => {
 	it('accepts knowledge sandbox warmup before files exist', async () => {
 		const agentKnowledgeService = mock<AgentKnowledgeService>();
-		const controller = new AgentSandboxController(agentKnowledgeService, mock<Logger>(), {
-			sandboxEnabled: true,
-			sandboxProvider: 'daytona',
-			daytonaVolumeId: 'volume-1',
-		} as AgentsConfig);
+		const controller = new AgentSandboxController(
+			agentKnowledgeService,
+			mock<Logger>(),
+			{
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+			} as AgentsConfig,
+			mock<AiService>({ isProxyEnabled: () => false }),
+		);
 		const req = { user: { id: 'user-1' } } as AuthenticatedRequest<{ projectId: string }>;
 		const res = mock<Response>();
 
@@ -26,10 +32,6 @@ describe('AgentSandboxController', () => {
 		});
 
 		expect(res.status).toHaveBeenCalledWith(202);
-		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			'user-1',
-		);
+		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
 	});
 });

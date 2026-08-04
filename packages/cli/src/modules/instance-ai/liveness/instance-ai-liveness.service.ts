@@ -77,7 +77,7 @@ export type InstanceAiLivenessBackgroundTasks = {
 };
 
 export type InstanceAiLivenessEventBus = {
-	getEventsForRun: (threadId: string, runId: string) => Pick<InstanceAiEvent, 'responseId'>[];
+	getEventsForRun: (threadId: string, runId: string) => Array<Pick<InstanceAiEvent, 'responseId'>>;
 	publish: (threadId: string, event: InstanceAiEvent) => void;
 };
 

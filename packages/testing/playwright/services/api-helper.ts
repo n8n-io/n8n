@@ -227,6 +227,39 @@ export class ApiHelpers {
 		});
 	}
 
+	async countScheduledJobs(workflowId: string, nodeId: string): Promise<number> {
+		const response = await this.request.get('/rest/e2e/scheduled-jobs/count', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to count scheduled jobs: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as { data: { count: number } };
+		return data.count;
+	}
+
+	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
+		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
+			data: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to fire scheduled jobs: ${await response.text()}`);
+		}
+	}
+
+	async backdateScheduledJob(
+		workflowId: string,
+		nodeId: string,
+		secondsAgo: number,
+	): Promise<void> {
+		const response = await this.request.post('/rest/e2e/scheduled-jobs/backdate', {
+			data: { workflowId, nodeId, secondsAgo },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to backdate scheduled job: ${await response.text()}`);
+		}
+	}
+
 	// ===== FEATURE FLAG METHODS =====
 
 	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{
@@ -330,7 +363,11 @@ export class ApiHelpers {
 	async createInstanceAiThread(projectId?: string): Promise<InstanceAiThreadInfo> {
 		const resolvedProjectId = projectId ?? (await this.projects.getMyPersonalProject()).id;
 		const response = await this.request.post('/rest/instance-ai/threads', {
-			data: { projectId: resolvedProjectId },
+			data: {
+				projectId: resolvedProjectId,
+				source: 'playwright',
+				origin: 'internal',
+			},
 		});
 		if (!response.ok()) {
 			throw new TestError(
@@ -340,6 +377,24 @@ export class ApiHelpers {
 
 		const body = (await response.json()) as { data: InstanceAiEnsureThreadResponse };
 		return body.data.thread;
+	}
+
+	/** Start an Instance AI chat run on a thread; returns the started `runId`. */
+	async startInstanceAiChat(
+		threadId: string,
+		message: string,
+		timeZone = 'UTC',
+	): Promise<{ runId: string }> {
+		const response = await this.request.post(`/rest/instance-ai/chat/${threadId}`, {
+			data: { message, timeZone },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/chat/${threadId} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const body = (await response.json()) as { data: { runId: string } };
+		return body.data;
 	}
 
 	async renameInstanceAiThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {

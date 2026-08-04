@@ -13,7 +13,7 @@ import {
 	type McpToolCallResult,
 } from '@n8n/api-types';
 import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
@@ -338,16 +338,22 @@ export function createToolsFromLocalMcpServer(
 						};
 					}
 					// Re-call the daemon with the user's decision
-					return await server.callTool({
-						name: toolName,
-						arguments: { ...args, _confirmation: resumeData.resourceDecision },
-					});
+					return await server.callTool(
+						{
+							name: toolName,
+							arguments: { ...args, _confirmation: resumeData.resourceDecision },
+						},
+						{ abortSignal: ctx.abortSignal },
+					);
 				}
 
 				// First-call path: strip any LLM-provided _confirmation key so the agent
 				// cannot bypass the human confirmation flow by supplying its own token.
 				const { _confirmation: _stripped, ...safeArgs } = args;
-				const result = await server.callTool({ name: toolName, arguments: safeArgs });
+				const result = await server.callTool(
+					{ name: toolName, arguments: safeArgs },
+					{ abortSignal: ctx.abortSignal },
+				);
 
 				// If the daemon requires a resource-access confirmation, suspend the agent
 				if (result.isError) {

@@ -65,10 +65,6 @@ describe('findPackageForSourceFile', () => {
 	});
 
 	it('returns undefined for unowned paths', () => {
-		assert.equal(
-			findPackageForSourceFile('packages/@n8n/expression-runtime/src/foo.ts', ELIGIBLE),
-			undefined,
-		);
 		assert.equal(findPackageForSourceFile('README.md', ELIGIBLE), undefined);
 	});
 });
@@ -88,7 +84,7 @@ describe('buildMatrixRowForFile (on-demand re-score path)', () => {
 
 	it('throws for files outside ELIGIBLE_PACKAGES', () => {
 		assert.throws(
-			() => buildMatrixRowForFile('packages/cli/src/server.ts', ELIGIBLE),
+			() => buildMatrixRowForFile('packages/nodes-base/utils/binary.ts', ELIGIBLE),
 			/No mutation-tracked package owns/,
 		);
 	});
@@ -332,8 +328,8 @@ describe('buildMatrixFromPicked (global picker → matrix shape)', () => {
 		// builder dies rather than spawning a mutate job we can't service.
 		const picked = [
 			{
-				source_file_path: 'packages/@n8n/expression-runtime/src/foo.ts',
-				package: '@n8n/expression-runtime',
+				source_file_path: 'packages/nodes-base/utils/binary.ts',
+				package: 'n8n-nodes-base',
 				prior_status: 'new',
 				effective_status: 'new',
 				value: 1,

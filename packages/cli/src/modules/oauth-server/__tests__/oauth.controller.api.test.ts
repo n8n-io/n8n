@@ -4,11 +4,11 @@ import type { User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
-
-import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
-import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
@@ -17,10 +17,12 @@ const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointG
 
 let owner: User;
 let mcpSettingsService: McpSettingsService;
+let supportedScopes: string[];
 
 beforeAll(async () => {
 	owner = await createOwner();
 	mcpSettingsService = Container.get(McpSettingsService);
+	supportedScopes = Container.get(ProtectedResourceRegistry).getAllScopes();
 });
 
 afterEach(async () => {
@@ -43,7 +45,7 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
 			authorization_response_iss_parameter_supported: true,
-			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
+			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
 		});
 	});
 
@@ -100,7 +102,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
+			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
 		});
 	});
 
@@ -128,13 +130,13 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 		expect(response.body.bearer_methods_supported).toEqual(['header']);
 	});
 
-	test('should omit scopes_supported when no scopes are advertised', async () => {
+	test('should advertise the grantable MCP scopes', async () => {
 		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).not.toHaveProperty('scopes_supported');
+		expect(response.body.scopes_supported).toEqual(supportedScopes);
 	});
 
 	test('should be accessible without authentication', async () => {
@@ -143,6 +145,47 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('GET /.well-known/oauth-protected-resource (bare path)', () => {
+	test('resolves to the default registered resource', async () => {
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({
+			resource: expect.stringContaining('/mcp-server/http'),
+			bearer_methods_supported: ['header'],
+			authorization_servers: [expect.any(String)],
+			...(supportedScopes.length > 0 && { scopes_supported: supportedScopes }),
+		});
+	});
+
+	test('matches the resource-scoped metadata for the default resource', async () => {
+		const bareResponse = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource',
+		);
+		const scopedResponse = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(bareResponse.statusCode).toBe(200);
+		expect(bareResponse.body).toEqual(scopedResponse.body);
+	});
+
+	test('is accessible without authentication', async () => {
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-protected-resource');
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('responds to OPTIONS with CORS headers', async () => {
+		const response = await testServer.restlessAgent.options(
+			'/.well-known/oauth-protected-resource',
+		);
+
+		expect(response.statusCode).toBe(204);
+		expect(response.headers['access-control-allow-origin']).toBe('*');
 	});
 });
 
@@ -298,14 +341,14 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
-		const { OAuthServerService } = await import('../oauth-server.service');
+		const { OAuthServerService } = await import('../oauth-server.service.js');
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
 
 		// Stub the pre-check guard to always pass, simulating two concurrent
 		// registrations that both saw count < limit and made it past the guard.
-		const guardSpy = jest
+		const guardSpy = vi
 			.spyOn(OAuthServerService.prototype, 'isClientLimitReached')
 			.mockResolvedValue(false);
 
@@ -393,6 +436,33 @@ describe('GET /mcp-oauth/authorize', () => {
 
 		expect(response.statusCode).not.toBe(403);
 		expect([302, 400, 401]).toContain(response.statusCode);
+	});
+
+	// RFC 9207: `iss` is required on every authorization response — including
+	// the SDK's own request-validation error redirects — because the metadata
+	// advertises `authorization_response_iss_parameter_supported`.
+	test('should include the iss parameter on error redirects', async () => {
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Error Redirect Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		});
+
+		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			client_id: registerResponse.body.client_id,
+			redirect_uri: 'https://example.com/callback',
+			response_type: 'code',
+			// missing code_challenge → SDK redirects back with an error
+		});
+
+		expect(response.statusCode).toBe(302);
+		const redirectUrl = new URL(response.headers.location);
+		expect(redirectUrl.origin + redirectUrl.pathname).toBe('https://example.com/callback');
+		expect(redirectUrl.searchParams.get('error')).toBe('invalid_request');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 	});
 });
 
@@ -592,13 +662,18 @@ describe('Full authorization-code flow (PKCE)', () => {
 		// 3. Consent approval as an authenticated user
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
-		const consentResponse = await authAgent.post('/consent/approve').send({ approved: true });
+		const consentResponse = await authAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: supportedScopes });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
 		const code = redirectUrl.searchParams.get('code');
 		expect(code).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('flow-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(
+			Container.get(UrlService).getInstanceBaseUrl(),
+		);
 
 		// 4. Token exchange
 		const tokenResponse = await testServer.restlessAgent
@@ -616,6 +691,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+			scope: supportedScopes.join(' '),
 		});
 		expect(tokenResponse.statusCode).toBe(200);
 
@@ -765,7 +841,9 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		// 3. Consent approval as an authenticated user
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
-		const consentResponse = await authAgent.post('/consent/approve').send({ approved: true });
+		const consentResponse = await authAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: supportedScopes });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
@@ -789,6 +867,7 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+			scope: supportedScopes.join(' '),
 		});
 	});
 });
@@ -799,7 +878,7 @@ describe('IP rate limit configuration', () => {
 	let OAuthController: typeof OAuthControllerClass;
 
 	beforeAll(async () => {
-		({ OAuthController } = await import('../oauth.controller'));
+		({ OAuthController } = await import('../oauth.controller.js'));
 	});
 
 	test('applies the configured limits to the shared OAuth endpoints', () => {
@@ -823,6 +902,8 @@ describe('IP rate limit configuration', () => {
 		'metadataOptions',
 		'protectedResourceMetadata',
 		'protectedResourceMetadataOptions',
+		'defaultProtectedResourceMetadata',
+		'defaultProtectedResourceMetadataOptions',
 	])('applies the configured well-known limit to %s', (handlerName) => {
 		const config = Container.get(OAuthServerConfig);
 		const routeMetadata = Container.get(ControllerRegistryMetadata).getRouteMetadata(

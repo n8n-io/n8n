@@ -1458,7 +1458,14 @@ export function generateCode(
 				const nodeName = idToNodeName.get(id);
 				return nodeName !== undefined ? [getVarName(nodeName, ctx)] : [];
 			});
-			workflowCalls.push(`  .group('${escapeString(group.name)}', [${memberVars.join(', ')}])`);
+
+			const options = group.description
+				? `, { description: '${escapeString(group.description)}' }`
+				: '';
+
+			workflowCalls.push(
+				`  .group('${escapeString(group.name)}', [${memberVars.join(', ')}]${options})`,
+			);
 		}
 	}
 

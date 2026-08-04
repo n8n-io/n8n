@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 const APPROVAL_INPUT_MAX_LENGTH = 1500;
 
@@ -23,7 +23,7 @@ export function isIntegrationActionSuspendPayload(value: unknown): boolean {
 	);
 }
 
-function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
+export function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
 	return (
 		isRecord(value) &&
 		value.type === 'approval' &&

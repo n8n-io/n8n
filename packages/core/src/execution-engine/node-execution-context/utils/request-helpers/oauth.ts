@@ -13,7 +13,7 @@ import type {
 	ClientOAuth2TokenData,
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
-import { AuthError, ClientOAuth2 } from '@n8n/client-oauth2';
+import { AuthError, ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
@@ -48,11 +48,15 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		?.split(' ')
 		.map((s) => s.trim())
 		.filter(Boolean);
+	const resource =
+		credentials.oauthTokenData?.resource ?? credentials.resource ?? credentials.resourceUrl;
+
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
-		clientSecret: credentials.clientSecret,
+		...resolveClientAuthOptions(credentials),
 		accessTokenUri: credentials.accessTokenUrl,
 		scopes: scopes?.length ? scopes : undefined,
+		...(resource ? { resource } : {}),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {
@@ -78,6 +82,18 @@ function buildSigningToken(
 		},
 		oAuth2Options?.tokenType || tokenData.tokenType,
 	);
+}
+
+function addExpiresAt(tokenData: ClientOAuth2TokenData): ClientOAuth2TokenData {
+	const expiresInSeconds = Number(tokenData.expires_in);
+	if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0) {
+		return tokenData;
+	}
+
+	return {
+		...tokenData,
+		n8n_expires_at: String(Date.now() + expiresInSeconds * 1000),
+	};
 }
 
 interface RefreshOAuth2TokenContext {
@@ -185,9 +201,10 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 			const body: IDataObject = {
 				client_id: credentials.clientId,
-				...(credentials.grantType === 'authorizationCode' && {
-					client_secret: credentials.clientSecret as string,
-				}),
+				...(credentials.grantType === 'authorizationCode' &&
+					credentials.clientCredentialType !== 'certificate' && {
+						client_secret: credentials.clientSecret as string,
+					}),
 			};
 			tokenRefreshOptions.body = body;
 			tokenRefreshOptions.headers = { Authorization: '' };
@@ -223,7 +240,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		// Merge old and new token data so fields that the authorization server
 		// does not echo back on refresh (e.g. `resource`) are preserved from the
 		// original token response.
-		const newOAuthTokenData = { ...token.data, ...newToken.data };
+		const newOAuthTokenData = addExpiresAt({ ...token.data, ...newToken.data });
 
 		// If the server doesn't echo the resource back, restore it from the
 		// previous token data to ensure it's not lost on refresh.
@@ -248,7 +265,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			credentials as unknown as ICredentialDataDecryptedObject,
 			credentialsType,
 		);
-		let signingToken = newToken;
+		let signingToken = buildSigningToken(
+			token.client,
+			credentials.oauthTokenData as ClientOAuth2TokenData,
+			oAuth2Options,
+		);
 		if (preAuthData) {
 			Object.assign(credentials, preAuthData);
 			signingToken = buildSigningToken(

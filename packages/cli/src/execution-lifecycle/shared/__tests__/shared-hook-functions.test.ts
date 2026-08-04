@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -42,7 +42,7 @@ describe('determineFinalExecutionStatus', () => {
 describe('updateExistingExecution', () => {
 	const executionPersistence = mockInstance(ExecutionPersistence);
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	it('should forward conditions to the persistence layer', async () => {
 		executionPersistence.updateExistingExecution.mockResolvedValue(true);

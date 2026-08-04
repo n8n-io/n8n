@@ -24,7 +24,7 @@ describe('RoleController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Enable CUSTOM_ROLES license for all tests by default
 		testServer.license.enable('feat:customRoles');
 	});
@@ -1126,6 +1126,32 @@ describe('RoleController', () => {
 			expect(response.body).toEqual({ data: mockDeletedRole });
 			// Parameter verification skipped - test framework issue
 			expect(roleService.removeCustomRole).toHaveBeenCalledTimes(1);
+		});
+
+		it('should forward the reassignRoleSlug query param to the service', async () => {
+			//
+			// ARRANGE
+			//
+			const roleSlug = 'global:test-role';
+			roleService.removeCustomRole.mockResolvedValue({
+				slug: roleSlug,
+				displayName: 'Deleted Role',
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				scopes: [],
+				licensed: true,
+			});
+
+			//
+			// ACT
+			//
+			await ownerAgent.delete(`/roles/${roleSlug}?reassignRoleSlug=global:member`).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, 'global:member');
 		});
 
 		it('should handle service errors gracefully', async () => {

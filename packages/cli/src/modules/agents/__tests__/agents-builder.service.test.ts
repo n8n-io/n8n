@@ -1,18 +1,18 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
-import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import type { AgentsService } from '../agents.service';
-import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '../integrations/n8n-memory';
 import type { NodeCatalogService } from '@/node-catalog';
 
-import { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
+import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
-import type { AgentsBuilderSettingsService } from '../builder/agents-builder-settings.service';
+import { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { N8nMemory } from '../integrations/n8n-memory';
+import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
 function suspendedCheckpoint(threadId: string): SerializableAgentState {
 	return {
@@ -23,30 +23,25 @@ function suspendedCheckpoint(threadId: string): SerializableAgentState {
 	} as unknown as SerializableAgentState;
 }
 
-function checkpointRow(
-	runId: string,
-	threadId: string,
-	agentId: string | null = 'agent-1',
-): AgentCheckpoint {
+function checkpointRow(runId: string, threadId: string): AgentCheckpoint {
 	return {
 		runId,
-		agentId,
+		agentId: 'agent-1',
 		expired: false,
 		state: JSON.stringify(suspendedCheckpoint(threadId)),
 	} as AgentCheckpoint;
 }
 
-function makeService(agentCheckpointRepository: jest.Mocked<AgentCheckpointRepository>) {
+function makeService(agentCheckpointRepository: Mocked<AgentCheckpointRepository>) {
 	return new AgentsBuilderService(
 		mock<Logger>(),
 		mock<AgentsService>(),
 		mock<NodeCatalogService>(),
 		mock<AgentsBuilderToolsService>(),
 		mock<N8nMemory>(),
-		mock<AgentsBuilderSettingsService>(),
+		mock<InstanceAiCreditService>(),
 		mock<N8NCheckpointStorage>(),
 		agentCheckpointRepository,
-		mock<AgentsConfig>(),
 	);
 }
 
@@ -61,10 +56,7 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 			checkpointRow('run-5', 'thread-newer-5'),
 			checkpointRow('run-target', 'thread-target'),
 		];
-		agentCheckpointRepository.find.mockImplementation(async (options) => {
-			const take = typeof options?.take === 'number' ? options.take : rows.length;
-			return rows.slice(0, take);
-		});
+		agentCheckpointRepository.findActiveForAgent.mockResolvedValue(rows);
 
 		const service = makeService(agentCheckpointRepository);
 
@@ -73,24 +65,25 @@ describe('AgentsBuilderService checkpoint lookup', () => {
 		expect(result?.persistence?.threadId).toBe('thread-target');
 	});
 
-	it('can find legacy unscoped checkpoints only when explicitly requested', async () => {
+	it('does not expose delegated child checkpoints through chat history lookup', async () => {
 		const agentCheckpointRepository = mock<AgentCheckpointRepository>();
-		const legacyRow = checkpointRow('run-legacy', 'thread-target', null);
-		agentCheckpointRepository.find.mockImplementation(async (options) => {
-			const where = options?.where;
-			const includesUnscoped = Array.isArray(where);
-			return includesUnscoped ? [legacyRow] : [];
-		});
+		const delegatedState = suspendedCheckpoint('thread-target');
+		delegatedState.persistence = {
+			threadId: 'thread-target',
+			resourceId: 'user-1',
+			delegated: true,
+		};
+		agentCheckpointRepository.findActiveForAgent.mockResolvedValue([
+			{
+				...checkpointRow('child-run-1', 'thread-target'),
+				state: JSON.stringify(delegatedState),
+			},
+		]);
 
 		const service = makeService(agentCheckpointRepository);
 
 		await expect(
 			service.findOpenCheckpointForThread('agent-1', 'thread-target'),
 		).resolves.toBeNull();
-		const result = await service.findOpenCheckpointForThread('agent-1', 'thread-target', {
-			includeUnscoped: true,
-		});
-
-		expect(result?.persistence?.threadId).toBe('thread-target');
 	});
 });

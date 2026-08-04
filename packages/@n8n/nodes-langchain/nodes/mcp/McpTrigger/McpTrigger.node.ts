@@ -6,12 +6,11 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
+import { NodeConnectionTypes, Node, nodeNameToToolName, n8nOAuth2Auth } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
 import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
-import { n8nOAuth2Auth } from './n8n-oauth2-auth';
 import { MessageParser } from './protocol/MessageParser';
 import type { CompressionResponse } from './transport';
 
@@ -114,6 +113,15 @@ export class McpTrigger extends Node {
 				},
 			},
 			{
+				displayName: 'Require Workflow Execute Permission',
+				name: 'requireExecuteAccess',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { authentication: ['n8nOAuth2'] } }, // n8nOAuth2 is v2+ only
+				description:
+					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
 				displayName: 'Path',
 				name: 'path',
 				type: 'string',
@@ -168,7 +176,7 @@ export class McpTrigger extends Node {
 				resp.end('OAuth2 authentication requires mcp trigger node v2.0 or higher');
 				return { noWebhookResponse: true };
 			}
-			const authResult = await n8nOAuth2Auth(context);
+			const authResult = await n8nOAuth2Auth(context, { realm: 'n8n MCP Server' });
 			if (authResult === 'handled') {
 				return { noWebhookResponse: true };
 			}

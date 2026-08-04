@@ -197,8 +197,8 @@ describe('ProviderRegistry', () => {
 
 	describe('disconnectAll', () => {
 		it('should disconnect all providers', async () => {
-			const disconnectSpy1 = jest.spyOn(dummyProvider, 'disconnect');
-			const disconnectSpy2 = jest.spyOn(anotherProvider, 'disconnect');
+			const disconnectSpy1 = vi.spyOn(dummyProvider, 'disconnect');
+			const disconnectSpy2 = vi.spyOn(anotherProvider, 'disconnect');
 
 			registry.set('dummy', dummyProvider);
 			registry.set('another', anotherProvider);
@@ -211,7 +211,7 @@ describe('ProviderRegistry', () => {
 
 		it('should ignore errors during disconnect', async () => {
 			const errorProvider = new DummyProvider();
-			jest.spyOn(errorProvider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
+			vi.spyOn(errorProvider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
 
 			registry.set('error', errorProvider);
 
@@ -220,9 +220,9 @@ describe('ProviderRegistry', () => {
 
 		it('should disconnect all providers even if some fail', async () => {
 			const errorProvider = new DummyProvider();
-			jest.spyOn(errorProvider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
+			vi.spyOn(errorProvider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
 
-			const disconnectSpy = jest.spyOn(dummyProvider, 'disconnect');
+			const disconnectSpy = vi.spyOn(dummyProvider, 'disconnect');
 
 			registry.set('error', errorProvider);
 			registry.set('dummy', dummyProvider);

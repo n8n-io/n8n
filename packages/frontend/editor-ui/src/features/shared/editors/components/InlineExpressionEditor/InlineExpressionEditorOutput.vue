@@ -9,7 +9,7 @@ import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 
 import { N8nPopover, N8nText } from '@n8n/design-system';
 interface InlineExpressionEditorOutputProps {

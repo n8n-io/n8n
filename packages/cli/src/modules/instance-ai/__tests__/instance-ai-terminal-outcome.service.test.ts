@@ -1,11 +1,11 @@
 const terminalOutcomeStorageMock = {
-	getUndelivered: jest.fn(),
-	markDelivered: jest.fn(),
-	upsert: jest.fn(),
+	getUndelivered: vi.fn(),
+	markDelivered: vi.fn(),
+	upsert: vi.fn(),
 };
 
 // Manual mock — must be declared before any import that touches the mocked module.
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 	InstanceAiTerminalResponseGuard: class {
 		constructor(private readonly options: { runId: string; rootAgentId: string }) {}
@@ -13,7 +13,11 @@ jest.mock('@n8n/instance-ai', () => ({
 		evaluateTerminal(
 			_events: unknown[],
 			status: 'completed' | 'cancelled' | 'errored',
-			options: { errorMessage?: string; suppressCompletedFallback?: boolean } = {},
+			options: {
+				errorMessage?: string;
+				errorCode?: 'quota_exhausted';
+				suppressCompletedFallback?: boolean;
+			} = {},
 		) {
 			if (status === 'completed' && options.suppressCompletedFallback) {
 				return {
@@ -39,6 +43,7 @@ jest.mock('@n8n/instance-ai', () => ({
 							content:
 								options.errorMessage ??
 								'I hit an error before I could finish that response. Please try again.',
+							...(options.errorCode ? { code: options.errorCode } : {}),
 						},
 					},
 				};
@@ -94,6 +99,7 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
+import type { Mock } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
 import type { ManagedBackgroundTask, TerminalOutcome } from '@n8n/instance-ai';
 
@@ -114,22 +120,22 @@ type SnapshotRow = {
 type Deps = {
 	eventBus: {
 		events: InstanceAiEvent[];
-		getEventsForRun: jest.Mock;
-		getEventsForRuns: jest.Mock;
-		publish: jest.Mock;
+		getEventsForRun: Mock;
+		getEventsForRuns: Mock;
+		publish: Mock;
 	};
 	dbSnapshotStorage: {
-		getLatest: jest.Mock;
-		save: jest.Mock;
-		updateLast: jest.Mock;
+		getLatest: Mock;
+		save: Mock;
+		updateLast: Mock;
 	};
-	telemetry: { track: jest.Mock };
-	logger: { warn: jest.Mock; debug: jest.Mock; error: jest.Mock };
-	runState: { getRunIdsForMessageGroup: jest.Mock; cancelThread: jest.Mock };
-	suspendedThreads: { dropPendingConfirmationsForThread: jest.Mock };
-	tracing: { finalizeRunTracing: jest.Mock; buildMessageTraceMetadata: jest.Mock };
-	publishRunFinish: jest.Mock;
-	saveAgentTreeSnapshot: jest.Mock;
+	telemetry: { track: Mock };
+	logger: { warn: Mock; debug: Mock; error: Mock };
+	runState: { getRunIdsForMessageGroup: Mock; cancelThread: Mock };
+	suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+	tracing: { finalizeRunTracing: Mock; buildMessageTraceMetadata: Mock };
+	publishRunFinish: Mock;
+	saveAgentTreeSnapshot: Mock;
 };
 
 function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
@@ -169,34 +175,34 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 	const deps: Deps = {
 		eventBus: {
 			events,
-			getEventsForRun: jest.fn(() => events),
-			getEventsForRuns: jest.fn(() => events),
-			publish: jest.fn((_threadId: string, event: InstanceAiEvent) => {
+			getEventsForRun: vi.fn(() => events),
+			getEventsForRuns: vi.fn(() => events),
+			publish: vi.fn((_threadId: string, event: InstanceAiEvent) => {
 				events.push(event);
 			}),
 		},
 		dbSnapshotStorage: {
-			getLatest: jest.fn(
+			getLatest: vi.fn(
 				async (): Promise<SnapshotRow | undefined> =>
 					snapshotTree
 						? { tree: snapshotTree, runId: 'run-1', messageGroupId: 'group-1', runIds: ['run-1'] }
 						: undefined,
 			),
-			save: jest.fn(async () => {}),
-			updateLast: jest.fn(async () => {}),
+			save: vi.fn(async () => {}),
+			updateLast: vi.fn(async () => {}),
 		},
-		telemetry: { track: jest.fn() },
-		logger: { warn: jest.fn(), debug: jest.fn(), error: jest.fn() },
+		telemetry: { track: vi.fn() },
+		logger: { warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 		runState: {
-			getRunIdsForMessageGroup: jest.fn(() => ['run-1']),
-			cancelThread: jest.fn(),
+			getRunIdsForMessageGroup: vi.fn(() => ['run-1']),
+			cancelThread: vi.fn(),
 		},
-		suspendedThreads: { dropPendingConfirmationsForThread: jest.fn(async () => {}) },
+		suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
 		tracing: {
-			finalizeRunTracing: jest.fn(async () => {}),
-			buildMessageTraceMetadata: jest.fn(() => ({ completion_source: 'orchestrator' })),
+			finalizeRunTracing: vi.fn(async () => {}),
+			buildMessageTraceMetadata: vi.fn(() => ({ completion_source: 'orchestrator' })),
 		},
-		publishRunFinish: jest.fn(
+		publishRunFinish: vi.fn(
 			(_threadId: string, runId: string, status: 'completed' | 'cancelled' | 'errored') => {
 				events.push({
 					type: 'run-finish',
@@ -206,10 +212,11 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 				} as InstanceAiEvent);
 			},
 		),
-		saveAgentTreeSnapshot: jest.fn(async () => {}),
+		saveAgentTreeSnapshot: vi.fn(async () => {}),
 	};
 
 	const options = {
+		durableLog: false,
 		eventBus: deps.eventBus,
 		dbSnapshotStorage: deps.dbSnapshotStorage,
 		agentMemory: {},
@@ -226,7 +233,7 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 }
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([]);
 	terminalOutcomeStorageMock.markDelivered.mockResolvedValue(undefined);
 	terminalOutcomeStorageMock.upsert.mockResolvedValue(undefined);
@@ -405,11 +412,51 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 	});
 });
 
+describe('InstanceAiTerminalOutcomeService — durable-log outcome lines', () => {
+	it('publishes the outcome line as a text-block when the durable log is on', async () => {
+		// A trailing delta would race the coalescer's idle flush on an immediate
+		// page reload; a text-block is persisted before it is emitted live.
+		const { deps } = createService(makeAgentTree());
+		const service = new InstanceAiTerminalOutcomeService({
+			durableLog: true,
+			eventBus: deps.eventBus,
+			dbSnapshotStorage: deps.dbSnapshotStorage,
+			agentMemory: {},
+			telemetry: deps.telemetry,
+			logger: deps.logger,
+			runState: deps.runState,
+			suspendedThreads: deps.suspendedThreads,
+			tracing: deps.tracing,
+			publishRunFinish: deps.publishRunFinish,
+			saveAgentTreeSnapshot: vi.fn(async () => {}),
+		} as never);
+
+		await service.recordBackgroundTerminalOutcome({
+			taskId: 'task-dl',
+			threadId: 'thread-dl',
+			runId: 'run-dl',
+			role: 'workflow-builder',
+			agentId: 'agent-builder',
+			status: 'cancelled',
+			result: undefined,
+			startedAt: 0,
+			lastActivityAt: 0,
+			abortController: new AbortController(),
+			corrections: [],
+		} as never);
+
+		const line = deps.eventBus.events.find(
+			(event) => event.type === 'text-block' || event.type === 'text-delta',
+		);
+		expect(line?.type).toBe('text-block');
+	});
+});
+
 describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', () => {
-	it('publishes fallback output before run-finish on a silent completed run', () => {
+	it('publishes fallback output before run-finish on a silent completed run', async () => {
 		const { service, deps } = createService();
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 		deps.publishRunFinish('thread-a', 'run-1', 'completed');
@@ -417,10 +464,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['text-delta', 'run-finish']);
 	});
 
-	it('does not publish completed fallback output when silence is expected', () => {
+	it('does not publish completed fallback output when silence is expected', async () => {
 		const { service, deps } = createService();
 
-		const decision = service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		const decision = await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 			suppressCompletedFallback: true,
 		});
@@ -432,10 +479,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events).toEqual([]);
 	});
 
-	it('publishes fallback error before run-finish on a silent failed run', () => {
+	it('publishes fallback error before run-finish on a silent failed run', async () => {
 		const { service, deps } = createService();
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
 			messageGroupId: 'group-1',
 			errorMessage: 'Safe user-facing error',
 		});
@@ -444,11 +491,24 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
 	});
 
+	it('forwards a structured error code onto the emitted error event', async () => {
+		const { service, deps } = createService();
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
+			messageGroupId: 'group-1',
+			errorMessage: "You've run out of AI credits.",
+			errorCode: 'quota_exhausted',
+		});
+
+		const errorEvent = deps.eventBus.events.find((event) => event.type === 'error');
+		expect(errorEvent?.payload).toMatchObject({ code: 'quota_exhausted' });
+	});
+
 	it('clears malformed confirmation suspension and finishes the run after the guard error', async () => {
 		const { service, deps } = createService();
 		const abortController = new AbortController();
 
-		const decision = service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
+		const decision = await service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
 			messageGroupId: 'group-1',
 		});
 		expect(decision?.reason).toBe('confirmation-invalid');
@@ -474,10 +534,10 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		});
 	});
 
-	it('reads events across the message group when a group id is provided', () => {
+	it('reads events across the message group when a group id is provided', async () => {
 		const { service, deps } = createService();
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 
@@ -485,11 +545,11 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		expect(deps.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
 	});
 
-	it('falls back to the single run when the message group has no runs', () => {
+	it('falls back to the single run when the message group has no runs', async () => {
 		const { service, deps } = createService();
 		deps.runState.getRunIdsForMessageGroup.mockReturnValue([]);
 
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
 			messageGroupId: 'group-1',
 		});
 

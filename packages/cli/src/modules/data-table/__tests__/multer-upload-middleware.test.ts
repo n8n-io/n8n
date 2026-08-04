@@ -1,31 +1,32 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
 import * as fsPromises from 'fs/promises';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
 
-jest.mock('../data-table-size-validator.service', () => ({
+vi.mock('../data-table-size-validator.service', () => ({
 	DataTableSizeValidator: class {},
 }));
-jest.mock('../data-table.repository', () => ({
+vi.mock('../data-table.repository', () => ({
 	DataTableRepository: class {},
 }));
-jest.mock('fs/promises', () => ({
-	mkdir: jest.fn().mockResolvedValue(undefined),
-	readdir: jest.fn().mockResolvedValue([]),
-	stat: jest.fn(),
-	unlink: jest.fn().mockResolvedValue(undefined),
+vi.mock('fs/promises', () => ({
+	mkdir: vi.fn().mockResolvedValue(undefined),
+	readdir: vi.fn().mockResolvedValue([]),
+	stat: vi.fn(),
+	unlink: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Controllable stub for multer().single() — each test sets its behaviour.
-const multerSingleMiddleware = jest.fn();
-jest.mock('multer', () => {
+const multerSingleMiddleware = vi.fn();
+vi.mock('multer', () => {
 	class MulterError extends Error {}
 	const multerMock = Object.assign(
-		jest.fn(() => ({ single: () => multerSingleMiddleware })),
+		vi.fn(() => ({ single: () => multerSingleMiddleware })),
 		{
-			diskStorage: jest.fn(() => ({})),
+			diskStorage: vi.fn(() => ({})),
 			MulterError,
 		},
 	);
@@ -40,9 +41,9 @@ import { MulterUploadMiddleware } from '../multer-upload-middleware';
 import type { AuthenticatedRequestWithFile } from '../types';
 
 const fs = fsPromises as unknown as {
-	readdir: jest.Mock;
-	stat: jest.Mock;
-	unlink: jest.Mock;
+	readdir: Mock;
+	stat: Mock;
+	unlink: Mock;
 };
 
 const UPLOAD_DIR = '/mock/n8n/dataTableUploads';
@@ -103,7 +104,7 @@ const runHandler = async (
 
 describe('MulterUploadMiddleware', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		fs.readdir.mockResolvedValue([]);
 		fs.unlink.mockResolvedValue(undefined);
 	});

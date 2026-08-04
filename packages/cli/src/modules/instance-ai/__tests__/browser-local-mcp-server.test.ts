@@ -2,7 +2,7 @@ import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { DomainAccessTracker } from '@n8n/instance-ai';
 import type { BrowserToolkit, ToolContext, ToolDefinition } from '@n8n/mcp-browser';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { BrowserLocalMcpServer, type BrowserDomainGate } from '../browser/browser-local-mcp-server';
@@ -14,8 +14,8 @@ function makeTool(overrides: Partial<ToolDefinition> = {}): ToolDefinition {
 		name: 'browser_navigate',
 		description: 'Navigate the browser',
 		inputSchema: z.object({ url: z.string().optional() }),
-		execute: jest.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] })),
-		getAffectedResources: jest.fn(async () => [
+		execute: vi.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] })),
+		getAffectedResources: vi.fn(async () => [
 			{ toolGroup: 'browser', resource: 'example.com', description: 'Browser: example.com' },
 		]),
 		...overrides,
@@ -102,7 +102,7 @@ describe('BrowserLocalMcpServer domain gating', () => {
 
 		it('does not gate when there is no real domain (sentinel host)', async () => {
 			const tool = makeTool({
-				getAffectedResources: jest.fn(async () => [
+				getAffectedResources: vi.fn(async () => [
 					{ toolGroup: 'browser', resource: 'browser', description: 'Browser: browser' },
 				]),
 			} as unknown as Partial<ToolDefinition>);

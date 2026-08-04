@@ -1,4 +1,5 @@
-import { isRecord, scrubSecretsInText } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 const MAX_TELEMETRY_ERROR_MESSAGE_LENGTH = 500;
 const REDACTED_VALUE = '[REDACTED]';

@@ -23,7 +23,6 @@ type CredentialDependencyRow = {
 describe('CreateCredentialDependencyTable Migration', () => {
 	let dataSource: DataSource;
 	let cipher: Cipher;
-	jest.setTimeout(20_000);
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
 		const context = createTestMigrationContext(dataSource);

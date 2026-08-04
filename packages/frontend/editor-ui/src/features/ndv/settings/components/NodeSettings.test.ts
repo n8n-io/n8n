@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { shallowRef } from 'vue';
+import { ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
 
@@ -9,6 +9,9 @@ import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -57,11 +60,64 @@ const httpNodeType = {
 	properties: [{ displayName: 'URL', name: 'url', type: 'string', default: '' }],
 } as unknown as INodeTypeDescription;
 
-const renderNodeSettings = (runData?: IRunData) => {
+const agentNode = createTestNode({
+	name: 'Message an Agent',
+	type: MESSAGE_AN_AGENT_NODE_TYPE,
+	typeVersion: 2,
+});
+
+const agentNodeType = {
+	displayName: 'Message an Agent',
+	name: MESSAGE_AN_AGENT_NODE_TYPE,
+	group: ['transform'],
+	description: 'Message an agent',
+	version: 2,
+	defaults: { name: 'Message an Agent' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [
+		// Mirrors the real v2 node: agentSource gates the agentId selector, and
+		// the inline definition lives in a hidden parameter.
+		{
+			displayName: 'Agent Source',
+			name: 'agentSource',
+			type: 'hidden',
+			default: 'referenced',
+		},
+		{
+			displayName: 'Agent',
+			name: 'agentId',
+			type: 'agentSelector',
+			default: { __rl: true, mode: 'list', value: '' },
+			displayOptions: { show: { agentSource: ['referenced'] } },
+		},
+		{ displayName: 'Inline Agent', name: 'inlineAgent', type: 'hidden', default: {} },
+		{ displayName: 'Message', name: 'text', type: 'string', default: '' },
+		{
+			displayName: 'Advanced',
+			name: 'advanced',
+			type: 'collection',
+			placeholder: 'Add Option',
+			default: {},
+			options: [{ displayName: 'Session ID', name: 'sessionId', type: 'string', default: '' }],
+		},
+	],
+} as unknown as INodeTypeDescription;
+
+interface RenderOptions {
+	runData?: IRunData;
+	node?: typeof httpNode;
+	nodeType?: INodeTypeDescription;
+	provide?: Record<symbol, unknown>;
+	stubs?: Record<string, unknown>;
+}
+
+const renderNodeSettings = (options: RenderOptions = {}) => {
+	const { runData, node = httpNode, nodeType = httpNodeType, provide = {}, stubs = {} } = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
 
-	const workflow = createTestWorkflow({ nodes: [httpNode], connections: {} });
+	const workflow = createTestWorkflow({ nodes: [node], connections: {} });
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	workflowsStore.setWorkflowId(workflow.id);
@@ -69,8 +125,8 @@ const renderNodeSettings = (runData?: IRunData) => {
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 
 	workflowDocumentStore.hydrate(workflow);
-	nodeTypesStore.setNodeTypes([httpNodeType]);
-	ndvStore.activeNodeName = httpNode.name;
+	nodeTypesStore.setNodeTypes([nodeType]);
+	ndvStore.activeNodeName = node.name;
 
 	if (runData) {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
@@ -97,8 +153,9 @@ const renderNodeSettings = (runData?: IRunData) => {
 		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
 	);
 
-	return createComponentRenderer(NodeSettings, {
+	const renderResult = createComponentRenderer(NodeSettings, {
 		global: {
+			provide,
 			stubs: {
 				NodeTitle: true,
 				NodeExecuteButton: true,
@@ -115,6 +172,9 @@ const renderNodeSettings = (runData?: IRunData) => {
 				QuickConnectBanner: true,
 				CommunityNodeFooter: true,
 				CommunityNodeUpdateInfo: true,
+				AgentNdvReferencedSummary: true,
+				AgentNdvInlineControls: true,
+				...stubs,
 			},
 		},
 	})({
@@ -127,6 +187,8 @@ const renderNodeSettings = (runData?: IRunData) => {
 			executable: false,
 		},
 	});
+
+	return { ...renderResult, workflowDocumentStore };
 };
 
 describe('NodeSettings', () => {
@@ -143,7 +205,7 @@ describe('NodeSettings', () => {
 			],
 		};
 
-		const { findByTestId } = renderNodeSettings(runData);
+		const { findByTestId } = renderNodeSettings({ runData });
 
 		const paramsTab = await findByTestId('tab-params');
 		await waitFor(() => {
@@ -152,7 +214,7 @@ describe('NodeSettings', () => {
 	});
 
 	it('switches to the Settings tab when the user clicks it', async () => {
-		const { findByTestId } = renderNodeSettings();
+		const { findByTestId } = renderNodeSettings({});
 
 		const paramsTab = await findByTestId('tab-params');
 		const settingsTab = await findByTestId('tab-settings');
@@ -168,6 +230,59 @@ describe('NodeSettings', () => {
 		await waitFor(() => {
 			expect(settingsTab.querySelector('.tab')?.className).toContain('activeTab');
 			expect(paramsTab.querySelector('.tab')?.className).not.toContain('activeTab');
+		});
+	});
+
+	describe('AI Agent node surfaces', () => {
+		// The children are stubbed, so NodeSettings only checks the facade's
+		// presence + mode. A missing `mode` resolves to referenced.
+		const provide = {
+			[NdvAgentConfigKey as symbol]: {} as UseNdvAgentConfigReturn,
+		};
+
+		it('renders the referenced summary on the Parameters tab', async () => {
+			const { container } = renderNodeSettings({
+				node: agentNode,
+				nodeType: agentNodeType,
+				provide,
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('agent-ndv-referenced-summary-stub')).not.toBeNull();
+			});
+			expect(container.querySelector('agent-ndv-inline-controls-stub')).toBeNull();
+		});
+
+		it('renders the inline controls instead of the summary in inline mode', async () => {
+			const { container } = renderNodeSettings({
+				node: agentNode,
+				nodeType: agentNodeType,
+				provide: {
+					[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
+				},
+			});
+
+			await waitFor(() => {
+				expect(container.querySelector('agent-ndv-inline-controls-stub')).not.toBeNull();
+			});
+			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+
+		it('renders no agent surfaces when the facade is not provided', async () => {
+			const { container, findByTestId } = renderNodeSettings({
+				node: agentNode,
+				nodeType: agentNodeType,
+			});
+
+			await findByTestId('tab-params');
+			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+
+		it('renders no agent surfaces for a non-agent node', async () => {
+			const { container, findByTestId } = renderNodeSettings({ provide });
+
+			await findByTestId('tab-params');
+			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
 		});
 	});
 });

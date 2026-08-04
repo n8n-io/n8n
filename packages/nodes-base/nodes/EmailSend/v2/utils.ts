@@ -45,7 +45,10 @@ export function configureTransport(credentials: IDataObject, options: EmailSendO
 		};
 	}
 
-	return createTransport(connectionOptions);
+	return createTransport(connectionOptions, {
+		disableFileAccess: true,
+		disableUrlAccess: true,
+	});
 }
 
 export async function smtpConnectionTest(

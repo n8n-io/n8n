@@ -6,17 +6,17 @@ import type {
 	UserRepository,
 } from '@n8n/db';
 import type { InstanceAiContext } from '@n8n/instance-ai';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // The adapter service (a value dependency of the service under test) pulls in
 // the heavy AI runtime at module-load time; stub it out.
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	BuilderTemplatesService: class {},
-	builderTemplatesOptionsFromEnv: jest.fn(),
-	wrapUntrustedData: jest.fn((value: unknown) => value),
+	builderTemplatesOptionsFromEnv: vi.fn(),
+	wrapUntrustedData: vi.fn((value: unknown) => value),
 }));
 
 import type { InstanceAiAdapterService } from '../instance-ai.adapter.service';
@@ -37,7 +37,7 @@ function createService() {
 	const userRepository = mock<UserRepository>();
 	const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
-	const archiveIfAiTemporary = jest.fn(async (_workflowId: string) => true);
+	const archiveIfAiTemporary = vi.fn(async (_workflowId: string) => true);
 	const context = mock<InstanceAiContext>();
 	context.workflowService.archiveIfAiTemporary = archiveIfAiTemporary;
 	adapterService.createContext.mockReturnValue(context);

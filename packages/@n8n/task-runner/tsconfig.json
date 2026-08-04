@@ -1,12 +1,12 @@
 {
 	"extends": [
-		"@n8n/typescript-config/tsconfig.common.json",
-		"@n8n/typescript-config/tsconfig.backend.json"
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
 	],
 	"compilerOptions": {
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"types": ["node", "vitest/globals"],
+		"types": ["node", "vitest/globals", "vite/client"],
 		"paths": {
 			"@/*": ["./src/*"]
 		}

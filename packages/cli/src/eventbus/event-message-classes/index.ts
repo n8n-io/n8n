@@ -2,6 +2,7 @@ import type { EventMessageAiNode } from './event-message-ai-node';
 import type { EventMessageAudit } from './event-message-audit';
 import type { EventMessageExecution } from './event-message-execution';
 import type { EventMessageGeneric } from './event-message-generic';
+import type { EventMessageMcp } from './event-message-mcp';
 import type { EventMessageNode } from './event-message-node';
 import type { EventMessageQueue } from './event-message-queue';
 import type { EventMessageRunner } from './event-message-runner';
@@ -82,7 +83,10 @@ export const eventNamesAudit = [
 	'n8n.audit.package.installed',
 	'n8n.audit.package.updated',
 	'n8n.audit.package.deleted',
-	'n8n.audit.n8n-package.imported',
+	'n8n.audit.n8n-package.import.success',
+	'n8n.audit.n8n-package.export.success',
+	'n8n.audit.n8n-package.export.failed',
+	'n8n.audit.n8n-package.import.failed',
 	'n8n.audit.workflow.created',
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
@@ -134,7 +138,18 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.instance-joined',
 	'n8n.audit.cluster.instance-left',
 	'n8n.audit.oauth.callback.binding.rejected',
+	'n8n.audit.credentials.authorize.rejected',
 ] as const;
+
+// Instance MCP server events. Kept as their own list and message class because the payload
+// shape differs, but named under `n8n.audit.` so they group with audit events in the UI.
+export const eventNamesMcp = [
+	'n8n.audit.mcp.oauth.completed',
+	'n8n.audit.mcp.tool.called',
+	'n8n.audit.mcp.access.updated',
+] as const;
+
+export type EventNamesMcpType = (typeof eventNamesMcp)[number];
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
@@ -151,6 +166,7 @@ export type EventNamesTypes =
 	| EventNamesAiNodesType
 	| EventNamesRunnerType
 	| EventNamesQueueType
+	| EventNamesMcpType
 	| 'n8n.destination.test';
 
 export const eventNamesAll = [
@@ -161,6 +177,7 @@ export const eventNamesAll = [
 	...eventNamesAiNodes,
 	...eventNamesRunner,
 	...eventNamesQueue,
+	...eventNamesMcp,
 ];
 
 export type EventMessageTypes =
@@ -171,7 +188,8 @@ export type EventMessageTypes =
 	| EventMessageExecution
 	| EventMessageAiNode
 	| EventMessageQueue
-	| EventMessageRunner;
+	| EventMessageRunner
+	| EventMessageMcp;
 
 export const isNodeEventMessage = (message: EventMessageTypes): message is EventMessageNode =>
 	message.eventName.startsWith('n8n.node.');

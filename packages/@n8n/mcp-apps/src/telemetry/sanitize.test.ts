@@ -8,7 +8,7 @@ describe('sanitizeTelemetryErrorMessage', () => {
 			sanitizeTelemetryErrorMessage(
 				'Preview crashed with Authorization: Bearer abc.def-ghi_jkl/mno= and api_key=secret',
 			),
-		).toBe('Preview crashed with [REDACTED] and [REDACTED]');
+		).toBe('Preview crashed with Authorization: [REDACTED] and [REDACTED]');
 	});
 
 	it('limits message length', () => {
@@ -29,7 +29,9 @@ describe('sanitizeTelemetryProperties', () => {
 			}),
 		).toEqual({
 			apiKey: '[REDACTED]',
-			error_message: '[REDACTED]',
+			// The Bearer value is redacted; the header label survives (idempotency
+			// lookahead on the generic assignment pattern).
+			error_message: 'Authorization: [REDACTED]',
 			nested: {
 				password: '[REDACTED]',
 				publicValue: 'safe',

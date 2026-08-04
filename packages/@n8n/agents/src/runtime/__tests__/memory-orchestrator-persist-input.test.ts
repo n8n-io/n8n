@@ -1,13 +1,16 @@
+import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { RunOptions } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
+import type { BuiltTelemetry } from '../../types/telemetry';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
+import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
@@ -26,7 +29,12 @@ function buildOrchestrator(
 	bus: AgentEventBus = new AgentEventBus(),
 ): MemoryOrchestrator {
 	const config = { memory: store } as unknown as AgentRuntimeConfig;
-	return new MemoryOrchestrator(config, new BackgroundTaskTracker(), bus);
+	return new MemoryOrchestrator(
+		config,
+		new BackgroundTaskTracker(),
+		bus,
+		new RuntimeTelemetry(config),
+	);
 }
 
 function textsOf(messages: AgentDbMessage[]): string[] {
@@ -126,9 +134,29 @@ describe('MemoryOrchestrator.persistInputMessages', () => {
 		expect(errors).toHaveLength(1);
 		expect(errors[0]).toMatchObject({ type: AgentEvent.Error, source: 'input-persistence' });
 	});
+
+	it('does not call describe() on the memory backend when telemetry is undefined', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const describeSpy = vi.spyOn(store, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+
+		const list = new AgentMessageList();
+		list.addInput([userMsg('the user prompt')]);
+
+		await buildOrchestrator(store).persistInputMessages(list, PERSIST);
+
+		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
+		expect(textsOf(persisted)).toEqual(['the user prompt']);
+		expect(describeSpy).not.toHaveBeenCalled();
+	});
 });
 
-describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
+describe('MemoryOrchestrator.persistTurnDelta', () => {
 	it('persists the full turn delta (input + response), not history', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
@@ -138,7 +166,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		list.addInput([userMsg('please build it')]);
 		list.addResponse([assistantMsg('built the workflow')]);
 
-		await buildOrchestrator(store).persistTurnOnSuspend(list, PERSIST);
+		await buildOrchestrator(store).persistTurnDelta(list, PERSIST);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
 		expect(textsOf(persisted)).toEqual(['please build it', 'built the workflow']);
@@ -152,7 +180,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		list.addInput([userMsg('please build it')]);
 		list.addResponse([assistantMsg('built the workflow')]);
 
-		await buildOrchestrator(store).persistTurnOnSuspend(list, undefined);
+		await buildOrchestrator(store).persistTurnDelta(list, undefined);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
 		expect(persisted).toEqual([]);
@@ -164,7 +192,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		list.addResponse([assistantMsg('built the workflow')]);
 
 		await expect(
-			buildOrchestrator(undefined).persistTurnOnSuspend(list, PERSIST),
+			buildOrchestrator(undefined).persistTurnDelta(list, PERSIST),
 		).resolves.toBeUndefined();
 	});
 
@@ -175,7 +203,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 		const list = new AgentMessageList();
 		list.addHistory([{ id: 'h1', createdAt: new Date(2024, 0, 1), ...userMsg('old history') }]);
 
-		await buildOrchestrator(store).persistTurnOnSuspend(list, PERSIST);
+		await buildOrchestrator(store).persistTurnDelta(list, PERSIST);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
 		expect(persisted).toEqual([]);
@@ -191,7 +219,7 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 
 		const orchestrator = buildOrchestrator(store);
 		// Save on suspend, then the end-of-turn save of the same delta after resume.
-		await orchestrator.persistTurnOnSuspend(list, PERSIST);
+		await orchestrator.persistTurnDelta(list, PERSIST);
 		await orchestrator.saveToMemory(list, PERSIST);
 
 		const persisted = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
@@ -214,9 +242,70 @@ describe('MemoryOrchestrator.persistTurnOnSuspend', () => {
 
 		// A transient persistence failure must not abort the suspend flow, but is reported.
 		await expect(
-			buildOrchestrator(store, bus).persistTurnOnSuspend(list, PERSIST),
+			buildOrchestrator(store, bus).persistTurnDelta(list, PERSIST),
 		).resolves.toBeUndefined();
 		expect(errors).toHaveLength(1);
-		expect(errors[0]).toMatchObject({ type: AgentEvent.Error, source: 'turn-suspend-persistence' });
+		expect(errors[0]).toMatchObject({ type: AgentEvent.Error, source: 'turn-delta-persistence' });
+	});
+});
+
+describe('MemoryOrchestrator save-path telemetry', () => {
+	function buildOrchestratorWithTelemetry(
+		store: InMemoryMemory,
+		telemetry: BuiltTelemetry,
+	): MemoryOrchestrator {
+		const config = { name: 'my-agent', memory: store, telemetry } as unknown as AgentRuntimeConfig;
+		return new MemoryOrchestrator(
+			config,
+			new BackgroundTaskTracker(),
+			new AgentEventBus(),
+			new RuntimeTelemetry(config),
+		);
+	}
+
+	it('persistInputMessages opens a save_memory span with created operations for the input ids', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const span = fakeSpan();
+		const telemetry = builtTelemetry({ tracer: fakeTracer(span) });
+
+		const list = new AgentMessageList();
+		list.addInput([userMsg('the user prompt')]);
+
+		await buildOrchestratorWithTelemetry(store, telemetry).persistInputMessages(list, PERSIST);
+
+		const inputId = list.inputDelta()[0].id;
+		expect(span.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'gen_ai.memory.ids': [inputId],
+				'gen_ai.memory.operations': ['created'],
+			}),
+		);
+	});
+
+	it('saveToMemory opens a save_memory span with session/owner attributes', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+
+		const list = new AgentMessageList();
+		list.addInput([userMsg('please build it')]);
+		list.addResponse([assistantMsg('built the workflow')]);
+
+		await buildOrchestratorWithTelemetry(store, telemetry).saveToMemory(list, PERSIST);
+
+		expect(tracer.startActiveSpan).toHaveBeenCalledWith(
+			'save_memory',
+			expect.objectContaining({
+				attributes: expect.objectContaining({
+					'gen_ai.operation.name': 'save_memory',
+					'gen_ai.memory.types': ['session'],
+					'gen_ai.memory.owners': [RESOURCE_ID],
+				}),
+			}),
+			expect.anything(),
+		);
 	});
 });

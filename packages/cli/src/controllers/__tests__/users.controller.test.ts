@@ -1,6 +1,6 @@
 import { GLOBAL_ADMIN_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Response } from 'express';
 
 import type { EventService } from '@/events/event.service';
@@ -33,7 +33,6 @@ describe('UsersController', () => {
 		mock(),
 		mock(),
 		eventService,
-		mock(),
 		jwtService,
 		urlService,
 		provisioningService,
@@ -41,8 +40,8 @@ describe('UsersController', () => {
 	);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('changeGlobalRole', () => {
@@ -100,6 +99,22 @@ describe('UsersController', () => {
 
 			await expect(
 				controller.changeGlobalRole(request, mock(), mock({ newRoleName: 'global:admin' }), '456'),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(userService.changeUserRole).not.toHaveBeenCalled();
+		});
+
+		it('rejects a user changing their own global role', async () => {
+			const request = mock<AuthenticatedRequest>({
+				user: { id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } },
+			});
+			provisioningService.isInstanceRoleManaged.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(
+				mock<User>({ id: '123', role: { slug: GLOBAL_ADMIN_ROLE.slug } }),
+			);
+
+			await expect(
+				controller.changeGlobalRole(request, mock(), mock({ newRoleName: 'global:member' }), '123'),
 			).rejects.toThrow(ForbiddenError);
 
 			expect(userService.changeUserRole).not.toHaveBeenCalled();

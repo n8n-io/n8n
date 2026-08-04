@@ -5,6 +5,10 @@ global.fetch = vi.fn();
 const { mockContainer, mockReadFile, MockSecurityConfig } = vi.hoisted(() => {
 	class MockSecurityConfig {
 		awsSystemCredentialsAccess = true;
+
+		// These tests exercise the legacy hand-rolled resolvers; the SDK paths are
+		// covered in system-credentials-sdk.test.ts.
+		awsSystemCredentialsSdkSources = 'none';
 	}
 	return {
 		mockContainer: { get: vi.fn() },

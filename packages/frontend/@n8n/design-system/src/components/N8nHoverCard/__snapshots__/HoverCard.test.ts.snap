@@ -6,6 +6,7 @@ exports[`N8nHoverCard > should render correctly with default props 1`] = `
   <mock-hover-card-portal disabled="false">
     <mock-hover-card-content avoid-collisions="true" collision-padding="5" force-mount="false">
       <div>Hover content</div>
+      <!--v-if-->
     </mock-hover-card-content>
   </mock-hover-card-portal>
 </mock-hover-card-root>"

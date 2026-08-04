@@ -56,6 +56,7 @@ export const createWorkflowHistoryVersion = (
 		workflowId: overrides.workflowId,
 		nodes: overrides.nodes,
 		connections: overrides.connections ?? {},
+		nodeGroups: overrides.nodeGroups ?? [],
 		authors: overrides.authors ?? '[]',
 		name: overrides.name ?? null,
 		description: overrides.description ?? null,

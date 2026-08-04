@@ -396,32 +396,6 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the accounts to display them to user so that they can
-			// select them easily
-			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs = {
-					q: 'SELECT id, Name FROM Account',
-				};
-				const accounts = await salesforceApiRequestAllItems.call(
-					this,
-					'records',
-					'GET',
-					'/query',
-					{},
-					qs,
-				);
-				for (const account of accounts) {
-					const accountName = account.Name;
-					const accountId = account.Id;
-					returnData.push({
-						name: accountName,
-						value: accountId,
-					});
-				}
-				sortOptions(returnData);
-				return returnData;
-			},
 			// Get all the campaigns to display them to user so that they can
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -995,6 +969,47 @@ export class Salesforce implements INodeType {
 			// },
 		},
 		listSearch: {
+			async searchAccounts(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				// 200 is Salesforce's minimum query batchSize; smaller values are ignored.
+				const PAGE_SIZE = 200;
+				let response: { records?: IDataObject[]; nextRecordsUrl?: string };
+
+				if (paginationToken) {
+					// Follow Salesforce's queryMore cursor. salesforceApiRequest re-prefixes
+					// the API base, so pass only the `/query/<locator>` suffix.
+					const locator = paginationToken.split('/').pop();
+					response = (await salesforceApiRequest.call(this, 'GET', `/query/${locator}`)) as {
+						records?: IDataObject[];
+						nextRecordsUrl?: string;
+					};
+				} else {
+					const escapedFilter = filter ? escapeSoqlString(filter) : '';
+					const whereClause = escapedFilter ? `WHERE Name LIKE '%${escapedFilter}%' ` : '';
+					// No LIMIT: it would cap the result below the batch size and suppress the
+					// nextRecordsUrl cursor. batchSize bounds the page instead.
+					const qs = {
+						q: `SELECT Id, Name FROM Account ${whereClause}ORDER BY Name`,
+					};
+					response = (await salesforceApiRequest.call(this, 'GET', '/query', {}, qs, undefined, {
+						headers: { 'Sforce-Query-Options': `batchSize=${PAGE_SIZE}` },
+					})) as { records?: IDataObject[]; nextRecordsUrl?: string };
+				}
+
+				const accounts = (response.records ?? []) as Array<{ Id: string; Name: string }>;
+				const results: INodeListSearchItems[] = accounts.map((account) => ({
+					name: account.Name,
+					value: account.Id,
+				}));
+
+				return {
+					results,
+					paginationToken: response.nextRecordsUrl,
+				};
+			},
 			// Server-side typeahead for the owner (User) selectors.
 			async searchUsers(
 				this: ILoadOptionsFunctions,
@@ -1393,8 +1408,15 @@ export class Salesforce implements INodeType {
 								body.OwnerId = owner;
 							}
 						}
-						if (additionalFields.acconuntId !== undefined) {
-							body.AccountId = additionalFields.acconuntId as string;
+						{
+							// Account is a resourceLocator; extractValue resolves it to the id and
+							// passes through legacy raw-string values from pre-RLC workflows.
+							const accountId = this.getNodeParameter('additionalFields.acconuntId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
+							}
 						}
 						if (additionalFields.birthdate !== undefined) {
 							body.Birthdate = additionalFields.birthdate as string;
@@ -1541,8 +1563,13 @@ export class Salesforce implements INodeType {
 								body.OwnerId = owner;
 							}
 						}
-						if (updateFields.acconuntId !== undefined) {
-							body.AccountId = updateFields.acconuntId as string;
+						{
+							const accountId = this.getNodeParameter('updateFields.acconuntId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
+							}
 						}
 						if (updateFields.birthdate !== undefined) {
 							body.Birthdate = updateFields.birthdate as string;
@@ -1933,8 +1960,13 @@ export class Salesforce implements INodeType {
 						if (additionalFields.nextStep !== undefined) {
 							body.NextStep = additionalFields.nextStep as string;
 						}
-						if (additionalFields.accountId !== undefined) {
-							body.AccountId = additionalFields.accountId as string;
+						{
+							const accountId = this.getNodeParameter('additionalFields.accountId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
+							}
 						}
 						if (additionalFields.campaignId !== undefined) {
 							body.CampaignId = additionalFields.campaignId as string;
@@ -2005,8 +2037,13 @@ export class Salesforce implements INodeType {
 						if (updateFields.nextStep !== undefined) {
 							body.NextStep = updateFields.nextStep as string;
 						}
-						if (updateFields.accountId !== undefined) {
-							body.AccountId = updateFields.accountId as string;
+						{
+							const accountId = this.getNodeParameter('updateFields.accountId', i, '', {
+								extractValue: true,
+							}) as string;
+							if (accountId) {
+								body.AccountId = accountId;
+							}
 						}
 						if (updateFields.campaignId !== undefined) {
 							body.CampaignId = updateFields.campaignId as string;
@@ -2446,8 +2483,8 @@ export class Salesforce implements INodeType {
 						if (additionalFields.subject !== undefined) {
 							body.Subject = additionalFields.subject as string;
 						}
-						if (additionalFields.parentId !== undefined) {
-							body.ParentId = additionalFields.parentId as string;
+						if (additionalFields.ParentId !== undefined) {
+							body.ParentId = additionalFields.ParentId as string;
 						}
 						if (additionalFields.priority !== undefined) {
 							body.Priority = additionalFields.priority as string;
@@ -2517,8 +2554,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.subject !== undefined) {
 							body.Subject = updateFields.subject as string;
 						}
-						if (updateFields.parentId !== undefined) {
-							body.ParentId = updateFields.parentId as string;
+						if (updateFields.ParentId !== undefined) {
+							body.ParentId = updateFields.ParentId as string;
 						}
 						if (updateFields.priority !== undefined) {
 							body.Priority = updateFields.priority as string;
@@ -3120,7 +3157,10 @@ export class Salesforce implements INodeType {
 					}
 				}
 
-				if (!Array.isArray(responseData) && responseData === undefined) {
+				if (
+					!Array.isArray(responseData) &&
+					(responseData === undefined || responseData === '' || responseData === null)
+				) {
 					// Make sure that always valid JSON gets returned which also matches the
 					// Salesforce default response
 					responseData = {
@@ -3137,17 +3177,20 @@ export class Salesforce implements INodeType {
 				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({
+					const errorItem: INodeExecutionData = {
+						json: {
 							error: error.message,
 							description: (error as NodeApiError).description ?? null,
 							httpCode: (error as NodeApiError).httpCode ?? null,
 							errorCode: (error as NodeApiError).context?.errorCode ?? null,
 							fields: (error as NodeApiError).context?.fields ?? null,
-						}),
-						{ itemData: { item: i } },
-					);
-					returnData.push.apply(returnData, executionErrorData);
+						},
+						pairedItem: { item: i },
+					};
+					if (this.getNode().onError === 'continueErrorOutput') {
+						errorItem.error = error as NodeApiError;
+					}
+					returnData.push(errorItem);
 					continue;
 				}
 				throw error;

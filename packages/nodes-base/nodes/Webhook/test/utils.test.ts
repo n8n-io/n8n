@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import {
-	ApplicationError,
+	UnexpectedError,
 	type IWebhookFunctions,
 	type INodeExecutionData,
 	type IDataObject,
@@ -314,7 +314,171 @@ describe('Webhook Utils', () => {
 		it('should throw an error if response mode is not "responseNode" but a Respond to Webhook node is found', () => {
 			const context: Partial<IWebhookFunctions> = {
 				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
-				getChildNodes: vi.fn().mockReturnValue([{ type: 'n8n-nodes-base.respondToWebhook' }]),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' }]),
+				getParentNodes: vi.fn().mockReturnValue([]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should not throw if the Respond to Webhook node belongs to a downstream Wait node resuming on webhook', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'webhook', responseMode: 'responseNode' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						{ name: 'Request2', type: 'n8n-nodes-base.httpRequest' },
+						waitNode,
+						{ name: 'Request', type: 'n8n-nodes-base.httpRequest' },
+						{ name: 'Respond success', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([
+						{ name: 'Request', type: 'n8n-nodes-base.httpRequest' },
+						waitNode,
+						{ name: 'Request2', type: 'n8n-nodes-base.httpRequest' },
+						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).not.toThrow();
+		});
+
+		it('should throw if the Wait node upstream of the Respond to Webhook node does not resume on webhook', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'timeInterval' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should throw if the webhook-resuming Wait node upstream of the Respond to Webhook node does not respond via Respond to Webhook node', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'webhook', responseMode: 'onReceived' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should throw if the webhook-resuming Wait node upstream of the Respond to Webhook node responds with the last node', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'webhook', responseMode: 'lastNode' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should throw if the webhook-resuming Wait node upstream of the Respond to Webhook node is disabled', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: true,
+				parameters: { resume: 'webhook', responseMode: 'responseNode' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi
+					.fn()
+					.mockReturnValue([waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
+			};
+			expect(() => {
+				checkResponseModeConfiguration(context as IWebhookFunctions);
+			}).toThrowError('Unused Respond to Webhook node found in the workflow');
+		});
+
+		it('should throw if any Respond to Webhook node is not owned by a downstream Wait node', () => {
+			const waitNode = {
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: { resume: 'webhook', responseMode: 'responseNode' },
+			};
+			const context: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi
+					.fn()
+					.mockReturnValue([
+						waitNode,
+						{ name: 'Respond owned', type: 'n8n-nodes-base.respondToWebhook' },
+						{ name: 'Respond direct', type: 'n8n-nodes-base.respondToWebhook' },
+					]),
+				getParentNodes: vi.fn().mockImplementation((nodeName: string) => {
+					if (nodeName === 'Respond owned') {
+						return [waitNode, { name: 'Webhook', type: 'n8n-nodes-base.webhook' }];
+					}
+					return [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }];
+				}),
 				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
 			};
 			expect(() => {
@@ -375,6 +539,31 @@ describe('Webhook Utils', () => {
 			).rejects.toThrowError('Authorization is required!');
 		});
 
+		it('should return unauthorized if basicAuth credentials do not match', async () => {
+			const headers = {
+				authorization: `Basic ${Buffer.from('admin:wrong-password').toString('base64')}`,
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
+					user: 'admin',
+					password: 'password',
+				}),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(headers),
+			};
+			const authPropertyName = 'authentication';
+
+			await expect(
+				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
+			).rejects.toMatchObject({
+				responseCode: 401,
+				message: 'Authentication data is wrong!',
+			});
+		});
+
 		it('should successfully pass if basicAuth is enabled and provided basic auth data is correct', async () => {
 			const headers = {
 				authorization: `Basic ${Buffer.from('admin:password').toString('base64')}`,
@@ -392,6 +581,38 @@ describe('Webhook Utils', () => {
 			};
 			const authPropertyName = 'authentication';
 			await validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName);
+		});
+
+		it('should still return forbidden if form auth token does not match', async () => {
+			const node = {
+				id: 'node-789',
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode;
+			const credentials = {
+				user: 'admin',
+				password: 'password',
+			};
+			const headers = {
+				'x-auth-token': 'wrong-token',
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNode: vi.fn().mockReturnValue(node),
+				getCredentials: vi.fn().mockResolvedValue(credentials),
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(headers),
+			};
+			const authPropertyName = 'authentication';
+
+			await expect(
+				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
+			).rejects.toMatchObject({
+				responseCode: 403,
+				message: 'Authorization data is wrong!',
+			});
 		});
 
 		it('should successfully pass if basicAuth is enabled and provided auth token data is correct', async () => {
@@ -511,7 +732,7 @@ describe('Webhook Utils', () => {
 				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			(jwt.verify as Mock).mockImplementationOnce(() => {
-				throw new ApplicationError('jwt malformed');
+				throw new UnexpectedError('jwt malformed');
 			});
 			const authPropertyName = 'authentication';
 			await expect(

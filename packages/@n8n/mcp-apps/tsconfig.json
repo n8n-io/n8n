@@ -1,5 +1,5 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
 	"compilerOptions": {
 		"noEmit": true,
 		"module": "ESNext",
@@ -15,9 +15,8 @@
 			"../../frontend/@n8n/design-system/src/shims-modules.d.ts"
 		],
 		"skipLibCheck": true,
-		"baseUrl": ".",
 		"paths": {
-			"@mcp-apps/*": ["src/*"],
+			"@mcp-apps/*": ["./src/*"],
 			"@n8n/design-system*": ["../../frontend/@n8n/design-system/src*"]
 		}
 	},

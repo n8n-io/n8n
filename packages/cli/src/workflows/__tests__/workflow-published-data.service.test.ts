@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 import {
@@ -18,7 +18,7 @@ describe('WorkflowPublishedDataService', () => {
 	const cacheKey = 'workflow-published-data:wf-1';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		service = new WorkflowPublishedDataService(
 			logger,
 			workflowPublishedVersionRepository,

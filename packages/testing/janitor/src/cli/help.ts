@@ -236,45 +236,38 @@ runtime via the DI container by every consuming package's integration tests).
 
 export function showScopeHelp(): void {
 	console.log(`
-Scope - Per-package jest/vitest scope from changed files
+Scope - Per-package vitest scope from changed files
 
 Usage:
-  janitor scope --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>]
+  janitor scope [--package-dir=<dir>] [--changed-files=<list>]
 
-  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
-  --changed-files: newline- OR comma-separated repo-root-relative paths.
-                   Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
+  --package-dir:      defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files:    newline- OR comma-separated repo-root-relative paths.
+                      Defaults to $CHANGED_FILES env var.
 
 Output (single line on stdout):
-  SKIP        No in-package files changed
-  RUN_FULL    Config file changed, OR no CHANGED_FILES signal (local dev)
-  <files>     Pass to jest --findRelatedTests / vitest related
+  SKIP        No in-package files changed and package not affected upstream
+  RUN_FULL    Config/global trigger changed, package affected by an upstream
+              change, OR no CHANGED_FILES signal (local dev)
+  <files>     Pass to vitest related
 `);
 }
 
 export function showTestScopedHelp(): void {
 	console.log(`
-Test-Scoped - Compute scope and spawn jest/vitest with the right flags
+Test-Scoped - Compute scope and spawn vitest with the right flags
 
 Usage:
-  janitor test-scoped --runner=<jest|vitest> [--jest-variant=<unit|integration>] [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
+  janitor test-scoped [--package-dir=<dir>] [--changed-files=<list>] [extra runner args]
 
-  --package-dir:   defaults to cwd (matches how pnpm/turbo invoke test scripts).
-  --changed-files: newline- OR comma-separated repo-root-relative paths.
-                   Defaults to $CHANGED_FILES env var.
-  --jest-variant:  'integration' widens the bailout set to catch runtime-
-                   coupled changes invisible to jest --findRelatedTests
-                   (entities, repositories, migrations, shared fixtures).
-                   Defaults to 'unit'.
+  --package-dir:      defaults to cwd (matches how pnpm/turbo invoke test scripts).
+  --changed-files:    newline- OR comma-separated repo-root-relative paths.
+                      Defaults to $CHANGED_FILES env var.
 
 Local dev (no $CHANGED_FILES set): runs the full suite.
-CI: scopes via jest --findRelatedTests / vitest related --run, or skips
-if the package wasn't touched. Unrecognised flags are forwarded to the
-runner.
+CI: scopes via vitest related --run; runs the full suite when the package is
+affected by an upstream change; skips if the package wasn't touched.
+Unrecognised flags are forwarded to the runner.
 `);
 }
 

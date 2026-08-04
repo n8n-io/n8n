@@ -15,6 +15,7 @@ vi.mock('moment-timezone');
 const mockedMoment = vi.mocked(moment);
 
 function mockMomentTz(values: {
+	epochMinute?: number;
 	hour?: number;
 	dayOfYear?: number;
 	week?: number;
@@ -22,6 +23,7 @@ function mockMomentTz(values: {
 	year?: number;
 }) {
 	const tzObj = {
+		valueOf: () => (values.epochMinute ?? 0) * 60_000,
 		hour: () => values.hour ?? 0,
 		dayOfYear: () => values.dayOfYear ?? 1,
 		week: () => values.week ?? 1,
@@ -75,6 +77,16 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result).toEqual('56 */30 * * * *');
+
+		// 50 does not divide 60 — fire every minute, gated by recurrenceCheck.
+		const result1 = toCronExpression(
+			{
+				field: 'minutes',
+				minutesInterval: 50,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 * * * * *');
 	});
 
 	it('should return cron expression for hours interval', () => {
@@ -322,6 +334,45 @@ describe('recurrenceCheck', () => {
 			'UTC',
 		);
 		expect(result).toBe(false);
+	});
+
+	describe('minutes', () => {
+		it('should trigger when exactly on time', () => {
+			mockMomentTz({ epochMinute: 1000 });
+			const recurrenceRules = [950]; // 50 minutes elapsed, interval = 50
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(1000);
+		});
+
+		it('should not trigger before interval has elapsed', () => {
+			mockMomentTz({ epochMinute: 1000 });
+			const recurrenceRules = [960]; // only 40 minutes elapsed, need 50
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(false);
+		});
+
+		it('should fire on the first tick after a gap longer than the hour wrap', () => {
+			mockMomentTz({ epochMinute: 1000 });
+			// 110 minutes elapsed: a wall-clock minute-of-hour gate would read this
+			// as 50 % 60 elapsed and wait again; the absolute count fires immediately.
+			const recurrenceRules = [890];
+			const result = recurrenceCheck(
+				{ activated: true, index: 0, intervalSize: 50, typeInterval: 'minutes' },
+				recurrenceRules,
+				'UTC',
+			);
+			expect(result).toBe(true);
+			expect(recurrenceRules[0]).toBe(1000);
+		});
 	});
 
 	describe('hours', () => {
@@ -656,6 +707,32 @@ describe('intervalToRecurrence', () => {
 			{
 				field: 'minutes',
 				minutesInterval: 30,
+			},
+			1,
+		);
+		expect(result.activated).toBe(false);
+
+		// Non-dividing interval needs the recurrence gate.
+		const result1 = intervalToRecurrence(
+			{
+				field: 'minutes',
+				minutesInterval: 50,
+			},
+			1,
+		);
+		expect(result1).toEqual({
+			activated: true,
+			index: 1,
+			intervalSize: 50,
+			typeInterval: 'minutes',
+		});
+	});
+
+	it('should not activate recurrence for a non-positive minutes interval (pre-1.3 nodes skip validation)', () => {
+		const result = intervalToRecurrence(
+			{
+				field: 'minutes',
+				minutesInterval: 0,
 			},
 			1,
 		);

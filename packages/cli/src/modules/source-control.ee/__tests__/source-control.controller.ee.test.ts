@@ -4,7 +4,8 @@ import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import * as permissions from '@n8n/permissions';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
@@ -18,11 +19,11 @@ import type { SourceControlRequest } from '../types/requests';
 import { SourceControlContext } from '../types/source-control-context';
 import type { SourceControlGetStatus } from '../types/source-control-get-status';
 
-jest.mock('@n8n/permissions', () => {
-	const actual = jest.requireActual('@n8n/permissions');
+vi.mock('@n8n/permissions', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions');
 	return {
 		...actual,
-		hasGlobalScope: jest.fn(actual.hasGlobalScope),
+		hasGlobalScope: vi.fn(actual.hasGlobalScope),
 	};
 });
 
@@ -35,12 +36,12 @@ describe('SourceControlController', () => {
 	let eventService: EventService;
 
 	beforeEach(() => {
-		(permissions.hasGlobalScope as jest.Mock).mockReset().mockReturnValue(false);
+		(permissions.hasGlobalScope as Mock).mockReset().mockReturnValue(false);
 
 		sourceControlService = {
-			pushWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
-			pullWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
-			getStatus: jest.fn().mockResolvedValue([]),
+			pushWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
+			pullWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
+			getStatus: vi.fn().mockResolvedValue([]),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
@@ -58,7 +59,7 @@ describe('SourceControlController', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('pushWorkfolder', () => {
@@ -80,7 +81,7 @@ describe('SourceControlController', () => {
 			const res = mock<Response>();
 			const payload = { force: true, commitMessage: 'Test commit' } as PushWorkFolderRequestDto;
 
-			(sourceControlService.pushWorkfolder as jest.Mock).mockResolvedValueOnce({
+			(sourceControlService.pushWorkfolder as Mock).mockResolvedValueOnce({
 				statusCode: 200,
 				statusResult: [{ file: 'test.json', status: 'modified' }],
 				pushResult: {
@@ -110,7 +111,7 @@ describe('SourceControlController', () => {
 			const res = mock<Response>();
 			const payload = { force: true } as PushWorkFolderRequestDto;
 
-			(sourceControlService.pushWorkfolder as jest.Mock).mockResolvedValueOnce({
+			(sourceControlService.pushWorkfolder as Mock).mockResolvedValueOnce({
 				statusCode: 200,
 				statusResult: [],
 				pushResult: null,
@@ -131,7 +132,7 @@ describe('SourceControlController', () => {
 			const res = mock<Response>();
 			const payload = { force: true } as PushWorkFolderRequestDto;
 
-			(sourceControlService.pushWorkfolder as jest.Mock).mockRejectedValueOnce(
+			(sourceControlService.pushWorkfolder as Mock).mockRejectedValueOnce(
 				new Error('Git push failed'),
 			);
 
@@ -160,19 +161,23 @@ describe('SourceControlController', () => {
 				preferLocalVersion: true,
 				verbose: false,
 			} as SourceControlGetStatus;
-			const req = mock<SourceControlRequest.GetStatus>({
-				query,
-				user,
-			});
+			const req = mock<SourceControlRequest.GetStatus>({ query });
+			// vitest-mock-extended doesn't populate `user` from the partial here, so set it
+			// explicitly. The controller passes `new SourceControlGetStatus(req.query)`, so
+			// match the query fields with `objectContaining` rather than the raw object.
+			req.user = user as (typeof req)['user'];
 
 			await controller.getStatus(req);
 			expect(sourceControlScopedService.ensureIsAllowedToGetStatus).toHaveBeenCalledWith(req);
-			expect(sourceControlService.getStatus).toHaveBeenCalledWith(user, query);
+			expect(sourceControlService.getStatus).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ direction: 'pull', preferLocalVersion: true, verbose: false }),
+			);
 		});
 
 		it('should not call getStatus when the caller is not authorized', async () => {
 			const req = mock<SourceControlRequest.GetStatus>({ query: {}, user: {} });
-			(sourceControlScopedService.ensureIsAllowedToGetStatus as jest.Mock).mockRejectedValueOnce(
+			(sourceControlScopedService.ensureIsAllowedToGetStatus as Mock).mockRejectedValueOnce(
 				new Error('forbidden'),
 			);
 
@@ -183,7 +188,7 @@ describe('SourceControlController', () => {
 		it('should preserve ForbiddenError from the status service', async () => {
 			const error = new ForbiddenError('You do not have permission to pull from source control');
 			const req = mock<SourceControlRequest.GetStatus>({ query: {}, user: {} });
-			(sourceControlService.getStatus as jest.Mock).mockRejectedValueOnce(error);
+			(sourceControlService.getStatus as Mock).mockRejectedValueOnce(error);
 
 			await expect(controller.getStatus(req)).rejects.toBe(error);
 		});
@@ -197,19 +202,20 @@ describe('SourceControlController', () => {
 				preferLocalVersion: true,
 				verbose: false,
 			} as SourceControlGetStatus;
-			const req = mock<SourceControlRequest.GetStatus>({
-				query,
-				user,
-			});
+			const req = mock<SourceControlRequest.GetStatus>({ query });
+			req.user = user as (typeof req)['user'];
 
 			await controller.status(req);
 			expect(sourceControlScopedService.ensureIsAllowedToGetStatus).toHaveBeenCalledWith(req);
-			expect(sourceControlService.getStatus).toHaveBeenCalledWith(user, query);
+			expect(sourceControlService.getStatus).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ direction: 'pull', preferLocalVersion: true, verbose: false }),
+			);
 		});
 
 		it('should not call getStatus when the caller is not authorized', async () => {
 			const req = mock<SourceControlRequest.GetStatus>({ query: {}, user: {} });
-			(sourceControlScopedService.ensureIsAllowedToGetStatus as jest.Mock).mockRejectedValueOnce(
+			(sourceControlScopedService.ensureIsAllowedToGetStatus as Mock).mockRejectedValueOnce(
 				new Error('forbidden'),
 			);
 
@@ -220,7 +226,7 @@ describe('SourceControlController', () => {
 		it('should preserve ForbiddenError from the status service', async () => {
 			const error = new ForbiddenError('You do not have permission to pull from source control');
 			const req = mock<SourceControlRequest.GetStatus>({ query: {}, user: {} });
-			(sourceControlService.getStatus as jest.Mock).mockRejectedValueOnce(error);
+			(sourceControlService.getStatus as Mock).mockRejectedValueOnce(error);
 
 			await expect(controller.status(req)).rejects.toBe(error);
 		});
@@ -242,15 +248,13 @@ describe('SourceControlController', () => {
 			mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1', ...user }) });
 
 		beforeEach(() => {
-			(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue(
-				fullPreferences,
-			);
+			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue(fullPreferences);
 		});
 
 		it('should return full preferences (including public key) for users with sourceControl:manage', async () => {
 			const mockPublicKey = 'ssh-rsa AAAAB3NzaC1yc2E...';
-			(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(mockPublicKey);
-			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(true);
+			(sourceControlPreferencesService.getPublicKey as Mock).mockResolvedValue(mockPublicKey);
+			(permissions.hasGlobalScope as Mock).mockReturnValue(true);
 			const req = buildReq();
 
 			const result = await controller.getPreferences(req);
@@ -261,9 +265,9 @@ describe('SourceControlController', () => {
 		});
 
 		it('should return branch name and color for project admins (has authorized projects)', async () => {
-			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(false);
+			(permissions.hasGlobalScope as Mock).mockReturnValue(false);
 			const user = mock<User>({ id: 'user-1' });
-			(sourceControlContextFactory.createContext as jest.Mock).mockResolvedValue(
+			(sourceControlContextFactory.createContext as Mock).mockResolvedValue(
 				new SourceControlContext(user, [mock<Project>({ id: 'p1', type: 'team' })], []),
 			);
 
@@ -279,9 +283,9 @@ describe('SourceControlController', () => {
 		});
 
 		it('should return only branchReadOnly for users with no source-control access', async () => {
-			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(false);
+			(permissions.hasGlobalScope as Mock).mockReturnValue(false);
 			const user = mock<User>({ id: 'user-1' });
-			(sourceControlContextFactory.createContext as jest.Mock).mockResolvedValue(
+			(sourceControlContextFactory.createContext as Mock).mockResolvedValue(
 				new SourceControlContext(user, [], []),
 			);
 

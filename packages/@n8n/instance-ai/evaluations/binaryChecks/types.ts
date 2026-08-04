@@ -16,6 +16,12 @@ export interface BinaryCheckResult {
 	comment?: string;
 	/** Omitted = true. `false` = no subject in this workflow (excluded from pass-rate denominator). */
 	applicable?: boolean;
+	/**
+	 * `true` = the check could not be measured (e.g. judge timeout). Excluded
+	 * from the pass-rate denominator like N/A, but reported separately so
+	 * infra flakiness stays distinguishable from genuine inapplicability.
+	 */
+	errored?: boolean;
 }
 
 /**
@@ -32,10 +38,14 @@ export interface BinaryCheckContext {
 	modelId?: string;
 	/** Timeout in ms for LLM checks. Defaults to 30_000. */
 	timeoutMs?: number;
-	/** The agent's text response (used by response-matches-workflow-changes check) */
+	/** The agent's narration across the conversation (used by the response_describes_changes_accurately check) */
 	agentTextResponse?: string;
-	/** The workflow before the agent's turn (used by response-matches-workflow-changes check) */
-	existingWorkflow?: WorkflowResponse;
+	/**
+	 * The workflow at the start of the conversation, before the agent's changes
+	 * (used by response_describes_changes_accurately). Empty for from-scratch
+	 * builds — set only when a conversation starts from an existing workflow.
+	 */
+	workflowBefore?: WorkflowResponse;
 	/** Per-test-case annotations forwarded from fixtures. Used by checks that opt into fixture-side overrides. */
 	annotations?: Record<string, unknown>;
 	/**
@@ -57,6 +67,7 @@ export const CHECK_DIMENSIONS = [
 	'connection_topology',
 	'parameter_correctness',
 	'intent_match',
+	'communication',
 	'ai_nodes',
 	'nodes_craftsmanship',
 	'efficiency',
@@ -87,7 +98,7 @@ export interface BinaryCheck {
 // Outcomes — projected per check after a run
 // ---------------------------------------------------------------------------
 
-export type CheckStatus = 'pass' | 'fail' | 'n_a';
+export type CheckStatus = 'pass' | 'fail' | 'n_a' | 'error';
 
 /** Per-run projection of a BinaryCheck result; surfaced in reports + LangSmith Feedback. */
 export interface CheckOutcome {

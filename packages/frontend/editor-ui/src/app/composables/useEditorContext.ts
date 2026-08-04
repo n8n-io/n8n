@@ -58,6 +58,7 @@ export function useEditorContext() {
 		instanceAi: featureEnabled('instanceAi'),
 		readOnly: computed(() => enabledFeatures?.value?.readOnly === true),
 		expandGroups: computed(() => enabledFeatures?.value?.expandGroups),
+		executionButtonType: computed(() => enabledFeatures?.value?.executionButtonType ?? 'primary'),
 		executionSuccessToasts: computed(
 			() => enabledFeatures?.value?.executionSuccessToasts !== false,
 		),

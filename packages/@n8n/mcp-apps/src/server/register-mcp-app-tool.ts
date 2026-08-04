@@ -3,7 +3,7 @@ import type {
 	RegisteredTool,
 	ToolCallback,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type z from 'zod';
 
 import { RESOURCE_URI_META_KEY } from './constants';

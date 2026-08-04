@@ -69,4 +69,40 @@ describe('MicrosoftOneDriveTrigger transport (real GenericFunctions)', () => {
 		);
 		expect(requestOAuth2).not.toHaveBeenCalled();
 	});
+
+	it('carries a B2B guest (#EXT#) UPN through the poll path into an encoded delta-root uri', async () => {
+		const params: Record<string, unknown> = {
+			authentication: 'microsoftEntraServicePrincipalApi',
+			resourceTarget: 'user',
+			event: 'fileCreated',
+			watch: 'anyFile',
+			watchFolder: false,
+			'options.folderChild': false,
+			simple: false,
+		};
+		const rlcValues: Record<string, string> = {
+			userTarget: 'user_contoso.com#EXT#@tenant.onmicrosoft.com',
+		};
+		pollFunctions.getNodeParameter.mockImplementation(
+			(name: string, fallback?: unknown, options?: { extractValue?: boolean }) => {
+				if (options?.extractValue && name in rlcValues) {
+					return rlcValues[name];
+				}
+				if (name in params) {
+					return params[name] as NodeParameterValueType;
+				}
+				return fallback as NodeParameterValueType;
+			},
+		);
+
+		await trigger.poll.call(pollFunctions);
+
+		expect(requestWithAuthentication).toHaveBeenCalledWith(
+			'microsoftEntraServicePrincipalApi',
+			expect.objectContaining({
+				uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/drive/root/delta',
+			}),
+		);
+		expect(requestOAuth2).not.toHaveBeenCalled();
+	});
 });

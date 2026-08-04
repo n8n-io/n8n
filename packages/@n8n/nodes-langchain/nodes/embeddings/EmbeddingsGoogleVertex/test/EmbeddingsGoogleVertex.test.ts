@@ -10,7 +10,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 	logWrapper: vi.fn((val: unknown) => val),
 	getConnectionHintNoticeField: vi.fn(() => ({})),
 }));
-vi.mock('@n8n/utils', () => ({
+vi.mock('@n8n/utils/format-pem-block', () => ({
 	formatPemBlock: vi.fn().mockImplementation((key: string) => key),
 }));
 

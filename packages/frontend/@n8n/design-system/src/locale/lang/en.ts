@@ -7,6 +7,7 @@ export default {
 	'generic.ignore': 'Ignore',
 	'generic.ignoreAll': 'Ignore all',
 	'generic.moreInfo': 'More info',
+	'aiModelSelector.credentialsMissing': 'Credentials missing',
 	'nds.auth.roles.owner': 'Owner',
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',

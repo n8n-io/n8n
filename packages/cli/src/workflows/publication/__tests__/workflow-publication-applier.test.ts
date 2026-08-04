@@ -8,7 +8,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
@@ -101,7 +101,7 @@ describe('WorkflowPublicationApplier', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: 'v-1' }));
 		workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(oldVersion));
 		workflowPublishedVersionRepository.setPublishedVersion.mockResolvedValue(undefined);
@@ -112,6 +112,10 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
 		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
+		// The test nodes are scheduleTrigger nodes, so default every node to 'in-memory'.
+		workflowTriggerActivator.getTriggerKinds.mockImplementation(
+			(nodes) => new Map(nodes.map((node) => [node.id, 'in-memory'])),
+		);
 	});
 
 	test('skips with workflow-not-found when the workflow is gone', async () => {
@@ -173,14 +177,20 @@ describe('WorkflowPublicationApplier', () => {
 			);
 		});
 
-		test('skips with workflow-inactive when there is no published-version mapping', async () => {
+		test('completes as unpublished when there is no published-version mapping, so stale trigger-status rows are cleared', async () => {
+			// A retried/reconciled unpublish whose mapping is already gone must still
+			// end in `unpublished` (not a skip): the reporter clears the workflow's
+			// trigger-status rows only on that result, and an interrupted unpublish
+			// can leave rows behind after the mapping was removed.
 			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(null));
 
 			const result = await applier.apply(makeRecord());
 
-			expect(result).toEqual({ type: 'skipped', reason: 'workflow-inactive' });
+			expect(result).toEqual({ type: 'unpublished' });
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
-			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 
@@ -212,7 +222,12 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
@@ -225,12 +240,44 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 	});
 
+	test('stamps each trigger status with its execution kind', async () => {
+		const hook = triggerNode('hook', { type: 'n8n-nodes-base.webhook' });
+		const poll = triggerNode('poll', { type: 'n8n-nodes-base.rssFeedReadTrigger' });
+		setTriggerSets([], [hook, poll]);
+		workflowTriggerActivator.getTriggerKinds.mockReturnValue(
+			new Map([
+				['hook', 'persisted'],
+				['poll', 'in-memory'],
+			]),
+		);
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['hook', 'poll'],
+			failures: [],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'hook', nodeName: 'hook', status: 'activated', triggerKind: 'persisted' },
+				{ nodeId: 'poll', nodeName: 'poll', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
+	});
+
 	test('registers only added triggers', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+				{ nodeId: 'b', nodeName: 'b', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'wf-1' }),
@@ -254,7 +301,12 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds).toHaveBeenCalledWith(
 			'wf-1',
 			[trigger],
@@ -274,7 +326,12 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
@@ -293,7 +350,12 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.getNodesWithUnregisteredWebhooks).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
@@ -313,7 +375,13 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+				{ nodeId: 'b', nodeName: 'b', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'wf-1' }),
 			newVersion,
@@ -326,7 +394,12 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'wf-1' }),
 			oldVersion,
@@ -365,7 +438,12 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'wf-1' }),
 			oldVersion,
@@ -423,8 +501,16 @@ describe('WorkflowPublicationApplier', () => {
 
 		expect(result).toEqual({
 			type: 'partial',
-			activatedNodeIds: ['a'],
-			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+				{
+					nodeId: 'b',
+					nodeName: 'b',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'third-party unavailable',
+				},
+			],
 		});
 		// The new version is published despite the partial activation; no deactivation.
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
@@ -446,8 +532,16 @@ describe('WorkflowPublicationApplier', () => {
 
 		expect(result).toEqual({
 			type: 'partial',
-			activatedNodeIds: ['a'],
-			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+				{
+					nodeId: 'b',
+					nodeName: 'b',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
@@ -466,14 +560,26 @@ describe('WorkflowPublicationApplier', () => {
 		const result = await applier.apply(makeRecord());
 
 		// A single failure passes its error through, preserving the type.
-		expect(result).toEqual({ type: 'failed', error });
+		expect(result).toEqual({
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{
+					nodeId: 'b',
+					nodeName: 'b',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
 		);
 	});
 
-	test('returns partial when no trigger activated but the failures are not all deterministic', async () => {
+	test('returns failed when nothing activated even if a failure is transient', async () => {
 		setTriggerSets([], [triggerNode('b'), triggerNode('c')]);
 		const deterministic = new WebhookPathTakenError('b');
 		const transient = new Error('third-party unavailable');
@@ -485,7 +591,60 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'partial', activatedNodeIds: [], failures });
+		// Nothing is running, so the publication failed; the combined error names both nodes.
+		expect(result).toEqual({
+			type: 'failed',
+			error: expect.objectContaining({
+				message: `Triggers failed to activate: "b": ${deterministic.message}; "c": third-party unavailable`,
+			}),
+			triggerStatuses: [
+				{
+					nodeId: 'b',
+					nodeName: 'b',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: deterministic.message,
+				},
+				{
+					nodeId: 'c',
+					nodeName: 'c',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'third-party unavailable',
+				},
+			],
+		});
+	});
+
+	test('returns partial when a newly-added trigger fails but an unchanged trigger keeps running', async () => {
+		// `a` is unchanged (old ∩ desired) and stays running; only `b` is added and fails.
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+		const error = new WebhookPathTakenError('b');
+		workflowTriggerActivator.activate.mockResolvedValue({
+			// `a` is unchanged, so it never appears in the activation outcome.
+			activated: [],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({
+			type: 'partial',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+				{
+					nodeId: 'b',
+					nodeName: 'b',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
 	});
 
 	test('treats a first publication (no published-version mapping yet) as all-added', async () => {
@@ -494,7 +653,12 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
-		expect(result).toEqual({ type: 'completed' });
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+		});
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'wf-1' }),

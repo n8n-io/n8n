@@ -1,7 +1,7 @@
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { VertexAIEmbeddings } from '@langchain/google-vertexai';
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ILoadOptionsFunctions,
