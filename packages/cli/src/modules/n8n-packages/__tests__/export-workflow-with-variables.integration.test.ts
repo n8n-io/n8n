@@ -90,7 +90,7 @@ describe('workflow package export — with variables', () => {
 		expect(Object.keys(parsed).sort()).toEqual(['name', 'type', 'value']);
 	});
 
-	it('with includeVariableValues=false bundles value-less stub files and lists no values', async () => {
+	it('with includeVariableValues=false bundles value-less stub files', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const variable = await createVariable('API_URL', 'https://api.example.com');
@@ -354,7 +354,7 @@ describe('workflow package export — with variables', () => {
 		).rejects.toThrow(/would collide in the package/);
 	});
 
-	it('omits the value when any referencing workflow cannot resolve the name', async () => {
+	it('bundles the resolved variable when another referencing workflow cannot resolve the name', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('Project A', owner);
 		const projectB = await createTeamProject('Project B', owner);
@@ -378,7 +378,7 @@ describe('workflow package export — with variables', () => {
 
 		// Both workflows share one requirement…
 		expect(manifest.requirements!.variables).toHaveLength(1);
-		// …and the variable workflow A resolved is still bundled for import.
+		// …and the variable workflow A resolved still travels, value included, for import.
 		expect(manifest.variables).toEqual([
 			{
 				id: variable.id,
@@ -386,7 +386,13 @@ describe('workflow package export — with variables', () => {
 				target: expect.stringMatching(/^variables\//) as string,
 			},
 		]);
-		expect(variableFiles(entries)).toHaveLength(1);
+		const files = variableFiles(entries);
+		expect(files).toHaveLength(1);
+		expect(jsonParse<Record<string, unknown>>(files[0].content.toString())).toEqual({
+			name: 'PROJECT_ONLY',
+			type: 'string',
+			value: 'a-value',
+		});
 	});
 
 	it('namespaces a project-owned variable inside an exported project directory', async () => {
