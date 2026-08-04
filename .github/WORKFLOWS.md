@@ -413,7 +413,7 @@ Push to master/1.x
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
-| Daily 06:00               | `util-sync-master-to-3x.yml`      | Sync master → 3.x (v3)   |
+| Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -424,10 +424,14 @@ Push to master/1.x
 ## v3 development (master + 3.x)
 
 During the v3 release window, `master` carries normal feature work (behind opt-in
-flags) and the long-lived `3.x` branch carries breaking changes. `master` is
-synced into `3.x` daily by `util-sync-master-to-3x.yml` (conflicts open a draft PR
-labeled `automation:v3-sync`, request the breaking-commit authors as reviewers via
-`sync-conflict-owners.mjs`, post to `#alerts-v3-sync`, and pause further syncs).
+flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
+syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
+clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
+exactly the tree a merge of `3.x` and `master` produces, and marker-free. On a real conflict
+`3.x` is left untouched and a draft PR carrying the conflict markers (labeled
+`automation:v3-sync`) is opened on `sync/master-to-3x`, requesting the breaking-commit authors
+as reviewers via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further
+syncs until it is resolved and merged normally.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
 
