@@ -16,6 +16,10 @@ export function resetSessionExpiredHandledFlag(): void {
 	handled = false;
 }
 
+export function resetPriorSuppressionForTests(): void {
+	priorSuppression = undefined;
+}
+
 // Called from SigninView.vue on a login attempt or on unmount; safe to call more than once.
 export function restoreNotificationSuppression(): void {
 	const notificationsStore = useNotificationsStore();

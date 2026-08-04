@@ -6,6 +6,7 @@ import type { Router } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import {
 	handleSessionExpired,
+	resetPriorSuppressionForTests,
 	resetSessionExpiredHandledFlag,
 	restoreNotificationSuppression,
 } from '@/app/utils/handleSessionExpired';
@@ -21,6 +22,7 @@ describe('handleSessionExpired', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		resetSessionExpiredHandledFlag();
+		resetPriorSuppressionForTests();
 		ownBackendURL = useRootStore().restApiContext.baseUrl;
 	});
 
@@ -121,6 +123,12 @@ describe('handleSessionExpired', () => {
 	});
 
 	describe('restoreNotificationSuppression', () => {
+		it('no-ops to false when called without a session expiry ever having happened', () => {
+			restoreNotificationSuppression();
+
+			expect(useNotificationsStore().areNotificationsSuppressed).toBe(false);
+		});
+
 		it('restores suppression to false when nothing suppressed it before the expiry', async () => {
 			const logout = vi.fn().mockResolvedValue({ redirectUrl: null });
 			vi.mocked(useUsersStore).mockReturnValue({
