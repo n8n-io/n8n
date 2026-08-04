@@ -311,18 +311,17 @@ export class WebhookService {
 
 	/**
 	 * `method path` for each webhook the given nodes would register, to compare two workflows
-	 * before either is published. Expression paths are skipped, since resolving one needs a live
-	 * workflow. So are paths holding `:`, which {@link getWebhookPath} prefixes with the node's
-	 * own webhook id, so no two nodes can claim the same one.
+	 * before either is published. Only paths registered verbatim count; the rest get prefixed
+	 * per node or per workflow (see {@link NodeHelpers.getNodeWebhookPath}) and cannot collide.
 	 */
 	getStaticWebhookKeys(nodes: INode[]): string[] {
 		return nodes.flatMap((node) => {
-			if (node.disabled === true) return [];
+			if (node.disabled === true || node.webhookId === undefined) return [];
 
 			const { description } = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			if (!description.webhooks?.length) return [];
+			const webhooks = description.webhooks?.filter(({ isFullPath }) => isFullPath === true);
+			if (!webhooks?.length) return [];
 
-			// Resolved, not raw: a webhook on its default method carries no `httpMethod`.
 			const parameters =
 				NodeHelpers.getNodeParameters(
 					description.properties,
@@ -334,12 +333,17 @@ export class WebhookService {
 				) ?? {};
 
 			const { path, httpMethod } = parameters;
-			if (typeof path !== 'string' || path.startsWith('=') || path.includes(':')) return [];
+			if (typeof path !== 'string' || path.startsWith('=')) return [];
+
+			let webhookPath = path.trim();
+			if (webhookPath.startsWith('/')) webhookPath = webhookPath.slice(1);
+			if (webhookPath.endsWith('/')) webhookPath = webhookPath.slice(0, -1);
+			if (webhookPath === '' || webhookPath.includes(':')) return [];
 
 			return [httpMethod]
 				.flat()
 				.filter((method): method is string => typeof method === 'string')
-				.map((method) => `${method} ${path}`);
+				.map((method) => `${method} ${webhookPath}`);
 		});
 	}
 
