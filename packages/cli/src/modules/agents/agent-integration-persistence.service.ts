@@ -8,17 +8,21 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
 	isUnconfiguredAgent,
 	type AgentActor,
 } from './agent-modification-telemetry.service';
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
+import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 
 export interface CredentialIntegrationMutationContext {
@@ -35,6 +39,8 @@ export class AgentIntegrationPersistenceService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly credentialsService: CredentialsService,
+		private readonly setupCompletionService: AgentSetupCompletionService,
 	) {}
 
 	/**
@@ -99,7 +105,19 @@ export class AgentIntegrationPersistenceService {
 
 		markAgentDraftDirty(agent);
 		this.runtimeCacheService.clearRuntimes(agent.id);
+		const credentialProvider = createAgentCredentialProvider(
+			this.credentialsService,
+			agent.projectId,
+			context.user,
+		);
+		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
+			agent,
+			agent.projectId,
+			credentialProvider,
+			context.user,
+		);
 		const result = await this.agentRepository.save(agent);
+		await emitSetupCompleted?.();
 		await this.recordIntegrationMutation(
 			result,
 			previousSchema,

@@ -13,6 +13,8 @@ export type ApiKeyScopeRequirement =
 
 export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
+export type SuccessStatus = 200 | 201 | 202 | 204;
+
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
@@ -53,6 +55,16 @@ export interface RouteMetadata {
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;
+	/** OpenAPI HTTP status sent on success, and documented as such. */
+	successStatus?: SuccessStatus;
+	/** OpenAPI operation summary. */
+	summary?: string;
+	/** OpenAPI operation description. */
+	description?: string;
+	/** OpenAPI operation tags. */
+	tags?: string[];
+	/** OpenAPI error responses. */
+	errorResponses?: number[];
 	args: Arg[];
 	router?: Router;
 }

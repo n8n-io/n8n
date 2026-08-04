@@ -505,5 +505,7 @@ function createDetail(): WorkflowReviewRequestDetail {
 		updatedAt: '2024-01-01T00:00:00.000Z',
 		description: null,
 		workflows: [],
+		viewerCanDecide: true,
+		viewerDecisionIneligibilityReason: null,
 	};
 }

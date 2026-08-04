@@ -4,11 +4,13 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
@@ -39,6 +41,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		activeVersionId: 'version-1',
 		schema: configuredConfig,
 		integrations: [],
+		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
 	} as Agent;
@@ -50,8 +53,11 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
 	const telemetry = mock<Telemetry>();
+	const credentialsService = mock<CredentialsService>();
+	const setupCompletionService = mock<AgentSetupCompletionService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	setupCompletionService.recordIfSetupComplete.mockResolvedValue(null);
 
 	return {
 		service: new AgentIntegrationPersistenceService(
@@ -60,12 +66,16 @@ function makeService() {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			new AgentModificationTelemetryService(telemetry),
+			credentialsService,
+			setupCompletionService,
 		),
 		agentRepository,
 		chatIntegrationService,
 		runtimeCacheService,
 		chatIntegrationRegistry,
 		telemetry,
+		credentialsService,
+		setupCompletionService,
 	};
 }
 
@@ -128,6 +138,38 @@ describe('AgentIntegrationPersistenceService', () => {
 			agentId,
 			{ type: 'slack', credentialId: 'slack-1' },
 			'connect',
+		);
+	});
+
+	it('records setup completion for the mutated agent only after the integration save succeeds', async () => {
+		const { service, agentRepository, credentialsService, setupCompletionService } = makeService();
+		const agent = makeAgent();
+		const emitSetupCompleted = vi.fn(async () => {});
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		setupCompletionService.recordIfSetupComplete.mockImplementation(
+			async (candidate, candidateProjectId, credentialProvider, actingUser) => {
+				expect(candidate.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
+				expect(candidateProjectId).toBe(projectId);
+				expect(actingUser).toBe(user);
+				expect(agentRepository.save).not.toHaveBeenCalled();
+				await credentialProvider.list();
+				return emitSetupCompleted;
+			},
+		);
+
+		await service.saveCredentialIntegration(
+			agent,
+			{ type: 'slack', credentialId: 'slack-1' },
+			{ ...byUser, broadcast: false },
+		);
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId,
+		});
+		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(emitSetupCompleted).toHaveBeenCalledOnce();
+		expect(agentRepository.save.mock.invocationCallOrder[0]).toBeLessThan(
+			emitSetupCompleted.mock.invocationCallOrder[0],
 		);
 	});
 

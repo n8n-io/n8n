@@ -6,7 +6,7 @@ import {
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	ActiveWorkflowTriggers,
@@ -20,16 +20,23 @@ import type { WorkflowId } from 'n8n-workflow';
 import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
+import { PublishedWorkflowTriggerDeactivator } from './published-workflow-trigger-deactivator';
 import { WorkflowPublicationLifecycleLock } from './workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox-consumer';
 
 /**
- * Periodically checks, on the leader, that every trigger which should be active
- * in memory really is, and re-publishes any workflow whose triggers went
- * missing. This recovers from the leader-transition edge case where a demoted
- * instance consumed a workflow's outbox record (marking it completed) and then
- * tore its triggers down, so the new leader never (re)activated them and no
- * pending record remains to reprocess.
+ * The one reconciliation loop of the workflow publication service. It ticks on
+ * every main instance for the whole process lifetime; what a tick does is
+ * decided by the instance's role at that moment, so leadership transitions
+ * never start or stop anything — only shutdown stops the loop.
+ *
+ * Leader ticks verify that the running state matches the published state —
+ * every trigger that should be active in memory really is, and the publication
+ * tables agree with each other — and heal whatever diverged. Causes are
+ * deliberately not enumerated here: a known cause is a bug to fix at its
+ * source; this loop exists to detect and repair what an unknown one leaves
+ * behind. Non-leader ticks instead sweep the registry for ghost registrations
+ * (see {@link PublishedWorkflowTriggerDeactivator}).
  *
  * Detection is scoped to non-webhook (poll/trigger) nodes, since those are the
  * ones held in the in-memory registry; webhook triggers live in the
@@ -37,16 +44,16 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
  * re-published. Recovery only enqueues through the outbox and wakes the consumer;
  * the applier does the actual re-registration, so this adds no activation logic.
  *
- * A third detection compares versions rather than trigger node ids: a
- * `workflow_published_version` mapping that disagrees with the workflow's
- * `activeVersionId` (a rolled-back or lost publication, or a missed unpublish)
- * is invisible to the node-id diffs when the trigger set is unchanged, so it is
- * detected in the database directly and healed through the same enqueue path.
- * Two further database detections complete the coverage: trigger-status rows
- * recorded for a version other than the active one (the mapping may already be
- * correct while the rows lag), and published workflows with no trigger-status
- * rows at all (published before the service was enabled, or a publication that
- * failed before reporting).
+ * The registry checks compare the trigger-status rows against what is
+ * registered in memory — and both were written by the last publication that
+ * was applied. They can tell when memory drifted from what was applied, but
+ * not whether what was applied is what the workflow's `activeVersionId` says
+ * it should be. Three database-only detections close that gap: a
+ * `workflow_published_version` mapping that disagrees with `activeVersionId`,
+ * trigger-status rows recorded for a version other than the active one, and
+ * published workflows with no trigger-status rows at all (also the expected
+ * state for anything published before the service was enabled). All heal
+ * through the same enqueue path.
  */
 @Service()
 export class WorkflowPublicationReconciler {
@@ -70,13 +77,12 @@ export class WorkflowPublicationReconciler {
 		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
+		private readonly publishedWorkflowTriggerDeactivator: PublishedWorkflowTriggerDeactivator,
 	) {
 		this.logger = logger.scoped('workflow-publication');
 	}
 
 	init() {
-		if (!this.instanceSettings.isLeader) return;
-
 		this.startReconciler();
 
 		// Run an initial pass at startup rather than waiting a full interval, so a
@@ -85,12 +91,10 @@ export class WorkflowPublicationReconciler {
 	}
 
 	/**
-	 * Deliberately no immediate pass on takeover: `PublishedWorkflowEnqueuer`
-	 * already re-enqueues every active workflow at that moment, and the
-	 * consumed-record race this loop recovers can only materialize after that
-	 * enqueue — the first interval pass catches it.
+	 * Starts the process-lifetime tick interval, on any role. Takeover never
+	 * starts or stops anything here — the loop is already ticking — but it does
+	 * kick an immediate pass (see {@link reconcileOnLeaderTakeover}).
 	 */
-	@OnLeaderTakeover()
 	startReconciler() {
 		if (!this.workflowsConfig.useWorkflowPublicationService) return;
 		if (this.isShuttingDown || this.reconcileInterval) return;
@@ -104,26 +108,28 @@ export class WorkflowPublicationReconciler {
 		this.logger.debug(`Trigger reconciliation scheduled every ${intervalSeconds}s`);
 	}
 
-	@OnLeaderStepdown()
-	stopReconciler() {
+	@OnShutdown()
+	shutdown() {
+		this.isShuttingDown = true;
 		clearInterval(this.reconcileInterval);
 		this.reconcileInterval = undefined;
 	}
 
-	@OnShutdown()
-	shutdown() {
-		this.isShuttingDown = true;
-		this.stopReconciler();
-	}
-
 	/**
-	 * One reconciliation pass: diff the triggers that should be active in memory
-	 * against what is registered, and re-publish any workflow with a missing
-	 * trigger. Errors are caught and reported so a transient failure never escapes
-	 * the interval; the next pass retries. Runs only on the leader.
+	 * One tick of the loop, gated by the instance's role at this moment. On the
+	 * leader: diff the triggers that should be active in memory against what is
+	 * registered, and re-publish any workflow with a missing trigger. On any
+	 * other role: sweep ghost registrations instead. Errors are caught and
+	 * reported so a transient failure never escapes the interval; the next pass
+	 * retries.
 	 */
 	async reconcile(): Promise<void> {
-		if (!this.instanceSettings.isLeader || this.isShuttingDown) return;
+		if (this.isShuttingDown) return;
+
+		if (!this.instanceSettings.isLeader) {
+			await this.publishedWorkflowTriggerDeactivator.sweepGhostTriggers();
+			return;
+		}
 
 		await this.tracing.startSpan(
 			{ name: 'Publication trigger reconciliation', op: 'publication.reconcile' },
@@ -183,6 +189,21 @@ export class WorkflowPublicationReconciler {
 				}
 			},
 		);
+	}
+
+	/**
+	 * A fresh leader must converge now, not an interval later: with an empty
+	 * registry, this pass re-detects every workflow that needs its triggers
+	 * back. Pending records left by the previous leader are excluded from the
+	 * detections and drained by the consumer's own takeover hook instead. Gated
+	 * on the loop running, so a disabled service or shutdown keeps takeover
+	 * inert.
+	 */
+	@OnLeaderTakeover()
+	async reconcileOnLeaderTakeover(): Promise<void> {
+		if (!this.reconcileInterval) return;
+
+		await this.reconcile();
 	}
 
 	private async findSurplusWorkflowIds(): Promise<WorkflowId[]> {

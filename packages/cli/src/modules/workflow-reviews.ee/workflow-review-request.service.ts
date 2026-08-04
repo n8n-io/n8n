@@ -17,7 +17,6 @@ import { Logger } from '@n8n/backend-common';
 import {
 	DbLock,
 	DbLockService,
-	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowPublishHistoryRepository,
@@ -30,15 +29,7 @@ import {
 	type WorkflowReviewRequestForWorkflowRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	GLOBAL_ADMIN_ROLE_SLUG,
-	GLOBAL_OWNER_ROLE_SLUG,
-	PROJECT_ADMIN_ROLE_SLUG,
-} from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-
-import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
-import { toEligibleReviewer } from './workflow-review.mapper';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -49,6 +40,10 @@ import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import { WorkflowReviewDecisionEligibilityService } from './workflow-review-decision-eligibility.service';
+import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
+import { toEligibleReviewer } from './workflow-review.mapper';
 
 /**
  * The workflow-scoped review request lifecycle: listing a workflow's reviews,
@@ -70,7 +65,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly userRepository: UserRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly decisionEligibilityService: WorkflowReviewDecisionEligibilityService,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
@@ -503,7 +498,10 @@ export class WorkflowReviewRequestService {
 		// Resolved before the lock: this query must not run inside the lock
 		// transaction, where it would need a second pooled connection while the
 		// transaction holds one — a deadlock on a single-connection pool.
-		const hasAdminOverride = await this.hasDecisionAdminOverride(user, request.projectId);
+		const hasAdminOverride = await this.decisionEligibilityService.hasAdminOverride(
+			user,
+			request.projectId,
+		);
 
 		// Fast path: reject a known author before queueing on the lock.
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
@@ -624,22 +622,6 @@ export class WorkflowReviewRequestService {
 		if (isAuthor && !hasAdminOverride) {
 			throw new ForbiddenError('Authors cannot decide on their own review request');
 		}
-	}
-
-	/**
-	 * Admins may decide reviews they authored. Limitation: only the built-in
-	 * global/project admin roles qualify — custom roles never grant the override.
-	 */
-	private async hasDecisionAdminOverride(user: User, projectId: string): Promise<boolean> {
-		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
-			return true;
-		}
-
-		const adminProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
-			user.id,
-			[PROJECT_ADMIN_ROLE_SLUG],
-		);
-		return adminProjectIds.includes(projectId);
 	}
 
 	/**

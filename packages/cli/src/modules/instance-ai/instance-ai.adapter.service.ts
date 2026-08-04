@@ -58,7 +58,7 @@ import {
 	upsertEvaluationConfigSchema,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES, Time } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
@@ -393,19 +393,14 @@ export class InstanceAiAdapterService {
 
 	/**
 	 * Fail-open read of the AI Gateway config. Returns null when the instance is
-	 * unlicensed for the gateway or the fetch fails for any reason. Every consumer
+	 * disabled or the fetch fails for any reason. Every consumer
 	 * (node annotations, credential list, verifier) treats a null as "gateway not
 	 * available", a valid degraded state. Backed by `AiGatewayService`'s own
 	 * process-wide cache (1h TTL), so repeated calls are cheap.
 	 */
 	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
-		// Gate on the AI Gateway license before touching the config. The FE path
-		// is gated by `@Licensed('feat:aiGateway')` on the controller; this adapter
-		// calls the service directly, so it must enforce the same license itself —
-		// otherwise unlicensed instances would surface n8n Connect (node metadata,
-		// managed credentials) and count it as available in telemetry.
-		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
 		try {
+			this.aiGatewayService.assertEnabled();
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch {
 			return null;

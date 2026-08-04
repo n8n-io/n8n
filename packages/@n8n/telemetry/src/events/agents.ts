@@ -144,12 +144,13 @@ const agentWrite = {
  * Shared by the three publish events. `republish` activates an older snapshot
  * — a rollback rather than shipping new work — so a "published" count that
  * should mean the latter must exclude it. `channel_connect` and `slack_setup`
- * are auto-publishes riding along with another action rather than something
- * the actor asked for directly.
+ * are retained only for compatibility with historical auto-publish rows.
  */
 const agentPublishTrigger = z
 	.enum(['explicit', 'republish', 'channel_connect', 'slack_setup'])
-	.describe('What caused the publish, as opposed to who performed it');
+	.describe(
+		'What caused the publish, as opposed to who performed it. channel_connect and slack_setup are historical values only.',
+	);
 
 const agentPublish = {
 	...agentActorIdentity,
@@ -180,7 +181,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			mcp_server_count: z.number().describe('MCP servers with a URL set'),
 			vector_store_count: z.number(),
 			task_count: z.number(),
-			trigger_count: z.number().describe('Connected chat integrations; draft channels excluded'),
+			trigger_count: z.number().describe('Configured chat integrations; draft channels excluded'),
 			status: agentStatus,
 		}),
 	},
@@ -286,7 +287,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_PUBLISHED_AGENT: {
 		name: 'User published agent',
 		description:
-			'A user published an agent version, making it the active one. One of three same-shaped publish events ("Builder published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing. Covers every user-driven publish, so `trigger` must be filtered: `channel_connect` and `slack_setup` are auto-publishes riding along with connecting a channel or completing Slack setup, not something the user asked for, and `republish` is a rollback to an older snapshot. event_version 2 moved the emit from the frontend to the backend, which replaced the editor-only scope (version-history publishes were missing) with every user surface, dropped config_version, status and session_id, and added project_id, user_id, trigger, version_id and the capability profile.',
+			'A user explicitly published an agent version, making it the active one. One of three same-shaped publish events ("Builder published agent", "MCP published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing. `republish` identifies a rollback to an older snapshot; `channel_connect` and `slack_setup` are retained only as historical trigger values. event_version 2 moved the emit from the frontend to the backend, which replaced the editor-only scope (version-history publishes were missing) with every user surface, dropped config_version, status and session_id, and added project_id, user_id, trigger, version_id and the capability profile.',
 		properties: z.object({
 			...agentPublish,
 			event_version: z.literal('2'),
@@ -304,7 +305,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	MCP_PUBLISHED_AGENT: {
 		name: 'MCP published agent',
 		description:
-			'An MCP client published an agent version, through the `publish_agent` tool or by connecting a channel with `update_agent_integration`. One of three same-shaped publish events ("User published agent", "Builder published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing. Before this event existed these publishes were reported as "Agent published" with source "builder", so they were indistinguishable from Instance AI builder publishes.',
+			'An MCP client explicitly published an agent version through the `publish_agent` tool. One of three same-shaped publish events ("User published agent", "Builder published agent") — union them for total agent publishing, or read one for that surface alone. Emitted from `AgentPublishService.publishAgent`; an idempotent no-op publish emits nothing. Before this event existed these publishes were reported as "Agent published" with source "builder", so they were indistinguishable from Instance AI builder publishes.',
 		properties: z.object({
 			...agentPublish,
 			event_version: z.literal('1'),
@@ -388,10 +389,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ADDED_TRIGGER: {
 		name: 'Builder added trigger to agent',
 		description:
-			'The Instance AI builder connected a chat channel to the target agent via the configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
+			'The Instance AI builder configured and persisted a chat channel for the target agent through the configure_channel tool, mirroring the frontend "User added trigger to agent" event.',
 		properties: z.object({
 			...builderSessionIdentity,
-			trigger_type: z.string().describe('Chat integration type that was connected'),
+			trigger_type: z.string().describe('Chat integration type that was configured and persisted'),
 		}),
 	},
 	BUILDER_ASKED_QUESTIONS: {
@@ -463,11 +464,11 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	},
 	USER_ADDED_TRIGGER_TO_AGENT: {
 		name: 'User added trigger to agent',
-		description: 'The user connected a chat trigger to an agent from the builder.',
+		description: 'The user configured and persisted a chat trigger from the agent builder.',
 		properties: z.object({
 			agent_id: z.string(),
 			trigger_type: z.string(),
-			triggers: z.array(z.string()).describe('Connected trigger types after the change'),
+			triggers: z.array(z.string()).describe('Configured trigger types after the change'),
 			config_version: z.string(),
 			status: agentStatus,
 			session_id: sessionId,
