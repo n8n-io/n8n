@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  ai_agent 815-820
+  s_550c7bf33f188f::t_bc9da727fa9370 813-814
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.test.ts
+  s_550c7bf33f188f::t_b3231a42412b33 197-198,206-207,212-213,216,221-222,225,228,230,233
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_550c7bf33f188f::t_be7bbb100e7120 23
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_550c7bf33f188f::t_6c94f10982daa5 52-54,58,60,66-67
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.json
+  s_550c7bf33f188f::t_a6448dc6565d57 9
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_550c7bf33f188f::t_db0ddc3c3d7c5f 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "52028e68a88722987f182986fd7a650dded3d2f2",
+  "prompts": {},
+  "sessions": {
+    "s_550c7bf33f188f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d3978c2-1e01-4195-bc9f-6de514a8cfd4",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

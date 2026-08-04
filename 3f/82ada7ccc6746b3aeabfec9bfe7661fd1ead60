@@ -1,0 +1,152 @@
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_874a0c5affc5fe::t_edd9b208e8bce6 2,34,43
+  s_874a0c5affc5fe::t_4c93da3de32aa9 20
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_874a0c5affc5fe::t_a05f52f424226d 41
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_874a0c5affc5fe::t_5e18d0e503fc36 614,656-662,664-675
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_874a0c5affc5fe::t_21d92fd308e70b 36,489
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_874a0c5affc5fe::t_485385333399a0 57
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_874a0c5affc5fe::t_b3bd54f6cc675d 290-291,293
+  s_874a0c5affc5fe::t_e02dd173177f99 292
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_874a0c5affc5fe::t_5e25cbe71921f4 172-175,188-196,251-254,316-319
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_874a0c5affc5fe::t_02912a972070ac 139
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_874a0c5affc5fe::t_92f80d80bb5cd2 304
+  s_874a0c5affc5fe::t_78cbd673656bd5 93
+  s_874a0c5affc5fe::t_e47f1d305ef741 87-92,94-96,365-368,408-410,412
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_874a0c5affc5fe::t_3ad98e32c6c79a 334,448,465,590,595,643,773,776,790-796
+  s_874a0c5affc5fe::t_ba35144cd10907 710
+  s_874a0c5affc5fe::t_f31127362c3180 167
+  s_874a0c5affc5fe::t_a05f52f424226d 701-702,704-709,711-714,716,718,722-724,728,730,733
+  s_874a0c5affc5fe::t_d06ed3536259b2 985
+  s_874a0c5affc5fe::t_1013f8443fb4c6 566,593,614,825-842
+  s_874a0c5affc5fe::t_54af20592ac4bb 619
+  s_874a0c5affc5fe::t_4c93da3de32aa9 703,715
+  s_874a0c5affc5fe::t_4d12f48c1ffbf2 504-506,553-557,675,783,797-824
+  s_874a0c5affc5fe::t_fbdbc96ce96364 843
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_874a0c5affc5fe::t_6fbc0f47402e60 189
+  s_874a0c5affc5fe::t_2a0ee1109bbb2d 159,196,206
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_874a0c5affc5fe::t_da9b1c7981da2c 121,131,134-142,613,732,761,822-824
+  s_874a0c5affc5fe::t_52abc77ae6baba 633
+  s_874a0c5affc5fe::t_78cbd673656bd5 756-759,767-768,774,778,786
+  s_874a0c5affc5fe::t_74cb5f4b253c42 615,618,620,622-624,632,733,736,738,743,750-755,760,769-770,776,779-785,787-788
+  s_874a0c5affc5fe::t_09211c991b4d18 762-766
+  s_874a0c5affc5fe::t_378a8de2126685 771-773
+  s_874a0c5affc5fe::t_c55dec3ba28e4e 775
+  s_874a0c5affc5fe::t_07565d2157991a 777
+  s_874a0c5affc5fe::t_53ea010deac9a0 789
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_874a0c5affc5fe::t_681da63bd875d4 133
+  s_874a0c5affc5fe::t_a05f52f424226d 129
+  s_874a0c5affc5fe::t_f31127362c3180 127
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_874a0c5affc5fe::t_4c93da3de32aa9 315-316,322,332,342
+  s_874a0c5affc5fe::t_b3bd54f6cc675d 323
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_874a0c5affc5fe::t_1b8b3eeb50dd7e 428
+  s_874a0c5affc5fe::t_ac84ddb33be9a0 413-421,426,436
+  s_874a0c5affc5fe::t_84729ba753c85a 427
+  s_874a0c5affc5fe::t_7083a4db72328f 395-398
+  s_874a0c5affc5fe::t_2b82e0d126a161 381,422-425
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_874a0c5affc5fe::t_30d34449807730 15
+  s_874a0c5affc5fe::t_25293624c5ba79 36
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_874a0c5affc5fe::t_ad53aaf4bb0fae 148-152,154-157
+  s_874a0c5affc5fe::t_a1ee33b17e1c8c 111-118,131
+packages/cli/src/modules/agents/__tests__/messages-envelope.test.ts
+  s_874a0c5affc5fe::t_32b5177dbd1c96 36
+  s_874a0c5affc5fe::t_419838737b55da 84
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_874a0c5affc5fe::t_54067693e29b25 76,759-773,775,781,783-785,790-805,807-818,820,898-899,980,989
+  s_874a0c5affc5fe::t_25bdd3d5da10fc 819
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_874a0c5affc5fe::t_42d39e7f46571a 9-10,81,83,116-122,125-131,136,138-139,142,155,198-199
+  s_874a0c5affc5fe::t_6d7ab2af841f89 360,362-363
+  s_874a0c5affc5fe::t_3296a11a7a2f92 112,124
+  s_874a0c5affc5fe::t_776c77f1b0a1c2 123,141,353-356,361
+  s_874a0c5affc5fe::t_20239142ccf8b1 156,191,203-207,217
+  s_874a0c5affc5fe::t_ea4dc74764f632 75,77-80,82,84-85,113,132-134,137,145-146,149-152,154,178-179,181,185-190,192-197,200,211-212,214-215,221-222,233-234
+  s_874a0c5affc5fe::t_332e33aa8c2d9a 115
+  s_874a0c5affc5fe::t_8ea64cc29e15a3 157
+packages/cli/src/modules/agents/__tests__/agents-builder.service.test.ts
+  s_874a0c5affc5fe::t_4566b459a44b85 17,20,26,29,31
+  s_874a0c5affc5fe::t_4c93da3de32aa9 59
+  s_874a0c5affc5fe::t_b1ffcbf45e177d 76
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_874a0c5affc5fe::t_6ac148134dd6c9 184
+packages/@n8n/agents/src/index.ts
+  s_874a0c5affc5fe::t_4bf9ea0102e267 278,285
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_874a0c5affc5fe::t_9808c142a70d6d 4688,4690-4693,4698-4700,4702,4705,4707-4708,4710-4728
+  s_874a0c5affc5fe::t_0f0a10a42e0bef 540-541
+  s_874a0c5affc5fe::t_669bcff1c858dd 79-81,2351,2407,4694,4735,4780,4820,4879,4913,6616
+  s_874a0c5affc5fe::t_a56f83e1b8004c 2352,2408,4695-4697,4704,4706,4781-4783,4789,4791,4821-4823,4830,4832,4880-4886,4888,4914-4920,4922
+  s_874a0c5affc5fe::t_f4e547618bc749 4864-4875,4878,4887,4890,4892-4909,4912,4921,4923-4924,4926-4933
+  s_874a0c5affc5fe::t_9b128eea731f72 4889
+  s_874a0c5affc5fe::t_e7070c5525071f 509
+  s_874a0c5affc5fe::t_399cc14bbbd848 1714,1722
+  s_874a0c5affc5fe::t_020bd977c516dc 6631,6661,6667-6668
+  s_874a0c5affc5fe::t_3720a2c3075df1 1673,1682
+  s_874a0c5affc5fe::t_89b9aa31705712 4709,4755,4794,4891,4925
+  s_874a0c5affc5fe::t_4c93da3de32aa9 4876-4877,4910-4911
+  s_874a0c5affc5fe::t_894c5a4ffa89e5 4729-4734,4736-4743,4745-4750,4758-4763,4765,4770-4771
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_874a0c5affc5fe::t_ad53aaf4bb0fae 347-359,362,368,380-390,392,394
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_874a0c5affc5fe::t_d3b62e183a2433 769-777,781-785,812-816
+  s_874a0c5affc5fe::t_04e9eb5fdb40d7 134-150,152-164,704,731-733,738,767-768,779-780,786-787,810-811,817-818
+  s_874a0c5affc5fe::t_faf057f87853df 729-730
+  s_874a0c5affc5fe::t_78cbd673656bd5 1-6,151
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_874a0c5affc5fe::t_9b4a008b1e9db3 15,30-39,41-53
+  s_874a0c5affc5fe::t_9fc3d20961d8b8 522-528
+  s_874a0c5affc5fe::t_e2bd5159d6dc51 559,566-568,572,578-580
+  s_874a0c5affc5fe::t_a1d060dd1ee5dc 463-465,468
+  s_874a0c5affc5fe::t_1e50de621f97bf 607-612,618-619,641,646-650,652-653,660-661
+  s_874a0c5affc5fe::t_0ade2343328ce7 622-639
+  s_874a0c5affc5fe::t_32e3198e8e6d6a 18,20,55-79,450,591-593,651
+  s_874a0c5affc5fe::t_77bf032c2ecf3c 1,40
+  s_874a0c5affc5fe::t_b3fa0862d4f4ca 54
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_874a0c5affc5fe::t_7079129ffd5258 315-320,328,379
+packages/@n8n/agents/src/sdk/tool.ts
+  s_874a0c5affc5fe::t_f31127362c3180 108-116,136
+packages/@n8n/agents/src/sdk/agent.ts
+  s_874a0c5affc5fe::t_d210db25081d0f 99-106
+  s_874a0c5affc5fe::t_d9ded97e91c381 1158,1173,1175,1187
+  s_874a0c5affc5fe::t_364b966028b5a3 98
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_874a0c5affc5fe::t_60f264e7dff8d1 13,195-196,202
+  s_874a0c5affc5fe::t_295f0c1251ede9 197-198
+  s_874a0c5affc5fe::t_0208e17c946233 3,186-187
+packages/cli/src/modules/agents/utils/messages-envelope.ts
+  s_874a0c5affc5fe::t_6ac148134dd6c9 99
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_874a0c5affc5fe::t_fbd3679fd26971 492,494
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3f82ada7ccc6746b3aeabfec9bfe7661fd1ead60",
+  "prompts": {},
+  "sessions": {
+    "s_874a0c5affc5fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb3d8-256c-7972-b467-0a43adf82ffa",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

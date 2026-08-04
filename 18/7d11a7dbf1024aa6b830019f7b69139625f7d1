@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_704a1a6a42be24::t_56c7980a4ebcae 330-334
+  s_704a1a6a42be24::t_a5317d19ca1bdf 2
+  s_704a1a6a42be24::t_8bad6613dbf760 701
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_704a1a6a42be24::t_84680ab657ee01 77,82
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_704a1a6a42be24::t_7017d2ccd48e22 1092-1102,1104-1117
+  s_704a1a6a42be24::t_6987f920459110 1103
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_704a1a6a42be24::t_e93e680071fea7 38-43
+  s_704a1a6a42be24::t_a0cbf9f4c6eb0d 185-191
+  s_704a1a6a42be24::t_dddec1690b4702 77-92
+  s_704a1a6a42be24::t_c1d21e59dc09e9 113
+  s_704a1a6a42be24::t_3a52254481bb99 246-247,253-261
+  s_704a1a6a42be24::t_a47dd5e5ecd6b3 13-25,36-37,44-45,57-60,94-95,102-110,144,152-155,170-184,192-202,204-206,208-229,232-236,241-245,248-252,262-278,280-295,297-404,406-440,442-445,455-561
+  s_704a1a6a42be24::t_6c58e3bb436ffe 111-112
+  s_704a1a6a42be24::t_7f7c1c31b0b516 441
+  s_704a1a6a42be24::t_c8c1bbdb0b204e 203,207
+  s_704a1a6a42be24::t_59ea0fe5f44388 279
+  s_704a1a6a42be24::t_5ca0dba3ce63d5 33
+  s_704a1a6a42be24::t_13cbd30b6717ce 405
+  s_704a1a6a42be24::t_7be71ef49283aa 230
+  s_704a1a6a42be24::t_57e81354b24102 296
+  s_704a1a6a42be24::t_4e03ed12442f08 118,122,142-143,145-151
+  s_704a1a6a42be24::t_45dc26c0540290 12
+  s_704a1a6a42be24::t_92e36cad2f8a74 93
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_704a1a6a42be24::t_f4961577d56b7f 1114
+  s_704a1a6a42be24::t_2b06302a99d1eb 1039,1058,1062,1064,1066-1067,1069,1071,1085,1124,1134
+  s_704a1a6a42be24::t_b3f66fdc1657a0 1099,1101,1120
+  s_704a1a6a42be24::t_3359cbb8e0ba25 1074,1084,1086-1098,1100,1102-1113,1115-1119,1121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "187d11a7dbf1024aa6b830019f7b69139625f7d1",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

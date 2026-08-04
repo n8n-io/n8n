@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/app/utils/fileUtils.test.ts
+  s_e5d81e334653da::t_1f660f2efd7fed 1-10,16-44,48-50,52-77,79-86
+  s_e5d81e334653da::t_34f46083bec9fa 11-15
+  s_e5d81e334653da::t_2f299a23651b0c 45-47,51
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataBinary.vue
+  s_e5d81e334653da::t_146cb528ce3a48 48-50
+  s_e5d81e334653da::t_6f55e6134e31ff 7
+  s_e5d81e334653da::t_6e93e51b4d21ed 54,59
+packages/frontend/editor-ui/src/features/ndv/runData/components/BinaryEntryDataTable.vue
+  s_e5d81e334653da::t_b1afa715d9df56 11
+  s_e5d81e334653da::t_b7ea2f544e1027 34
+packages/frontend/editor-ui/src/app/utils/fileUtils.ts
+  s_e5d81e334653da::t_9c93fa73863a66 10-13
+  s_e5d81e334653da::t_0f4a10d125c513 4,6
+  s_e5d81e334653da::t_5f75ecd65bacea 1-3,5,7-9,14-17
+  s_e5d81e334653da::t_3039597fd28f67 28-29
+packages/frontend/editor-ui/src/features/execution/logs/composables/useChatMessaging.ts
+  s_e5d81e334653da::t_175df358a4135e 82-83
+  s_e5d81e334653da::t_173ea3af20a314 12
+  s_e5d81e334653da::t_bf5e2b1b9a42e8 25
+packages/frontend/editor-ui/src/features/ndv/runData/components/VirtualSchemaItem.vue
+  s_e5d81e334653da::t_7512d20f09e5dc 11
+  s_e5d81e334653da::t_6e56a9cbc5a8e1 44,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8900dcf08d0de3e5a9eb2be98eabfb1615f21101",
+  "prompts": {},
+  "sessions": {
+    "s_e5d81e334653da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0bd5b28-7856-4bb6-9c98-62603e44a6ac",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

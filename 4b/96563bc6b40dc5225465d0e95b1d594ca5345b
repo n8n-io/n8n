@@ -1,0 +1,99 @@
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_3b578f9ce699f0::t_71795ad3b0c13e 466-474
+  s_3b578f9ce699f0::t_4a968e86e86733 449,453
+  s_3b578f9ce699f0::t_0468c84262e767 33-36
+  s_3b578f9ce699f0::t_880d877435ef95 202,361,380,399,425,459
+  s_3b578f9ce699f0::t_8ad39f8b0b944b 343
+  s_3b578f9ce699f0::t_09072fc02fee85 434
+  s_3b578f9ce699f0::t_dac7d8b297bbb3 322-332
+  s_3b578f9ce699f0::t_7a594c8858ba4e 497-527
+  s_3b578f9ce699f0::t_0a475c75dd95bc 238,485
+  s_3b578f9ce699f0::t_e86a16131e04b3 293
+  s_3b578f9ce699f0::t_a0a421211ac892 528-529,669
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_3b578f9ce699f0::t_e7e75031d18a28 866
+  s_3b578f9ce699f0::t_48440db67f2bbb 891
+  s_3b578f9ce699f0::t_89ddc2e9e6b9fa 959
+  s_3b578f9ce699f0::t_602f7d497f9fbd 1370
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_3b578f9ce699f0::t_0531d192f0d74c 370,432
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_3b578f9ce699f0::t_4416efe3362b49 687
+  s_3b578f9ce699f0::t_04bd5c6141f68a 805
+  s_3b578f9ce699f0::t_721f2053cdfc84 1486
+packages/cli/src/modules/agents/agents.service.ts
+  s_3b578f9ce699f0::t_a057d469c6f739 55-58,69
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  s_3b578f9ce699f0::t_eff5bfc8054e2e 106
+  s_3b578f9ce699f0::t_943e022563233b 73-85,87-90
+  s_3b578f9ce699f0::t_c0058491400e42 86
+  s_3b578f9ce699f0::t_8a3ddb1115f96a 159-183,190
+  s_3b578f9ce699f0::t_28fceb22e24c91 112
+  s_3b578f9ce699f0::t_7aee6f168e7469 158
+  s_3b578f9ce699f0::t_1d71555b0a4a1f 91-94,114,119
+  s_3b578f9ce699f0::t_4c9efc3e738a35 115-118,120,125-129
+  s_3b578f9ce699f0::t_f6d4b7ffda63fc 17-18
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_3b578f9ce699f0::t_576428f0c1287e 115
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_3b578f9ce699f0::t_e1fce5fe57990c 85
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_3b578f9ce699f0::t_0e6e98011883f0 160,166-167
+  s_3b578f9ce699f0::t_5c6aa31c6feea0 152
+  s_3b578f9ce699f0::t_a328ef42c5ef67 189-191
+  s_3b578f9ce699f0::t_278abab908096d 178-180
+  s_3b578f9ce699f0::t_b0a508b88ad60d 115
+  s_3b578f9ce699f0::t_bfab05840ff0dd 168
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_3b578f9ce699f0::t_2e4633ca428867 1794
+  s_3b578f9ce699f0::t_cb274e4203b6a4 1822
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_3b578f9ce699f0::t_6ec0d5647aa9f0 316,430
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_3b578f9ce699f0::t_c1e412918c9063 267
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_3b578f9ce699f0::t_4de65317d73dcc 325-417,422,514
+  s_3b578f9ce699f0::t_a7005821cf6405 49-60
+  s_3b578f9ce699f0::t_e6346ed0c7ab9e 121
+  s_3b578f9ce699f0::t_e03c53efc2f79c 24
+  s_3b578f9ce699f0::t_9f6a189dab2213 303
+  s_3b578f9ce699f0::t_ae99942cfdb999 43-47
+  s_3b578f9ce699f0::t_ec823c8192fba0 200
+  s_3b578f9ce699f0::t_6fa83065ed03a0 286
+  s_3b578f9ce699f0::t_7111d82083c95b 28
+  s_3b578f9ce699f0::t_3b00c4b72eef51 48,462,524-526
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_3b578f9ce699f0::t_818e5899990ece 55
+  s_3b578f9ce699f0::t_26488c19b3c45b 33
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_3b578f9ce699f0::t_0707c2c98663d0 756-822
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_3b578f9ce699f0::t_4416edece632b2 575
+packages/@n8n/telemetry/src/events/agents.ts
+  s_3b578f9ce699f0::t_0b61ac1f0ccdd0 283-336
+  s_3b578f9ce699f0::t_f9c86786e080f2 99
+  s_3b578f9ce699f0::t_1c23b4eab975ab 137-139
+  s_3b578f9ce699f0::t_4e612abf9c0073 95-96,100-108,120-134,140-157
+  s_3b578f9ce699f0::t_6943660a77b8e3 234,236,243,245,252,254,261,263-264,270,272-273,279,281-282
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_3b578f9ce699f0::t_e650afa8a390ba 276
+  s_3b578f9ce699f0::t_ce955ef8d72910 21
+  s_3b578f9ce699f0::t_1f6e22d8940bc3 22
+  s_3b578f9ce699f0::t_bdb6d44aad6279 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "4b96563bc6b40dc5225465d0e95b1d594ca5345b",
+  "prompts": {},
+  "sessions": {
+    "s_3b578f9ce699f0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ddba1740-6ef6-4c26-8336-de4bbd15e873",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_ed9a87cac51448::t_3c5e5c770fbfe4 22-23,75,79-83,86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "86448621f0c8cca5b8b22253538333757b78197b",
+  "prompts": {},
+  "sessions": {
+    "s_ed9a87cac51448": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7913c882-9152-4638-8f4e-20d120c07171",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,135 @@
+packages/cli/src/modules/agents/integrations/callback-store.ts
+  s_128327338c4b0b::t_79c2a2d0889498 18,78,81,88
+  s_a1f1a4fb8006c1::t_3577b3d8e7506e 3-5,17,24-25,29-30,33,40,42-43,46-49,57-76,79-80,83-87,89-90,93-95
+  s_da62b6feda2657::t_20a95efa630918 1,16,22-23,28,31-32,41,44-45,50-51,82
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_da62b6feda2657::t_c7d956a05fc181 156-158
+  s_da62b6feda2657::t_f4aa5ebf42e0db 196-198
+  s_da62b6feda2657::t_53731389980ee2 5-9,26-28,30-32,38-40,43,61-62,65-67,69,71,113-155,159-195,199-206,211-217
+  s_da62b6feda2657::t_973198b915596a 207-210
+  s_da62b6feda2657::t_3894a5f616a2fc 218
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_a1f1a4fb8006c1::t_798195909dfe2c 154,161-162,165-178
+  s_da62b6feda2657::t_5acccaf95e58a1 6,9-11,22,36-40,151-152,155,160,163-164,179,188-192,203,230-259,363-379,381-433
+  s_a1f1a4fb8006c1::t_55b875aea13ca6 12
+  s_da62b6feda2657::t_6ed8763ed2ce2c 153
+  s_a1f1a4fb8006c1::t_aa7fd36c30e2cb 380
+  s_6ec654f3394769::t_b1a9bc5d6ccda8 180,434
+packages/cli/src/modules/agents/integrations/__tests__/helpers/discord/replay-test-context.ts
+  s_da62b6feda2657::t_bd4a8bc2066a79 184
+  s_da62b6feda2657::t_0141df31fb27f5 204
+  s_da62b6feda2657::t_aa3971b71b3367 4
+  s_da62b6feda2657::t_cd57da4cdf1bba 5
+  s_da62b6feda2657::t_2a2f8592838188 6,11-13,103,111-120,123-129,147-152,159-168,172-183,208,211-212,238-263,266
+  s_da62b6feda2657::t_848ce5e5acf695 169-171
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_da62b6feda2657::t_927a48e9ecd24e 8,18
+  s_da62b6feda2657::t_139d36ae2ec2d6 114-118,144-146
+  s_da62b6feda2657::t_705f2f5cc2f1ba 259
+  s_da62b6feda2657::t_683b983b845017 229-233
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_ec8fe17c911742::t_9619bd747684c3 922-926,928-944,947,949-955,958-962
+  s_ec8fe17c911742::t_1d8d0edd8abce6 927,945-946,956-957
+  s_a49788fde4d0c1::t_d0ca1f482c1fd8 948
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_da62b6feda2657::t_7b0b0b0104ed33 354-371
+  s_da62b6feda2657::t_b2383373087670 122-131
+packages/cli/src/modules/agents/integrations/__tests__/callback-store.test.ts
+  s_da62b6feda2657::t_9ea3aa7cf80018 4-25,27-92
+  s_da62b6feda2657::t_db5305b8691b6d 1,3,26
+  s_da62b6feda2657::t_4c16aebb3f347b 2
+packages/cli/src/modules/agents/integrations/platforms/__tests__/discord/synthetic-integration.test.ts
+  s_da62b6feda2657::t_752715bd22dd02 99-100,105
+  s_ec8fe17c911742::t_bf6d748ea001aa 190
+  s_da62b6feda2657::t_3e935ff9edf658 183-189,191,199-222
+  s_5113da58741f6d::t_e3ccf2d24ca403 223-224
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_ec8fe17c911742::t_e52934af8d512e 896-983
+  s_a49788fde4d0c1::t_ec96be9cf34182 6,8
+  s_a49788fde4d0c1::t_3c1329200b5897 101-152
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_da62b6feda2657::t_f2d1448622278b 10,38
+  s_da62b6feda2657::t_f0aaff01cdd213 179-189
+packages/cli/src/modules/agents/integrations/__tests__/discord-gateway-lifecycle.test.ts
+  s_da62b6feda2657::t_1cf40e80c2b13d 5-7,79-84,93,96,100-107,117,199-202,204-206,232-252,283
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_a49788fde4d0c1::t_cf983de507a045 541-548
+  s_ec8fe17c911742::t_710a9afbda3249 529-532,534-538,540,550
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_ec8fe17c911742::t_5e754d29837281 267-281
+  s_a49788fde4d0c1::t_640e47d8a7498a 54-59,67
+  s_a49788fde4d0c1::t_54ff37a081a6d8 10,16,18
+  s_a49788fde4d0c1::t_a7e2854c0c802d 122
+packages/cli/src/modules/agents/integrations/platforms/discord-gateway.ts
+  s_da62b6feda2657::t_8d56f93a18e1ef 108-119
+  s_da62b6feda2657::t_00f9726208a196 107
+packages/cli/src/modules/agents/integrations/platforms/discord-operations.ts
+  s_da62b6feda2657::t_ba2052bcaa5e61 200-204,209,212-218
+  s_da62b6feda2657::t_a20efc76f74ac3 141-175,182-199,205-208,210-211,219-221
+  s_ec8fe17c911742::t_a97e17a50df472 176-181
+  s_da62b6feda2657::t_9af6d34f156a30 7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f81283a4cad7ce5363e71b24656a28bcbff6ac9f",
+  "prompts": {},
+  "sessions": {
+    "s_128327338c4b0b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "61932990-b7fa-4d9a-911b-b1b532a0fe01",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5113da58741f6d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3b298141-c419-44c6-8d40-5e6665a156c2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_6ec654f3394769": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7cccb2c9-cc06-4fb1-8fe3-acead435ac9c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a1f1a4fb8006c1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "79875e3b-a80c-448d-bd71-1941b9c569a5",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a49788fde4d0c1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5f6f5b49-307b-4cc8-8e93-9a4ce30316b2",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_da62b6feda2657": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "20c91f78-57db-484c-bb3e-f38ebe6bd20a",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ec8fe17c911742": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "99256252-4fc2-4a78-9a89-ed47b15a96cd",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

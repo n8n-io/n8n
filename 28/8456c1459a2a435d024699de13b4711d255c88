@@ -1,0 +1,34 @@
+packages/@n8n/db/src/repositories/webhook.repository.ts
+  s_89867a842b5610::t_c82e5444a09b17 28-38
+packages/@n8n/db/src/entities/webhook-entity.ts
+  s_89867a842b5610::t_3cbd46a9fc4156 32-33,35
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_89867a842b5610::t_99e760fac79aad 42-48
+  s_89867a842b5610::t_2e3112dc7cc3cb 190-194,196,201
+  s_89867a842b5610::t_964418428851a7 92-95,97,100,107-116,122,132,134
+  s_89867a842b5610::t_0af9fbcc91e806 163
+  s_89867a842b5610::t_c4188479faa0cc 96,98-99
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_89867a842b5610::t_f5259f1f7992d3 310-343,346-348,350-380,383-385,387-407
+  s_89867a842b5610::t_aafaf3ec47d4a4 381-382,386
+  s_89867a842b5610::t_dbef8eba54503a 408
+packages/cli/src/webhooks/webhook.service.ts
+  s_89867a842b5610::t_f0630ead566605 119-160
+  s_89867a842b5610::t_df13d61ea42013 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "288456c1459a2a435d024699de13b4711d255c88",
+  "prompts": {},
+  "sessions": {
+    "s_89867a842b5610": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a94829-8828-44fb-a069-80e494888f0d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

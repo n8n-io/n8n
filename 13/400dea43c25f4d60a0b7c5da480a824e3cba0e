@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.test.ts
+  s_03e31bd3d32fb7::t_bb106ae77c308d 82
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_03e31bd3d32fb7::t_7470402de816d2 317
+  s_03e31bd3d32fb7::t_debab89c53440f 60
+  s_03e31bd3d32fb7::t_068692392b9751 108
+  s_03e31bd3d32fb7::t_54521ca0c5914c 2-3
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_03e31bd3d32fb7::t_f1ac36a1b1a1bb 67
+  s_03e31bd3d32fb7::t_db89ab27d9b2e7 1
+  s_03e31bd3d32fb7::t_cbc419198b57a7 92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "13400dea43c25f4d60a0b7c5da480a824e3cba0e",
+  "prompts": {},
+  "sessions": {
+    "s_03e31bd3d32fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a23cf9e9-0732-42b0-a3d7-4997316c07d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
