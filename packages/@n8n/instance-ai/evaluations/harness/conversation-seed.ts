@@ -313,7 +313,11 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 
 	const originalIds = new Set(seed.workflows.map((workflow) => workflow.id));
 	let serialized = JSON.stringify({ messages: seed.messages, workflows: seed.workflows });
-	for (const workflow of seed.workflows) {
+	// Longest id first, for the same reason the name pass below sorts: if one id were a
+	// prefix of another ("abcdefgh" / "abcdefgh12"), rewriting the short one first would
+	// eat the long one's prefix and leave it with a derived id no later pass matches.
+	const byLongestId = [...seed.workflows].sort((a, b) => b.id.length - a.id.length);
+	for (const workflow of byLongestId) {
 		// Workflow ids are long random tokens; a short id would risk rewriting
 		// unrelated substrings, so refuse instead of corrupting the seed.
 		if (workflow.id.length < 8) {

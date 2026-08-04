@@ -415,6 +415,19 @@ describe('EvalTestCaseSchema', () => {
 		).toThrow(/a conversation turn needs text/);
 	});
 
+	it('leaves an empty ASSISTANT turn alone — script data, never posted to chat', () => {
+		// The guard exists for the chat API's 400. Assistant turns are the proxy's
+		// script, so an empty one has nothing to do with that rule.
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [
+				{ role: 'user', text: 'build a thing' },
+				{ role: 'assistant', text: '' },
+			],
+		});
+		expect(parsed.conversation?.[1].text).toBe('');
+	});
+
 	it('does not tell a replay author to add an attach they cannot use', () => {
 		// On a replay case conversation[0] CONTINUES the trace's live turn, and `attach`
 		// needs an inline seed to point at — so the opening-turn advice is a dead end.

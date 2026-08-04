@@ -236,14 +236,16 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	)
 	// The chat API refuses a message that is empty with nothing attached, so catch it
 	// at load rather than mid-run as a 400 that reads like an infrastructure fault.
-	// EVERY turn, not just the opening: a later empty turn hits the same 400. Only a
-	// non-replay opening may substitute `attach` for text — on a replay case
-	// `conversation[0]` continues the trace's live turn, and `attach` needs an inline
-	// seed to point at, so "add an attach" is advice a replay author can't follow.
+	// EVERY user turn, not just the opening: a later empty one hits the same 400.
+	// Assistant turns are script data for the proxy and never posted, so this rule
+	// doesn't apply to them. Only a non-replay opening may substitute `attach` for
+	// text — on a replay case `conversation[0]` continues the trace's live turn, and
+	// `attach` needs an inline seed to point at, so "add an attach" is advice a
+	// replay author can't follow.
 	.superRefine((c, ctx) => {
 		const isReplay = c.seed?.mode === 'replay';
 		(c.conversation ?? []).forEach((turn, index) => {
-			if (turn.text.trim().length > 0) return;
+			if (turn.role === 'assistant' || turn.text.trim().length > 0) return;
 			const openingMayAttach = index === 0 && !isReplay;
 			if (openingMayAttach && turn.attach !== undefined) return;
 			ctx.addIssue({

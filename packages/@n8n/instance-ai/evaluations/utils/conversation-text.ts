@@ -3,17 +3,17 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
-/** Opens the rendering of a turn's out-of-band workflow attachment, e.g.
- *  `[attached workflow: Batch loop]`. The editor hands the agent a resource
- *  reference rather than text, so without this the faithful hand-off shape
- *  (`text: ""` + `attach`) reaches judges and prompt-aware checks as an empty
- *  message. Written by the harness into the recorded turn, and by
- *  `conversationUserTurnsAsText` for paths with no captured transcript. */
-export const ATTACHED_WORKFLOW_PREFIX = '[attached workflow: ';
-
-/** Render a turn's attachment for a transcript/prompt, or '' when it has none. */
-export function attachedWorkflowNote(name: string | undefined): string {
-	return name ? `${ATTACHED_WORKFLOW_PREFIX}${name}]` : '';
+/** Render a turn's out-of-band workflow attachment for a transcript/prompt, e.g.
+ *  `[attached workflow: Batch loop]`, or '' when it has none. The editor hands the
+ *  agent a resource reference rather than text, so without this the faithful
+ *  hand-off shape (`text: ""` + `attach`) reaches judges and prompt-aware checks
+ *  as an empty message.
+ *
+ *  `label` is the restored workflow's NAME where the harness knows it (the live
+ *  path); the authored-conversation path has only the seed-declared id and passes
+ *  that — either way the hand-off is visible instead of vanishing. */
+export function attachedWorkflowNote(label: string | undefined): string {
+	return label ? `[attached workflow: ${label}]` : '';
 }
 
 /**
