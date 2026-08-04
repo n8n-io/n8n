@@ -1358,14 +1358,14 @@ describe('FormTrigger, formWebhook', () => {
 				return res;
 			};
 
-			it('returns 409 with the structured body and no workflowData when not ready', async () => {
+			it('returns 428 with the structured body and no workflowData when not ready', async () => {
 				const ctx = mock<IWebhookFunctions>();
 				const { status, json } = setupAuthedPost(ctx);
 				ctx.checkTriggerCredentialStatus.mockResolvedValue(notReady);
 
 				const result = await formWebhook(ctx);
 
-				expect(status).toHaveBeenCalledWith(409);
+				expect(status).toHaveBeenCalledWith(428);
 				expect(json).toHaveBeenCalledWith({
 					status: 'credential_connections_required',
 					readyToExecute: false,

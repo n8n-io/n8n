@@ -1230,7 +1230,9 @@ export async function formWebhook(
 		}
 
 		if (readiness && !readiness.readyToExecute) {
-			res.status(409).json(buildCredentialConnectionsRequiredResponse(readiness));
+			// 428, matching the webhook trigger's gate (webhook-helpers.ts) so both
+			// trigger paths answer an unconnected credential the same way.
+			res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
 			return { noWebhookResponse: true };
 		}
 	}
