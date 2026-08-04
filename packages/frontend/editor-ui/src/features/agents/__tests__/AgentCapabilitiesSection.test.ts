@@ -109,13 +109,6 @@ function mountSection(
 					template:
 						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 				},
-				N8nDropdownMenu: {
-					name: 'N8nDropdownMenu',
-					props: ['items'],
-					emits: ['select'],
-					template:
-						'<div><slot name="trigger" /><button v-for="item in items" :key="item.id" @click="$emit(\'select\', item.id)">{{ item.label }}</button><slot /></div>',
-				},
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: {
