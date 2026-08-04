@@ -5,15 +5,16 @@
  * `code-builder/types.ts` (the parts not tied to the agent runtime).
  */
 
-import type { IDisplayOptions, NodeConnectionType } from 'n8n-workflow';
+import type { AINodeConnectionType, IDisplayOptions } from 'n8n-workflow';
 
 /**
- * The `ai_*` members of `NodeConnectionTypes`, as a literal tuple so callers can
- * build a zod enum from it.
+ * Every AI connection type, as a literal tuple so callers can build a zod enum
+ * from it. Spelled out rather than derived because `z.enum` needs literals.
  *
- * Spelled out rather than derived because `z.enum` needs literal members. The
- * `satisfies` clause is what keeps it honest: adding a value here that is not a
- * real connection type fails to compile.
+ * Two compile-time guards keep it in step with n8n-workflow, which owns the
+ * canonical list. `satisfies` rejects a member that is not a real connection
+ * type, and {@link AiConnectionTypesAreExhaustive} rejects a real one that is
+ * missing. Both directions matter: this list drifted in each of them before.
  */
 export const AI_CONNECTION_TYPES = [
 	'ai_agent',
@@ -28,9 +29,20 @@ export const AI_CONNECTION_TYPES = [
 	'ai_textSplitter',
 	'ai_tool',
 	'ai_vectorStore',
-] as const satisfies ReadonlyArray<Extract<NodeConnectionType, `ai_${string}`>>;
+] as const satisfies readonly AINodeConnectionType[];
 
 export type AiConnectionType = (typeof AI_CONNECTION_TYPES)[number];
+
+type AssertNever<T extends never> = T;
+
+/**
+ * Compile-time proof that {@link AI_CONNECTION_TYPES} lists every `ai_*` type.
+ * If n8n-workflow gains one that is missing above, `Exclude` stops resolving to
+ * `never` and this fails its constraint. Type-only, so it costs no runtime code.
+ */
+export type AiConnectionTypesAreExhaustive = AssertNever<
+	Exclude<AINodeConnectionType, AiConnectionType>
+>;
 
 /**
  * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
@@ -100,16 +112,8 @@ export interface SearchableNodeType {
 	codex?: { alias?: string[] };
 	aiGateway?: AiGatewayNodeMeta;
 	builderHint?: {
-		/** Preferred over `searchHint` when both are set. */
-		message?: string;
 		searchHint?: string;
 		inputs?: SearchableBuilderHintInputs;
-		/**
-		 * Multi-line content emitted into generated `.d.ts` only. Declared so hosts
-		 * can pass their node shape straight through, but deliberately never read:
-		 * it would bloat every search result.
-		 */
-		extraTypeDefContent?: unknown;
 	};
 }
 
@@ -146,7 +150,7 @@ export interface NodeSearchResult {
 	score: number;
 	inputs: SearchableConnections;
 	outputs: SearchableConnections;
-	/** General hint message for workflow builders (from `builderHint.message`, else `searchHint`) */
+	/** General hint message for workflow builders (from `builderHint.searchHint`) */
 	builderHintMessage?: string;
 	/** Subnode requirements extracted from builderHint.inputs */
 	subnodeRequirements?: SubnodeRequirement[];

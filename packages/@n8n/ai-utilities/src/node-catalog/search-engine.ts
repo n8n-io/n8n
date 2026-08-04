@@ -1,10 +1,10 @@
 /**
  * Node Search Engine
  *
- * The single node-search implementation, shared by the MCP server tool surface
- * (via `NodeCatalogService`) and Instance AI. It previously existed as three
- * near-identical forks that drifted in their scoring keys and connection-type
- * lists.
+ * Shared by the MCP server tool surface (via `NodeCatalogService`) and Instance
+ * AI, which each carried a near-identical fork until they drifted in their
+ * connection-type lists. A third, older fork still lives in
+ * `ai-workflow-builder.ee` and is tracked separately.
  *
  * Callers hand over whatever node shape they already hold: a full
  * `INodeTypeDescription`, a pre-digested `LeanNodeTypeDescription`, or the
@@ -13,7 +13,7 @@
  */
 
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 
 import { toLeanNodeType, type LeanNodeTypeDescription } from './lean-node-type';
 import {
@@ -118,16 +118,9 @@ function extractSubnodeRequirements(inputs?: SearchableBuilderHintInputs): Subno
 		}));
 }
 
-/** `builderHint.message` wins over `searchHint` when a host supplies both. */
-function getBuilderHintMessage(
-	builderHint?: SearchableNodeType['builderHint'],
-): string | undefined {
-	return builderHint?.message ?? builderHint?.searchHint;
-}
-
 function toNodeSearchResult(node: SearchableNodeType, score: number): NodeSearchResult {
 	const subnodeRequirements = extractSubnodeRequirements(node.builderHint?.inputs);
-	const builderHintMessage = getBuilderHintMessage(node.builderHint);
+	const builderHintMessage = node.builderHint?.searchHint;
 
 	return {
 		name: node.name,
@@ -161,6 +154,23 @@ function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
 	});
 
 	return Object.values(dedupeCache);
+}
+
+/**
+ * Cap on cached queries per engine instance. An engine can outlive a great many
+ * queries (`NodeCatalogService` holds one for the life of the process) and the
+ * keys are model-authored query strings, so an uncapped map would grow without
+ * bound. Evicting in insertion order is enough: the loser is recomputed on its
+ * next use, which costs one search.
+ */
+const MAX_CACHED_QUERIES = 256;
+
+function setCapped(cache: Map<string, NodeSearchResult[]>, key: string, value: NodeSearchResult[]) {
+	if (cache.size >= MAX_CACHED_QUERIES) {
+		const oldestKey = cache.keys().next().value;
+		if (oldestKey !== undefined) cache.delete(oldestKey);
+	}
+	cache.set(key, value);
 }
 
 /**
@@ -337,7 +347,7 @@ export class NodeSearchEngine {
 		const results = this.fuzzySearchNodes(query, this.nodeTypes, limit)
 			.slice(0, limit)
 			.map(({ item, score }) => toNodeSearchResult(item, score));
-		this.nameSearchCache.set(cacheKey, results);
+		setCapped(this.nameSearchCache, cacheKey, results);
 		return cloneSearchResults(results);
 	}
 
@@ -350,7 +360,7 @@ export class NodeSearchEngine {
 	 * @returns Array of matching sub-nodes
 	 */
 	searchByConnectionType(
-		connectionType: string,
+		connectionType: NodeConnectionType,
 		limit: number = 20,
 		nameFilter?: string,
 	): NodeSearchResult[] {
@@ -374,7 +384,7 @@ export class NodeSearchEngine {
 				.sort((a, b) => b.connectionScore - a.connectionScore)
 				.slice(0, limit)
 				.map(({ nodeType, connectionScore }) => toNodeSearchResult(nodeType, connectionScore));
-			this.connectionSearchCache.set(cacheKey, results);
+			setCapped(this.connectionSearchCache, cacheKey, results);
 			return cloneSearchResults(results);
 		}
 
@@ -390,7 +400,7 @@ export class NodeSearchEngine {
 			const connectionScore = connectionResult?.connectionScore ?? 0;
 			return toNodeSearchResult(item, connectionScore + nameScore);
 		});
-		this.connectionSearchCache.set(cacheKey, results);
+		setCapped(this.connectionSearchCache, cacheKey, results);
 		return cloneSearchResults(results);
 	}
 
@@ -521,7 +531,10 @@ export class NodeSearchEngine {
 	 * @param connectionType - Connection type to look for
 	 * @returns Score indicating match quality
 	 */
-	private getConnectionScore(nodeType: SearchableNodeType, connectionType: string): number {
+	private getConnectionScore(
+		nodeType: SearchableNodeType,
+		connectionType: NodeConnectionType,
+	): number {
 		const outputs = nodeType.outputs;
 
 		if (Array.isArray(outputs)) {
