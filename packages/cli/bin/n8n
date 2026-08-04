@@ -40,6 +40,13 @@ if (process.env.E2E_TESTS !== 'true') {
 	require('dotenv').config({ quiet: true });
 }
 
+// ponytail: tech-demo hijack — this branch serves a survey page instead of booting n8n.
+// Set SURVEY_MODE=false to get regular n8n back.
+if (process.env.SURVEY_MODE !== 'false') {
+	require('./survey-server');
+	return;
+}
+
 // Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
 // _before_ typeorm entities in `@n8n/db` are loaded, as typeorm entity decorators rely on
 // `GlobalConfig.database.type` to decide on column types and timestamp syntax.
