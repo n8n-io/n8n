@@ -29,6 +29,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+import { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
@@ -71,7 +72,13 @@ describe('WorkflowReviewRequestService.decide', () => {
 		authorRepository,
 		reviewerRepository,
 		userRepository,
-		projectRelationRepository,
+		// Real service over the same mocks, so the override assertions below
+		// exercise the actual eligibility logic decide() shares with the read side.
+		new WorkflowReviewDecisionEligibilityService(
+			workflowFinderService,
+			authorRepository,
+			projectRelationRepository,
+		),
 		roleService,
 		dbLockService,
 		collaborationService,

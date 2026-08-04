@@ -42,10 +42,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('is-emoji-supported', () => ({
-	isEmojiSupported: () => true,
-}));
-
 const renderComponent = createComponentRenderer(ProjectsNavigation, {
 	global: {
 		plugins: [

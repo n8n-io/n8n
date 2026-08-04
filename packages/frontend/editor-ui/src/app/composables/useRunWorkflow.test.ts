@@ -170,16 +170,6 @@ vi.mock('@/app/stores/workflowsList.store', () => {
 	};
 });
 
-vi.mock('@/app/stores/parameterOverrides.store', () => {
-	const storeState: Partial<ReturnType<typeof useAgentRequestStore>> & {} = {
-		agentRequests: {},
-		getAgentRequest: vi.fn(),
-	};
-	return {
-		useAgentRequestStore: vi.fn().mockReturnValue(storeState),
-	};
-});
-
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
