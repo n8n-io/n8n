@@ -103,6 +103,7 @@ function onListBackgroundClick() {
 			<N8nTabs
 				:model-value="activeTab"
 				:options="tabOptions"
+				variant="modern"
 				data-test-id="workflow-reviews-tabs"
 				@update:model-value="onTabChange"
 			/>
@@ -191,8 +192,7 @@ function onListBackgroundClick() {
 .sidebar {
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 35%;
-	min-width: 12rem;
+	flex: 0 0 26rem;
 	height: 100%;
 	border-right: var(--border-width) solid var(--color--foreground--tint-1);
 }
@@ -206,9 +206,10 @@ function onListBackgroundClick() {
 
 .header {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: 0 var(--spacing--md) var(--spacing--md) 0;
+	align-items: center;
+	height: var(--review-tab-bar--height, var(--height--sm));
+	padding-right: var(--spacing--md);
+	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
 }
 
 .list {
