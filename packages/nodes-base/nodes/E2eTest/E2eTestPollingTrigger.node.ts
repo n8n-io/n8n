@@ -66,13 +66,10 @@ export class E2eTestPollingTrigger implements INodeType {
 		const lastItemId =
 			typeof nodeStaticData.lastItemId === 'number' ? nodeStaticData.lastItemId : null;
 
-		const newItems =
-			lastItemId === null
-				? items
-				: items.filter((item) => {
-						const id = Number(item.id);
-						return Number.isFinite(id) && id > lastItemId;
-					});
+		const newItems = items.filter((item) => {
+			const id = Number(item.id);
+			return Number.isFinite(id) && (lastItemId === null || id > lastItemId);
+		});
 
 		// Set even when nothing new is emitted below, so the advance still persists.
 		nodeStaticData.lastItemId = highestItemId(items, lastItemId ?? 0);

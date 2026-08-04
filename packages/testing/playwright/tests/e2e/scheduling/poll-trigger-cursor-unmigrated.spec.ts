@@ -68,6 +68,9 @@ test.describe(
 			await clearStaticDataAndReactivate(api, workflowId);
 
 			await expectNewTriggerExecution(api, workflowId, afterSeedPoll);
+			expect(await readNodeStaticData(api, workflowId, POLL_TRIGGER_NODE_NAME)).toEqual({
+				lastItemId: 1,
+			});
 			expect(await api.getPollerCursor(workflowId, nodeId)).toBeNull();
 		});
 	},

@@ -10,7 +10,7 @@ type PollTriggerWorkflow = ReturnType<typeof makePollTriggerWorkflow>;
 
 const SEED_POLL_ITEMS: IDataObject[] = [{ id: 1 }];
 
-async function programPollResponse(
+export async function programPollResponse(
 	proxy: ProxyServer,
 	path: string,
 	items: IDataObject[],
@@ -80,7 +80,9 @@ async function newTriggerExecutions(api: ApiHelpers, workflowId: string, known: 
 
 // Only an execution whose id is absent from `known` proves a fresh fire;
 // `waitForExecution`'s recency fallback would otherwise re-match the
-// activation-seed execution.
+// activation-seed execution. Asserting exactly one new execution (not just
+// that the first one succeeded) catches a cursor-commit race that re-emits
+// an already-seen item alongside the genuinely new one.
 export async function expectNewTriggerExecution(
 	api: ApiHelpers,
 	workflowId: string,
@@ -88,14 +90,18 @@ export async function expectNewTriggerExecution(
 	timeoutMs = 20_000,
 ): Promise<void> {
 	await expect
-		.poll(
-			async () => {
-				const [fresh] = await newTriggerExecutions(api, workflowId, known);
-				return fresh?.status ?? null;
-			},
-			{ timeout: timeoutMs },
-		)
-		.toBe('success');
+		.poll(async () => (await newTriggerExecutions(api, workflowId, known)).length, {
+			timeout: timeoutMs,
+		})
+		.toBeGreaterThan(0);
+
+	// Give a straggler execution (e.g. a duplicate re-emit from a racing
+	// cursor commit) a chance to land before asserting cardinality.
+	await new Promise((resolve) => setTimeout(resolve, 500));
+	const fresh = await newTriggerExecutions(api, workflowId, known);
+
+	expect(fresh).toHaveLength(1);
+	expect(fresh[0].status).toBe('success');
 }
 
 export async function expectNoNewTriggerExecution(
