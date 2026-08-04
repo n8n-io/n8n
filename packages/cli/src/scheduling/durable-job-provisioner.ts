@@ -19,7 +19,7 @@ import type {
 import { Tracing } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { withOwnerKey } from './durable-scheduler';
+import { withOwnerKeys } from './owner-key';
 import { createSchedulerTracer } from './scheduler-tracer';
 
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
@@ -259,7 +259,7 @@ export class DurableJobProvisioner {
 					const claimed = (await this.jobs.findManyByIds(manager, [...jobIds])).filter(
 						(job) => job.enabled && job.nextRunAt !== null,
 					);
-					return claimed.length > 0 ? withOwnerKey({ now, jobs: claimed }) : undefined;
+					return claimed.length > 0 ? withOwnerKeys({ now, jobs: claimed }) : undefined;
 				},
 				recordOccurrences: async (occurrences) =>
 					await this.tasks.insertIgnoringDuplicates(manager, occurrences),
