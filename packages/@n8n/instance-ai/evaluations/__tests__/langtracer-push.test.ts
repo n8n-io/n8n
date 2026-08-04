@@ -15,6 +15,25 @@ function item(fileSlug: string, overrides: Record<string, unknown> = {}): Workfl
 	} as WorkflowTestCaseWithFile;
 }
 
+/** The authored durable seed, in the shape both the disk case and the export carry. */
+function inlineSeed(overrides: Record<string, unknown> = {}) {
+	return {
+		mode: 'inline' as const,
+		messages: [
+			{
+				id: 'm1',
+				type: 'llm',
+				role: 'assistant' as const,
+				createdAt: '2026-06-29T09:00:00.000Z',
+				content: [{ type: 'text', text: 'built it' }],
+			},
+		],
+		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
+		dataTables: [],
+		...overrides,
+	};
+}
+
 /** A disk-shape exported body (what `GET /suites/:id/export` returns per case). */
 function body(overrides: Record<string, unknown> = {}): Record<string, unknown> {
 	return {
@@ -63,23 +82,43 @@ describe('planPush', () => {
 	});
 
 	it('PUSHES an inline-seeded case — the durable kind is exactly what suites are for', () => {
-		const seed = {
-			mode: 'inline' as const,
-			messages: [
-				{
-					id: 'm1',
-					type: 'llm',
-					role: 'assistant' as const,
-					createdAt: '2026-06-29T09:00:00.000Z',
-					content: [{ type: 'text', text: 'built it' }],
-				},
-			],
-			workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
-			dataTables: [],
-		};
-		const plan = planPush([item('repair-it', { seed })], {}, {});
+		const plan = planPush([item('repair-it', { seed: inlineSeed() })], {}, {});
 		expect(plan.skipped).toEqual([]);
 		expect(plan.toCreate).toHaveLength(1);
+	});
+
+	// `seed` joined COMPARED_KEYS for these three: while it was excluded, every
+	// seed-only edit was classified `unchanged` and silently never pushed.
+	it('treats a seed-only addition to a hosted case as an update', () => {
+		const plan = planPush([item('c', { seed: inlineSeed() })], { 'c.json': body() }, { c: 5 });
+		expect(plan.toUpdate.map((u) => u.id)).toEqual([5]);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('treats a seed EDIT on a hosted case as an update', () => {
+		const plan = planPush(
+			[item('c', { seed: inlineSeed({ dataTables: [{ name: 'Orders', columns: [] }] }) })],
+			{ 'c.json': body({ seed: inlineSeed() }) },
+			{ c: 5 },
+		);
+		expect(plan.toUpdate.map((u) => u.id)).toEqual([5]);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('treats a seed REMOVAL as an update, so the patch can clear the stored one', () => {
+		const plan = planPush([item('c')], { 'c.json': body({ seed: inlineSeed() }) }, { c: 5 });
+		expect(plan.toUpdate.map((u) => u.id)).toEqual([5]);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('still reports an identically-seeded case as unchanged', () => {
+		const plan = planPush(
+			[item('c', { seed: inlineSeed() })],
+			{ 'c.json': body({ seed: inlineSeed() }) },
+			{ c: 5 },
+		);
+		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+		expect(plan.toUpdate).toEqual([]);
 	});
 
 	it('treats a scenario-only difference as an update (PATCH reconciles scenarios by name)', () => {
@@ -246,5 +285,18 @@ describe('toUpdatePatch', () => {
 		const scenarios = [{ name: 'a', successCriteria: 'ok' }];
 		const patch = toUpdatePatch(createBody({ scenarios }));
 		expect(patch.scenarios).toEqual(scenarios);
+	});
+
+	it('sends an explicit null seed when the case has none, so a PATCH clears a stored one', () => {
+		// lang-tracer treats an omitted `seed` as a no-op, so dropping the seed from a
+		// disk case could never un-seed the hosted case without this.
+		const patch = toUpdatePatch(createBody());
+		expect(patch.seed).toBeNull();
+	});
+
+	it('keeps the seed when the case still has one', () => {
+		const seed = inlineSeed();
+		const patch = toUpdatePatch(createBody({ seed }));
+		expect(patch.seed).toEqual(seed);
 	});
 });

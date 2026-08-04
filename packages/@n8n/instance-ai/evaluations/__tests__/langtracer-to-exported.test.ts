@@ -1,4 +1,5 @@
-import type { EvalTestCaseInput } from '../harness/schema';
+import { EvalTestCaseSchema, type EvalTestCaseInput } from '../harness/schema';
+import { normalizeExportedCase } from '../langtracer/normalize';
 import { diskCaseToLangTracerCreate, unsupportedPushReason } from '../langtracer/to-exported';
 
 /** A minimal schema-parsed disk case (conversation text already collapsed to a string). */
@@ -167,5 +168,84 @@ describe('unsupportedPushReason', () => {
 			synthetic: true,
 		});
 		expect('seed' in body).toBe(false);
+	});
+});
+
+// A suite is only a safe home for a hand-off case if `attach` survives the whole
+// loop — push, store, export, reparse. It needs lang-tracer #119 deployed to carry
+// the key; the last case here is what a pre-#119 deployment gives back, and it must
+// fail loudly rather than run as a quietly different (find-it) test.
+describe('attach round-trip: write → export → reparse', () => {
+	const WORKFLOW_ID = 'wKk3RmT9xQ2bVn7L';
+
+	function handoffCase(): EvalTestCaseInput {
+		return diskCase({
+			// The faithful editor hand-off: no typed text, a workflow attached.
+			conversation: [{ role: 'user', text: '', attach: { workflow: WORKFLOW_ID } }],
+			seed: {
+				mode: 'inline',
+				messages: [
+					{
+						id: 'm1',
+						type: 'llm',
+						role: 'assistant',
+						createdAt: '2026-06-29T09:00:00.000Z',
+						content: [{ type: 'text', text: 'built it' }],
+					},
+				],
+				workflows: [{ id: WORKFLOW_ID, name: 'Batch loop', nodes: [], connections: {} }],
+				dataTables: [],
+			},
+		} as Partial<EvalTestCaseInput>);
+	}
+
+	/** What `GET /suites/:id/export` returns: disk shape plus export-only keys. */
+	function exportedFrom(conversation: unknown, seed: unknown) {
+		return {
+			id: 42,
+			name: 'handoff',
+			suiteId: 1,
+			createdAt: '2026-08-04T00:00:00.000Z',
+			conversation,
+			seed,
+			complexity: 'simple',
+			tags: ['build'],
+			datasets: ['full'],
+			processExpectations: ['acknowledges the workflow it was handed'],
+		};
+	}
+
+	it('carries attach into the create body', () => {
+		const body = diskCaseToLangTracerCreate(handoffCase(), 'handoff', {
+			suiteId: 1,
+			setKind: 'regression',
+			synthetic: true,
+		});
+
+		expect(body.conversation).toEqual([
+			{ role: 'user', text: '', attach: { workflow: WORKFLOW_ID } },
+		]);
+	});
+
+	it('reparses from the export with the attachment intact', () => {
+		const body = diskCaseToLangTracerCreate(handoffCase(), 'handoff', {
+			suiteId: 1,
+			setKind: 'regression',
+			synthetic: true,
+		});
+
+		const parsed = EvalTestCaseSchema.parse(
+			normalizeExportedCase(exportedFrom(body.conversation, body.seed)),
+		);
+
+		expect(parsed.conversation?.[0].attach).toEqual({ workflow: WORKFLOW_ID });
+	});
+
+	it('fails at load when the deployment stripped attach, instead of running as a find-it case', () => {
+		const stripped = exportedFrom([{ role: 'user', text: '' }], handoffCase().seed);
+
+		expect(() => EvalTestCaseSchema.parse(normalizeExportedCase(stripped))).toThrow(
+			/opening turn with empty text must carry/,
+		);
 	});
 });

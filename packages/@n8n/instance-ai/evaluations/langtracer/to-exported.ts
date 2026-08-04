@@ -21,7 +21,14 @@ export interface LangTracerCreateCaseBody {
 	synthetic: boolean;
 	suiteId: number;
 	description?: string;
-	conversation?: Array<{ role: 'user' | 'assistant'; text: string }>;
+	/** `attach` is declared, not just tolerated: the turn shape is the push contract,
+	 *  and leaving it off let a hand-off case type-check while losing its attachment.
+	 *  Carrying it end-to-end needs lang-tracer #119 deployed. */
+	conversation?: Array<{
+		role: 'user' | 'assistant';
+		text: string;
+		attach?: { workflow: string };
+	}>;
 	evalComplexity: 'simple' | 'medium' | 'complex';
 	evalTags: string[];
 	evalTriggerType?: string;
@@ -49,11 +56,24 @@ export interface ToLangTracerOptions {
  *  already holds, and such a case is barred from suites anyway. Returns a
  *  human-readable reason, else null. */
 export function unsupportedPushReason(testCase: EvalTestCaseInput): string | null {
-	if (testCase.seed?.mode !== 'replay') return null;
-	return (
-		'uses a replay seed — reconstructed from a LangSmith trace at run time, so it has no ' +
-		'durable home in a suite. Derive a synthetic case from it instead.'
-	);
+	const seed = testCase.seed;
+	switch (seed?.mode) {
+		case undefined:
+		case 'inline':
+			return null;
+		case 'replay':
+			return (
+				'uses a replay seed — reconstructed from a LangSmith trace at run time, so it has no ' +
+				'durable home in a suite. Derive a synthetic case from it instead.'
+			);
+		default: {
+			// A new arm must decide its own push-ability here. Approving by default
+			// would push the case while `diskCaseToLangTracerCreate` forwards only
+			// `inline` — landing it in the suite stripped of its seed.
+			const unhandled: never = seed;
+			throw new Error(`Unhandled seed mode: ${JSON.stringify(unhandled)}`);
+		}
+	}
 }
 
 /** Map a schema-parsed disk case to a create-case body. `conversation.text` is already

@@ -35,19 +35,24 @@ const COMPARED_KEYS = [
 	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
 	// (lang-tracer #48) and the export emits them back in disk shape.
 	'executionScenarios',
+	// Stored at `metadata.seed` and emitted back by the export (lang-tracer #113).
+	// Compared so a seed-only edit isn't misread as unchanged and left unpushed.
+	'seed',
 ] as const;
 
 /** Drop the create-only fields, leaving the patchable set (`scenarios` included —
  *  `PATCH /cases/:id` reconciles them by name since lang-tracer #48). An absent
- *  `scenarios` is sent as an explicit `[]`: a partial PATCH leaves missing keys
- *  untouched, so omitting it would keep the server's old scenario rows alive
- *  forever after a disk case drops its `executionScenarios`. */
+ *  `scenarios` is sent as an explicit `[]` and an absent `seed` as an explicit
+ *  `null`: a partial PATCH leaves missing keys untouched, so omitting them would
+ *  keep the server's old scenario rows / stored seed alive forever after a disk
+ *  case drops its `executionScenarios` / `seed`. Both defaults sit before the
+ *  spread, so a case that still has them overrides. */
 export function toUpdatePatch({
 	suiteId,
 	synthetic,
 	...patch
 }: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
-	return { scenarios: [], ...patch };
+	return { scenarios: [], seed: null, ...patch };
 }
 
 /** `existingBodies`: `<name>.json` → exported (disk-shape) body from `GET /suites/:id/export`.
