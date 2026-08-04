@@ -3,8 +3,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import ForgotMyPasswordView from './ForgotMyPasswordView.vue';
-import { useToast } from '@/app/composables/useToast';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useToast } from '@n8n/composables/useToast';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 vi.mock('vue-router', () => {
@@ -25,7 +25,7 @@ vi.mock('vue-router', () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
 	return {

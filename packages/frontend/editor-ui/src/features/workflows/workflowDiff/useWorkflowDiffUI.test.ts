@@ -321,6 +321,53 @@ describe('useWorkflowDiffUI', () => {
 
 			expect(selectedNode.value).toEqual(mockNode);
 		});
+
+		it('should return target node for modified nodes when type changed', () => {
+			const baseNode = createMockNode({
+				id: 'node-1',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+			});
+			const targetNode = createMockNode({
+				id: 'node-1',
+				name: 'Get Calendar Events',
+				type: 'n8n-nodes-base.googleCalendar',
+			});
+			const nodesDiff = ref(
+				new Map([['node-1', { status: NodeDiffStatus.Modified, node: baseNode }]]),
+			);
+
+			const { selectedNode } = useWorkflowDiffUI({
+				sourceWorkflow: computed(() => createMockWorkflow({ nodes: [baseNode] })),
+				targetWorkflow: computed(() => createMockWorkflow({ nodes: [targetNode] })),
+				nodesDiff,
+				connectionsDiff: ref(new Map()),
+				selectedDetailId: ref('node-1'),
+			});
+
+			expect(selectedNode.value).toEqual(targetNode);
+		});
+
+		it('should fall back to source node for deleted nodes', () => {
+			const deletedNode = createMockNode({
+				id: 'node-1',
+				name: 'Removed Node',
+				type: 'n8n-nodes-base.slack',
+			});
+			const nodesDiff = ref(
+				new Map([['node-1', { status: NodeDiffStatus.Deleted, node: deletedNode }]]),
+			);
+
+			const { selectedNode } = useWorkflowDiffUI({
+				sourceWorkflow: computed(() => createMockWorkflow({ nodes: [deletedNode] })),
+				targetWorkflow: computed(() => createMockWorkflow({ nodes: [] })),
+				nodesDiff,
+				connectionsDiff: ref(new Map()),
+				selectedDetailId: ref('node-1'),
+			});
+
+			expect(selectedNode.value).toEqual(deletedNode);
+		});
 	});
 
 	describe('changesCount', () => {

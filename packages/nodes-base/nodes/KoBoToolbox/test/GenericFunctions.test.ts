@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { validateAttachmentUrl, downloadAttachments } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('KoBoToolbox GenericFunctions', () => {
 	describe('validateAttachmentUrl', () => {
@@ -204,16 +205,16 @@ describe('KoBoToolbox GenericFunctions', () => {
 
 	describe('downloadAttachments', () => {
 		let mockExecuteFunctions: IExecuteFunctions;
-		let mockGetCredentials: jest.Mock;
-		let mockHttpRequest: jest.Mock;
-		let mockPrepareBinaryData: jest.Mock;
-		let mockGetNode: jest.Mock;
+		let mockGetCredentials: Mock;
+		let mockHttpRequest: Mock;
+		let mockPrepareBinaryData: Mock;
+		let mockGetNode: Mock;
 
 		beforeEach(() => {
-			mockGetCredentials = jest.fn();
-			mockHttpRequest = jest.fn();
-			mockPrepareBinaryData = jest.fn();
-			mockGetNode = jest.fn();
+			mockGetCredentials = vi.fn();
+			mockHttpRequest = vi.fn();
+			mockPrepareBinaryData = vi.fn();
+			mockGetNode = vi.fn();
 
 			mockExecuteFunctions = {
 				getCredentials: mockGetCredentials,

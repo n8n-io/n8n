@@ -11,7 +11,27 @@ describe('AnthropicApi Credential', () => {
 		expect(anthropicApi.documentationUrl).toBe('anthropic');
 		expect(anthropicApi.properties).toHaveLength(5);
 		expect(anthropicApi.test.request.baseURL).toBe('={{$credentials?.url}}');
-		expect(anthropicApi.test.request.url).toBe('/v1/messages');
+		expect(anthropicApi.test.request.url).toBe('/v1/models');
+	});
+
+	it('should allow custom header expressions to be omitted during design-time resolution', () => {
+		expect(anthropicApi.properties).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'headerName',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+					}),
+				}),
+				expect.objectContaining({
+					name: 'headerValue',
+					typeOptions: expect.objectContaining({
+						ignoreCredentialExpressionResolveError: true,
+						password: true,
+					}),
+				}),
+			]),
+		);
 	});
 
 	describe('authenticate', () => {

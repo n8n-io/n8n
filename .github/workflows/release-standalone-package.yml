@@ -8,14 +8,19 @@ on:
         required: true
         type: choice
         options:
-          - '@n8n/codemirror-lang'
-          - '@n8n/codemirror-lang-html'
-          - '@n8n/codemirror-lang-sql'
           - '@n8n/create-node'
           - '@n8n/eslint-plugin-community-nodes'
-          - '@n8n/node-cli'
           - '@n8n/scan-community-package'
-# All packages listed above require OIDC enabled in NPM. https://docs.npmjs.com/trusted-publishers
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+# This workflow publishes out-of-sync with the main release pipeline, so it uses
+# token auth (secrets.NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN) rather than trusted
+# publishing (OIDC) — the OIDC relationship is reserved for release-publish.yml.
 
 concurrency:
   group: release-package-${{ github.event.inputs.package }}
@@ -25,15 +30,14 @@ env:
   CACHE_KEY: ${{ github.sha }}-${{ github.event.inputs.package }}-build
 
 jobs:
-  publish-to-npm:
-    name: Publish to NPM
+  bump-and-push:
+    name: Bump version and push to master
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: npm
-    permissions:
-      id-token: write
-    env:
-      NPM_CONFIG_PROVENANCE: true
+    timeout-minutes: 10
+    environment: minor-release-tag-merge
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      sha: ${{ steps.push.outputs.sha }}
 
     steps:
       - name: Check branch
@@ -42,19 +46,88 @@ jobs:
           echo "::error::This workflow can only be run from the master branch"
           exit 1
 
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.RELEASE_TAG_MERGE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_TAG_MERGE_PRIVATE_KEY }}
+          skip-token-revoke: false
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: master
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24.18.0'
+
+      # A version bump only edits one package.json, so no workspace install/build
+      # is needed. `pnpm ls -r --only-projects` reads the workspace config directly.
+      - name: Bump version
+        id: bump
+        env:
+          PACKAGE: ${{ github.event.inputs.package }}
+          BUMP: ${{ github.event.inputs.bump }}
+        run: |
+          PKG_PATH=$(pnpm ls -r --only-projects --json | jq -r --arg n "$PACKAGE" '.[] | select(.name==$n) | .path')
+          if [ -z "$PKG_PATH" ]; then
+            echo "::error::Could not resolve path for package '$PACKAGE'"
+            exit 1
+          fi
+          NEW_VERSION=$(cd "$PKG_PATH" && npm version "$BUMP" --no-git-tag-version)
+          NEW_VERSION=${NEW_VERSION#v}
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Bumped $PACKAGE to $NEW_VERSION"
+
+      - name: Commit and push version bump
+        id: push
+        env:
+          PACKAGE: ${{ github.event.inputs.package }}
+          NEW_VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          git config user.name "n8n-release-tag-merge[bot]"
+          git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
+          git commit -am "build: release ${PACKAGE}@${NEW_VERSION} (no-changelog)"
+          git push origin HEAD:master
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  publish-to-npm:
+    name: Publish to NPM
+    needs: bump-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.bump-and-push.outputs.sha }}
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: 'pnpm turbo build --filter "...${{ github.event.inputs.package }}"'
+          build-command: 'pnpm turbo build --filter=...${{ github.event.inputs.package }}'
 
       - name: Pre publishing changes
         run: |
           node .github/scripts/ensure-provenance-fields.mjs
 
+      - name: Configure NPM token
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN }}
+        run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+
+      # If this job fails after the version bump was already pushed to master,
+      # re-run only this job (do not re-run the whole workflow — that double-bumps).
       - name: Publish package
         env:
           PACKAGE: ${{ github.event.inputs.package }}
-        run: pnpm --filter "$PACKAGE" publish --access public --no-git-checks --publish-branch master
+        run: pnpm --filter "$PACKAGE" publish --access public --no-git-checks

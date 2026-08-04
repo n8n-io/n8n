@@ -58,6 +58,8 @@ export interface EvaluationContext {
 	 * Populated from GenerationResult when available.
 	 */
 	generatedCode?: string;
+	/** Agent's text response for this turn (available when captured from stream) */
+	agentTextResponse?: string;
 	/** Pin data for service nodes (used by execution evaluator) */
 	pinData?: IPinData;
 	/** Per-example annotations (e.g., code_necessary) from CSV or LangSmith dataset */
@@ -255,21 +257,11 @@ export interface ExampleResult {
 	/** Introspection events reported by the agent during workflow generation */
 	introspectionEvents?: IntrospectionEvent[];
 	workflow?: SimpleWorkflow;
-	/** Subgraph output (e.g., responder text). Present in subgraph eval mode. */
-	subgraphOutput?: SubgraphExampleOutput;
 	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
 	generatedCode?: string;
+	/** Agent's text response for this turn */
+	agentTextResponse?: string;
 	error?: string;
-}
-
-/**
- * Output from a subgraph evaluation example.
- */
-export interface SubgraphExampleOutput {
-	/** The text response from the subgraph (e.g., responder output) */
-	response?: string;
-	/** The workflow produced by the subgraph (for builder/configurator) */
-	workflow?: SimpleWorkflow;
 }
 
 /**
@@ -280,6 +272,8 @@ export interface GenerationResult {
 	workflow: SimpleWorkflow;
 	/** Source code that generated the workflow (e.g., TypeScript SDK code) */
 	generatedCode?: string;
+	/** Text response from the agent (e.g., responder output describing what was built) */
+	agentTextResponse?: string;
 }
 
 /**

@@ -8,13 +8,13 @@ import type {
 export class HubspotAppToken implements ICredentialType {
 	name = 'hubspotAppToken';
 
-	displayName = 'HubSpot App Token';
+	displayName = 'HubSpot Service Key';
 
 	documentationUrl = 'hubspot';
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'APP Token',
+			displayName: 'Service Key',
 			name: 'appToken',
 			type: 'string',
 			typeOptions: { password: true },

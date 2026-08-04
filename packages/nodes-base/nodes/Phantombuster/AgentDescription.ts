@@ -42,6 +42,12 @@ export const agentOperations: INodeProperties[] = [
 				description: 'Add an agent to the launch queue',
 				action: 'Add an agent to the launch queue',
 			},
+			{
+				name: 'Launch Sync',
+				value: 'launchSync',
+				description: 'Launch an agent and stream results',
+				action: 'Launch an agent and stream results',
+			},
 		],
 		default: 'launch',
 	},
@@ -224,7 +230,7 @@ export const agentFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 agent:launch                               */
+	/*                                 agent:launch / launchSync                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Agent Name or ID',
@@ -238,7 +244,7 @@ export const agentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['launch'],
+				operation: ['launch', 'launchSync'],
 				resource: ['agent'],
 			},
 		},
@@ -266,7 +272,7 @@ export const agentFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: ['launch'],
+				operation: ['launch', 'launchSync'],
 				resource: ['agent'],
 			},
 		},
@@ -279,7 +285,7 @@ export const agentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['agent'],
-				operation: ['launch'],
+				operation: ['launch', 'launchSync'],
 			},
 		},
 		default: {},

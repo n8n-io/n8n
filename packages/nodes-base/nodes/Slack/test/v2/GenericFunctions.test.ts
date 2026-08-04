@@ -1,41 +1,48 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	slackApiRequestAllItemsWithRateLimit,
+	formatUserLabel,
 	processThreadOptions,
 	getMessageContent,
 } from '../../V2/GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	NodeApiError: jest.fn(),
-	sleep: jest.fn().mockResolvedValue(undefined),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
+	NodeApiError: vi.fn(),
+}));
+
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('Slack V2 > GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions = {
 			helpers: {
-				requestWithAuthentication: jest.fn(),
+				requestWithAuthentication: vi.fn(),
 			},
-			getNode: jest.fn().mockReturnValue({ type: 'n8n-nodes-base.slack', typeVersion: 2 }),
-			getNodeParameter: jest.fn().mockReturnValue('accessToken'),
-			getWorkflow: jest.fn().mockReturnValue({ id: 'workflow-123', active: true }),
-			getInstanceBaseUrl: jest.fn().mockReturnValue('https://test.n8n.io/'),
-			getInstanceId: jest.fn().mockReturnValue('instance-123'),
-		} as unknown as jest.Mocked<IExecuteFunctions>;
+			getNode: vi.fn().mockReturnValue({ type: 'n8n-nodes-base.slack', typeVersion: 2 }),
+			getNodeParameter: vi.fn().mockReturnValue('accessToken'),
+			getWorkflow: vi.fn().mockReturnValue({ id: 'workflow-123', active: true }),
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://test.n8n.io/'),
+			getInstanceId: vi.fn().mockReturnValue('instance-123'),
+		} as unknown as Mocked<IExecuteFunctions>;
 	});
 
 	describe('slackApiRequest', () => {
 		it('should handle paid_teams_only error', async () => {
 			const mockResponse = { ok: false, error: 'paid_teams_only' };
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -44,7 +51,7 @@ describe('Slack V2 > GenericFunctions', () => {
 
 		it('should not handle paid_teams_only error if simple:false', async () => {
 			const mockResponse = { ok: false, error: 'paid_teams_only' };
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -59,7 +66,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				error: 'missing_scope',
 				needed: 'channels:read,users:read',
 			};
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -86,7 +93,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				ok: false,
 				error: 'missing_scope',
 			};
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -111,7 +118,7 @@ describe('Slack V2 > GenericFunctions', () => {
 
 		it('should handle not_admin error', async () => {
 			const mockResponse = { ok: false, error: 'not_admin' };
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -135,7 +142,7 @@ describe('Slack V2 > GenericFunctions', () => {
 
 		it('should handle generic error responses', async () => {
 			const mockResponse = { ok: false, error: 'some_other_error' };
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -151,13 +158,38 @@ describe('Slack V2 > GenericFunctions', () => {
 			}
 		});
 
+		it('should surface transport/auth failures as NodeOperationError', async () => {
+			// A network/HTTP failure rejects before the ok:false handling; it must be surfaced with a
+			// readable message instead of a raw object the options UI renders as "[object Object]".
+			const transportError = new Error('fetch failed');
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockRejectedValue(transportError);
+
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				NodeOperationError,
+			);
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
+				'fetch failed',
+			);
+		});
+
+		it('should not re-wrap an error that is already a NodeOperationError', async () => {
+			const opError = new NodeOperationError(mockExecuteFunctions.getNode(), 'boom');
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockRejectedValue(opError);
+
+			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toBe(
+				opError,
+			);
+		});
+
 		it('should add message_timestamp and remove ts when response contains ts', async () => {
 			const mockResponse = {
 				ok: true,
 				ts: '1234567890.123456',
 				message: 'Test message',
 			};
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -176,7 +208,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				ok: true,
 				message: 'Test message',
 			};
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -198,7 +230,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				response_metadata: { next_cursor: undefined },
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -232,7 +264,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				response_metadata: { next_cursor: undefined },
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -269,7 +301,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				response_metadata: { next_cursor: undefined },
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(mockResponse);
 
@@ -306,7 +338,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			];
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockImplementationOnce(() => responses[0])
 				.mockImplementationOnce(() => responses[1]);
@@ -336,7 +368,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			];
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockImplementationOnce(() => responses[0])
 				.mockImplementationOnce(() => responses[1]);
@@ -360,9 +392,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				response_metadata: { next_cursor: '' },
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
-				.fn()
-				.mockResolvedValue(response);
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
 
 			const result = await slackApiRequestAllItems.call(
 				mockExecuteFunctions,
@@ -373,12 +403,30 @@ describe('Slack V2 > GenericFunctions', () => {
 
 			expect(result).toEqual([{ text: 'test' }]);
 		});
+
+		it('should return empty array when the response omits the expected property', async () => {
+			const response = {
+				ok: true,
+				response_metadata: { next_cursor: '' },
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
+
+			const result = await slackApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result).toEqual([]);
+		});
 	});
 
 	describe('slackApiRequestAllItemsWithRateLimit', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
-			(sleep as jest.Mock).mockResolvedValue(undefined);
+			vi.clearAllMocks();
+			(sleep as Mock).mockResolvedValue(undefined);
 		});
 
 		it('should paginate successfully without rate limits', async () => {
@@ -401,7 +449,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			];
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockImplementationOnce(() => responses[0])
 				.mockImplementationOnce(() => responses[1]);
@@ -437,7 +485,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValueOnce(rateLimitError)
 				.mockResolvedValueOnce(successResponse);
@@ -474,7 +522,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValueOnce(rateLimitError)
 				.mockResolvedValueOnce(successResponse);
@@ -508,7 +556,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValueOnce(rateLimitError)
 				.mockResolvedValueOnce(successResponse);
@@ -547,7 +595,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValueOnce(rateLimitError)
 				.mockResolvedValueOnce(rateLimitError)
@@ -580,7 +628,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(rateLimitError);
 
@@ -619,7 +667,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(rateLimitError)
 				.mockResolvedValueOnce(firstPageResponse);
@@ -659,7 +707,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(rateLimitError)
 				.mockResolvedValueOnce(firstPageResponse);
@@ -701,7 +749,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(rateLimitError)
 				.mockResolvedValueOnce(firstPageResponse);
@@ -752,7 +800,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			];
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockImplementationOnce(() => responses[0])
 				.mockResolvedValueOnce(responses[1])
@@ -777,7 +825,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValue(otherError);
 
@@ -803,9 +851,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
-				.fn()
-				.mockResolvedValue(response);
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
 
 			await slackApiRequestAllItemsWithRateLimit(
 				mockExecuteFunctions,
@@ -845,7 +891,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			];
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockImplementationOnce(() => responses[0])
 				.mockImplementationOnce(() => responses[1]);
@@ -872,9 +918,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
-				.fn()
-				.mockResolvedValue(response);
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
 
 			const result = await slackApiRequestAllItemsWithRateLimit(
 				mockExecuteFunctions,
@@ -904,7 +948,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				},
 			};
 
-			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
 				.fn()
 				.mockResolvedValueOnce(rateLimitError)
 				.mockResolvedValueOnce(successResponse);
@@ -918,6 +962,27 @@ describe('Slack V2 > GenericFunctions', () => {
 
 			// Should use default fallbackDelay of 30000
 			expect(sleep).toHaveBeenCalledWith(30000);
+		});
+
+		it('should return empty data when the response omits the expected property', async () => {
+			const response = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockResolvedValue(response);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result.data).toEqual([]);
 		});
 	});
 
@@ -1079,7 +1144,7 @@ describe('Slack V2 > GenericFunctions', () => {
 
 		describe('block message type', () => {
 			beforeEach(() => {
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						const params: { [key: string]: any } = {
 							messageType: 'block',
@@ -1104,7 +1169,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					],
 				};
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'block';
 						if (param === 'otherOptions.includeLinkToWorkflow') return true;
@@ -1147,7 +1212,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					],
 				};
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'block';
 						if (param === 'otherOptions.includeLinkToWorkflow') return false;
@@ -1179,7 +1244,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					],
 				};
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'block';
 						if (param === 'otherOptions.includeLinkToWorkflow') return true;
@@ -1202,7 +1267,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					blocks: 'invalid-blocks-format',
 				};
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'block';
 						if (param === 'otherOptions.includeLinkToWorkflow') return true;
@@ -1225,7 +1290,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					blocks: [],
 				};
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'block';
 						if (param === 'otherOptions.includeLinkToWorkflow') return false;
@@ -1246,7 +1311,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					blocks: [],
 				};
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'block';
 						if (param === 'otherOptions.includeLinkToWorkflow') return false;
@@ -1284,7 +1349,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					},
 				];
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'attachment';
 						if (param === 'otherOptions.includeLinkToWorkflow') return true;
@@ -1321,7 +1386,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					},
 				];
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'attachment';
 						if (param === 'otherOptions.includeLinkToWorkflow') return false;
@@ -1347,7 +1412,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					},
 				];
 
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'attachment';
 						if (param === 'otherOptions.includeLinkToWorkflow') return false;
@@ -1366,7 +1431,7 @@ describe('Slack V2 > GenericFunctions', () => {
 			});
 
 			it('should handle attachment with non-array attachments', () => {
-				(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 					(param: string, _index: number) => {
 						if (param === 'messageType') return 'attachment';
 						if (param === 'otherOptions.includeLinkToWorkflow') return true;
@@ -1388,7 +1453,7 @@ describe('Slack V2 > GenericFunctions', () => {
 		});
 
 		it('should throw error for unknown message type', () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(param: string, _index: number) => {
 					if (param === 'messageType') return 'unknown-type';
 					return undefined;
@@ -1402,6 +1467,22 @@ describe('Slack V2 > GenericFunctions', () => {
 			expect(() => {
 				getMessageContent.call(mockExecuteFunctions, 0, 2.1, 'instance-123');
 			}).toThrow('The message type "unknown-type" is not known!');
+		});
+	});
+
+	describe('formatUserLabel', () => {
+		it('should append the handle to the real name', () => {
+			expect(formatUserLabel({ name: 'john.doe', real_name: 'John Doe' })).toBe(
+				'John Doe (@john.doe)',
+			);
+		});
+
+		it('should fall back to the handle alone when real_name is missing', () => {
+			expect(formatUserLabel({ name: 'alertbot' })).toBe('alertbot');
+		});
+
+		it('should fall back to the handle alone when real_name is empty', () => {
+			expect(formatUserLabel({ name: 'alertbot', real_name: '' })).toBe('alertbot');
 		});
 	});
 });

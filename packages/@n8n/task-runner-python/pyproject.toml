@@ -5,6 +5,7 @@ description = "Native Python task runner for n8n"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "urllib3==2.7.0",
     "websockets>=15.0.1",
 ]
 
@@ -12,7 +13,7 @@ dependencies = [
 sentry = ["sentry-sdk>=2.35.2"]
 
 [tool.uv]
-constraint-dependencies = ["urllib3>=2.6.3"]
+constraint-dependencies = ["urllib3>=2.7.0"]
 
 [dependency-groups]
 dev = [

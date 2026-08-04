@@ -14,15 +14,18 @@ defineSlots<{
 const props = withDefaults(
 	defineProps<{
 		label: string;
-		publishInfo: {
+		publishInfo?: {
 			publishedAt: string;
 			publishedBy: string | null;
 		};
+		secondaryText?: string;
 		status?: WorkflowHistoryVersionStatus;
 		placement?: N8nTooltipProps['placement'];
 		offset?: number;
 	}>(),
 	{
+		publishInfo: undefined,
+		secondaryText: undefined,
 		status: 'default',
 		placement: 'left',
 		offset: 8,
@@ -52,7 +55,7 @@ const publishedByDetails = usePublishedByDetails(toRef(props, 'publishInfo'));
 				</N8nText>
 			</div>
 			<N8nText size="small" :class="$style.tooltipSecondaryText">
-				{{ publishedByDetails }}
+				{{ props.secondaryText ?? publishedByDetails }}
 			</N8nText>
 		</template>
 		<slot />

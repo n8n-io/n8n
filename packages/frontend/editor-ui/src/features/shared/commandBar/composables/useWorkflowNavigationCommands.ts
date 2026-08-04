@@ -302,7 +302,7 @@ export function useWorkflowNavigationCommands(options: {
 			handler: () => {
 				const targetRoute = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflow.id },
+					params: { workflowId: workflow.id },
 				});
 				window.location.href = targetRoute.fullPath;
 			},

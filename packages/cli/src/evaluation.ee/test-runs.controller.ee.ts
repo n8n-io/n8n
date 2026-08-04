@@ -1,6 +1,12 @@
-import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
-import { Delete, Get, Post, RestController } from '@n8n/decorators';
+import { StartTestRunRequestDto, type MetricScale } from '@n8n/api-types';
+import {
+	EvaluationConfigRepository,
+	TestCaseExecutionRepository,
+	TestRunRepository,
+} from '@n8n/db';
+import type { TestRun, User } from '@n8n/db';
+import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
+import { type Scope } from '@n8n/permissions';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -12,6 +18,8 @@ import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
+
 @RestController('/workflows')
 export class TestRunsController {
 	constructor(
@@ -20,12 +28,15 @@ export class TestRunsController {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
+		private readonly evaluationConfigRepository: EvaluationConfigRepository,
 	) {}
 
-	private async assertUserHasAccessToWorkflow(workflowId: string, user: User) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-		]);
+	private async assertUserHasAccessToWorkflow(
+		workflowId: string,
+		user: User,
+		scopes: Scope[] = ['workflow:read'],
+	) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, scopes);
 
 		if (!workflow) {
 			throw new NotFoundError('Workflow not found');
@@ -33,18 +44,67 @@ export class TestRunsController {
 	}
 
 	/**
-	 * Get the test run (or just check that it exists and the user has access to it)
+	 * Get the test run (or just check that it exists and the user has access to it).
+	 *
+	 * The lookup is scoped to the route's `workflowId` so a user with access
+	 * to one workflow cannot reach another workflow's run by guessing IDs —
+	 * absent or cross-workflow runs return the same 404.
+	 *
+	 * `scopes` defaults to `workflow:read`. Mutating endpoints should pass a
+	 * stronger scope (e.g. `workflow:execute`) so a read-only user cannot
+	 * trigger state changes through this controller.
 	 */
-	private async getTestRun(testRunId: string, workflowId: string, user: User) {
-		await this.assertUserHasAccessToWorkflow(workflowId, user);
+	private async getTestRun(
+		testRunId: string,
+		workflowId: string,
+		user: User,
+		scopes: Scope[] = ['workflow:read'],
+	) {
+		await this.assertUserHasAccessToWorkflow(workflowId, user, scopes);
 
 		const testRun = await this.testRunRepository.findOne({
-			where: { id: testRunId },
+			where: { id: testRunId, workflow: { id: workflowId } },
 		});
 
 		if (!testRun) throw new NotFoundError('Test run not found');
 
 		return testRun;
+	}
+
+	/**
+	 * Attach each run's metric scales so the runs page normalizes scores the same
+	 * way the compare view does — a 1–5 judge metric renders as 100%, not 5%. Each
+	 * run prefers its own frozen config snapshot, falling back to the live config's
+	 * scales (a run started without `compileFromConfig` never froze a snapshot).
+	 * Distinct configs are resolved once — a workflow has only a handful.
+	 */
+	private async attachMetricScales<
+		T extends Pick<TestRun, 'evaluationConfigId' | 'evaluationConfigSnapshot'>,
+	>(runs: T[], workflowId: string) {
+		const configIds = [
+			...new Set(
+				runs
+					.map((run) => run.evaluationConfigId)
+					.filter((id): id is string => typeof id === 'string'),
+			),
+		];
+		const scalesByConfig = new Map<string, Record<string, MetricScale>>();
+		for (const configId of configIds) {
+			scalesByConfig.set(
+				configId,
+				await resolveConfigMetricScales(this.evaluationConfigRepository, configId, workflowId),
+			);
+		}
+
+		return runs.map((run) => {
+			const scales = runMetricScales(
+				run,
+				run.evaluationConfigId ? (scalesByConfig.get(run.evaluationConfigId) ?? {}) : {},
+			);
+			// Omit the field for runs with no resolvable scale (no snapshot, no
+			// config) — the FE then uses its name-based heuristic.
+			return Object.keys(scales).length > 0 ? { ...run, metricScales: scales } : { ...run };
+		});
 	}
 
 	@Get('/:workflowId/test-runs', { middlewares: listQueryMiddleware })
@@ -53,16 +113,19 @@ export class TestRunsController {
 
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
-		return await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
+		const testRuns = await this.testRunRepository.getMany(workflowId, req.listQueryOptions);
+		return await this.attachMetricScales(testRuns, workflowId);
 	}
 
 	@Get('/:workflowId/test-runs/:id')
 	async getOne(req: TestRunsRequest.GetOne) {
-		const { id } = req.params;
+		const { id, workflowId } = req.params;
 
 		try {
-			await this.getTestRun(req.params.id, req.params.workflowId, req.user); // FIXME: do not fetch test run twice
-			return await this.testRunRepository.getTestRunSummaryById(id);
+			await this.getTestRun(id, workflowId, req.user); // FIXME: do not fetch test run twice
+			const summary = await this.testRunRepository.getTestRunSummaryById(id);
+			const [withScales] = await this.attachMetricScales([summary], workflowId);
+			return withScales;
 		} catch (error) {
 			if (error instanceof UnexpectedError) throw new NotFoundError(error.message);
 			throw error;
@@ -82,8 +145,8 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Check test run exist
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Deleting mutates run state — require workflow:execute
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -96,8 +159,10 @@ export class TestRunsController {
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		const { id: testRunId } = req.params;
 
-		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		// Cancelling mutates execution state — require workflow:execute
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:execute',
+		]);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
@@ -109,15 +174,65 @@ export class TestRunsController {
 		res.status(202).json({ success: true });
 	}
 
+	@Post('/:workflowId/test-runs/:id/test-cases/:caseId/cancel')
+	async cancelCase(req: TestRunsRequest.CancelCase) {
+		const { caseId } = req.params;
+
+		// Cancelling a pending case mutates execution state — require workflow:execute
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
+
+		const cancelled = await this.testCaseExecutionRepository.cancelIfNew(req.params.id, caseId);
+		if (!cancelled) {
+			throw new ConflictError(
+				`Test case "${caseId}" cannot be cancelled — it is not in a pending state`,
+			);
+		}
+
+		this.telemetry.track('User cancelled a test case', {
+			run_id: req.params.id,
+			case_id: caseId,
+		});
+
+		return { success: true };
+	}
+
 	@Post('/:workflowId/test-runs/new')
-	async create(req: TestRunsRequest.Create, res: express.Response) {
+	async create(
+		req: TestRunsRequest.Create,
+		res: express.Response,
+		@Body payload: StartTestRunRequestDto,
+	) {
 		const { workflowId } = req.params;
 
-		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+		// Starting a run triggers real executions — require workflow:execute
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user, ['workflow:execute']);
 
-		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, workflowId);
+		const concurrency = payload.concurrency ?? 1;
 
-		res.status(202).json({ success: true });
+		const options: {
+			evaluationConfigId?: string;
+			compileFromConfig?: boolean;
+			rowIndices?: number[];
+		} = {};
+		if (payload.evaluationConfigId) {
+			options.evaluationConfigId = payload.evaluationConfigId;
+			options.compileFromConfig = payload.compileFromConfig === true;
+		}
+		if (payload.rowIndices && payload.rowIndices.length > 0) {
+			options.rowIndices = payload.rowIndices;
+		}
+
+		// Await sync setup so the 202 carries testRunId; case execution is
+		// detached inside startTestRun via `finished` (discarded here). Pass
+		// `undefined` (not `{}`) when there are no options so the service applies
+		// its own defaults (e.g. `via: 'ui'`).
+		const { testRun } = await this.testRunnerService.startTestRun(
+			req.user,
+			workflowId,
+			concurrency,
+			Object.keys(options).length > 0 ? options : undefined,
+		);
+
+		res.status(202).json({ success: true, testRunId: testRun.id });
 	}
 }

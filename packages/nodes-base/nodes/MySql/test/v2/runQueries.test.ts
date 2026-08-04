@@ -22,11 +22,11 @@ const fakeConnection = {
 	format(query: string, values: any[]) {
 		return mysql2.format(query, values);
 	},
-	query: jest.fn(async () => [{}]),
-	release: jest.fn(),
-	beginTransaction: jest.fn(),
-	commit: jest.fn(),
-	rollback: jest.fn(),
+	query: vi.fn(async () => [{}]),
+	release: vi.fn(),
+	beginTransaction: vi.fn(),
+	commit: vi.fn(),
+	rollback: vi.fn(),
 };
 
 const createFakePool = (connection: IDataObject) => {
@@ -34,13 +34,13 @@ const createFakePool = (connection: IDataObject) => {
 		getConnection() {
 			return connection;
 		},
-		query: jest.fn(async () => [{}]),
+		query: vi.fn(async () => [{}]),
 	} as unknown as Mysql2Pool;
 };
 
 describe('Test MySql V2, runQueries', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('in single query batch mode', () => {
@@ -50,7 +50,7 @@ describe('Test MySql V2, runQueries', () => {
 			const mockExecuteFns = createMockExecuteFunction({}, mySqlMockNode);
 
 			// @ts-expect-error
-			pool.query = jest.fn(async () => [
+			pool.query = vi.fn(async () => [
 				[[{ finishedAt: '2023-12-30' }], [{ finishedAt: '2023-12-31' }]],
 			]);
 
@@ -88,10 +88,10 @@ describe('Test MySql V2, runQueries', () => {
 			pool,
 		);
 
-		const poolGetConnectionSpy = jest.spyOn(pool, 'getConnection');
-		const poolQuerySpy = jest.spyOn(pool, 'query');
-		const connectionReleaseSpy = jest.spyOn(fakeConnection, 'release');
-		const connectionFormatSpy = jest.spyOn(fakeConnection, 'format');
+		const poolGetConnectionSpy = vi.spyOn(pool, 'getConnection');
+		const poolQuerySpy = vi.spyOn(pool, 'query');
+		const connectionReleaseSpy = vi.spyOn(fakeConnection, 'release');
+		const connectionFormatSpy = vi.spyOn(fakeConnection, 'format');
 
 		const result = await runQueries([
 			{ query: 'SELECT * FROM my_table WHERE id = ?', values: [55] },
@@ -125,11 +125,11 @@ describe('Test MySql V2, runQueries', () => {
 			pool,
 		);
 
-		const poolGetConnectionSpy = jest.spyOn(pool, 'getConnection');
+		const poolGetConnectionSpy = vi.spyOn(pool, 'getConnection');
 
-		const connectionReleaseSpy = jest.spyOn(fakeConnection, 'release');
-		const connectionFormatSpy = jest.spyOn(fakeConnection, 'format');
-		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+		const connectionReleaseSpy = vi.spyOn(fakeConnection, 'release');
+		const connectionFormatSpy = vi.spyOn(fakeConnection, 'format');
+		const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
 
 		const result = await runQueries([
 			{
@@ -170,13 +170,13 @@ describe('Test MySql V2, runQueries', () => {
 			pool,
 		);
 
-		const poolGetConnectionSpy = jest.spyOn(pool, 'getConnection');
+		const poolGetConnectionSpy = vi.spyOn(pool, 'getConnection');
 
-		const connectionReleaseSpy = jest.spyOn(fakeConnection, 'release');
-		const connectionFormatSpy = jest.spyOn(fakeConnection, 'format');
-		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
-		const connectionBeginTransactionSpy = jest.spyOn(fakeConnection, 'beginTransaction');
-		const connectionCommitSpy = jest.spyOn(fakeConnection, 'commit');
+		const connectionReleaseSpy = vi.spyOn(fakeConnection, 'release');
+		const connectionFormatSpy = vi.spyOn(fakeConnection, 'format');
+		const connectionQuerySpy = vi.spyOn(fakeConnection, 'query');
+		const connectionBeginTransactionSpy = vi.spyOn(fakeConnection, 'beginTransaction');
+		const connectionCommitSpy = vi.spyOn(fakeConnection, 'commit');
 
 		const result = await runQueries([
 			{
@@ -211,7 +211,7 @@ describe('Test MySql V2, runQueries', () => {
 	it('should return error item with continueOnFail = true for connection error', async () => {
 		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
 		const pool = createFakePool(fakeConnection);
-		pool.getConnection = jest.fn(() => {
+		pool.getConnection = vi.fn(() => {
 			throw new Error('ECONNREFUSED');
 		});
 		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
@@ -229,7 +229,7 @@ describe('Test MySql V2, runQueries', () => {
 	it('should throw error when continueOnFail = false for connection error', async () => {
 		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
 		const pool = createFakePool(fakeConnection);
-		pool.getConnection = jest.fn(() => {
+		pool.getConnection = vi.fn(() => {
 			throw new Error('ECONNREFUSED');
 		});
 		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);

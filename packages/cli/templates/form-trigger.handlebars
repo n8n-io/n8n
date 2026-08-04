@@ -1086,13 +1086,20 @@
 								document.querySelector('#submitted-form').style.display = 'block';
 								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 								document.querySelector('#submitted-content').textContent =
-									'Please try again or contact support if the problem persists';
+									response.status === 413
+										? 'The files you are trying to upload are too large. Please reduce the total size and try again.'
+										: 'Please try again or contact support if the problem persists';
 							}
 
 							return;
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
+							form.style.display = 'none';
+							document.querySelector('#submitted-form').style.display = 'block';
+							document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+							document.querySelector('#submitted-content').textContent =
+								'The form could not be submitted. Please check your connection and try again, or contact support if the problem persists.';
 						})
 						.finally(() => {
 							if (window.location.href.includes('form-waiting')) {

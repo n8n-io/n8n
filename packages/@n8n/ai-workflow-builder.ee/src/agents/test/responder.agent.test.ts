@@ -1,5 +1,6 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
+import type { Mock } from 'vitest';
 
 import {
 	invokeResponderAgent,
@@ -10,7 +11,7 @@ import {
 describe('invokeResponderAgent', () => {
 	function createMockAgent(responseContent = 'Test response'): ResponderAgentType {
 		return {
-			invoke: jest.fn().mockResolvedValue({
+			invoke: vi.fn().mockResolvedValue({
 				messages: [new AIMessage({ content: responseContent })],
 			}),
 		} as unknown as ResponderAgentType;
@@ -36,7 +37,7 @@ describe('invokeResponderAgent', () => {
 
 	it('should return fallback response when agent returns empty messages', async () => {
 		const mockAgent = {
-			invoke: jest.fn().mockResolvedValue({ messages: [] }),
+			invoke: vi.fn().mockResolvedValue({ messages: [] }),
 		} as unknown as ResponderAgentType;
 
 		const messages: BaseMessage[] = [new HumanMessage('Build a workflow')];
@@ -55,7 +56,7 @@ describe('invokeResponderAgent', () => {
 
 		await invokeResponderAgent(mockAgent, createContext(messages));
 
-		const invokeCall = (mockAgent.invoke as jest.Mock).mock.calls[0] as [
+		const invokeCall = (mockAgent.invoke as Mock).mock.calls[0] as [
 			{ messages: BaseMessage[] },
 			Record<string, unknown>,
 		];

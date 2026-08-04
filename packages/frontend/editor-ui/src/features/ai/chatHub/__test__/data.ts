@@ -306,6 +306,14 @@ export function createChatHubModuleSettings(
 				updatedAt: null,
 				enabled: true,
 			},
+			nvidia: {
+				provider: 'nvidia',
+				credentialId: null,
+				allowedModels: [],
+				createdAt: '2025-12-18T09:07:29.060Z',
+				updatedAt: null,
+				enabled: true,
+			},
 		},
 		...overrides,
 	};

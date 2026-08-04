@@ -52,6 +52,18 @@ export class DatabricksOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'header',
 		},
+		{
+			// Re-declared because the base `oAuth2Api` field is `doNotInherit`, so it
+			// never reaches the decrypted credential. Without it the value is always
+			// undefined and token refresh is hardcoded to 401 — Databricks returns 403
+			// when tokens expire, so the default must be 403.
+			displayName: 'Token Expired Status Code',
+			name: 'tokenExpiredStatusCode',
+			type: 'number',
+			default: 403,
+			description:
+				'HTTP status code that indicates the token has expired. Databricks returns 403 when tokens expire.',
+		},
 	];
 
 	test: ICredentialTestRequest = {

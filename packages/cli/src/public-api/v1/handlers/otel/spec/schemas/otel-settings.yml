@@ -1,0 +1,71 @@
+type: object
+additionalProperties: false
+description: >
+  The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a
+  full replacement: every field must be provided. Fields managed declaratively via environment
+  variables are returned with their effective value and ignored on write.
+required:
+  - enabled
+  - exporterEndpoint
+  - exporterTracingPath
+  - exporterServiceName
+  - exporterHeaders
+  - tracesSampleRate
+  - startupConnectivityTimeoutMs
+  - includeNodeSpans
+  - injectOutbound
+  - productionExecutionsOnly
+properties:
+  enabled:
+    type: boolean
+    description: Whether OpenTelemetry tracing is enabled.
+    example: true
+  exporterEndpoint:
+    type: string
+    format: uri
+    description: The base URL of the OTLP collector to export traces to.
+    example: http://localhost:4318
+  exporterTracingPath:
+    type: string
+    description: The path appended to the endpoint for the OTLP traces signal.
+    example: /v1/traces
+  exporterServiceName:
+    type: string
+    minLength: 1
+    description: The `service.name` resource attribute reported on every span.
+    example: n8n
+  exporterHeaders:
+    type: string
+    description: >
+      Additional headers sent to the OTLP collector, as a single string of comma-separated
+      `key=value` pairs (e.g. `authorization=Bearer my-token,x-tenant-id=acme`). Whitespace
+      around each key and value is trimmed; a value may contain spaces but not commas. Use an
+      empty string when unused.
+    example: authorization=Bearer my-token,x-tenant-id=acme
+  tracesSampleRate:
+    type: number
+    minimum: 0
+    maximum: 1
+    description: The ratio of traces to sample, between 0 (none) and 1 (all).
+    example: 1
+  startupConnectivityTimeoutMs:
+    type: integer
+    minimum: 0
+    description: >
+      How long, in milliseconds, to wait when checking the collector is reachable. Also used as
+      the timeout for the test-trace endpoint.
+    example: 2000
+  includeNodeSpans:
+    type: boolean
+    description: Whether to emit a span for each node execution in addition to the workflow span.
+    example: true
+  injectOutbound:
+    type: boolean
+    description: Whether to inject trace context headers into outbound HTTP requests made by nodes.
+    example: true
+  productionExecutionsOnly:
+    type: boolean
+    description: >
+      When true, only production executions of published (active) workflows are traced, not
+      manual/test runs.
+    example: true

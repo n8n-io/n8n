@@ -7,7 +7,12 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
+
 import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
@@ -40,10 +45,6 @@ import type {
 } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
-
 @Service()
 export class SourceControlStatusService {
 	constructor(
@@ -51,6 +52,7 @@ export class SourceControlStatusService {
 		private readonly gitService: SourceControlGitService,
 		private readonly sourceControlImportService: SourceControlImportService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+		private readonly sourceControlContextFactory: SourceControlContextFactory,
 		private readonly tagRepository: TagRepository,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -147,67 +149,54 @@ export class SourceControlStatusService {
 		user: User,
 		options: SourceControlGetStatus,
 	): Promise<SourceControlledFile[] | SourceControlGetStatusVerboseResult> {
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlContextFactory.createContext(user);
 		const collectVerbose = options?.verbose ?? false;
 
 		if (options.direction === 'pull' && !hasGlobalScope(user, 'sourceControl:pull')) {
-			// A pull is only allowed by global admins or owners
 			throw new ForbiddenError('You do not have permission to pull from source control');
 		}
 
-		const sourceControlledFiles: SourceControlledFile[] = [];
+		if (
+			options.direction === 'push' &&
+			!hasGlobalScope(user, 'sourceControl:push') &&
+			context.authorizedProjects.length === 0
+		) {
+			throw new ForbiddenError('You do not have permission to push to source control');
+		}
 
-		// fetch and reset hard first
 		await this.resetWorkfolder();
 
-		const workflowsStatus = await this.getStatusWorkflows(
-			options,
-			context,
-			sourceControlledFiles,
-			collectVerbose,
-		);
+		const remoteFolders =
+			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context);
 
-		const credentialsStatus = await this.getStatusCredentials(
-			options,
-			context,
-			sourceControlledFiles,
-			collectVerbose,
-		);
+		const [
+			workflowsResult,
+			credentialsResult,
+			variablesResult,
+			dataTablesResult,
+			tagsMappingsResult,
+			foldersMappingResult,
+			projectsResult,
+		] = await Promise.all([
+			this.getStatusWorkflows(options, context, collectVerbose, remoteFolders),
+			this.getStatusCredentials(options, context, collectVerbose),
+			this.getStatusVariables(options, collectVerbose),
+			this.getStatusDataTables(options, context, collectVerbose),
+			this.getStatusTagsMappings(options, context, collectVerbose),
+			this.getStatusFoldersMapping(options, context, collectVerbose, remoteFolders),
+			this.getStatusProjects(options, context, collectVerbose),
+		]);
 
-		const variablesStatus = await this.getStatusVariables(
-			options,
-			sourceControlledFiles,
-			collectVerbose,
-		);
+		const sourceControlledFiles: SourceControlledFile[] = [
+			...workflowsResult.files,
+			...credentialsResult.files,
+			...variablesResult.files,
+			...dataTablesResult.files,
+			...tagsMappingsResult.files,
+			...foldersMappingResult.files,
+			...projectsResult.files,
+		];
 
-		const dataTablesStatus = await this.getStatusDataTables(
-			options,
-			sourceControlledFiles,
-			collectVerbose,
-		);
-
-		const tagsMappingsStatus = await this.getStatusTagsMappings(
-			options,
-			context,
-			sourceControlledFiles,
-			collectVerbose,
-		);
-
-		const foldersMappingStatus = await this.getStatusFoldersMapping(
-			options,
-			context,
-			sourceControlledFiles,
-			collectVerbose,
-		);
-
-		const projectsStatus = await this.getStatusProjects(
-			options,
-			context,
-			sourceControlledFiles,
-			collectVerbose,
-		);
-
-		// #region Tracking Information
 		if (options.direction === 'push') {
 			this.eventService.emit(
 				'source-control-user-started-push-ui',
@@ -219,17 +208,16 @@ export class SourceControlStatusService {
 				getTrackingInformationFromPullResult(user.id, sourceControlledFiles),
 			);
 		}
-		// #endregion
 
 		if (collectVerbose) {
 			return {
-				...workflowsStatus,
-				...credentialsStatus,
-				...variablesStatus,
-				...dataTablesStatus,
-				...tagsMappingsStatus,
-				...foldersMappingStatus,
-				...projectsStatus,
+				...workflowsResult.verbose,
+				...credentialsResult.verbose,
+				...variablesResult.verbose,
+				...dataTablesResult.verbose,
+				...tagsMappingsResult.verbose,
+				...foldersMappingResult.verbose,
+				...projectsResult.verbose,
 				sourceControlledFiles,
 			};
 		}
@@ -238,10 +226,10 @@ export class SourceControlStatusService {
 	}
 
 	private async resetWorkfolder(): Promise<void> {
-		if (!this.gitService.git) {
-			throw new Error('Git service not initialized');
-		}
 		try {
+			if (!this.gitService.git) {
+				throw new Error('Git service not initialized');
+			}
 			await this.gitService.resetBranch();
 			await this.gitService.pull();
 		} catch (error) {
@@ -312,19 +300,18 @@ export class SourceControlStatusService {
 	private async getStatusWorkflows(
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
-		sourceControlledFiles: SourceControlledFile[],
 		collectVerbose: boolean,
+		prefetchedRemoteFolders: { folders: ExportableFolder[] },
 	) {
+		const sourceControlledFiles: SourceControlledFile[] = [];
 		// TODO: We need to check the case where it exists in the DB (out of scope) but is in GIT
-		const [wfRemoteVersionIds, wfLocalVersionIds, foldersMappingsRemote, foldersMappingsLocal] =
-			await Promise.all([
-				this.sourceControlImportService.getRemoteVersionIdsFromFiles(context),
-				this.sourceControlImportService.getLocalVersionIdsFromDb(context),
-				this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context),
-				this.sourceControlImportService.getLocalFoldersAndMappingsFromDb(context),
-			]);
+		const [wfRemoteVersionIds, wfLocalVersionIds, foldersMappingsLocal] = await Promise.all([
+			this.sourceControlImportService.getRemoteVersionIdsFromFiles(context),
+			this.sourceControlImportService.getLocalVersionIdsFromDb(context),
+			this.sourceControlImportService.getLocalFoldersAndMappingsFromDb(context),
+		]);
 		const remoteFoldersById = new Map<string, FolderPathNode>(
-			foldersMappingsRemote.folders.map((folder) => [
+			prefetchedRemoteFolders.folders.map((folder) => [
 				folder.id,
 				pick(folder, ['name', 'parentFolderId']),
 			]),
@@ -480,20 +467,23 @@ export class SourceControlStatusService {
 		}
 
 		return {
-			wfRemoteVersionIds,
-			wfLocalVersionIds,
-			wfMissingInLocal,
-			wfMissingInRemote,
-			wfModifiedInEither,
+			files: sourceControlledFiles,
+			verbose: {
+				wfRemoteVersionIds,
+				wfLocalVersionIds,
+				wfMissingInLocal,
+				wfMissingInRemote,
+				wfModifiedInEither,
+			},
 		};
 	}
 
 	private async getStatusCredentials(
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
-		sourceControlledFiles: SourceControlledFile[],
 		collectVerbose: boolean,
 	) {
+		const sourceControlledFiles: SourceControlledFile[] = [];
 		const credRemoteIds =
 			await this.sourceControlImportService.getRemoteCredentialsFromFiles(context);
 		const credLocalIds = await this.sourceControlImportService.getLocalCredentialsFromDb(context);
@@ -569,17 +559,17 @@ export class SourceControlStatusService {
 		}
 
 		return {
-			credMissingInLocal,
-			credMissingInRemote,
-			credModifiedInEither,
+			files: sourceControlledFiles,
+			verbose: {
+				credMissingInLocal,
+				credMissingInRemote,
+				credModifiedInEither,
+			},
 		};
 	}
 
-	private async getStatusVariables(
-		options: SourceControlGetStatus,
-		sourceControlledFiles: SourceControlledFile[],
-		collectVerbose: boolean,
-	) {
+	private async getStatusVariables(options: SourceControlGetStatus, collectVerbose: boolean) {
+		const sourceControlledFiles: SourceControlledFile[] = [];
 		const varRemoteIds = await this.sourceControlImportService.getRemoteVariablesFromFile();
 		const varLocalIds = await this.sourceControlImportService.getLocalGlobalVariablesFromDb();
 
@@ -655,28 +645,78 @@ export class SourceControlStatusService {
 		}
 
 		return {
-			varMissingInLocal,
-			varMissingInRemote,
-			varModifiedInEither,
+			files: sourceControlledFiles,
+			verbose: {
+				varMissingInLocal,
+				varMissingInRemote,
+				varModifiedInEither,
+			},
 		};
 	}
 
 	private async getStatusDataTables(
 		options: SourceControlGetStatus,
-		sourceControlledFiles: SourceControlledFile[],
+		context: SourceControlContext,
 		collectVerbose: boolean,
 	) {
+		const sourceControlledFiles: SourceControlledFile[] = [];
 		const dataTablesRemote =
-			(await this.sourceControlImportService.getRemoteDataTablesFromFiles()) ?? [];
+			(await this.sourceControlImportService.getRemoteDataTablesFromFiles(context)) ?? [];
 		const dataTablesLocal =
-			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
+			(await this.sourceControlImportService.getLocalDataTablesFromDb(context)) ?? [];
+
+		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
+		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
+		// Same-named tables may exist in several projects, so group by name and
+		// pick the candidate per project below.
+		const remotesByName = new Map<string, ExportableDataTable[]>();
+		for (const dt of dataTablesRemote) {
+			const sameName = remotesByName.get(dt.name);
+			if (sameName) {
+				sameName.push(dt);
+			} else {
+				remotesByName.set(dt.name, [dt]);
+			}
+		}
 
 		const dtMissingInLocal: ExportableDataTable[] = [];
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
 		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
 
+		// Cross-id name collisions (same (project, name), different id — typically a
+		// delete+recreate upstream). Computed before the remote loop because a pull
+		// reports a collision as ONE user-facing change: the incoming id must not
+		// also appear as "created", nor the old local id as "deleted". A remote
+		// table's project is resolved the way the import resolves it, so the
+		// preview matches where the pull will place the table.
+		const nameCollisionByLocalId = new Map<string, ExportableDataTable>();
+		for (const local of dataTablesLocal) {
+			if (remoteById.has(local.id) || !local.ownedBy) continue;
+			for (const candidate of remotesByName.get(local.name) ?? []) {
+				if (candidate.id === local.id) continue;
+				const candidateProjectId =
+					await this.sourceControlImportService.resolveRemoteDataTableProjectId(
+						candidate.ownedBy,
+						context.user.id,
+					);
+				if (candidateProjectId === local.ownedBy.projectId) {
+					nameCollisionByLocalId.set(local.id, candidate);
+					break;
+				}
+			}
+		}
+		const collidingRemoteIds = new Set(
+			[...nameCollisionByLocalId.values()].map((remote) => remote.id),
+		);
+
 		for (const remote of dataTablesRemote) {
-			if (dataTablesLocal.findIndex((local) => local.id === remote.id) === -1) {
+			if (!localById.has(remote.id)) {
+				// On pull, an id claimed by a name collision is covered by that
+				// collision's single "modified" entry.
+				if (options.direction === 'pull' && collidingRemoteIds.has(remote.id)) {
+					continue;
+				}
+
 				if (collectVerbose) {
 					dtMissingInLocal.push(remote);
 				}
@@ -695,9 +735,39 @@ export class SourceControlStatusService {
 		}
 
 		for (const local of dataTablesLocal) {
-			const remote = dataTablesRemote.find((r) => r.id === local.id);
+			const remote = remoteById.get(local.id);
 
 			if (!remote) {
+				const nameCollision = nameCollisionByLocalId.get(local.id);
+				if (nameCollision) {
+					const isPull = options.direction === 'pull';
+					// On pull the entry carries the incoming table regardless of
+					// preferLocalVersion: its file is what the import consumes, and the
+					// dry-run (which always has preferLocalVersion=true) must preview the
+					// same entry the pull acts on. On push the collision surfaces on the
+					// local table.
+					const modified = isPull ? nameCollision : local;
+					if (collectVerbose) {
+						dtModifiedInEither.push(modified);
+					}
+					sourceControlledFiles.push({
+						id: modified.id,
+						name: modified.name,
+						type: 'datatable',
+						status: 'modified',
+						location: options.direction === 'push' ? 'local' : 'remote',
+						conflict: true,
+						file: getDataTableExportPath(modified.id, this.dataTableExportFolder),
+						updatedAt: new Date().toISOString(),
+						owner: this.convertToStatusResourceOwner(modified.ownedBy),
+					});
+					// On pull the collision entry is the ONLY entry for this table:
+					// never emit a "deleted" entry for the old local id.
+					if (isPull) {
+						continue;
+					}
+				}
+
 				if (collectVerbose) {
 					dtMissingInRemote.push(local);
 				}
@@ -712,16 +782,13 @@ export class SourceControlStatusService {
 					updatedAt: new Date().toISOString(),
 					owner: local.ownedBy ?? undefined,
 				});
+
 				continue;
 			}
 
-			const hasMismatch =
-				(remote.id === local.id && remote.name !== local.name) ||
-				(remote.id !== local.id && remote.name === local.name);
-
 			const isModified = isDataTableModified(local, remote);
 
-			if (hasMismatch || isModified) {
+			if (isModified) {
 				const modified = options.preferLocalVersion ? local : remote;
 				if (collectVerbose) {
 					dtModifiedInEither.push(modified);
@@ -741,18 +808,21 @@ export class SourceControlStatusService {
 		}
 
 		return {
-			dtMissingInLocal,
-			dtMissingInRemote,
-			dtModifiedInEither,
+			files: sourceControlledFiles,
+			verbose: {
+				dtMissingInLocal,
+				dtMissingInRemote,
+				dtModifiedInEither,
+			},
 		};
 	}
 
 	private async getStatusTagsMappings(
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
-		sourceControlledFiles: SourceControlledFile[],
 		collectVerbose: boolean,
 	) {
+		const sourceControlledFiles: SourceControlledFile[] = [];
 		const lastUpdatedTag = await this.tagRepository.find({
 			order: { updatedAt: 'DESC' },
 			take: 1,
@@ -890,20 +960,24 @@ export class SourceControlStatusService {
 		}
 
 		return {
-			tagsMissingInLocal,
-			tagsMissingInRemote,
-			tagsModifiedInEither,
-			mappingsMissingInLocal,
-			mappingsMissingInRemote,
+			files: sourceControlledFiles,
+			verbose: {
+				tagsMissingInLocal,
+				tagsMissingInRemote,
+				tagsModifiedInEither,
+				mappingsMissingInLocal,
+				mappingsMissingInRemote,
+			},
 		};
 	}
 
 	private async getStatusFoldersMapping(
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
-		sourceControlledFiles: SourceControlledFile[],
 		collectVerbose: boolean,
+		prefetchedRemoteFolders: { folders: ExportableFolder[] },
 	) {
+		const sourceControlledFiles: SourceControlledFile[] = [];
 		const lastUpdatedFolder = await this.folderRepository.find({
 			order: { updatedAt: 'DESC' },
 			take: 1,
@@ -912,8 +986,7 @@ export class SourceControlStatusService {
 
 		const lastUpdatedDate = lastUpdatedFolder[0]?.updatedAt ?? new Date();
 
-		const foldersMappingsRemote =
-			await this.sourceControlImportService.getRemoteFoldersAndMappingsFromFile(context);
+		const foldersMappingsRemote = prefetchedRemoteFolders;
 		const foldersMappingsLocal =
 			await this.sourceControlImportService.getLocalFoldersAndMappingsFromDb(context);
 
@@ -1016,18 +1089,21 @@ export class SourceControlStatusService {
 		}
 
 		return {
-			foldersMissingInLocal,
-			foldersMissingInRemote,
-			foldersModifiedInEither,
+			files: sourceControlledFiles,
+			verbose: {
+				foldersMissingInLocal,
+				foldersMissingInRemote,
+				foldersModifiedInEither,
+			},
 		};
 	}
 
 	private async getStatusProjects(
 		options: SourceControlGetStatus,
 		context: SourceControlContext,
-		sourceControlledFiles: SourceControlledFile[],
 		collectVerbose: boolean,
 	) {
+		const sourceControlledFiles: SourceControlledFile[] = [];
 		const projectsRemote =
 			await this.sourceControlImportService.getRemoteProjectsFromFiles(context);
 		const projectsLocal = await this.sourceControlImportService.getLocalTeamProjectsFromDb(context);
@@ -1163,11 +1239,14 @@ export class SourceControlStatusService {
 		});
 
 		return {
-			projectsRemote,
-			projectsLocal,
-			projectsMissingInLocal,
-			projectsMissingInRemote,
-			projectsModifiedInEither,
+			files: sourceControlledFiles,
+			verbose: {
+				projectsRemote,
+				projectsLocal,
+				projectsMissingInLocal,
+				projectsMissingInRemote,
+				projectsModifiedInEither,
+			},
 		};
 	}
 

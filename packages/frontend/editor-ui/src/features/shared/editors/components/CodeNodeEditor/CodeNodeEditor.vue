@@ -13,7 +13,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCodeEditor } from '../../composables/useCodeEditor';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';

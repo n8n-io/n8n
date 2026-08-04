@@ -63,11 +63,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
 	const isBuilderModeActive = computed(() => chatPanelStateStore.activeMode === 'builder');
 
-	const canShowAiButtonOnCanvas = computed(
-		() =>
-			settingsStore.isAiAssistantOrBuilderEnabled &&
-			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
-	);
+	const isEditableCanvasView = computed(() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS));
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
@@ -262,7 +258,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
-		canShowAiButtonOnCanvas,
+		isEditableCanvasView,
 		// Actions
 		open,
 		close,

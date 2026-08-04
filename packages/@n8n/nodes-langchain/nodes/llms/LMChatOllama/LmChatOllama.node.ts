@@ -14,6 +14,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
+
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 
 export class LmChatOllama implements INodeType {
@@ -81,7 +83,7 @@ export class LmChatOllama implements INodeType {
 		});
 
 		return {
-			response: model,
+			response: wrapChatModelMessageInput(model),
 		};
 	}
 }

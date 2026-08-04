@@ -6,7 +6,6 @@ storybook-static
 .storybook
 
 .browserslistrc
-jest.config.js
 vite.config.ts
 
 *.md

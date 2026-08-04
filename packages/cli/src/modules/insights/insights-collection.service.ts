@@ -48,12 +48,26 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 
 	// n8n Chat hub messages
 	chat: true,
+
+	// Agent executions
+	agent: true,
 };
 
 const MIN_RUNTIME = 0;
 
 // PostgreSQL INTEGER max (signed 32-bit)
 const MAX_RUNTIME = 2 ** 31 - 1;
+
+/**
+ * `insights_raw.value` is stored as BIGINT in PostgreSQL. Non-integer JavaScript
+ * numbers are serialized with a fractional part and rejected by the driver
+ */
+function integerValueForInsightsRaw(value: number): number {
+	if (!Number.isFinite(value)) {
+		return 0;
+	}
+	return Math.round(value);
+}
 
 type BufferedInsight = Pick<InsightsRaw, 'type' | 'value' | 'timestamp'> & {
 	workflowId: string;
@@ -145,6 +159,13 @@ export class InsightsCollectionService {
 			return;
 		}
 
+		// Instance AI verification runs mimic the trigger's execution mode, so a
+		// schedule/form/webhook-triggered workflow would otherwise report them as
+		// production runs. They are test runs on the user's behalf — skip them.
+		if (ctx.source === 'instance_ai') {
+			return;
+		}
+
 		const status = ctx.runData.status === 'success' ? 'success' : 'failure';
 
 		const commonWorkflowData = {
@@ -174,8 +195,8 @@ export class InsightsCollectionService {
 			});
 		}
 
-		// time saved event
-		if (status === 'success') {
+		// time saved event (error workflows are operational, not productive work)
+		if (status === 'success' && ctx.runData.mode !== 'error') {
 			const finalTimeSaved = this.calculateTimeSaved(ctx);
 			if (finalTimeSaved !== undefined) {
 				this.bufferedInsights.add({
@@ -256,7 +277,7 @@ export class InsightsCollectionService {
 			}
 			insight.metaId = metadata.metaId;
 			insight.type = event.type;
-			insight.value = event.value;
+			insight.value = integerValueForInsightsRaw(event.value);
 			insight.timestamp = event.timestamp;
 
 			events.push(insight);

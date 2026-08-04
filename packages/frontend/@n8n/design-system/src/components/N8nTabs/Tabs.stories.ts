@@ -101,6 +101,11 @@ const options: Array<TabOptions<string>> = [
 		notification: true,
 	},
 	{
+		label: 'Count',
+		value: 'count',
+		tag: '2',
+	},
+	{
 		label: 'Settings',
 		value: 'settings',
 		icon: 'cog',

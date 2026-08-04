@@ -24,6 +24,7 @@ class TestTaskRunnerConnectionRetry:
             external_allow={"*"},
             builtins_deny=set(),
             env_deny=False,
+            allow_transitive_imports=False,
         )
 
     @pytest.mark.asyncio
@@ -87,6 +88,7 @@ class TestTaskRunnerDrain:
             external_allow={"*"},
             builtins_deny=set(),
             env_deny=False,
+            allow_transitive_imports=False,
         )
 
     @pytest.mark.asyncio

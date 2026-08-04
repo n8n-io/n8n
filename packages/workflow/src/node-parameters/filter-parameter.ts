@@ -1,6 +1,6 @@
-import { ApplicationError } from '@n8n/errors';
 import type { DateTime } from 'luxon';
 
+import { UserError } from '../errors/base/user.error';
 import type {
 	FilterConditionValue,
 	FilterOperatorType,
@@ -10,7 +10,7 @@ import type {
 	ValidationResult,
 } from '../interfaces';
 import * as LoggerProxy from '../logger-proxy';
-import type { Result } from '../result';
+import type { Result } from '@n8n/utils/result';
 import { validateFieldType } from '../type-validation';
 
 type FilterConditionMetadata = {
@@ -20,12 +20,12 @@ type FilterConditionMetadata = {
 	errorFormat: 'full' | 'inline';
 };
 
-export class FilterError extends ApplicationError {
+export class FilterError extends UserError {
 	constructor(
 		message: string,
-		readonly description: string,
+		override readonly description: string,
 	) {
-		super(message, { level: 'warning' });
+		super(message, { level: 'warning', description });
 	}
 }
 
@@ -310,6 +310,8 @@ export function executeFilterCondition(
 				case 'lte':
 					return left <= right;
 			}
+
+			break;
 		}
 		case 'dateTime': {
 			const left = leftValue as DateTime;
@@ -339,6 +341,8 @@ export function executeFilterCondition(
 				case 'beforeOrEquals':
 					return left.toMillis() <= right.toMillis();
 			}
+
+			break;
 		}
 		case 'boolean': {
 			const left = leftValue as boolean;
@@ -358,6 +362,8 @@ export function executeFilterCondition(
 				case 'notEquals':
 					return left !== right;
 			}
+
+			break;
 		}
 		case 'array': {
 			const left = (leftValue ?? []) as unknown[];
@@ -385,6 +391,8 @@ export function executeFilterCondition(
 				case 'notEmpty':
 					return left.length !== 0;
 			}
+
+			break;
 		}
 		case 'object': {
 			const left = leftValue;
@@ -395,6 +403,8 @@ export function executeFilterCondition(
 				case 'notEmpty':
 					return !!left && Object.keys(left).length !== 0;
 			}
+
+			break;
 		}
 	}
 

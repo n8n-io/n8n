@@ -22,8 +22,10 @@ export function createFileStatTool(filesystem: WorkspaceFilesystem): BuiltTool {
 				modifiedAt: z.string(),
 			}),
 		)
-		.handler(async (input) => {
-			const stat = await filesystem.stat(input.path);
+		.handler(async (input, ctx) => {
+			const stat = await filesystem.stat(input.path, {
+				abortSignal: ctx.abortSignal,
+			});
 			return {
 				name: stat.name,
 				path: stat.path,

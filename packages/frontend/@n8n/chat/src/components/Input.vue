@@ -90,8 +90,8 @@ onChange((newFiles) => {
 	files.value = newFilesDT.files;
 });
 
-function handleSetupWebsocket(executionId: string) {
-	setupWebsocketConnection(executionId);
+function handleSetupWebsocket(executionId: string, resumeToken?: string) {
+	setupWebsocketConnection(executionId, resumeToken);
 }
 
 onMounted(() => {
@@ -154,7 +154,7 @@ function attachFiles() {
 	return [];
 }
 
-function setupWebsocketConnection(executionId: string) {
+function setupWebsocketConnection(executionId: string, resumeToken?: string) {
 	// if webhookUrl is not defined onSubmit is called from integrated chat
 	// do not setup websocket as it would be handled by the integrated chat
 	if (options.webhookUrl && chatStore.currentSessionId.value) {
@@ -164,21 +164,55 @@ function setupWebsocketConnection(executionId: string) {
 				executionId,
 				chatStore.currentSessionId.value,
 				true,
+				resumeToken,
 			);
 			chatStore.ws = new WebSocket(wsUrl);
+			// Keep the typing indicator up while the execution runs: the initial
+			// sendMessage cleared it on `executionStarted`, and the first bot frame
+			// (or socket close) below will clear it again.
+			chatStore.waitingForResponse.value = true;
+			// The first heartbeat locks the protocol: a pre-v3 server sends the string
+			// `n8n|heartbeat`, a v3 server sends `{type:'heartbeat'}`. Once legacy mode is
+			// locked, JSON that merely looks like a control frame is a chat message.
+			let jsonProtocol: boolean | undefined;
 			chatStore.ws.onmessage = (e) => {
-				if (e.data === 'n8n|heartbeat') {
-					chatStore.ws?.send('n8n|heartbeat-ack');
+				const data = e.data as string;
+
+				// Backward compatible with both protocols: legacy string sentinels
+				// (n8n < v3) and JSON frames (n8n v3+). Normalize to a frame type,
+				// remembering the legacy case so heartbeats are acked in kind.
+				const isLegacy = data === 'n8n|heartbeat' || data === 'n8n|continue';
+				let frameType: string | undefined;
+				if (isLegacy) {
+					frameType = data === 'n8n|heartbeat' ? 'heartbeat' : 'continue';
+				} else {
+					try {
+						frameType = (JSON.parse(data) as { type?: string }).type;
+					} catch {
+						frameType = undefined;
+					}
+				}
+
+				// A control frame only counts if it matches the mode locked by the first
+				// heartbeat; either protocol is accepted until that lock happens. This
+				// keeps a stray cross-protocol frame from flipping the mode.
+				const matchesProtocol = isLegacy ? jsonProtocol !== true : jsonProtocol !== false;
+
+				if (frameType === 'heartbeat' && matchesProtocol) {
+					jsonProtocol = !isLegacy;
+					chatStore.ws?.send(
+						isLegacy ? 'n8n|heartbeat-ack' : JSON.stringify({ type: 'heartbeat-ack' }),
+					);
 					return;
 				}
 
-				if (e.data === 'n8n|continue') {
+				if (frameType === 'continue' && matchesProtocol) {
 					waitingForChatResponse.value = false;
 					chatStore.waitingForResponse.value = true;
 					return;
 				}
 
-				const newMessage = parseBotChatMessageContent(e.data as string);
+				const newMessage = parseBotChatMessageContent(data);
 				chatStore.messages.value.push(newMessage);
 				waitingForChatResponse.value = true;
 				chatStore.waitingForResponse.value = false;
@@ -266,7 +300,7 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	const response = await chatStore.sendMessage(messageText, attachFiles());
 
 	if (response?.executionId) {
-		setupWebsocketConnection(response.executionId);
+		setupWebsocketConnection(response.executionId, response.resumeToken);
 	}
 
 	// Emit event to reset message history navigation

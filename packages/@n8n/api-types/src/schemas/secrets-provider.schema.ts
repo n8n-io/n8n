@@ -4,6 +4,9 @@ import { z } from 'zod';
 // #region ENUMS & CONSTANTS
 // ==========
 
+export const SECRETS_PROVIDER_KEY_PATTERN = '[a-zA-Z][a-zA-Z0-9]*';
+export const SECRETS_PROVIDER_KEY_REGEX = new RegExp(`^${SECRETS_PROVIDER_KEY_PATTERN}$`);
+
 export const secretsProviderTypeSchema = z.enum([
 	'awsSecretsManager',
 	'gcpSecretsManager',

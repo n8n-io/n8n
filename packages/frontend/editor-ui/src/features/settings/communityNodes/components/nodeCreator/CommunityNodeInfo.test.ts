@@ -35,10 +35,16 @@ const getCommunityNodeAttributes = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
+		getNodeType: vi.fn(),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	})),
 }));
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(() => ({
 		isAdmin: true,
 		isAdminOrOwner: true,

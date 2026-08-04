@@ -1,11 +1,9 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { LogScope, TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-
-import { TypedEmitter } from '@/typed-emitter';
 
 import { forwardToLogger } from './forward-to-logger';
 import { TaskBrokerAuthService } from './task-broker/auth/task-broker-auth.service';

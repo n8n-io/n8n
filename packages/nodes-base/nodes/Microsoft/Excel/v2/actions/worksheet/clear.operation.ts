@@ -2,6 +2,7 @@ import type { INodeExecutionData, IExecuteFunctions, INodeProperties } from 'n8n
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
@@ -88,6 +89,10 @@ export async function execute(
 					'POST',
 					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range/clear`,
 					{ applyTo },
+					undefined,
+					undefined,
+					undefined,
+					i,
 				);
 			} else {
 				const range = this.getNodeParameter('range', i, '') as string;
@@ -96,6 +101,10 @@ export async function execute(
 					'POST',
 					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')/clear`,
 					{ applyTo },
+					undefined,
+					undefined,
+					undefined,
+					i,
 				);
 			}
 
@@ -114,7 +123,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

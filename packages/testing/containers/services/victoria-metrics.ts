@@ -2,6 +2,7 @@ import type { StartedNetwork } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { CADVISOR_PORT } from './cadvisor';
 import { EXPORTER_PORT } from './postgres-exporter';
 import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
@@ -64,7 +65,7 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 	description: 'VictoriaMetrics',
 
 	getOptions(ctx: StartContext): VictoriaMetricsConfig {
-		const { mains, workers, projectName } = ctx;
+		const { mains, workers, webhooks, projectName } = ctx;
 		const scrapeTargets: ScrapeTarget[] = [];
 
 		for (let i = 1; i <= mains; i++) {
@@ -73,6 +74,14 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				job: 'n8n-main',
 				instance: `n8n-main-${i}`,
 				host: hostname,
+				port: 5678,
+			});
+		}
+		for (let i = 1; i <= webhooks; i++) {
+			scrapeTargets.push({
+				job: 'n8n-webhook',
+				instance: `n8n-webhook-${i}`,
+				host: `${projectName}-n8n-webhook-${i}`,
 				port: 5678,
 			});
 		}
@@ -93,6 +102,16 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				instance: 'postgres',
 				host: 'postgres-exporter',
 				port: EXPORTER_PORT,
+			});
+		}
+
+		// Add cAdvisor scrape target so per-container CPU/memory/IO is queryable.
+		if (services.includes('cadvisor')) {
+			scrapeTargets.push({
+				job: 'cadvisor',
+				instance: 'cadvisor',
+				host: 'cadvisor',
+				port: CADVISOR_PORT,
 			});
 		}
 

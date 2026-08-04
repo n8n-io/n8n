@@ -13,7 +13,9 @@ import { DEFAULTS } from '../support/constants';
  */
 export async function getTracingCallbacks(): Promise<Callbacks | undefined> {
 	try {
-		return await getLangchainCallbacks();
+		// langsmith resolves the `import`-condition @langchain/core `Callbacks`;
+		// bridge it to the `require`-condition type used by the langchain consumers.
+		return (await getLangchainCallbacks()) as unknown as Callbacks | undefined;
 	} catch {
 		return undefined;
 	}
@@ -23,6 +25,26 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	for await (const _ of gen) {
 		/* consume all */
 	}
+}
+
+/**
+ * Consume an async generator of StreamOutput, collecting AgentMessageChunk text.
+ * Returns the concatenated text from all message chunks.
+ */
+export async function collectAgentTextResponse<
+	T extends { messages?: Array<{ type: string; text?: string }> },
+>(gen: AsyncGenerator<T>): Promise<string> {
+	const textParts: string[] = [];
+	for await (const output of gen) {
+		if (output.messages) {
+			for (const chunk of output.messages) {
+				if (chunk.type === 'message' && chunk.text) {
+					textParts.push(chunk.text);
+				}
+			}
+		}
+	}
+	return textParts.join('');
 }
 
 export async function runWithOptionalLimiter<T>(

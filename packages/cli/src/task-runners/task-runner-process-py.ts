@@ -37,7 +37,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 
 		return spawn(venvPath, ['-m', 'src.main'], {
 			cwd: pythonDir,
-			env: {
+			env: Object.assign(Object.create(null), {
 				// system environment
 				PATH: process.env.PATH,
 				HOME: process.env.HOME ?? process.env.USERPROFILE,
@@ -53,9 +53,10 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				// n8n
 				N8N_RUNNERS_STDLIB_ALLOW: process.env.N8N_RUNNERS_STDLIB_ALLOW,
 				N8N_RUNNERS_EXTERNAL_ALLOW: process.env.N8N_RUNNERS_EXTERNAL_ALLOW,
+				N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS: process.env.N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS,
 				N8N_RUNNERS_BUILTINS_DENY: process.env.N8N_RUNNERS_BUILTINS_DENY,
 				N8N_BLOCK_RUNNER_ENV_ACCESS: process.env.N8N_BLOCK_RUNNER_ENV_ACCESS,
-			},
+			}),
 		});
 	}
 

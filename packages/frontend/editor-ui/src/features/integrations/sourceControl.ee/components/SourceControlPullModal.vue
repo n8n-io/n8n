@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useLoadingService } from '@/app/composables/useLoadingService';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -580,7 +580,7 @@ onMounted(() => {
 															v-else-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
 															target="_blank"
 															rel="noopener noreferrer"
-															:to="{ name: VIEWS.WORKFLOW, params: { name: row.file.id } }"
+															:to="{ name: VIEWS.WORKFLOW, params: { workflowId: row.file.id } }"
 														>
 															{{ row.file.name }}
 														</RouterLink>

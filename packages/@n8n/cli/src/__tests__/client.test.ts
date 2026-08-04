@@ -1,0 +1,379 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import { ApiError, N8nClient } from '../client';
+
+function jsonResponse(status: number, body: unknown): Response {
+	return {
+		ok: status >= 200 && status < 300,
+		status,
+		statusText: '',
+		headers: new Headers([['content-type', 'application/json']]),
+		json: vi.fn().mockResolvedValue(body),
+		text: vi.fn().mockResolvedValue(JSON.stringify(body)),
+		arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+	} as unknown as Response;
+}
+
+function binaryResponse(status: number, bytes: Uint8Array): Response {
+	return {
+		ok: status >= 200 && status < 300,
+		status,
+		statusText: '',
+		headers: new Headers([['content-type', 'application/gzip']]),
+		json: vi.fn().mockRejectedValue(new Error('not json')),
+		text: vi.fn().mockResolvedValue(''),
+		arrayBuffer: vi
+			.fn()
+			.mockResolvedValue(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)),
+	} as unknown as Response;
+}
+
+describe('N8nClient packages', () => {
+	const fetchMock = vi.fn();
+	let client: N8nClient;
+
+	beforeEach(() => {
+		vi.stubGlobal('fetch', fetchMock);
+		fetchMock.mockReset();
+		client = new N8nClient({ baseUrl: 'https://n8n.example.com', apiKey: 'test-key' });
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	describe('exportPackage', () => {
+		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
+
+			const result = await client.exportPackage({ workflowIds: ['a', 'b'] });
+
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			// Older servers omit the counts header.
+			expect(result.counts).toBeUndefined();
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a', 'b'] }));
+		});
+
+		it('posts the project IDs as JSON and returns the archive bytes', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([4, 5, 6])));
+
+			const result = await client.exportPackage({ projectIds: ['proj-1', 'proj-2'] });
+
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([4, 5, 6]))).toBe(true);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
+			expect(init.body).toBe(JSON.stringify({ projectIds: ['proj-1', 'proj-2'] }));
+		});
+
+		it('parses the X-N8n-Export-Counts header into counts when the server sends it', async () => {
+			const counts = { workflows: 2, folders: 1, credentials: 0, dataTables: 0, variables: 0 };
+			const response = binaryResponse(200, new Uint8Array([1, 2, 3]));
+			response.headers.set('X-N8n-Export-Counts', JSON.stringify(counts));
+			fetchMock.mockResolvedValue(response);
+
+			const result = await client.exportPackage({ workflowIds: ['a'] });
+
+			expect(result.counts).toEqual(counts);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
+		});
+
+		it('includes folderIds in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], folderIds: ['f1'] });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], folderIds: ['f1'] }));
+		});
+
+		it('includes the missing workflow dependency policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				projectIds: ['proj-1'],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({
+					projectIds: ['proj-1'],
+					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			);
+		});
+
+		it('omits an empty collection from the body', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: [], folderIds: ['f1'] });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ folderIds: ['f1'] }));
+		});
+
+		it('includes includeVariableValues=false in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeVariableValues: false });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeVariableValues: false }));
+		});
+
+		it('includes includeVariableValues=true in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeVariableValues: true });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeVariableValues: true }));
+		});
+
+		it('omits includeVariableValues from the body when not provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'] });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
+		});
+
+		it('includes includeTags=false in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeTags: false });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
+		});
+	});
+
+	describe('importPackage', () => {
+		it('sends a multipart body with the file and non-empty fields', async () => {
+			fetchMock.mockResolvedValue(jsonResponse(200, { workflows: [], bindings: {} }));
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					projectId: 'proj-1',
+					folderId: '',
+					workflowIdPolicy: 'new',
+					credentialMatchingMode: undefined,
+					missingNodeTypeMode: undefined,
+				},
+			);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/import');
+			expect(init.body).toBeInstanceOf(FormData);
+
+			const form = init.body as FormData;
+			expect(form.get('workflowConflictPolicy')).toBe('fail');
+			expect(form.get('projectId')).toBe('proj-1');
+			expect(form.get('workflowIdPolicy')).toBe('new');
+			// Empty/undefined fields are omitted entirely (an omitted CLI flag
+			// means the instance default decides).
+			expect(form.has('folderId')).toBe(false);
+			expect(form.has('credentialMatchingMode')).toBe(false);
+			expect(form.has('missingNodeTypeMode')).toBe(false);
+
+			const pkg = form.get('package');
+			expect(pkg).toBeInstanceOf(Blob);
+			expect((pkg as File).name).toBe('export.n8np');
+
+			// Multipart requests must not carry the default JSON content type;
+			// fetch fills in multipart/form-data with its own boundary.
+			expect((init.headers as Headers).get('content-type')).toBeNull();
+		});
+
+		it('sends credentialMissingMode when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					credentialMissingMode: 'create-stub',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('credentialMissingMode')).toBe('create-stub');
+		});
+
+		it('sends missingNodeTypeMode when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					missingNodeTypeMode: 'import-anyway',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('missingNodeTypeMode')).toBe('import-anyway');
+		});
+
+		it('sends the data table modes when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'do-nothing',
+					dataTableSchemaConflictPolicy: 'fail',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('dataTableMatchingMode')).toBe('by-id');
+			expect(form.get('dataTableMissingMode')).toBe('do-nothing');
+			expect(form.get('dataTableSchemaConflictPolicy')).toBe('fail');
+		});
+
+		describe('variableMissingMode', () => {
+			it.each(['do-nothing', 'must-preexist', 'create-stub'])(
+				'sends %s when provided',
+				async (policy) => {
+					fetchMock.mockResolvedValue(
+						jsonResponse(200, {
+							workflows: [],
+							bindings: {},
+							credentials: { matched: [], stubbed: [] },
+							variables: { matched: [], missing: [], stubbed: [] },
+						}),
+					);
+
+					await client.importPackage(
+						{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+						{
+							workflowConflictPolicy: 'fail',
+							variableMissingMode: policy,
+						},
+					);
+
+					const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+					expect(form.get('variableMissingMode')).toBe(policy);
+				},
+			);
+		});
+
+		describe('variableParentPolicy', () => {
+			it.each(['project', 'global'])('sends %s when provided', async (policy) => {
+				fetchMock.mockResolvedValue(
+					jsonResponse(200, {
+						workflows: [],
+						bindings: {},
+						credentials: { matched: [], stubbed: [] },
+						variables: { matched: [], missing: [], stubbed: [] },
+					}),
+				);
+
+				await client.importPackage(
+					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+					{
+						workflowConflictPolicy: 'fail',
+						variableParentPolicy: policy,
+					},
+				);
+
+				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+				expect(form.get('variableParentPolicy')).toBe(policy);
+			});
+		});
+
+		it('forwards bindings verbatim as a form field', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			const bindings = '{"credentials":{"source-cred":"target-cred"}}';
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{ workflowConflictPolicy: 'fail', bindings },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('bindings')).toBe(bindings);
+		});
+
+		it('omits credentialMissingMode so the instance default applies', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{ workflowConflictPolicy: 'fail' },
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.has('credentialMissingMode')).toBe(false);
+		});
+
+		it('throws an ApiError that preserves the blocking-issue details', async () => {
+			const body = {
+				message: 'Import blocked',
+				issues: [
+					{
+						type: 'workflow-conflict',
+						name: 'Flow',
+						sourceWorkflowId: 's1',
+						existingWorkflowId: 'e1',
+					},
+				],
+			};
+			fetchMock.mockResolvedValue(jsonResponse(409, body));
+
+			const error = await client
+				.importPackage(
+					{ buffer: Buffer.from('p'), filename: 'x.n8np' },
+					{ workflowConflictPolicy: 'fail' },
+				)
+				.catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ApiError);
+			expect((error as ApiError).statusCode).toBe(409);
+			expect((error as ApiError).message).toBe('Import blocked');
+			expect((error as ApiError).details).toEqual(body);
+		});
+	});
+});

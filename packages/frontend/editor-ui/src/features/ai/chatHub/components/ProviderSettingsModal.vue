@@ -5,7 +5,7 @@ import {
 	N8nHeading,
 	N8nIconButton,
 	N8nInputNumber,
-	N8nSwitch2,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -24,7 +24,7 @@ import { useChatStore } from '../chat.store';
 import { providerDisplayNames } from '../constants';
 import { fetchChatModelsApi } from '../chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import TagsDropdown from '@/features/shared/tags/components/TagsDropdown.vue';
 import { type ITag } from '@n8n/rest-api-client';
@@ -263,7 +263,8 @@ watch(
 						:disabled="props.data.disabled"
 						placement="top"
 					>
-						<N8nSwitch2
+						<N8nSwitch
+							data-test-id="chat-provider-enabled-switch"
 							size="large"
 							:model-value="settings?.enabled ?? false"
 							:disabled="props.data.disabled || loadingSettings"
@@ -316,7 +317,8 @@ watch(
 							:disabled="props.data.disabled"
 							placement="top"
 						>
-							<N8nSwitch2
+							<N8nSwitch
+								data-test-id="chat-provider-limit-models-switch"
 								size="large"
 								:model-value="limitModels"
 								:disabled="props.data.disabled || loadingSettings"
@@ -353,7 +355,7 @@ watch(
 						<N8nText color="text-light" size="small">
 							{{ i18n.baseText('settings.chatHub.providers.modal.edit.responsesApi.description') }}
 						</N8nText>
-						<N8nSwitch2
+						<N8nSwitch
 							size="large"
 							:model-value="settings.responsesApiEnabled ?? true"
 							:disabled="props.data.disabled"

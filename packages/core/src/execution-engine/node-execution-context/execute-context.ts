@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	AINodeConnectionType,
 	CallbackManager,
@@ -19,12 +20,7 @@ import type {
 	WorkflowExecuteMode,
 	EngineResponse,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	createDeferredPromise,
-	jsonParse,
-	NodeConnectionTypes,
-} from 'n8n-workflow';
+import { UnexpectedError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -65,7 +61,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
 		executeData: IExecuteData,
-		private readonly closeFunctions: CloseFunction[],
+		readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 		public subNodeExecutionResults?: EngineResponse,
 	) {
@@ -139,6 +135,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				fallbackValue,
 				options,
 			)) as IExecuteFunctions['getNodeParameter'];
+	}
+
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
 	isStreaming(): boolean {
@@ -230,12 +230,12 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */
 	addInputData(): { index: number } {
-		throw new ApplicationError('addInputData should not be called on IExecuteFunctions');
+		throw new UnexpectedError('addInputData should not be called on IExecuteFunctions');
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addOutputData */
 	addOutputData(): void {
-		throw new ApplicationError('addOutputData should not be called on IExecuteFunctions');
+		throw new UnexpectedError('addOutputData should not be called on IExecuteFunctions');
 	}
 
 	getParentCallbackManager(): CallbackManager | undefined {

@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - master
+      - 1.x
 
 permissions:
   pull-requests: write
@@ -46,7 +47,7 @@ jobs:
               `${marker}\n` +
               `🚫 **Merge blocked**: PRs into \`${base}\` are only allowed from branches named \`bundle/*\`.\n\n` +
               `Current source branch: \`${head}\`\n\n` +
-              `Merge your developments into a bundle branch instead of directly merging to master.`;
+              `Merge your developments into a bundle branch instead of directly merging to master or 1.x.`;
 
             // Find an existing marker comment (to update instead of spamming)
             const { data: comments } = await github.rest.issues.listComments({
@@ -79,7 +80,7 @@ jobs:
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          echo "::error::You can only merge to master from a bundle/* branch. Got '$HEAD_REF'."
+          echo "::error::You can only merge to master and 1.x from a bundle/* branch. Got '$HEAD_REF'."
           exit 1
 
       - name: Allowed
