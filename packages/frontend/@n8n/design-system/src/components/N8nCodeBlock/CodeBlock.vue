@@ -192,9 +192,6 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 
 .pre {
 	@include motion.height-transition;
-
-	box-sizing: border-box;
-	margin: 0;
 	overflow: auto;
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--xs);
@@ -210,7 +207,6 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 	);
 
 	code {
-		font-family: inherit;
 		/** Override background color injected by hjs **/
 		background: transparent !important;
 	}
