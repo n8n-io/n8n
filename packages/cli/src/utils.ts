@@ -29,15 +29,24 @@ export function satisfiesToolCapability(syntheticToolName: string, nodeType: INo
 	return isHitlToolType(syntheticToolName) || !!nodeType.description.usableAsTool;
 }
 
+/**
+ * The node a caller starts a workflow from, or `undefined` when it declares
+ * none. A trigger that names its inputs wins over a bare start node, so a
+ * workflow offering an input contract is entered through it wherever it is run.
+ */
+export function resolveWorkflowStart(nodes: INode[]): INode | undefined {
+	const executeWorkflowTriggerNode = nodes.find(
+		(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
+	);
+
+	if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
+
+	return nodes.find((node) => STARTING_NODES.includes(node.type));
+}
+
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
-		const executeWorkflowTriggerNode = nodes.find(
-			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
-		);
-
-		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
-
-		const startNode = nodes.find((node) => STARTING_NODES.includes(node.type));
+		const startNode = resolveWorkflowStart(nodes);
 
 		if (startNode) return startNode;
 
