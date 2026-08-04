@@ -125,6 +125,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
+| [public.workflow_review_activity](public.workflow_review_activity.md) | 8 |  | BASE TABLE |
+| [public.workflow_review_activity_comment](public.workflow_review_activity_comment.md) | 6 |  | BASE TABLE |
 | [public.workflow_review_request](public.workflow_review_request.md) | 12 |  | BASE TABLE |
 | [public.workflow_review_request_authors](public.workflow_review_request_authors.md) | 2 |  | BASE TABLE |
 | [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) | 2 |  | BASE TABLE |
@@ -317,6 +319,10 @@ erDiagram
 "public.workflow_publish_history" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_published_version" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
+"public.workflow_review_activity" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.workflow_review_activity" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_review_activity" }o--o| "public.workflow_review_activity" : "FOREIGN KEY (#quot;groupId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
+"public.workflow_review_activity_comment" |o--|| "public.workflow_review_activity" : "FOREIGN KEY (#quot;activityId#quot;) REFERENCES workflow_review_activity(id) ON DELETE CASCADE"
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;updatedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;closedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -1497,6 +1503,24 @@ erDiagram
   varchar_36_ publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.workflow_review_activity" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  json data
+  integer groupId FK
+  integer id
+  varchar_64_ type
+  integer typeVersion
+  varchar_36_ workflowReviewRequestId FK
+}
+"public.workflow_review_activity_comment" {
+  integer activityId FK
+  text body
+  timestamp_3__with_time_zone createdAt
+  json data
+  timestamp_3__with_time_zone deletedAt
+  timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_review_request" {
   timestamp_3__with_time_zone approvedAt
