@@ -22,6 +22,7 @@ import {
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
 	remapSeedWorkflowIds,
+	SEED_WORKFLOW_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from './conversation-seed';
@@ -386,6 +387,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		if (seed) {
 			try {
 				const remapped = remapSeedWorkflowIds(seed);
+				await evictLeftoverSeedWorkflows(
+					client,
+					remapped,
+					config.preRunWorkflowIds,
+					logger,
+					config.laneTag,
+				);
 				const restoreResult = await client.restoreThread(
 					threadId,
 					remapped.messages,
@@ -637,6 +645,89 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			credentialViewPinned,
 			seedingFailed,
 		};
+	}
+}
+
+/**
+ * Delete leftover seed workflows sharing this seed's base name before restoring.
+ *
+ * A seeded case's live turn addresses the workflow the way a user would — often by
+ * name, sometimes loosely ("the batch image workflow"). Any same-named copy left on
+ * the instance is a candidate the agent can rationally ground on instead, and it
+ * will prefer the one with failed executions when the message mentions a failure.
+ * The judge then grades a different artifact than the agent edited, which produces
+ * false greens as readily as false reds. Seen for real: three iterations all grounded
+ * on a leftover from an earlier calibration run; one read the leftover's
+ * already-applied fix, correctly concluded there was nothing to do, and scored 2/6.
+ *
+ * Leftovers accumulate because `--keep-workflows` is the documented calibration
+ * flow, and because a crashed or timed-out run skips its own cleanup.
+ *
+ * Only names this module minted are ever touched — the `[seed <8 hex>]` suffix is
+ * applied at remap time and by nothing else, so a real workflow, and any workflow
+ * the agent itself built, are both out of reach. Two iterations of one case can't
+ * race here either: the lane allocator refuses to run the same case key twice
+ * concurrently on a lane, so a sibling's fresh restore is never in the blast radius.
+ *
+ * Best-effort: a failure here must not fail an otherwise valid build, so it is
+ * logged and the restore proceeds.
+ */
+async function evictLeftoverSeedWorkflows(
+	client: N8nClient,
+	seed: ConversationSeed,
+	preRunWorkflowIds: Set<string>,
+	logger: EvalLogger,
+	laneTag?: string,
+): Promise<void> {
+	const baseNames = new Set(
+		seed.workflows.map(
+			(workflow) => SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1] ?? workflow.name,
+		),
+	);
+	if (baseNames.size === 0) return;
+	try {
+		const existing = await client.listWorkflows();
+		const stale = existing.filter((workflow) => {
+			// A matching suffix alone does NOT prove a leftover. A lane admits several
+			// different case slugs at once, and it is released as soon as `buildWorkflow`
+			// returns even though that build's restored workflow stays live for scenario
+			// execution and judging. So a sibling case sharing this seed's base name
+			// would be selectable here — and hard-deleting its artifact mid-run is worse
+			// than the collision this exists to prevent.
+			//
+			// The pre-run snapshot settles it: taken once per lane before any build, so
+			// anything created DURING the run (a sibling's fresh restore, or the
+			// workflow the agent is building) is absent by construction. What remains is
+			// what was already lying there — a previous run's `--keep-workflows`
+			// leftover, or a crashed run that skipped its own cleanup.
+			if (!preRunWorkflowIds.has(workflow.id)) return false;
+			const base = SEED_WORKFLOW_NAME_RE.exec(workflow.name)?.[1];
+			return base !== undefined && baseNames.has(base);
+		});
+		// Per-workflow, because best-effort has to mean each one: letting a single
+		// failed delete abort the loop leaves the rest of the leftovers selectable
+		// by name, which is the collision this eviction exists to prevent.
+		let evicted = 0;
+		for (const workflow of stale) {
+			try {
+				// deleteWorkflow archives first — a non-archived workflow can't be deleted.
+				await client.deleteWorkflow(workflow.id);
+				evicted++;
+			} catch (error: unknown) {
+				logger.info(
+					`  Could not evict leftover seed workflow "${workflow.name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+				);
+			}
+		}
+		if (evicted > 0) {
+			logger.info(
+				`  Evicted ${String(evicted)} leftover seed workflow(s) before restore${laneTag ?? ''}`,
+			);
+		}
+	} catch (error: unknown) {
+		logger.info(
+			`  Could not evict leftover seed workflows (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+		);
 	}
 }
 

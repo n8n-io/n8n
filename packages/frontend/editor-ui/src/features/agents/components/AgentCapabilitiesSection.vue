@@ -35,6 +35,8 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+		/** No agent row exists yet — an unsaved agent has no tasks to load. */
+		agentUnsaved?: boolean;
 
 		/** Structured backend validation issues — drives the invalid state on capability chips. */
 		validationIssues?: AgentConfigValidationIssue[];
@@ -219,6 +221,10 @@ const subAgentIssueMessages = computed(() =>
 
 async function reloadTasks() {
 	taskErrorMessage.value = '';
+	if (props.agentUnsaved) {
+		taskBodies.value = [];
+		return;
+	}
 	try {
 		taskBodies.value = await getAgentTasks(
 			rootStore.restApiContext,

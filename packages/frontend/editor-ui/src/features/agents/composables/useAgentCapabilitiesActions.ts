@@ -31,10 +31,7 @@ export interface AgentCapabilitiesTelemetry {
 	trackOpenedToolFromList?: (toolType: string) => void;
 	trackOpenedSkillFromList?: (skillId: string) => void;
 	trackOpenedAddSkillModal?: () => void;
-	trackTriggerListChanged?: (triggers: string[]) => void;
 	trackTriggerAdded?: (payload: { triggerType: string; triggers: string[] }) => void;
-	trackRemovedTool?: (ref: AgentJsonToolConfig) => void;
-	trackRemovedMcpServer?: (server: AgentJsonMcpServerConfig) => void;
 }
 
 export interface UseAgentCapabilitiesActionsDeps {
@@ -81,6 +78,12 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * don't support suspend/resume — the config modals hide the toggle.
 	 */
 	supportsToolApproval?: boolean;
+	/**
+	 * Creates the agent row if the host is still showing an unsaved agent, so a
+	 * handler that calls an agent-scoped API has something to call it against.
+	 * Hosts whose agent always exists omit it.
+	 */
+	ensureAgentPersisted?: () => Promise<void>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -101,6 +104,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleSkillSave,
 		localSkills,
 		supportsToolApproval,
+		ensureAgentPersisted,
 		telemetry,
 	} = deps;
 
@@ -225,7 +229,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						(_, i) => i !== mcpServerIndex,
 					);
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
-					telemetry?.trackRemovedMcpServer?.(mcpServer);
 				},
 			},
 		});
@@ -375,10 +378,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
 		if (index < 0 || index >= currentTools.length) return;
-		const removed = currentTools[index];
 		const nextTools = currentTools.filter((_, i) => i !== index);
 		scheduleConfigUpdate({ tools: nextTools });
-		telemetry?.trackRemovedTool?.(removed);
 	}
 
 	function onRemoveSkill(id: string) {
@@ -435,6 +436,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						let versionId: string | null;
 						let skillId: string;
 						try {
+							await ensureAgentPersisted?.();
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,
@@ -472,7 +474,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onConnectedTriggersUpdate(triggers: string[]) {
 		connectedTriggers.value = triggers;
-		telemetry?.trackTriggerListChanged?.(triggers);
 	}
 
 	function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {

@@ -258,13 +258,15 @@ export class SlackAppSetupService {
 		} satisfies AgentIntegrationConfig;
 
 		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
+			user,
+			modifiedBy: 'user',
 			broadcast: false,
 		});
 		await this.agentPublishService.publishAgent(
 			session.agentId,
 			session.projectId,
 			user,
-			'slack_setup',
+			{ by: 'user', trigger: 'slack_setup' },
 			undefined,
 			{
 				syncIntegrations: false,

@@ -49,6 +49,22 @@ Narrow any run with `--filter <slug>` (filename substring, comma = OR),
 `--tier <name>`, and `--exclude`. `--keep-workflows` leaves built workflows for
 inspection; `--iterations N` runs each case N times for pass@k / pass^k.
 
+**Seeded cases and `--keep-workflows`.** A seeded case's live turn addresses its
+workflow the way a user would — by name, often loosely ("the batch image
+workflow"). So a leftover copy is something the agent can rationally pick instead
+of its own, and it prefers the one with failed executions when the message
+mentions a failure; the judge then grades a different workflow than the agent
+edited. That produces false greens as readily as false reds, so it doesn't
+announce itself.
+
+Restore now defends against this on both sides: each restored workflow gets a
+`[seed <8 hex>]` name suffix so copies are distinguishable, and any leftover
+carrying that suffix with the same base name is deleted before the next restore.
+You'll see `Evicted N leftover seed workflow(s) before restore` when it fires.
+Workflows without the suffix — real ones, and anything the agent built — are never
+touched. So `--keep-workflows` is safe to use on a seeded case; the leftover is
+cleaned up by the next run rather than contaminating it.
+
 ## Case source: disk vs langtracer
 
 | Source | When to use it |
