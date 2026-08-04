@@ -20,6 +20,7 @@ import {
 	isFormDataInstance,
 	searchForHeader,
 	setAxiosAgents,
+	sniFor,
 } from './utils';
 import type { SsrfBridge } from '../../ssrf';
 
@@ -31,10 +32,10 @@ import type { SsrfBridge } from '../../ssrf';
  * @deprecated Backs the deprecated `request` helpers.
  */
 export function buildLegacyAgentOptions(requestObject: IRequestOptions): AgentOptions {
-	const host = getHostFromRequestObject(requestObject);
+	const servername = sniFor(getHostFromRequestObject(requestObject));
 	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
+	if (servername) {
+		agentOptions.servername = servername;
 	}
 	if (requestObject.rejectUnauthorized === false) {
 		agentOptions.rejectUnauthorized = false;
