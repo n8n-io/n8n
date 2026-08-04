@@ -7,6 +7,7 @@ import { N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { deepCopy } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
+import omit from 'lodash/omit';
 import { computed, markRaw } from 'vue';
 
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
@@ -20,8 +21,14 @@ const i18n = useI18n();
 
 const shortVersion = (versionId: string) => versionId.slice(0, 8);
 
-// Mirrors the backend's own "did this change?" predicate: workflow.service.ts
-// Anything that earned a new version is therefore a change worth showing here.
+/**
+ * A snapshot minus its identity and timestamp — i.e. everything the diff renders.
+ * Derived by omission rather than an explicit field list to avoid drift.
+ */
+function contentOf(snapshot: WorkflowReviewVersionSnapshot) {
+	return omit(snapshot, ['versionId', 'createdAt']);
+}
+
 const hasChanges = computed(() => {
 	const { pinnedVersion, baselineVersion } = props.workflow;
 
@@ -30,18 +37,7 @@ const hasChanges = computed(() => {
 	if (!baselineVersion) return true;
 	if (pinnedVersion.versionId === baselineVersion.versionId) return false;
 
-	return !isEqual(
-		{
-			nodes: baselineVersion.nodes,
-			connections: baselineVersion.connections,
-			nodeGroups: baselineVersion.nodeGroups,
-		},
-		{
-			nodes: pinnedVersion.nodes,
-			connections: pinnedVersion.connections,
-			nodeGroups: pinnedVersion.nodeGroups,
-		},
-	);
+	return !isEqual(contentOf(baselineVersion), contentOf(pinnedVersion));
 });
 
 // Hand the diff a fully-detached, non-reactive copy.

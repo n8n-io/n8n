@@ -78,6 +78,7 @@ const tabOptions = computed(() => [
 				<N8nTooltip :disabled="!ineligibilityHint" :content="ineligibilityHint" :show-after="300">
 					<N8nButton
 						size="small"
+						type="secondary"
 						:disabled="deciding || !viewerCanDecide"
 						data-test-id="workflow-review-request-changes-button"
 						@click="emit('decide', 'changes_requested')"
