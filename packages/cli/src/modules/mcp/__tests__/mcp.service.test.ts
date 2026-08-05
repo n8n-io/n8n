@@ -1,3 +1,4 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -38,6 +39,7 @@ import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
@@ -77,8 +79,10 @@ describe('McpService', () => {
 	let executionsConfig: ExecutionsConfig;
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
+	let eventService: EventService;
 
 	beforeEach(() => {
+		eventService = mockInstance(EventService);
 		activeExecutions = mockInstance(ActiveExecutions);
 		executionsConfig = mockInstance(ExecutionsConfig, {
 			mode: 'regular',
@@ -125,6 +129,7 @@ describe('McpService', () => {
 			mockInstance(SubworkflowPolicyChecker),
 			mockAiGatewayService(),
 			mockInstance(ModuleRegistry),
+			eventService,
 		);
 	});
 
@@ -175,6 +180,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -380,6 +386,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -531,6 +538,193 @@ describe('McpService', () => {
 			expect(typeof server.registerTool).toBe('function');
 		});
 
+		const mcpUser = () =>
+			Object.assign(new User(), {
+				id: 'user-1',
+				email: 'u@n8n.io',
+				firstName: 'U',
+				lastName: 'One',
+				role: { slug: 'global:member' },
+			});
+
+		const registerAndInvoke = async (
+			server: McpServer,
+			name: string,
+			impl: () => Promise<unknown>,
+			args: Record<string, unknown> = {},
+		) => {
+			const registered = server.registerTool(name, { description: 'test' }, impl as never);
+			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+			return await invokeTool(args, {});
+		};
+
+		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'my_tool',
+				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+				{ workflowId: 'wf-42' },
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
+				user,
+				toolName: 'my_tool',
+				workflowId: 'wf-42',
+				status: 'success',
+				errorMessage: undefined,
+				clientName: undefined,
+			});
+		});
+
+		it('should emit `mcp-tool-called` with the workflow reported in the structured output', async () => {
+			// `create_workflow_from_code` takes no `workflowId` argument — the
+			// workflow it created is only in the result.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			const output = { workflowId: 'wf-new', workflowName: 'My workflow' };
+			await registerAndInvoke(server, 'creating_tool', async () => ({
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+			}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'creating_tool',
+					workflowId: 'wf-new',
+					status: 'success',
+				}),
+			);
+		});
+
+		it('should prefer the requested workflow over the one in the structured output', async () => {
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'updating_tool',
+				async () => ({
+					content: [{ type: 'text', text: 'ok' }],
+					structuredContent: { workflowId: 'wf-other' },
+				}),
+				{ workflowId: 'wf-42' },
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ toolName: 'updating_tool', workflowId: 'wf-42' }),
+			);
+		});
+
+		it('should emit `mcp-tool-called` with error status when a tool throws', async () => {
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			await expect(
+				registerAndInvoke(server, 'err_tool', async () => {
+					throw new Error('boom');
+				}),
+			).rejects.toThrow('boom');
+
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
+				user,
+				toolName: 'err_tool',
+				workflowId: undefined,
+				status: 'error',
+				errorMessage: 'boom',
+				clientName: undefined,
+			});
+		});
+
+		it('should emit error status and message when a tool returns `isError: true`', async () => {
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			const output = { data: [], count: 0, error: 'not allowed' };
+			await registerAndInvoke(server, 'handled_tool', async () => ({
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'handled_tool',
+					status: 'error',
+					errorMessage: 'not allowed',
+				}),
+			);
+		});
+
+		it('should emit error status when a tool reports failure via `structuredContent.status`', async () => {
+			// `execute_workflow` returns handled failures as `status: 'error'` in its
+			// structured output without setting `isError`.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			const output = { executionId: null, status: 'error', error: 'no published version' };
+			await registerAndInvoke(
+				server,
+				'status_err_tool',
+				async () => ({
+					content: [{ type: 'text', text: JSON.stringify(output) }],
+					structuredContent: output,
+				}),
+				{ workflowId: 'wf-42' },
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'status_err_tool',
+					workflowId: 'wf-42',
+					status: 'error',
+					errorMessage: 'no published version',
+				}),
+			);
+		});
+
+		it('should emit error status when a handled failure is marked only by `structuredContent.error`', async () => {
+			// `get_execution` catches its own errors and returns a normal result
+			// whose only failure marker is the `error` message string.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			const output = { execution: null, error: 'Execution not found' };
+			await registerAndInvoke(server, 'error_only_tool', async () => ({
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+			}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'error_only_tool',
+					status: 'error',
+					errorMessage: 'Execution not found',
+				}),
+			);
+		});
+
+		it('should fall back to text content for the error message when structured output has none', async () => {
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await registerAndInvoke(server, 'text_err_tool', async () => ({
+				content: [{ type: 'text', text: 'plain failure' }],
+				isError: true,
+			}));
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'text_err_tool',
+					status: 'error',
+					errorMessage: 'plain failure',
+				}),
+			);
+		});
+
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
@@ -575,6 +769,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -627,6 +822,7 @@ describe('McpService', () => {
 				mockInstance(SubworkflowPolicyChecker),
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
+				mockInstance(EventService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -704,6 +900,7 @@ describe('McpService', () => {
 					mockInstance(SubworkflowPolicyChecker),
 					mockAiGatewayService(),
 					mockInstance(ModuleRegistry),
+					mockInstance(EventService),
 				);
 			};
 

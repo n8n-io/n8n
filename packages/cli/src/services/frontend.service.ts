@@ -600,7 +600,9 @@ export class FrontendService {
 		}
 
 		const isAiGatewayEnabled =
-			this.licenseState.isAiGatewayLicensed() && !!this.globalConfig.aiAssistant.baseUrl;
+			this.globalConfig.aiGateway.enabled &&
+			this.licenseState.isAiGatewayLicensed() &&
+			!!this.globalConfig.aiAssistant.baseUrl;
 		if (isAiGatewayEnabled) {
 			this.settings.aiGateway = {
 				enabled: true,

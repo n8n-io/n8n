@@ -131,7 +131,10 @@ import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
-import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
+import {
+	getAgentErrorSeverity,
+	InstanceAiErrorReporterService,
+} from './instance-ai-error-reporter.service';
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -196,6 +199,14 @@ import { formatPreviewSessionContext } from '../agents/builder/format-preview-co
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
+
+/** A resource attachment as the trace records it: the reference, not its contents. */
+type TracedResourceAttachment = {
+	type: InstanceAiResourceAttachment['type'];
+	id: string;
+	projectId?: string;
+	executionId?: string;
+};
 
 /** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
 function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
@@ -916,16 +927,18 @@ export class InstanceAiService {
 	 * Surface the agent's background/best-effort failures to Sentry. The SDK emits
 	 * `AgentEvent.Error` for these but nothing consumed it, so they were lost: memory
 	 * observer/reflector/episodic indexing and the eager input / turn-on-suspend
-	 * persists all fail silently while the run itself succeeds. We report only the
-	 * `source`-tagged events — the main agentic-loop errors (no source) already reach
-	 * Sentry via the errored run/stream result, so reporting them here would only
-	 * re-tag the same (deduped) error.
+	 * persists all fail silently. Optional memory processing is warning-level;
+	 * persistence stays error-level because it can lose turn data. We report only
+	 * the `source`-tagged events — the main agentic-loop errors (no source) already
+	 * reach Sentry via the errored run/stream result.
 	 */
 	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error || !event.source) return;
+			const severity = getAgentErrorSeverity(event.source);
 			this.instanceAiErrorReporter.report(event.error, {
 				component: `instance-ai-${event.source}`,
+				...(severity ? { severity } : {}),
 				threadId,
 				runId,
 			});
@@ -3290,18 +3303,33 @@ export class InstanceAiService {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
 
 			messageId = nanoid();
-			const traceInput: Record<string, unknown> = {
-				message,
-				...(fileAttachments.length
-					? {
-							attachments: fileAttachments.map((attachment) => ({
-								mimeType: attachment.mimeType,
-								size: attachment.data.length,
-							})),
-						}
-					: {}),
-				...(messageGroupId ? { messageGroupId } : {}),
-			};
+			const traceInput: Record<string, unknown> = { message };
+			if (fileAttachments.length) {
+				traceInput.attachments = fileAttachments.map((attachment) => ({
+					mimeType: attachment.mimeType,
+					size: attachment.data.length,
+				}));
+			}
+			// `message` is the user's raw text, so without this the trace has no
+			// record that the editor handed the agent a resource.
+			if (contextAttachments.length) {
+				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
+					const resource: TracedResourceAttachment = {
+						type: attachment.type,
+						id: attachment.id,
+					};
+					if (attachment.type === 'agent') {
+						resource.projectId = attachment.projectId;
+					}
+					if (attachment.type === 'workflow' && attachment.executionId) {
+						resource.executionId = attachment.executionId;
+					}
+					return resource;
+				});
+			}
+			if (messageGroupId) {
+				traceInput.messageGroupId = messageGroupId;
+			}
 
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
@@ -3777,7 +3805,7 @@ export class InstanceAiService {
 				}
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(user.id, threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
 
@@ -5087,7 +5115,7 @@ export class InstanceAiService {
 				}
 
 				if (result.confirmationEvent) {
-					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
+					this.trackConfirmationRequest(opts.user.id, opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
@@ -5708,6 +5736,7 @@ export class InstanceAiService {
 	}
 
 	private trackConfirmationRequest(
+		userId: string,
 		threadId: string,
 		confirmationEvent: { payload: Record<string, unknown> },
 	): void {
@@ -5748,6 +5777,7 @@ export class InstanceAiService {
 		}
 
 		this.telemetry.track('Builder asked for input', {
+			user_id: userId,
 			thread_id: threadId,
 			input_thread_id: inputThreadId,
 			type,

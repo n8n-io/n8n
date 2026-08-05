@@ -12,6 +12,10 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
+import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
+
+export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
+
 const questionItemSchema = z.object({
 	id: z.string(),
 	question: z.string(),
@@ -119,59 +123,23 @@ interface ErrorInfo {
 	code?: 'quota_exhausted';
 }
 
-/**
- * Machine-readable code the AI service sets when the credit/quota pool is exhausted.
- * Wire contract — kept in sync with the service/SDK and `INSTANCE_AI_ERROR_CODES`.
- */
-export const QUOTA_EXHAUSTED_ERROR_CODE = 'quota_exhausted';
-
-/**
- * Whether an error means the user has run out of AI credits/quota. Keyed off a
- * machine-readable code, never the message text: the SDK exposes `errorCode` on
- * the token-endpoint 403, and the ai-sdk carries the proxy's `error.type` in
- * `responseBody`. The error can arrive wrapped, so its `cause` chain is inspected too.
- */
-export function isQuotaExhaustedError(error: unknown): boolean {
-	return readErrorCode(error) === QUOTA_EXHAUSTED_ERROR_CODE;
-}
-
-/** Read the machine-readable code from the error, its ai-sdk `responseBody`, or its `cause`. */
-function readErrorCode(error: unknown): string | undefined {
-	if (typeof error !== 'object' || error === null) return undefined;
-
-	// SDK APIResponseError carries the parsed code directly.
-	if ('errorCode' in error && typeof error.errorCode === 'string') {
-		return error.errorCode;
-	}
-
-	// ai-sdk APICallError exposes the raw provider body; the service tags the code
-	// top-level (`code`), with a nested `error.type` as the fallback shape.
-	if ('responseBody' in error && typeof error.responseBody === 'string') {
-		const { code } = parseResponseBody(error.responseBody);
-		if (code) return code;
-	}
-
-	// The SDK error can reach us wrapped (thrown inside the model fetch); unwrap the cause chain.
-	if ('cause' in error && error.cause !== error) {
-		return readErrorCode(error.cause);
-	}
-
-	return undefined;
-}
-
 /** Find an ai-sdk `statusCode` on the error or its `cause` chain, alongside the response body. */
-function readStatusCode(error: unknown): number | undefined {
+function readStatusCode(error: unknown, visited = new WeakSet<object>()): number | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
 	if ('statusCode' in error && typeof error.statusCode === 'number') return error.statusCode;
-	if ('cause' in error && error.cause !== error) return readStatusCode(error.cause);
+	if ('cause' in error && error.cause !== error) return readStatusCode(error.cause, visited);
 	return undefined;
 }
 
 /** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
-function readResponseBody(error: unknown): string | undefined {
+function readResponseBody(error: unknown, visited = new WeakSet<object>()): string | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
 	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
-	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause);
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause, visited);
 	return undefined;
 }
 

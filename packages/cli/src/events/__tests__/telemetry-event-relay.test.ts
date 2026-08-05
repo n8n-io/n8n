@@ -4,6 +4,7 @@ import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
 	type CredentialsRepository,
+	type DbConnection,
 	type IWorkflowDb,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
@@ -13,6 +14,7 @@ import {
 	In,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
@@ -64,7 +66,22 @@ describe('TelemetryEventRelay', () => {
 		diagnostics: {
 			enabled: true,
 		},
+		versionNotifications: {
+			enabled: true,
+		},
+		executions: {
+			mode: 'regular',
+			timeout: -1,
+			maxTimeout: 3600,
+			saveDataOnError: 'all',
+			saveDataOnSuccess: 'all',
+			saveExecutionProgress: false,
+			saveDataManualExecutions: true,
+			pruneData: true,
+			pruneDataMaxAge: 336,
+		},
 		endpoints: {
+			disableProductionWebhooksOnMainProcess: false,
 			metrics: {
 				enable: true,
 				includeDefaultMetrics: true,
@@ -87,6 +104,7 @@ describe('TelemetryEventRelay', () => {
 			batchSize: 234,
 			optimizingTimeWindowHours: 400,
 			trimmingTimeWindowDays: 600,
+			trimOnStartUp: false,
 		},
 		host: 'localhost',
 		generic: {
@@ -136,6 +154,7 @@ describe('TelemetryEventRelay', () => {
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
+	const dbConnection = mock<DbConnection>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -155,6 +174,7 @@ describe('TelemetryEventRelay', () => {
 			projectRelationRepository,
 			credentialsRepository,
 			dynamicCredentialsProxy,
+			dbConnection,
 		);
 
 		await telemetryEventRelay.init();
@@ -186,6 +206,7 @@ describe('TelemetryEventRelay', () => {
 				projectRelationRepository,
 				credentialsRepository,
 				dynamicCredentialsProxy,
+				dbConnection,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -212,6 +233,7 @@ describe('TelemetryEventRelay', () => {
 				projectRelationRepository,
 				credentialsRepository,
 				dynamicCredentialsProxy,
+				dbConnection,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -2268,12 +2290,14 @@ describe('TelemetryEventRelay', () => {
 						matched: 1,
 						missing: 1,
 						created: 3,
+						stubbed: 2,
 						requirements: 2,
 					},
 					tags: {
 						matched: 6,
 						created: 7,
 						renamed: 8,
+						reconciled: 11,
 						skipped: 9,
 						requirements: 10,
 					},
@@ -2308,11 +2332,13 @@ describe('TelemetryEventRelay', () => {
 				data_tables_required: 2,
 				variables_matched: 1,
 				variables_missing: 1,
-				variables_created: 3,
+				variables_with_value_created: 3,
+				variables_stubs_created: 2,
 				variables_required: 2,
 				tags_matched: 6,
 				tags_created: 7,
 				tags_renamed: 8,
+				tags_reconciled: 11,
 				tags_skipped: 9,
 				tags_required: 10,
 			});
@@ -2577,6 +2603,11 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('lifecycle events', () => {
+		beforeEach(() => {
+			dbConnection.getDbVersion.mockResolvedValue(null);
+			license.getPlanName.mockReturnValue('Community');
+		});
+
 		it('should track on `server-started` event', async () => {
 			const firstWorkflow = mock<WorkflowEntity>({ createdAt: new Date() });
 			workflowRepository.findOne.mockResolvedValue(firstWorkflow);
@@ -2647,7 +2678,7 @@ describe('TelemetryEventRelay', () => {
 				}),
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
 					settings_managed_by_env_vars: {
@@ -2678,6 +2709,58 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it('should report the database version on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			dbConnection.getDbVersion.mockResolvedValue('16.11');
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+				}),
+			);
+		});
+
+		it('should emit a payload that satisfies the registry schema', async () => {
+			workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ createdAt: new Date() }));
+			dbConnection.getDbVersion.mockResolvedValue('17.6');
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+			);
+			expect(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED.getValidationError(startupEvent?.[1]),
+			).toBeNull();
+		});
+
+		it('should report a `null` database version when it cannot be determined', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			dbConnection.getDbVersion.mockResolvedValue(null);
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ db_type: 'sqlite', db_version: null }),
+			);
+		});
+
 		it('should track instance settings env management on `server-started` event', async () => {
 			workflowRepository.findOne.mockResolvedValue(null);
 			Object.assign(globalConfig.instanceSettingsLoader, {
@@ -2694,7 +2777,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					settings_managed_by_env_vars: {
 						owner_managed_by_env: true,
@@ -2745,7 +2828,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Instance started',
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
 			expect(startupEvent).toBeDefined();
 			if (!startupEvent) throw new Error('Expected Instance started telemetry event');
@@ -2773,7 +2856,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					otel: {
 						enabled: true,
@@ -2804,7 +2887,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Instance started',
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
 			expect(startupEvent).toBeDefined();
 			expect(startupEvent?.[1]).toEqual(
@@ -3751,6 +3834,25 @@ describe('TelemetryEventRelay', () => {
 				is_approved: true,
 				is_authorized: false,
 			});
+		});
+	});
+
+	describe('runner events', () => {
+		it('should track on `runner-disconnected` event', () => {
+			const event: RelayEventMap['runner-disconnected'] = {
+				reason: 'failed-heartbeat-check',
+				mode: 'internal',
+			};
+
+			eventService.emit('runner-disconnected', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED,
+				{
+					reason: 'failed-heartbeat-check',
+					mode: 'internal',
+				},
+			);
 		});
 	});
 });
