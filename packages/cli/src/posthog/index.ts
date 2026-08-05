@@ -11,6 +11,8 @@ import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
 
+import { N8N_VERSION } from '@/constants';
+
 /**
  * PostHog group type for instance-level properties.
  * Note: Aliased as "instance" on PostHog dashboard
@@ -136,6 +138,8 @@ export class PostHogClient {
 		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
 			personProperties: {
 				created_at_timestamp: user.createdAt.getTime().toString(),
+				instance_id: instanceId,
+				version_cli: N8N_VERSION,
 			},
 			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
 		});
