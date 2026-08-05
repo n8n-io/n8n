@@ -157,14 +157,14 @@ export class DurableJobProvisioner {
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
 				const outdatedPolicyJobIds: number[] = [];
+				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
 						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
 						for (const row of rows) {
-							if (
-								row.misfirePolicy !== misfirePolicy ||
-								row.misfireGraceSeconds !== misfireGraceSeconds
-							) {
+							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
+							if (graceChanged) outdatedGraceJobIds.push(row.id);
+							if (graceChanged || row.misfirePolicy !== misfirePolicy) {
 								outdatedPolicyJobIds.push(row.id);
 							}
 						}
@@ -218,7 +218,7 @@ export class DurableJobProvisioner {
 				// Queued tasks were stamped with the previous grace; recompute their deadline.
 				await this.tasks.updateMissedAfterForJobs(
 					manager,
-					outdatedPolicyJobIds,
+					outdatedGraceJobIds,
 					misfireGraceSeconds,
 				);
 				// After all of provisioning's own writes (including withdrawing a
