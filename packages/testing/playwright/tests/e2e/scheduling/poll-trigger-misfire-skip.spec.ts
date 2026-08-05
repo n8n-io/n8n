@@ -23,10 +23,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should drop a missed backlog instead of firing a stale poll', async ({
-			api,
-			services,
-		}) => {
+		test('drops a missed backlog instead of firing a stale poll', async ({ api, services }) => {
 			// Six hours between ticks: whatever fires in this test's short observation
 			// window can only be the backdated backlog, never the schedule's own next tick.
 			const { workflowId, nodeId } = await expectPollTriggerFires(
