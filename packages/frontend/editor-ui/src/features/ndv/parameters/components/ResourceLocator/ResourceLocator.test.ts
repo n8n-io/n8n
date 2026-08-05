@@ -549,11 +549,7 @@ describe('ResourceLocator', () => {
 			});
 
 			await waitFor(() => {
-				expect(mockResolveExpression).toHaveBeenCalledWith(
-					'=https://test.com/clean-id',
-					expect.anything(),
-					expect.anything(),
-				);
+				expect(mockResolveExpression).toHaveBeenCalledWith('=https://test.com/clean-id');
 			});
 			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
 		});
