@@ -5,6 +5,7 @@ import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/app/constants';
 import { type INodeUi } from '@/Interface';
+import { useHistoryStore } from '@/app/stores/history.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -392,7 +393,7 @@ describe(useNodeDirtiness, () => {
 	});
 
 	describe('renaming a node', () => {
-		it.todo('should preserve the dirtiness', async () => {
+		it('should preserve the dirtiness', async () => {
 			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
 
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
@@ -409,6 +410,54 @@ describe(useNodeDirtiness, () => {
 
 			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
 				d: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
+
+		it('should preserve the dirtiness through a chain of renames recorded in one bulk command', async () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
+
+			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
+				trackHistory: true,
+			}); // 'a' becomes new parent of 'c'
+
+			// `trackBulk: false` records the rename in the caller's bulk, as useWorkflowUpdate does
+			useHistoryStore().startRecordingUndo();
+			await canvasOperations.renameNode('c', 'd', { trackHistory: true, trackBulk: false });
+			await canvasOperations.renameNode('d', 'e', { trackHistory: true, trackBulk: false });
+			useHistoryStore().stopRecordingUndo();
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				e: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
+
+		// Already passed before names were resolved through the undo stack — 'b' is never
+		// renamed, so the injected connection matches it directly. Kept as a guard on the
+		// add-node branch, which now resolves its payload name like every other branch.
+		it('should preserve the dirtiness of a node whose newly injected parent is renamed', async () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a🚨✅ -> b✅');
+
+			uiStore.lastInteractedWithNodeConnection = {
+				source: workflowDocumentStore.nodesByName.a.id,
+				target: workflowDocumentStore.nodesByName.b.id,
+			};
+			uiStore.lastInteractedWithNodeId = workflowDocumentStore.nodesByName.a.id;
+			uiStore.lastInteractedWithNodeHandle = 'outputs/main/0';
+
+			await canvasOperations.addNodes([createTestNode({ name: 'c' })], { trackHistory: true });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+
+			await canvasOperations.renameNode('c', 'x', { trackHistory: true });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
 	});

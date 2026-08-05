@@ -5,6 +5,7 @@ import {
 	EnableNodeToggleCommand,
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
+	RenameNodeCommand,
 	type Undoable,
 } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -22,7 +23,33 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 /**
+ * Resolves a node name as recorded in a command payload to the name that node goes by now.
+ */
+type ResolveName = (nameInCommand: string) => string;
+
+/**
+ * Records the renames a command performs, so that commands recorded *before* it can have their
+ * payload names resolved forward. Call while walking a command list newest-first: mapping onto
+ * the already-known name collapses a chain of renames straight to the node's current name.
+ */
+function collectRenames(command: Undoable, renamedSince: Map<string, string>) {
+	if (command instanceof BulkCommand) {
+		for (let i = command.commands.length - 1; i >= 0; i--) {
+			collectRenames(command.commands[i], renamedSince);
+		}
+		return;
+	}
+
+	if (command instanceof RenameNodeCommand) {
+		renamedSince.set(command.currentName, renamedSince.get(command.newName) ?? command.newName);
+	}
+}
+
+/**
  * Does the command make the given node dirty?
+ *
+ * `nodeName` and the connection lookups are in current names; command payloads hold the names
+ * used when the command was recorded, so they go through `resolveName` before being compared.
  */
 function shouldCommandMarkDirty(
 	command: Undoable,
@@ -30,27 +57,46 @@ function shouldCommandMarkDirty(
 	siblingCommands: Undoable[],
 	getIncomingConnections: (nodeName: string) => INodeConnections,
 	getOutgoingConnectors: (nodeName: string) => INodeConnections,
+	resolveName: ResolveName,
 ): boolean {
 	if (command instanceof BulkCommand) {
-		return command.commands.some((cmd) =>
-			shouldCommandMarkDirty(
-				cmd,
-				nodeName,
-				command.commands,
-				getIncomingConnections,
-				getOutgoingConnectors,
-			),
-		);
+		// Sub-commands are recorded in order, so walk them newest-first like the undo stack:
+		// a rename only applies to the names recorded before it.
+		const renamedSince = new Map<string, string>();
+		const resolveNameInBulk: ResolveName = (name) => resolveName(renamedSince.get(name) ?? name);
+
+		for (let i = command.commands.length - 1; i >= 0; i--) {
+			const cmd = command.commands[i];
+
+			if (
+				shouldCommandMarkDirty(
+					cmd,
+					nodeName,
+					command.commands,
+					getIncomingConnections,
+					getOutgoingConnectors,
+					resolveNameInBulk,
+				)
+			) {
+				return true;
+			}
+
+			collectRenames(cmd, renamedSince);
+		}
+
+		return false;
 	}
 
 	if (command instanceof AddConnectionCommand) {
-		return command.connectionData[1]?.node === nodeName;
+		const target = command.connectionData[1];
+
+		return target !== undefined && resolveName(target.node) === nodeName;
 	}
 
 	if (command instanceof RemoveConnectionCommand) {
 		const [from, to] = command.connectionData;
 
-		if (to.node !== nodeName) {
+		if (resolveName(to.node) !== nodeName) {
 			return false;
 		}
 
@@ -67,14 +113,16 @@ function shouldCommandMarkDirty(
 		.map((connection) => connection.node);
 
 	if (command instanceof AddNodeCommand) {
-		return incomingNodes.includes(command.node.name);
+		return incomingNodes.includes(resolveName(command.node.name));
 	}
 
 	if (command instanceof EnableNodeToggleCommand) {
+		const toggledNode = resolveName(command.nodeName);
+
 		return (
-			incomingNodes.includes(command.nodeName) &&
+			incomingNodes.includes(toggledNode) &&
 			(command.newState ||
-				Object.keys(getOutgoingConnectors(command.nodeName)).some(
+				Object.keys(getOutgoingConnectors(toggledNode)).some(
 					(type) => (type as NodeConnectionType) !== NodeConnectionTypes.Main,
 				))
 		);
@@ -180,6 +228,11 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 		nodeName: string,
 		after: number,
 	): CanvasNodeDirtinessType | undefined {
+		// Renames encountered on the way down, so older commands can be matched against the
+		// name the node goes by now rather than the one they were recorded with.
+		const renamedSince = new Map<string, string>();
+		const resolveName: ResolveName = (name) => renamedSince.get(name) ?? name;
+
 		for (let i = historyStore.undoStack.length - 1; i >= 0; i--) {
 			const command = historyStore.undoStack[i];
 
@@ -194,10 +247,13 @@ export function useNodeDirtiness(workflowDocumentId: MaybeRefOrGetter<WorkflowDo
 					[],
 					getIncomingConnections,
 					getOutgoingConnections,
+					resolveName,
 				)
 			) {
 				return CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED;
 			}
+
+			collectRenames(command, renamedSince);
 		}
 
 		for (const connection of getParentSubNodes(nodeName)) {
