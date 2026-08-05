@@ -62,6 +62,12 @@ Use an MCP, node, or workflow tool when the product is only something the agent
 operates on: searching records, creating tickets, updating objects, or sending a
 business-process notification while the conversation happens elsewhere.
 
+When building an agent that should interact with Slack, Discord, or Telegram,
+prefer the matching chat integration over an MCP, node, or workflow tool, even
+when a callable tool could perform the same messaging action. Use a callable
+tool instead only when the user explicitly asks for one or the requested
+operation is not supported by the chat integration.
+
 Examples:
 
 - Slack integration: the agent should be chatted with in Slack, respond in
@@ -69,6 +75,8 @@ Examples:
   to Slack users.
 - Discord integration: the agent should be mentioned or messaged in Discord,
   respond in Discord threads or DMs, or render approval buttons there.
+- Telegram integration: the agent should receive or send Telegram messages,
+  continue conversations there, or render supported interactive messages.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.

@@ -680,7 +680,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
-	it('adds Discord reactions to the current message context', async () => {
+	it('adds Discord reactions to the inbound message after sending a DM', async () => {
 		const addReaction = vi.fn().mockResolvedValue(undefined);
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ addReaction });
@@ -688,33 +688,62 @@ describe('ChatIntegrationActionExecutor', () => {
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
 		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
 		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
-		const threadId = 'discord:800000000000000001:700000000000000001:600000000000000001';
+		const inboundThreadId = 'discord:800000000000000001:700000000000000001:600000000000000001';
+		const inboundTarget = {
+			type: 'thread' as const,
+			threadId: inboundThreadId,
+			channelId: 'discord:800000000000000001:700000000000000001',
+		};
+		const currentMessageContext = {
+			integrationConnectionId: 'discord:cred-discord',
+			platform: 'discord',
+			target: {
+				type: 'dm' as const,
+				userId: 'user-1',
+				threadId: 'discord:@me:dm-thread',
+			},
+			messageId: 'dm-message',
+			replyTarget: inboundTarget,
+			replyMessageId: 'message-1',
+			updatedAt: '2026-08-04T00:00:00.000Z',
+		};
 
-		const result = await executor.execute({
+		const explicitReaction = await executor.execute({
 			descriptor,
 			action: 'add_reaction',
-			input: { emoji: '✅' },
+			input: { emoji: '✅', messageId: 'message-1' },
 			awaitResponse: false,
-			currentMessageContext: {
-				integrationConnectionId: 'discord:cred-discord',
-				platform: 'discord',
-				target: { type: 'thread', threadId },
-				messageId: 'message-1',
-				updatedAt: '2026-08-04T00:00:00.000Z',
-			},
+			currentMessageContext,
 		});
-
-		expect(addReaction).toHaveBeenCalledWith(threadId, 'message-1', '✅');
-		expect(result).toMatchObject({
+		expect(explicitReaction).toMatchObject({
 			ok: true,
-			reaction: { emoji: '✅', threadId, messageId: 'message-1' },
+			reaction: { emoji: '✅', threadId: inboundThreadId, messageId: 'message-1' },
 			messageContext: {
 				integrationConnectionId: 'discord:cred-discord',
 				platform: 'discord',
-				target: { type: 'thread', threadId },
-				messageId: 'message-1',
+				target: {
+					type: 'dm',
+					userId: 'user-1',
+					threadId: 'discord:@me:dm-thread',
+				},
+				messageId: 'dm-message',
 			},
 		});
+
+		const nextMessageContext =
+			explicitReaction.ok && 'messageContext' in explicitReaction
+				? explicitReaction.messageContext
+				: undefined;
+		await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '📨' },
+			awaitResponse: false,
+			currentMessageContext: nextMessageContext,
+		});
+
+		expect(addReaction).toHaveBeenNthCalledWith(1, inboundThreadId, 'message-1', '✅');
+		expect(addReaction).toHaveBeenNthCalledWith(2, 'discord:@me:dm-thread', 'dm-message', '📨');
 	});
 
 	it('returns a structured error when a Slack reaction has no message target', async () => {
@@ -1026,15 +1055,17 @@ describe('ChatIntegrationActionExecutor', () => {
 	});
 
 	describe('respond in chat-triggered turns', () => {
+		const chatTurnTarget = {
+			type: 'thread' as const,
+			threadId: 'slack:C123:123.456',
+			channelId: 'slack:C123',
+		};
 		const chatTurnContext = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
-			target: {
-				type: 'thread' as const,
-				threadId: 'slack:C123:123.456',
-				channelId: 'slack:C123',
-			},
+			target: chatTurnTarget,
 			replyExpectation: 'required' as const,
+			replyTarget: chatTurnTarget,
 			updatedAt: '2026-05-18T10:00:00.000Z',
 		};
 
@@ -1105,6 +1136,25 @@ describe('ChatIntegrationActionExecutor', () => {
 
 			expect(result).toEqual(expect.objectContaining({ ok: true }));
 			expect(thread.post).toHaveBeenCalledWith('Task update');
+		});
+
+		it('allows a text-only respond after the action target changes', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'DM follow-up' } },
+				awaitResponse: false,
+				currentMessageContext: {
+					...chatTurnContext,
+					target: { type: 'dm', userId: 'U123', threadId: 'slack:D123:' },
+					replyTarget: chatTurnContext.target,
+				},
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith('DM follow-up');
 		});
 	});
 

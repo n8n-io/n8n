@@ -194,8 +194,14 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		}
 
 		const input = addReactionInputSchema.parse(params.input);
-		const threadId = input.threadId ?? params.currentMessageContext?.target.threadId;
-		const messageId = input.messageId ?? params.currentMessageContext?.messageId;
+		const currentMessageContext = params.currentMessageContext;
+		const replyTargetForReaction =
+			input.messageId !== undefined && input.messageId === currentMessageContext?.replyMessageId
+				? currentMessageContext.replyTarget
+				: undefined;
+		const fallbackTarget = replyTargetForReaction ?? currentMessageContext?.target;
+		const threadId = input.threadId ?? fallbackTarget?.threadId;
+		const messageId = input.messageId ?? currentMessageContext?.messageId;
 		if (!threadId || !messageId) {
 			const platform = params.descriptor.integration.type;
 			const displayLabel = `${platform.charAt(0).toUpperCase()}${platform.slice(1)}`;
@@ -213,12 +219,14 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			messageContext: {
 				integrationConnectionId: params.descriptor.integrationConnectionId,
 				platform: params.descriptor.integration.type,
-				target: buildReactionTarget(
-					params.descriptor.integration.type,
-					threadId,
-					params.currentMessageContext,
-				),
-				messageId,
+				target:
+					replyTargetForReaction && currentMessageContext
+						? currentMessageContext.target
+						: buildReactionTarget(params.descriptor.integration.type, threadId, fallbackTarget),
+				messageId:
+					replyTargetForReaction && currentMessageContext
+						? currentMessageContext.messageId
+						: messageId,
 				updatedAt: new Date().toISOString(),
 			},
 		};
@@ -237,10 +245,11 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 		}
 
-		// `replyExpectation` marks a turn triggered by an inbound chat message,
-		// where the bridge already posts the assistant's reply text to this
-		// thread — a text-only respond would deliver the same content twice.
-		if (!input.message.card && params.currentMessageContext?.replyExpectation) {
+		const replyTargetThreadId = params.currentMessageContext?.replyTarget?.threadId;
+		const isAutomaticReplyTarget =
+			params.currentMessageContext?.replyExpectation !== undefined &&
+			(replyTargetThreadId === undefined || replyTargetThreadId === threadId);
+		if (!input.message.card && isAutomaticReplyTarget) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
 				'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
@@ -424,9 +433,9 @@ function buildMessageContextFromSentMessage(params: {
 function buildReactionTarget(
 	platform: string,
 	threadId: string,
-	currentMessageContext: IntegrationMessageContext | undefined,
+	fallbackTarget: IntegrationMessageContext['target'] | undefined,
 ): IntegrationMessageContext['target'] {
-	if (currentMessageContext?.target.threadId === threadId) return currentMessageContext.target;
+	if (fallbackTarget?.threadId === threadId) return fallbackTarget;
 
 	const [threadPlatform, channel] = threadId.split(':');
 	const channelId =

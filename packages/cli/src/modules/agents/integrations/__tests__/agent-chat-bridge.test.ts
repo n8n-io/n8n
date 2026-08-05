@@ -1652,7 +1652,15 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
 				'agent-1:thread-1',
 				'u1',
-				expect.objectContaining({ replyExpectation: 'optional' }),
+				expect.objectContaining({
+					replyExpectation: 'optional',
+					replyTarget: {
+						type: 'thread',
+						threadId: 'thread-1',
+						channelId: 'channel-1',
+					},
+					replyMessageId: 'message-2',
+				}),
 			);
 		});
 
