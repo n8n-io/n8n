@@ -12,6 +12,7 @@ import {
 } from '@n8n/decorators';
 import type { IDataObject } from 'n8n-workflow';
 
+import { AuthService } from '@/auth/auth.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CatalogRunService } from '@/workflows/catalog-run.service';
 import { CatalogSubscriptionService } from '@/workflows/catalog-subscription.service';
@@ -36,6 +37,7 @@ export class CatalogController {
 		private readonly catalogRunService: CatalogRunService,
 		private readonly catalogSubscriptionService: CatalogSubscriptionService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly authService: AuthService,
 	) {}
 
 	/**
@@ -65,6 +67,10 @@ export class CatalogController {
 			workflow,
 			req.user,
 			(payload.inputs ?? {}) as IDataObject,
+			// The person is right here, so their session is the identity the run acts
+			// with — without it their own connected accounts are out of reach and the
+			// workflow silently falls back to whatever credentials it stores.
+			{ n8nAuthCookie: this.authService.getCookieToken(req) },
 		);
 	}
 

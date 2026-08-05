@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ExecutionContextService } from 'n8n-core';
 import type { IDataObject, IWorkflowBase } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
@@ -12,11 +13,18 @@ import { WorkflowInputSchemaService } from '@/workflows/workflow-input-schema.se
 /** Marks an execution as belonging to a person's catalog run rather than the workflow's own. */
 export const CATALOG_RUN_USER_KEY = 'catalogRunUserId';
 
-/** What an unattended caller has to supply that a present one gets for free. */
+/**
+ * Where the run's identity comes from. Exactly one of the two identity fields
+ * is set: a caller who is present carries a session, one who is not carries a
+ * token minted for them. With neither, the run has no credential context and
+ * any dynamic credential falls back to whatever the workflow stores itself.
+ */
 export type RunOptions = {
+	/** Session token of a caller who is present, encrypted into the run's context. */
+	n8nAuthCookie?: string;
 	/**
-	 * Credential context standing in for the session the run has no access to.
-	 * Absent for a run someone started themselves.
+	 * Credential context already built for a run nobody is present for. Absent
+	 * for a run someone started themselves.
 	 */
 	encryptedRunnerIdentity?: string;
 	/**
@@ -32,6 +40,7 @@ export class CatalogRunService {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowInputSchemaService: WorkflowInputSchemaService,
 		private readonly executionMetadataService: ExecutionMetadataService,
+		private readonly executionContextService: ExecutionContextService,
 	) {}
 
 	/**
@@ -75,6 +84,15 @@ export class CatalogRunService {
 			workflowSettings: workflowData.settings,
 		});
 
+		// A present caller's session is as good a claim as a minted token, and
+		// without one their own connected accounts are unreachable — the workflow
+		// would quietly run on whatever credentials it stores instead of theirs.
+		const encryptedRunnerIdentity =
+			options.encryptedRunnerIdentity ??
+			(options.n8nAuthCookie
+				? await this.executionContextService.buildManualExecutionCredentials(options.n8nAuthCookie)
+				: undefined);
+
 		const executionId = await this.workflowExecutionService.runWorkflow(
 			workflowData,
 			startNode,
@@ -83,7 +101,7 @@ export class CatalogRunService {
 			'trigger',
 			/* responsePromise= */ undefined,
 			options.deduplicationKey,
-			{ encryptedRunnerIdentity: options.encryptedRunnerIdentity },
+			{ encryptedRunnerIdentity },
 		);
 
 		// Attribution rides on metadata rather than a column, so "my runs" is a

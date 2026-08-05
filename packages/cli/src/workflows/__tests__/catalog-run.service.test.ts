@@ -5,6 +5,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	UserError,
 } from 'n8n-workflow';
+import type { ExecutionContextService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionMetadataService } from '@/services/execution-metadata.service';
@@ -44,11 +45,14 @@ describe('CatalogRunService', () => {
 	let executions: ReturnType<typeof mock<WorkflowExecutionService>>;
 	let schemas: ReturnType<typeof mock<WorkflowInputSchemaService>>;
 	let metadata: ReturnType<typeof mock<ExecutionMetadataService>>;
+	let contexts: ReturnType<typeof mock<ExecutionContextService>>;
 
 	beforeEach(() => {
 		executions = mock<WorkflowExecutionService>();
 		schemas = mock<WorkflowInputSchemaService>();
 		metadata = mock<ExecutionMetadataService>();
+		contexts = mock<ExecutionContextService>();
+		contexts.buildManualExecutionCredentials.mockResolvedValue('session-context');
 
 		executions.runWorkflow.mockResolvedValue('execution-1');
 		schemas.describe.mockResolvedValue({
@@ -57,7 +61,7 @@ describe('CatalogRunService', () => {
 			fields: [{ name: 'customer', type: 'string' }],
 		});
 
-		service = new CatalogRunService(executions, schemas, metadata);
+		service = new CatalogRunService(executions, schemas, metadata, contexts);
 	});
 
 	it('should start from the trigger that declares the contract', async () => {
@@ -104,6 +108,36 @@ describe('CatalogRunService', () => {
 		expect(metadata.save).toHaveBeenCalledWith('execution-1', {
 			[CATALOG_RUN_USER_KEY]: 'user-1',
 		});
+	});
+
+	it("should act with the caller's session so their own accounts are reachable", async () => {
+		await service.run(
+			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)]),
+			user,
+			{},
+			{
+				n8nAuthCookie: 'cookie-value',
+			},
+		);
+
+		expect(contexts.buildManualExecutionCredentials).toHaveBeenCalledWith('cookie-value');
+		const [, , , , , , , options] = executions.runWorkflow.mock.calls[0];
+		expect(options).toEqual({ encryptedRunnerIdentity: 'session-context' });
+	});
+
+	it('should prefer a minted identity over a session, for an unattended run', async () => {
+		await service.run(
+			workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE)]),
+			user,
+			{},
+			{
+				encryptedRunnerIdentity: 'minted-context',
+			},
+		);
+
+		expect(contexts.buildManualExecutionCredentials).not.toHaveBeenCalled();
+		const [, , , , , , , options] = executions.runWorkflow.mock.calls[0];
+		expect(options).toEqual({ encryptedRunnerIdentity: 'minted-context' });
 	});
 
 	it('should refuse a workflow the catalog does not offer', async () => {

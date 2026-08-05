@@ -52,8 +52,10 @@ workflow_subscription                -- personal schedule, N per binding
 
 Why two: the composite PK is right for consent (one grant per pair) and wrong
 for schedules (one person may want two schedules for the same workflow).
-**Manual runs need no binding** — the person is present, identity comes from the
-session.
+**Manual runs need no binding** — the person is present, so their session is the
+identity, encrypted onto the run the same way the editor's manual execution does
+it. The binding exists only for the unattended case, where there is no session
+to take.
 
 **Schedules need an Execute Workflow Trigger; manual runs do not.** A manual
 trigger is enough to justify running something once with the person watching —
