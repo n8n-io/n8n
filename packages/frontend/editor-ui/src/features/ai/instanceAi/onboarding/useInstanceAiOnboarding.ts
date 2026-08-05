@@ -46,8 +46,13 @@ export function useInstanceAiOnboarding(configuration: InstanceAiOnboardingConfi
 
 	function advance(): void {
 		if (editMode.value) {
-			step.value = 'done';
 			editMode.value = false;
+			const nextStep = firstUnmetStep();
+			if (nextStep === 'done') {
+				step.value = nextStep;
+			} else {
+				open.value = false;
+			}
 			return;
 		}
 		step.value = firstUnmetStep();

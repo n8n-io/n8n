@@ -4,6 +4,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 
 import InstanceAiOnboardingIntro from './InstanceAiOnboardingIntro.vue';
 
+const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assistant';
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -57,6 +59,7 @@ describe('InstanceAiOnboardingIntro', () => {
 		});
 
 		expect(getByTestId('assistant-setup-incomplete')).toBeVisible();
+		expect(getByTestId('settings-row-group')).toBeVisible();
 		expect(getByText('instanceAi.onboarding.incomplete.lede')).toBeVisible();
 		expect(getByText('anthropic/claude-opus-5')).toBeVisible();
 		expect(getByText('n8n Sandbox')).toBeVisible();
@@ -65,7 +68,13 @@ describe('InstanceAiOnboardingIntro', () => {
 		await fireEvent.click(getByTestId('assistant-setup-checklist-model'));
 		await fireEvent.click(getByTestId('assistant-setup-checklist-sandbox'));
 		await fireEvent.click(getByTestId('assistant-setup-checklist-search'));
-		await fireEvent.click(getByTestId('assistant-finish-setup-cta'));
+		const finishSetup = getByTestId('assistant-finish-setup-cta');
+		const learnMore = getByTestId('assistant-learn-more');
+		expect(
+			Boolean(finishSetup.compareDocumentPosition(learnMore) & Node.DOCUMENT_POSITION_FOLLOWING),
+		).toBe(true);
+		expect(learnMore).toHaveAttribute('href', DOCS_URL);
+		await fireEvent.click(finishSetup);
 
 		expect(emitted().openStep).toEqual([['model'], ['sandbox'], ['search']]);
 		expect(emitted().setup).toEqual([[]]);

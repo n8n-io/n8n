@@ -57,7 +57,11 @@ describe('useInstanceAiOnboarding', () => {
 	});
 
 	it('returns to the summary after applying a single-step edit', () => {
-		const onboarding = useInstanceAiOnboarding(createConfiguration());
+		const configuration = createConfiguration();
+		configuration.modelConfigured.value = true;
+		configuration.sandboxConfigured.value = true;
+		configuration.searchDecided.value = true;
+		const onboarding = useInstanceAiOnboarding(configuration);
 
 		onboarding.start('sandbox', true);
 		onboarding.advance();
@@ -65,6 +69,20 @@ describe('useInstanceAiOnboarding', () => {
 		expect(onboarding.step.value).toBe('done');
 		expect(onboarding.editMode.value).toBe(false);
 		expect(onboarding.open.value).toBe(true);
+	});
+
+	it('closes a direct edit when other setup steps are still incomplete', () => {
+		const configuration = createConfiguration();
+		configuration.modelConfigured.value = true;
+		const onboarding = useInstanceAiOnboarding(configuration);
+
+		onboarding.start('search', true);
+		configuration.searchDecided.value = true;
+		onboarding.advance();
+
+		expect(onboarding.open.value).toBe(false);
+		expect(onboarding.editMode.value).toBe(false);
+		expect(onboarding.firstUnmetStep()).toBe('sandbox');
 	});
 
 	it('clears edit mode when the wizard closes', () => {

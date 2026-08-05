@@ -152,7 +152,7 @@ const visibleSetupSteps = computed(() => props.sequence.filter((step) => step !=
 const primaryLabel = computed(() => {
 	if (busy.value) return i18n.baseText('instanceAi.onboarding.wizard.testing');
 	if (props.step === 'done') return i18n.baseText('instanceAi.onboarding.wizard.startUsing');
-	if (props.editMode) return i18n.baseText('instanceAi.onboarding.wizard.apply');
+	if (props.editMode) return i18n.baseText('generic.save');
 	return i18n.baseText('instanceAi.onboarding.wizard.continue');
 });
 
@@ -624,7 +624,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					<div
 						v-for="provider in INSTANCE_AI_SANDBOX_PROVIDERS"
 						:key="provider.id"
-						:class="[$style.optionCard, sandboxProvider === provider.id && $style.selected]"
+						:class="$style.optionCard"
 						:data-test-id="`assistant-sandbox-${provider.id}`"
 						@click="selectSandboxProvider(provider.id)"
 					>
@@ -638,12 +638,10 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							<span :class="$style.optionTitle">
 								<N8nText bold step="sm">{{ provider.onboardingLabel }}</N8nText>
 								<N8nBadge
-									:theme="provider.id === 'n8n-sandbox' ? 'secondary' : 'tertiary'"
+									:theme="provider.id === 'n8n-sandbox' ? 'secondary' : 'default'"
 									size="small"
 									:show-border="provider.id !== 'n8n-sandbox'"
-									:class="
-										provider.id === 'n8n-sandbox' ? $style.recommendedBadge : $style.paidBadge
-									"
+									:class="$style.optionBadge"
 									bold
 								>
 									{{
@@ -757,7 +755,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							},
 						]"
 						:key="provider.id"
-						:class="[$style.optionCard, searchProvider === provider.id && $style.selected]"
+						:class="$style.optionCard"
 						:data-test-id="`assistant-search-${provider.id}`"
 						@click="selectSearchProvider(provider.id)"
 					>
@@ -773,8 +771,10 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 								<N8nBadge
 									v-if="provider.id === 'searxng'"
 									theme="secondary"
-									size="medium"
+									size="small"
 									:show-border="false"
+									:class="$style.optionBadge"
+									bold
 								>
 									{{ i18n.baseText('instanceAi.onboarding.search.free') }}
 								</N8nBadge>
@@ -907,14 +907,29 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 
 		<N8nDialogFooter v-if="!(step === 'done' && composeFastPath)" :class="$style.footer">
 			<N8nButton
+				v-if="editMode"
+				variant="outline"
+				size="medium"
+				:label="i18n.baseText('generic.cancel')"
+				:disabled="busy"
+				data-test-id="wizard-cancel"
+				@click="handleOpenChange(false)"
+			/>
+			<N8nButton
 				v-if="canGoBack"
 				variant="outline"
+				size="medium"
 				:label="i18n.baseText('generic.back')"
 				:disabled="busy"
 				data-test-id="wizard-back"
 				@click="emit('back')"
 			/>
-			<div v-if="step !== 'done' && !editMode" :class="$style.dots" aria-hidden="true">
+			<div
+				v-if="step !== 'done' && !editMode"
+				:class="$style.dots"
+				data-test-id="wizard-progress"
+				aria-hidden="true"
+			>
 				<span
 					v-for="setupStep in visibleSetupSteps"
 					:key="setupStep"
@@ -923,6 +938,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 			</div>
 			<N8nButton
 				variant="solid"
+				size="medium"
 				:label="primaryLabel"
 				:loading="busy"
 				:disabled="primaryDisabled"
@@ -965,8 +981,20 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 }
 
 .joinedCards {
+	position: relative;
 	width: 100%;
 	gap: 0;
+	border-radius: var(--radius--md);
+}
+
+.joinedCards::after {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	border: var(--border-width, 1px) solid var(--border-color--subtle);
+	border-radius: inherit;
+	pointer-events: none;
+	content: '';
 }
 
 .optionCard {
@@ -977,7 +1005,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 	width: 100%;
 	box-sizing: border-box;
 	padding: var(--spacing--sm);
-	border: var(--border);
+	border: 0;
 	border-radius: 0;
 	background: var(--background--surface);
 	color: var(--text-color);
@@ -995,14 +1023,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 }
 
 .optionCard + .optionCard {
-	margin-top: calc(var(--border-width--base) * -1);
-}
-
-.optionCard.selected {
-	z-index: 1;
-	border-color: var(--color--primary);
-	background: var(--color--primary--tint-3);
-	box-shadow: 0 0 0 var(--border-width--base) var(--color--primary);
+	border-top: var(--border-width, 1px) solid var(--border-color--subtle);
 }
 
 .optionCard > :first-child {
@@ -1013,10 +1034,6 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 @media (hover: hover) and (pointer: fine) {
 	.optionCard:hover {
 		background: var(--background--hover);
-	}
-
-	.optionCard.selected:hover {
-		background: var(--color--primary--tint-3);
 	}
 }
 
@@ -1038,12 +1055,8 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 	gap: var(--spacing--2xs);
 }
 
-.recommendedBadge,
-.paidBadge {
-	padding-inline: var(--spacing--3xs);
-}
-
-.paidBadge {
+.optionBadge {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--radius--full);
 }
 

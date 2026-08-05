@@ -175,6 +175,7 @@ describe('InstanceAiOnboardingView', () => {
 		await fireEvent.click(getByTestId('intro-open-search'));
 		expect(getByTestId('wizard-stub')).toHaveAttribute('data-step', 'search');
 		expect(getByTestId('wizard-stub')).toHaveAttribute('data-open', 'true');
+		expect(getByTestId('wizard-stub')).toHaveAttribute('data-edit-mode', 'true');
 	});
 
 	it('uses the model-only fast path when sandbox and search are server-managed', async () => {

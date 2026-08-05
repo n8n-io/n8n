@@ -140,7 +140,7 @@ onMounted(async () => {
 			:sandbox-configured="sandboxConfigured"
 			:search-decided="searchDecided"
 			@setup="startAt()"
-			@open-step="startAt"
+			@open-step="editStep"
 			@turn-off="turnOff"
 		/>
 

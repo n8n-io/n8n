@@ -261,11 +261,14 @@ describe('InstanceAiOnboardingWizard', () => {
 
 	it('records disabled web search without calling verification', async () => {
 		const { pinia, store } = setupStore();
-		const { emitted, findByTestId, getByTestId } = renderWizard({
+		const { emitted, findByTestId, findByText, getByTestId } = renderWizard({
 			pinia,
 			props: { step: 'search' },
 		});
 
+		expect(
+			(await findByText('instanceAi.onboarding.search.free')).closest('.n8n-badge'),
+		).not.toBeNull();
 		await fireEvent.click(await findByTestId('assistant-search-disabled'));
 		await fireEvent.click(getByTestId('wizard-primary'));
 
@@ -383,8 +386,25 @@ describe('InstanceAiOnboardingWizard', () => {
 			props: { step: 'sandbox' },
 		});
 
+		expect(await findByTestId('wizard-progress')).toBeVisible();
 		await fireEvent.click(await findByTestId('wizard-back'));
 
 		expect(emitted().back).toEqual([[]]);
+	});
+
+	it('uses cancel and save without progress controls in direct edit mode', async () => {
+		const { pinia } = setupStore();
+		const { emitted, findByTestId, findByText, queryByTestId } = renderWizard({
+			pinia,
+			props: { step: 'search', editMode: true },
+		});
+
+		expect(await findByText('generic.save')).toBeVisible();
+		expect(queryByTestId('wizard-back')).toBeNull();
+		expect(queryByTestId('wizard-progress')).toBeNull();
+
+		await fireEvent.click(await findByTestId('wizard-cancel'));
+
+		expect(emitted()['update:open']).toEqual([[false]]);
 	});
 });

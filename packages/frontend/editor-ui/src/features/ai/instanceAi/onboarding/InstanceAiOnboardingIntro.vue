@@ -3,8 +3,9 @@ import {
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
-	N8nLink,
 	N8nPreviewTag,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -61,8 +62,8 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 				</div>
 			</div>
 
-			<div v-else :class="$style.checklist">
-				<button
+			<N8nSettingsRowGroup v-else :class="$style.checklist">
+				<N8nSettingsRow
 					v-for="item in [
 						{
 							id: 'model' as const,
@@ -90,32 +91,31 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 						},
 					]"
 					:key="item.id"
-					type="button"
-					:class="$style.checklistRow"
+					:title="item.title"
+					:description="item.description"
+					clickable
 					:data-test-id="`assistant-setup-checklist-${item.id}`"
 					@click="emit('openStep', item.id)"
 				>
-					<span :class="$style.checklistCopy">
-						<N8nText bold>{{ item.title }}</N8nText>
-						<N8nText color="text-light" step="xs">{{ item.description }}</N8nText>
-					</span>
-					<N8nText
-						step="xs"
-						:color="item.configured ? 'text-light' : 'warning'"
-						:class="item.mono && $style.mono"
-					>
-						{{ item.value }}
-					</N8nText>
-					<N8nIcon icon="chevron-right" size="small" color="text-light" />
-				</button>
-			</div>
+					<template #action>
+						<span :class="$style.rowAction">
+							<N8nText
+								step="xs"
+								:color="item.configured ? 'text-light' : 'warning'"
+								:class="item.mono && $style.mono"
+							>
+								{{ item.value }}
+							</N8nText>
+							<N8nIcon icon="chevron-right" size="small" color="text-light" />
+						</span>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
 
 			<div :class="$style.actions">
-				<N8nLink v-if="incomplete" :to="DOCS_URL" new-window theme="text" bold>
-					{{ i18n.baseText('instanceAi.onboarding.learnMore') }}
-				</N8nLink>
 				<N8nButton
 					variant="solid"
+					size="medium"
 					:data-test-id="incomplete ? 'assistant-finish-setup-cta' : 'assistant-setup-cta'"
 					:label="
 						incomplete
@@ -126,9 +126,14 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 					"
 					@click="emit('setup')"
 				/>
-				<N8nLink v-if="!incomplete" :to="DOCS_URL" new-window theme="text" bold>
-					{{ i18n.baseText('instanceAi.onboarding.learnMore') }}
-				</N8nLink>
+				<N8nButton
+					variant="ghost"
+					size="medium"
+					:href="DOCS_URL"
+					target="_blank"
+					:label="i18n.baseText('instanceAi.onboarding.learnMore')"
+					data-test-id="assistant-learn-more"
+				/>
 			</div>
 
 			<div :class="$style.turnOff">
@@ -212,42 +217,13 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 .checklist {
 	width: 100%;
 	margin-top: var(--spacing--lg);
-	overflow: hidden;
-	background: var(--background--surface);
-	border: var(--border);
-	border-radius: var(--radius--md);
+	text-align: start;
 }
 
-.checklistRow {
-	width: 100%;
+.rowAction {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: 0;
-	border-top: var(--border-width--base) var(--border-style--base) var(--border-color--subtle);
-	background: transparent;
-	color: var(--text-color);
-	font: inherit;
-	text-align: left;
-	cursor: pointer;
-}
-
-.checklistRow:first-child {
-	border-top: 0;
-}
-
-@media (hover: hover) and (pointer: fine) {
-	.checklistRow:hover {
-		background: var(--background--hover);
-	}
-}
-
-.checklistCopy {
-	min-width: 0;
-	flex: 1;
-	display: flex;
-	flex-direction: column;
 }
 
 .mono {
@@ -257,14 +233,10 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 .actions {
 	margin-top: var(--spacing--lg);
 	display: flex;
+	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 	gap: var(--spacing--xs);
-}
-
-.content:not(.wide) .actions {
-	flex-direction: column;
-	gap: var(--spacing--md);
 }
 
 .turnOff {
