@@ -486,6 +486,17 @@ export interface CredentialFieldInfo {
 	description?: string;
 }
 
+export interface McpRegistryServerSummary {
+	slug: string;
+	title: string;
+	description: string;
+	tools: string[];
+}
+
+export interface InstanceAiMcpService {
+	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+}
+
 export interface ExploreResourcesParams {
 	nodeType: string;
 	version: number;
@@ -994,6 +1005,9 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present when the host allows MCP registry discovery for this
+	 *  user. Presence gates the `mcp-servers` tool. */
+	mcpService?: InstanceAiMcpService;
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */

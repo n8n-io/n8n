@@ -102,6 +102,7 @@ export function getToolIcon(toolName: string): IconName {
 	if (toolName === 'list_skills' || toolName === 'load_skill' || toolName === 'n8n-docs')
 		return 'book-open';
 	if (toolName === 'data-tables') return 'table';
+	if (toolName === 'mcp-servers') return 'plug';
 	if (
 		toolName === 'workflows' ||
 		toolName === 'executions' ||

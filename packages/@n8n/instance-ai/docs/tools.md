@@ -746,6 +746,17 @@ adapter). Use it to answer questions about existing agents and to find the
 `agentId` for `build-agent` when editing an agent not built in this
 conversation. Creation and editing stay on `build-agent`.
 
+## MCP Registry Tool
+
+### `mcp-servers` *(domain tool — conditional)*
+
+Search the MCP registry so the orchestrator can discover a hosted MCP server for
+a service the user asked about but has not connected. One action, `search`, over
+`{ queries: string[] }`; returns
+`{ results: [{ slug, title, description, tools }], hint? }`.
+
+Only servers that the user has *not* connected come back. Results are capped at 5, most relevant first.
+
 ## Other Domain Tools
 
 | Tool | Description |

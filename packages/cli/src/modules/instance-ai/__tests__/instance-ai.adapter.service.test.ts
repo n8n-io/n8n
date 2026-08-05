@@ -52,12 +52,17 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
-import type { PostHogClient } from '@/posthog';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { PostHogClient } from '@/posthog';
+
+import { InstanceAiMcpRegistryService } from '../mcp';
 
 import {
 	extractExecutionResult,
@@ -3524,6 +3529,7 @@ function createAdapterWithGatewayMock(
 		credentialsService?: unknown;
 		telemetry?: unknown;
 		enabled?: boolean;
+		settingsService?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
@@ -3556,6 +3562,11 @@ function createAdapterWithGatewayMock(
 	args[21] = {
 		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
+	if (overrides?.settingsService) {
+		args[22] = overrides.settingsService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[22];
+	}
 	args[25] = {
 		isLicensed: vi.fn().mockReturnValue(true),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25];
@@ -3838,6 +3849,159 @@ describe('isConfigEvalsEnabled', () => {
 		} as unknown as PostHogClient);
 
 		expect(await adapter.isConfigEvalsEnabled(user)).toBe(false);
+	});
+});
+
+describe('MCP registry discovery', () => {
+	const user = { id: 'user-1', createdAt: new Date() } as unknown as User;
+
+	interface McpStubs {
+		moduleActive?: boolean;
+		featureFlags?: Record<string, string>;
+		registrySearch?: Mock;
+		listConnectionsForUser?: Mock;
+	}
+
+	/** Route `Container.get` by token — the adapter resolves PostHog and both MCP
+	 *  services lazily, so each needs its own stub. */
+	function stubContainer(stubs: McpStubs = {}) {
+		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
+		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
+		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
+
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === PostHogClient) return { getFeatureFlags };
+			if (token === McpRegistryService) return { search };
+			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
+			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
+			return {
+				isActive: (name: string) => (stubs.moduleActive ?? true) && name === 'mcp-registry',
+			};
+		});
+
+		return { getFeatureFlags, search, listConnectionsForUser };
+	}
+
+	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
+		return createAdapterWithGatewayMock(vi.fn(), {
+			settingsService: { isMcpAccessEnabled: vi.fn().mockReturnValue(mcpAccessEnabled) },
+		});
+	}
+
+	const enabledFlags = {
+		[INSTANCE_AI_MCP_CONNECTIONS_FLAG]: INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	};
+
+	describe('isMcpConnectionsEnabled', () => {
+		it('is on when the module is active, MCP access is enabled, and the user is on the enabled variant', async () => {
+			const { getFeatureFlags } = stubContainer({ featureFlags: enabledFlags });
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(true);
+			expect(getFeatureFlags).toHaveBeenCalledWith(user);
+		});
+
+		it('is off when the mcp-registry module is disabled, without consulting the flag', async () => {
+			// With the module off the registry entity is never registered, so a
+			// search would throw rather than return nothing.
+			const { getFeatureFlags } = stubContainer({
+				moduleActive: false,
+				featureFlags: enabledFlags,
+			});
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
+			expect(getFeatureFlags).not.toHaveBeenCalled();
+		});
+
+		it('is off when the admin disabled MCP access, without consulting the flag', async () => {
+			const { getFeatureFlags } = stubContainer({ featureFlags: enabledFlags });
+
+			expect(await createAdapter(false).isMcpConnectionsEnabled(user)).toBe(false);
+			expect(getFeatureFlags).not.toHaveBeenCalled();
+		});
+
+		it('is off when the user is on the control variant', async () => {
+			stubContainer({ featureFlags: { [INSTANCE_AI_MCP_CONNECTIONS_FLAG]: 'control' } });
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
+		});
+
+		it('fails closed when no flags resolve (PostHog outage or diagnostics off)', async () => {
+			stubContainer({ featureFlags: {} });
+
+			expect(await createAdapter().isMcpConnectionsEnabled(user)).toBe(false);
+		});
+	});
+
+	describe('mcpService', () => {
+		const registryHit = {
+			slug: 'google-drive',
+			name: 'googleDrive',
+			title: 'Google Drive',
+			description: 'Work with Drive files',
+			url: 'https://example.com/mcp',
+			transport: 'streamableHttp',
+			authentication: 'googleDriveMcpOAuth2Api',
+			credentialType: 'googleDriveMcpOAuth2Api',
+			tools: [{ name: 'list_files', title: 'List files' }],
+			metadata: { nodeTypeName: '@n8n/mcp-registry.googleDrive' },
+		};
+
+		it('is absent from the context unless the gate passed', () => {
+			stubContainer();
+
+			expect(createAdapter().createContext(user).mcpService).toBeUndefined();
+		});
+
+		it('strips host-only fields from registry hits', async () => {
+			const { search } = stubContainer({
+				registrySearch: vi.fn().mockResolvedValue([registryHit]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.search(['drive']);
+
+			expect(search).toHaveBeenCalledWith(['drive']);
+			// url/transport/authentication/credentialType/metadata never reach the agent.
+			expect(results).toEqual([
+				{
+					slug: 'google-drive',
+					title: 'Google Drive',
+					description: 'Work with Drive files',
+					tools: ['list_files'],
+				},
+			]);
+		});
+
+		it('drops a server the user already has a connection for', async () => {
+			const { listConnectionsForUser } = stubContainer({
+				registrySearch: vi
+					.fn()
+					.mockResolvedValue([registryHit, { ...registryHit, slug: 'notion', title: 'Notion' }]),
+				listConnectionsForUser: vi
+					.fn()
+					.mockResolvedValue([
+						{ id: 'conn-1', userId: 'user-1', serverSlug: 'google-drive', credentialId: 'cred-1' },
+					]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.search(['drive', 'notion']);
+
+			expect(listConnectionsForUser).toHaveBeenCalledWith(user);
+			expect(results.map((result) => result.slug)).toEqual(['notion']);
+		});
+
+		it('offers everything when listing connections fails', async () => {
+			stubContainer({
+				registrySearch: vi.fn().mockResolvedValue([registryHit]),
+				listConnectionsForUser: vi.fn().mockRejectedValue(new Error('query failed')),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			const results = await context.mcpService!.search(['drive']);
+
+			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+		});
 	});
 });
 

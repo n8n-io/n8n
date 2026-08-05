@@ -163,6 +163,7 @@ export async function createInstanceAgent(
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		mcpToolSearchEnabled: hasDeferredExternalMcpTools,
+		mcpRegistrySearchEnabled: Boolean(context.mcpService),
 		licenseHints: context.licenseHints,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,

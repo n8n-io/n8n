@@ -15,6 +15,8 @@ interface SystemPromptOptions {
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
+	/** Whether the `mcp-servers` tool is registered for this run. */
+	mcpRegistrySearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	browserAvailable?: boolean;
@@ -64,6 +66,17 @@ function getToolDiscoverySection(
 ${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
 
 Examples: ${mcpExamples}search "n8n docs" for \`n8n-docs\`, search "create tasks" for \`create-tasks\`, search "eval" for \`evals\`.
+`;
+}
+
+function getMcpRegistrySection(mcpRegistrySearchEnabled?: boolean): string {
+	if (!mcpRegistrySearchEnabled) return '';
+	return `
+## Connecting Services through MCP
+
+When the user wants to work with a third-party service here and no tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively.
+
+This is only about tools **you** use in this conversation. It is not part of building: a workflow that talks to a service uses that service's node and credential, so never call \`mcp-servers\` for a build request, and never offer to connect a service instead of adding the node.
 `;
 }
 
@@ -122,6 +135,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		localGateway,
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
+		mcpRegistrySearchEnabled,
 		licenseHints,
 		browserAvailable,
 		branchReadOnly,
@@ -130,12 +144,13 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	} = options;
 
 	return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
-	
+
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${SECRET_ASK_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+${getMcpRegistrySection(mcpRegistrySearchEnabled)}
 ## Communication Style
 
 - Be concise.
