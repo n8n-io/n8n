@@ -219,7 +219,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		const optimizeHistoriesSpy = vi
+		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation((() => {}) as never);
@@ -249,7 +249,7 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock<EventService>(),
 		);
 
-		const optimizeHistoriesSpy = vi
+		vi
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'optimizeHistories')
 			.mockImplementation((() => {}) as never);
