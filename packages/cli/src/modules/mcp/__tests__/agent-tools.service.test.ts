@@ -27,6 +27,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentModificationTelemetryService } from '@/modules/agents/agent-modification-telemetry.service';
@@ -39,8 +40,6 @@ import { AgentValidationService } from '@/modules/agents/agent-validation.servic
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
-import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
@@ -110,8 +109,7 @@ describe('McpAgentToolsService', () => {
 	const agentCustomToolsService = mockInstance(AgentCustomToolsService);
 	const agentSecureRuntime = mockInstance(AgentSecureRuntime);
 	const integrationPersistenceService = mockInstance(AgentIntegrationPersistenceService);
-	const chatIntegrationService = mockInstance(ChatIntegrationService);
-	const chatIntegrationRegistry = mockInstance(ChatIntegrationRegistry);
+	const integrationManagementService = mockInstance(AgentIntegrationManagementService);
 	const mcpRegistryService = mockInstance(McpRegistryService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
@@ -129,8 +127,7 @@ describe('McpAgentToolsService', () => {
 		agentCustomToolsService,
 		agentSecureRuntime,
 		integrationPersistenceService,
-		chatIntegrationService,
-		chatIntegrationRegistry,
+		integrationManagementService,
 		mockInstance(AgentModelCatalogService),
 		mockInstance(AttachableWorkflowsService),
 		mcpRegistryService,
@@ -1417,19 +1414,13 @@ describe('McpAgentToolsService', () => {
 
 		beforeEach(() => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: 'v1' }));
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-				{ id: 'cred-1', type: 'slackApi', name: 'Slack cred' },
-			] as never);
-			chatIntegrationRegistry.require.mockReturnValue({
-				credentialTypes: ['slackApi'],
-				displayLabel: 'Slack',
-			} as never);
-			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
-				agentEntity({
+			integrationManagementService.connect.mockResolvedValue({
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				savedAgent: agentEntity({
 					activeVersionId: 'v1',
 					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 				}),
-			);
+			});
 		});
 
 		it('persists and connects the channel without publishing for a published Agent', async () => {
@@ -1439,11 +1430,12 @@ describe('McpAgentToolsService', () => {
 
 			const result = await callTool('update_agent_integration', input);
 
-			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'agent-1' }),
-				{ type: 'slack', credentialId: 'cred-1' },
-				{ user, modifiedBy: 'mcp', broadcast: false },
-			);
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
+				user,
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				modifiedBy: 'mcp',
+			});
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:update'], false, {
 				projectId: 'project-1',
@@ -1451,16 +1443,6 @@ describe('McpAgentToolsService', () => {
 			expect(userHasScopesMock).not.toHaveBeenCalledWith(user, ['agent:publish'], false, {
 				projectId: 'project-1',
 			});
-			expect(chatIntegrationService.connect).toHaveBeenCalledWith(
-				'agent-1',
-				{ type: 'slack', credentialId: 'cred-1' },
-				'project-1',
-			);
-			expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
-				'agent-1',
-				{ type: 'slack', credentialId: 'cred-1' },
-				'connect',
-			);
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				configured: true,
@@ -1472,23 +1454,23 @@ describe('McpAgentToolsService', () => {
 
 		it('persists without publishing, connecting, or broadcasting for an unpublished Agent', async () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ activeVersionId: null }));
-			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
-				agentEntity({
+			integrationManagementService.connect.mockResolvedValue({
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				savedAgent: agentEntity({
 					activeVersionId: null,
 					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 				}),
-			);
+			});
 
 			const result = await callTool('update_agent_integration', input);
 
-			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'agent-1' }),
-				{ type: 'slack', credentialId: 'cred-1' },
-				{ user, modifiedBy: 'mcp', broadcast: false },
-			);
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
+				user,
+				integration: { type: 'slack', credentialId: 'cred-1' },
+				modifiedBy: 'mcp',
+			});
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
-			expect(chatIntegrationService.connect).not.toHaveBeenCalled();
-			expect(chatIntegrationService.broadcastIntegrationChange).not.toHaveBeenCalled();
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				configured: true,
@@ -1499,19 +1481,22 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('requires settings for telegram integrations', async () => {
+			integrationManagementService.connect.mockRejectedValueOnce(
+				new Error('Telegram integration settings are required'),
+			);
 			const result = await callTool('update_agent_integration', { ...input, type: 'telegram' });
 
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({
 				error: 'Telegram integration settings are required',
 			});
-			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+			expect(integrationManagementService.connect).toHaveBeenCalled();
 		});
 
 		it('rejects a credential whose type the integration does not support', async () => {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-				{ id: 'cred-1', type: 'telegramApi', name: 'Telegram cred' },
-			] as never);
+			integrationManagementService.connect.mockRejectedValueOnce(
+				new Error('Slack integrations do not support telegramApi credentials'),
+			);
 
 			const result = await callTool('update_agent_integration', input);
 
@@ -1519,7 +1504,7 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({
 				error: 'Slack integrations do not support telegramApi credentials',
 			});
-			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+			expect(integrationManagementService.connect).toHaveBeenCalled();
 		});
 	});
 
@@ -1533,9 +1518,9 @@ describe('McpAgentToolsService', () => {
 		};
 
 		beforeEach(() => {
-			integrationPersistenceService.removeCredentialIntegration.mockResolvedValue(
-				agentEntity({ integrations: [] }),
-			);
+			integrationManagementService.disconnect.mockResolvedValue({
+				savedAgent: agentEntity({ integrations: [] }),
+			});
 		});
 
 		it('disconnects a persisted integration and removes its record', async () => {
@@ -1544,14 +1529,13 @@ describe('McpAgentToolsService', () => {
 
 			const result = await callTool('update_agent_integration', input);
 
-			expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', persisted);
-			expect(chatIntegrationService.disconnect).not.toHaveBeenCalled();
-			expect(integrationPersistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'agent-1' }),
-				'slack',
-				'cred-1',
-				{ user, modifiedBy: 'mcp', broadcast: false },
-			);
+			expect(integrationManagementService.disconnect).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
+				user,
+				type: 'slack',
+				credentialId: 'cred-1',
+				modifiedBy: 'mcp',
+			});
 			expect(result.structuredContent).toMatchObject({ ok: true, connected: false });
 		});
 
@@ -1560,11 +1544,7 @@ describe('McpAgentToolsService', () => {
 
 			const result = await callTool('update_agent_integration', input);
 
-			expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
-				type: 'slack',
-				credentialId: 'cred-1',
-			});
-			expect(integrationPersistenceService.removeCredentialIntegration).toHaveBeenCalled();
+			expect(integrationManagementService.disconnect).toHaveBeenCalled();
 			expect(result.structuredContent).toMatchObject({ ok: true, connected: false });
 		});
 
@@ -1573,12 +1553,9 @@ describe('McpAgentToolsService', () => {
 
 			await callTool('update_agent_integration', { ...input, type: 'bogus' });
 
-			expect(chatIntegrationService.disconnectChannel).not.toHaveBeenCalled();
-			expect(chatIntegrationService.disconnect).toHaveBeenCalledWith('agent-1', {
-				type: 'bogus',
-				credentialId: 'cred-1',
-			});
-			expect(integrationPersistenceService.removeCredentialIntegration).toHaveBeenCalled();
+			expect(integrationManagementService.disconnect).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'bogus', credentialId: 'cred-1' }),
+			);
 		});
 	});
 

@@ -1,6 +1,10 @@
 import { Service } from '@n8n/di';
 import type { RichCardComponentType } from '@n8n/api-types';
+import type { Thread } from 'chat';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+
+import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChatIntegrationContext,
@@ -11,15 +15,15 @@ import {
 	type PlatformActionParams,
 	type PlatformContextQueryParams,
 	type UnauthenticatedWebhookResponse,
-} from '../agent-chat-integration';
-import type { ChatInstance } from '../chat-integration.service';
-import { loadSlackAdapter } from '../esm-loader';
+} from '../../agent-chat-integration';
+import type { ChatInstance } from '../../chat-integration.service';
+import { loadSlackAdapter } from '../../esm-loader';
 import {
 	resolveIntegrationActionDefinitions,
 	resolveIntegrationContextQueryDefinitions,
-} from '../integration-tool-definitions';
-import { connectionUnavailable } from '../integration-helpers';
-import type { IntegrationActionResult, ReplyExpectation } from '../integration-tools';
+} from '../../integration-tool-definitions';
+import { connectionUnavailable } from '../../integration-helpers';
+import type { IntegrationActionResult, ReplyExpectation } from '../../integration-tools';
 import {
 	createSlackBridgeExecutionContext,
 	createSlackResumeExecutionContext,
@@ -27,7 +31,11 @@ import {
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
 } from './slack-bridge-behavior';
-import { executeSlackAction, executeSlackContextQuery } from './slack-operations';
+import {
+	executeSlackAction,
+	executeSlackContextQuery,
+	subscribeSlackThread,
+} from './slack-operations';
 import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
 
 /**
@@ -37,6 +45,10 @@ import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
+	constructor(private readonly agentRepository?: AgentRepository) {
+		super();
+	}
+
 	readonly type = 'slack';
 
 	readonly credentialTypes = ['slackApi'];
@@ -88,6 +100,23 @@ export class SlackIntegration extends AgentChatIntegration {
 		...resolveIntegrationActionDefinitions(['respond', 'send_dm', 'send_channel_message']),
 		...SLACK_ACTION_TOOL_DEFINITIONS,
 	];
+
+	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
+		if (!this.agentRepository) return;
+		const others = await this.agentRepository.findByIntegrationCredential(
+			this.type,
+			ctx.credentialId,
+			ctx.projectId,
+			ctx.agentId,
+		);
+		if (others.length > 0) {
+			throw new ConflictError(`Slack credential is already connected to agent "${others[0].name}"`);
+		}
+	}
+
+	async prepareSentThread(thread: Thread<unknown, unknown>): Promise<void> {
+		await subscribeSlackThread(thread);
+	}
 
 	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
 		return getSlackPlatformAgentContext(chat);

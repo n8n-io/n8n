@@ -9,20 +9,23 @@
  * transport call.
  */
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
+import {
+	agentChannelPlatforms,
+	createAgentChannelRuntime,
+	getAgentChannelPlatform,
+} from '@/features/agents/channels/registry';
+import type { AgentChannelRuntime, AgentChannelViewExpose } from '@/features/agents/channels/types';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
-import AgentChannelLinearSetup from '@/features/agents/components/AgentChannelLinearSetup.vue';
-import AgentChannelSlackSetup from '@/features/agents/components/AgentChannelSlackSetup.vue';
-import AgentChannelTelegramSetup from '@/features/agents/components/AgentChannelTelegramSetup.vue';
 import type { AgentResource } from '@/features/agents/types';
 
 const props = defineProps<{
@@ -62,42 +65,71 @@ const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
 
-const currentIntegration = computed<ChatIntegrationDescriptor | null>(() => {
-	return catalog.value?.find((integration) => integration.type === props.integrationType) ?? null;
+const currentIntegration = computed<ChatIntegrationDescriptor>(() => {
+	return (
+		catalog.value?.find((integration) => integration.type === props.integrationType) ?? {
+			type: props.integrationType,
+			label: props.integrationType,
+			icon: 'zap',
+			credentialTypes: [],
+		}
+	);
 });
 
 const {
-	channelSetupRef,
 	selectedCredentials,
 	credentialsLoading,
 	credentialPermissions,
+	credentialModalOpen,
 	getChannelCredentialId,
 	getCredentials,
 	loadChannelState: loadSharedChannelState,
 	createCredential,
 	editCredential,
-	setupSlackApp: runSlackAppSetup,
 } = useAgentChannelSetup({
 	projectId: () => props.projectId,
-	agentId: () => props.agentId,
 	currentIntegration,
 	connectedCredentials,
 	fetchStatus,
-	isIntegrationConfigured,
 });
 
-const integrationLabel = computed(() => currentIntegration.value?.label ?? props.integrationType);
-
-const connectedDescriptionKeys = {
-	telegram: 'agents.builder.addTrigger.connectedText.telegram',
-	linear: 'agents.builder.addTrigger.connectedText.linear',
-} as const;
+const projectIdRef = computed(() => props.projectId);
+const agentIdRef = computed(() => props.agentId);
+const runtimes: Record<string, AgentChannelRuntime> = Object.fromEntries(
+	Object.values(agentChannelPlatforms).map((platform) => [
+		platform.type,
+		createAgentChannelRuntime(platform, {
+			projectId: projectIdRef,
+			agentId: agentIdRef,
+			selectedCredentialId: computed(() => getChannelCredentialId(platform.type)),
+			credentialModalOpen,
+			fetchStatus,
+			isConnected: isIntegrationConnected,
+			isConfigured: isIntegrationConfigured,
+		}),
+	]),
+);
+const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unknown'), {
+	projectId: projectIdRef,
+	agentId: agentIdRef,
+	selectedCredentialId: computed(() => getChannelCredentialId(props.integrationType)),
+	credentialModalOpen,
+	fetchStatus,
+	isConnected: isIntegrationConnected,
+	isConfigured: isIntegrationConfigured,
+});
+const currentPlatform = computed(() => getAgentChannelPlatform(props.integrationType));
+const currentRuntime = computed(() => runtimes[props.integrationType] ?? fallbackRuntime);
+const channelViewRef = ref<AgentChannelViewExpose>();
+const integrationLabel = computed(() => currentIntegration.value.label);
 
 const connectedDescription = computed(() => {
 	if (!isIntegrationConnected(props.integrationType)) return '';
-	const key =
-		connectedDescriptionKeys[props.integrationType as keyof typeof connectedDescriptionKeys];
-	return key ? i18n.baseText(key) : '';
+	return (
+		currentPlatform.value.getConnectedDescription?.({
+			text: (key) => i18n.baseText(key),
+		}) ?? ''
+	);
 });
 
 const currentChannelCredentialId = computed(() => getChannelCredentialId(props.integrationType));
@@ -106,23 +138,14 @@ const isConfigured = computed(() => isIntegrationConfigured(props.integrationTyp
 const isLoading = computed(() => loadingMap.value[props.integrationType] ?? false);
 const errorMessage = computed(() => errorMessages.value[props.integrationType] ?? '');
 
-const hasUnsupportedIntegration = computed(() => {
-	if (props.integrationType === 'slack') return false;
-	if (!['telegram', 'linear'].includes(props.integrationType)) return true;
-	// Known type, but its catalog descriptor didn't load (e.g. catalog fetch
-	// failed) — the Linear/Telegram branches below need `currentIntegration`,
-	// so fall back here instead of rendering a blank body.
-	return !currentIntegration.value;
-});
-
 const cardTitle = computed(() =>
 	i18n.baseText('agents.channels.modal.connectTitle', {
 		interpolate: { channel: integrationLabel.value },
 	}),
 );
 
-function toIconName(icon: string): IconName {
-	return icon as IconName;
+function isIconName(icon: string): icon is IconName {
+	return icon in updatedIconSet;
 }
 
 function isBlocked() {
@@ -153,11 +176,12 @@ function skipSetup() {
 async function saveChannelConfig() {
 	if (isBlocked() || connectionInFlight.value) return;
 	const credentialId = currentChannelCredentialId.value;
-	if (!credentialId || channelSetupRef.value?.validationError) return;
+	if (!credentialId || channelViewRef.value?.validationError) return;
 
 	connectionInFlight.value = true;
 	try {
-		await connect(props.integrationType, credentialId, channelSetupRef.value?.currentSettings);
+		await channelViewRef.value?.beforeSave?.();
+		await connect(props.integrationType, credentialId, channelViewRef.value?.currentSettings);
 		notifyAgentUpdated();
 		finish(true);
 	} catch {
@@ -167,29 +191,20 @@ async function saveChannelConfig() {
 	}
 }
 
-async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
-	if (isBlocked() || connectionInFlight.value) return false;
-	connectionInFlight.value = true;
-	try {
-		return await runSlackAppSetup(appConfigurationToken, () => {
-			notifyAgentUpdated();
-			finish(true);
-		});
-	} finally {
-		connectionInFlight.value = false;
-	}
+function handlePlatformConnected() {
+	if (isBlocked()) return;
+	notifyAgentUpdated();
+	finish(true);
 }
 
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
-	await loadSharedChannelState(integrations);
+	await Promise.all([loadSharedChannelState(integrations), currentRuntime.value.load()]);
 
-	if (props.integrationType !== 'slack') {
-		try {
-			agent.value = await getAgent(rootStore.restApiContext, props.projectId, props.agentId);
-		} catch {
-			agent.value = null;
-		}
+	try {
+		agent.value = await getAgent(rootStore.restApiContext, props.projectId, props.agentId);
+	} catch {
+		agent.value = null;
 	}
 }
 
@@ -204,8 +219,8 @@ watch(
 	<div :class="$style.card">
 		<header :class="$style.header">
 			<N8nIcon
-				v-if="currentIntegration?.icon"
-				:icon="toIconName(currentIntegration.icon)"
+				v-if="isIconName(currentIntegration.icon)"
+				:icon="currentIntegration.icon"
 				size="medium"
 			/>
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
@@ -214,83 +229,34 @@ watch(
 		</header>
 
 		<div :class="$style.bodyWrapper">
-			<AgentChannelSlackSetup
-				v-if="integrationType === 'slack'"
-				ref="channelSetupRef"
-				v-model="selectedCredentials.slack"
-				:connected="isConfigured"
-				:setup-slack-app="setupSlackApp"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:integration="currentIntegration ?? undefined"
-				:credentials="currentCredentials"
-				:credential-permissions="credentialPermissions"
-				:credentials-loading="credentialsLoading"
-				:loading="isLoading"
-				:error-message="errorMessage"
-				:error-is-conflict="errorIsConflict.slack"
-				:force-new-credential="true"
-				setup-mode="simple"
-				@create="createCredential"
-				@edit="editCredential"
-				@connect="saveChannelConfig"
-			/>
-
-			<AgentChannelLinearSetup
-				v-else-if="currentIntegration?.type === 'linear'"
-				ref="channelSetupRef"
-				v-model="selectedCredentials[currentIntegration.type]"
+			<component
+				:is="currentPlatform.setupComponent"
+				ref="channelViewRef"
+				v-model="selectedCredentials[integrationType]"
 				mode="setup"
 				:integration="currentIntegration"
 				:credentials="currentCredentials"
 				:credential-permissions="credentialPermissions"
 				:credentials-loading="credentialsLoading"
-				:loading="isLoading"
+				:loading="isLoading || connectionInFlight"
 				:connected="isConfigured"
 				:connected-description="connectedDescription"
 				:error-message="errorMessage"
-				:error-is-conflict="errorIsConflict[currentIntegration.type]"
-				:saved-settings="integrationSettings[currentIntegration.type]"
+				:error-is-conflict="errorIsConflict[integrationType]"
+				:saved-settings="integrationSettings[integrationType]"
+				:is-published="false"
 				:agent-name="agent?.name ?? agentId"
 				:project-id="projectId"
 				:agent-id="agentId"
 				:force-new-credential="true"
+				:simple-setup="true"
+				:credential-replacement-pending="false"
+				:runtime="currentRuntime"
 				@create="createCredential"
 				@edit="editCredential"
 				@connect="saveChannelConfig"
+				@connected="handlePlatformConnected"
 			/>
-
-			<AgentChannelTelegramSetup
-				v-else-if="currentIntegration?.type === 'telegram'"
-				ref="channelSetupRef"
-				v-model="selectedCredentials[currentIntegration.type]"
-				mode="setup"
-				:integration="currentIntegration"
-				:credentials="currentCredentials"
-				:credential-permissions="credentialPermissions"
-				:credentials-loading="credentialsLoading"
-				:loading="isLoading"
-				:connected="isConfigured"
-				:connected-description="connectedDescription"
-				:error-message="errorMessage"
-				:error-is-conflict="errorIsConflict[currentIntegration.type]"
-				:saved-settings="integrationSettings[currentIntegration.type]"
-				:agent-name="agent?.name ?? agentId"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:force-new-credential="true"
-				@create="createCredential"
-				@edit="editCredential"
-				@connect="saveChannelConfig"
-			/>
-
-			<N8nText v-else-if="hasUnsupportedIntegration" size="small" color="text-light">
-				{{
-					i18n.baseText('agents.channels.modal.setupPlaceholder', {
-						interpolate: { channel: integrationLabel },
-					})
-				}}
-			</N8nText>
 		</div>
 
 		<footer :class="$style.footer">
@@ -334,6 +300,10 @@ watch(
 
 .bodyWrapper {
 	padding: 0 var(--spacing--sm);
+}
+
+.setupSkeleton {
+	padding-block: var(--spacing--xs);
 }
 
 .footer {

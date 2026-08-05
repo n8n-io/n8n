@@ -73,6 +73,9 @@ vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getAgent: mocks.getAgent,
+}));
+
+vi.mock('@/features/agents/channels/slack/api', () => ({
 	createSlackAgentApp: mocks.createSlackAgentApp,
 }));
 
@@ -116,7 +119,7 @@ vi.mock('@/features/agents/components/AgentChannelSlackSetup.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/agents/components/AgentChannelLinearSetup.vue', () => ({
+vi.mock('@/features/agents/channels/linear/AgentChannelLinearSetup.vue', () => ({
 	default: {
 		props: ['connectedDescription'],
 		template:
@@ -288,10 +291,8 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
 
-	it('renders the unsupported-channel placeholder instead of a blank body when the catalog descriptor is missing', async () => {
-		// Catalog loaded successfully but has no entry for this (known) type —
-		// e.g. a fetch failure that fell back to an empty/partial list.
-		const wrapper = mountCard({ integrationType: 'telegram' });
+	it('renders the safe fallback for an unknown catalog integration', async () => {
+		const wrapper = mountCard({ integrationType: 'unknown-channel' });
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('agents.channels.modal.setupPlaceholder');
