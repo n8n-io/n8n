@@ -42,6 +42,7 @@ export interface AgentIntegrationRemovalContext {
 	projectId: string;
 	credentialId: string;
 	user: User;
+	deleteExternalResource?: boolean;
 }
 
 /** Response shape returned by `handleUnauthenticatedWebhook`. */

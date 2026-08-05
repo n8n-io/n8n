@@ -180,6 +180,9 @@ async function install() {
 							>
 								{{ i18n.baseText('agents.channels.slack.managed.manual.or') }}
 								<N8nLink
+									:class="$style.setupModeLink"
+									theme="secondary"
+									underline
 									size="small"
 									data-testid="slack-managed-manual-setup"
 									@click="emit('manual-setup')"
@@ -257,6 +260,18 @@ async function install() {
 
 .manualLinkNewLine {
 	flex-basis: 100%;
+}
+
+.setupModeLink {
+	--link--color--secondary: var(--color--text);
+
+	&:hover,
+	&:focus,
+	&:active {
+		:global(span) {
+			color: var(--color--text--shade-1);
+		}
+	}
 }
 
 .actionRow {

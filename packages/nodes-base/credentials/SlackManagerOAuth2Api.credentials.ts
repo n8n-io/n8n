@@ -1,5 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+const scopes = ['app_configurations:read', 'app_configurations:write', 'managed_apps:install'];
+
 export class SlackManagerOAuth2Api implements ICredentialType {
 	name = 'slackManagerOAuth2Api';
 
@@ -12,6 +14,12 @@ export class SlackManagerOAuth2Api implements ICredentialType {
 	documentationUrl = 'slack';
 
 	hideDomainRestrictionFields = true;
+
+	hidden = true;
+
+	restrictToSupportedNodes = true as const;
+
+	supportedNodes = [];
 
 	properties: INodeProperties[] = [
 		{
@@ -39,16 +47,10 @@ export class SlackManagerOAuth2Api implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'User Scope',
-			name: 'userScope',
-			type: 'hidden',
-			default: '',
-		},
-		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: '={{"user_scope=" + $self["userScope"]}}',
+			default: `={{"user_scope=${scopes.join(' ')}"}}`,
 		},
 		{
 			displayName: 'Authentication',

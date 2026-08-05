@@ -196,12 +196,13 @@ export const disconnectIntegration = async (
 	agentId: string,
 	type: string,
 	credentialId: string,
+	deleteExternalResource?: boolean,
 ): Promise<AgentDisconnectIntegrationResponse> => {
 	return await makeRestApiRequest<AgentDisconnectIntegrationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type, credentialId },
+		{ type, credentialId, deleteExternalResource },
 	);
 };
 

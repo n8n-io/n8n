@@ -1151,6 +1151,7 @@ describe('Slack setup services', () => {
 			agentId: 'agent-1',
 			credentialId: 'bot-credential',
 			user,
+			deleteExternalResource: true,
 		});
 
 		expect(requestMock).toHaveBeenCalledWith(
@@ -1162,6 +1163,38 @@ describe('Slack setup services', () => {
 		expect(fetchParams(requestMock, 0).get('token')).toBe('xoxp-manager');
 		expect(credentialsService.delete).toHaveBeenCalledWith(user, 'bot-credential');
 	});
+
+	it.each([false, undefined])(
+		'keeps the managed Slack app when deleteExternalResource is %s',
+		async (deleteExternalResource) => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce({
+				id: 'bot-credential',
+				name: 'Slack bot',
+				type: 'slackApi',
+				isManaged: true,
+			} as CredentialsEntity);
+			credentialsService.decrypt.mockResolvedValue({
+				managedAppId: 'A123',
+				teamId: 'T123',
+				managerCredentialId: 'manager',
+			});
+
+			await service.deleteManagedAppForCredential({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				credentialId: 'bot-credential',
+				user,
+				deleteExternalResource,
+			});
+
+			expect(requestMock).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
+			expect(credentialsService.delete).toHaveBeenCalledWith(user, 'bot-credential');
+			expect(cacheService.delete).toHaveBeenCalledWith(
+				'agents:slack-managed-app:project-1:agent-1:manager:T123',
+			);
+		},
+	);
 
 	it('deletes the bot credential and returns a warning when its manager credential is missing', async () => {
 		credentialsFinderService.findCredentialForUser.mockResolvedValueOnce({
@@ -1183,6 +1216,7 @@ describe('Slack setup services', () => {
 				agentId: 'agent-1',
 				credentialId: 'bot-credential',
 				user,
+				deleteExternalResource: true,
 			}),
 		).resolves.toEqual({
 			integrationType: 'slack',

@@ -55,10 +55,26 @@ vi.mock('../channels/registry', () => {
 			</div>
 		`,
 	};
+	const disconnectConfirmation = {
+		props: ['open', 'loading'],
+		emits: ['cancel', 'confirm'],
+		template: `
+			<div v-if="open" data-testid="disconnect-confirmation">
+				<button data-testid="confirm-keep-app" @click="$emit('confirm', false)" />
+				<button data-testid="confirm-delete-app" @click="$emit('confirm', true)" />
+			</div>
+		`,
+	};
 	const platform = {
 		type: 'example',
 		setupComponent: platformView,
 		editComponent: platformView,
+		disconnectConfirmationComponent: disconnectConfirmation,
+		shouldConfirmDisconnect: (
+			_runtime: unknown,
+			credentialId: string,
+			{ isPublished }: { isPublished: boolean },
+		) => isPublished && credentialId === 'credential-managed',
 		getConnectAction: () => ({ label: 'Connect example', icon: 'zap' }),
 		getConnectedDescription: () => 'Example connected',
 		presentDisconnectWarning: (warning: { code: string }) =>
@@ -149,7 +165,7 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 				N8nText: { template: '<span><slot /></span>' },
 				AgentChannelListItem: {
 					props: ['integration', 'configured', 'connected', 'connectAction'],
-					emits: ['setup'],
+					emits: ['setup', 'disconnect'],
 					template: `
 						<li
 							data-testid="channel-list-item"
@@ -157,7 +173,8 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 							:data-configured="configured"
 							:data-connected="connected"
 						>
-							<button @click="$emit('setup', integration.type)" />
+							<button data-testid="setup-channel" @click="$emit('setup', integration.type)" />
+							<button data-testid="disconnect-channel" @click="$emit('disconnect', integration.type)" />
 						</li>
 					`,
 				},
@@ -277,5 +294,54 @@ describe('AgentChannelModal', () => {
 			duration: 0,
 		});
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('confirms managed removal from the edit view and keeps the Slack app when unchecked', async () => {
+		statuses.value.example = 'configured';
+		connectedCredentials.value.example = 'credential-managed';
+		const wrapper = mountModal('example_edit', true);
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+
+		await wrapper.get('[data-testid="confirm-keep-app"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-managed', {
+			deleteExternalResource: false,
+		});
+	});
+
+	it('uses the same managed removal confirmation from the list menu', async () => {
+		statuses.value.example = 'connected';
+		connectedCredentials.value.example = 'credential-managed';
+		const wrapper = mountModal('list', true);
+		await flushPromises();
+
+		await wrapper.get('[data-testid="disconnect-channel"]').trigger('click');
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+
+		await wrapper.get('[data-testid="confirm-delete-app"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-managed', {
+			deleteExternalResource: true,
+		});
+	});
+
+	it('disconnects managed credentials without confirmation when the agent is unpublished', async () => {
+		statuses.value.example = 'configured';
+		connectedCredentials.value.example = 'credential-managed';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
+		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-managed', {
+			deleteExternalResource: undefined,
+		});
 	});
 });

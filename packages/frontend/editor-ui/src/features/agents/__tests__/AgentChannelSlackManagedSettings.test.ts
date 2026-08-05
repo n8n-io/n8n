@@ -29,10 +29,10 @@ function mountForm(
 		global: {
 			stubs: {
 				FormInput: {
-					props: ['modelValue', 'name'],
+					props: ['modelValue', 'name', 'label', 'infoText'],
 					emits: ['update:modelValue'],
 					template:
-						'<input :data-testid="$attrs[\'data-testid\']" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+						'<input :data-testid="$attrs[\'data-testid\']" :data-label="label" :data-info="infoText" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 				},
 				Switch2: {
 					props: ['modelValue'],
@@ -41,9 +41,10 @@ function mountForm(
 						'<button data-testid="slack-managed-app-always-online" @click="$emit(\'update:modelValue\', !modelValue)" />',
 				},
 				Link: {
-					props: ['href'],
-					template: '<a :href="href"><slot /></a>',
+					props: ['href', 'bold'],
+					template: '<a :href="href" :data-bold="bold"><slot /></a>',
 				},
+				N8nIcon: { template: '<i data-testid="external-link-icon" />' },
 				Text: { template: '<span><slot /></span>' },
 			},
 		},
@@ -57,10 +58,15 @@ describe('AgentChannelSlackManagedSettings', () => {
 		expect(wrapper.get('[data-testid="slack-managed-app-name"]').attributes('value')).toBe(
 			'Support Bot',
 		);
+		expect(wrapper.get('[data-testid="slack-managed-app-name"]').attributes()).toMatchObject({
+			'data-label': 'agents.channels.slack.managed.settings.name',
+			'data-info': 'agents.channels.slack.managed.settings.nameDescription',
+		});
 		expect(wrapper.get('[data-testid="slack-managed-app-description"]').attributes('value')).toBe(
 			'Handles support requests',
 		);
 		expect(wrapper.get('a').attributes('href')).toBe('https://api.slack.com/apps/A123/app-home');
+		expect(wrapper.find('[data-testid="external-link-icon"]').exists()).toBe(true);
 		expect(wrapper.vm.validationError).toBeNull();
 	});
 

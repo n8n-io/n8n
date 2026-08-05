@@ -202,6 +202,9 @@ defineExpose({ credentialId, validationError: null });
 							<N8nText v-if="showAutomaticSetup" size="small" color="text-light">
 								{{ i18n.baseText('agents.channels.slack.managed.manual.or') }}
 								<N8nLink
+									:class="$style.setupModeLink"
+									theme="secondary"
+									underline
 									size="small"
 									data-testid="slack-automatic-setup"
 									@click="emit('automatic-setup')"
@@ -422,6 +425,18 @@ defineExpose({ credentialId, validationError: null });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.setupModeLink {
+	--link--color--secondary: var(--color--text);
+
+	&:hover,
+	&:focus,
+	&:active {
+		:global(span) {
+			color: var(--color--text--shade-1);
+		}
+	}
 }
 
 .manualPanel {

@@ -35,6 +35,27 @@ describe('agent channel platform registry', () => {
 		});
 	});
 
+	it('confirms removal only for managed Slack credentials on published agents', () => {
+		const platform = getAgentChannelPlatform('slack');
+		const runtime = {
+			loading: ref(false),
+			load: async () => {},
+			setup: ref({ managedSetupAvailable: true, managerCredentials: [] }),
+			isManagedCredential: (credentialId: string) => credentialId === 'managed',
+		};
+
+		expect(platform.shouldConfirmDisconnect?.(runtime, 'managed', { isPublished: true })).toBe(
+			true,
+		);
+		expect(platform.shouldConfirmDisconnect?.(runtime, 'managed', { isPublished: false })).toBe(
+			false,
+		);
+		expect(platform.shouldConfirmDisconnect?.(runtime, 'manual', { isPublished: true })).toBe(
+			false,
+		);
+		expect(platform.disconnectConfirmationComponent).toBeDefined();
+	});
+
 	it('presents the generic Slack disconnect warning contract', () => {
 		const platform = getAgentChannelPlatform('slack');
 		const presentation = platform.presentDisconnectWarning?.(

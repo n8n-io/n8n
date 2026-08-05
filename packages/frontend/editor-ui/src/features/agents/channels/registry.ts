@@ -5,6 +5,7 @@ import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
+import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { useSlackChannelRuntime, type SlackChannelRuntime } from './slack/useSlackChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
@@ -47,7 +48,10 @@ const platforms: Record<string, AgentChannelPlatform> = {
 		type: 'slack',
 		setupComponent: AgentChannelSlackSetupView,
 		editComponent: AgentChannelSlackEditView,
+		disconnectConfirmationComponent: AgentChannelSlackRemoveConfirmation,
 		createRuntime: useSlackChannelRuntime,
+		shouldConfirmDisconnect: (runtime, credentialId, { isPublished }) =>
+			isPublished && isSlackRuntime(runtime) && runtime.isManagedCredential(credentialId),
 		getConnectAction: ({ text }, runtime) => {
 			const managedSetupAvailable =
 				isSlackRuntime(runtime) && runtime.setup.value.managedSetupAvailable;

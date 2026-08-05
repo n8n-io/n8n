@@ -53,7 +53,7 @@ export class AgentIntegrationsController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentDisconnectIntegrationDto,
 	): Promise<AgentDisconnectIntegrationResponse> {
-		const { type, credentialId } = payload;
+		const { type, credentialId, deleteExternalResource } = payload;
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const { warning } = await this.integrationManagementService.disconnect({
@@ -61,6 +61,7 @@ export class AgentIntegrationsController {
 			user: req.user,
 			type,
 			credentialId,
+			deleteExternalResource,
 		});
 
 		return { status: 'disconnected', ...(warning ? { warning } : {}) };

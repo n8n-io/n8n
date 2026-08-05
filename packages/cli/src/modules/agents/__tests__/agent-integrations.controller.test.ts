@@ -582,7 +582,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 		).resolves.toEqual({ status: 'disconnected', integrations: [] });
 	});
 
-	it('disconnects the channel before removing the persisted integration', async () => {
+	it('passes the external deletion policy before removing the persisted integration', async () => {
 		const agentRepository = mock<AgentRepository>();
 		const agent = {
 			id: 'agent-1',
@@ -606,11 +606,19 @@ describe('AgentIntegrationsController integration credentials', () => {
 				{
 					params: { projectId: 'project-1' },
 					user: { id: 'user-1' },
-					body: { type: 'slack', credentialId: 'cred-slack' },
+					body: {
+						type: 'slack',
+						credentialId: 'cred-slack',
+						deleteExternalResource: false,
+					},
 				} as never,
 				undefined as never,
 				'agent-1',
-				{ type: 'slack', credentialId: 'cred-slack' },
+				{
+					type: 'slack',
+					credentialId: 'cred-slack',
+					deleteExternalResource: false,
+				},
 			),
 		).resolves.toEqual({ status: 'disconnected' });
 
@@ -619,6 +627,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			agentId: 'agent-1',
 			credentialId: 'cred-slack',
 			user: { id: 'user-1' },
+			deleteExternalResource: false,
 		});
 		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
 			type: 'slack',

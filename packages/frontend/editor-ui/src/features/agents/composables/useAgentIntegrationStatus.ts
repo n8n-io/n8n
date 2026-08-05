@@ -155,6 +155,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 	async function disconnect(
 		type: string,
 		credId: string,
+		options: { deleteExternalResource?: boolean } = {},
 	): Promise<AgentDisconnectIntegrationResponse> {
 		state.loadingMap.value[type] = true;
 		try {
@@ -164,6 +165,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				agentId,
 				type,
 				credId,
+				options.deleteExternalResource,
 			);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';

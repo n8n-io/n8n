@@ -75,6 +75,7 @@ export interface DeleteManagedSlackAppOptions {
 	agentId: string;
 	credentialId: string;
 	user: User;
+	deleteExternalResource?: boolean;
 }
 
 export interface ManagedSlackAppDeletionWarning {
@@ -161,8 +162,7 @@ export class SlackManagedSetupService {
 		) {
 			return false;
 		}
-		const configuredScopes = stringsFromScope(overwrite.userScope);
-		return REQUIRED_MANAGER_SCOPES.every((scope) => configuredScopes.has(scope));
+		return true;
 	}
 
 	async getSetupState(options: GetManagedSetupStateOptions): Promise<SlackManagedSetupState> {
@@ -419,12 +419,13 @@ export class SlackManagedSetupService {
 		const data = await this.credentialsService.decrypt(credential, true);
 		const managedAppId = stringProperty(data, 'managedAppId');
 		const managerCredentialId = stringProperty(data, 'managerCredentialId');
-		if (managedAppId && !managerCredentialId) {
+		const shouldDeleteExternalResource = options.deleteExternalResource === true;
+		if (managedAppId && !managerCredentialId && shouldDeleteExternalResource) {
 			throw new BadRequestError('The managed Slack app is missing its manager credential');
 		}
 
 		let warning: ManagedSlackAppDeletionWarning | undefined;
-		if (managedAppId && managerCredentialId) {
+		if (managedAppId && managerCredentialId && shouldDeleteExternalResource) {
 			try {
 				const manager = await this.getManagerCredentialContext(
 					managerCredentialId,
@@ -449,17 +450,17 @@ export class SlackManagedSetupService {
 					details: { appId: managedAppId },
 				};
 			}
+		}
 
-			if (typeof data.teamId === 'string') {
-				await this.cacheService.delete(
-					this.managedAppCacheKey({
-						projectId: options.projectId,
-						agentId: options.agentId,
-						managerCredentialId,
-						workspaceId: data.teamId,
-					}),
-				);
-			}
+		if (managerCredentialId && typeof data.teamId === 'string') {
+			await this.cacheService.delete(
+				this.managedAppCacheKey({
+					projectId: options.projectId,
+					agentId: options.agentId,
+					managerCredentialId,
+					workspaceId: data.teamId,
+				}),
+			);
 		}
 
 		if (credential.isManaged || managedAppId) {

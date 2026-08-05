@@ -45,6 +45,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
+	ensureAgentPersisted: undefined,
 });
 
 const emit = defineEmits<{
@@ -78,6 +79,11 @@ const pendingCredentialReplacement = ref<{
 	channelType: string;
 	originalCredentialId: string;
 	replacementCredentialId: string;
+} | null>(null);
+const pendingDisconnect = ref<{
+	channelType: string;
+	credentialId: string;
+	closeAfter: boolean;
 } | null>(null);
 const credentialReplacementError = ref(false);
 
@@ -159,6 +165,16 @@ const channelViewRef = ref<AgentChannelViewExpose>();
 const listLoading = computed(() =>
 	Object.values(runtimes).some((runtime) => runtime.loading.value),
 );
+const disconnectConfirmationComponent = computed(() => {
+	const pending = pendingDisconnect.value;
+	return pending
+		? getAgentChannelPlatform(pending.channelType).disconnectConfirmationComponent
+		: undefined;
+});
+const disconnectConfirmationLoading = computed(() => {
+	const pending = pendingDisconnect.value;
+	return pending ? isLoading(pending.channelType) : false;
+});
 
 const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacement.value !== null);
 const isCredentialReplacementInProgress = computed(
@@ -270,7 +286,7 @@ function goBackToList() {
 }
 
 function handleListDisconnect(channelType: string) {
-	void handleDisconnected(channelType);
+	requestDisconnect(channelType, connectedCredentials.value[channelType] ?? '', false);
 }
 
 function closeModal() {
@@ -353,12 +369,17 @@ function handlePlatformConnected() {
 	closeModal();
 }
 
-async function handleDisconnected(channelType: string, credentialId?: string) {
+async function handleDisconnected(
+	channelType: string,
+	credentialId?: string,
+	options: { deleteExternalResource?: boolean } = {},
+) {
 	// Draft channels (configured but missing a credential) have no connected
 	// credential — send '' so the backend removes the draft entry by type.
 	const result = await disconnect(
 		channelType,
 		credentialId ?? connectedCredentials.value[channelType] ?? '',
+		options,
 	);
 	await fetchStatus([channelType]);
 	if (!isIntegrationConfigured(channelType)) {
@@ -368,15 +389,16 @@ async function handleDisconnected(channelType: string, credentialId?: string) {
 	return result;
 }
 
-async function removeCurrentChannel() {
-	const channelType = selectedChannelType.value;
-	if (!channelType || hasPendingCredentialReplacement.value || isLoading(channelType)) return;
-
+async function disconnectChannel(
+	channelType: string,
+	credentialId: string,
+	closeAfter: boolean,
+	deleteExternalResource?: boolean,
+) {
 	try {
-		const result = await handleDisconnected(
-			channelType,
-			credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
-		);
+		const result = await handleDisconnected(channelType, credentialId, {
+			deleteExternalResource,
+		});
 		if (result.warning) {
 			const presentation = getAgentChannelPlatform(channelType).presentDisconnectWarning?.(
 				result.warning,
@@ -391,10 +413,46 @@ async function removeCurrentChannel() {
 				});
 			}
 		}
-		closeModal();
+		pendingDisconnect.value = null;
+		if (closeAfter) closeModal();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.channels.modal.removeChannelError'));
 	}
+}
+
+function requestDisconnect(channelType: string, credentialId: string, closeAfter: boolean) {
+	if (hasPendingCredentialReplacement.value || isLoading(channelType)) return;
+	const platform = getAgentChannelPlatform(channelType);
+	if (
+		platform.shouldConfirmDisconnect?.(runtimeFor(channelType), credentialId, {
+			isPublished: props.isPublished,
+		})
+	) {
+		pendingDisconnect.value = { channelType, credentialId, closeAfter };
+		return;
+	}
+	void disconnectChannel(channelType, credentialId, closeAfter);
+}
+
+function confirmDisconnect(deleteExternalResource: boolean) {
+	const pending = pendingDisconnect.value;
+	if (!pending) return;
+	void disconnectChannel(
+		pending.channelType,
+		pending.credentialId,
+		pending.closeAfter,
+		deleteExternalResource,
+	);
+}
+
+function removeCurrentChannel() {
+	const channelType = selectedChannelType.value;
+	if (!channelType) return;
+	requestDisconnect(
+		channelType,
+		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+		true,
+	);
 }
 
 async function loadChannelState() {
@@ -553,7 +611,7 @@ watch(
 			<N8nDialogFooter v-if="showFooterActions" :class="$style.customFooter">
 				<div :class="$style.footer">
 					<N8nButton
-						variant="destructive"
+						variant="ghost"
 						size="medium"
 						:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
 						:disabled="
@@ -599,6 +657,14 @@ watch(
 				</div>
 			</N8nDialogFooter>
 		</Transition>
+		<component
+			:is="disconnectConfirmationComponent"
+			v-if="pendingDisconnect && disconnectConfirmationComponent"
+			:open="true"
+			:loading="disconnectConfirmationLoading"
+			@cancel="pendingDisconnect = null"
+			@confirm="confirmDisconnect"
+		/>
 	</N8nDialog>
 </template>
 
@@ -680,6 +746,7 @@ body:has([data-testid='agent-channel-modal'])
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	width: 100%;
 	height: var(--height--md);
 }
 

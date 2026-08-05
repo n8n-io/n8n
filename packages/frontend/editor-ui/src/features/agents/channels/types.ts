@@ -73,6 +73,10 @@ export interface AgentChannelWarningPresentation {
 	message: string | VNode;
 }
 
+export interface AgentChannelDisconnectContext {
+	isPublished: boolean;
+}
+
 export interface AgentChannelPlatform {
 	type: string;
 	setupComponent: Component;
@@ -83,6 +87,12 @@ export interface AgentChannelPlatform {
 		runtime: AgentChannelRuntime,
 	) => AgentChannelConnectAction;
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
+	disconnectConfirmationComponent?: Component;
+	shouldConfirmDisconnect?: (
+		runtime: AgentChannelRuntime,
+		credentialId: string,
+		context: AgentChannelDisconnectContext,
+	) => boolean;
 	presentDisconnectWarning?: (
 		warning: AgentIntegrationDisconnectWarning,
 		context: AgentChannelPresentationContext,

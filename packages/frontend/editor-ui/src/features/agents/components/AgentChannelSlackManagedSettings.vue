@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SlackManagedAppSettings, SlackManagedAppSettingsErrorCode } from '@n8n/api-types';
-import { N8nFormInput, N8nLink, N8nSwitch2, N8nText } from '@n8n/design-system';
+import { N8nFormInput, N8nIcon, N8nLink, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -69,6 +69,7 @@ defineExpose({ currentSettings, validationError });
 				v-model="name"
 				name="slackManagedBotName"
 				:label="i18n.baseText('agents.channels.slack.managed.settings.name')"
+				:info-text="i18n.baseText('agents.channels.slack.managed.settings.nameDescription')"
 				:maxlength="80"
 				required
 				:disabled="disabled || loading"
@@ -85,7 +86,7 @@ defineExpose({ currentSettings, validationError });
 				data-testid="slack-managed-app-description"
 			/>
 			<div :class="$style.switchRow">
-				<N8nText size="small">
+				<N8nText size="small" bold>
 					{{ i18n.baseText('agents.channels.slack.managed.settings.alwaysOnline') }}
 				</N8nText>
 				<N8nSwitch2
@@ -95,8 +96,17 @@ defineExpose({ currentSettings, validationError });
 					@update:model-value="alwaysOnline = Boolean($event)"
 				/>
 			</div>
-			<N8nLink :href="settings.appHomeUrl" target="_blank" rel="noopener" size="small">
-				{{ i18n.baseText('agents.channels.slack.managed.settings.openSlack') }}
+			<N8nLink
+				:href="settings.appHomeUrl"
+				target="_blank"
+				rel="noopener noreferrer"
+				size="small"
+				bold
+			>
+				<span :class="$style.linkContent">
+					{{ i18n.baseText('agents.channels.slack.managed.settings.openSlack') }}
+					<N8nIcon icon="external-link" size="xsmall" />
+				</span>
 			</N8nLink>
 			<N8nText v-if="validationError" size="small" :class="$style.error">
 				{{ validationError }}
@@ -126,6 +136,12 @@ defineExpose({ currentSettings, validationError });
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
+
+.linkContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .error {
