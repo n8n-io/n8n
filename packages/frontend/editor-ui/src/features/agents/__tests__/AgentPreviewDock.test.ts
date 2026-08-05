@@ -62,6 +62,7 @@ const AgentPreviewChatPageStub = {
 function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
+		effectiveSessionId?: string;
 		closeShortcutDisabled: boolean;
 		beforeSend: () => Promise<void> | void;
 	}> = {},
@@ -175,6 +176,13 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('view-trace')).toBeUndefined();
 	});
 
+	it('omits the trace control and tooltip without an effective session id', () => {
+		const wrapper = mountDock({ hasSession: true, effectiveSessionId: undefined });
+
+		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
+	});
+
 	it('forwards chat events and opts the chat page into dock layout', () => {
 		const beforeSend = vi.fn();
 		const wrapper = mountDock({ beforeSend });
@@ -199,7 +207,7 @@ describe('AgentPreviewDock', () => {
 	});
 
 	it('registers the existing new-session shortcut and a guardable close shortcut', () => {
-		const wrapper = mountDock();
+		mountDock();
 
 		expect(useKeybindingsMock).toHaveBeenCalledExactlyOnceWith({
 			'ctrl+shift+;': expect.any(Function),
@@ -213,9 +221,37 @@ describe('AgentPreviewDock', () => {
 			disabled: () => boolean;
 		};
 		expect(escapeBinding.disabled).toEqual(expect.any(Function));
-		expect(
-			wrapper.findAllComponents({ name: 'KeyboardShortcutTooltip' }).at(-1)?.props('shortcut'),
-		).toEqual({ keys: ['Esc'] });
+	});
+
+	it('shows shortcut tooltips for the new-session and close actions', () => {
+		const wrapper = mountDock();
+		const tooltips = wrapper.findAllComponents({
+			name: 'KeyboardShortcutTooltip',
+		});
+		const [newSessionTooltip, closeTooltip] = tooltips;
+
+		expect(tooltips).toHaveLength(2);
+		expect(newSessionTooltip?.props()).toMatchObject({
+			label: 'agents.builder.chat.newChat.label',
+			placement: 'bottom',
+			shortcut: { metaKey: true, shiftKey: true, keys: [';'] },
+		});
+		expect(closeTooltip?.props()).toMatchObject({
+			label: 'generic.close',
+			placement: 'bottom',
+			shortcut: { keys: ['Esc'] },
+		});
+	});
+
+	it('creates a new session from the registered keyboard shortcut', () => {
+		const wrapper = mountDock();
+		const newSessionShortcut = useKeybindingsMock.mock.calls[0]?.[0]?.[
+			'ctrl+shift+;'
+		] as () => void;
+
+		newSessionShortcut();
+
+		expect(wrapper.emitted('new-session')).toEqual([[]]);
 	});
 
 	it('only enables Escape while focus is within the dock', () => {
@@ -242,15 +278,27 @@ describe('AgentPreviewDock', () => {
 	});
 
 	it('can yield the Escape shortcut to an open session trace', () => {
-		const wrapper = mountDock({ closeShortcutDisabled: true });
+		const host = document.createElement('div');
+		document.body.append(host);
+		const wrapper = mountDock({ closeShortcutDisabled: true }, host);
 
 		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
 			disabled: () => boolean;
 		};
-		expect(escapeBinding.disabled()).toBe(true);
-		expect(
-			wrapper.findAllComponents({ name: 'KeyboardShortcutTooltip' }).at(-1)?.props('shortcut'),
-		).toBeUndefined();
+		const closeButton = wrapper.get('[data-testid="agent-preview-close-btn"]')
+			.element as HTMLButtonElement;
+
+		try {
+			closeButton.focus();
+			expect(document.activeElement).toBe(closeButton);
+			expect(escapeBinding.disabled()).toBe(true);
+			expect(
+				wrapper.findAllComponents({ name: 'KeyboardShortcutTooltip' }).at(-1)?.props('shortcut'),
+			).toBeUndefined();
+		} finally {
+			wrapper.unmount();
+			host.remove();
+		}
 	});
 });
 
