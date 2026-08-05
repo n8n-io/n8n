@@ -60,15 +60,23 @@ const HEADER = `// Base tsconfig for frontend module packages (\`packages/fronte
 // boundary: \`paths\` is additive, so once a module declares another module as a dependency,
 // pnpm symlinks it and the import typechecks clean. Boundary enforcement is the ESLint rule.
 //
-// Modules must declare their own \`include\` and \`rootDirs\`: relative \`include\` globs inherited
-// through \`extends\` resolve against the config that declared them, not the consumer. \`rootDirs\`
-// cannot live here at all for the same reason — its \`"."\` entry would anchor to this directory.
+// Modules declare their own \`include\`, \`rootDirs\` and \`types\`, and cannot inherit them: relative
+// entries in those three resolve against the *consuming* config, so inheriting them from here
+// would point them at this directory. \`paths\` is the exception — it anchors to the file that
+// declares it, which is what lets one base serve modules at any depth.
+//
+// \`useUnknownInCatchVariables\` is a cost of consuming L1/L2 packages from source rather than from
+// a built \`dist\`; see the comment on it below. The ambient \`.d.ts\` shims are the other half of
+// that cost, and live in each module's own tsconfig for the resolution reason above.
 `;
 
 const buildTsconfig = () => {
 	const paths = frontendSourcePaths({
 		repoRoot,
 		fromDir: path.join(repoRoot, path.dirname(GENERATED_TSCONFIG)),
+		// Keeps the header's promise true once the first module lands: without this the scan
+		// would path every module into every other module's typecheck program.
+		excludeModules: true,
 	});
 
 	const body = {
@@ -76,6 +84,10 @@ const buildTsconfig = () => {
 		compilerOptions: {
 			moduleResolution: 'bundler',
 			noEmit: true,
+			// `@n8n/rest-api-client` sets this in its own tsconfig, and its `catch` blocks rely on
+			// it. Consuming its source means the flag has to hold here too — editor-ui carries the
+			// same line. It goes away when that package's source stops needing it.
+			useUnknownInCatchVariables: false,
 			paths,
 		},
 	};

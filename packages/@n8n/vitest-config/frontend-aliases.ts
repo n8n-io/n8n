@@ -9,8 +9,11 @@ import { join, relative, resolve } from 'node:path';
  * from the filesystem instead, so one scan feeds every consumer.
  */
 
+/** Feature module packages (L3). Scaffolded by `pnpm setup-frontend-module`. */
+const FRONTEND_MODULE_ROOT = 'packages/frontend/modules';
+
 /** Workspace directories whose packages are consumed from source. Scanned, not enumerated. */
-const FRONTEND_PACKAGE_ROOTS = ['packages/frontend/@n8n', 'packages/frontend/modules'];
+const FRONTEND_PACKAGE_ROOTS = ['packages/frontend/@n8n', FRONTEND_MODULE_ROOT];
 
 /**
  * Packages outside `packages/frontend` that the frontend still consumes from source.
@@ -38,6 +41,8 @@ export interface FrontendSourcePackage {
 	 * `.` in their `exports`, so a bare import of them does not resolve and must not be aliased.
 	 */
 	entry?: string;
+	/** True for feature module packages under `packages/frontend/modules`. */
+	isModule: boolean;
 }
 
 const readPackageJson = (dir: string): Record<string, unknown> | undefined => {
@@ -46,7 +51,10 @@ const readPackageJson = (dir: string): Record<string, unknown> | undefined => {
 	return JSON.parse(readFileSync(manifest, 'utf8')) as Record<string, unknown>;
 };
 
-const readPackage = (dir: string): FrontendSourcePackage | undefined => {
+const readPackage = (
+	dir: string,
+	isModule: boolean,
+): FrontendSourcePackage | undefined => {
 	const manifest = readPackageJson(dir);
 	if (typeof manifest?.name !== 'string') return undefined;
 
@@ -61,6 +69,7 @@ const readPackage = (dir: string): FrontendSourcePackage | undefined => {
 		dir,
 		srcDir,
 		...(existsSync(entry) ? { entry } : {}),
+		isModule,
 	};
 };
 
@@ -73,13 +82,19 @@ export const findFrontendSourcePackages = (repoRoot: string): FrontendSourcePack
 	const dirs = FRONTEND_PACKAGE_ROOTS.flatMap((root) => {
 		const absoluteRoot = resolve(repoRoot, root);
 		if (!existsSync(absoluteRoot)) return [];
+		const isModule = root === FRONTEND_MODULE_ROOT;
 		return readdirSync(absoluteRoot, { withFileTypes: true })
 			.filter((entry) => entry.isDirectory())
-			.map((entry) => join(absoluteRoot, entry.name));
-	}).concat(SHARED_SOURCE_PACKAGE_DIRS.map((dir) => resolve(repoRoot, dir)));
+			.map((entry) => ({ dir: join(absoluteRoot, entry.name), isModule }));
+	}).concat(
+		SHARED_SOURCE_PACKAGE_DIRS.map((dir) => ({
+			dir: resolve(repoRoot, dir),
+			isModule: false,
+		})),
+	);
 
 	const packages = dirs
-		.map(readPackage)
+		.map(({ dir, isModule }) => readPackage(dir, isModule))
 		.filter((pkg): pkg is FrontendSourcePackage => pkg !== undefined);
 
 	return packages.sort((a, b) => a.name.localeCompare(b.name));
@@ -141,6 +156,12 @@ export const frontendSourceAliases = (
 export interface FrontendPathsOptions extends FrontendAliasOptions {
 	/** Absolute path to the directory the emitted paths are relative to (the tsconfig's own dir). */
 	fromDir: string;
+	/**
+	 * Leave feature module packages out of the mapping. The shared module base sets this: a
+	 * module's typecheck program should see the L0-L2 packages below it and no sibling module,
+	 * so an accidental cross-module import fails to resolve rather than resolving silently.
+	 */
+	excludeModules?: boolean;
 }
 
 /**
@@ -154,7 +175,10 @@ export interface FrontendPathsOptions extends FrontendAliasOptions {
  */
 export const frontendSourcePaths = (options: FrontendPathsOptions): Record<string, string[]> => {
 	const toPosix = (path: string) => relative(options.fromDir, path).split('\\').join('/');
-	const packages = forConsumer(findFrontendSourcePackages(options.repoRoot), options.consumerDir);
+	const packages = forConsumer(
+		findFrontendSourcePackages(options.repoRoot),
+		options.consumerDir,
+	).filter((pkg) => !(options.excludeModules && pkg.isModule));
 
 	const entries: Array<[string, string[]]> = packages.flatMap((pkg) => [
 		...(pkg.entry ? [[pkg.name, [toPosix(pkg.entry)]] as [string, string[]]] : []),
