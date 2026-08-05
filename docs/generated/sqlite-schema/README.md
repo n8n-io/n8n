@@ -35,7 +35,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_threads](agents_threads.md) | 6 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
-| [auth_identity](auth_identity.md) | 5 |  | table |
+| [auth_identity](auth_identity.md) | 6 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
 | [chat_hub_agent_tools](chat_hub_agent_tools.md) | 2 |  | table |
@@ -619,10 +619,11 @@ erDiagram
 }
 "auth_identity" {
   timestamp createdAt
-  VARCHAR_64_ providerId PK
-  VARCHAR_32_ providerType PK
+  varchar_64_ providerId PK
+  varchar_32_ providerType PK
+  varchar_32_ status
   timestamp updatedAt
-  VARCHAR_36_ userId FK
+  varchar_36_ userId FK
 }
 "auth_provider_sync_history" {
   INTEGER created

@@ -147,6 +147,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_255_ providerId
   varchar_32_ providerType
+  varchar_32_ status
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }

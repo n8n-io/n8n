@@ -338,7 +338,7 @@ describe('IdentityResolutionService', () => {
 			authIdentityRepository.findOne
 				.mockResolvedValueOnce(null)
 				.mockResolvedValueOnce(null)
-				.mockResolvedValueOnce(mock<AuthIdentity>({ user }));
+				.mockResolvedValueOnce(mock<AuthIdentity>({ user, status: 'active' }));
 			return user;
 		}
 
@@ -412,7 +412,9 @@ describe('IdentityResolutionService', () => {
 
 		it('resolves an already-bound identity without syncing profile or role', async () => {
 			const user = mock<User>({ id: 'existing-1', role: { slug: 'global:member' } });
-			authIdentityRepository.findOne.mockResolvedValueOnce(mock<AuthIdentity>({ user }));
+			authIdentityRepository.findOne.mockResolvedValueOnce(
+				mock<AuthIdentity>({ user, status: 'active' }),
+			);
 
 			await expect(
 				service.resolve(makeClaims({ role: CUSTOM_ROLE }), undefined, ctx(), false),
@@ -427,5 +429,15 @@ describe('IdentityResolutionService', () => {
 				service.resolve(makeClaims({ role: 'global:owner' }), undefined, ctx(), false),
 			).resolves.toBeNull();
 		});
+
+		it.each(['suspended', 'revoked'] as const)(
+			'returns null for a %s binding instead of the bound user',
+			async (status) => {
+				const user = mock<User>({ id: 'existing-1' });
+				authIdentityRepository.findOne.mockResolvedValueOnce(mock<AuthIdentity>({ user, status }));
+
+				await expect(service.resolve(makeClaims(), undefined, ctx(), false)).resolves.toBeNull();
+			},
+		);
 	});
 });

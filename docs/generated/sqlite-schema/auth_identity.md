@@ -6,14 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "auth_identity" (
-				"userId" VARCHAR(36) REFERENCES "user" (id),
-				"providerId" VARCHAR(64) NOT NULL,
-				"providerType" VARCHAR(32) NOT NULL,
-				"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				"updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				PRIMARY KEY("providerId", "providerType")
-			)
+CREATE TABLE "auth_identity" ("userId" varchar(36), "providerId" varchar(64) NOT NULL, "providerType" varchar(32) NOT NULL, "createdAt" timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP), "updatedAt" timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP), "status" varchar(32) NOT NULL DEFAULT ('active'), CONSTRAINT "CHK_auth_identity_status" CHECK ("status" IN ('active', 'suspended', 'revoked')), CONSTRAINT "FK_2325ca218e23aa2ef1acf60187e" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION, PRIMARY KEY ("providerId", "providerType"))
 ```
 
 </details>
@@ -23,15 +16,17 @@ CREATE TABLE "auth_identity" (
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp | CURRENT_TIMESTAMP | false |  |  |  |
-| providerId | VARCHAR(64) |  | false |  |  |  |
-| providerType | VARCHAR(32) |  | false |  |  |  |
+| providerId | varchar(64) |  | false |  |  |  |
+| providerType | varchar(32) |  | false |  |  |  |
+| status | varchar(32) | 'active' | false |  |  |  |
 | updatedAt | timestamp | CURRENT_TIMESTAMP | false |  |  |  |
-| userId | VARCHAR(36) |  | true |  | [user](user.md) |  |
+| userId | varchar(36) |  | true |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("status" IN ('active', 'suspended', 'revoked')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
 | providerId | PRIMARY KEY | PRIMARY KEY (providerId) |
 | providerType | PRIMARY KEY | PRIMARY KEY (providerType) |
@@ -52,10 +47,11 @@ erDiagram
 
 "auth_identity" {
   timestamp createdAt
-  VARCHAR_64_ providerId PK
-  VARCHAR_32_ providerType PK
+  varchar_64_ providerId PK
+  varchar_32_ providerType PK
+  varchar_32_ status
   timestamp updatedAt
-  VARCHAR_36_ userId FK
+  varchar_36_ userId FK
 }
 "user" {
   datetime_3_ createdAt

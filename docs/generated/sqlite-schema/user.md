@@ -151,10 +151,11 @@ erDiagram
 }
 "auth_identity" {
   timestamp createdAt
-  VARCHAR_64_ providerId PK
-  VARCHAR_32_ providerType PK
+  varchar_64_ providerId PK
+  varchar_32_ providerType PK
+  varchar_32_ status
   timestamp updatedAt
-  VARCHAR_36_ userId FK
+  varchar_36_ userId FK
 }
 "chat_hub_agents" {
   datetime_3_ createdAt
