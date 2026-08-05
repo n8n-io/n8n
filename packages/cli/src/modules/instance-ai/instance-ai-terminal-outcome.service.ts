@@ -353,7 +353,13 @@ export class InstanceAiTerminalOutcomeService {
 		};
 	}
 
-	/** Settle a resume that failed before it claimed its checkpoint and so never reaches the ordinary terminal path. */
+	/**
+	 * Settle a resume that failed before claiming its checkpoint, and so never
+	 * reaches the ordinary terminal path.
+	 *
+	 * The steps around the run-finish both hit the DB, so they stay best-effort:
+	 * letting either skip the run-finish would leave the run hanging.
+	 */
 	async finishFailedResumeRun(args: {
 		threadId: string;
 		runId: string;
@@ -362,13 +368,24 @@ export class InstanceAiTerminalOutcomeService {
 		errorCode?: InstanceAiErrorCode;
 		snapshotStorage: DbSnapshotStorage;
 	}): Promise<void> {
+		const warn = (message: string) => (error: unknown) =>
+			this.logger.warn(message, {
+				threadId: args.threadId,
+				runId: args.runId,
+				error: getErrorMessage(error),
+			});
+
 		await this.evaluateTerminalResponse(args.threadId, args.runId, 'errored', {
 			messageGroupId: args.messageGroupId,
 			errorMessage: args.errorMessage,
 			errorCode: args.errorCode,
-		});
+		}).catch(warn('Failed to evaluate the terminal response for a failed resume'));
+
 		this.publishRunFinish(args.threadId, args.runId, 'errored', args.errorMessage);
-		await this.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage);
+
+		await this.saveAgentTreeSnapshot(args.threadId, args.runId, args.snapshotStorage).catch(
+			warn('Failed to save the agent tree snapshot for a failed resume'),
+		);
 	}
 
 	private buildBackgroundTerminalOutcome(task: ManagedBackgroundTask): TerminalOutcome {
