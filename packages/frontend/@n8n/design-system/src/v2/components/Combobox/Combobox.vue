@@ -319,8 +319,16 @@ function onInput(event: Event) {
 			>
 				<Icon icon="x" size="small" />
 			</button>
-			<ComboboxTrigger :class="$style.comboboxTrigger" tabindex="-1" @mousedown.prevent>
-				<Icon icon="chevron-down" :class="$style.trailingIcon" />
+			<ComboboxTrigger as-child>
+				<button
+					type="button"
+					:class="$style.comboboxTrigger"
+					tabindex="-1"
+					:aria-label="t('combobox.showPopup')"
+					@mousedown.prevent
+				>
+					<Icon icon="chevron-down" :class="$style.trailingIcon" />
+				</button>
 			</ComboboxTrigger>
 		</ComboboxAnchor>
 

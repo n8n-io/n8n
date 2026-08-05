@@ -10,6 +10,7 @@ vi.mock('@n8n/design-system/composables/useI18n', () => ({
 		t: (key: string) => {
 			const translations: Record<string, string> = {
 				'combobox.clearSelection': 'Clear selection',
+				'combobox.showPopup': 'Show popup',
 			};
 			return translations[key] ?? key;
 		},
