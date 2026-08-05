@@ -267,7 +267,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolCallId: event.toolCallId,
 					toolInput: event.input,
 					toolOutput: event.output,
-					toolSuccess: event.success,
+					toolSuccess: event.endTime === 0 ? undefined : event.success,
 					timestamp: event.startTime,
 					endTimestamp: event.endTime || event.startTime,
 					workflowId: isWorkflow ? event.workflowId : undefined,

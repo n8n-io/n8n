@@ -89,6 +89,7 @@ function makeLane(num: number, tracedBuild: LaneState['tracedBuild']): LaneState
 			client: {} as unknown as N8nClient,
 			baseUrl: `http://lane${String(num)}.test`,
 			preRunWorkflowIds: new Set<string>(),
+			preRunDataTableIds: new Set<string>(),
 			claimedWorkflowIds: new Set<string>(),
 			createdCredentialIds: new Set<string>(),
 			workflowIdsToDelete: new Set<string>(),

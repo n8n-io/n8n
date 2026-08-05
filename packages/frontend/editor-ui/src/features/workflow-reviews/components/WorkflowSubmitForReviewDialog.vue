@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { WorkflowReviewEligibleReviewer } from '@n8n/api-types';
+import {
+	WORKFLOW_VERSION_NAME_MAX_LENGTH,
+	type WorkflowReviewEligibleReviewer,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -16,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import { useToast } from '@n8n/composables/useToast';
+import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import {
@@ -43,6 +47,7 @@ const rootStore = useRootStore();
 const toast = useToast();
 const reviewRequiredStore = useReviewRequiredStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
+const { versionName, prefillVersionName, applyVersionName } = useReviewVersionName();
 
 const reviewTitle = ref('');
 const description = ref('');
@@ -53,7 +58,10 @@ const isLoadingReviewers = ref(false);
 const titleInput = useTemplateRef<InstanceType<typeof N8nInput>>('titleInput');
 
 const isSubmitDisabled = computed(
-	() => isSubmitting.value || reviewTitle.value.trim().length === 0,
+	() =>
+		isSubmitting.value ||
+		reviewTitle.value.trim().length === 0 ||
+		versionName.value.trim().length === 0,
 );
 
 const reviewerOptions = computed<IUser[]>(() =>
@@ -91,6 +99,7 @@ watch(
 		description.value = '';
 		selectedReviewerId.value = '';
 		eligibleReviewers.value = [];
+		prefillVersionName();
 		void loadEligibleReviewers();
 	},
 );
@@ -109,6 +118,12 @@ const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
 	const workflowId = props.workflowId;
+	// `flushSave()` awaits a full workflow save, so reading the fields afterwards
+	// could submit values the guard never validated.
+	const trimmedVersionName = versionName.value.trim();
+	const trimmedTitle = reviewTitle.value.trim();
+	const trimmedDescription = description.value.trim();
+	const reviewerId = selectedReviewerId.value;
 
 	isSubmitting.value = true;
 
@@ -127,17 +142,18 @@ const submit = async () => {
 			return;
 		}
 
-		const trimmedDescription = description.value.trim();
 		const reviewRequest = await createWorkflowReviewRequest(rootStore.restApiContext, {
-			title: reviewTitle.value.trim(),
+			title: trimmedTitle,
 			description: trimmedDescription || undefined,
-			workflows: [{ workflowId, workflowVersionId }],
-			reviewerUserIds: selectedReviewerId.value ? [selectedReviewerId.value] : undefined,
+			workflows: [{ workflowId, workflowVersionId, workflowVersionName: trimmedVersionName }],
+			reviewerUserIds: reviewerId ? [reviewerId] : undefined,
 		});
 
 		// Navigated away mid-flight: the review belongs to a workflow this dialog no
 		// longer targets, and writing it here would corrupt the current one's status.
 		if (props.workflowId !== workflowId) return;
+
+		applyVersionName(workflowVersionId, trimmedVersionName);
 
 		// install the response before clearing the local flag so the
 		// publish gate never opens while a refetch is in flight
@@ -182,6 +198,20 @@ const submit = async () => {
 			@submit.prevent="submit"
 		>
 			<N8nInputLabel
+				input-name="workflow-review-version-name"
+				:label="i18n.baseText('workflowReviews.versionName.label')"
+				required
+			>
+				<N8nInput
+					id="workflow-review-version-name"
+					v-model="versionName"
+					:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
+					:disabled="isSubmitting"
+					data-test-id="workflow-review-version-name-input"
+				/>
+			</N8nInputLabel>
+			<hr :class="$style.divider" />
+			<N8nInputLabel
 				input-name="workflow-review-title"
 				:label="i18n.baseText('workflowReviews.submitForReview.reviewTitle.label')"
 				required
@@ -191,6 +221,7 @@ const submit = async () => {
 					ref="titleInput"
 					v-model="reviewTitle"
 					:maxlength="REVIEW_TITLE_MAX_LENGTH"
+					:disabled="isSubmitting"
 					data-test-id="workflow-review-title-input"
 				/>
 			</N8nInputLabel>
@@ -204,10 +235,10 @@ const submit = async () => {
 					type="textarea"
 					:rows="3"
 					:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
+					:disabled="isSubmitting"
 					data-test-id="workflow-review-description-input"
 				/>
 			</N8nInputLabel>
-			<hr :class="$style.divider" />
 			<N8nInputLabel
 				input-name="workflow-review-reviewer"
 				:label="i18n.baseText('workflowReviews.submitForReview.reviewer.label')"
@@ -219,6 +250,7 @@ const submit = async () => {
 					:loading="isLoadingReviewers"
 					:placeholder="i18n.baseText('workflowReviews.submitForReview.reviewer.placeholder')"
 					:teleported="false"
+					:disabled="isSubmitting"
 					clearable
 					data-test-id="workflow-review-reviewer-select"
 				>

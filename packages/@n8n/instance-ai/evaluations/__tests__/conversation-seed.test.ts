@@ -2,7 +2,7 @@ import {
 	ConversationSeedSchema,
 	expandSeedMessageShorthand,
 	remapSeedWorkflowIds,
-	SEED_WORKFLOW_NAME_RE,
+	SEED_NAME_RE,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
 } from '../harness/conversation-seed';
@@ -248,7 +248,7 @@ describe('remapSeedWorkflowIds', () => {
 		const newName = remapped.workflows[0].name;
 
 		expect(newName).toMatch(/^Digest \[seed [0-9a-f]{8}\]$/);
-		expect(SEED_WORKFLOW_NAME_RE.exec(newName)?.[1]).toBe('Digest');
+		expect(SEED_NAME_RE.exec(newName)?.[1]).toBe('Digest');
 		const mention = remapped.messages.find((m) => m.id === 'm-name');
 		expect(JSON.stringify(mention)).toContain(`workflow ${newName} failed`);
 	});

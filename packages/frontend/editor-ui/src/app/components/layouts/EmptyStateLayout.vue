@@ -11,7 +11,7 @@ import { useSurfaceMcpEmptyState } from '@/experiments/surfaceMcpToNewCloudUsers
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
