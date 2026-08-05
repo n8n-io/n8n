@@ -60,6 +60,12 @@ export class TokenExchangeModule implements ModuleInterface {
 			Container.get(IdentityResolutionService),
 		);
 
+		// Import-for-side-effect: the @ContextEstablishmentHook decorator
+		// registers this class into ContextEstablishmentHookMetadata at
+		// class-evaluation time; ExecutionContextHookRegistry.init() discovers
+		// it later.
+		await import('./context-establishment-hooks/inbound-claim-verification-hook.js');
+
 		await import('./controllers/token-exchange.controller.js');
 		await import('./controllers/embed-auth.controller.js');
 

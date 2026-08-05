@@ -145,15 +145,20 @@ export class ExecutionContextService {
 	}
 
 	/**
-	 * Note for later: this deep-merges `claims` field-by-field like everything
-	 * else, which could mix fields from two different verification passes. A
-	 * claim should probably be replaced whole, not merged.
+	 * A claim is one atomic verification result, so replace it whole rather
+	 * than deep-merging field-by-field like the rest of the context - a
+	 * field-by-field merge could otherwise mix fields from two different
+	 * verification passes.
 	 */
 	mergeExecutionContexts(
 		baseContext: PlaintextExecutionContext,
 		contextToMerge: Partial<PlaintextExecutionContext>,
 	): PlaintextExecutionContext {
-		return deepMerge(baseContext, contextToMerge);
+		const merged = deepMerge(baseContext, contextToMerge);
+		if (contextToMerge.claims) {
+			merged.claims = contextToMerge.claims;
+		}
+		return merged;
 	}
 
 	/**

@@ -246,6 +246,15 @@ const ExecutionContextSchemaV1 = z.object({
 	}),
 
 	/**
+	 * Set when a bearer token was presented at context establishment but
+	 * failed verification, or no verifier was available to check it.
+	 * Diagnostic only - does not gate access and carries no token material.
+	 * Absent when no token was presented, or when a token verified
+	 * successfully.
+	 */
+	authFailureReason: z.string().optional(),
+
+	/**
 	 * Encrypted artifacts produced by context-establishment hooks
 	 * (e.g. a trigger stripper) for later consumption by node backends.
 	 * Always encrypted when stored, decrypted on demand by

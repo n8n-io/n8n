@@ -665,6 +665,57 @@ describe('ExecutionContextService', () => {
 
 			expect(result).toEqual(baseContext);
 		});
+
+		it('should replace claims whole rather than merging fields from two verification passes', () => {
+			const baseContext: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'webhook',
+				claims: {
+					version: 1,
+					sourceId: 'idp-a',
+					subject: 'user-a',
+					audience: 'aud-a',
+					expiresAt: 1000,
+					boundWorkflowId: 'wf-1',
+				},
+			};
+
+			const contextToMerge: Partial<PlaintextExecutionContext> = {
+				claims: {
+					version: 1,
+					sourceId: 'idp-b',
+					subject: 'user-b',
+					audience: 'aud-b',
+					expiresAt: 2000,
+					boundWorkflowId: 'wf-1',
+				},
+			};
+
+			const result = service.mergeExecutionContexts(baseContext, contextToMerge);
+
+			expect(result.claims).toEqual(contextToMerge.claims);
+		});
+
+		it('should preserve baseContext claims when contextToMerge has no claims', () => {
+			const baseContext: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'webhook',
+				claims: {
+					version: 1,
+					sourceId: 'idp-a',
+					subject: 'user-a',
+					audience: 'aud-a',
+					expiresAt: 1000,
+					boundWorkflowId: 'wf-1',
+				},
+			};
+
+			const result = service.mergeExecutionContexts(baseContext, { source: 'manual' });
+
+			expect(result.claims).toEqual(baseContext.claims);
+		});
 	});
 
 	describe('augmentSubExecutionContext()', () => {
