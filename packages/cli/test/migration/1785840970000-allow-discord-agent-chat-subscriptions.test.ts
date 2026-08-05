@@ -3,6 +3,7 @@ import {
 	initDbUpToMigration,
 	runSingleMigration,
 	type TestMigrationContext,
+	undoLastSingleMigration,
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -112,6 +113,33 @@ describe('AllowDiscordAgentChatSubscriptions Migration', () => {
 			await expect(insertSubscription(context, 'slack')).resolves.not.toThrow();
 			await expect(insertSubscription(context, 'linear')).resolves.not.toThrow();
 			await expect(insertSubscription(context, 'myspace')).rejects.toThrow();
+		} finally {
+			await context.queryRunner.release();
+		}
+	});
+
+	it('removes Discord subscriptions, preserves the others, and can be reapplied', async () => {
+		await undoLastSingleMigration();
+
+		let context = createTestMigrationContext(dataSource);
+		try {
+			const rows = await context.runQuery<Array<{ integrationType: string }>>(
+				`SELECT ${context.escape.columnName('integrationType')} FROM ${context.escape.tableName('agent_chat_subscriptions')}`,
+			);
+			const integrationTypes = rows.map(({ integrationType }) => integrationType);
+
+			expect(integrationTypes).toEqual(expect.arrayContaining(['telegram', 'slack', 'linear']));
+			expect(integrationTypes).not.toContain('discord');
+			await expect(insertSubscription(context, 'discord')).rejects.toThrow();
+		} finally {
+			await context.queryRunner.release();
+		}
+
+		await runSingleMigration(MIGRATION_NAME);
+
+		context = createTestMigrationContext(dataSource);
+		try {
+			await expect(insertSubscription(context, 'discord')).resolves.not.toThrow();
 		} finally {
 			await context.queryRunner.release();
 		}
