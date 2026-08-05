@@ -511,6 +511,74 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('getStaticWebhookKeys()', () => {
+		const webhookNodeType = {
+			description: {
+				properties: [
+					{
+						displayName: 'Path',
+						name: 'path',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Method',
+						name: 'httpMethod',
+						type: 'string',
+						default: 'GET',
+					},
+				],
+				webhooks: [
+					{
+						name: 'default',
+						httpMethod: '={{$parameter["httpMethod"]}}',
+						path: '={{$parameter["path"]}}',
+						isFullPath: true,
+					},
+				],
+			},
+		} as INodeType;
+
+		const createWebhookNode = (overrides: Partial<INode> = {}) =>
+			({
+				id: 'webhook-node',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'webhook-id',
+				parameters: { path: '/test/', httpMethod: 'GET' },
+				...overrides,
+			}) as INode;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
+		});
+
+		it('returns the method and normalized static path', () => {
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode()])).toEqual(['GET test']);
+		});
+
+		it.each([
+			['disabled node', { disabled: true }],
+			['node without a webhook id', { webhookId: undefined }],
+			['node without a path', { parameters: { httpMethod: 'GET' } }],
+			['expression path', { parameters: { path: '={{ "/test" }}', httpMethod: 'GET' } }],
+			['empty path', { parameters: { path: '/', httpMethod: 'GET' } }],
+			['dynamic path', { parameters: { path: '/users/:id', httpMethod: 'GET' } }],
+		] satisfies Array<[string, Partial<INode>]>)('skips a %s', (_name, overrides) => {
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode(overrides)])).toEqual([]);
+		});
+
+		it('skips nodes without a full-path webhook', () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { ...webhookNodeType.description, webhooks: [{ isFullPath: false }] },
+			} as INodeType);
+
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode()])).toEqual([]);
+		});
+	});
+
 	describe('getNodeWebhooks()', () => {
 		const workflow = new Workflow({
 			id: 'test-workflow',
