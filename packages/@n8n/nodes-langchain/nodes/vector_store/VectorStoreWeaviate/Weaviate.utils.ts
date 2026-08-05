@@ -1,4 +1,6 @@
-import { OperationalError } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import type {
 	FilterValue,
 	GeoRangeFilter,
@@ -19,6 +21,78 @@ export type WeaviateCredential = {
 	custom_connection_grpc_secure: boolean;
 };
 
+/**
+ * Integration identifier reported to Weaviate telemetry, so Weaviate can track
+ * usage originating from the n8n LangChain nodes.
+ */
+const INTEGRATION_NAME = 'n8n-langchain';
+
+/**
+ * Telemetry header that tags the connection so Weaviate can track integration
+ * usage across both the HTTP and gRPC transports.
+ */
+const INTEGRATION_HEADER = 'X-Weaviate-Client-Integration';
+
+/**
+ * Resolves the `@n8n/n8n-nodes-langchain` package version, reported alongside
+ * {@link INTEGRATION_NAME} to Weaviate telemetry. This is a single, consistent
+ * source — the package version — and all packages in the monorepo share the
+ * same version, so it also matches the n8n version.
+ *
+ * The version is read from the nearest `package.json` by walking up from this
+ * module, which is robust to the differing directory depth between the compiled
+ * (`dist/nodes/...`) and source/test (`nodes/...`) layouts. `moduleResolution`
+ * is classic `node` here, so a direct `package.json` import is not an option.
+ *
+ * Memoized, since a client is created per node execution but the version cannot
+ * change while the process is running.
+ */
+let cachedIntegrationVersion: string | undefined;
+
+export function getIntegrationVersion(): string {
+	if (cachedIntegrationVersion !== undefined) return cachedIntegrationVersion;
+
+	let dir = __dirname;
+	// Walk up until a package.json is found or the filesystem root is reached.
+	while (true) {
+		const packageJsonPath = join(dir, 'package.json');
+		if (existsSync(packageJsonPath)) {
+			const packageJson = jsonParse<{ version: string }>(readFileSync(packageJsonPath, 'utf8'));
+			cachedIntegrationVersion = packageJson.version;
+			return cachedIntegrationVersion;
+		}
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	throw new OperationalError('Could not resolve the n8n-nodes-langchain package version');
+}
+
+/**
+ * Best-effort registration of the {@link INTEGRATION_HEADER} on a Weaviate
+ * client. Never throws.
+ *
+ * The JS `weaviate-client` exposes no public `integrations.configure(...)` API
+ * (unlike the Python client). However, `getConnectionDetails()` returns the
+ * client's live `headers` object by reference, and the client spreads that same
+ * object into every HTTP and gRPC request. Mutating it therefore tags all
+ * subsequent requests with `X-Weaviate-Client-Integration: n8n-langchain/<version>`
+ * without depending on any private internals. If a future client version
+ * changes shape, registration is silently skipped instead of breaking the node.
+ */
+export async function registerIntegrationHeader(client: WeaviateClient): Promise<void> {
+	try {
+		const { headers } = await client.getConnectionDetails();
+		// The client only spreads object-form headers into requests, so only the
+		// `Record<string, string>` form can be augmented in place.
+		if (headers && !Array.isArray(headers)) {
+			headers[INTEGRATION_HEADER] = `${INTEGRATION_NAME}/${getIntegrationVersion()}`;
+		}
+	} catch {
+		// Best-effort telemetry: never let header registration break the node.
+	}
+}
+
 export async function createWeaviateClient(
 	credentials: WeaviateCredential,
 	timeout?: TimeoutParams,
@@ -34,6 +108,7 @@ export async function createWeaviateClient(
 				skipInitChecks,
 			},
 		);
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	} else {
 		const weaviateClient: WeaviateClient = await weaviate.connectToCustom({
@@ -50,6 +125,7 @@ export async function createWeaviateClient(
 			proxies,
 			skipInitChecks,
 		});
+		await registerIntegrationHeader(weaviateClient);
 		return weaviateClient;
 	}
 }
