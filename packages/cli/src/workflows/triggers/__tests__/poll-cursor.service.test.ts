@@ -201,39 +201,28 @@ describe('PollCursorService', () => {
 			).rejects.toBe(error);
 		});
 
-		it('resolves null and does not create the execution when the fence rejects the advance', async () => {
-			const service = buildService(true);
-			pollerStateRepository.advanceCursor.mockResolvedValue(false);
-			const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
+		it.each([
+			{ title: 'the flag is on', durableCursorsEnabled: true },
+			{ title: 'the flag is off', durableCursorsEnabled: false },
+		])(
+			'resolves null and does not create the execution when the fence rejects the advance and $title',
+			async ({ durableCursorsEnabled }) => {
+				const service = buildService(durableCursorsEnabled);
+				pollerStateRepository.advanceCursor.mockResolvedValue(false);
+				const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
 
-			const result = await service.commitWithExecution({
-				workflowId: 'wf-1',
-				nodeId: 'node-1',
-				cursor: { lastItemId: 'b' },
-				payload: payload(),
-				fence,
-			});
+				const result = await service.commitWithExecution({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+					payload: payload(),
+					fence,
+				});
 
-			expect(result).toBeNull();
-			expect(executionPersistence.create).not.toHaveBeenCalled();
-		});
-
-		it('resolves null and does not create the execution when the fence rejects the advance and the flag is off', async () => {
-			const service = buildService(false);
-			pollerStateRepository.advanceCursor.mockResolvedValue(false);
-			const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
-
-			const result = await service.commitWithExecution({
-				workflowId: 'wf-1',
-				nodeId: 'node-1',
-				cursor: { lastItemId: 'b' },
-				payload: payload(),
-				fence,
-			});
-
-			expect(result).toBeNull();
-			expect(executionPersistence.create).not.toHaveBeenCalled();
-		});
+				expect(result).toBeNull();
+				expect(executionPersistence.create).not.toHaveBeenCalled();
+			},
+		);
 
 		it('passes the fence through to the cursor advance', async () => {
 			const service = buildService();
