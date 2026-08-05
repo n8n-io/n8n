@@ -6,6 +6,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -58,6 +59,7 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const eventService = mock<EventService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const telemetry = mock<Telemetry>();
 
@@ -87,6 +89,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		new AgentModificationTelemetryService(telemetry),
 	);
@@ -99,6 +102,7 @@ function makeService() {
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
+		eventService,
 		agentValidationService,
 		telemetry,
 	};
@@ -215,7 +219,7 @@ describe('AgentConfigService', () => {
 		it('persists an explicit web-search disable and clears native provider tools', async () => {
 			// Regression: previously the disable was stripped on write and resurrected
 			// on read, so the config hash never changed and the builder looped.
-			const { service, agentRepository } = makeService();
+			const { service, agentRepository, eventService } = makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -244,6 +248,7 @@ describe('AgentConfigService', () => {
 			// layer's freshness hash actually changes.
 			expect(result.config?.config?.webSearch).toEqual({ enabled: false });
 			expect(result.config?.providerTools).toEqual({});
+			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
 		});
 
 		it('preserves omitted stored fields but clears explicitly empty integrations', async () => {

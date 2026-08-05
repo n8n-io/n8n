@@ -5,6 +5,7 @@ import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -52,6 +53,7 @@ function makeService() {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	const eventService = mock<EventService>();
 	const telemetry = mock<Telemetry>();
 	const credentialsService = mock<CredentialsService>();
 	const setupCompletionService = mock<AgentSetupCompletionService>();
@@ -65,6 +67,7 @@ function makeService() {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
+			eventService,
 			new AgentModificationTelemetryService(telemetry),
 			credentialsService,
 			setupCompletionService,
@@ -73,6 +76,7 @@ function makeService() {
 		chatIntegrationService,
 		runtimeCacheService,
 		chatIntegrationRegistry,
+		eventService,
 		telemetry,
 		credentialsService,
 		setupCompletionService,
@@ -121,7 +125,8 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	it('appends a credential integration to an empty list and invalidates the runtime cache', async () => {
-		const { service, agentRepository, chatIntegrationService, runtimeCacheService } = makeService();
+		const { service, agentRepository, chatIntegrationService, runtimeCacheService, eventService } =
+			makeService();
 		const agent = makeAgent();
 
 		await service.saveCredentialIntegration(
@@ -134,6 +139,7 @@ describe('AgentIntegrationPersistenceService', () => {
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agentId,
 			{ type: 'slack', credentialId: 'slack-1' },

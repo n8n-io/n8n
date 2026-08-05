@@ -11,6 +11,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
@@ -63,6 +64,10 @@ const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey
 		icon: 'table',
 		labelKey: 'workflows.dependencies.type.dataTables' as BaseTextKey,
 	},
+	agentUsage: {
+		icon: 'bot',
+		labelKey: 'workflows.dependencies.type.agents' as BaseTextKey,
+	},
 	errorWorkflow: {
 		icon: 'bug',
 		labelKey: 'workflows.dependencies.type.errorWorkflow' as BaseTextKey,
@@ -86,6 +91,7 @@ const displayOrder: DependencyType[] = [
 	'dataTableId',
 	'workflowCall',
 	'workflowParent',
+	'agentUsage',
 	'errorWorkflow',
 	'errorWorkflowParent',
 ];
@@ -100,6 +106,7 @@ const menuItems = computed(() => {
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],
 		dataTableId: [],
+		agentUsage: [],
 		errorWorkflow: [],
 		errorWorkflowParent: [],
 		workflowCall: [],
@@ -167,6 +174,15 @@ function onSelect(value: string) {
 				const href = router.resolve({
 					name: DATA_TABLE_DETAILS,
 					params: { projectId: dep.projectId, id: dep.id },
+				}).href;
+				window.open(href, '_blank');
+			}
+			break;
+		case 'agentUsage':
+			if (dep.projectId) {
+				const href = router.resolve({
+					name: AGENT_BUILDER_VIEW,
+					params: { projectId: dep.projectId, agentId: dep.id },
 				}).href;
 				window.open(href, '_blank');
 			}

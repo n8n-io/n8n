@@ -254,6 +254,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			credentialsService,
 			mock<WorkflowRepository>(),
+			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			modificationTelemetry,
 		);
@@ -278,6 +279,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationService,
 			runtimeCacheService,
 			chatIntegrationRegistry,
+			mock<EventService>(),
 			modificationTelemetry,
 			credentialsService,
 			mock<AgentSetupCompletionService>(),
@@ -303,6 +305,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentValidationService,
 			credentialsService,
 			telemetry,
+			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
 			mock<AgentModificationTelemetryService>(),
 		);
