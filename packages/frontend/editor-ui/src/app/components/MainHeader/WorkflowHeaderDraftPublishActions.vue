@@ -304,6 +304,16 @@ const onReviewConflict = () => {
 	showUpdateReviewDialog.value = true;
 };
 
+/**
+ * Save before opening. The dialog prefills the version name from the current
+ * `versionId`, but submitting flushes a dirty editor into a *new* version, so
+ * opening dirty would name the new version after the old one.
+ */
+const onSubmitChangesFromBanner = async () => {
+	if (!(await ensureWorkflowSaved())) return;
+	showUpdateReviewDialog.value = true;
+};
+
 const onOpenReviewFromBanner = async () => {
 	const review = latestReviewRequest.value;
 	if (!review) return;
@@ -782,7 +792,7 @@ defineExpose({
 				:can-open-review="canOpenReview"
 				:is-publishing="isRetryingPublish"
 				@open-review="onOpenReviewFromBanner"
-				@submit-changes="showUpdateReviewDialog = true"
+				@submit-changes="onSubmitChangesFromBanner"
 				@retry-publish="onRetryPublishFromBanner"
 			/>
 		</div>

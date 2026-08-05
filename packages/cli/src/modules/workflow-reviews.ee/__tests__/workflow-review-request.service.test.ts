@@ -4,6 +4,7 @@ import type {
 	ListWorkflowReviewRequestsQueryDto,
 } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
+import { DbLock, User } from '@n8n/db';
 import type {
 	AuthIdentity,
 	DbLockService,
@@ -11,6 +12,7 @@ import type {
 	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
@@ -18,8 +20,9 @@ import type {
 	WorkflowReviewRequestForWorkflowRow,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
+	Transaction,
+	OperationContext,
 } from '@n8n/db';
-import { DbLock, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -50,13 +53,16 @@ function loadedUser(fields: Partial<User> & { id: string; email: string }): User
 const dto: CreateWorkflowReviewRequestDto = {
 	title: 'Please review',
 	description: 'A description',
-	workflows: [{ workflowId: 'wf-1', workflowVersionId: 'ver-1' }],
+	workflows: [
+		{ workflowId: 'wf-1', workflowVersionId: 'ver-1', workflowVersionName: 'Release candidate' },
+	],
 };
 
 describe('WorkflowReviewRequestService', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -72,12 +78,15 @@ describe('WorkflowReviewRequestService', () => {
 	const workflowService = mock<WorkflowService>();
 	const logger = mock<Logger>();
 	const tx = mock<EntityManager>();
+	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
+	const ctx: OperationContext = { trx: mock<Transaction>() };
 
 	const service = new WorkflowReviewRequestService(
 		logger,
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		workflowFinderService,
 		workflowHistoryService,
+		workflowHistoryRepository,
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -99,7 +108,7 @@ describe('WorkflowReviewRequestService', () => {
 		// Feature enabled by default; the disabled path is exercised explicitly.
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
-		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, {}));
+		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
@@ -120,6 +129,7 @@ describe('WorkflowReviewRequestService', () => {
 					updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 				}),
 			);
+			workflowHistoryRepository.updateVersionName.mockResolvedValue(1);
 		};
 
 		it('throws when the instance policy is disabled, before any lookup or lock', async () => {
@@ -307,6 +317,46 @@ describe('WorkflowReviewRequestService', () => {
 					expect(reviewerRepository.addReviewers).not.toHaveBeenCalled();
 				},
 			);
+		});
+
+		describe('pinned version naming', () => {
+			const namedDto = (workflowVersionName: string): CreateWorkflowReviewRequestDto => ({
+				...dto,
+				workflows: [{ ...dto.workflows[0], workflowVersionName }],
+			});
+
+			it('names the pinned version in the same transaction as the request', async () => {
+				mockSuccessfulCreatePath();
+
+				await service.create(user, namedDto('  Release candidate  '));
+
+				expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
+					{ workflowId: 'wf-1', versionId: 'ver-1', name: 'Release candidate' },
+					ctx,
+				);
+			});
+
+			it('does not name the version when an open review already conflicts', async () => {
+				mockSuccessfulCreatePath();
+				requestRepository.findOpenRequestForWorkflow.mockResolvedValue(
+					mock<WorkflowReviewRequest>({ id: 'existing-1' }),
+				);
+
+				await expect(service.create(user, namedDto('Release candidate'))).rejects.toThrow(
+					ConflictError,
+				);
+
+				expect(workflowHistoryRepository.updateVersionName).not.toHaveBeenCalled();
+			});
+
+			it('throws BadRequestError when the version was pruned before the naming write', async () => {
+				mockSuccessfulCreatePath();
+				workflowHistoryRepository.updateVersionName.mockResolvedValue(0);
+
+				await expect(service.create(user, namedDto('Release candidate'))).rejects.toThrow(
+					BadRequestError,
+				);
+			});
 		});
 
 		describe('review state broadcast', () => {
