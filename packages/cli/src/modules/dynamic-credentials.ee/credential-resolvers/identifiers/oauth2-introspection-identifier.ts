@@ -6,12 +6,7 @@ import { z } from 'zod';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import {
-	AUDIENCE_NOT_DECLARED_MESSAGE,
-	checkAudience,
-	OAuth2OptionsSchema,
-	sha256,
-} from './oauth2-utils';
+import { audienceFailureMessage, checkAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -153,31 +148,41 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 	}
 
 	/**
-	 * Some providers omit audience claims from introspection responses entirely. That
-	 * is only rejected when the admin configured an expected audience and so asked for
-	 * enforcement; otherwise the resolver predates the check and keeps working with a
-	 * warning, rather than breaking on upgrade.
+	 * Enforcement is opt-in.
+	 *
+	 * Without an explicit expected audience the comparison falls back to the client id,
+	 * which authenticates our call to the introspection endpoint — not necessarily the
+	 * client the caller's token was issued to. The two coincide in the common setup,
+	 * but a deployment that introspects with a dedicated service client, or that serves
+	 * several caller applications, would legitimately not match. Enforcing on an
+	 * inferred value would break those on upgrade, so the fallback only reports.
+	 *
+	 * Once an audience is configured the admin has stated what to expect, and any
+	 * outcome other than a match is rejected.
 	 */
 	private assertAudience(
 		claims: Record<string, unknown>,
 		options: OAuth2IntrospectionOptions,
 		metadata: OAuth2Metadata,
 	): void {
-		if (checkAudience(claims, this.expectedAudience(options)) === 'matched') {
+		const result = checkAudience(claims, this.expectedAudience(options));
+		if (result === 'matched') {
 			return;
 		}
 
-		if (options.expectedAudience) {
-			this.logger.error('Introspection response declares no audience', {
-				issuer: metadata.issuer,
-			});
-			throw new IdentifierValidationError(AUDIENCE_NOT_DECLARED_MESSAGE);
+		if (!options.expectedAudience) {
+			this.logger.warn(
+				`${audienceFailureMessage(result)}. Access tokens are not bound to this instance; set an expected audience on the resolver.`,
+				{ issuer: metadata.issuer, result },
+			);
+			return;
 		}
 
-		this.logger.warn(
-			'Token introspection response declares no audience, so access tokens are not bound to this instance. Set an expected audience on the resolver.',
-			{ issuer: metadata.issuer },
-		);
+		this.logger.error('Introspected token failed the audience check', {
+			issuer: metadata.issuer,
+			result,
+		});
+		throw new IdentifierValidationError(audienceFailureMessage(result));
 	}
 
 	private parseOptions(options: Record<string, unknown>): OAuth2IntrospectionOptions {

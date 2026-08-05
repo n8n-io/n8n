@@ -215,12 +215,12 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 	}
 
 	/**
-	 * UserInfo mode resolves an identity from the access token alone, so without an
-	 * expected audience there is nothing tying that token to this instance. Stored
-	 * resolvers keep working, but should be updated.
+	 * Audience enforcement is opt-in in both validation methods, so a resolver without
+	 * an expected audience accepts tokens that are not bound to this instance. Those
+	 * keep working, but should be updated.
 	 */
 	needsConfigurationUpdate(config: CredentialResolverConfiguration): boolean {
-		return config.validation === 'oauth2-userinfo' && !config.expectedAudience;
+		return !config.expectedAudience;
 	}
 
 	private async getIdentifier(

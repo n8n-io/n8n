@@ -331,13 +331,26 @@ describe('OAuthCredentialResolver', () => {
 				).toBe(false);
 			});
 
-			it('does not flag an introspection resolver, which defaults to its client id', () => {
+			it('flags an introspection resolver stored without an expected audience', () => {
+				// The client id fallback only warns, so these are unenforced too.
 				expect(
 					resolver.needsConfigurationUpdate({
 						metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
 						validation: 'oauth2-introspection',
 						clientId: 'test-client',
 						clientSecret: 'test-secret',
+					}),
+				).toBe(true);
+			});
+
+			it('does not flag an introspection resolver with an expected audience', () => {
+				expect(
+					resolver.needsConfigurationUpdate({
+						metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+						validation: 'oauth2-introspection',
+						clientId: 'test-client',
+						clientSecret: 'test-secret',
+						expectedAudience: 'https://api.example.com',
 					}),
 				).toBe(false);
 			});

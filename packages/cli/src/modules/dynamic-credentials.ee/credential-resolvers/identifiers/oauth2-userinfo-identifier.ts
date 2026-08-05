@@ -9,12 +9,7 @@ import { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
-import {
-	AUDIENCE_NOT_DECLARED_MESSAGE,
-	checkAudience,
-	OAuth2OptionsSchema,
-	sha256,
-} from './oauth2-utils';
+import { audienceFailureMessage, checkAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 // Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation
@@ -253,12 +248,16 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 			throw new IdentifierValidationError('Access token verification failed', { cause: error });
 		}
 
-		// Checked outside the catch so an audience mismatch is not relabelled as a
-		// verification failure. Strict here, unlike introspection's fallback: this mode
-		// requires an expected audience, so there is no configuration to grandfather.
-		if (checkAudience(payload, expectedAudience) === 'not-declared') {
-			this.logger.error('Access token declares no audience', { issuer: metadata.issuer });
-			throw new IdentifierValidationError(AUDIENCE_NOT_DECLARED_MESSAGE);
+		// Checked outside the catch so an audience failure is not relabelled as a
+		// verification failure. Always strict, unlike introspection's fallback: reaching
+		// here means the admin configured the audience, so it is never an inferred value.
+		const result = checkAudience(payload, expectedAudience);
+		if (result !== 'matched') {
+			this.logger.error('Access token failed the audience check', {
+				issuer: metadata.issuer,
+				result,
+			});
+			throw new IdentifierValidationError(audienceFailureMessage(result));
 		}
 
 		return payload;

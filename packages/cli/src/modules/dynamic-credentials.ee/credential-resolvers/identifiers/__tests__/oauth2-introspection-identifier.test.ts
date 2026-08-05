@@ -233,15 +233,16 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
 		});
 
-		test('should reject a token issued for a different party', async () => {
+		test('should keep resolving and warn on a mismatch while falling back to clientId', async () => {
+			// The fallback compares against the introspection client id, which a valid
+			// deployment may legitimately differ from, so it reports instead of enforcing.
 			const response = { active: true, sub: 'user-123', aud: 'other-app', client_id: 'other-app' };
 			stubFlow(validMetadata, response);
 
-			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
-				IdentifierValidationError,
-			);
-			await expect(identifier.resolve(mockContext, validOptions)).rejects.toThrow(
-				'Token was not issued for the expected audience',
+			await expect(identifier.resolve(mockContext, validOptions)).resolves.toBe('user-123');
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('not issued for the expected audience'),
+				expect.any(Object),
 			);
 		});
 
@@ -253,6 +254,19 @@ describe('OAuth2TokenIntrospectionIdentifier', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('declares no audience'),
 				expect.any(Object),
+			);
+		});
+
+		test('should reject a mismatch once expectedAudience is configured', async () => {
+			const options = { ...validOptions, expectedAudience: 'https://api.example.com' };
+			const response = { active: true, sub: 'user-123', aud: 'other-app', client_id: 'other-app' };
+			stubFlow(validMetadata, response);
+
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				IdentifierValidationError,
+			);
+			await expect(identifier.resolve(mockContext, options)).rejects.toThrow(
+				'Token was not issued for the expected audience',
 			);
 		});
 
