@@ -48,9 +48,6 @@ describe('AgentChannelSlackRemoveConfirmation', () => {
 
 		expect(wrapper.attributes()).toHaveProperty('data-stacked');
 		expect(wrapper.attributes('data-size')).toBe('medium');
-		expect(wrapper.get('strong').text()).toBe(
-			'agents.channels.slack.managed.remove.messagesUnaffected',
-		);
 		await wrapper.get('[data-testid="slack-managed-remove-confirm"]').trigger('click');
 		expect(wrapper.emitted('confirm')).toEqual([[false]]);
 

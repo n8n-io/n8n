@@ -585,13 +585,10 @@ describe('Slack setup services', () => {
 
 	it.each([
 		[undefined, false],
-		[{ clientId: 'client', clientSecret: 'secret', userScope: 'app_configurations:write' }, false],
 		[
 			{
 				clientId: 'client',
 				clientSecret: 'secret',
-				userScope:
-					'channels:read app_configurations:read app_configurations:write managed_apps:install',
 			},
 			true,
 		],
@@ -609,7 +606,7 @@ describe('Slack setup services', () => {
 		});
 		credentialsService.createUnmanagedCredential.mockResolvedValue({
 			id: 'manager',
-			name: 'Slack workspace manager',
+			name: 'Workspace credentials',
 		} as never);
 
 		await expect(
@@ -620,13 +617,13 @@ describe('Slack setup services', () => {
 			}),
 		).resolves.toEqual({
 			id: 'manager',
-			name: 'Slack workspace manager',
+			name: 'Workspace credentials',
 			type: 'slackManagerOAuth2Api',
 			isResolvable: false,
 		});
 		expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
 			{
-				name: 'Slack workspace manager',
+				name: 'Workspace credentials',
 				type: 'slackManagerOAuth2Api',
 				data: {},
 				projectId: 'project-1',
@@ -638,8 +635,8 @@ describe('Slack setup services', () => {
 	it.each([
 		{
 			scenario: 'generated manager credential name',
-			name: 'Slack workspace manager',
-			expectedName: 'Slack workspace manager - jane @ Acme',
+			name: 'Workspace credentials',
+			expectedName: 'Workspace credentials - jane @ Acme',
 		},
 		{
 			scenario: 'custom manager credential name',

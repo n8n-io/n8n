@@ -13,7 +13,7 @@ describe('SlackManagerOAuth2Api Credential', () => {
 			'https://slack.com/api/oauth.v2.access',
 		);
 		expect(credential.properties.find(({ name }) => name === 'authQueryParameters')?.default).toBe(
-			'={{"user_scope=" + $self["userScope"]}}',
+			'={{"user_scope=app_configurations:read app_configurations:write managed_apps:install"}}',
 		);
 	});
 });
