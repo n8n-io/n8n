@@ -202,10 +202,10 @@ export class WorkflowExecutionService {
 		});
 
 		if (commitResult === null) {
-			this.logger.debug('Poll cursor commit was fenced out by a reclaimed lease', {
-				workflowId: workflowData.id,
-				nodeName: node.name,
-			});
+			this.logger.debug(
+				'Poll cursor commit skipped: the poll no longer holds its lease, or its cursor row is gone',
+				{ workflowId: workflowData.id, nodeName: node.name },
+			);
 			return undefined;
 		}
 
