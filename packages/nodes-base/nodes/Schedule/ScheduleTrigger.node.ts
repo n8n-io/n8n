@@ -436,6 +436,7 @@ export class ScheduleTrigger implements INodeType {
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
 				hint: 'Applies once an execution is later than its configured grace period',
+				isNodeSetting: true,
 				noDataExpression: true, // read at activation, so an expression would never be resolved
 				displayOptions: {
 					show: {

@@ -25,31 +25,19 @@ describe('ScheduleTrigger', () => {
 			expect(node.description.version).toContain(1.4);
 		});
 
-		it('defines misfirePolicy as an options property defaulting to skip with exactly two values', () => {
+		it('defines misfirePolicy as a node setting offering exactly two values, defaulting to skip', () => {
 			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
 
 			expect(misfirePolicy).toMatchObject({
 				type: 'options',
 				default: 'skip',
+				isNodeSetting: true,
+				noDataExpression: true,
 				options: [
 					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
 			});
-		});
-
-		it('places misfirePolicy after rule and before skipDurableScheduler', () => {
-			const ruleIndex = properties.findIndex((property) => property.name === 'rule');
-			const misfirePolicyIndex = properties.findIndex(
-				(property) => property.name === 'misfirePolicy',
-			);
-			const skipDurableSchedulerIndex = properties.findIndex(
-				(property) => property.name === 'skipDurableScheduler',
-			);
-
-			expect(ruleIndex).toBeGreaterThanOrEqual(0);
-			expect(misfirePolicyIndex).toBeGreaterThan(ruleIndex);
-			expect(skipDurableSchedulerIndex).toBeGreaterThan(misfirePolicyIndex);
 		});
 
 		it.each<[number, boolean]>([
