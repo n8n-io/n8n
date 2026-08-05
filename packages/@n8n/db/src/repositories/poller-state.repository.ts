@@ -12,6 +12,11 @@ import { TransactionRunner } from '../services/transaction';
 
 export type { PollerCursor } from '../entities/poller-state';
 
+/**
+ * A miss on this fence can't tell a reclaimed lease apart from a cursor row
+ * that's genuinely gone; both are reported as `null`/`false` by the commit
+ * methods that accept a fence, never as an error.
+ */
 export type PollLeaseFence = { taskId: string; leaseEpoch: number };
 
 @Service()

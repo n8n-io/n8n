@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import type { PollLeaseFence } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
@@ -20,11 +19,6 @@ import {
 	POLL_TRIGGER_TASK_TYPE,
 	type PollTriggerTaskPayload,
 } from './poll-trigger-task';
-
-const toPollLeaseFence = (task: ClaimedTask): PollLeaseFence => ({
-	taskId: task.id,
-	leaseEpoch: task.leaseEpoch,
-});
 
 /**
  * Runs a due poll occurrence's `poll()` once and dispatches only when it
@@ -62,11 +56,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const { workflow, pollFunctions } =
-			await this.triggerExecutionContextFactory.createPollExecutionContext(
-				workflowData,
-				node,
-				toPollLeaseFence(task),
-			);
+			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node, {
+				taskId: task.id,
+				leaseEpoch: task.leaseEpoch,
+			});
 
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
 		// be committed by this poll and never by a later occurrence.
@@ -85,8 +78,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					// poll() can run for a while (network I/O against the polled source), so
 					// the workflow may have been deactivated while it was in flight. There is
 					// no in-memory registration to check here, so re-read the stored active state.
-					// A cheap early-out: the cursor commit's own lease fence is what actually
-					// rejects a reclaimed poll's write.
+					// A cheap early-out, not the real guard: the cursor commit's own lease fence
+					// is what actually rejects a reclaimed poll's write.
 					if (!(await this.workflowRepository.isActive(workflowId))) {
 						this.logger.debug('Workflow deactivated during poll; discarding the result', {
 							taskId: task.id,
@@ -109,10 +102,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				}
 
 				// A poll with no items may still have moved its cursor, committed here on
-				// its own. Active state is re-read first so a workflow deactivated mid-poll
-				// doesn't get its cursor moved; that is also just a cheap early-out, since
-				// the fenced commit inside `commitStagedCursor` is what actually rejects a
-				// reclaimed poll's write.
+				// its own. Active state is re-read first for the same cheap-early-out reason
+				// as above; `commitStagedCursor`'s own fenced commit is the real guard.
 				try {
 					if (await this.workflowRepository.isActive(workflowId))
 						await commitStagedCursor(pollFunctions);
