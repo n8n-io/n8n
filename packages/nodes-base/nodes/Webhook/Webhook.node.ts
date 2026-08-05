@@ -36,6 +36,7 @@ import {
 	configuredOutputs,
 	handleFormData,
 	isIpAllowed,
+	isWebhookOAuth2BrowserFlowEnabled,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from './utils';
@@ -255,6 +256,10 @@ export class Webhook extends Node {
 				const authResult = await n8nOAuth2Auth(context, {
 					realm: 'n8n Webhook',
 					method: req.method,
+					// A browser GET with no token is bounced through this instance's own
+					// authorization server instead of being 401'd, so a human can just click
+					// the link. Machine callers still need a bearer token up front.
+					browserFlow: isWebhookOAuth2BrowserFlowEnabled(),
 				});
 				if (authResult === 'handled') {
 					// Token missing/invalid: the helper already sent the response.

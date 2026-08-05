@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { IWebhookFunctions, N8nOAuth2ValidationResult } from '../src/interfaces';
+import type { IWebhookFunctions, Logger, N8nOAuth2ValidationResult } from '../src/interfaces';
 import { n8nOAuth2Auth } from '../src/n8n-oauth2-auth';
 
 const WEBHOOK_URL = 'https://n8n.example.com/webhook/protected-path';
@@ -10,6 +10,8 @@ const buildContext = (opts: {
 	authorization?: string;
 	validation?: N8nOAuth2ValidationResult;
 	webhookUrl?: string | undefined;
+	/** Request shape a browser sends: top-level GET navigation. */
+	browserNavigation?: boolean;
 }) => {
 	const response = mock<Response>();
 	response.writeHead.mockReturnValue(response);
@@ -18,13 +20,22 @@ const buildContext = (opts: {
 	response.send.mockReturnValue(response);
 
 	const context = mock<IWebhookFunctions>();
+	context.logger = mock<Logger>();
 	context.getWebhookResourceUrl.mockReturnValue(
 		'webhookUrl' in opts ? opts.webhookUrl : WEBHOOK_URL,
 	);
 	context.getResponseObject.mockReturnValue(response);
 	context.getRequestObject.mockReturnValue({
-		headers: opts.authorization ? { authorization: opts.authorization } : {},
+		method: 'GET',
+		protocol: 'https',
+		originalUrl: '/webhook/protected-path',
+		query: {},
+		headers: {
+			...(opts.authorization ? { authorization: opts.authorization } : {}),
+			...(opts.browserNavigation ? { accept: 'text/html' } : {}),
+		},
 	} as never);
+	context.beginN8nOAuth2Flow.mockResolvedValue('https://n8n.example.com/oauth/authorize?state=s1');
 	context.validateN8nOAuth2Token.mockResolvedValue(
 		opts.validation ?? { valid: true, user: { id: 'u1' } as never },
 	);
@@ -111,6 +122,38 @@ describe('n8nOAuth2Auth', () => {
 		expect(result).toBe('handled');
 		expect(response.status).toHaveBeenCalledWith(503);
 		expect(response.send).toHaveBeenCalledWith('OAuth token validation is not available');
+	});
+
+	describe('with browserFlow enabled', () => {
+		it('redirects a tokenless browser GET into the authorization flow instead of 401ing', async () => {
+			const { context, response } = buildContext({ browserNavigation: true });
+
+			const result = await n8nOAuth2Auth(context, {
+				realm: 'n8n Webhook',
+				method: 'GET',
+				browserFlow: true,
+			});
+
+			expect(result).toBe('handled');
+			expect(context.beginN8nOAuth2Flow).toHaveBeenCalledWith(`${WEBHOOK_URL}?method=GET`, {
+				returnTo: '/webhook/protected-path',
+			});
+			expect(response.writeHead).toHaveBeenCalledWith(302, {
+				Location: 'https://n8n.example.com/oauth/authorize?state=s1',
+			});
+		});
+
+		it('still 401s a machine caller that sends no bearer token', async () => {
+			const { context, response } = buildContext({});
+
+			const result = await n8nOAuth2Auth(context, { realm: 'n8n Webhook', browserFlow: true });
+
+			expect(result).toBe('handled');
+			expect(context.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+			expect(response.writeHead).toHaveBeenCalledWith(401, {
+				'WWW-Authenticate': expect.stringContaining('realm="n8n Webhook"'),
+			});
+		});
 	});
 
 	it('throws when the webhook URL is unavailable', async () => {

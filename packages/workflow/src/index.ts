@@ -30,6 +30,7 @@ export * from './mcp-helpers';
 export * from './tool-helpers';
 export * from './trigger-identity';
 export * from './n8n-oauth2-auth';
+export * from './n8n-browser-oauth2-flow';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './highlighted-data';

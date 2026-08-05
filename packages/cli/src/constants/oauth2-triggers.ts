@@ -17,3 +17,15 @@ export function isFormOAuth2Enabled(): boolean {
 export function isWebhookOAuth2Enabled(): boolean {
 	return process.env.N8N_ENV_FEAT_WEBHOOK_PRIVATE_CREDENTIALS === 'true';
 }
+
+/**
+ * Browser-driven authorization for `n8nOAuth2` webhook triggers is opt-in on top of
+ * {@link isWebhookOAuth2Enabled}. It is what makes the webhook resource first-party
+ * — i.e. lets its own URL act as a virtual client_id/redirect_uri without dynamic
+ * client registration — so it stays independently switchable off.
+ */
+export function isWebhookOAuth2BrowserFlowEnabled(): boolean {
+	return (
+		isWebhookOAuth2Enabled() && process.env.N8N_ENV_FEAT_WEBHOOK_OAUTH2_BROWSER_FLOW === 'true'
+	);
+}
