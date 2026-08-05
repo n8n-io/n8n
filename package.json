@@ -121,6 +121,7 @@
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
       "@opentelemetry/api": "catalog:",
       "@opentelemetry/core": "2.8.0",
+      "@opentelemetry/propagator-jaeger": "2.9.0",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
       "esbuild": "catalog:",
