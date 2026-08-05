@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
@@ -26,7 +27,7 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 });
 
 vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
+	partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
 }));
 
 const generatedWorkflow = {
@@ -131,11 +132,24 @@ function makeContext(input: {
 		runId: 'run-1',
 		workflowService: {
 			createFromWorkflowJSON: vi.fn(
-				async () => await Promise.resolve({ id: 'wf-1', versionId: 'v-1' }),
+				async () =>
+					await Promise.resolve({ id: 'wf-1', versionId: 'v-1', checksum: 'checksum-create' }),
 			),
 			updateFromWorkflowJSON: vi.fn(
 				async (workflowId: string) =>
-					await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
+					await Promise.resolve({
+						id: workflowId,
+						versionId: 'v-next',
+						checksum: 'checksum-update',
+					}),
+			),
+			get: vi.fn(
+				async (workflowId: string) =>
+					await Promise.resolve({
+						id: workflowId,
+						versionId: 'v-current',
+						checksum: 'checksum-current',
+					}),
 			),
 			getAsWorkflowJSON: vi.fn(async () => await Promise.resolve({ name: 'Target workflow' })),
 			clearAiTemporary: vi.fn(async () => await Promise.resolve()),
@@ -186,10 +200,19 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
-			errors: [],
+			blocking: [],
 			informational: warnings,
 		}));
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
+	});
+
+	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
+		const { context } = makeContext({ source: 'workflow source' });
+		const tool = createBuildWorkflowTool(context);
+
+		expect(tool.description).toContain('workflow-builder');
+		expect(tool.description).toContain('data-table-manager');
+		expect(tool.description).toContain('load_skill');
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {
@@ -218,6 +241,10 @@ describe('createBuildWorkflowTool', () => {
 			'Follow the post-build instructions in `instructions` now',
 		);
 		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
+		// The language reminder in the skill intro must ride along in the inline copy.
+		expect(result.postBuildFlow?.instructions).toContain(
+			"stays in the user's conversation language",
+		);
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// Tag-turn-only sections are stripped from the inline copy.
 		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
@@ -230,7 +257,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
 		);
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Daily Weather to Slack' }),
 			{ markAsAiTemporary: true },
@@ -430,12 +457,22 @@ describe('createBuildWorkflowTool', () => {
 		expect(first).toMatchObject({ success: true, workflowId: 'wf-bound' });
 		expect(second).toMatchObject({ success: true, workflowId: 'wf-bound' });
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(2);
-		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenNthCalledWith(
+			1,
 			'wf-bound',
 			expect.any(Object),
-			undefined,
+			{ expectedChecksum: 'checksum-current' },
+		);
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenNthCalledWith(
+			2,
+			'wf-bound',
+			expect.any(Object),
+			{ expectedChecksum: 'checksum-update' },
 		);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+			workflowChecksum: 'checksum-update',
+		});
 		expect(trackTelemetry).toHaveBeenCalledWith(
 			'instance_ai_workflow_source_build',
 			expect.objectContaining({
@@ -446,6 +483,129 @@ describe('createBuildWorkflowTool', () => {
 				target_workflow_id: 'wf-bound',
 				workflow_id: 'wf-bound',
 				save_operation: 'update',
+			}),
+		);
+	});
+
+	it('updates a workflow created earlier in the run without requesting approval', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const tool = createBuildWorkflowTool(context);
+		const suspend = vi.fn();
+
+		const created = await executeTool<BuildToolOutput>(tool, { filePath });
+		// INS-1044: follow-up builds reuse the workflow created by the first build.
+		const updated = await executeTool<BuildToolOutput>(tool, { filePath }, { suspend });
+
+		expect(created).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(updated).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(context.aiCreatedWorkflowIds).toEqual(new Set(['wf-1']));
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('requests approval before updating a pre-existing workflow', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'require_approval',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+		const suspend = vi.fn();
+
+		await executeTool(
+			createBuildWorkflowTool(context),
+			{ filePath, workflowId: 'wf-existing' },
+			{ suspend },
+		);
+
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Edit Target workflow (ID: wf-existing)?',
+				severity: 'warning',
+			}),
+		);
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('blocks updates to workflows created earlier in the run when admin policy denies them', async () => {
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				aiCreatedWorkflowIds: new Set(['wf-created']),
+				permissions: {
+					createWorkflow: 'always_allow',
+					updateWorkflow: 'blocked',
+				} as InstanceAiContext['permissions'],
+			},
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-created',
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			workflowId: 'wf-created',
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'permission_blocked',
+			},
+			errors: ['Action blocked by admin'],
+		});
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns conflict remediation when the workflow changed outside the conversation', async () => {
+		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<BuildToolOutput>(tool, {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValueOnce(
+			new WorkflowSaveConflictError('wf-bound'),
+		);
+
+		const result = await executeTool<BuildToolOutput>(tool, { filePath });
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			workflowId: 'wf-bound',
+			remediation: {
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'workflow_modified_externally',
+			},
+		});
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenLastCalledWith(
+			'wf-bound',
+			expect.any(Object),
+			{ expectedChecksum: 'checksum-update' },
+		);
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({
+				result: 'failure',
+				stage: 'conflict',
+				target_workflow_id: 'wf-bound',
 			}),
 		);
 	});
@@ -524,6 +684,14 @@ describe('createBuildWorkflowTool', () => {
 						async (workflowId: string) =>
 							await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
 					),
+					get: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({
+								id: workflowId,
+								versionId: 'v-current',
+								checksum: 'checksum-current',
+							}),
+					),
 					getAsWorkflowJSON: vi.fn(async () => await Promise.resolve(existingWorkflow)),
 					clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 				} as unknown as InstanceAiContext['workflowService'],
@@ -538,7 +706,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-existing',
 			expect.any(Object),
-			undefined,
+			{ expectedChecksum: 'checksum-current' },
 		);
 		const savedWorkflow = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock
 			.calls[0]?.[1];
@@ -597,11 +765,11 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-existing',
 			workflowName: 'Daily Slack Channel Digest',
 		});
-		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
+		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
 			'wf-existing',
 			workflowJson,
-			undefined,
+			{ expectedChecksum: 'checksum-current' },
 		);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
@@ -1002,7 +1170,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx',
 		});
 		vi.mocked(partitionWarnings).mockReturnValueOnce({
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		});
 
@@ -1032,7 +1200,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			blocking: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)
@@ -1068,7 +1236,7 @@ describe('createBuildWorkflowTool', () => {
 			compiler: 'sandbox-tsx' as const,
 		};
 		const partitionedWarnings = {
-			errors: validationResult.warnings,
+			blocking: validationResult.warnings,
 			informational: [],
 		};
 		vi.mocked(compileWorkflowSource)

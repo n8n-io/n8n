@@ -13,6 +13,7 @@ import { fromEmailProperty, toEmailProperty } from './descriptions';
 import { configureTransport, type EmailSendOptions } from './utils';
 import { appendAttributionOption } from '../../../utils/descriptions';
 import { prepareBinariesDataList } from '../../../utils/binary';
+import { toMailString } from '../utils';
 
 const properties: INodeProperties[] = [
 	// TODO: Add choice for text as text or html  (maybe also from name)
@@ -195,29 +196,35 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			item = items[itemIndex];
 
-			const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
-			const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
-			const subject = this.getNodeParameter('subject', itemIndex) as string;
+			const fromEmail = toMailString(this.getNodeParameter('fromEmail', itemIndex));
+			const toEmail = toMailString(this.getNodeParameter('toEmail', itemIndex));
+			const subject = toMailString(this.getNodeParameter('subject', itemIndex));
 			const emailFormat = this.getNodeParameter('emailFormat', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as EmailSendOptions;
+
+			const ccEmail = toMailString(options.ccEmail);
+			const bccEmail = toMailString(options.bccEmail);
+			const replyTo = toMailString(options.replyTo);
 
 			const transporter = configureTransport(credentials, options);
 
 			const mailOptions: IDataObject = {
 				from: fromEmail,
 				to: toEmail,
-				cc: options.ccEmail,
-				bcc: options.bccEmail,
+				cc: ccEmail,
+				bcc: bccEmail,
 				subject,
-				replyTo: options.replyTo,
+				replyTo,
 			};
 
 			if (emailFormat === 'text' || emailFormat === 'both') {
-				mailOptions.text = this.getNodeParameter('text', itemIndex, '');
+				const text = toMailString(this.getNodeParameter('text', itemIndex, ''));
+				mailOptions.text = text;
 			}
 
 			if (emailFormat === 'html' || emailFormat === 'both') {
-				mailOptions.html = this.getNodeParameter('html', itemIndex, '');
+				const html = toMailString(this.getNodeParameter('html', itemIndex, ''));
+				mailOptions.html = html;
 			}
 
 			let appendAttribution = options.appendAttribution;

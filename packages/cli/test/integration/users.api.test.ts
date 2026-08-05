@@ -601,6 +601,7 @@ describe('GET /users', () => {
 							id: project.id,
 							role: 'project:admin',
 							name: project.name,
+							icon: null,
 						},
 					]),
 				);

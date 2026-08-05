@@ -1,10 +1,10 @@
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useActivationError } from '@/app/composables/useActivationError';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { PushHandlerOptions } from './types';
 
 export async function workflowFailedToActivate(

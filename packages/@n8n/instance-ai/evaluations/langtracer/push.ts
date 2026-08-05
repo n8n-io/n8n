@@ -3,9 +3,11 @@
 // seeding). Pure — no network — so the create/update/unchanged partitioning is
 // unit-testable against in-memory suite state.
 
+import type { LangTracerUpdateCaseBody } from './client';
 import { normalizeExportedCase } from './normalize';
-import { unsupportedPushReason } from './to-exported';
+import { unsupportedPushReason, type LangTracerCreateCaseBody } from './to-exported';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { DEFAULT_DATASETS } from '../harness/schema';
 
 export interface PushPlan {
 	toCreate: WorkflowTestCaseWithFile[];
@@ -14,13 +16,12 @@ export interface PushPlan {
 	skipped: Array<{ fileSlug: string; reason: string }>;
 }
 
-/** Disk fields compared to decide create-vs-update. Deliberately EXCLUDES three
- *  fields that would make a re-push never converge (always "update"):
- *  - `executionScenarios`: sidecar rows `PATCH /cases/:id` can't update — written on create only.
- *  - `tags` and `datasets`: the lang-tracer suite export does not round-trip these
- *    (tags come back empty, default `datasets` comes back null/omitted), so a diff
- *    on them always fires. They're still SENT on create so new cases carry them;
- *    edits to only tags/tier on an existing case aren't re-synced. */
+/** Disk fields compared to decide create-vs-update. Deliberately EXCLUDES `tags`:
+ *  the lang-tracer suite export returns them empty, so a diff on them would fire
+ *  on every case; they're still SENT on create so new cases carry them.
+ *  `datasets` IS compared — a tier edit must re-sync on push — but the export
+ *  omits (or nulls) the stored default, so `projectComparable` folds the default
+ *  to absent on both sides to keep re-pushes convergent. */
 const COMPARED_KEYS = [
 	'description',
 	'conversation',
@@ -30,7 +31,24 @@ const COMPARED_KEYS = [
 	'outcomeExpectations',
 	'messageBudget',
 	'credentials',
+	'datasets',
+	// Round-trips faithfully: PATCH /cases/:id reconciles scenario rows by name
+	// (lang-tracer #48) and the export emits them back in disk shape.
+	'executionScenarios',
 ] as const;
+
+/** Drop the create-only fields, leaving the patchable set (`scenarios` included —
+ *  `PATCH /cases/:id` reconciles them by name since lang-tracer #48). An absent
+ *  `scenarios` is sent as an explicit `[]`: a partial PATCH leaves missing keys
+ *  untouched, so omitting it would keep the server's old scenario rows alive
+ *  forever after a disk case drops its `executionScenarios`. */
+export function toUpdatePatch({
+	suiteId,
+	synthetic,
+	...patch
+}: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
+	return { scenarios: [], ...patch };
+}
 
 /** `existingBodies`: `<name>.json` → exported (disk-shape) body from `GET /suites/:id/export`.
  *  `existingIdsByName`: case name → id from `GET /suites/:id` (authoritative membership). */
@@ -88,6 +106,16 @@ function projectComparable(src: unknown): Record<string, unknown> {
 		// The export only emits `messageBudget` for multi-turn cases (it's ignored for
 		// single-turn auto-approve builds), so ignore it there to stay convergent.
 		if (key === 'messageBudget' && !isMultiTurn) continue;
+		// The loader defaults an absent disk `datasets` while the export omits (or
+		// nulls) the stored default — fold the default to absent on both sides, and
+		// compare order-insensitively since tiers are a set.
+		if (key === 'datasets') {
+			if (!Array.isArray(value)) continue;
+			const datasets = value.slice().sort();
+			if (canonicalize(datasets) === canonicalize([...DEFAULT_DATASETS].sort())) continue;
+			out[key] = datasets;
+			continue;
+		}
 		out[key] = value;
 	}
 	return out;

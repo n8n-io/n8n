@@ -326,14 +326,10 @@ export const getNodeAuthOptions = (
 			);
 		}
 	});
-	// sort so recommended options are first
-	options.forEach((item, i) => {
-		if (item.name.includes(recommendedSuffix)) {
-			options.splice(i, 1);
-			options.unshift(item);
-		}
-	});
-	return options;
+	// recommended options first; stable, so descriptor-relative order is kept within each group
+	const recommended = options.filter((option) => option.name.includes(recommendedSuffix));
+	const notRecommended = options.filter((option) => !option.name.includes(recommendedSuffix));
+	return [...recommended, ...notRecommended];
 };
 
 export const getAllNodeCredentialForAuthType = (

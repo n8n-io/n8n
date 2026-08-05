@@ -2483,8 +2483,8 @@ export class Salesforce implements INodeType {
 						if (additionalFields.subject !== undefined) {
 							body.Subject = additionalFields.subject as string;
 						}
-						if (additionalFields.parentId !== undefined) {
-							body.ParentId = additionalFields.parentId as string;
+						if (additionalFields.ParentId !== undefined) {
+							body.ParentId = additionalFields.ParentId as string;
 						}
 						if (additionalFields.priority !== undefined) {
 							body.Priority = additionalFields.priority as string;
@@ -2554,8 +2554,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.subject !== undefined) {
 							body.Subject = updateFields.subject as string;
 						}
-						if (updateFields.parentId !== undefined) {
-							body.ParentId = updateFields.parentId as string;
+						if (updateFields.ParentId !== undefined) {
+							body.ParentId = updateFields.ParentId as string;
 						}
 						if (updateFields.priority !== undefined) {
 							body.Priority = updateFields.priority as string;

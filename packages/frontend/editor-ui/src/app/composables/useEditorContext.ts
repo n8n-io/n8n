@@ -1,7 +1,7 @@
 import { computed, inject } from 'vue';
 
 import { EditorEnabledFeaturesKey, type EditorFeature } from '@/app/constants/injectionKeys';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 /**
@@ -58,6 +58,7 @@ export function useEditorContext() {
 		instanceAi: featureEnabled('instanceAi'),
 		readOnly: computed(() => enabledFeatures?.value?.readOnly === true),
 		expandGroups: computed(() => enabledFeatures?.value?.expandGroups),
+		executionButtonType: computed(() => enabledFeatures?.value?.executionButtonType ?? 'primary'),
 		executionSuccessToasts: computed(
 			() => enabledFeatures?.value?.executionSuccessToasts !== false,
 		),

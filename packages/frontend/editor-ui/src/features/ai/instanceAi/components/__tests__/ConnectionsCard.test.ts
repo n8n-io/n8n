@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fireEvent } from '@testing-library/vue';
 import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -37,28 +38,30 @@ vi.mock('../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => settingsStoreMock(),
 }));
 
+const mcpStoreMock = vi.fn();
 vi.mock('../../instanceAiMcp.store', () => ({
-	useInstanceAiMcpStore: () => ({
-		connections: [],
-		fetchConnections: vi.fn(),
-		disconnect: vi.fn(),
-	}),
+	useInstanceAiMcpStore: () => mcpStoreMock(),
 }));
 
-vi.mock('../../instanceAiMcp.telemetry', () => ({
-	useInstanceAiMcpTelemetry: () => ({
+const { telemetryMock, uiStoreMock } = vi.hoisted(() => ({
+	telemetryMock: {
 		trackAddMenuMcpSelected: vi.fn(),
-		trackModalOpened: vi.fn(),
+		trackToolsListOpened: vi.fn(),
 		trackSettingsOpened: vi.fn(),
-	}),
-}));
-
-vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({
+	},
+	uiStoreMock: {
 		openModal: vi.fn(),
 		openModalWithData: vi.fn(),
 		appliedTheme: 'light',
-	}),
+	},
+}));
+
+vi.mock('../../instanceAiMcp.telemetry', () => ({
+	useInstanceAiMcpTelemetry: () => telemetryMock,
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => uiStoreMock,
 }));
 
 const COMPUTER_USE_CONNECTION = {
@@ -93,12 +96,32 @@ function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	};
 }
 
+function makeMcpStore(overrides: Record<string, unknown> = {}) {
+	return {
+		connections: [],
+		fetchConnections: vi.fn(),
+		disconnect: vi.fn(),
+		...overrides,
+	};
+}
+
 const renderComponent = createComponentRenderer(ConnectionsCard, {
 	global: {
 		stubs: {
 			ConnectionRow: {
-				props: ['name'],
-				template: '<div data-test-stub="connection-row">{{ name }}</div>',
+				props: ['name', 'actions'],
+				template: `
+					<div data-test-stub="connection-row">
+						<span>{{ name }}</span>
+						<button
+							v-if="actions?.includes('settings')"
+							:data-test-id="\`connection-row-settings-\${name}\`"
+							@click="$emit('open-settings')"
+						>
+							settings
+						</button>
+					</div>
+				`,
 			},
 		},
 	},
@@ -112,6 +135,7 @@ describe('ConnectionsCard', () => {
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
+		mcpStoreMock.mockReturnValue(makeMcpStore());
 	});
 
 	it('renders the browser use row when the experiment is enabled', () => {
@@ -169,6 +193,57 @@ describe('ConnectionsCard', () => {
 		settingsStoreMock.mockReturnValue(makeSettingsStore({ connections: [] }));
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('instance-ai-connections-empty-cta')).toBeVisible();
+	});
+
+	it('tracks opening the tools list from the add button', async () => {
+		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		settingsStoreMock.mockReturnValue(makeSettingsStore({ settings: { mcpAccessEnabled: true } }));
+
+		const { getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('instance-ai-connections-add'));
+
+		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalledTimes(1);
+		expect(uiStoreMock.openModal).toHaveBeenCalledTimes(1);
+	});
+
+	it('tracks opening the tools list from the empty-state CTA', async () => {
+		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		settingsStoreMock.mockReturnValue(
+			makeSettingsStore({ connections: [], settings: { mcpAccessEnabled: true } }),
+		);
+
+		const { getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('instance-ai-connections-empty-cta'));
+
+		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalledTimes(1);
+		expect(uiStoreMock.openModal).toHaveBeenCalledTimes(1);
+	});
+
+	it('tracks opening connected MCP server settings separately from the tools list', async () => {
+		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		settingsStoreMock.mockReturnValue(
+			makeSettingsStore({ connections: [], settings: { mcpAccessEnabled: true } }),
+		);
+		mcpStoreMock.mockReturnValue(
+			makeMcpStore({
+				connections: [
+					{
+						id: 'conn-1',
+						serverSlug: 'linear',
+						serverTitle: 'Linear',
+						serverIcons: [],
+						credentialName: 'Linear OAuth2',
+					},
+				],
+			}),
+		);
+
+		const { getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('connection-row-settings-Linear'));
+
+		expect(telemetryMock.trackSettingsOpened).toHaveBeenCalledWith('linear');
+		expect(telemetryMock.trackToolsListOpened).not.toHaveBeenCalled();
+		expect(uiStoreMock.openModalWithData).toHaveBeenCalledTimes(1);
 	});
 
 	describe('card visibility', () => {

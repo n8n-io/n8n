@@ -52,6 +52,10 @@ const alias = [
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
 	},
 	{
+		find: /^@n8n\/frontend-module-sdk$/,
+		replacement: resolve(packagesDir, 'frontend', '@n8n', 'frontend-module-sdk', 'src/index.ts'),
+	},
+	{
 		find: /^@n8n\/constants(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
 	},
@@ -70,6 +74,14 @@ const alias = [
 	{
 		find: /^@n8n\/stores(.+)$/,
 		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
+	},
+	{
+		find: /^@n8n\/telemetry$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src/index.ts'),
+	},
+	{
+		find: /^@n8n\/telemetry(.+)$/,
+		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src$1'),
 	},
 	{
 		find: /^@n8n\/utils(.+)$/,

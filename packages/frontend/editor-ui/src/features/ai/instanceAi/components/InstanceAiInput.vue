@@ -4,6 +4,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nTag } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -40,6 +41,7 @@ type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
 const DEFAULT_AUTOSIZE_ROWS = 3;
 const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
+type ContextChip = { label: string; icon?: string; testId?: string } | null;
 
 const props = withDefaults(
 	defineProps<{
@@ -65,6 +67,7 @@ const props = withDefaults(
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		submitLabel?: string;
 		submitActiveRequiresFocus?: boolean;
+		contextChip?: ContextChip;
 	}>(),
 	{
 		isStreaming: false,
@@ -79,6 +82,7 @@ const props = withDefaults(
 		fixedRows: null,
 		submitLabel: undefined,
 		submitActiveRequiresFocus: false,
+		contextChip: null,
 	},
 );
 
@@ -86,6 +90,7 @@ const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
 	'cancel-plan-edit': [];
+	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	// Fires when the composer goes between empty and non-empty so the split
@@ -439,6 +444,7 @@ const resizable = computed(() => {
 			:autosize="resizable"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"
+			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
 			@submit="handleSubmit"
@@ -477,7 +483,35 @@ const resizable = computed(() => {
 						</template>
 					</N8nTag>
 				</div>
-				<div v-else-if="attachedFiles.length > 0" :class="$style.attachments">
+				<div
+					v-else-if="props.contextChip"
+					:class="$style.contextChip"
+					:data-test-id="props.contextChip.testId ?? 'instance-ai-handoff-context-chip'"
+				>
+					<N8nTag :text="props.contextChip.label" :clickable="false" size="lg">
+						<template #tag>
+							<span :class="$style.contextChipContent">
+								<N8nIcon
+									:icon="props.contextChip.icon ?? 'robot'"
+									size="small"
+									data-test-id="instance-ai-handoff-context-chip-icon"
+								/>
+								<span :class="$style.contextChipText">{{ props.contextChip.label }}</span>
+								<button
+									type="button"
+									:class="$style.contextChipClose"
+									:title="i18n.baseText('generic.close')"
+									:aria-label="i18n.baseText('generic.close')"
+									data-test-id="instance-ai-handoff-context-chip-dismiss"
+									@click.stop="emit('dismiss-context-chip')"
+								>
+									<N8nIcon icon="x" size="xsmall" />
+								</button>
+							</span>
+						</template>
+					</N8nTag>
+				</div>
+				<div v-if="!props.isPlanEditMode && attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
 						:key="index"

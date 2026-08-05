@@ -1,21 +1,23 @@
 import { isRecord } from '@n8n/utils/is-record';
 
+import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
 /**
  * Human-readable prompt label for a test case. Authored cases use their first
- * turn; seedThread cases carry no authored conversation, so fall back to the
+ * turn; a `replay` seed carries no authored conversation, so fall back to the
  * live (non-seeded) user turn captured in the transcript, then to the thread id.
  */
 export function caseDisplayPrompt(
-	testCase: { conversation?: ConversationTurn[]; seedThread?: { threadId: string } },
+	testCase: { conversation?: ConversationTurn[]; seed?: CaseSeed },
 	transcript?: TranscriptTurn[],
 ): string {
 	const authored = testCase.conversation?.[0]?.text;
 	if (authored) return authored;
 	const liveTurn = transcript?.find((t) => !t.seeded && t.userMessage)?.userMessage;
 	if (liveTurn) return liveTurn;
-	return testCase.seedThread ? `[seeded] thread ${testCase.seedThread.threadId.slice(0, 8)}` : '';
+	const { seed } = testCase;
+	return seed?.mode === 'replay' ? `[seeded] thread ${seed.threadId.slice(0, 8)}` : '';
 }
 
 /**
@@ -38,8 +40,8 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
  * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
  * text from the authored conversation instead of receiving an empty prompt.
  *
- * Accepts `undefined` because `testCase.conversation` is optional (seedThread-only
- * cases carry none) and callers pass it straight through — no conversation → ''.
+ * Accepts `undefined` because `testCase.conversation` is optional (a `replay`-seeded
+ * case carries none) and callers pass it straight through — no conversation → ''.
  */
 export function conversationUserTurnsAsText(conversation: ConversationTurn[] | undefined): string {
 	if (!conversation) return '';
@@ -72,6 +74,21 @@ export function transcriptAsText(transcript: TranscriptTurn[]): string {
 /** Concatenated agent narration across a turn's steps (excludes tool interactions). */
 export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
+}
+
+/**
+ * Agent-side narration across a captured transcript, flattened as a text block
+ * for honesty checks. Single narrating turn → plain text; multi-turn → numbered
+ * by conversation turn so each claim aligns with the user turn that prompted it.
+ */
+export function agentTurnsAsText(transcript: TranscriptTurn[]): string {
+	const narrations = transcript
+		.map((turn, i) => ({ turn: i + 1, text: agentTextOf(turn) }))
+		.filter((n) => n.text.length > 0);
+
+	if (narrations.length === 0) return '';
+	if (narrations.length === 1) return narrations[0].text;
+	return narrations.map((n) => `Turn ${String(n.turn)}: ${n.text}`).join('\n\n');
 }
 
 /** The most recent turn's agent narration — a finalText fallback for seeded

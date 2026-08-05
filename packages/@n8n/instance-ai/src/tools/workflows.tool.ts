@@ -24,6 +24,7 @@ import {
 	summarizeWorkflowStructure,
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
+import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -445,6 +446,10 @@ async function handleGetAsCode(
 	try {
 		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
 		const code = generateWorkflowCode(json);
+		// Historical reads must not advance the optimistic-concurrency lock.
+		if (!input.versionId) {
+			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
+		}
 		return { workflowId: input.workflowId, name: json.name, code };
 	} catch (error) {
 		return {
@@ -485,6 +490,7 @@ async function handleDelete(
 	}
 
 	await context.workflowService.archive(input.workflowId);
+	await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 	return { success: true };
 }
 
@@ -515,6 +521,7 @@ async function handleUnarchive(
 	}
 
 	await context.workflowService.unarchive(input.workflowId);
+	await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 	return { success: true };
 }
 
@@ -647,8 +654,12 @@ async function handleSetupApply(
 
 		// Re-analyze to determine if any nodes still need setup.
 		// Filter by needsAction to distinguish "render this card" from
-		// "this still requires user intervention".
-		const remainingRequests = await analyzeWorkflow(context, input.workflowId);
+		// "this still requires user intervention". Settled requests are kept so
+		// a just-applied credential whose test failed stays reportable below —
+		// a bound credential is settled for routing even when its test fails.
+		const remainingRequests = await analyzeWorkflow(context, input.workflowId, undefined, {
+			includeSettled: true,
+		});
 		const pendingRequests = remainingRequests.filter((r) => r.needsAction);
 		const completedNodes = buildCompletedReport(
 			resumeData.credentials,
@@ -738,6 +749,7 @@ async function handleSetup(
 	if (!resumeData.approved) {
 		if (state.preTestSnapshot) {
 			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
+			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 			state.preTestSnapshot = null;
 		}
 		return {
@@ -827,6 +839,7 @@ async function handleUpdate(
 
 	try {
 		await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
+		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 		return { success: true, workflowId: input.workflowId };
 	} catch (error) {
 		return {
@@ -882,6 +895,7 @@ async function handlePublish(
 		try {
 			for (const supportingWorkflowId of supportingWorkflowIds) {
 				await context.workflowService.publish(supportingWorkflowId);
+				await refreshWorkflowSourceFileBindingFromWorkflow(context, supportingWorkflowId);
 				publishedSupportingWorkflowIds.push(supportingWorkflowId);
 				publishedWorkflowIds.push(supportingWorkflowId);
 			}
@@ -896,6 +910,7 @@ async function handlePublish(
 					: {}),
 			});
 			publishedWorkflowIds.push(input.workflowId);
+			await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 
 			return {
 				success: true,
@@ -953,6 +968,7 @@ async function rollbackPublishedWorkflows(
 			} else {
 				await context.workflowService.unpublish(workflowId);
 			}
+			await refreshWorkflowSourceFileBindingFromWorkflow(context, workflowId);
 			result.rolledBackWorkflowIds.push(workflowId);
 		} catch (error) {
 			result.rollbackErrors.push({
@@ -1018,6 +1034,7 @@ async function handleUnpublish(
 
 	try {
 		await context.workflowService.unpublish(input.workflowId);
+		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 		return { success: true };
 	} catch (error) {
 		return {
@@ -1074,6 +1091,7 @@ async function handleRestoreVersion(
 
 	try {
 		await context.workflowService.restoreVersion!(input.workflowId, input.versionId);
+		await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 		return { success: true };
 	} catch (error) {
 		return {

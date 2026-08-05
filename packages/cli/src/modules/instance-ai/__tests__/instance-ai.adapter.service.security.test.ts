@@ -58,6 +58,7 @@ import type { RoleService } from '@/services/role.service';
 import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-execute-additional-data', () => ({
@@ -154,6 +155,7 @@ const service = new InstanceAiAdapterService(
 	mock<SsrfProtectionService>(),
 	mock<OutboundHttp>(),
 	mock<AiGatewayService>(),
+	mock<WorkflowTemplatesService>(),
 );
 
 const user = mock<User>({

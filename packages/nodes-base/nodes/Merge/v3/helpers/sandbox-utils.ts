@@ -135,9 +135,10 @@ export async function withSandboxContext<T>(
 export async function runAlaSqlInSandbox(
 	tableData: unknown[][],
 	query: string,
+	parameters: unknown[] = [],
 ): Promise<IDataObject[]> {
 	try {
-		return await executeAlaSql(tableData, query);
+		return await executeAlaSql(tableData, query, parameters);
 	} catch (error) {
 		// Hitting the isolate's memory limit disposes the isolate. That can mean
 		// this dataset is genuinely too large, but it can also be transient: earlier
@@ -146,13 +147,17 @@ export async function runAlaSqlInSandbox(
 		// rebuilds the disposed isolate on a clean heap, so a transient accumulation
 		// succeeds while a truly oversized dataset fails again and propagates.
 		if (isSandboxMemoryError(error)) {
-			return await executeAlaSql(tableData, query);
+			return await executeAlaSql(tableData, query, parameters);
 		}
 		throw error;
 	}
 }
 
-async function executeAlaSql(tableData: unknown[][], query: string): Promise<IDataObject[]> {
+async function executeAlaSql(
+	tableData: unknown[][],
+	query: string,
+	parameters: unknown[],
+): Promise<IDataObject[]> {
 	const dbId = randomUUID();
 
 	// evalClosure binds ($0, $1, $2) as parameters of an implicit wrapping function,
@@ -160,21 +165,21 @@ async function executeAlaSql(tableData: unknown[][], query: string): Promise<IDa
 	// which strips prototypes and functions so only inert plain data crosses the
 	// isolate boundary.
 	const script = `
-		const rows = $0, dbId = $1, query = $2;
+		const rows = $0, dbId = $1, query = $2, parameters = $3;
 		const db = new alasql.Database(dbId);
 		try {
 			for (let i = 0; i < rows.length; i++) {
 				db.exec('CREATE TABLE input' + (i + 1));
 				db.tables['input' + (i + 1)].data = rows[i];
 			}
-			return JSON.stringify(db.exec(query));
+			return JSON.stringify(db.exec(query, parameters));
 		} finally {
 			delete alasql.databases[dbId];
 		}
 	`;
 
 	return await withSandboxContext(async (context) => {
-		const resultJson = (await context.evalClosure(script, [tableData, dbId, query], {
+		const resultJson = (await context.evalClosure(script, [tableData, dbId, query, parameters], {
 			arguments: { copy: true },
 			result: { copy: true },
 			timeout: 30000,

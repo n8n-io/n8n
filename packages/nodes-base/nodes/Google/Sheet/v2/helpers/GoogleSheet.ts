@@ -1,3 +1,4 @@
+import { utils as xlsxUtils } from '@e965/xlsx';
 import get from 'lodash/get';
 import type {
 	IDataObject,
@@ -7,7 +8,6 @@ import type {
 	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { utils as xlsxUtils } from 'xlsx';
 
 import type {
 	ILookupValues,

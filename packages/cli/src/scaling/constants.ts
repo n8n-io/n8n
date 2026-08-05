@@ -38,6 +38,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
 	'relay-chat-stream-event',
+	'relay-agent-execution-update',
 	'relay-instance-ai-event',
 	'relay-instance-ai-task-control',
 	'agent-chat-subscription-changed',
@@ -46,5 +47,6 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'display-workflow-activation',
 	'display-workflow-deactivation',
 	'display-workflow-activation-error',
+	'display-workflow-publication-status',
 	'workflow-publish-wake-up',
 ]);

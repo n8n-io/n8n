@@ -4,6 +4,7 @@ import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { watch } from 'vue';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -11,7 +12,6 @@ import {
 	VIEWS,
 	AutoSaveState,
 	DEBOUNCE_TIME,
-	getDebounceTime,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -21,9 +21,9 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { isExpression, type IDataObject } from 'n8n-workflow';
-import { useToast } from './useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
-import { useTelemetry } from './useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from './useNodeHelpers';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isDebouncedFunction } from '@/app/utils/typeGuards';
@@ -39,7 +39,8 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
 
 export function useWorkflowSaving({
 	router,
@@ -67,6 +68,7 @@ export function useWorkflowSaving({
 	const backendConnectionStore = useBackendConnectionStore();
 	const settingsStore = useSettingsStore();
 	const workflowId = useWorkflowId();
+	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -201,12 +203,19 @@ export function useWorkflowSaving({
 				}
 				uiStore.addActiveAction('workflowSaving');
 
-				// Capture dirty state count before save to detect changes made during save
-				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
-
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(currentWorkflow),
 				);
+
+				// Ungroup node groups this version can't save (e.g. groups created on a
+				// newer n8n version) so the request isn't rejected on every (auto)save.
+				// Runs before the dirty-count capture so the removal doesn't keep the
+				// state dirty after a successful save.
+				removeInvalidNodeGroups(workflowDocumentStore);
+
+				// Capture dirty state count before save to detect changes made during save
+				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
+
 				const workflowDataRequest: WorkflowDataUpdate = workflowDocumentStore.serialize();
 				// This can happen if the user has another workflow in the browser history and navigates
 				// via the browser back button, encountering our warning dialog with the new route already set
@@ -390,12 +399,17 @@ export function useWorkflowSaving({
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
-			// Capture dirty state count before save to detect changes made during save
-			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
-
 			const currentDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowId.value),
 			);
+
+			if (!data) {
+				removeInvalidNodeGroups(currentDocumentStore);
+			}
+
+			// Capture dirty state count before save to detect changes made during save
+			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
+
 			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
 			const changedNodes = {} as IDataObject;
 

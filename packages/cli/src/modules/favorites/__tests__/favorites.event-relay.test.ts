@@ -76,4 +76,19 @@ describe('FavoritesEventRelay', () => {
 			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('proj1', 'project');
 		});
 	});
+
+	describe('agent-deleted', () => {
+		it('should delete favorites for the deleted agent', async () => {
+			const event: RelayEventMap['agent-deleted'] = {
+				agentId: 'agent1',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('agent-deleted', event);
+
+			await new Promise(setImmediate);
+
+			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('agent1', 'agent');
+		});
+	});
 });

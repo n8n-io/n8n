@@ -28,6 +28,7 @@ export function useInstanceAiCredentialHelp(): () => InstanceAiCredentialHelpHan
 			await startThread(
 				projectId,
 				buildInstanceAiCredentialQuestion(credential),
+				{ source: 'credentials_list', origin: 'internal' },
 				undefined,
 				undefined,
 				{ newTab: true, context: buildInstanceAiCredentialHandoffContext(credential) },

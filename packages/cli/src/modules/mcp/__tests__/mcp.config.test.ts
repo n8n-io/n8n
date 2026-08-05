@@ -9,6 +9,7 @@ describe('McpConfig', () => {
 
 	afterEach(() => {
 		delete process.env.N8N_MCP_SERVER_RATE_LIMIT;
+		delete process.env.N8N_MCP_BASE_URL;
 	});
 
 	it('applies the documented default limit', () => {
@@ -43,4 +44,31 @@ describe('McpConfig', () => {
 			expect(config.rateLimitServer).toBe(100);
 		},
 	);
+
+	describe('baseUrl', () => {
+		it('defaults to unset', () => {
+			expect(Container.get(McpConfig).baseUrl).toBe('');
+		});
+
+		it('reads and normalizes the URL from its environment variable', () => {
+			process.env.N8N_MCP_BASE_URL = 'https://n8n-mcp.example.com/';
+
+			expect(Container.get(McpConfig).baseUrl).toBe('https://n8n-mcp.example.com');
+		});
+
+		it('preserves a subpath while stripping query and fragment', () => {
+			process.env.N8N_MCP_BASE_URL = 'https://example.com/n8n/?foo=1#bar';
+
+			expect(Container.get(McpConfig).baseUrl).toBe('https://example.com/n8n');
+		});
+
+		it.each(['not-a-url', 'ftp://example.com', '//half-a-url'])(
+			'falls back to unset when given an invalid value (%s)',
+			(value) => {
+				process.env.N8N_MCP_BASE_URL = value;
+
+				expect(Container.get(McpConfig).baseUrl).toBe('');
+			},
+		);
+	});
 });

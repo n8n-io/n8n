@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, watch, type Component } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBody.vue';
 import McpDetailBody from '@/features/shared/toolsConnection/McpDetailBody.vue';
@@ -23,7 +22,9 @@ import {
 	type ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
+import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
+import { useMcpServerConnect } from '../../composables/useMcpServerConnect';
 import type {
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolResponse,
@@ -56,9 +57,9 @@ const props = defineProps<{
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
+const mcpTelemetry = useInstanceAiMcpTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
-const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
 const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
 const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
@@ -96,7 +97,7 @@ const activeItemId = ref(readConnectionIdPayload(modalState.value?.data));
 
 // If there is a connection ID in the modal data, the modal is being opened
 // for a particular connection, not from a list, so we don't show the back button
-const shouldHideBackButton = computed(() => !!readConnectionIdPayload(modalState.value?.data));
+const isDirectConnectionOpen = computed(() => !!readConnectionIdPayload(modalState.value?.data));
 
 const detailItem = computed<ToolConnectionItem | null>(() => {
 	return activeItemId.value ? (items.value.find((i) => i.id === activeItemId.value) ?? null) : null;
@@ -106,51 +107,20 @@ const detailMode = computed<'detail' | 'settings'>(() =>
 	detailItem.value?.kind === 'mcp-server' && detailItem.value.isConnected ? 'settings' : 'detail',
 );
 
-interface PendingCredentialContext {
-	serverSlug: string;
-	credentialType: string;
-	existingCredentialIds: Set<string>;
-}
-
-const pendingCredentialContext = ref<PendingCredentialContext | null>(null);
-
 type McpToolMetadata = McpRegistryServerToolResponse | InstanceAiMcpConnectionToolResponse;
 
-async function connectOrSwapCredential(serverSlug: string, credentialId: string): Promise<boolean> {
-	const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
-	if (!existing) {
-		const result = await mcpStore.connect({ serverSlug, credentialId });
-		if (result) {
-			toast.showMessage({
-				type: 'success',
-				title: i18n.baseText('instanceAi.mcp.success.connect'),
-			});
-		}
-		return Boolean(result);
-	}
+const { connectServer, connectWithCredential } = useMcpServerConnect();
 
-	if (existing.credentialId === credentialId) {
-		return false;
-	}
-
-	const updated = await mcpStore.updateConnection(existing.id, { credentialId });
-	if (updated) {
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('instanceAi.mcp.success.changeCredential'),
-		});
-	}
-	return Boolean(updated);
+/** Reveals the settings view of the server the user just connected */
+function showConnectedServer(connectionId: string | null): void {
+	if (connectionId) activeItemId.value = connectionId;
 }
 
 if (isMcpEnabled.value) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnections();
+	void credentialsStore.fetchAllCredentials();
 }
-
-const credentialsPromise = isMcpEnabled.value
-	? credentialsStore.fetchAllCredentials()
-	: Promise.resolve([]);
 
 // Clear the state on close so the next open starts
 // fresh without every caller needing to pass `data: {}`
@@ -221,6 +191,7 @@ function buildItem(
 	return {
 		id: connection?.id ?? server.slug,
 		kind: 'mcp-server',
+		category: 'mcp',
 		title: server.title,
 		description: server.tagline,
 		longDescription: server.description,
@@ -275,6 +246,7 @@ const serviceItems = computed<ServiceConnectionItem[]>(() => {
 		.map((service) => ({
 			id: service.id,
 			kind: 'service',
+			category: 'built-in',
 			serviceId: service.id,
 			title: i18n.baseText(service.titleKey),
 			description: i18n.baseText(service.descriptionKey),
@@ -317,33 +289,6 @@ watch(
 	{ immediate: true },
 );
 
-async function openCredentialEditModal(server: McpRegistryServerResponse): Promise<void> {
-	await credentialsPromise;
-	pendingCredentialContext.value = {
-		serverSlug: server.slug,
-		credentialType: server.credentialType,
-		existingCredentialIds: new Set(
-			credentialsStore.getCredentialsByType(server.credentialType).map((c) => c.id),
-		),
-	};
-	uiStore.openNewCredential(server.credentialType);
-}
-
-function showSettingsForServer(serverSlug: string): void {
-	activeItemId.value = mcpStore.connections.find((c) => c.serverSlug === serverSlug)?.id ?? null;
-}
-
-async function createCredentialAndConnect(server: McpRegistryServerResponse): Promise<void> {
-	if (canOAuthCredentialQuickConnect(server.credentialType)) {
-		const credential = await createAndAuthorize(server.credentialType);
-		if (!credential) return;
-		const ok = await connectOrSwapCredential(server.slug, credential.id);
-		if (ok) showSettingsForServer(server.slug);
-		return;
-	}
-	await openCredentialEditModal(server);
-}
-
 const credentialAdapter: ToolConnectionCredentialAdapter = {
 	getCredentialsByType: (authType: string): readonly PickableCredential[] => {
 		const creds = credentialsStore.getCredentialsByType(authType);
@@ -359,7 +304,7 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 				uiStore.openNewCredential(authType);
 				return;
 			}
-			await createCredentialAndConnect(server);
+			showConnectedServer(await connectServer(server));
 		})();
 	},
 	openExistingCredential: (credentialId: string) => {
@@ -369,42 +314,38 @@ const credentialAdapter: ToolConnectionCredentialAdapter = {
 
 provide(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, credentialAdapter);
 
-// Once the credential modal is closed, if a new
-// credential was created, create a connection for it
-watch(
-	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open,
-	async (isCredentialModalOpen, wasOpen) => {
-		if (!wasOpen || isCredentialModalOpen) return;
-
-		const ctx = pendingCredentialContext.value;
-		pendingCredentialContext.value = null;
-		await Promise.all([credentialsStore.fetchAllCredentials(), mcpStore.fetchConnections()]);
-
-		if (!ctx) return;
-
-		const current = credentialsStore.getCredentialsByType(ctx.credentialType);
-		const newCreds = current.filter((c) => !ctx.existingCredentialIds.has(c.id));
-
-		if (newCreds.length === 0) return;
-
-		if (newCreds.length > 1) {
-			toast.showMessage({
-				type: 'info',
-				title: i18n.baseText('instanceAi.mcp.error.autoConnectAmbiguous.title'),
-				message: i18n.baseText('instanceAi.mcp.error.autoConnectAmbiguous.message'),
-			});
-			return;
-		}
-
-		const ok = await connectOrSwapCredential(ctx.serverSlug, newCreds[0].id);
-		if (ok) showSettingsForServer(ctx.serverSlug);
-	},
-);
-
 function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResponse | undefined {
 	const connection = mcpStore.connections.find((c) => c.id === item.id);
 	const slug = connection?.serverSlug ?? item.id;
 	return mcpStore.catalog?.find((s) => s.slug === slug);
+}
+
+function trackMcpCredentialInteraction(
+	item: ToolConnectionItem,
+	track: (serverSlug: string) => void,
+): void {
+	if (item.kind !== 'mcp-server') return;
+	const server = findServerForItem(item);
+	if (!server) return;
+	track(server.slug);
+}
+
+function handleFirstCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackFirstCredentialConnectionStart(serverSlug);
+	});
+}
+
+function handleCredentialDropdownOpen(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackCredentialDropdownOpened(serverSlug);
+	});
+}
+
+function handleNewCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackNewCredentialConnectionStart(serverSlug);
+	});
 }
 
 async function handleSelectCredential(
@@ -415,8 +356,8 @@ async function handleSelectCredential(
 	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
-	const ok = await connectOrSwapCredential(server.slug, credentialId);
-	if (ok) showSettingsForServer(server.slug);
+	mcpTelemetry.trackExistingCredentialSelected(server.slug);
+	showConnectedServer(await connectWithCredential(server.slug, credentialId));
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
@@ -427,10 +368,12 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 		excludedTools: settings.excludedTools,
 	});
 	if (!updated) return;
+	mcpTelemetry.trackToolFilterSettingsUpdated(updated.serverSlug, settings.inclusionMode);
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('instanceAi.mcp.settings.saved'),
 	});
+	if (isDirectConnectionOpen.value) uiStore.closeModal(props.modalName);
 }
 
 async function handleDisconnect(item: ToolConnectionItem) {
@@ -447,7 +390,7 @@ async function handleConnect(item: ToolConnectionItem) {
 		case 'mcp-server':
 			const server = findServerForItem(item);
 			if (server) {
-				await createCredentialAndConnect(server);
+				showConnectedServer(await connectServer(server));
 			}
 			break;
 	}
@@ -458,12 +401,15 @@ async function handleConnect(item: ToolConnectionItem) {
 	<ToolsConnectionModal
 		v-model:open="isOpen"
 		:items="items"
-		:sections="['connected', 'built-in-services', 'nodes']"
+		:categories="['all', 'built-in', 'mcp']"
 		:detail-item="detailItem"
 		:detail-mode="detailMode"
-		:hide-back-button="shouldHideBackButton"
+		:hide-back-button="isDirectConnectionOpen"
 		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
+		@credential-dropdown-open="handleCredentialDropdownOpen"
+		@first-credential-connect="handleFirstCredentialConnect"
+		@new-credential-connect="handleNewCredentialConnect"
 		@connect="handleConnect"
 		@save="handleSave"
 		@disconnect="handleDisconnect"

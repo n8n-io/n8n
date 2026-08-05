@@ -4,6 +4,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
@@ -76,7 +77,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nActionDropdown: {
 		name: 'ActionDropdown',
 		template: '<div v-bind="$attrs" />',
-		props: ['items', 'activatorIcon'],
+		props: ['items', 'activatorIcon', 'extraPopperClass'],
 		emits: ['select'],
 	},
 }));
@@ -107,7 +108,15 @@ const globalStubs = {
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
-		props: ['agent', 'projectId', 'agentId', 'isSaving', 'beforeRevertToPublished'],
+		props: [
+			'agent',
+			'projectId',
+			'agentId',
+			'isSaving',
+			'beforeRevertToPublished',
+			'configValidationStatus',
+			'beforePublish',
+		],
 		emits: ['published', 'unpublished', 'reverted'],
 	},
 };
@@ -121,6 +130,8 @@ function mountHeader(
 		artifactMode: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
+		configValidationStatus: 'valid' | 'invalid' | null;
+		beforePublish: () => Promise<boolean>;
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
@@ -134,6 +145,8 @@ function mountHeader(
 			artifactMode: overrides.artifactMode,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
+			configValidationStatus: overrides.configValidationStatus,
+			beforePublish: overrides.beforePublish,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -177,6 +190,12 @@ describe('AgentBuilderHeader', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
 		const action = wrapper.findComponent({ name: 'ActionDropdown' });
 		expect(action.props('activatorIcon')).toBe('ellipsis');
+	});
+
+	it('widens the header action menu so labels are readable from the icon trigger', () => {
+		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
+		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		expect(action.props('extraPopperClass')).toBeTruthy();
 	});
 
 	it('hides the action dropdown when no header actions are available', () => {
@@ -279,6 +298,13 @@ describe('AgentBuilderHeader', () => {
 		expect(previewButton.attributes('href')).toBe('/projects/p1/agents/a1/preview');
 	});
 
+	it('does not expose a preview href in artifact mode', () => {
+		const wrapper = mountHeader({ artifactMode: true });
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('href')).toBeUndefined();
+	});
+
 	it('disables preview with a tooltip when the agent is not runnable', async () => {
 		const wrapper = mountHeader({
 			agent: { ...baseAgent, isRunnable: false } as AgentResource,
@@ -309,14 +335,11 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});
 
-	it('navigates to the new agent page from the switcher footer', async () => {
+	it('navigates to Instance AI for agent creation from the switcher footer', async () => {
 		const wrapper = mountHeader();
 
 		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
 
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'NewAgentView',
-			query: { projectId: 'p1' },
-		});
+		expect(routerPush).toHaveBeenCalledWith(instanceAiCreateAgentRoute('p1'));
 	});
 });

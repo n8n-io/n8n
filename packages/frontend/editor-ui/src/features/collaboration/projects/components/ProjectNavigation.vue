@@ -2,8 +2,8 @@
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +15,8 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -123,6 +125,15 @@ const instanceAi = computed<IMenuItem>(() => ({
 	preview: true,
 }));
 
+const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
+
+const workflowReviews = computed<IMenuItem>(() => ({
+	id: 'workflow-reviews',
+	icon: 'message-square-text',
+	label: locale.baseText('workflowReviews.menu.title'),
+	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
+	preview: true,
+}));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
 	icon: 'message-circle',
@@ -179,6 +190,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="isWorkflowReviewsNavVisible"
+				:item="workflowReviews"
+				:compact="props.collapsed"
+				:active="activeTabId === 'workflow-reviews'"
+				data-test-id="project-workflow-reviews-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

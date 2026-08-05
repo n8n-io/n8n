@@ -21,6 +21,25 @@ body {
 	gap: 1rem;
 }
 
+.theme-side-by-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.theme-side-by-side__panel {
+	position: relative;
+	padding: var(--spacing--md);
+	background: var(--background--surface);
+	color: var(--text-color);
+	border-radius: var(--radius--lg);
+	overflow: auto;
+
+	&[data-theme='light'] {
+		border: var(--border);
+	}
+}
+
 .sbdocs .sbdocs-content table:not(.sbdocs-preview table, .docs-story table) {
 	width: 100%;
 	border-collapse: collapse;
@@ -37,4 +56,14 @@ body {
 
 .sbdocs .sbdocs-content th:not(.sbdocs-preview th, .docs-story th) {
 	font-weight: var(--font-weight--bold);
+}
+
+/*
+ * The prose-table styling above is meant for Markdown/args tables in docs. Rendered component
+ * previews live inside `.sb-story` and bring their own table styling (e.g. N8nDataTableServer),
+ * so the docs prose block margin must not leak in — otherwise it pushes the header row down and
+ * leaves an empty gap at the top of the table card.
+ */
+.sbdocs .sbdocs-content .sb-story table {
+	margin-block: 0;
 }

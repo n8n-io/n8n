@@ -11,13 +11,6 @@ vi.mock('../composables/useAgentApi', () => ({
 	revertAgentToPublished: vi.fn(),
 }));
 
-vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({
-		trackPublishedAgent: vi.fn(),
-		trackUnpublishedAgent: vi.fn(),
-	}),
-}));
-
 const agentPermissionsMock = {
 	canCreate: ref(true),
 	canUpdate: ref(true),
@@ -30,10 +23,6 @@ vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => agentPermissionsMock,
 }));
 
-vi.mock('../composables/agentTelemetry.utils', () => ({
-	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({ config_version: 'v-test' }),
-}));
-
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
@@ -42,7 +31,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return { useToast: () => ({ showMessage, showError }) };
@@ -78,6 +67,12 @@ const STUBS = {
 		props: ['items', 'placement', 'activatorIcon'],
 		emits: ['select'],
 	},
+	N8nTooltip: {
+		name: 'N8nTooltip',
+		template:
+			'<span data-testid="stub-tooltip" :data-disabled="disabled" :data-content="content"><slot /></span>',
+		props: ['disabled', 'content'],
+	},
 };
 
 const activeVersion: AgentVersion = {
@@ -110,6 +105,8 @@ interface RenderProps {
 	projectId?: string;
 	agentId?: string;
 	beforeRevertToPublished?: () => Promise<void> | void;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	beforePublish?: () => Promise<boolean>;
 }
 
 function getModalCallbacks() {
@@ -211,54 +208,6 @@ describe('AgentPublishButton', () => {
 		await flushPromises();
 
 		expect(publishAgent).not.toHaveBeenCalled();
-	});
-
-	it('computes config_version from the server-returned activeVersion.schema, not caller context', async () => {
-		const { publishAgent } = await import('../composables/useAgentApi');
-		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
-
-		// Server returns the just-published config in activeVersion.schema.
-		const publishedSchema = { name: 'X', instructions: 'pub', model: 'gpt-4' } as unknown as Record<
-			string,
-			unknown
-		>;
-		const updatedAgent = createAgent({
-			activeVersionId: 'v1',
-			activeVersion: { ...activeVersion, schema: publishedSchema as never },
-		});
-		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
-
-		// Caller has no live draft available — mirrors the list-card publish path.
-		const agent = createAgent({ activeVersionId: null });
-		const wrapper = await renderComponent({ agent });
-		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-		await flushPromises();
-
-		// Fingerprint must be derived from the server's response so different
-		// agents never collide on `config_version`.
-		expect(buildAgentConfigFingerprint).toHaveBeenCalledWith(publishedSchema, []);
-	});
-
-	it('treats publish as successful when telemetry fingerprinting throws', async () => {
-		const { publishAgent } = await import('../composables/useAgentApi');
-		const { buildAgentConfigFingerprint } = await import('../composables/agentTelemetry.utils');
-		const { useToast } = await import('@/app/composables/useToast');
-		const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
-		vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
-		vi.mocked(buildAgentConfigFingerprint).mockRejectedValueOnce(
-			new Error('crypto.subtle unavailable'),
-		);
-
-		const agent = createAgent({ activeVersionId: null });
-		const wrapper = await renderComponent({ agent });
-		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-		await flushPromises();
-
-		// Success path ran all the way through — no error toast, published event emitted.
-		const toast = useToast();
-		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
 	// Dropdown — publish action
@@ -390,6 +339,93 @@ describe('AgentPublishButton', () => {
 			expect(dot.exists()).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorChanges'))).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorPublished'))).toBe(false);
+		});
+	});
+
+	// Configuration validation gating
+	describe('configuration validation gating', () => {
+		it('gates the Publish button on validation status', async () => {
+			const unpublishedAgent = createAgent({ activeVersionId: null });
+
+			const invalidWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: 'invalid',
+			});
+			const invalidButton = invalidWrapper.find('[data-testid="publish-agent-button"]');
+			expect(invalidButton.attributes('disabled')).toBeDefined();
+			const invalidTooltip = invalidWrapper.find('[data-testid="stub-tooltip"]');
+			expect(invalidTooltip.attributes('data-disabled')).toBe('false');
+			expect(invalidTooltip.attributes('data-content')).toBe(
+				'agents.publish.button.invalidConfigTooltip',
+			);
+
+			// An unknown (null) validation result is treated as not publishable.
+			const nullWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: null,
+			});
+			expect(
+				nullWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+
+			const validWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: 'valid',
+			});
+			expect(
+				validWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
+
+			// Published with no pending changes — disabled regardless of validation,
+			// and the invalid-config tooltip must not show for this other reason.
+			const publishedAgent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
+			const publishedWrapper = await renderComponent({
+				agent: publishedAgent,
+				configValidationStatus: 'invalid',
+			});
+			expect(
+				publishedWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(
+				publishedWrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled'),
+			).toBe('true');
+		});
+
+		it('aborts the publish request when beforePublish resolves false', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const beforePublish = vi.fn().mockResolvedValue(false);
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({
+				agent,
+				configValidationStatus: 'valid',
+				beforePublish,
+			});
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(beforePublish).toHaveBeenCalled();
+			expect(publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('publishes when beforePublish resolves true', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
+			vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+			const beforePublish = vi.fn().mockResolvedValue(true);
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({
+				agent,
+				configValidationStatus: 'valid',
+				beforePublish,
+			});
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(beforePublish).toHaveBeenCalled();
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 	});
 

@@ -3,10 +3,11 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
 import { binaryToString, tryParseUrl } from '@n8n/backend-network';
+import { sleep } from '@n8n/utils/sleep';
 import crypto from 'crypto';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import { NodeOperationError, jsonParse, sleep } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,

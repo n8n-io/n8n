@@ -5,7 +5,10 @@ import {
 	type WorkspaceSandbox,
 } from '@n8n/agents';
 
-import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
+import {
+	INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST,
+	createLazyRuntimeWorkspace,
+} from '../lazy-runtime-workspace';
 
 function createMockWorkspace() {
 	const executeCommand = vi.fn<
@@ -88,8 +91,11 @@ describe('createLazyRuntimeWorkspace', () => {
 		lazyWorkspace.getInstructions();
 
 		expect(ensureWorkspace).not.toHaveBeenCalled();
-		expect(tools.some((tool) => tool.name === 'workspace_read_file')).toBe(true);
-		expect(tools.some((tool) => tool.name === 'workspace_execute_command')).toBe(true);
+		expect(tools.map((tool) => tool.name).sort()).toEqual(
+			[...INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST].sort(),
+		);
+		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
+		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 
 		const readFile = tools.find((tool) => tool.name === 'workspace_read_file');
 		await readFile?.handler?.({ path: '/workspace/report.md' }, {});
@@ -208,5 +214,26 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(filesystem.destroy).toHaveBeenCalledTimes(1);
 		expect(lazyWorkspace.filesystem?.status).toBe('destroyed');
 		expect(lazyWorkspace.sandbox?.status).toBe('destroyed');
+	});
+
+	it('aborts writeFile while lazy workspace bring-up is still pending', async () => {
+		const abortController = new AbortController();
+		const ensureWorkspace = vi.fn(
+			async () =>
+				await new Promise<Workspace>(() => {
+					// Never resolves — simulates Daytona create/start hanging.
+				}),
+		);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const writePromise = lazyWorkspace.filesystem!.writeFile('/workflow.ts', 'export {}', {
+			abortSignal: abortController.signal,
+		});
+
+		abortController.abort('Agent run was aborted');
+
+		await expect(writePromise).rejects.toMatchObject({
+			name: 'AbortError',
+			message: 'Agent run was aborted',
+		});
 	});
 });

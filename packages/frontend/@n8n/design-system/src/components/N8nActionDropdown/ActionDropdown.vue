@@ -2,36 +2,20 @@
 import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
+import type { ActionDropdownItem } from '../../types';
 import N8nBadge from '../N8nBadge';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
-import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import type { ActionDropdownProps } from './ActionDropdown.types';
 
 const { t } = useI18n();
 
-const TRIGGER = ['click', 'hover'] as const;
-
 defineOptions({ inheritAttrs: false });
 
-interface ActionDropdownProps {
-	items: Array<ActionDropdownItem<T>>;
-	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
-	activatorIcon?: IconName;
-	activatorSize?: ButtonSize;
-	iconSize?: IconSize;
-	trigger?: (typeof TRIGGER)[number];
-	teleported?: boolean;
-	disabled?: boolean;
-	extraPopperClass?: string;
-	maxHeight?: string | number;
-	modal?: boolean;
-}
-
-const props = withDefaults(defineProps<ActionDropdownProps>(), {
+const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
 	placement: 'bottom',
 	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
@@ -98,6 +82,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
+		[$style.destructive]: item.variant === 'destructive',
 		[$style.hasCustomStyling]: item.customClass !== undefined,
 		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
 	};
@@ -122,6 +107,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:modal="modal"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
+			:width="width"
 			@select="onSelect"
 			@update:model-value="onOpenChange"
 		>
@@ -177,6 +163,9 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					/>
 				</span>
 			</template>
+			<template v-if="$slots.footer" #footer>
+				<slot name="footer" />
+			</template>
 		</N8nDropdownMenu>
 	</div>
 </template>
@@ -195,12 +184,14 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 .itemContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
+	/* Matches the base N8nDropdownMenu item gap so icon-to-label spacing is
+	 * consistent across every menu in the app. */
+	gap: var(--spacing--2xs);
 	justify-content: space-between;
 	font-size: var(--font-size--2xs);
 	line-height: 18px;
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-
+	min-width: fit-content;
 	&.disabled {
 		.shortcut {
 			opacity: 0.3;
@@ -209,6 +200,19 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 
 	:global([data-disabled]) & {
 		color: inherit;
+	}
+}
+
+/* Destructive items (delete, revoke, ...) turn danger-red on hover or keyboard
+ * highlight: the icon and label both inherit the item color, so one rule
+ * covers them, and the token adapts to light/dark themes on its own. */
+.destructive {
+	&:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			color: var(--color--danger);
+		}
 	}
 }
 

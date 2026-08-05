@@ -28,11 +28,11 @@ const scopes = computed(() => props.apiKey?.scopes ?? []);
 
 <template>
 	<N8nDialog
-		:model-value="open"
-		:title="title"
-		width="480px"
+		:open="open"
+		:header="title"
+		size="medium"
 		data-test-id="api-key-scopes-modal"
-		@update:model-value="emit('update:open', $event)"
+		@update:open="emit('update:open', $event)"
 	>
 		<div :class="$style.body">
 			<N8nText v-if="!scopes.length" size="small" color="text-light">

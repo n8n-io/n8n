@@ -1,23 +1,21 @@
-// Push selected on-disk eval cases (data/workflows/*.json) UP into a curated
+// Push selected on-disk eval cases (data/workflows/ + data/agents/ *.json) UP into a
 // lang-tracer suite over the REST API, upserting: create missing, update changed,
 // leave unchanged, skip unsupported. The inverse of `--source langtracer` (which
-// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (see .env.eval).
+// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (repo-root .env.local).
 //
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building ai-quote-carousel ...
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline --changed
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline my-new-case ...
 //   ... --dry-run   # plan only, no writes
 
 import { execFileSync } from 'node:child_process';
 import { basename } from 'node:path';
 
+import { loadAgentEvalTestCasesWithFiles } from '../data/agents';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
-import { LangTracerClient, type LangTracerUpdateCaseBody } from '../langtracer/client';
+import { LangTracerClient } from '../langtracer/client';
 import { resolveLangTracerConfig } from '../langtracer/config';
-import { planPush } from '../langtracer/push';
-import {
-	diskCaseToLangTracerCreate,
-	type LangTracerCreateCaseBody,
-} from '../langtracer/to-exported';
+import { planPush, toUpdatePatch } from '../langtracer/push';
+import { diskCaseToLangTracerCreate } from '../langtracer/to-exported';
 
 interface CliArgs {
 	suite: string;
@@ -38,7 +36,7 @@ Usage:
 
 Selectors (at least one required — no accidental push-all):
   <slugs...>            Exact file slugs to push (e.g. ai-quote-carousel)
-  --changed             New/untracked + staged + modified data/workflows/*.json
+  --changed             New/untracked + staged + modified data/{workflows,agents}/*.json
   --filter <csv>        Substring match on file slug
   --tier <name>         Cases whose datasets include <name>
   --exclude <csv>       Substring exclude (modifier, not a selector on its own)
@@ -137,7 +135,7 @@ function nextArg(argv: string[], i: number, flag: string): string {
 	return value;
 }
 
-/** New/untracked + staged + modified `data/workflows/*.json` slugs, from git. */
+/** New/untracked + staged + modified `data/{workflows,agents}/*.json` slugs, from git. */
 function gitChangedSlugs(): string[] {
 	const out = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
 		encoding: 'utf-8',
@@ -147,21 +145,14 @@ function gitChangedSlugs(): string[] {
 		if (!line.trim()) continue;
 		const raw = line.slice(3).trim(); // strip the 2-char status + space
 		const path = raw.includes(' -> ') ? raw.split(' -> ')[1] : raw; // rename → new path
-		if (path.includes('evaluations/data/workflows/') && path.endsWith('.json')) {
+		if (
+			(path.includes('evaluations/data/workflows/') || path.includes('evaluations/data/agents/')) &&
+			path.endsWith('.json')
+		) {
 			slugs.push(basename(path, '.json'));
 		}
 	}
 	return slugs;
-}
-
-/** Drop the create-only fields `PATCH /cases/:id` rejects, leaving the patchable set. */
-function toUpdatePatch({
-	suiteId,
-	synthetic,
-	scenarios,
-	...patch
-}: LangTracerCreateCaseBody): LangTracerUpdateCaseBody {
-	return patch;
 }
 
 async function main() {
@@ -184,15 +175,27 @@ async function main() {
 		throw new Error(`suite "${args.suite}" not found. Available: ${known || '(none)'}.`);
 	}
 
-	// Select disk cases: loader applies --filter/--exclude/--tier; then narrow to the
-	// exact slugs from positional args + --changed (if either was given).
-	const all = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	// Select disk cases: loader applies --filter/--exclude, --tier narrows by the
+	// case's datasets (mirrors data/source.ts); then narrow to the exact slugs
+	// from positional args + --changed (if either was given).
+	const loaded = [
+		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude),
+		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude),
+	];
+	const dupes = loaded.filter((c, i) => loaded.findIndex((o) => o.fileSlug === c.fileSlug) !== i);
+	if (dupes.length > 0) {
+		throw new Error(
+			`duplicate case slug(s) across data/workflows and data/agents: ${dupes.map((d) => d.fileSlug).join(', ')}`,
+		);
+	}
+	const tier = args.tier;
+	const all = tier ? loaded.filter((c) => c.testCase.datasets.includes(tier)) : loaded;
 	const exactSlugs = new Set([...args.slugs, ...(args.changed ? gitChangedSlugs() : [])]);
 	const selected = exactSlugs.size > 0 ? all.filter((c) => exactSlugs.has(c.fileSlug)) : all;
 
 	const missing = [...exactSlugs].filter((s) => !all.some((c) => c.fileSlug === s));
 	if (missing.length > 0) {
-		console.warn(`⚠ no data/workflows case file for: ${missing.join(', ')}`);
+		console.warn(`⚠ no data/workflows or data/agents case file for: ${missing.join(', ')}`);
 	}
 	if (selected.length === 0) {
 		console.log('No cases selected — nothing to push.');

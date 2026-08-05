@@ -2,6 +2,7 @@ import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, type User } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import type { DataTableInfoById } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
@@ -473,6 +474,75 @@ describe('DataTableService', () => {
 				regularUser.id,
 				mockRoles,
 			);
+		});
+	});
+
+	describe('findDataTablesByIdsForUser', () => {
+		const adminUser = {
+			id: 'user-admin',
+			role: { slug: 'global:owner', scopes: [{ slug: 'dataTable:read' }] },
+		} as unknown as User;
+
+		const regularUser = {
+			id: 'user-regular',
+			role: { slug: 'global:member', scopes: [] },
+		} as unknown as User;
+
+		it('returns an empty array without querying when given no ids', async () => {
+			const result = await dataTableService.findDataTablesByIdsForUser([], regularUser, [
+				'dataTable:read',
+			]);
+
+			expect(result).toEqual([]);
+			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
+			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
+		});
+
+		it('queries by id only for a user with the matching global scope', async () => {
+			mockDataTableRepository.find.mockResolvedValue([]);
+
+			await dataTableService.findDataTablesByIdsForUser(['dt-1', 'dt-2'], adminUser, [
+				'dataTable:read',
+			]);
+
+			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
+				where: { id: In(['dt-1', 'dt-2']) },
+				relations: { columns: true, project: true },
+			});
+			expect(mockRoleService.rolesWithScope).not.toHaveBeenCalled();
+		});
+
+		it('filters by accessible projects for a user without the global scope', async () => {
+			mockRoleService.rolesWithScope.mockResolvedValue(['project:admin', 'project:editor']);
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['proj-1']);
+			mockDataTableRepository.find.mockResolvedValue([]);
+
+			await dataTableService.findDataTablesByIdsForUser(['dt-1'], regularUser, ['dataTable:read']);
+
+			expect(mockRoleService.rolesWithScope).toHaveBeenCalledWith('project', ['dataTable:read']);
+			expect(mockProjectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				regularUser.id,
+				['project:admin', 'project:editor'],
+			);
+			expect(mockDataTableRepository.find).toHaveBeenCalledWith({
+				where: {
+					id: In(['dt-1']),
+					projectId: In(['proj-1']),
+				},
+				relations: { columns: true, project: true },
+			});
+		});
+
+		it('returns an empty array without querying the repository when the user has no accessible projects', async () => {
+			mockRoleService.rolesWithScope.mockResolvedValue([]);
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			const result = await dataTableService.findDataTablesByIdsForUser(['dt-1'], regularUser, [
+				'dataTable:read',
+			]);
+
+			expect(result).toEqual([]);
+			expect(mockDataTableRepository.find).not.toHaveBeenCalled();
 		});
 	});
 
