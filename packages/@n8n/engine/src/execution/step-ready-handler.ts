@@ -3,6 +3,7 @@ import type { ExternalDependencies, IStepExecutor } from '../dependencies';
 import type { GraphNode, WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { loadStepContext } from './load-step-context';
 import type { StepError, StepRecord, StepStore } from './step-store';
 
 /**
@@ -24,7 +25,12 @@ export class StepReadyHandler {
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
-		const { step, execution, node, executor } = await this.prepareToClaimStep(event);
+		const { step, execution, node } = await loadStepContext(
+			this.executionStore,
+			this.stepStore,
+			event,
+		);
+		const executor = this.executorFor(step, node);
 
 		// Claim via CAS so a duplicate/redelivered event is a no-op.
 		const claimed = await this.stepStore.claimStep(event.stepId);
@@ -63,35 +69,6 @@ export class StepReadyHandler {
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});
-	}
-
-	// Retrieve the step and the execution and do some validation before we claim the step.
-	// TODO(CAT-3930): more thorough validation and handling of internal consistency errors.
-	private async prepareToClaimStep(event: StepReadyEvent): Promise<{
-		step: StepRecord;
-		execution: ExecutionRecord;
-		node: GraphNode;
-		executor: IStepExecutor;
-	}> {
-		const [step, execution] = await Promise.all([
-			this.stepStore.loadStep(event.stepId),
-			this.executionStore.loadExecution(event.executionId),
-		]);
-		if (step.executionId !== event.executionId) {
-			throw new UnexpectedError(
-				`step ${step.id} belongs to execution ${step.executionId}, but the event claims ${event.executionId}`,
-			);
-		}
-		const node: GraphNode | undefined = execution.graph.nodes.find(
-			(candidate) => candidate.id === step.nodeId,
-		);
-		if (!node) {
-			throw new UnexpectedError(
-				`step ${step.id} references node ${step.nodeId}, which is absent from the execution graph`,
-			);
-		}
-		const executor = this.executorFor(step, node);
-		return { step, execution, node, executor };
 	}
 
 	private async runStep(

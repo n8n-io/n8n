@@ -19,14 +19,20 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const shortVersion = (versionId: string) => versionId.slice(0, 8);
+/**
+ * Label each side the way version history does, falling back to a short id.
+ * Falsy rather than nullish: the publish endpoints accept `name: ""`.
+ */
+const versionLabel = (snapshot: WorkflowReviewVersionSnapshot) =>
+	snapshot.name || snapshot.versionId.slice(0, 8);
 
 /**
- * A snapshot minus its identity and timestamp — i.e. everything the diff renders.
- * Derived by omission rather than an explicit field list to avoid drift.
+ * A snapshot minus its identity and metadata — i.e. everything the diff renders.
+ * Derived by omission rather than an explicit field list to avoid drift; renaming
+ * a version must not read as a change.
  */
 function contentOf(snapshot: WorkflowReviewVersionSnapshot) {
-	return omit(snapshot, ['versionId', 'createdAt']);
+	return omit(snapshot, ['versionId', 'name', 'createdAt']);
 }
 
 const hasChanges = computed(() => {
@@ -69,14 +75,14 @@ const targetWorkflow = computed(() =>
 const sourceLabel = computed(() =>
 	props.workflow.baselineVersion
 		? i18n.baseText('workflowReviews.changes.sourceLabel', {
-				interpolate: { version: shortVersion(props.workflow.baselineVersion.versionId) },
+				interpolate: { version: versionLabel(props.workflow.baselineVersion) },
 			})
 		: undefined,
 );
 const targetLabel = computed(() =>
 	props.workflow.pinnedVersion
 		? i18n.baseText('workflowReviews.changes.targetLabel', {
-				interpolate: { version: shortVersion(props.workflow.pinnedVersion.versionId) },
+				interpolate: { version: versionLabel(props.workflow.pinnedVersion) },
 			})
 		: undefined,
 );

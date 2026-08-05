@@ -104,7 +104,7 @@ case can still assert outcome), but the primary shape drives the work.
 | **Build** (default) | Does the workflow the agent builds actually *work*? | `outcomeExpectations` + `executionScenarios` |
 | **Behaviour / process** | Does the agent *converse* correctly (ask the right clarifying question, not re-ask, honour a correction, respect plan approval)? | `processExpectations` + multi-turn director script; often **build-only** |
 | **Credential** | Does the build behave correctly given a specific credential view? | `credentials[]` |
-| **Seeded** | Reproduce a conversation mid-thread and drive the turn under test | `seed` (`mode: "inline"` or `"replay"`) |
+| **Seeded** | Start mid-thread, with prior work already in place, and drive the turn under test | `seed` (authored `mode: "inline"`; `"replay"` for a local check) |
 
 **Build** is documented in full below. The other three, the director-script
 vocabulary, and the seeding modes are in [`case-shapes.md`](case-shapes.md).

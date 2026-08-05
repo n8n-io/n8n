@@ -198,6 +198,15 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		return info;
 	}
 
+	if (isRecord(error)) {
+		if (error.type === 'overloaded_error') {
+			return { content: 'The model is overloaded. Try again in a few minutes.' };
+		}
+
+		const message = nonEmptyString(error.message);
+		if (message) return { content: message };
+	}
+
 	return { content: 'Unknown error' };
 }
 

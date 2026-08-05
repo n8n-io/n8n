@@ -64,13 +64,15 @@ function inlineSeed(): ConversationSeed {
 
 function makeClient(
 	restoreThread: ReturnType<typeof vi.fn>,
-	overrides: Partial<Record<'listWorkflows' | 'deleteWorkflow', ReturnType<typeof vi.fn>>> = {},
+	overrides: Partial<
+		Record<'listWorkflows' | 'deleteWorkflow' | 'sendMessage', ReturnType<typeof vi.fn>>
+	> = {},
 ): N8nClient {
 	return {
 		getPersonalProjectId: vi.fn().mockResolvedValue('project-1'),
 		ensureThread: vi.fn().mockResolvedValue(undefined),
 		setThreadCredentialAllowlist: vi.fn().mockResolvedValue(undefined),
-		sendMessage: vi.fn().mockResolvedValue(undefined),
+		sendMessage: overrides.sendMessage ?? vi.fn().mockResolvedValue(undefined),
 		getThreadMessages: vi.fn().mockResolvedValue({ messages: [] }),
 		listWorkflows: overrides.listWorkflows ?? vi.fn().mockResolvedValue([]),
 		deleteWorkflow: overrides.deleteWorkflow ?? vi.fn().mockResolvedValue(undefined),
@@ -280,5 +282,57 @@ describe('buildWorkflow with an inline seed', () => {
 
 		expect(build.success).toBe(true);
 		expect(restoreThread).not.toHaveBeenCalled();
+	});
+});
+
+describe('buildWorkflow with scenario seed data tables', () => {
+	const jobApplications = {
+		id: 'job-applications-1234',
+		name: 'Job Applications',
+		columns: [{ name: 'application_id', type: 'string' as const }],
+		rows: [{ application_id: 'row_001' }],
+	};
+
+	it('creates the table under a per-run name and tells the agent THAT name', async () => {
+		// The name is project-unique, so a per-run suffix is what lets two iterations of
+		// one case coexist. The agent binds by discovery, so it has to be told the real
+		// name — sending the declared one would make it create a duplicate.
+		const sendMessage = vi.fn().mockResolvedValue({ runId: 'run-1' });
+		const restoreThread = vi
+			.fn()
+			.mockResolvedValue({ restored: 0, workflowIds: [], dataTableIds: ['dt-real-1'] });
+
+		const build = await buildWorkflow({
+			client: makeClient(restoreThread, { sendMessage }),
+			...baseConfig,
+			executionScenarios: [
+				{
+					name: 's1',
+					description: 'd',
+					dataSetup: 'setup',
+					successCriteria: 'ok',
+					seedDataTables: [jobApplications],
+				},
+			],
+		});
+
+		const [, , , dataTables] = restoreThread.mock.calls[0] as [
+			string,
+			unknown,
+			unknown,
+			Array<{ name: string; rows?: unknown }>,
+		];
+		const created = dataTables[0].name;
+		expect(created).toMatch(/^Job Applications \[seed [0-9a-f]{8}\]$/);
+		// Schema only before the build — rows are reseeded per scenario.
+		expect(dataTables[0].rows).toBeUndefined();
+
+		const [, sentText] = sendMessage.mock.calls[0] as [string, string];
+		expect(sentText).toContain(created);
+
+		// Keyed by the DECLARED name, which is what a scenario's seedDataTables writes.
+		expect(build.seededScenarioTableIdsByName).toEqual({ 'Job Applications': 'dt-real-1' });
+		// Tracked for cleanup by id, so the rename can't orphan it.
+		expect(build.createdDataTableIds).toContain('dt-real-1');
 	});
 });

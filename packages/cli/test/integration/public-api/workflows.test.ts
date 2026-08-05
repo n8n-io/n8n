@@ -708,9 +708,9 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return workflows ordered by id', async () => {
-		const first = await createWorkflowWithHistory({ name: 'First' }, member);
-		const second = await createWorkflowWithHistory({ name: 'Second' }, member);
-		const third = await createWorkflowWithHistory({ name: 'Third' }, member);
+		const first = await createWorkflowWithHistory({ id: 'sortid01', name: 'First' }, member);
+		const second = await createWorkflowWithHistory({ id: 'sortid02', name: 'Second' }, member);
+		const third = await createWorkflowWithHistory({ id: 'sortid03', name: 'Third' }, member);
 
 		// Editing must not change id order (would move the row under updatedAt sort).
 		const editResponse = await authMemberAgent.put(`/workflows/${second.id}`).send({
@@ -724,9 +724,11 @@ describe('GET /workflows', () => {
 		const response = await authMemberAgent.get('/workflows');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual(
-			[first.id, second.id, third.id].sort(),
-		);
+		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual([
+			first.id,
+			second.id,
+			third.id,
+		]);
 	});
 
 	test('should return share rows without the owning project', async () => {

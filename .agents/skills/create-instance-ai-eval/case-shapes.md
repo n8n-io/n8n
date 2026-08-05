@@ -345,19 +345,19 @@ assertion: two credentials with one scripted invalid should show exactly `1`.
 
 ## Seeded cases (start mid-conversation)
 
-A seeded case restores prior history into the build thread *before* the live
-turn, so the eval drives only the turn under test. Use it to reproduce a real
-situation — a conversation up to some point, then a message that should trigger
-(or correct) a behaviour.
+A seeded case puts prior history into the build thread *before* the live turn, so
+the eval drives only the turn under test. Use it to set up the situation you want
+to test — history up to some point, then a message that should trigger (or
+correct) a behaviour.
 
 Pick the lightest mode that fits:
 
 | Situation | Mode | Pairs with |
 |---|---|---|
-| Reproduce a real conversation (common case) | `seed.mode: "replay"` — fetch + reconstruct its LangSmith trace at run time; nothing committed | supplies its own live turn (omit `conversation`) |
 | Prior work already exists (a workflow to repair, an agent to change) | `seed.mode: "inline"` — prior messages + the workflows/agents they reference, in the case body | a normal `conversation` for the live turn |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `seed.mode: "inline"` with `{role, text}` shorthand messages | a normal `conversation` for the live turn |
 | Shallow 2–3 turn prelude where the agent's live replies matter | none — a plain multi-turn `conversation` re-drives it live | — |
+| Confirming a real failure locally, before authoring the case | `seed.mode: "replay"` — rebuilds a thread from its LangSmith trace at run time; nothing committed, expires with the trace | supplies its own live turn (omit `conversation`) |
 
 Both modes are implemented and wired (`harness/conversation-seed.ts` +
 `harness/langsmith-seed.ts`, threaded through the runner). The literals match
@@ -365,13 +365,12 @@ lang-tracer's `metadata.seed` verbatim, so nothing translates between the repos.
 
 ### What the seed does — and does not — exercise
 
-**The seeded portion is restored, not re-run.** The message log is written into
-the thread verbatim (marked `seeded: true` so the judge and checks can tell it
-apart), and the workflows, data tables and agents the history references are
-**recreated on the instance** — so when the live turn runs, the agent sees the same
-workspace the original conversation left behind. Data tables are recreated
-**schema-only, no rows** (row values are the most sensitive part of a trace and
-are kept out of the eval instance).
+**The seeded portion is replayed, not re-run.** The prior messages are written into
+the thread as they stand (marked `seeded: true` so the judge and checks can tell
+them apart), and the workflows, data tables and agents they reference are **created
+on the instance** — so when the live turn runs, the agent sees the workspace the case
+says it should. Data tables are created **schema-only, no rows**: row values are the
+most sensitive thing a table holds, and they stay off the eval instance.
 
 One thing the restore can't reproduce: the **sandbox is empty**. The agent re-reads
 state from the database rather than editing source it "wrote", so a seeded case is
@@ -396,18 +395,21 @@ the issue is in a *later* turn. (A turn-0 issue can't be isolated by seeding: it
 lands inside the seed, so you'd bake the bug into the prelude.) Two standing
 costs keep it a last resort, not a default:
 
-- **Data handling.** It recreates a real conversation on the eval instance. The
-  most sensitive content is scrubbed first — data-table row values are kept out
-  and redacted from the restored history, node credentials stripped — but that
-  isn't guaranteed exhaustive, so treat reproduced content as if it may carry
-  user data and follow your team's data-handling policy.
+- **Data handling.** A replay stands someone's own conversation up on the eval
+  instance. The most sensitive parts are removed first — data-table row values are
+  kept out and redacted from the history, node credentials stripped — but that pass
+  can't be assumed exhaustive, so treat what comes back as potentially personal data
+  and follow your team's data-handling policy. Cleanup deletes the thread, workflows
+  and tables when the build finishes, though it is best-effort: a crashed run can
+  leave them on the instance. Scrubbing the workflow into an `inline` seed is how the
+  whole concern goes away for good.
 - **Transience.** It depends on LangSmith trace retention (~14 days); the case
   stops running once the source trace ages out (tag it `seeded`, keep it out of
   `full`/`pr`).
 
 If a plain prompt + director script can reproduce the situation, prefer that.
 
-### `mode: "replay"` — reproduce a real conversation
+### `mode: "replay"` — rebuild a thread for a local run
 
 ```json
 "seed": { "mode": "replay", "threadId": "<thread-id>", "project": "instance-ai" }
@@ -421,13 +423,11 @@ sent live. `project` defaults to `instance-ai`. Optional `endpoint` pins a
 US-tenant source host during the US→EU migration; optional `liveTurnRunId` pins
 which user turn goes live.
 
-- **Cross-workspace, zero config.** A prod thread can be reproduced in a staging
+- **Cross-workspace, zero config.** A production thread can be replayed in a staging
   eval — the harness enumerates the workspaces your `LANGSMITH_API_KEY` can reach
   and finds the one holding the thread. It only *reads* the source; the eval
-  writes its own traces/datasets to its own workspace. Reproducing a real thread
-  recreates its conversation on the eval instance; the most sensitive content is
-  scrubbed first (see the data-handling note above), and it's still worth
-  handling per your team's data policy.
+  writes its own traces/datasets to its own workspace. What it rebuilds still lands
+  on the eval instance, so the data-handling note above applies.
 - **Continue past the live turn.** Add a `conversation` to keep driving after the
   trace's last message replays (first authored turn = expected assistant reply as
   proxy reference; subsequent `user` turns become follow-ups). Omit it to replay

@@ -231,19 +231,28 @@ export function clampFutureSeedTimestamps(messages: unknown[]): unknown[] {
 // Workflow id + name remapping
 // ---------------------------------------------------------------------------
 
-/** Marks a workflow as created by a seed restore, and makes its name unique per
- *  restore. Load-bearing twice over: a leftover copy from an earlier
- *  run can no longer be mistaken for this run's workflow by name, and the suffix
- *  identifies seed artifacts precisely — so the pre-restore eviction can only ever
- *  delete one of ours, never a real workflow and never one the agent built. Same
- *  shape the server already uses for seeded data tables. */
+/** Marks an artifact as seed-created and unique per restore, so a leftover can't
+ *  be mistaken for this run's — and the eviction can only ever delete one of ours,
+ *  never a real artifact or one the agent built. Shared with `seed-tables.ts`. */
 const seedNameSuffix = (token: string) => ` [seed ${token}]`;
 
-/** Matches a name this module produced, capturing the original base name. */
-export const SEED_WORKFLOW_NAME_RE = /^(.*) \[seed [0-9a-f]{8}\]$/;
+export const freshSeedNameSuffix = () => seedNameSuffix(randomUUID().slice(0, 8));
 
-/** n8n's workflow-name column bound. */
-const MAX_WORKFLOW_NAME = 128;
+/** Matches a suffixed name, capturing the base. Workflows and data tables both. */
+export const SEED_NAME_RE = /^(.*) \[seed [0-9a-f]{8}\]$/;
+
+/** n8n's name-column bound. */
+const MAX_SEED_NAME = 128;
+
+export function uniquifySeedName(name: string, suffix: string): string {
+	return `${name.slice(0, MAX_SEED_NAME - suffix.length)}${suffix}`;
+}
+
+/** The base a declared name will actually carry once suffixed. Eviction matches on
+ *  the stored base, so it has to truncate the declared name the same way or a long
+ *  name never matches its own leftover. */
+export const seedNameBase = (name: string) =>
+	name.slice(0, MAX_SEED_NAME - seedNameSuffix('0'.repeat(8)).length);
 
 const escapeForRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -344,13 +353,10 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	}
 
 	// Uniquify names after the id pass, so the rename can't perturb id matching.
-	const workflows = remapped.workflows.map((workflow) => {
-		const suffix = seedNameSuffix(randomUUID().slice(0, 8));
-		return {
-			...workflow,
-			name: `${workflow.name.slice(0, MAX_WORKFLOW_NAME - suffix.length)}${suffix}`,
-		};
-	});
+	const workflows = remapped.workflows.map((workflow) => ({
+		...workflow,
+		name: uniquifySeedName(workflow.name, freshSeedNameSuffix()),
+	}));
 
 	// Any mention in the seeded history follows the workflow, so the agent's own
 	// record of what it built still matches what is on the instance.
