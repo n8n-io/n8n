@@ -115,24 +115,18 @@ export class WorkflowReviewInboxService {
 	): Promise<WorkflowReviewRequestDetail> {
 		await this.featureGate.assertAvailable();
 
-		const { request, readableRows, pinnedWorkflowId, canReadPinnedWorkflow } =
-			await this.accessService.findReadableRequestOrFail(user, workflowReviewRequestId);
+		const access = await this.accessService.findReadableRequestOrFail(
+			user,
+			workflowReviewRequestId,
+		);
+		const { request, readableRows } = access;
 
 		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
 			Promise.all(readableRows.map(async (row) => await this.toWorkflowDetail(row))),
-			(async () =>
-				await this.hydrateParticipants(
-					[request],
-					await this.workflowReviewRequestReviewerRepository.findByRequestIds([request.id]),
-				))(),
+			this.resolveParticipants(request),
 			// Resolved against the pinned (pre-read-filter) row, matching the row
 			// decide() authorizes against — not against what the caller can read.
-			this.eligibilityService.resolveViewerEligibility(
-				user,
-				request,
-				pinnedWorkflowId,
-				canReadPinnedWorkflow,
-			),
+			this.eligibilityService.resolveViewerEligibility(user, access),
 		]);
 
 		const { requester, reviewers } = participantsByRequestId.get(request.id) ?? {
@@ -148,6 +142,18 @@ export class WorkflowReviewInboxService {
 			viewerDecisionIneligibilityReason: eligibility.reason,
 			viewerCanComment: eligibility.canComment,
 		};
+	}
+
+	/**
+	 * The reviewer rows are read only once the access gate has resolved. Starting them
+	 * earlier would need a floating promise that rejects unhandled when the gate throws,
+	 * which is not worth the one round trip.
+	 */
+	private async resolveParticipants(request: WorkflowReviewRequest) {
+		const reviewerRows = await this.workflowReviewRequestReviewerRepository.findByRequestIds([
+			request.id,
+		]);
+		return await this.hydrateParticipants([request], reviewerRows);
 	}
 
 	/**

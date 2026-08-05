@@ -3,7 +3,6 @@ import {
 	ProjectRelationRepository,
 	WorkflowReviewRequestAuthorRepository,
 	type User,
-	type WorkflowReviewRequest,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -13,6 +12,8 @@ import {
 } from '@n8n/permissions';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import type { ReadableWorkflowReviewRequest } from './workflow-review-access.service';
 
 export interface WorkflowReviewViewerEligibility {
 	canDecide: boolean;
@@ -68,10 +69,15 @@ export class WorkflowReviewEligibilityService {
 	 */
 	async resolveViewerEligibility(
 		user: User,
-		request: WorkflowReviewRequest,
-		pinnedWorkflowId: string | null,
-		canReadPinnedWorkflow: boolean,
+		// One object from the read gate, so `canReadPinnedWorkflow` cannot be passed for a
+		// different workflow, request or user than the one it was resolved against.
+		access: Pick<
+			ReadableWorkflowReviewRequest,
+			'request' | 'pinnedWorkflowId' | 'canReadPinnedWorkflow'
+		>,
 	): Promise<WorkflowReviewViewerEligibility> {
+		const { request, pinnedWorkflowId, canReadPinnedWorkflow } = access;
+
 		// No linked workflow means decide() would 404 before any permission check, and
 		// there is nothing left to discuss either.
 		if (!pinnedWorkflowId) {

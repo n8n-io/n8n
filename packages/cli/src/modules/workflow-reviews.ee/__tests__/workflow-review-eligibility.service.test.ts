@@ -30,6 +30,16 @@ describe('WorkflowReviewEligibilityService', () => {
 
 	const request = () => mock<WorkflowReviewRequest>({ id: requestId, projectId });
 
+	/** The read gate's verdict: a readable review pinned to `workflowId`. */
+	const readable = (
+		overrides: Partial<Parameters<typeof service.resolveViewerEligibility>[1]> = {},
+	) => ({
+		request: request(),
+		pinnedWorkflowId: workflowId,
+		canReadPinnedWorkflow: true,
+		...overrides,
+	});
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
@@ -39,12 +49,7 @@ describe('WorkflowReviewEligibilityService', () => {
 
 	describe('resolveViewerEligibility', () => {
 		it('lets a non-author with publish access decide', async () => {
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				request(),
-				workflowId,
-				true,
-			);
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
 			expect(eligibility).toEqual({ canDecide: true, reason: null, canComment: true });
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
@@ -57,12 +62,7 @@ describe('WorkflowReviewEligibilityService', () => {
 		it('reports an author without an admin override as ineligible', async () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
 
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				request(),
-				workflowId,
-				true,
-			);
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
 			expect(eligibility).toEqual({ canDecide: false, reason: 'author', canComment: true });
 		});
@@ -73,12 +73,7 @@ describe('WorkflowReviewEligibilityService', () => {
 				authorRepository.isAuthor.mockResolvedValue(true);
 				const admin = mock<User>({ id: 'user-1', role: { slug } });
 
-				const eligibility = await service.resolveViewerEligibility(
-					admin,
-					request(),
-					workflowId,
-					true,
-				);
+				const eligibility = await service.resolveViewerEligibility(admin, readable());
 
 				expect(eligibility).toEqual({ canDecide: true, reason: null, canComment: true });
 				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
@@ -89,12 +84,7 @@ describe('WorkflowReviewEligibilityService', () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId]);
 
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				request(),
-				workflowId,
-				true,
-			);
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
 			expect(eligibility).toEqual({ canDecide: true, reason: null, canComment: true });
 		});
@@ -103,18 +93,13 @@ describe('WorkflowReviewEligibilityService', () => {
 			authorRepository.isAuthor.mockResolvedValue(true);
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['other-proj']);
 
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				request(),
-				workflowId,
-				true,
-			);
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
 			expect(eligibility).toEqual({ canDecide: false, reason: 'author', canComment: true });
 		});
 
 		it('skips the roles query entirely for a non-author', async () => {
-			await service.resolveViewerEligibility(memberUser(), request(), workflowId, true);
+			await service.resolveViewerEligibility(memberUser(), readable());
 
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 		});
@@ -125,12 +110,7 @@ describe('WorkflowReviewEligibilityService', () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 			authorRepository.isAuthor.mockResolvedValue(true);
 
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				request(),
-				workflowId,
-				true,
-			);
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
 
 			// Authorship still resolves — it feeds `canComment`, which survives the missing
 			// publish right as long as the author can read the pinned workflow.
@@ -149,9 +129,9 @@ describe('WorkflowReviewEligibilityService', () => {
 		])('still reports viewer eligibility for %s', async (_label, overrides) => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				mock<WorkflowReviewRequest>({ id: requestId, projectId, ...overrides }),
-				workflowId,
-				true,
+				readable({
+					request: mock<WorkflowReviewRequest>({ id: requestId, projectId, ...overrides }),
+				}),
 			);
 
 			expect(eligibility).toEqual({ canDecide: true, reason: null, canComment: true });
@@ -160,9 +140,7 @@ describe('WorkflowReviewEligibilityService', () => {
 		it('reports a review with no linked workflow as ineligible without any lookup', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				request(),
-				null,
-				false,
+				readable({ pinnedWorkflowId: null, canReadPinnedWorkflow: false }),
 			);
 
 			expect(eligibility).toEqual({

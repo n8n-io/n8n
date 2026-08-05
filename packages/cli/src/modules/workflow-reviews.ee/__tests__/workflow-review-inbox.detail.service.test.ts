@@ -13,7 +13,6 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
@@ -25,8 +24,7 @@ import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 const requestId = 'req-1';
 const workflowId = 'wf-1';
 
-/** Plain member: no global scopes, so visibility falls through to project scopes. */
-const member = mock<User>({ id: 'user-1', role: { slug: 'global:member', scopes: [] } });
+/** No global scopes, so visibility falls through to project scopes. */
 const requester = mock<User>({ id: 'requester-1', role: { slug: 'global:member', scopes: [] } });
 
 function reviewRequest(overrides: Partial<WorkflowReviewRequest> = {}) {
@@ -134,17 +132,6 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 	});
 
-	// The gate itself is covered by workflow-review-access.service.test.ts
-	it('surfaces the read gate verdict as-is', async () => {
-		accessService.findReadableRequestOrFail.mockRejectedValue(
-			new NotFoundError('Could not find review request'),
-		);
-
-		await expect(service.getDetail(member, requestId)).rejects.toThrow(
-			'Could not find review request',
-		);
-	});
-
 	describe('what the response contains', () => {
 		it('returns the review together with the workflows it covers', async () => {
 			mockChildRow('ver-pinned');
@@ -218,12 +205,12 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			const detail = await service.getDetail(requester, requestId);
 
-			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
-				requester,
-				expect.objectContaining({ id: requestId }),
-				workflowId,
-				false,
-			);
+			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(requester, {
+				request: expect.objectContaining({ id: requestId }),
+				readableRows: [],
+				pinnedWorkflowId: workflowId,
+				canReadPinnedWorkflow: false,
+			});
 			expect(detail.workflows).toEqual([]);
 			expect(detail.viewerCanDecide).toBe(false);
 			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_publish_permission');
@@ -235,9 +222,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
 				requester,
-				expect.objectContaining({ id: requestId }),
-				null,
-				false,
+				expect.objectContaining({ pinnedWorkflowId: null, canReadPinnedWorkflow: false }),
 			);
 		});
 	});

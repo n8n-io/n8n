@@ -77,16 +77,13 @@ export class WorkflowReviewActivityService {
 	): Promise<WorkflowReviewActivityEntry> {
 		await this.featureGate.assertAvailable();
 
-		const { request, pinnedWorkflowId, canReadPinnedWorkflow } =
-			await this.accessService.findReadableRequestOrFail(user, workflowReviewRequestId);
+		const access = await this.accessService.findReadableRequestOrFail(
+			user,
+			workflowReviewRequestId,
+		);
 
 		// No lifecycle guard on purpose: a settled review stays open to discussion.
-		const eligibility = await this.eligibilityService.resolveViewerEligibility(
-			user,
-			request,
-			pinnedWorkflowId,
-			canReadPinnedWorkflow,
-		);
+		const eligibility = await this.eligibilityService.resolveViewerEligibility(user, access);
 		if (!eligibility.canComment) {
 			throw new ForbiddenError('You are not allowed to comment on this review');
 		}
