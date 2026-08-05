@@ -131,6 +131,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		});
 	}
 
+	/** The node's failure counters, or `null` if it has no stored row. */
 	async findFailureState(
 		workflowId: string,
 		nodeId: string,
@@ -145,6 +146,13 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			: { consecutiveErrors: row.consecutiveErrors, backoffUntil: row.backoffUntil };
 	}
 
+	/**
+	 * Increments the failure counter and sets the backoff deadline. Update-only:
+	 * the cursor read that runs before every poll guarantees the row already
+	 * exists, and an upsert would have to invent a cursor value, seeding `{}`
+	 * and destroying an unmigrated node's static-data seed. A missing row is
+	 * reported as `false`, not thrown.
+	 */
 	async recordFailure(
 		workflowId: string,
 		nodeId: string,
@@ -155,6 +163,9 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.createQueryBuilder()
 			.update(PollerState)
 			.set({
+				// Incremented in SQL rather than read-then-write, so two overlapping
+				// failing polls of the same node both count instead of one clobbering
+				// the other.
 				consecutiveErrors: () => '"consecutiveErrors" + 1',
 				backoffUntil,
 				updatedAt: new Date(),
@@ -165,6 +176,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		return result.affected === 1;
 	}
 
+	/** Zeroes the counter and clears the deadline. Update-only, same `false` on a miss. */
 	async clearFailures(
 		workflowId: string,
 		nodeId: string,
