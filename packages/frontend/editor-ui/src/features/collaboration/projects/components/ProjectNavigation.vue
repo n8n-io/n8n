@@ -12,6 +12,7 @@ import { useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { CATALOG_VIEW } from '@/features/catalog/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -115,6 +116,21 @@ const personalProject = computed<IMenuItem>(() => ({
 	},
 }));
 
+/**
+ * Gated on the same scope the catalog endpoints require, so the entry is not
+ * offered to someone whose first click would be a permission error.
+ */
+const isCatalogNavVisible = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'workflow:list' } }),
+);
+
+const catalog = computed<IMenuItem>(() => ({
+	id: 'catalog',
+	label: locale.baseText('projects.menu.catalog'),
+	icon: 'circle-play',
+	route: { to: { name: CATALOG_VIEW } },
+}));
+
 const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 const instanceAi = computed<IMenuItem>(() => ({
@@ -180,6 +196,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === personalProject.id"
 				data-test-id="project-personal-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="isCatalogNavVisible"
+				:item="catalog"
+				:compact="props.collapsed"
+				:active="activeTabId === 'catalog'"
+				data-test-id="project-catalog-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="

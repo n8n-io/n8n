@@ -5665,6 +5665,7 @@
 	"projects.menu.shared": "Shared with you",
 	"projects.menu.title": "Projects",
 	"projects.menu.personal": "Personal",
+	"projects.menu.catalog": "Run a workflow",
 	"projects.menu.addFirstProject": "Add project",
 	"projects.menu.chat": "Chat",
 	"projects.menu.create.workflow": "New workflow",
