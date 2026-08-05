@@ -1198,7 +1198,7 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 
 			expect(scopedLogger.debug).toHaveBeenCalledWith(
-				expect.stringContaining('fenced out by a reclaimed lease'),
+				expect.stringContaining('the poll no longer holds its lease, or its cursor row is gone'),
 				{ workflowId: 'wf-1', nodeId: 'node-1' },
 			);
 		});
