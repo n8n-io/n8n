@@ -470,4 +470,78 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(server.callTool).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('onCredentialCreateResult', () => {
+		const CREATE_CREDENTIAL_TOOL: McpTool = {
+			name: 'browser_create_credential',
+			description: 'Create a credential',
+			inputSchema: { type: 'object', properties: {} },
+		};
+
+		const CREATE_CREDENTIAL_ARGS = {
+			credentialsKey: 'slack-setup',
+			type: 'slackApi',
+			name: 'Slack account',
+		};
+
+		function getExecuteWithCallback(server: LocalMcpServer, toolName: string) {
+			const onCredentialCreateResult = vi.fn();
+			const tools = createToolsFromLocalMcpServer(server, mockLogger, onCredentialCreateResult);
+			const tool = tools.get(toolName);
+			if (!tool) throw new Error(`Tool '${toolName}' was not created`);
+			const execute = async (args: Record<string, unknown>, ctx: unknown) =>
+				await executeTool<McpToolCallResult>(tool, args, ctx);
+			return { execute, onCredentialCreateResult };
+		}
+
+		it('reports success when browser_create_credential succeeds', async () => {
+			const server = makeMockServer([CREATE_CREDENTIAL_TOOL]);
+			server.callTool.mockResolvedValue(SUCCESS_RESULT);
+			const { execute, onCredentialCreateResult } = getExecuteWithCallback(
+				server,
+				'browser_create_credential',
+			);
+
+			await execute(CREATE_CREDENTIAL_ARGS, makeCtx({}));
+
+			expect(onCredentialCreateResult).toHaveBeenCalledExactlyOnceWith('slackApi', { ok: true });
+		});
+
+		it.each([
+			['No captured fields found for credentialsKey "slack-setup"', 'missing_captured_fields'],
+			['resolveData references field "apiKey" which was not captured', 'unresolved_field'],
+			[
+				'This tool is only available when running inside the n8n gateway context.',
+				'gateway_context_missing',
+			],
+			['Something else went wrong', 'credential_create_failed'],
+		])('classifies failure %s as %s', async (errorText, expectedCode) => {
+			const server = makeMockServer([CREATE_CREDENTIAL_TOOL]);
+			server.callTool.mockResolvedValue({
+				content: [{ type: 'text', text: errorText }],
+				isError: true,
+			});
+			const { execute, onCredentialCreateResult } = getExecuteWithCallback(
+				server,
+				'browser_create_credential',
+			);
+
+			await execute(CREATE_CREDENTIAL_ARGS, makeCtx({}));
+
+			expect(onCredentialCreateResult).toHaveBeenCalledExactlyOnceWith('slackApi', {
+				ok: false,
+				errorCode: expectedCode,
+			});
+		});
+
+		it('does not notify for other tools', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(SUCCESS_RESULT);
+			const { execute, onCredentialCreateResult } = getExecuteWithCallback(server, 'write_file');
+
+			await execute({ filePath: 'test.ts' }, makeCtx({}));
+
+			expect(onCredentialCreateResult).not.toHaveBeenCalled();
+		});
+	});
 });

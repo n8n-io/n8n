@@ -380,6 +380,22 @@ export function isMaskedStreamFailure(error: unknown): error is Error {
 	return error.name === 'TypeError' && error.message === 'terminated';
 }
 
+/** Error codes reported by the browser tool wrapper for failures that happen
+ *  before credential persistence (capturing/resolving secrets in the browser). */
+const GENERATION_STAGE_ERROR_CODES = new Set([
+	'missing_captured_fields',
+	'unresolved_field',
+	'gateway_context_missing',
+]);
+
+function failureStageForErrorCode(
+	errorCode: string | undefined,
+): 'generation' | 'persistence' | 'unknown' {
+	if (!errorCode) return 'unknown';
+	if (GENERATION_STAGE_ERROR_CODES.has(errorCode)) return 'generation';
+	return 'persistence';
+}
+
 /**
  * Substituted for a masked stream failure once the credit re-check confirms
  * the user is out of credits. Carries the machine-readable quota code so the
@@ -457,7 +473,10 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 		case 'credentialSelection':
 			return { approved: true, credentials: request.credentials };
 		case 'credentialAutoSetup':
-			return { approved: true, autoSetup: { credentialType: request.credentialType } };
+			return {
+				approved: true,
+				autoSetup: { credentialType: request.credentialType, attemptId: request.attemptId },
+			};
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'setupWorkflowApply':
@@ -523,6 +542,27 @@ export class InstanceAiService {
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
+
+	/**
+	 * Runs where the credentials tool handed off to browser-assisted credential
+	 * setup (`needsBrowserSetup`), keyed by runId with one record per setup
+	 * attempt (a run can attempt several). Resolved to one terminal
+	 * success/failure telemetry event per attempt in `publishRunFinish`.
+	 * Entries exist only between the hand-off and the run's terminal event.
+	 */
+	private readonly pendingBrowserCredentialSetups = new Map<
+		string,
+		{
+			userId: string;
+			attempts: Array<{
+				credentialType: string;
+				attemptId?: string;
+				startedAt: number;
+				created: boolean;
+				errorCode?: string;
+			}>;
+		}
+	>();
 
 	/** Counts plan-review confirmations per thread, to tell the first plan apart from later revisions. */
 	private readonly planRequestsByThread = new Map<string, number>();
@@ -2153,6 +2193,37 @@ export class InstanceAiService {
 		}
 
 		context.runId = runId;
+
+		const findOpenAttempt = (credentialType: string) => {
+			const attempts = this.pendingBrowserCredentialSetups.get(runId)?.attempts ?? [];
+			return attempts.findLast(
+				(attempt) => attempt.credentialType === credentialType && !attempt.created,
+			);
+		};
+		context.browserCredentialSetup = {
+			markPending: (credentialType: string, attemptId?: string) => {
+				let pending = this.pendingBrowserCredentialSetups.get(runId);
+				if (!pending) {
+					pending = { userId: user.id, attempts: [] };
+					this.pendingBrowserCredentialSetups.set(runId, pending);
+				}
+				if (attemptId && pending.attempts.some((attempt) => attempt.attemptId === attemptId)) {
+					return;
+				}
+				pending.attempts.push({ credentialType, attemptId, startedAt: Date.now(), created: false });
+			},
+			markCreated: (credentialType: string) => {
+				const attempt = findOpenAttempt(credentialType);
+				if (attempt) {
+					attempt.created = true;
+					attempt.errorCode = undefined;
+				}
+			},
+			markCreateFailed: (credentialType: string, errorCode: string) => {
+				const attempt = findOpenAttempt(credentialType);
+				if (attempt) attempt.errorCode = errorCode;
+			},
+		};
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
 		// reload/navigation and are visible across mains. Load once per run; a tool resuming
@@ -5869,6 +5940,7 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
+		this.emitBrowserCredentialSetupOutcomes(threadId, runId);
 		if (status === 'errored') {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
@@ -5876,6 +5948,38 @@ export class InstanceAiService {
 				error_message: errorInfo?.errorMessage ?? reason ?? 'unknown',
 				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
+			});
+		}
+	}
+
+	/**
+	 * Emit one terminal telemetry event per browser-assisted credential setup
+	 * attempt of the finished run (NODE-5511). Consumes the pending record so
+	 * every attempt yields exactly one success or failure event.
+	 */
+	private emitBrowserCredentialSetupOutcomes(threadId: string, runId: string): void {
+		const browserSetup = this.pendingBrowserCredentialSetups.get(runId);
+		if (!browserSetup) return;
+		this.pendingBrowserCredentialSetups.delete(runId);
+		for (const attempt of browserSetup.attempts) {
+			this.telemetry.track('Instance AI Browser Use credential setup completed', {
+				user_id: browserSetup.userId,
+				credential_type: attempt.credentialType,
+				status: attempt.created ? 'success' : 'failure',
+				...(attempt.created
+					? {}
+					: {
+							failure_stage: failureStageForErrorCode(attempt.errorCode),
+							error_code: attempt.errorCode ?? 'not_attempted',
+						}),
+				// The flow never runs a credential test, so validation support is unknown.
+				is_valid: null,
+				is_new: true,
+				setup_method: 'ai',
+				thread_id: threadId,
+				run_id: runId,
+				...(attempt.attemptId ? { credential_setup_attempt_id: attempt.attemptId } : {}),
+				duration_ms: Date.now() - attempt.startedAt,
 			});
 		}
 	}

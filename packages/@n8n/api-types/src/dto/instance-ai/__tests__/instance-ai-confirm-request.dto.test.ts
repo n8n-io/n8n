@@ -59,6 +59,10 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'credentialAutoSetup with credential type',
 				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi' },
 			],
+			[
+				'credentialAutoSetup with attempt id',
+				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi', attemptId: 'attempt-1' },
+			],
 			// DomainAccessApproval: handleAction (primary path — with action)
 			[
 				'domainAccessApprove with allow_domain',

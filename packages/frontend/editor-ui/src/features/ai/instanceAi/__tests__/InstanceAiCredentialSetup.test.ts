@@ -595,11 +595,16 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
 				kind: 'credentialAutoSetup',
 				credentialType: 'type1',
+				attemptId: expect.any(String),
 			});
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'Instance AI Browser Use User clicked credential setup option',
-				expect.objectContaining({ credential_type: 'type1', choice: 'ai' }),
+				expect.objectContaining({
+					credential_type: 'type1',
+					choice: 'ai',
+					credential_setup_attempt_id: expect.any(String),
+				}),
 			);
 		});
 
@@ -624,6 +629,7 @@ describe('InstanceAiCredentialSetup', () => {
 				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
 					kind: 'credentialAutoSetup',
 					credentialType: 'type1',
+					attemptId: expect.any(String),
 				});
 			});
 			expect(closeModalSpy).toHaveBeenCalledWith(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);

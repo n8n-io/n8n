@@ -203,6 +203,28 @@ function isMcpMediaBlock(block: McpContentBlock): boolean {
 	return block.type === 'image' || block.type === 'resource';
 }
 
+export type BrowserCredentialCreateOutcome = { ok: true } | { ok: false; errorCode: string };
+
+/**
+ * Map a failed `browser_create_credential` result to a stable, non-sensitive
+ * error code. The matched substrings are the error messages thrown by
+ * `@n8n/mcp-browser`'s credential tool before it reaches credential
+ * persistence; anything else means the host's create-credential call failed.
+ */
+function classifyCredentialCreateError(result: McpToolCallResult): string {
+	const text = result.content
+		.filter((block) => block.type === 'text')
+		.map((block) => block.text ?? '')
+		.join(' ');
+	if (text.includes('No captured fields found')) return 'missing_captured_fields';
+	if (text.includes('resolveData')) return 'unresolved_field';
+	if (text.includes('was not found') || text.includes('Secret capturing failed')) {
+		return 'missing_captured_fields';
+	}
+	if (text.includes('gateway context')) return 'gateway_context_missing';
+	return 'credential_create_failed';
+}
+
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 	const raw = unwrapMcpToolResult(result);
 	if (!raw?.content.some(isMcpMediaBlock)) return undefined;
@@ -266,6 +288,10 @@ function warnSkippedLocalMcpTool(logger: Logger) {
 export function createToolsFromLocalMcpServer(
 	server: LocalMcpServer,
 	logger: Logger,
+	onCredentialCreateResult?: (
+		credentialType: string,
+		outcome: BrowserCredentialCreateOutcome,
+	) => void,
 ): InstanceAiToolRegistry {
 	const tools = createToolRegistry();
 	const claimedToolNames = createClaimedToolNames([]);
@@ -327,6 +353,17 @@ export function createToolsFromLocalMcpServer(
 			.resume(gatewayConfirmationResumeSchema)
 			.handler(async (args: Record<string, unknown>, ctx) => {
 				const resumeData = ctx.resumeData;
+				const observeResult = (result: McpToolCallResult): McpToolCallResult => {
+					if (toolName === 'browser_create_credential' && typeof args.type === 'string') {
+						onCredentialCreateResult?.(
+							args.type,
+							result.isError
+								? { ok: false, errorCode: classifyCredentialCreateError(result) }
+								: { ok: true },
+						);
+					}
+					return result;
+				};
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {
@@ -338,12 +375,14 @@ export function createToolsFromLocalMcpServer(
 						};
 					}
 					// Re-call the daemon with the user's decision
-					return await server.callTool(
-						{
-							name: toolName,
-							arguments: { ...args, _confirmation: resumeData.resourceDecision },
-						},
-						{ abortSignal: ctx.abortSignal },
+					return observeResult(
+						await server.callTool(
+							{
+								name: toolName,
+								arguments: { ...args, _confirmation: resumeData.resourceDecision },
+							},
+							{ abortSignal: ctx.abortSignal },
+						),
 					);
 				}
 
@@ -369,7 +408,7 @@ export function createToolsFromLocalMcpServer(
 					}
 				}
 
-				return result;
+				return observeResult(result);
 			})
 			.toModelOutput((result: unknown) => {
 				const raw = unwrapMcpToolResult(result);
