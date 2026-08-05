@@ -34,6 +34,7 @@ packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
   s_79c0473179aa3d::t_7cec10d101ad56 24-25
   s_79c0473179aa3d::t_080957c4d725ed 1-2,7-23,26-95,134-149
   s_79c0473179aa3d::t_036dd39384976f 96-103,109-113,120
+  s_79c0473179aa3d::t_8239a9941012a3 104-108
 packages/nodes-base/nodes/Kafka/v2/consumer/index.ts
   s_79c0473179aa3d::t_b9f24f9ecc1163 1-15
 ---
