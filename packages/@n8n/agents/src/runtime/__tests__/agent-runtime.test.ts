@@ -3973,6 +3973,78 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		await runtime.generate('go');
 		expect(handlerFn).not.toHaveBeenCalled();
 	});
+
+	it('accepts unknown keys against a schema stored closed for the model', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					query: { type: 'string' },
+					filters: {
+						type: 'object',
+						additionalProperties: false,
+						properties: { since: { type: 'string' } },
+					},
+				},
+			},
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-1', 'json_tool', {
+					query: 'cats',
+					extra: true,
+					filters: { since: 'today', unexpected: 1 },
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		await runtime.generate('go');
+		expect(handlerFn).toHaveBeenCalled();
+	});
+
+	it('names the tool schema as the defect when it cannot be compiled', async () => {
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: { type: 'objct' } as unknown as JSONSchema7,
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state === 'rejected' && call.error).toContain(
+			'input schema that could not be compiled',
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -4185,11 +4257,7 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		);
 	});
 
-	// Instance AI collapses its typed confirmation union into one flat payload
-	// (`ConfirmationData`) where only the fields of the submitted kind are set.
-	// Each shape below is a real `toConfirmationData` output, and each must clear
-	// the serialized resume schema of an approval-wrapped tool that authored no
-	// resume schema of its own.
+	// Each shape is a real Instance AI `toConfirmationData` output.
 	it.each([
 		['approval', { approved: true, userInput: 'go ahead', scope: 'once' }],
 		['planDeny', { approved: false, denied: true }],

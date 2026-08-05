@@ -21,8 +21,9 @@ import { AgentEvent } from '../../types/runtime/event';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
+import { unlockAdditionalProperties } from '../../utils/json-schema';
 import { parseWithSchema } from '../../utils/parse';
-import { toJsonSchemaOrNull } from '../../utils/zod';
+import { isZodSchema, toJsonSchemaOrNull } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -160,8 +161,6 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 	return !isDeniedApprovalResumeData(resumeData);
 }
 
-/** The resume schema a suspension will be checkpointed with — the per-suspension
- *  override if the tool picked one, else the tool's own. */
 function getDeclaredResumeSchema(
 	tool: BuiltTool,
 	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
@@ -175,8 +174,8 @@ function getToolResumeJsonSchema(
 ): JsonSchema7Type | undefined {
 	const resolvedSchema = getDeclaredResumeSchema(tool, resumeSchemaOverride);
 	if (!resolvedSchema) return undefined;
-	// The checkpointed copy validates the resume payload, so it must not be
-	// closed to unknown keys the authored Zod schema would have stripped.
+	// The checkpointed copy validates the resume payload, so it must stay open to
+	// unknown keys the authored Zod schema would have stripped.
 	return toJsonSchemaOrNull(resolvedSchema, 'validation') ?? undefined;
 }
 
@@ -926,12 +925,17 @@ export class ToolCallExecutor {
 		builtTool: BuiltTool,
 	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
-		const result = await parseWithSchema(builtTool.inputSchema, params.input);
+		// A stored JSON Schema was serialized closed for the model; validating
+		// against that copy would reject keys the authored Zod object strips.
+		const schema = isZodSchema(builtTool.inputSchema)
+			? builtTool.inputSchema
+			: unlockAdditionalProperties(builtTool.inputSchema);
+		const result = await parseWithSchema(schema, params.input);
 		if (!result.success) {
-			return {
-				ok: false,
-				outcome: this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
-			};
+			const reason = result.schemaInvalid
+				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
+				: `Invalid tool input: ${result.error}`;
+			return { ok: false, outcome: this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
 	}
@@ -995,8 +999,7 @@ export class ToolCallExecutor {
 		}
 		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.resumeSchema);
 		if (!resumeSchema) {
-			// A declared-but-unserializable schema is a different defect from no
-			// schema at all, and only one of them is the tool author's oversight.
+			// Only one of these two defects is the tool author's oversight.
 			const declared = getDeclaredResumeSchema(builtTool, toolResult.resumeSchema);
 			return this.toolError(
 				params,
