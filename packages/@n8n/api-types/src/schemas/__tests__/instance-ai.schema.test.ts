@@ -9,6 +9,8 @@ import {
 	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
+	InstanceAiEvalRestoreThreadRequest,
+	instanceAiEvalSeedAgentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
@@ -461,5 +463,93 @@ describe('domain-access grant keys', () => {
 		const parsed = parseDomainAccessGrants(new Set([FETCH_URL_ALLOW_ALL_GRANT_KEY]));
 		expect(parsed.approvedDomains.size).toBe(0);
 		expect(parsed.allDomainsApproved).toBe(true);
+	});
+});
+
+describe('instanceAiEvalSeedAgentSchema resource references', () => {
+	const config = {
+		name: 'Support Triage',
+		model: 'anthropic/claude-sonnet-4-5',
+		instructions: 'Triage inbound tickets.',
+	};
+	const agent = (over: Record<string, unknown> = {}) => ({
+		id: 'AgEnT12345678901',
+		config,
+		...over,
+	});
+	const errorOf = (result: { success: boolean; error?: { issues: unknown[] } }) =>
+		result.success ? '' : JSON.stringify(result.error?.issues);
+
+	it('accepts an agent whose references are all backed', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({
+				config: { ...config, skills: [{ type: 'skill', id: 'skill_1' }] },
+				skills: {
+					skill_1: { name: 'Triage rules', description: 'How to sort', instructions: 'Label it.' },
+				},
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a skill reference with no body', () => {
+		// A restored agent missing the skill reads as a build failure, not a broken fixture.
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, skills: [{ type: 'skill', id: 'skill_1' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('carries no body');
+	});
+
+	it('rejects a custom tool, which a seed cannot carry a body for', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tools: [{ type: 'custom', id: 'my_tool' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('custom tool');
+	});
+
+	it('rejects declared tasks, which a seed cannot carry bodies for', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tasks: [{ type: 'task', id: 'nightly' }] } }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('tasks');
+	});
+
+	it('still accepts node and workflow tools', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, tools: [{ type: 'workflow', workflow: 'Daily digest' }] } }),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a sub-agent reference the seed does not declare', () => {
+		// Nothing else exists in a fresh eval project to delegate to.
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT00000000000' }] } },
+				}),
+			],
+		});
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('does not declare');
+	});
+
+	it('accepts a sub-agent reference to another seeded agent', () => {
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT99999999999' }] } },
+				}),
+				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
+			],
+		});
+		expect(result.success).toBe(true);
 	});
 });

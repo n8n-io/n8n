@@ -475,6 +475,40 @@ describe('remapSeedArtifactIds', () => {
 		expect(() => remapSeedArtifactIds(seed)).toThrow(/too short to remap/);
 	});
 
+	it('renames an agent workflow tool with the workflow it points at', () => {
+		// A workflow tool addresses its workflow by DISPLAY NAME, and seeded workflow
+		// names gain a per-run suffix. Miss this and the restored agent holds a tool
+		// pointing at a name that exists nowhere on the instance.
+		const seed = makeAgentSeed();
+		seed.workflows = [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }];
+		seed.agents[0].config.tools = [
+			{ type: 'workflow', workflow: 'Daily digest', name: 'send_digest' },
+		];
+
+		const remapped = remapSeedArtifactIds(seed);
+		const restoredName = remapped.workflows[0].name;
+		const tool = remapped.agents[0].config.tools?.[0];
+
+		expect(restoredName).not.toBe('Daily digest');
+		expect(tool).toMatchObject({ type: 'workflow', workflow: restoredName });
+	});
+
+	it('leaves a workflow tool naming a workflow the seed never declared', () => {
+		// An agent may reference a workflow that already exists on the instance; only
+		// names this seed actually renamed should move.
+		const seed = makeAgentSeed();
+		seed.workflows = [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }];
+		seed.agents[0].config.tools = [
+			{ type: 'workflow', workflow: 'Some other workflow', name: 'other' },
+		];
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.agents[0].config.tools?.[0]).toMatchObject({
+			workflow: 'Some other workflow',
+		});
+	});
+
 	it('follows a seeded workflow id into an agent config that attaches it as a tool', () => {
 		// Both artifacts remap in one pass, so the tool ref has to land on the SAME
 		// fresh id — otherwise the seeded agent points at a workflow that was never

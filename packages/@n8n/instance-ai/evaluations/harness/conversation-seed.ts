@@ -400,9 +400,36 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	const rewrite = (s: string) => s.replace(mentionRe, (match) => renames.get(match) ?? match);
 	const messages = remapped.messages.map((message) => renameMentions(message, rewrite));
 
+	// A seeded agent's workflow tool addresses its workflow by DISPLAY NAME, so it
+	// has to follow the rename too or the restored agent points at a workflow that
+	// no longer exists under that name. Exact lookup, not the prose regex: the
+	// field holds nothing but the name.
+	const agents = remapped.agents.map((agent) => ({
+		...agent,
+		config: {
+			...agent.config,
+			...(agent.config.tools
+				? {
+						tools: agent.config.tools.map((tool) => {
+							if (tool.type !== 'workflow') return tool;
+							const renamed = renames.get(tool.workflow);
+							return renamed ? { ...tool, workflow: renamed } : tool;
+						}),
+					}
+				: {}),
+		},
+	}));
+
 	// Data table ids are remapped server-side on restore (id is generated, not
 	// pinnable), so carry them through untouched here.
-	return { ...remapped, messages, workflows, source: seed.source, dataTables: seed.dataTables };
+	return {
+		...remapped,
+		messages,
+		workflows,
+		agents,
+		source: seed.source,
+		dataTables: seed.dataTables,
+	};
 }
 
 // Transcript prefix — seeded history rendered for the judge/checks. Turns carry

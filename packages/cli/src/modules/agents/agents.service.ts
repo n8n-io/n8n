@@ -25,6 +25,7 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import {
 	AgentRepository,
 	type AgentSummary,
@@ -95,11 +96,16 @@ export class AgentsService {
 			},
 		};
 
+		// Integrations live on their own column; `composeJsonConfig` reads them from
+		// there, so leaving them inside `schema` loses them on the next read.
+		const { schemaConfig, integrations } = decomposeJsonConfig(schema ?? defaultConfig);
+
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: schema ?? defaultConfig,
+			schema: schemaConfig,
+			...(integrations.length > 0 ? { integrations } : {}),
 			...(skills ? { skills } : {}),
 			versionId: uuid(),
 			availableInMCP,

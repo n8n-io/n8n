@@ -1811,15 +1811,46 @@ export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataT
  *  thread's project. `config`/`skills` are the shapes the agent's own config and
  *  skills routes return, so a seed can be authored from a fetched agent verbatim.
  *  Credential ids in the config are blanked on restore. */
-export const instanceAiEvalSeedAgentSchema = z.object({
-	// ≥8 chars like a seed data table: the harness remaps this id by whole-document
-	// string replace before restoring.
-	id: z.string().min(8).max(64),
-	/** Carries the agent's display name as `config.name`. */
-	config: AgentJsonConfigSchema,
-	/** Skill bodies keyed by the ids `config.skills[].id` references. */
-	skills: z.record(agentSkillSchema).optional(),
-});
+export const instanceAiEvalSeedAgentSchema = z
+	.object({
+		// ≥8 chars like a seed data table: the harness remaps this id by whole-document
+		// string replace before restoring.
+		id: z.string().min(8).max(64),
+		/** Carries the agent's display name as `config.name`. */
+		config: AgentJsonConfigSchema,
+		/** Skill bodies keyed by the ids `config.skills[].id` references. */
+		skills: z.record(agentSkillSchema).optional(),
+	})
+	// A reference the seed can't back restores an agent that is missing the
+	// capability the case grades, which reads as a build failure rather than a
+	// broken fixture. Refuse at authoring time instead.
+	.superRefine((agent, ctx) => {
+		for (const [index, skill] of (agent.config.skills ?? []).entries()) {
+			if (!agent.skills?.[skill.id]) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['config', 'skills', index, 'id'],
+					message: `Seed agent references skill "${skill.id}" but carries no body for it under \`skills\``,
+				});
+			}
+		}
+		for (const [index, tool] of (agent.config.tools ?? []).entries()) {
+			if (tool.type === 'custom') {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['config', 'tools', index],
+					message: `Seed agent references custom tool "${tool.id}", which a seed cannot carry a body for — remove it or use a node/workflow tool`,
+				});
+			}
+		}
+		if (agent.config.tasks?.length) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['config', 'tasks'],
+				message: 'Seed agent declares tasks, which a seed cannot carry bodies for — remove them',
+			});
+		}
+	});
 
 export type InstanceAiEvalSeedAgent = z.infer<typeof instanceAiEvalSeedAgentSchema>;
 
@@ -1833,8 +1864,28 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	/** Workflows the history references; recreated (node credentials stripped). */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 	/** Agents the history references; created at their pinned id, with the thread
-	 *  bound to them so the next turn continues one instead of resolving it again. */
-	agents: z.array(instanceAiEvalSeedAgentSchema).max(5).optional(),
+	 *  bound to them so the next turn continues one instead of resolving it again.
+	 *  A sub-agent reference must name another agent in this same seed — nothing
+	 *  else exists in a fresh eval project to delegate to. */
+	agents: z
+		.array(instanceAiEvalSeedAgentSchema)
+		.max(5)
+		.optional()
+		.superRefine((agents, ctx) => {
+			if (!agents) return;
+			const seeded = new Set(agents.map((agent) => agent.id));
+			for (const [index, agent] of agents.entries()) {
+				for (const [subIndex, sub] of (agent.config.subAgents?.agents ?? []).entries()) {
+					if (!seeded.has(sub.agentId)) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							path: [index, 'config', 'subAgents', 'agents', subIndex, 'agentId'],
+							message: `Seed agent "${agent.id}" delegates to sub-agent "${sub.agentId}", which this seed does not declare`,
+						});
+					}
+				}
+			}
+		}),
 	/** Append a unique suffix to each seed data table's name (default true — safe
 	 *  for id-remapped seed workflows). False keeps the EXACT declared name so a
 	 *  freshly-built workflow's by-name references resolve. */

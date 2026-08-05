@@ -149,13 +149,21 @@ export class EvalThreadRestoreService {
 	/** Recreate each seed agent, config and skill bodies in one insert — an agent is
 	 *  a single row, so there are no skill files to write. Rolls back on failure.
 	 *  Names are not uniquified as seed data tables' are; see `remapSeedArtifactIds`. */
-	async restoreAgents(agents: InstanceAiEvalSeedAgent[], projectId: string): Promise<string[]> {
+	async restoreAgents(
+		agents: InstanceAiEvalSeedAgent[],
+		projectId: string,
+		dataTableIdMap: Map<string, string> = new Map(),
+	): Promise<string[]> {
 		if (agents.length === 0) return [];
 		const agentsService = this.agentsService();
 		const created: string[] = [];
 		try {
 			for (const agent of agents) {
-				const config = AgentJsonConfigSchema.safeParse(blankCredentialValues(agent.config));
+				// An agent's node tools carry data-table ids from the instance the seed
+				// was authored on — same rewrite the workflow restore does.
+				const config = AgentJsonConfigSchema.safeParse(
+					blankCredentialValues(this.remapDataTableIds(agent.config, dataTableIdMap)),
+				);
 				if (!config.success) {
 					throw new BadRequestError(
 						`Seed agent ${agent.id} config became invalid after blanking its credentials`,
@@ -175,6 +183,18 @@ export class EvalThreadRestoreService {
 			throw error;
 		}
 		return created;
+	}
+
+	/** Rewrite the seed's authored data-table ids to the ones the restore just
+	 *  created. Whole-document replace: a table id can sit anywhere in a node's
+	 *  parameters or an agent tool's config. */
+	private remapDataTableIds(value: unknown, dataTableIdMap: Map<string, string>): unknown {
+		if (dataTableIdMap.size === 0) return value;
+		let serialized = JSON.stringify(value);
+		for (const [oldId, newId] of dataTableIdMap) {
+			serialized = serialized.replaceAll(oldId, newId);
+		}
+		return jsonParse<unknown>(serialized);
 	}
 
 	/** Best-effort delete (rollback of a failed restore). Resolved per id so a
@@ -241,14 +261,8 @@ export class EvalThreadRestoreService {
 		projectId: string,
 		dataTableIdMap: Map<string, string>,
 	): Promise<boolean> {
-		const remapDataTableIds = (value: unknown): unknown => {
-			if (dataTableIdMap.size === 0) return value;
-			let serialized = JSON.stringify(value);
-			for (const [oldId, newId] of dataTableIdMap) {
-				serialized = serialized.replaceAll(oldId, newId);
-			}
-			return jsonParse<unknown>(serialized);
-		};
+		const remapDataTableIds = (value: unknown): unknown =>
+			this.remapDataTableIds(value, dataTableIdMap);
 
 		const nodes: INode[] = workflow.nodes.map((node, index) => {
 			if (!isWorkflowNode(node)) {

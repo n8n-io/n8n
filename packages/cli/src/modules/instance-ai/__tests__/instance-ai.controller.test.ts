@@ -18,7 +18,7 @@ vi.mock('@n8n/instance-ai', () => {
 		})),
 		// Shape is the instance-ai package's contract (covered by its own tests); the
 		// controller only owns which targets it feeds in and that it persists the result.
-		agentBuilderTargetMetadata: vi.fn((targets: unknown) => ({ boundTargets: targets })),
+		seedAgentBuilderTargetMetadata: vi.fn((targets: unknown) => ({ boundTargets: targets })),
 	};
 });
 
@@ -49,12 +49,13 @@ import type {
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { agentBuilderTargetMetadata } from '@n8n/instance-ai';
+import { seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -840,16 +841,27 @@ describe('InstanceAiController', () => {
 			it('should recreate the agent and bind the thread to it', async () => {
 				const result = await controller.restoreEvalThread(req, res, agentPayload);
 
-				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith([seedAgent], 'project-1');
-				expect(agentBuilderTargetMetadata).toHaveBeenCalledWith([
-					{
-						agentId: 'agent-seed-1',
-						projectId: 'project-1',
-						name: 'Support Triage',
-						// The addressing key the model reaches for; normalized by the helper.
-						ref: 'Support Triage',
-					},
-				]);
+				// The data-table id map goes through too, so an agent node tool's table
+				// references land on the tables this restore just created.
+				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
+					[seedAgent],
+					'project-1',
+					expect.any(Map),
+				);
+				// Refs and ordering are reconstructed from the seeded history, so the
+				// messages are handed in alongside the agents.
+				expect(seedAgentBuilderTargetMetadata).toHaveBeenCalledWith(
+					[
+						{
+							agentId: 'agent-seed-1',
+							projectId: 'project-1',
+							name: 'Support Triage',
+							// Fallback ref; the helper prefers the model-authored one.
+							ref: 'Support Triage',
+						},
+					],
+					agentPayload.messages,
+				);
 				expect(memoryService.updateThread).toHaveBeenCalledWith(THREAD_ID, {
 					metadata: { boundTargets: expect.any(Array) },
 				});
@@ -862,6 +874,23 @@ describe('InstanceAiController', () => {
 				await controller.restoreEvalThread(req, res, payload);
 
 				expect(memoryService.updateThread).not.toHaveBeenCalled();
+			});
+
+			it('rejects a bad binding before any message is committed', async () => {
+				// The binding is built (and validated) ahead of the message write, so a
+				// refused one — two seed agents whose refs collide — fails while the
+				// restore is still fully rollback-able. There is no per-message delete,
+				// so committing first would strand them in the thread.
+				vi.mocked(seedAgentBuilderTargetMetadata).mockImplementationOnce(() => {
+					throw new UserError('both address as "support-triage"');
+				});
+
+				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow(
+					/both address as/,
+				);
+
+				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
 			});
 
 			it('should roll the agent back when a later step fails, leaving no binding to it', async () => {

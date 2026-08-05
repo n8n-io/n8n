@@ -693,7 +693,16 @@ export class N8nClient {
 			method: 'POST',
 			body,
 		});
-		return RestoreThreadEnvelope.parse(result).data;
+		const restored = RestoreThreadEnvelope.parse(result).data;
+		// `agentIds` defaults to [] for backends that predate agent seeding, which
+		// would read as "restored fine, zero agents" on a backend that just ignored
+		// the field. If we asked for agents, insist they came back.
+		if (agents.length > 0 && restored.agentIds.length !== agents.length) {
+			throw new Error(
+				`Restore was asked to seed ${String(agents.length)} agent(s) but the response carried ${String(restored.agentIds.length)} — the backend likely predates agent seeding.`,
+			);
+		}
+		return restored;
 	}
 
 	/**

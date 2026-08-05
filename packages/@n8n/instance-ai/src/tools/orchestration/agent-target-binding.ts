@@ -6,6 +6,7 @@
  * target in thread metadata lets follow-up turns keep editing the same agent
  * instead of creating a new one — including after a cancelled build.
  */
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -15,6 +16,7 @@ import {
 } from './agent-preview-session-binding';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
+import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 
 const METADATA_KEY = 'instanceAiAgentBuilderTarget';
 const REGISTRY_METADATA_KEY = 'instanceAiAgentBuilderTargets';
@@ -147,6 +149,43 @@ export function agentBuilderTargetMetadata(targets: AgentBuilderTarget[]): Recor
 		[METADATA_KEY]: entries[entries.length - 1],
 		[REGISTRY_METADATA_KEY]: registry,
 	};
+}
+
+/**
+ * Binding metadata for a seeded thread, reconstructed from the seeded history
+ * rather than invented. The model authored the refs its own `build-agent` calls
+ * carry, and the LAST such call is what "most recently targeted" meant — array
+ * order in the seed is an authoring artifact, not conversation order. An agent
+ * the history never targeted keeps its display name as the ref and sorts first,
+ * so it can't displace the real active target.
+ */
+export function seedAgentBuilderTargetMetadata(
+	agents: AgentBuilderTarget[],
+	seededMessages: Array<Record<string, unknown>>,
+): Record<string, unknown> {
+	const refById = new Map<string, string>();
+	const lastCallIndex = new Map<string, number>();
+	let callIndex = 0;
+	for (const message of seededMessages) {
+		if (!Array.isArray(message.content)) continue;
+		for (const block of message.content) {
+			if (!isRecord(block) || block.type !== 'tool-call') continue;
+			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
+			// `targetIdentity` stamps the resolved identity on every build-agent
+			// output, so the output is authoritative over the call's own input.
+			const output = isRecord(block.output) ? block.output : undefined;
+			if (typeof output?.agentId !== 'string') continue;
+			if (typeof output.agentRef === 'string') refById.set(output.agentId, output.agentRef);
+			lastCallIndex.set(output.agentId, callIndex++);
+		}
+	}
+
+	const ordered = [...agents].sort(
+		(a, b) => (lastCallIndex.get(a.agentId) ?? -1) - (lastCallIndex.get(b.agentId) ?? -1),
+	);
+	return agentBuilderTargetMetadata(
+		ordered.map((agent) => ({ ...agent, ref: refById.get(agent.agentId) ?? agent.ref })),
+	);
 }
 
 /**

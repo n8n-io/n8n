@@ -42,7 +42,7 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
-import { agentBuilderTargetMetadata, buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -1055,7 +1055,22 @@ export class InstanceAiController {
 				projectId,
 				idMap,
 			);
-			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			// Built (and validated) BEFORE the message write: a rejected binding — two
+			// agents whose refs collide — must fail while the restore is still fully
+			// rollback-able, not after the messages have committed.
+			const binding =
+				createdAgentIds.length > 0
+					? seedAgentBuilderTargetMetadata(
+							agents.map((agent) => ({
+								agentId: agent.id,
+								projectId,
+								name: agent.config.name,
+								ref: agent.config.name,
+							})),
+							payload.messages,
+						)
+					: undefined;
 			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
 			if (payload.messages.length > 0) {
 				({ restored } = await this.memoryService.restoreThreadMessages(
@@ -1068,17 +1083,8 @@ export class InstanceAiController {
 			// or the live turn's first `build-agent` call is rejected as an unknown
 			// agentRef. Written last and never rolled back: a binding pointing at an
 			// agent a failed restore already deleted is worse than none.
-			if (createdAgentIds.length > 0) {
-				await this.memoryService.updateThread(payload.threadId, {
-					metadata: agentBuilderTargetMetadata(
-						agents.map((agent) => ({
-							agentId: agent.id,
-							projectId,
-							name: agent.config.name,
-							ref: agent.config.name,
-						})),
-					),
-				});
+			if (binding) {
+				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
 			}
 		} catch (error) {
 			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);

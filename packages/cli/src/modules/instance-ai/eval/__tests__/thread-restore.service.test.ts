@@ -289,6 +289,46 @@ describe('EvalThreadRestoreService', () => {
 			});
 		});
 
+		it('rewrites data-table ids in an agent node tool to the recreated tables', async () => {
+			// Same rewrite the workflow restore does: a seeded agent's node tool carries
+			// table ids from the instance the seed was authored on, which address nothing
+			// here. Missed, the restored agent reads an empty/absent table.
+			const agent = seedAgent();
+			const config = {
+				...agent.config,
+				tools: [
+					{
+						type: 'node' as const,
+						name: 'read_leads',
+						node: {
+							nodeType: 'n8n-nodes-base.dataTable',
+							nodeTypeVersion: 1,
+							nodeParameters: { dataTableId: 'dt-authored-01' },
+						},
+					},
+				],
+			};
+
+			await service.restoreAgents(
+				[{ ...agent, config }],
+				'project-1',
+				new Map([['dt-authored-01', 'dt-new-99']]),
+			);
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			expect(JSON.stringify(options?.schema)).toContain('dt-new-99');
+			expect(JSON.stringify(options?.schema)).not.toContain('dt-authored-01');
+		});
+
+		it('leaves the config untouched when the seed created no data tables', async () => {
+			const agent = seedAgent();
+
+			await service.restoreAgents([agent], 'project-1');
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			expect(options?.schema).toEqual(agent.config);
+		});
+
 		it('blanks credential ids, which address the instance the seed came from', async () => {
 			// The agent counterpart of stripping a seed workflow's node credentials.
 			// Emptied rather than removed: `credential` is a required FIELD on a vector

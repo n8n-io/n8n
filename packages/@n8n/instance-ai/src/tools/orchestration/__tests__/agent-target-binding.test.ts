@@ -7,6 +7,7 @@ import {
 	PENDING_AGENT_METADATA_KEY,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
+	seedAgentBuilderTargetMetadata,
 } from '../agent-target-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
@@ -271,6 +272,98 @@ describe('agentBuilderTargetMetadata', () => {
 		await expect(resolveAgentBuilderTarget(context)).resolves.toMatchObject({ agentId: 'agent-1' });
 		await expect(getSessionAgentByRef(context, 'support triage')).resolves.toMatchObject({
 			agentId: 'agent-1',
+		});
+	});
+});
+
+describe('seedAgentBuilderTargetMetadata', () => {
+	/** One resolved `build-agent` call in a seeded assistant turn. */
+	function buildAgentTurn(agentId: string, agentRef: string) {
+		return {
+			id: `msg-${agentId}`,
+			type: 'llm',
+			role: 'assistant',
+			createdAt: '2026-01-01T00:00:00.000Z',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: `tc-${agentId}`,
+					toolName: 'build-agent',
+					state: 'resolved',
+					output: { ok: true, agentId, agentRef },
+				},
+			],
+		};
+	}
+
+	const AGENTS = [
+		{ agentId: 'agent-1', projectId: 'p', name: 'Support Triage', ref: 'Support Triage' },
+		{ agentId: 'agent-2', projectId: 'p', name: 'Billing Bot', ref: 'Billing Bot' },
+	];
+
+	it('uses the ref the model authored, not the display name', () => {
+		// The live turn addresses the agent with the ref its own history carries; a
+		// name-derived ref means the first `build-agent` call misses the registry.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [
+			buildAgentTurn('agent-1', 'triage'),
+			buildAgentTurn('agent-2', 'billing'),
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
+			triage: { agentId: 'agent-1' },
+			billing: { agentId: 'agent-2' },
+		});
+	});
+
+	it('makes the LAST targeted agent active, regardless of seed array order', () => {
+		// Array order is an authoring artifact. "Most recently targeted" is what the
+		// conversation actually did, so it has to come from the tool calls.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [
+			buildAgentTurn('agent-2', 'billing'),
+			buildAgentTurn('agent-1', 'triage'),
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
+	});
+
+	it('re-targeting an agent later moves it back to active', () => {
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [
+			buildAgentTurn('agent-1', 'triage'),
+			buildAgentTurn('agent-2', 'billing'),
+			buildAgentTurn('agent-1', 'triage'),
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
+	});
+
+	it('falls back to the display name for an agent the history never targeted', () => {
+		// A hand-authored seed may carry an agent with no build-agent record at all.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [buildAgentTurn('agent-2', 'billing')]);
+
+		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
+			'support-triage': { agentId: 'agent-1' },
+			billing: { agentId: 'agent-2' },
+		});
+		// Untargeted agents sort first, so they can't displace the real active target.
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
+	});
+
+	it('ignores a build-agent call whose output carries no agent id', () => {
+		// A failed call ("agent builder is not configured") records no identity.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS.slice(0, 1), [
+			{
+				id: 'msg-failed',
+				type: 'llm',
+				role: 'assistant',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				content: [
+					{ type: 'tool-call', toolName: 'build-agent', state: 'resolved', output: { ok: false } },
+				],
+			},
+		]);
+
+		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
+			'support-triage': { agentId: 'agent-1' },
 		});
 	});
 });
