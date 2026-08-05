@@ -194,6 +194,19 @@ const submit = async () => {
 			@submit.prevent="submit"
 		>
 			<N8nInputLabel
+				input-name="workflow-review-version-name"
+				:label="i18n.baseText('workflowReviews.versionName.label')"
+				required
+			>
+				<N8nInput
+					id="workflow-review-version-name"
+					v-model="versionName"
+					:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
+					data-test-id="workflow-review-version-name-input"
+				/>
+			</N8nInputLabel>
+			<hr :class="$style.divider" />
+			<N8nInputLabel
 				input-name="workflow-review-title"
 				:label="i18n.baseText('workflowReviews.submitForReview.reviewTitle.label')"
 				required
@@ -219,19 +232,6 @@ const submit = async () => {
 					data-test-id="workflow-review-description-input"
 				/>
 			</N8nInputLabel>
-			<N8nInputLabel
-				input-name="workflow-review-version-name"
-				:label="i18n.baseText('workflowReviews.versionName.label')"
-				required
-			>
-				<N8nInput
-					id="workflow-review-version-name"
-					v-model="versionName"
-					:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
-					data-test-id="workflow-review-version-name-input"
-				/>
-			</N8nInputLabel>
-			<hr :class="$style.divider" />
 			<N8nInputLabel
 				input-name="workflow-review-reviewer"
 				:label="i18n.baseText('workflowReviews.submitForReview.reviewer.label')"
