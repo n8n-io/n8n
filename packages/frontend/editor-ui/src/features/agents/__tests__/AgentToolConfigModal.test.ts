@@ -5,6 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
 import type { AgentJsonToolRef, CustomToolEntry } from '../types';
@@ -31,9 +32,24 @@ vi.mock('@n8n/design-system', async () => {
 	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
 	const N8nDialog = {
 		name: 'N8nDialog',
-		props: ['open', 'size', 'showCloseButton'],
-		emits: ['update:open'],
-		template: '<div v-if="open" role="dialog"><slot /></div>',
+		props: {
+			open: Boolean,
+			size: String,
+			showCloseButton: Boolean,
+			trapFocus: { type: Boolean, default: true },
+			disableOutsidePointerEvents: { type: Boolean, default: true },
+		},
+		emits: ['update:open', 'interactOutside'],
+		template: `
+			<div
+				v-if="open"
+				role="dialog"
+				:data-trap-focus="trapFocus"
+				:data-disable-outside-pointer-events="disableOutsidePointerEvents"
+			>
+				<slot />
+			</div>
+		`,
 	};
 	return { ...actual, N8nDialog };
 });
@@ -141,6 +157,9 @@ function renderModal({
 		global: {
 			stubs: {
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
+				FocusScope: {
+					template: '<div data-test-id="nested-credential-focus-scope"><slot /></div>',
+				},
 				AgentToolConfigNodeContent: createToolSettingsStub(valid),
 				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
 				N8nSwitch2: {
@@ -178,6 +197,22 @@ describe('AgentToolConfigModal', () => {
 	it('renders the shared node-tool settings content', () => {
 		const { getByTestId } = renderModal();
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
+	});
+
+	it('releases dialog focus handling while the credential modal is open', async () => {
+		const { getByRole, getByTestId, queryByTestId } = renderModal();
+		const dialog = getByRole('dialog');
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'true');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'true');
+		expect(queryByTestId('nested-credential-focus-scope')).toBeNull();
+
+		uiStore.openModal(CREDENTIAL_EDIT_MODAL_KEY);
+		await nextTick();
+
+		expect(dialog).toHaveAttribute('data-trap-focus', 'false');
+		expect(dialog).toHaveAttribute('data-disable-outside-pointer-events', 'false');
+		expect(getByTestId('nested-credential-focus-scope')).toBeInTheDocument();
 	});
 
 	it('passes agent project context to the node-tool settings content', () => {
