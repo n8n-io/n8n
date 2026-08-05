@@ -2279,7 +2279,6 @@ defineExpose({ enterEditMode });
 	position: relative;
 	/* Scroll overflowing header controls within the header itself, so they stay
 	   reachable on narrow panels without dragging the whole panel's background along */
-	border-bottom: var(--border);
 	overflow-x: auto;
 	overflow-y: hidden;
 	min-height: calc(30px + var(--ndv--spacing));
@@ -2289,7 +2288,6 @@ defineExpose({ enterEditMode });
 
 	.compact & {
 		height: auto;
-		border-bottom: none;
 		margin-bottom: 0;
 		padding: var(--spacing--2xs);
 		flex-shrink: 0;
