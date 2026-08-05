@@ -1,35 +1,21 @@
-import type { ZodClass } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import {
+	apiKeyScopesSatisfy,
+	resolveRouteArgs,
+	resolveSuccessStatus,
+} from '@/public-api/public-api-route-resolver';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
-
-function apiKeyScopesSatisfy(
-	granted: readonly string[] | undefined,
-	requirement: ApiKeyScopeRequirement,
-): boolean {
-	if (!granted) return false;
-
-	if (typeof requirement === 'string') {
-		return granted.includes(requirement);
-	}
-
-	if ('anyOf' in requirement) {
-		return requirement.anyOf.some((scope) => granted.includes(scope));
-	}
-
-	return requirement.allOf.every((scope) => granted.includes(scope));
-}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -60,35 +46,26 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
-			const argTypes = Reflect.getMetadata(
-				'design:paramtypes',
-				controller,
+			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
+
+			const successStatus = resolveSuccessStatus(
+				controllerClass.name,
 				handlerName,
-			) as unknown[];
+				route.successStatus,
+			);
 
 			const handler = async (req: Request, res: Response) => {
 				const args: unknown[] = [req, res];
-				for (let index = 0; index < route.args.length; index++) {
-					const arg = route.args[index];
-					if (!arg) continue;
+				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
 						args.push(req.params[arg.key]);
-					} else if (arg.type === 'body' || arg.type === 'query') {
-						const paramType = argTypes[index] as ZodClass | undefined;
-						if (paramType && 'safeParse' in paramType) {
-							const output = paramType.safeParse(req[arg.type]);
-							if (output.success) {
-								args.push(output.data);
-							} else {
-								throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
-							}
-						} else {
-							throw new UnexpectedError(
-								`Public API route ${controllerClass.name}.${handlerName} is missing a Zod DTO for @${arg.type}`,
-							);
-						}
 					} else {
-						throw new UnexpectedError(`Unknown arg type: ${String(arg.type)}`);
+						const output = arg.dto.safeParse(req[arg.type]);
+						if (output.success) {
+							args.push(output.data);
+						} else {
+							throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
+						}
 					}
 				}
 
@@ -96,12 +73,17 @@ export class PublicApiControllerRegistry {
 
 				if (res.headersSent) return;
 
-				if (route.responseDto) {
-					res.json(route.responseDto.parse(result));
+				if (successStatus === 204) {
+					res.status(204).send();
 					return;
 				}
 
-				res.json(result);
+				if (route.responseDto) {
+					res.status(successStatus).json(route.responseDto.parse(result));
+					return;
+				}
+
+				res.status(successStatus).json(result);
 			};
 
 			const middlewares: RequestHandler[] = [this.createAuthMiddleware(apiVersion)];

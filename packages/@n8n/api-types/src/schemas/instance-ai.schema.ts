@@ -1745,6 +1745,15 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 * filtered to this set — an empty array means the thread sees no credentials.
 	 */
 	credentialIds: z.array(z.string().min(1)).max(50),
+	/**
+	 * Credential IDs whose connection test resolves as successful without
+	 * contacting the provider. Lets an eval exercise a flow the product gates
+	 * behind a passing test (the workflow setup card won't apply a credential
+	 * that fails one) while honouring "no stored provider credentials" — the
+	 * seeded token stays a placeholder. Omitted/empty reproduces today's
+	 * behaviour, so every existing case is unaffected.
+	 */
+	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 /** A workflow a conversation seed references, recreated at its given id so the

@@ -1,3 +1,10 @@
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { User, WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+
+import { isWebhookOAuth2Enabled } from '@/constants/oauth2-triggers';
 import type {
 	ProtectedResource,
 	ProtectedResourceResolver,
@@ -5,15 +12,9 @@ import type {
 import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import {
 	WEBHOOK_TRIGGER_SCOPES,
-	isWebhookOAuth2Enabled,
 	methodQueryString,
 	parseMethodParam,
 	resourceUrlToWebhookPath,

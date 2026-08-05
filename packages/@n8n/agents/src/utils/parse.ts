@@ -1,4 +1,5 @@
 import type AjvType from 'ajv';
+import type { ValidateFunction } from 'ajv';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
@@ -9,14 +10,21 @@ export type ParseResult<T = unknown> =
 	| { success: false; error: string };
 
 let ajvInstance: InstanceType<typeof AjvType> | undefined;
+let nonUnicodeAjvInstance: InstanceType<typeof AjvType> | undefined;
 
-function getAjv(): InstanceType<typeof AjvType> {
-	if (!ajvInstance) {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const { default: Ajv } = require('ajv') as { default: typeof AjvType };
-		ajvInstance = new Ajv({ strict: false });
-	}
-	return ajvInstance;
+function getAjv(unicodeRegExp = true): InstanceType<typeof AjvType> {
+	const instance = unicodeRegExp ? ajvInstance : nonUnicodeAjvInstance;
+	if (instance) return instance;
+
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { default: Ajv } = require('ajv') as { default: typeof AjvType };
+	const newInstance = new Ajv({
+		strict: false,
+		...(unicodeRegExp ? {} : { unicodeRegExp: false }),
+	});
+	if (unicodeRegExp) ajvInstance = newInstance;
+	else nonUnicodeAjvInstance = newInstance;
+	return newInstance;
 }
 
 /**
@@ -33,8 +41,15 @@ export async function parseWithSchema(
 		return { success: false, error: result.error.message };
 	}
 
-	const ajv = getAjv();
-	const validate = ajv.compile(schema);
+	let ajv = getAjv();
+	let validate: ValidateFunction;
+	try {
+		validate = ajv.compile(schema);
+	} catch (error) {
+		if (!(error instanceof SyntaxError)) throw error;
+		ajv = getAjv(false);
+		validate = ajv.compile(schema);
+	}
 	if (validate(data)) return { success: true, data };
 	return { success: false, error: ajv.errorsText(validate.errors) };
 }
