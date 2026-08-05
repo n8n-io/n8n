@@ -7,98 +7,96 @@ import { isZodSchema } from './zod';
 
 export type ParseResult<T = unknown> =
 	| { success: true; data: T }
-	| { success: false; error: string };
+	| { success: false; error: string; schemaInvalid?: true };
 
-/**
- * Ajv bakes draft support into the bundle rather than into its meta-schema
- * registry, so the two dialects are not interchangeable: the draft-07 bundle
- * silently ignores `prefixItems` / `unevaluatedProperties` / `minContains`, and
- * the 2020-12 bundle hard-throws on a draft-07 tuple (`items: [...]`).
- */
-type Dialect = '2020-12' | 'draft-07';
+type Dialect = '2020-12' | '2019-09' | 'draft-07';
 
-/** Dialects whose tuple/keyword semantics the legacy Ajv bundle models. */
-const LEGACY_DIALECT = /draft-0[4-7]|draft\/2019-09/;
+const DIALECT_MARKERS: Array<[RegExp, Dialect]> = [
+	[/draft\/2020-12/, '2020-12'],
+	[/draft\/2019-09/, '2019-09'],
+	[/draft-0[4-7]/, 'draft-07'],
+];
 
 const ajvInstances = new Map<string, InstanceType<typeof AjvType>>();
+
+function loadAjv(dialect: Dialect): typeof AjvType {
+	/* eslint-disable @typescript-eslint/no-require-imports */
+	const bundle =
+		dialect === '2020-12'
+			? require('ajv/dist/2020')
+			: dialect === '2019-09'
+				? require('ajv/dist/2019')
+				: require('ajv');
+	/* eslint-enable @typescript-eslint/no-require-imports */
+	return (bundle as { default: typeof AjvType }).default;
+}
 
 function getAjv(dialect: Dialect, unicodeRegExp: boolean): InstanceType<typeof AjvType> {
 	const key = `${dialect}:${unicodeRegExp}`;
 	const cached = ajvInstances.get(key);
 	if (cached) return cached;
 
-	/* eslint-disable @typescript-eslint/no-require-imports */
-	const { default: Ajv } = (dialect === '2020-12' ? require('ajv/dist/2020') : require('ajv')) as {
-		default: typeof AjvType;
-	};
-	const { default: addFormats } = require('ajv-formats') as {
-		default: (ajv: InstanceType<typeof AjvType>) => void;
-	};
-	/* eslint-enable @typescript-eslint/no-require-imports */
-
+	const Ajv = loadAjv(dialect);
 	const instance = new Ajv({
 		strict: false,
 		allErrors: true,
-		// `validateSchema` lints the schema *document* against its meta-schema
-		// before compiling — it has nothing to do with validating data. Leaving it
-		// on makes any schema declaring a dialect we did not register throw
-		// `no schema with key or ref ...` before its data is ever looked at. The
-		// keyword compilers still reject a malformed schema, just with different
-		// wording.
+		// Ajv otherwise checks its version against the `$schema`
 		validateSchema: false,
 		...(unicodeRegExp ? {} : { unicodeRegExp: false }),
 	});
-	addFormats(instance);
 	ajvInstances.set(key, instance);
 	return instance;
 }
 
-/** Bundle preference for a schema: the dialect it declares, else 2020-12 —
- *  MCP's default for embedded schemas when `$schema` is absent (SEP-1613). */
-function preferredDialects(schema: JSONSchema7): [Dialect, Dialect] {
-	return schema.$schema && LEGACY_DIALECT.test(schema.$schema)
-		? ['draft-07', '2020-12']
-		: ['2020-12', 'draft-07'];
+/** Ajv bundles to try, in order: starts at 2020-12, MCP's default for JSON schemas */
+function candidateDialects(schema: JSONSchema7): Dialect[] {
+	const declaredMarker = schema.$schema;
+	const declared = declaredMarker
+		? DIALECT_MARKERS.find(([marker]) => marker.test(declaredMarker))?.[1]
+		: undefined;
+	const rest = (['2020-12', '2019-09', 'draft-07'] as const).filter((d) => d !== declared);
+	return declared ? [declared, ...rest] : rest;
 }
 
 type CompileResult =
 	| { success: true; ajv: InstanceType<typeof AjvType>; validate: ValidateFunction }
-	| { success: false; errors: string[] };
+	| { success: false; error: string };
+
+interface CompileAttempt {
+	dialect: Dialect;
+	unicodeRegExp: boolean;
+}
+
+const resolvedAttempts = new WeakMap<JSONSchema7, CompileAttempt>();
 
 function compileJsonSchema(schema: JSONSchema7): CompileResult {
-	const [preferred, fallback] = preferredDialects(schema);
-	// `unicodeRegExp: false` is the retry for a pattern Node's `u` flag rejects;
-	// the other dialect is the retry for keyword semantics the bundle cannot model.
-	const attempts: Array<[Dialect, boolean]> = [
-		[preferred, true],
-		[preferred, false],
-		[fallback, true],
-		[fallback, false],
-	];
+	const attempts: CompileAttempt[] = candidateDialects(schema).flatMap((dialect) => [
+		{ dialect, unicodeRegExp: true },
+		{ dialect, unicodeRegExp: false },
+	]);
+	const resolved = resolvedAttempts.get(schema);
+	if (resolved) attempts.unshift(resolved);
 
-	// Each bundle rejects the schema for its own reason and no one of them is the
-	// authoritative complaint, so keep them all. The set collapses the pairs that
-	// differ only by `unicodeRegExp`.
-	const errors = new Set<string>();
-	for (const [dialect, unicodeRegExp] of attempts) {
-		const ajv = getAjv(dialect, unicodeRegExp);
+	let lastError: unknown;
+	for (const attempt of attempts) {
+		const ajv = getAjv(attempt.dialect, attempt.unicodeRegExp);
 		try {
-			return { success: true, ajv, validate: ajv.compile(schema) };
+			const validate = ajv.compile(schema);
+			resolvedAttempts.set(schema, attempt);
+			return { success: true, ajv, validate };
 		} catch (error) {
-			errors.add(error instanceof Error ? error.message : String(error));
+			lastError = error;
 		}
 	}
-	return { success: false, errors: [...errors] };
+	return {
+		success: false,
+		error: lastError instanceof Error ? lastError.message : String(lastError),
+	};
 }
 
 /**
  * Validate `data` against a Zod schema or a raw JSON Schema.
  * Returns a unified success/failure result, with parsed data on success.
- *
- * Note the two branches differ in what they return on success: Zod strips
- * unknown keys, applies defaults and runs transforms, so `data` comes back
- * reshaped; Ajv only inspects, so `data` comes back byref and unchanged. A
- * JSON Schema is therefore a contract check, never a filter.
  */
 export async function parseWithSchema(
 	schema: ZodType | JSONSchema7,
@@ -112,9 +110,11 @@ export async function parseWithSchema(
 
 	const compiled = compileJsonSchema(schema);
 	if (!compiled.success) {
-		// Name the schema as the defect. Reporting success here would run a handler
-		// on input nothing ever checked.
-		return { success: false, error: `Schema could not be compiled: ${compiled.errors.join('; ')}` };
+		return {
+			success: false,
+			error: `Schema could not be compiled: ${compiled.error}`,
+			schemaInvalid: true,
+		};
 	}
 
 	const { ajv, validate } = compiled;

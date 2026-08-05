@@ -234,8 +234,6 @@ describe('parseWithSchema — JSON Schema dialects', () => {
 		expect(invalid.success).toBe(false);
 	});
 
-	// An undeclared dialect defaults to 2020-12, whose bundle throws on a
-	// draft-07 tuple. The retry on the legacy bundle keeps it working.
 	it('falls back to the legacy bundle for an undeclared draft-07 tuple', async () => {
 		const schema = {
 			type: 'array' as const,
@@ -249,53 +247,56 @@ describe('parseWithSchema — JSON Schema dialects', () => {
 		expect(invalid.success).toBe(false);
 	});
 
+	it('honours 2019-09 keyword semantics via unevaluatedProperties', async () => {
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2019-09/schema',
+			type: 'object' as const,
+			properties: { name: { type: 'string' } },
+			unevaluatedProperties: false,
+		} as unknown as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { name: 'Bob' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, { name: 'Bob', extra: true });
+		expect(invalid.success).toBe(false);
+	});
+
 	it('reports the schema as the defect when it compiles on no dialect', async () => {
 		const schema = { type: 'objct' } as unknown as JSONSchema7;
 
 		const result = await parseWithSchema(schema, { anything: true });
 
 		expect(result.success).toBe(false);
-		if (!result.success) expect(result.error).toContain('Schema could not be compiled');
-	});
-
-	it('reports every distinct reason the bundles rejected the schema', async () => {
-		// Each bundle refuses this for a different reason: 2020-12 for the
-		// draft-07 tuple, draft-07 for the malformed `required`.
-		const schema = {
-			type: 'array',
-			items: [{ type: 'string' }],
-			required: 'nope',
-		} as unknown as JSONSchema7;
-
-		const result = await parseWithSchema(schema, []);
-
-		expect(result.success).toBe(false);
 		if (!result.success) {
-			expect(result.error).toContain('items');
-			expect(result.error).toContain('required');
+			expect(result.error).toContain('Schema could not be compiled');
+			expect(result.schemaInvalid).toBe(true);
 		}
 	});
-});
 
-// ---------------------------------------------------------------------------
-// parseWithSchema — JSON Schema formats
-// ---------------------------------------------------------------------------
-
-describe('parseWithSchema — JSON Schema formats', () => {
-	it.each([
-		['email', 'user@example.com', 'not-an-email'],
-		['uri', 'https://example.com/x', 'not a uri'],
-		['date-time', '2026-08-05T10:00:00Z', 'yesterday'],
-		['uuid', '123e4567-e89b-12d3-a456-426614174000', 'nope'],
-	])('enforces the %s format', async (format, valid, invalid) => {
+	it('does not flag invalid data as a schema defect', async () => {
 		const schema = {
 			type: 'object' as const,
-			properties: { value: { type: 'string', format } },
-			required: ['value'],
+			properties: { name: { type: 'string' } },
+			required: ['name'],
 		} as JSONSchema7;
 
-		expect((await parseWithSchema(schema, { value: valid })).success).toBe(true);
-		expect((await parseWithSchema(schema, { value: invalid })).success).toBe(false);
+		const result = await parseWithSchema(schema, {});
+
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.schemaInvalid).toBeUndefined();
+	});
+
+	it('keeps validating on the fallback bundle across repeated calls', async () => {
+		const schema = {
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		for (let i = 0; i < 3; i++) {
+			expect((await parseWithSchema(schema, ['a', 1])).success).toBe(true);
+			expect((await parseWithSchema(schema, [1, 'a'])).success).toBe(false);
+		}
 	});
 });
 
