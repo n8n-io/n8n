@@ -6,17 +6,17 @@ import {
 import type { ButtonStyle } from 'chat';
 import { z } from 'zod';
 
-import {
-	LINEAR_ACTION_TOOL_DEFINITIONS,
-	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
-} from './platforms/linear-tool-definitions';
-import { SLACK_ACTION_TOOL_DEFINITIONS } from './platforms/slack/slack-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 } from './integration-tool-types';
+import {
+	LINEAR_ACTION_TOOL_DEFINITIONS,
+	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
+} from './platforms/linear-tool-definitions';
+import { SLACK_ACTION_TOOL_DEFINITIONS } from './platforms/slack/slack-tool-definitions';
 
 // Compile-time: the shared button styles must remain valid Chat SDK
 // `ButtonStyle` values (api-types cannot depend on the chat package).

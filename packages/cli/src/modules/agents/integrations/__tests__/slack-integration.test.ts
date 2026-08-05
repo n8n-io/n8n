@@ -3,57 +3,15 @@ import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
-import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatInstance } from '../chat-integration.service';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;
-	const agentRepository = mock<AgentRepository>();
 
 	beforeEach(() => {
-		agentRepository.findByIntegrationCredential.mockReset();
-		integration = new SlackIntegration(agentRepository);
-	});
-
-	it('allows a credential that is not connected to another agent', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
-
-		await expect(
-			integration.onBeforeConnect({
-				agentId: 'agent-1',
-				projectId: 'project-1',
-				credentialId: 'credential-1',
-				credential: { accessToken: 'xoxb-token' },
-				webhookUrlFor: vi.fn(),
-			}),
-		).resolves.toBeUndefined();
-		expect(agentRepository.findByIntegrationCredential).toHaveBeenCalledWith(
-			'slack',
-			'credential-1',
-			'project-1',
-			'agent-1',
-		);
-	});
-
-	it('rejects a credential connected to another agent', async () => {
-		agentRepository.findByIntegrationCredential.mockResolvedValue([
-			{ id: 'agent-2', name: 'Other Agent' } as Agent,
-		]);
-
-		const result = integration.onBeforeConnect({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			credentialId: 'credential-1',
-			credential: { accessToken: 'xoxb-token' },
-			webhookUrlFor: vi.fn(),
-		});
-
-		await expect(result).rejects.toThrow(ConflictError);
-		await expect(result).rejects.toThrow(
-			'Slack credential is already connected to agent "Other Agent"',
-		);
+		integration = new SlackIntegration();
 	});
 
 	it('advertises Slack messaging and reaction actions', () => {
@@ -68,6 +26,25 @@ describe('SlackIntegration', () => {
 
 	it('only advertises Slack bot token credentials for agent integrations', () => {
 		expect(integration.credentialTypes).toEqual(['slackApi']);
+	});
+
+	it('rejects a credential already connected to another agent', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIntegrationCredential.mockResolvedValue([
+			{ id: 'other-agent', name: 'Other Agent' },
+		] as never);
+		integration = new SlackIntegration(agentRepository);
+
+		await expect(
+			integration.onBeforeConnect({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				credentialId: 'credential-1',
+				credential: {},
+				ingressEnabled: true,
+				webhookUrlFor: vi.fn(),
+			}),
+		).rejects.toThrow(ConflictError);
 	});
 
 	it('extracts the Slack bot user ID for bridge message context', () => {

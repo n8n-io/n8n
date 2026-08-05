@@ -165,6 +165,7 @@ export class ChatIntegrationService {
 		const implementation = this.integrationRegistry.require(integration.type);
 		implementation.validateConfig?.(integration);
 		if (!implementation.onBeforeConnect) return;
+
 		const credential = await this.decryptCredentialForProject(integration.credentialId, projectId);
 		await implementation.onBeforeConnect({
 			agentId,

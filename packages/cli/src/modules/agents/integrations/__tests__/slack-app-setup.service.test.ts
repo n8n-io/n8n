@@ -11,8 +11,13 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 
+import { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { AgentIntegrationPersistenceService } from '../../agent-integration-persistence.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../agent-chat-integration';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import {
 	SlackManagedSetupService,
@@ -99,6 +104,7 @@ describe('Slack setup services', () => {
 		Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>
 	>;
 	let chatIntegrationService: Mocked<ChatIntegrationService>;
+	let integrationManagementService: AgentIntegrationManagementService;
 	let service: {
 		createApp: SlackManualSetupService['createApp'];
 		getManualManifest: (
@@ -165,19 +171,36 @@ describe('Slack setup services', () => {
 		agentIntegrationPersistenceService =
 			mock<Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>>();
 		chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.require.mockReturnValue(
+			mock<AgentChatIntegration>({
+				type: 'slack',
+				displayLabel: 'Slack',
+				credentialTypes: ['slackApi'],
+			}),
+		);
+		integrationManagementService = new AgentIntegrationManagementService(
+			agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
+			credentialsService,
+			chatIntegrationService,
+			chatIntegrationRegistry,
+		);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'cred-slack', type: 'slackApi' },
+			{ id: 'bot-credential', type: 'slackApi' },
+		] as never);
 		const urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://hooks.example/');
 		urlService.getInstanceBaseUrl.mockReturnValue('https://hooks.example');
 
 		const methods = new SlackMethodsService(
-			cacheService,
-			cipher,
 			credentialsService,
 			agentRepository,
-			agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
-			chatIntegrationService,
+			integrationManagementService,
 			urlService,
 			outboundHttp,
+			cacheService,
+			cipher,
 		);
 		const manualService = new SlackManualSetupService(
 			methods,
@@ -420,6 +443,7 @@ describe('Slack setup services', () => {
 			'agent-1',
 			integration,
 			'project-1',
+			{ skipBeforeConnect: true },
 		);
 		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
 			agent,
@@ -480,6 +504,7 @@ describe('Slack setup services', () => {
 			'agent-1',
 			{ type: 'slack', credentialId: 'cred-slack' },
 			'project-1',
+			{ skipBeforeConnect: true },
 		);
 		expect(
 			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],
@@ -684,6 +709,7 @@ describe('Slack setup services', () => {
 		credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{ id: 'manager', type: 'slackManagerOAuth2Api' },
+			{ id: 'bot-credential', type: 'slackApi' },
 		] as never);
 		const managerCredential = {
 			id: 'manager',

@@ -171,4 +171,5 @@ export class AgentSlackIntegrationsController {
 			});
 		}
 	}
+
 }

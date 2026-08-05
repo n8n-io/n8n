@@ -8,6 +8,7 @@ import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
 
@@ -102,6 +103,16 @@ describe('TelegramIntegration capabilities', () => {
 			'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
 			'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
 		]);
+	});
+});
+
+describe('TelegramIntegration.validateConfig', () => {
+	it('requires Telegram settings', () => {
+		const { integration } = makeIntegration();
+
+		expect(() =>
+			integration.validateConfig({ type: 'telegram', credentialId: 'credential-1' }),
+		).toThrow(BadRequestError);
 	});
 });
 

@@ -7,7 +7,10 @@ import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
 import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
-import { useSlackChannelRuntime, type SlackChannelRuntime } from './slack/useSlackChannelRuntime';
+import {
+	isSlackChannelRuntime,
+	useSlackChannelRuntime,
+} from './slack/useSlackChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
 import type {
@@ -19,10 +22,6 @@ import type {
 function createDefaultRuntime(): AgentChannelRuntime {
 	const loading = ref(false);
 	return { load: async () => {}, loading: readonly(loading) };
-}
-
-function isSlackRuntime(runtime: AgentChannelRuntime): runtime is SlackChannelRuntime {
-	return 'setup' in runtime;
 }
 
 const isSlackNotDeletedWarning = (
@@ -43,7 +42,7 @@ const fallbackPlatform: AgentChannelPlatform = {
 	getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 };
 
-const platforms: Record<string, AgentChannelPlatform> = {
+const platforms = {
 	slack: {
 		type: 'slack',
 		setupComponent: AgentChannelSlackSetupView,
@@ -51,10 +50,12 @@ const platforms: Record<string, AgentChannelPlatform> = {
 		disconnectConfirmationComponent: AgentChannelSlackRemoveConfirmation,
 		createRuntime: useSlackChannelRuntime,
 		shouldConfirmDisconnect: (runtime, credentialId, { isPublished }) =>
-			isPublished && isSlackRuntime(runtime) && runtime.isManagedCredential(credentialId),
+			isPublished &&
+			isSlackChannelRuntime(runtime) &&
+			runtime.isManagedCredential(credentialId),
 		getConnectAction: ({ text }, runtime) => {
 			const managedSetupAvailable =
-				isSlackRuntime(runtime) && runtime.setup.value.managedSetupAvailable;
+				isSlackChannelRuntime(runtime) && runtime.setup.value.managedSetupAvailable;
 			return {
 				label: text(
 					managedSetupAvailable ? 'agents.channels.slack.managed.addToSlack' : 'generic.connect',
@@ -98,10 +99,14 @@ const platforms: Record<string, AgentChannelPlatform> = {
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
 		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.telegram'),
 	},
-};
+} satisfies Record<string, AgentChannelPlatform>;
+
+export function isRegisteredAgentChannelPlatform(type: string): type is keyof typeof platforms {
+	return Object.hasOwn(platforms, type);
+}
 
 export function getAgentChannelPlatform(type: string): AgentChannelPlatform {
-	return platforms[type] ?? fallbackPlatform;
+	return isRegisteredAgentChannelPlatform(type) ? platforms[type] : fallbackPlatform;
 }
 
 export function createAgentChannelRuntime(

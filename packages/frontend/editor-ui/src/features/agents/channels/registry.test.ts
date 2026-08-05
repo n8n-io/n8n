@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
 
-import { getAgentChannelPlatform } from './registry';
+import { getAgentChannelPlatform, isRegisteredAgentChannelPlatform } from './registry';
 
 const text = (key: BaseTextKey) => key;
 
@@ -18,6 +18,11 @@ describe('agent channel platform registry', () => {
 		expect(action).toEqual({ label: 'generic.connect' });
 		expect(platform.setupComponent).toBeDefined();
 		expect(platform.editComponent).toBeDefined();
+	});
+
+	it('narrows registered platform keys', () => {
+		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
+		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
 	});
 
 	it('derives Slack list metadata from its local runtime state', () => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { computed } from 'vue';
@@ -42,8 +42,8 @@ const configuredActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(
 	return actions;
 });
 
-function toIconName(icon: string): IconName {
-	return icon as IconName;
+function isIconName(icon: string): icon is IconName {
+	return icon in updatedIconSet;
 }
 
 function handleConfiguredAction(action: ChannelAction) {
@@ -73,7 +73,7 @@ function handleConfiguredAction(action: ChannelAction) {
 		<template v-else>
 			<div :class="$style.iconWrapper">
 				<N8nIcon
-					:icon="integration.icon ? toIconName(integration.icon) : 'zap'"
+					:icon="integration.icon && isIconName(integration.icon) ? integration.icon : 'zap'"
 					:size="28"
 					:class="$style.channelIcon"
 				/>

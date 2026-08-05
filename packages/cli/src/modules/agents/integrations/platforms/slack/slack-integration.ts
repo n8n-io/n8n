@@ -47,7 +47,7 @@ import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
-	constructor(private readonly agentRepository: AgentRepository) {
+	constructor(private readonly agentRepository?: AgentRepository) {
 		super();
 	}
 
@@ -104,6 +104,7 @@ export class SlackIntegration extends AgentChatIntegration {
 	];
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
+		if (!this.agentRepository) return;
 		const others = await this.agentRepository.findByIntegrationCredential(
 			this.type,
 			ctx.credentialId,

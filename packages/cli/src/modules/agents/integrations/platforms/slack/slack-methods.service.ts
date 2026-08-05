@@ -21,10 +21,9 @@ import {
 	slackSetupCacheKey,
 	stringProperty,
 } from './slack-setup.types';
-import { AgentIntegrationPersistenceService } from '../../../agent-integration-persistence.service';
+import { AgentIntegrationManagementService } from '../../../agent-integration-management.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
-import { ChatIntegrationService } from '../../chat-integration.service';
 
 const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
@@ -56,14 +55,13 @@ class SlackApiError extends BadRequestError {
 @Service()
 export class SlackMethodsService {
 	constructor(
-		private readonly cacheService: CacheService,
-		private readonly cipher: Cipher,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
-		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly integrationManagementService: AgentIntegrationManagementService,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly cacheService?: CacheService,
+		private readonly cipher?: Cipher,
 	) {}
 
 	async callSlackApi(
@@ -175,6 +173,9 @@ export class SlackMethodsService {
 	}
 
 	async storeSession(state: string, session: SlackAppSetupSession): Promise<void> {
+		if (!this.cacheService || !this.cipher) {
+			throw new Error('Slack managed app setup dependencies are unavailable');
+		}
 		await this.cacheService.set(
 			slackSetupCacheKey(state),
 			await this.cipher.encryptV2(JSON.stringify(session)),
@@ -211,27 +212,56 @@ export class SlackMethodsService {
 			type: 'slack',
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
-		const savedAgent = await this.agentIntegrationPersistenceService.saveCredentialIntegration(
+		await this.integrationManagementService.connect({
 			agent,
+			user,
 			integration,
-			{ user, modifiedBy: 'user', broadcast: false },
-		);
+		});
 		await this.clearManagedAppSession(session);
-		if (savedAgent.activeVersionId === null) {
-			return credential.id;
-		}
-
-		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
-		await this.chatIntegrationService.broadcastIntegrationChange(
-			session.agentId,
-			integration,
-			'connect',
-		);
 		return credential.id;
+	}
+
+	async createAndConnectBotCredential(options: {
+		agent: Agent;
+		user: User;
+		accessToken: string;
+		signingSecret: string;
+	}): Promise<string> {
+		const credential = await this.credentialsService.createUnmanagedCredential(
+			{
+				name: this.credentialName(undefined, options.agent.name),
+				type: SLACK_CREDENTIAL_TYPE,
+				data: {
+					accessToken: options.accessToken,
+					signatureSecret: options.signingSecret,
+				},
+				projectId: options.agent.projectId,
+			},
+			options.user,
+		);
+		await this.integrationManagementService.connect({
+			agent: options.agent,
+			user: options.user,
+			integration: { type: 'slack', credentialId: credential.id },
+		});
+		return credential.id;
+	}
+
+	childRecord(record: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+		const child = record[key];
+		return isRecord(child) ? child : undefined;
+	}
+
+	stringProperty(record: Record<string, unknown> | undefined, key: string): string | undefined {
+		const value = record?.[key];
+		return typeof value === 'string' ? value : undefined;
 	}
 
 	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {
 		if (session.managerCredentialId && session.teamId) {
+			if (!this.cacheService) {
+				throw new Error('Slack managed app setup dependencies are unavailable');
+			}
 			await this.cacheService.delete(
 				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}`,
 			);

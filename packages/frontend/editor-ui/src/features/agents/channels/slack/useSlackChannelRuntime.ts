@@ -54,6 +54,12 @@ export interface SlackChannelRuntime extends AgentChannelRuntime {
 	) => Promise<void>;
 }
 
+export function isSlackChannelRuntime(
+	runtime: AgentChannelRuntime,
+): runtime is SlackChannelRuntime {
+	return 'setup' in runtime;
+}
+
 export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): SlackChannelRuntime {
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
