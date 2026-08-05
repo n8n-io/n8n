@@ -47,6 +47,9 @@ const mcpServersRuntimeInputSchema = z.discriminatedUnion('action', [searchActio
 // flattened object; the handler parses the union for narrowing and per-action rules.
 const mcpServersToolInputSchema = sanitizeInputSchema(mcpServersRuntimeInputSchema);
 
+const connectionStateSchema = z.enum(['not-connected', 'connected', 'connected-not-working']);
+type ConnectionState = z.infer<typeof connectionStateSchema>;
+
 const searchOutputSchema = z.object({
 	results: z.array(
 		z.object({
@@ -55,15 +58,18 @@ const searchOutputSchema = z.object({
 			description: z.string(),
 			credentialType: z.string(),
 			tools: z.array(z.string()),
+			state: connectionStateSchema,
 		}),
 	),
 	hint: z.string().optional(),
 });
 
 const connectOutputSchema = z.object({
+	/** Only slugs whose tools actually reached the agent; a connected-but-broken one
+	 *  is reported in `message` instead. */
 	connectedSlugs: z.array(z.string()),
-	/** Carries what to do next, which `connectedSlugs` cannot: skipped, failed, and
-	 *  invented-slug all come back empty but need different follow-ups. */
+	/** Skipped, failed and invented-slug all return no slugs but need different
+	 *  follow-ups, so the instruction rides here. */
 	message: z.string(),
 });
 
@@ -71,17 +77,29 @@ const mcpServersOutputSchema = z.union([searchOutputSchema, connectOutputSchema]
 
 const DESCRIPTION = `Find tools you can use in this conversation to work with a third-party service (e.g. Notion, Linear, Slack), and let the user connect one without leaving the chat.
 This is how YOU get the ability to act on a service while chatting. It is not \`credentials\`, which only stores what a node authenticates with when a workflow runs.
-\`search\` returns only services that are *not* connected yet — an already-connected service's tools are already available to you through \`search_tools\`.
+\`search\` returns matching services with a \`state\`: \`not-connected\`, \`connected\` (its tools are already available to you through \`search_tools\`), or \`connected-not-working\` (connected, but its tools did not load, so it has none you can call).
 \`connect\` pauses so the user can connect a service \`search\` returned, and resumes once they connect or skip. Only the user can complete a connection.
+\`connect\` also works on an already-connected service so the user can switch its credential or reconnect a broken one — use it when its tools are missing or the user wants a different account, not when its tools already work.
 In the same turn as a \`connect\` call, first write one sentence telling the user you can do what they asked once they connect that service.`;
 
 const CONNECT_HINT =
-	'Not connected yet — call this tool again with `action: "connect"` and its slug so the user can connect it in place. Do not recite the manual steps instead.';
+	'A `not-connected` service has no tools here yet — call this tool again with `action: "connect"` and its slug so the user can connect it in place. Do not recite the manual steps instead.';
 
-/** Scoped to the request rather than the conversation: the user may have connected
- *  a different service in the tools modal instead, and those tools reach the next turn. */
+const ALREADY_WORKING_HINT =
+	'A `connected` service already works — find its tools with `search_tools` instead of offering to connect it again.';
+
+const BROKEN_HINT =
+	'A `connected-not-working` service has no tools you can call: do not look for them with `search_tools` and never guess a tool name. Tell the user its connection is not working, then `connect` its slug so they can reconnect it.';
+
 const NOT_CONNECTED_GUIDANCE =
 	' Continue without these tools and do not offer them again for this request. If the user connected something else in the meantime, its tools reach you on your next turn.';
+
+function brokenConnectionNote(slugs: string[]): string {
+	return (
+		`Connected but not working: ${slugs.join(', ')}. Their tools did not load, so they are unavailable to you — ` +
+		'do not look for them with `search_tools`. Tell the user the connection is not working and ask them to reopen it and connect it again.'
+	);
+}
 
 const TRUNCATED_HINT =
 	'More services matched than are shown, search again with a narrower query if none of these fit.';
@@ -104,15 +122,42 @@ function requireMcpService(context: InstanceAiContext): InstanceAiMcpService {
 	return mcpService;
 }
 
+/** Empty when the host never established the view — a missing signal must not read
+ *  as a broken connection. */
+function brokenSlugs(context: InstanceAiContext): Set<string> {
+	return new Set(
+		(context.connectedMcpServices ?? [])
+			.filter((service) => !service.toolsLoaded)
+			.map((service) => service.slug),
+	);
+}
+
 async function handleSearch(
 	context: InstanceAiContext,
 	input: z.infer<typeof searchAction>,
 ): Promise<z.infer<typeof searchOutputSchema>> {
-	const matches = await requireMcpService(context).search(input.queries);
-	const results = matches.slice(0, MAX_RESULTS);
+	const mcpService = requireMcpService(context);
+	const [matches, connections] = await Promise.all([
+		mcpService.search(input.queries),
+		mcpService.listConnections(),
+	]);
+
+	const connected = new Set(connections.map((connection) => connection.slug));
+	const broken = brokenSlugs(context);
+	const stateFor = (slug: string): ConnectionState => {
+		if (!connected.has(slug)) return 'not-connected';
+		return broken.has(slug) ? 'connected-not-working' : 'connected';
+	};
+
+	const results = matches
+		.slice(0, MAX_RESULTS)
+		.map((server) => ({ ...server, state: stateFor(server.slug) }));
+	const states = new Set(results.map((result) => result.state));
 
 	const hint = [
-		results.length > 0 && CONNECT_HINT,
+		states.has('not-connected') && CONNECT_HINT,
+		states.has('connected') && ALREADY_WORKING_HINT,
+		states.has('connected-not-working') && BROKEN_HINT,
 		matches.length > results.length && TRUNCATED_HINT,
 	]
 		.filter((line): line is string => typeof line === 'string')
@@ -129,10 +174,11 @@ async function handleConnect(
 	const mcpService = requireMcpService(context);
 	const { resumeData } = ctx;
 
-	const [servers, connected] = await Promise.all([
+	const [servers, connections] = await Promise.all([
 		mcpService.getServers(input.serverSlugs),
-		mcpService.listConnectedSlugs(),
+		mcpService.listConnections(),
 	]);
+	const connected = new Set(connections.map((connection) => connection.slug));
 	const known = new Set(servers.map((server) => server.slug));
 	// A slug the user has a connection row for is real even when the registry no longer
 	// resolves it (deprecated, or its remote is gone), so it is connected, not invented.
@@ -160,19 +206,22 @@ async function handleConnect(
 			};
 		}
 
-		return {
-			connectedSlugs: verified,
-			message:
-				`Connected: ${verified.join(', ')}. Their tools are available now — find them with \`search_tools\` and carry on with the request.` +
-				unknownNote,
-		};
+		const brokenSet = brokenSlugs(context);
+		const working = verified.filter((slug) => !brokenSet.has(slug));
+		const broken = verified.filter((slug) => brokenSet.has(slug));
+
+		const message = [
+			working.length > 0 &&
+				`Connected: ${working.join(', ')}. Their tools are available now — find them with \`search_tools\` and carry on with the request.`,
+			broken.length > 0 && brokenConnectionNote(broken),
+		]
+			.filter((line): line is string => typeof line === 'string')
+			.join(' ');
+
+		return { connectedSlugs: working, message: message + unknownNote };
 	}
 
-	// One connection per server is a backend invariant, so re-offering a connected
-	// one could only confuse the user.
-	const offerable = servers.filter((server) => !connected.has(server.slug));
-
-	if (offerable.length === 0) {
+	if (servers.length === 0) {
 		if (alreadyConnected.length === 0) {
 			return {
 				connectedSlugs: [],
@@ -180,12 +229,10 @@ async function handleConnect(
 			};
 		}
 
+		// No registry entry left to render a row from, so their tools cannot have loaded either.
 		return {
-			connectedSlugs: alreadyConnected,
-			message:
-				`Already connected: ${alreadyConnected.join(', ')}. Look for their tools with \`search_tools\` and use them instead of offering a connection. ` +
-				'If none show up, the connection needs re-authorising — ask the user to check it under "Connections".' +
-				unknownNote,
+			connectedSlugs: [],
+			message: brokenConnectionNote(alreadyConnected) + unknownNote,
 		};
 	}
 
@@ -196,7 +243,7 @@ async function handleConnect(
 		message: input.reason,
 		severity: 'info',
 		mcpConnectRequest: {
-			servers: offerable.map((server) => ({
+			servers: servers.map((server) => ({
 				serverSlug: server.slug,
 				title: server.title,
 				credentialType: server.credentialType,

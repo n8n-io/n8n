@@ -173,6 +173,67 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		});
 	});
 
+	describe('connected services are named upfront with whether they work', () => {
+		const registryEnabled = { mcpRegistrySearchEnabled: true };
+
+		it('lists a working connection as available', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [{ slug: 'linear', title: 'Linear', toolsLoaded: true }],
+			});
+
+			expect(prompt).toContain('### Services the user has connected');
+			expect(prompt).toContain('Linear (`linear`) — working');
+		});
+
+		it('tells the orchestrator not to hunt for the tools of a broken connection', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [{ slug: 'linear', title: 'Linear', toolsLoaded: false }],
+			});
+
+			expect(prompt).toContain('its tools did not load');
+			expect(prompt).toContain('Do not search for its tools with `search_tools`');
+			expect(prompt).toContain('never guess a tool name');
+			expect(prompt).toContain('reconnect');
+		});
+
+		it('keeps the broken-connection instructions out of an all-working list', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [{ slug: 'linear', title: 'Linear', toolsLoaded: true }],
+			});
+
+			expect(prompt).not.toContain('never guess a tool name');
+		});
+
+		it('separates the working connections from the broken ones', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [
+					{ slug: 'linear', title: 'Linear', toolsLoaded: false },
+					{ slug: 'notion', title: 'Notion', toolsLoaded: true },
+				],
+			});
+
+			expect(prompt).toContain('Linear (`linear`) — connected, but its tools did not load');
+			expect(prompt).toContain('Notion (`notion`) — working');
+		});
+
+		// Undefined means the host could not read the connections, not that there are none.
+		it('says nothing about connections when the host reported nothing', () => {
+			const prompt = getSystemPrompt(registryEnabled);
+
+			expect(prompt).not.toContain('### Services the user has connected');
+		});
+
+		it('says nothing about connections when the user has none', () => {
+			const prompt = getSystemPrompt({ ...registryEnabled, connectedMcpServices: [] });
+
+			expect(prompt).not.toContain('### Services the user has connected');
+		});
+	});
+
 	describe('browser availability state propagates to the prompt', () => {
 		it('includes browser automation rules when browser is available', () => {
 			const prompt = getSystemPrompt({

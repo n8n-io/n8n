@@ -1,8 +1,13 @@
-import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
+import { isZodSchema, toModelJsonSchema } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../__tests__/tool-test-utils';
-import type { InstanceAiContext, InstanceAiMcpService, McpRegistryServerSummary } from '../types';
+import type {
+	ConnectedMcpService,
+	InstanceAiContext,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
+} from '../types';
 import { createMcpServersTool } from './mcp-servers.tool';
 
 const notion: McpRegistryServerSummary = {
@@ -31,10 +36,29 @@ function makeServers(count: number): McpRegistryServerSummary[] {
 	}));
 }
 
-function makeContext(mcpService?: InstanceAiMcpService): InstanceAiContext {
+function makeContext(
+	mcpService?: InstanceAiMcpService,
+	connectedMcpServices?: ConnectedMcpService[],
+): InstanceAiContext {
 	const context = mock<InstanceAiContext>();
 	context.mcpService = mcpService;
+	context.connectedMcpServices = connectedMcpServices;
 	return context;
+}
+
+/** Agent-build view: which of the user's connections had tools attached. */
+function built(states: Record<string, boolean>): ConnectedMcpService[] {
+	return Object.entries(states).map(([slug, toolsLoaded]) => ({
+		slug,
+		title: slug,
+		toolsLoaded,
+	}));
+}
+
+function connected(...slugs: string[]): Partial<InstanceAiMcpService> {
+	return {
+		listConnections: vi.fn().mockResolvedValue(slugs.map((slug) => ({ slug, title: slug }))),
+	};
 }
 
 function makeService(
@@ -48,13 +72,13 @@ function makeService(
 			.mockImplementation((slugs: string[]) =>
 				servers.filter((server) => slugs.includes(server.slug)),
 			),
-		listConnectedSlugs: vi.fn().mockResolvedValue(new Set<string>()),
+		listConnections: vi.fn().mockResolvedValue([]),
 		...overrides,
 	};
 }
 
 interface SearchOutput {
-	results: McpRegistryServerSummary[];
+	results: Array<McpRegistryServerSummary & { state: string }>;
 	hint?: string;
 }
 
@@ -82,12 +106,12 @@ function suspendingContext() {
 	return { ctx: { resumeData: undefined, suspend }, suspend };
 }
 
-type JsonSchema = NonNullable<ReturnType<typeof zodToJsonSchema>>;
+type JsonSchema = NonNullable<ReturnType<typeof toModelJsonSchema>>;
 
 function inputJsonSchema(): JsonSchema {
 	const { inputSchema } = createMcpServersTool(makeContext(makeService([])));
 	if (!isZodSchema(inputSchema)) throw new Error('expected a Zod input schema');
-	const jsonSchema = zodToJsonSchema(inputSchema);
+	const jsonSchema = toModelJsonSchema(inputSchema);
 	if (!jsonSchema) throw new Error('expected the input schema to convert');
 	return jsonSchema;
 }
@@ -142,6 +166,13 @@ describe('mcp-servers tool', () => {
 			expect(description).not.toContain('unavailable');
 		});
 
+		it('says connect also repairs or switches an existing connection', () => {
+			const { description } = createMcpServersTool(makeContext(makeService([])));
+
+			expect(description).toContain('already-connected service');
+			expect(description).toContain('not when its tools already work');
+		});
+
 		it('separates itself from the credentials a workflow node runs with', () => {
 			const { description } = createMcpServersTool(makeContext(makeService([])));
 
@@ -172,7 +203,66 @@ describe('mcp-servers tool', () => {
 			});
 
 			expect(mcpService.search).toHaveBeenCalledWith(['notion', 'linear']);
-			expect(output.results).toEqual([notion, linear]);
+			expect(output.results).toEqual([
+				{ ...notion, state: 'not-connected' },
+				{ ...linear, state: 'not-connected' },
+			]);
+		});
+
+		it('keeps a connected service in the results instead of hiding it', async () => {
+			const mcpService = makeService([notion, linear], connected('linear'));
+			const tool = createMcpServersTool(makeContext(mcpService, built({ linear: true })));
+
+			const output = await executeTool<SearchOutput>(tool, {
+				action: 'search',
+				queries: ['linear'],
+			});
+
+			expect(output.results.map((result) => [result.slug, result.state])).toEqual([
+				['notion', 'not-connected'],
+				['linear', 'connected'],
+			]);
+			expect(output.hint).toContain('already works');
+		});
+
+		it('flags a connected service whose tools did not load, so it can be reconnected', async () => {
+			const mcpService = makeService([linear], connected('linear'));
+			const tool = createMcpServersTool(makeContext(mcpService, built({ linear: false })));
+
+			const output = await executeTool<SearchOutput>(tool, {
+				action: 'search',
+				queries: ['linear'],
+			});
+
+			expect(output.results[0].state).toBe('connected-not-working');
+			expect(output.hint).toContain('never guess a tool name');
+			expect(output.hint).toContain('reconnect');
+		});
+
+		// The agent build is the only thing that knows whether tools loaded; without it
+		// a working connection would be reported as broken.
+		it('calls a connection working when the agent build reported nothing', async () => {
+			const mcpService = makeService([linear], connected('linear'));
+			const tool = createMcpServersTool(makeContext(mcpService, undefined));
+
+			const output = await executeTool<SearchOutput>(tool, {
+				action: 'search',
+				queries: ['linear'],
+			});
+
+			expect(output.results[0].state).toBe('connected');
+		});
+
+		it('takes connectedness from the live connection list, not the build view', async () => {
+			const mcpService = makeService([notion], connected());
+			const tool = createMcpServersTool(makeContext(mcpService, built({ notion: false })));
+
+			const output = await executeTool<SearchOutput>(tool, {
+				action: 'search',
+				queries: ['notion'],
+			});
+
+			expect(output.results[0].state).toBe('not-connected');
 		});
 
 		it('caps the results and says it truncated', async () => {
@@ -273,10 +363,8 @@ describe('mcp-servers tool', () => {
 			});
 		});
 
-		it('only offers the servers that are not connected yet', async () => {
-			const mcpService = makeService([notion, linear], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['linear'])),
-			});
+		it('offers the connected servers too, so a credential can be switched', async () => {
+			const mcpService = makeService([notion, linear], connected('linear'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 			const { ctx, suspend } = suspendingContext();
 
@@ -287,25 +375,25 @@ describe('mcp-servers tool', () => {
 			);
 
 			const payload = suspend.mock.calls[0][0] as SuspendPayload;
-			expect(payload.mcpConnectRequest.servers.map((s) => s.serverSlug)).toEqual(['notion']);
+			expect(payload.mcpConnectRequest.servers.map((s) => s.serverSlug)).toEqual([
+				'notion',
+				'linear',
+			]);
 		});
 
-		it('is a no-op when every requested server is already connected', async () => {
-			const mcpService = makeService([linear], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['linear'])),
-			});
-			const tool = createMcpServersTool(makeContext(mcpService));
+		it('offers a card for an already-connected server instead of short-circuiting', async () => {
+			const mcpService = makeService([linear], connected('linear'));
+			const tool = createMcpServersTool(makeContext(mcpService, built({ linear: true })));
 			const { ctx, suspend } = suspendingContext();
 
-			const output = await executeTool<ConnectOutput>(
+			await executeTool(
 				tool,
 				{ action: 'connect', serverSlugs: ['linear'], reason: 'Because' },
 				ctx,
 			);
 
-			expect(suspend).not.toHaveBeenCalled();
-			expect(output.connectedSlugs).toEqual(['linear']);
-			expect(output.message).toContain('Already connected');
+			const payload = suspend.mock.calls[0][0] as SuspendPayload;
+			expect(payload.mcpConnectRequest.servers.map((s) => s.serverSlug)).toEqual(['linear']);
 		});
 
 		it('tells the agent to search first when no slug resolves', async () => {
@@ -324,10 +412,8 @@ describe('mcp-servers tool', () => {
 			expect(output.message).toContain('action: "search"');
 		});
 
-		it('reports a connected server the registry no longer resolves as connected', async () => {
-			const mcpService = makeService([], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['notion'])),
-			});
+		it('reports a connected server the registry no longer resolves as broken', async () => {
+			const mcpService = makeService([], connected('notion'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 			const { ctx, suspend } = suspendingContext();
 
@@ -338,14 +424,13 @@ describe('mcp-servers tool', () => {
 			);
 
 			expect(suspend).not.toHaveBeenCalled();
-			expect(output.connectedSlugs).toEqual(['notion']);
-			expect(output.message).toContain('Already connected');
+			expect(output.connectedSlugs).toEqual([]);
+			expect(output.message).toContain('Connected but not working: notion');
+			expect(output.message).toContain('do not look for them with `search_tools`');
 		});
 
 		it('does not call a connected server the registry dropped an invented slug', async () => {
-			const mcpService = makeService([linear], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['notion', 'linear'])),
-			});
+			const mcpService = makeService([linear], connected('notion', 'linear'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(
@@ -398,9 +483,7 @@ describe('mcp-servers tool', () => {
 		});
 
 		it('corrects an invented slug in the result the model reads', async () => {
-			const mcpService = makeService([notion], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['notion'])),
-			});
+			const mcpService = makeService([notion], connected('notion'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(
@@ -414,9 +497,7 @@ describe('mcp-servers tool', () => {
 		});
 
 		it('reports only the slugs the server confirms are connected', async () => {
-			const mcpService = makeService([notion], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['notion'])),
-			});
+			const mcpService = makeService([notion], connected('notion'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(
@@ -430,10 +511,74 @@ describe('mcp-servers tool', () => {
 			expect(output.message).toContain('available now');
 		});
 
+		it('reports a connection whose tools never reached the agent as broken', async () => {
+			const mcpService = makeService([notion], connected('notion'));
+			const tool = createMcpServersTool(makeContext(mcpService, built({ notion: false })));
+
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion'], reason: 'Because' },
+				{ resumeData: { approved: true, connectedSlugs: ['notion'] } },
+			);
+
+			expect(output.connectedSlugs).toEqual([]);
+			expect(output.message).toContain('Connected but not working: notion');
+			expect(output.message).toContain('do not look for them with `search_tools`');
+			expect(output.message).toContain('connect it again');
+			expect(output.message).not.toContain('available now');
+		});
+
+		// The card shows a pre-connected server as connected and the user just continues,
+		// so the resume reports it back without anything having changed.
+		it('does not promise tools for a server that was already connected and broken', async () => {
+			const mcpService = makeService([linear], connected('linear'));
+			const tool = createMcpServersTool(makeContext(mcpService, built({ linear: false })));
+
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['linear'], reason: 'Because' },
+				{ resumeData: { approved: true, connectedSlugs: ['linear'] } },
+			);
+
+			expect(output.connectedSlugs).toEqual([]);
+			expect(output.message).not.toContain('available now');
+			expect(output.message).toContain('Connected but not working: linear');
+		});
+
+		it('separates the working connections from the broken ones', async () => {
+			const mcpService = makeService([notion, linear], connected('notion', 'linear'));
+			const tool = createMcpServersTool(
+				makeContext(mcpService, built({ notion: false, linear: true })),
+			);
+
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion', 'linear'], reason: 'Because' },
+				{ resumeData: { approved: true, connectedSlugs: ['notion', 'linear'] } },
+			);
+
+			expect(output.connectedSlugs).toEqual(['linear']);
+			expect(output.message).toContain('Connected: linear');
+			expect(output.message).toContain('Connected but not working: notion');
+		});
+
+		it('trusts the connection when the agent build reported nothing', async () => {
+			const mcpService = makeService([notion], connected('notion'));
+			const tool = createMcpServersTool(makeContext(mcpService, undefined));
+
+			const output = await executeTool<ConnectOutput>(
+				tool,
+				{ action: 'connect', serverSlugs: ['notion'], reason: 'Because' },
+				{ resumeData: { approved: true, connectedSlugs: ['notion'] } },
+			);
+
+			expect(output.connectedSlugs).toEqual(['notion']);
+			expect(output.message).toContain('available now');
+			expect(output.message).not.toContain('not working');
+		});
+
 		it('ignores a client claim the server cannot confirm', async () => {
-			const mcpService = makeService([notion], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set<string>()),
-			});
+			const mcpService = makeService([notion], connected());
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(
@@ -447,9 +592,7 @@ describe('mcp-servers tool', () => {
 		});
 
 		it('reports a skip when the user declined to connect', async () => {
-			const mcpService = makeService([notion], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set<string>()),
-			});
+			const mcpService = makeService([notion], connected());
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(
@@ -466,9 +609,7 @@ describe('mcp-servers tool', () => {
 		});
 
 		it('still reports a connection made before the user skipped the rest', async () => {
-			const mcpService = makeService([notion], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['notion'])),
-			});
+			const mcpService = makeService([notion], connected('notion'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(
@@ -481,9 +622,7 @@ describe('mcp-servers tool', () => {
 		});
 
 		it('does not credit the card for a server connected before it appeared', async () => {
-			const mcpService = makeService([notion, linear], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['linear'])),
-			});
+			const mcpService = makeService([notion, linear], connected('linear'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(
@@ -496,9 +635,7 @@ describe('mcp-servers tool', () => {
 		});
 
 		it('credits nothing when the client sends no connection report at all', async () => {
-			const mcpService = makeService([notion, linear], {
-				listConnectedSlugs: vi.fn().mockResolvedValue(new Set(['linear'])),
-			});
+			const mcpService = makeService([notion, linear], connected('linear'));
 			const tool = createMcpServersTool(makeContext(mcpService));
 
 			const output = await executeTool<ConnectOutput>(

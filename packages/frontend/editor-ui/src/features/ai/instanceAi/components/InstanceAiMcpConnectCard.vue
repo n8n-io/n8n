@@ -49,8 +49,14 @@ const { connectServer, connectWithCredential, createCredentialAdapter } = useMcp
 
 const isConnecting = ref(false);
 
+/** Connected before the card opened; `null` until the connections have loaded. */
+const preConnectedSlugs = ref<Set<string> | null>(null);
+
 void mcpStore.fetchCatalogLazy();
-void mcpStore.fetchConnections();
+void (async () => {
+	await mcpStore.fetchConnections();
+	preConnectedSlugs.value = new Set(mcpStore.connections.map((c) => c.serverSlug));
+})();
 void (async () => {
 	try {
 		await credentialsStore.fetchAllCredentials();
@@ -120,14 +126,16 @@ function finish(approved: boolean) {
 }
 
 // Also covers connecting elsewhere (the modal, the sidebar, another tab), which
-// would otherwise leave nothing to click and the run suspended. Latched: a failed
-// confirm re-enables the card, and re-arming would retry forever.
+// would otherwise leave nothing to click and the run suspended. Needs a row that
+// opened unconnected, so a card offered to swap a credential stays put. Latched:
+// a failed confirm re-enables the card, and re-arming would retry forever.
 const autoFinished = ref(false);
 watch(
-	[isActionable, rows],
-	([actionable, currentRows]) => {
-		if (!actionable || autoFinished.value) return;
-		if (currentRows.every((row) => row.item.isConnected)) {
+	[isActionable, rows, preConnectedSlugs],
+	([actionable, currentRows, preConnected]) => {
+		if (!actionable || autoFinished.value || !preConnected) return;
+		const connectedHere = currentRows.some((row) => !preConnected.has(row.serverSlug));
+		if (connectedHere && currentRows.every((row) => row.item.isConnected)) {
 			autoFinished.value = true;
 			finish(true);
 		}

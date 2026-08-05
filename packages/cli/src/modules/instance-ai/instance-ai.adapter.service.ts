@@ -42,6 +42,7 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiMcpService,
+	McpRegistryConnectionSummary,
 	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
@@ -451,35 +452,28 @@ export class InstanceAiAdapterService {
 			}));
 
 		return {
-			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
-				const [servers, connectedSlugs] = await Promise.all([
-					Container.get(McpRegistryService).search(queries),
-					this.listConnectedMcpRegistrySlugs(user).catch((error: unknown) => {
-						this.logger.warn('Failed to list connected MCP registry servers for registry search', {
-							userId: user.id,
-							error: error instanceof Error ? error.message : String(error),
-						});
-						return new Set<string>();
-					}),
-				]);
-				return toSummaries(servers.filter((server) => !connectedSlugs.has(server.slug)));
-			},
+			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> =>
+				toSummaries(await Container.get(McpRegistryService).search(queries)),
 			getServers: async (slugs: string[]): Promise<McpRegistryServerSummary[]> =>
 				toSummaries(await Container.get(McpRegistryService).resolveBySlugs(slugs)),
-			listConnectedSlugs: async (): Promise<Set<string>> =>
-				await this.listConnectedMcpRegistrySlugs(user),
+			listConnections: async (): Promise<McpRegistryConnectionSummary[]> =>
+				await this.listMcpRegistryConnections(user),
 		};
 	}
 
-	/** Slugs the user already has a connection row for. Reads the rows rather than
-	 *  resolving them into loadable servers: resolving decrypts credentials per
-	 *  connection, and a row that fails to resolve still blocks connecting again
-	 *  (one connection per user+slug), so re-offering it would dead-end. */
-	private async listConnectedMcpRegistrySlugs(user: User): Promise<Set<string>> {
+	/** Reads the connection rows rather than resolving them into loadable servers:
+	 *  resolving decrypts credentials per connection, and a row that fails to resolve
+	 *  is still connected (one connection per user+slug). */
+	private async listMcpRegistryConnections(user: User): Promise<McpRegistryConnectionSummary[]> {
 		const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
 			user,
 		);
-		return new Set(connections.map((connection) => connection.serverSlug));
+		const slugs = [...new Set(connections.map((connection) => connection.serverSlug))];
+		if (slugs.length === 0) return [];
+
+		const servers = await Container.get(McpRegistryService).getBySlugs(slugs);
+		const titleBySlug = new Map(servers.map((server) => [server.slug, server.title]));
+		return slugs.map((slug) => ({ slug, title: titleBySlug.get(slug) ?? slug }));
 	}
 
 	private buildAiGatewayNodeMeta(

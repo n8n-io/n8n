@@ -3860,6 +3860,7 @@ describe('MCP registry discovery', () => {
 		featureFlags?: Record<string, string>;
 		registrySearch?: Mock;
 		registryResolveBySlugs?: Mock;
+		registryGetBySlugs?: Mock;
 		listConnectionsForUser?: Mock;
 	}
 
@@ -3869,11 +3870,12 @@ describe('MCP registry discovery', () => {
 		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
 		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
 		const resolveBySlugs = stubs.registryResolveBySlugs ?? vi.fn().mockResolvedValue([]);
+		const getBySlugs = stubs.registryGetBySlugs ?? vi.fn().mockResolvedValue([]);
 		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === PostHogClient) return { getFeatureFlags };
-			if (token === McpRegistryService) return { search, resolveBySlugs };
+			if (token === McpRegistryService) return { search, resolveBySlugs, getBySlugs };
 			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
 			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
 			return {
@@ -3881,7 +3883,7 @@ describe('MCP registry discovery', () => {
 			};
 		});
 
-		return { getFeatureFlags, search, resolveBySlugs, listConnectionsForUser };
+		return { getFeatureFlags, search, resolveBySlugs, getBySlugs, listConnectionsForUser };
 	}
 
 	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
@@ -3974,8 +3976,10 @@ describe('MCP registry discovery', () => {
 			]);
 		});
 
-		it('drops a server the user already has a connection for', async () => {
-			const { listConnectionsForUser } = stubContainer({
+		// A connected server whose tools never loaded has to stay findable, or the
+		// only route back to a working connection is closed.
+		it('keeps a server the user already has a connection for', async () => {
+			stubContainer({
 				registrySearch: vi
 					.fn()
 					.mockResolvedValue([registryHit, { ...registryHit, slug: 'notion', title: 'Notion' }]),
@@ -3989,20 +3993,7 @@ describe('MCP registry discovery', () => {
 
 			const results = await context.mcpService!.search(['drive', 'notion']);
 
-			expect(listConnectionsForUser).toHaveBeenCalledWith(user);
-			expect(results.map((result) => result.slug)).toEqual(['notion']);
-		});
-
-		it('offers everything when listing connections fails', async () => {
-			stubContainer({
-				registrySearch: vi.fn().mockResolvedValue([registryHit]),
-				listConnectionsForUser: vi.fn().mockRejectedValue(new Error('query failed')),
-			});
-			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
-
-			const results = await context.mcpService!.search(['drive']);
-
-			expect(results.map((result) => result.slug)).toEqual(['google-drive']);
+			expect(results.map((result) => result.slug)).toEqual(['google-drive', 'notion']);
 		});
 
 		it('resolves exact slugs through the same summary shape', async () => {
@@ -4028,10 +4019,36 @@ describe('MCP registry discovery', () => {
 		it('lists slugs with a connection row, not just the loadable ones', async () => {
 			stubContainer({
 				listConnectionsForUser: vi.fn().mockResolvedValue([{ serverSlug: 'google-drive' }]),
+				registryGetBySlugs: vi.fn().mockResolvedValue([registryHit]),
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 
-			expect(await context.mcpService!.listConnectedSlugs()).toEqual(new Set(['google-drive']));
+			expect(await context.mcpService!.listConnections()).toEqual([
+				{ slug: 'google-drive', title: 'Google Drive' },
+			]);
+		});
+
+		// The connection is still real and still blocks a second one for the same slug.
+		it('falls back to the slug when the registry no longer resolves the entry', async () => {
+			stubContainer({
+				listConnectionsForUser: vi.fn().mockResolvedValue([{ serverSlug: 'retired' }]),
+				registryGetBySlugs: vi.fn().mockResolvedValue([]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.listConnections()).toEqual([
+				{ slug: 'retired', title: 'retired' },
+			]);
+		});
+
+		it('does not query the registry when the user has no connections', async () => {
+			const { getBySlugs } = stubContainer({
+				listConnectionsForUser: vi.fn().mockResolvedValue([]),
+			});
+			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
+
+			expect(await context.mcpService!.listConnections()).toEqual([]);
+			expect(getBySlugs).not.toHaveBeenCalled();
 		});
 
 		it('surfaces a lookup failure rather than reporting no connections', async () => {
@@ -4040,10 +4057,10 @@ describe('MCP registry discovery', () => {
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 
-			await expect(context.mcpService!.listConnectedSlugs()).rejects.toThrow('query failed');
+			await expect(context.mcpService!.listConnections()).rejects.toThrow('query failed');
 		});
 
-		it('resolves a connected slug too, leaving connectedness to listConnectedSlugs', async () => {
+		it('resolves a connected slug too, leaving connectedness to listConnections', async () => {
 			const { listConnectionsForUser } = stubContainer({
 				registryResolveBySlugs: vi.fn().mockResolvedValue([registryHit]),
 				listConnectionsForUser: vi.fn().mockResolvedValue([{ serverSlug: 'google-drive' }]),

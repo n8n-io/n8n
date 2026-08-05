@@ -165,6 +165,7 @@ describe('InstanceAiMcpConnectCard', () => {
 		});
 		const { getByTestId, emitted } = renderComponent({ props: { servers: [BRAVE_PAYLOAD] } });
 
+		await nextTick();
 		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
 
 		expect(telemetryMock.trackFirstCredentialConnectionStart).toHaveBeenCalledWith('brave');
@@ -180,6 +181,7 @@ describe('InstanceAiMcpConnectCard', () => {
 		mcpStoreMock.mockReturnValue(store);
 		const { emitted } = renderComponent({ props: { servers: [BRAVE_PAYLOAD] } });
 
+		await nextTick();
 		expect(emitted().resolve).toBeUndefined();
 
 		store.connections.push(BRAVE_CONNECTION);
@@ -188,13 +190,27 @@ describe('InstanceAiMcpConnectCard', () => {
 		expect(emitted().resolve).toEqual([[{ approved: true, connectedSlugs: ['brave'] }]]);
 	});
 
+	it('stays open when every row was already connected before it appeared', async () => {
+		mcpStoreMock.mockReturnValue(makeMcpStore({ connections: [BRAVE_CONNECTION] }));
+		const { emitted, getByTestId } = renderComponent({ props: { servers: [BRAVE_PAYLOAD] } });
+
+		await nextTick();
+
+		expect(emitted().resolve).toBeUndefined();
+		expect(getByTestId('instance-ai-mcp-connect-resolve')).toBeVisible();
+	});
+
 	// A failed confirm re-enables the card; without a latch this would loop.
 	it('auto-resolves once even if the card is re-enabled afterwards', async () => {
-		const store = makeMcpStore({ connections: [BRAVE_CONNECTION] });
+		const store = makeMcpStore();
 		mcpStoreMock.mockReturnValue(store);
 		const { emitted, rerender } = renderComponent({
 			props: { servers: [BRAVE_PAYLOAD], readOnly: false },
 		});
+
+		await nextTick();
+		store.connections.push(BRAVE_CONNECTION);
+		await nextTick();
 
 		expect(emitted().resolve).toHaveLength(1);
 
