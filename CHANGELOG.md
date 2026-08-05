@@ -1,3 +1,12 @@
+## [2.34.1](https://github.com/n8n-io/n8n/compare/n8n@2.34.0...n8n@2.34.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* **core:** Recover unresponsive task runners ([#35527](https://github.com/n8n-io/n8n/issues/35527)) ([a93a2c8](https://github.com/n8n-io/n8n/commit/a93a2c8fb017c187c6bd34ad847ef751933f5349))
+* **editor:** Fix janky spacing between agent capability chips with long labels ([#35571](https://github.com/n8n-io/n8n/issues/35571)) ([f2a2882](https://github.com/n8n-io/n8n/commit/f2a28826ab3c6b01568f812888e56d4d33dfa48c))
+
+
 # [2.34.0](https://github.com/n8n-io/n8n/compare/n8n@2.33.0...n8n@2.34.0) (2026-08-04)
 
 
