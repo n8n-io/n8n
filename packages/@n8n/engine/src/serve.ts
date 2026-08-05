@@ -1,4 +1,4 @@
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DataSource } from '@n8n/typeorm';
 
@@ -47,7 +47,12 @@ async function main(): Promise<void> {
 
 	const { app } = createEngineServer(
 		dataSource
-			? { dataSource, admittance: new AllowAllAdmittance(), workQueue: orchestrationQueue }
+			? {
+					dataSource,
+					admittance: new AllowAllAdmittance(),
+					workQueue: orchestrationQueue,
+					payloadSizeMax: Container.get(GlobalConfig).endpoints.payloadSizeMax,
+				}
 			: undefined,
 	);
 

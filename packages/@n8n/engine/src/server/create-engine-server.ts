@@ -7,8 +7,12 @@ import { StartExecutionService } from '../execution/start-execution.service';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
+const DEFAULT_PAYLOAD_SIZE_MB = 16;
+
 export interface EngineServerDeps {
 	dataSource: DataSource;
+	/** Maximum request payload size in MiB. Defaults to 16. */
+	payloadSizeMax?: number;
 	admittance: AdmittanceService;
 	workQueue: WorkQueue<OrchestrationMessage>;
 }
@@ -20,7 +24,8 @@ export interface EngineServerDeps {
  */
 export function createEngineServer(deps?: EngineServerDeps): { app: Application } {
 	const app = express();
-	app.use(express.json());
+	const limitMb = deps?.payloadSizeMax ?? DEFAULT_PAYLOAD_SIZE_MB;
+	app.use(express.json({ limit: `${limitMb}mb` }));
 
 	app.get('/healthz', (_req, res) => {
 		res.status(200).json({ status: 'ok' });
