@@ -1,11 +1,22 @@
 import { toValue, type MaybeRef } from 'vue';
-import xss, { escapeAttrValue, escapeHtml } from 'xss';
+import xss from 'xss';
 
 import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from './constants/sanitization';
 
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation
 */
+
+// `xss` is CJS with no `exports` map, so Node's lexer cannot see these as named
+// exports and `import { ... }` throws at link time under native ESM. At runtime
+// `module.exports` is the filter function with the helpers hung off it, which the
+// shipped typings don't model. Signatures are spelled out rather than reusing xss's
+// `EscapeHandler`, whose ambient `XSS` namespace would leak into our emitted
+// declarations via the `escapeHtml` re-export and break consumers with TS2503.
+const { escapeAttrValue, escapeHtml } = xss as unknown as {
+	escapeAttrValue: (str: string) => string;
+	escapeHtml: (str: string) => string;
+};
 
 /**
  * Escapes HTML entities in a string to prevent HTML injection.
