@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
@@ -241,13 +242,19 @@ describe('McpSettingsController', () => {
 			);
 			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
 		});
+
+		test('rejects an empty body with BadRequestError', async () => {
+			const dto = new UpdateMcpSettingsDto({});
+
+			await expect(controller.updateSettings(createReq({}), createRes(), dto)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(mcpSettingsService.setAutoExposeNewWorkflows).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('UpdateMcpSettingsDto', () => {
-		it('rejects an empty body', () => {
-			expect(UpdateMcpSettingsDto.safeParse({}).success).toBe(false);
-		});
-
 		it('accepts mcpAccessEnabled alone', () => {
 			expect(UpdateMcpSettingsDto.safeParse({ mcpAccessEnabled: true }).success).toBe(true);
 		});

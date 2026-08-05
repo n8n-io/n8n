@@ -242,6 +242,12 @@ describe('PATCH /mcp/settings', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('rejects an empty body with 400', async () => {
+		const response = await testServer.authAgentFor(owner).patch('/mcp/settings').send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('requires authentication', async () => {
 		const response = await testServer.authlessAgent
 			.patch('/mcp/settings')
