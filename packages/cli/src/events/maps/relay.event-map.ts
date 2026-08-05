@@ -1020,6 +1020,10 @@ export type RelayEventMap = {
 	// account mints a token via client_credentials.
 	'service-account-token-minted': {
 		sub: string;
+		// RFC 8693 actor: set only for a delegated (on-behalf-of) mint, where `sub`
+		// is the human subject and `act` is the acting service account. Absent for
+		// an autonomous mint (`sub` is the service account itself).
+		act?: string;
 		clientId: string;
 		aud: string;
 		outcome: 'success' | 'failure';
@@ -1029,6 +1033,20 @@ export type RelayEventMap = {
 	// service-account token is verified against a protected resource.
 	'service-account-token-verified': {
 		sub: string | null;
+		// RFC 8693 actor resolved from the token's `act.sub`; null/absent when the
+		// token carries no delegation.
+		act?: string | null;
+		aud: string;
+		outcome: 'success' | 'failure';
+	};
+
+	// Emitted by `OAuthServerService.exchangeToken` when the RFC 8693
+	// token-exchange grant mints a delegated token at the authorization server.
+	// `sub` is the human subject, `act` the acting service account.
+	'service-account-token-exchanged': {
+		sub: string | null;
+		act: string | null;
+		clientId: string | null;
 		aud: string;
 		outcome: 'success' | 'failure';
 	};

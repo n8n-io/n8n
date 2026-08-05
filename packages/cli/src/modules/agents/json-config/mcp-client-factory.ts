@@ -140,17 +140,21 @@ async function deriveAuthHeaders(
 	credentialProvider: CredentialProvider,
 	internalOAuth2MintService?: InternalOAuth2MintService,
 	actingServiceAccountUserId?: string,
+	actingOnBehalfOfUserId?: string,
 ): Promise<DerivedAuth> {
 	if (server.authentication === 'n8nInternalOAuth2') {
 		// Self-authenticate as the agent's service-account identity: no credential
 		// fetch (the marker holds no secret) and the target URL is the token
 		// audience. Fails closed — without an acting identity (or the mint service,
 		// on build-time paths) there is no token, so the request goes out
-		// unauthenticated and the server rejects it.
+		// unauthenticated and the server rejects it. On a human-triggered run
+		// `actingOnBehalfOfUserId` delegates the mint (sub = human, act = SA).
 		if (!actingServiceAccountUserId || !internalOAuth2MintService) return { headers: {} };
 		const token = await internalOAuth2MintService.mintForUser(
 			actingServiceAccountUserId,
 			server.url,
+			{},
+			actingOnBehalfOfUserId,
 		);
 		return { headers: { Authorization: `Bearer ${token}` } };
 	}
@@ -185,6 +189,12 @@ export interface BuildMcpClientDeps {
 	 * and fail closed at the server).
 	 */
 	actingServiceAccountUserId?: string;
+	/**
+	 * Human on whose behalf an interactive run acts. When set alongside
+	 * `actingServiceAccountUserId`, the `n8nInternalOAuth2` mint is delegated
+	 * (sub = human, act = SA) instead of autonomous. Absent on autonomous runs.
+	 */
+	actingOnBehalfOfUserId?: string;
 	projectId: string;
 	proxyFetch: CustomFetch;
 	/**
@@ -214,6 +224,7 @@ export async function buildMcpClientForServer(
 		oauthService,
 		internalOAuth2MintService,
 		actingServiceAccountUserId,
+		actingOnBehalfOfUserId,
 		projectId,
 		proxyFetch,
 		onConnectionFailed,
@@ -226,6 +237,7 @@ export async function buildMcpClientForServer(
 		credentialProvider,
 		internalOAuth2MintService,
 		actingServiceAccountUserId,
+		actingOnBehalfOfUserId,
 	);
 	const allowedDomains = credentialData ? resolveAllowedDomains(credentialData) : undefined;
 

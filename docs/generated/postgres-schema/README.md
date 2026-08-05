@@ -35,6 +35,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_threads](public.agents_threads.md) | 6 |  | BASE TABLE |
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
+| [public.audit_log_event](public.audit_log_event.md) | 7 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -632,6 +633,15 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_16_ id
   varchar_24_ name
+  timestamp_3__with_time_zone updatedAt
+}
+"public.audit_log_event" {
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ eventName
+  varchar_36_ id
+  varchar_255_ message
+  json payload
+  timestamp_3__with_time_zone ts
   timestamp_3__with_time_zone updatedAt
 }
 "public.auth_identity" {

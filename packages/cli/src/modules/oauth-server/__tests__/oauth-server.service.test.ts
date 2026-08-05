@@ -157,6 +157,174 @@ describe('OAuthServerService', () => {
 		});
 	});
 
+	describe('exchangeToken', () => {
+		const clientId = 'sa-client-1';
+		const rawSecret = 'correct-raw-secret';
+		// The client's own service-account user. Deliberately DIFFERENT from the
+		// actor_token's subject below, to prove `act` follows the actor_token — not
+		// the authenticating client.
+		const clientSaUserId = 'sa-user-1';
+		const subjectUserId = 'human-1';
+		const actorTokenSub = 'actor-from-token';
+		const subjectToken = 'subject-assertion-jwt';
+		const actorToken = 'actor-access-token-jwt';
+
+		beforeEach(() => {
+			oauthClientRepository.findOneBy.mockResolvedValue({ id: clientId } as OAuthClient);
+			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+			tokenService.generateAccessTokenOnly.mockResolvedValue({
+				accessToken: 'delegated-token',
+				jti: 'delegated-jti',
+			});
+			tokenService.validateSubjectAssertion.mockReturnValue(subjectUserId);
+			tokenService.validateActorToken.mockResolvedValue(actorTokenSub);
+		});
+
+		it('mints a delegated token whose act follows the actor_token, not the client', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue({
+				credential: mock<ServiceAccountCredential>({ userId: clientSaUserId }),
+				clientSecret: rawSecret,
+			});
+
+			const result = await service.exchangeToken(
+				clientId,
+				rawSecret,
+				subjectToken,
+				actorToken,
+				TEST_RESOURCE_URL,
+			);
+
+			expect(result).toMatchObject({
+				access_token: 'delegated-token',
+				token_type: 'Bearer',
+				expires_in: 3600,
+			});
+			expect(tokenService.validateSubjectAssertion).toHaveBeenCalledWith(subjectToken);
+			expect(tokenService.validateActorToken).toHaveBeenCalledWith(actorToken);
+			// subject as `sub`, resource as `aud`, and the actor_token's subject as the
+			// delegated `act.sub` — NOT the authenticating client's SA user.
+			expect(tokenService.generateAccessTokenOnly).toHaveBeenCalledWith(
+				subjectUserId,
+				clientId,
+				TEST_RESOURCE_URL,
+				[],
+				actorTokenSub,
+			);
+			expect(tokenService.generateAccessTokenOnly).not.toHaveBeenCalledWith(
+				subjectUserId,
+				clientId,
+				TEST_RESOURCE_URL,
+				[],
+				clientSaUserId,
+			);
+
+			// The delegation is audited with the human subject and the actor_token's subject.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-exchanged', {
+				sub: subjectUserId,
+				act: actorTokenSub,
+				clientId,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'success',
+			});
+		});
+
+		it('returns null for an unknown client without validating any token', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue(null);
+
+			const result = await service.exchangeToken(
+				clientId,
+				rawSecret,
+				subjectToken,
+				actorToken,
+				TEST_RESOURCE_URL,
+			);
+
+			expect(result).toBeNull();
+			expect(tokenService.validateSubjectAssertion).not.toHaveBeenCalled();
+			expect(tokenService.validateActorToken).not.toHaveBeenCalled();
+			expect(tokenService.generateAccessTokenOnly).not.toHaveBeenCalled();
+			// Failure is audited with the known clientId and null sub/act.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-exchanged', {
+				sub: null,
+				act: null,
+				clientId,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'failure',
+			});
+		});
+
+		it('returns null for a wrong client secret without validating any token', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue({
+				credential: mock<ServiceAccountCredential>({ userId: clientSaUserId }),
+				clientSecret: rawSecret,
+			});
+
+			const result = await service.exchangeToken(
+				clientId,
+				'wrong-secret',
+				subjectToken,
+				actorToken,
+				TEST_RESOURCE_URL,
+			);
+
+			expect(result).toBeNull();
+			expect(tokenService.validateSubjectAssertion).not.toHaveBeenCalled();
+			expect(tokenService.validateActorToken).not.toHaveBeenCalled();
+			expect(tokenService.generateAccessTokenOnly).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-exchanged', {
+				sub: null,
+				act: null,
+				clientId,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'failure',
+			});
+		});
+
+		it('rejects (throws) when the subject token is invalid, without minting', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue({
+				credential: mock<ServiceAccountCredential>({ userId: clientSaUserId }),
+				clientSecret: rawSecret,
+			});
+			tokenService.validateSubjectAssertion.mockImplementation(() => {
+				throw new Error('bad subject token');
+			});
+
+			await expect(
+				service.exchangeToken(clientId, rawSecret, subjectToken, actorToken, TEST_RESOURCE_URL),
+			).rejects.toThrow('bad subject token');
+			expect(tokenService.generateAccessTokenOnly).not.toHaveBeenCalled();
+			// The subject never resolved, so both sub and act are null.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-exchanged', {
+				sub: null,
+				act: null,
+				clientId,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'failure',
+			});
+		});
+
+		it('rejects (throws) when the actor token is invalid, without minting', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue({
+				credential: mock<ServiceAccountCredential>({ userId: clientSaUserId }),
+				clientSecret: rawSecret,
+			});
+			tokenService.validateActorToken.mockRejectedValue(new Error('bad actor token'));
+
+			await expect(
+				service.exchangeToken(clientId, rawSecret, subjectToken, actorToken, TEST_RESOURCE_URL),
+			).rejects.toThrow('bad actor token');
+			expect(tokenService.generateAccessTokenOnly).not.toHaveBeenCalled();
+			// The subject resolved before the actor token failed, so `sub` is known, `act` null.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-exchanged', {
+				sub: subjectUserId,
+				act: null,
+				clientId,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'failure',
+			});
+		});
+	});
+
 	describe('clientsStore', () => {
 		describe('getClient', () => {
 			it('should return client information when client exists', async () => {

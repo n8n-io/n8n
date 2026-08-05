@@ -3654,6 +3654,14 @@ export interface IWorkflowExecuteAdditionalData {
 	 */
 	actingServiceAccountUserId?: string;
 	mintInternalOAuth2Token?: (targetUrl: string) => Promise<string>;
+	/**
+	 * The human on whose behalf an interactive agent run acts. Set only when a
+	 * human triggered the run (in-app chat/resume/task-now); absent on autonomous
+	 * runs. When present it drives delegated (on-behalf-of) token minting — the
+	 * mint hook issues a token whose `sub` is this user and whose `act` is the
+	 * acting service account, instead of an autonomous service-account token.
+	 */
+	actingOnBehalfOfUserId?: string;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;

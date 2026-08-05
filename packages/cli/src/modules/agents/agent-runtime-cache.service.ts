@@ -239,6 +239,12 @@ export class AgentRuntimeCacheService {
 		const actingServiceAccountUserId =
 			await Container.get(AgentsService).resolveActingServiceAccountUserId(agentEntity);
 
+		// When a human triggered this run (in-app chat/resume/task-now) the agent
+		// acts on their behalf: thread the human so outbound minting is delegated
+		// (sub = human, act = agent SA). Published/integration runs have no user
+		// and keep autonomous minting (sub = agent SA).
+		const actingOnBehalfOfUserId = user?.id;
+
 		const { agent: agentInstance, toolRegistry } =
 			await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 				agentData,
@@ -248,6 +254,7 @@ export class AgentRuntimeCacheService {
 				user,
 				undefined,
 				actingServiceAccountUserId,
+				actingOnBehalfOfUserId,
 			);
 
 		return {

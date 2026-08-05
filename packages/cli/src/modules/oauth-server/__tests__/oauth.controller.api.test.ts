@@ -41,7 +41,12 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			registration_endpoint: expect.stringContaining('/mcp-oauth/register'),
 			revocation_endpoint: expect.stringContaining('/mcp-oauth/revoke'),
 			response_types_supported: ['code'],
-			grant_types_supported: ['authorization_code', 'refresh_token'],
+			grant_types_supported: [
+				'authorization_code',
+				'refresh_token',
+				'client_credentials',
+				'urn:ietf:params:oauth:grant-type:token-exchange',
+			],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
 			authorization_response_iss_parameter_supported: true,
@@ -526,6 +531,46 @@ describe('POST /mcp-oauth/token', () => {
 		expect(response.statusCode).not.toBe(403);
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 		expect(response.body.error).toBeDefined();
+	});
+});
+
+describe('POST /mcp-oauth/token (token-exchange grant)', () => {
+	const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange';
+
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('rejects a token-exchange request missing actor_token', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/token').send({
+			grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
+			subject_token: 'a-subject-assertion',
+			subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+			resource: 'https://n8n.example.com/mcp-server/http',
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_request');
+		expect(response.body.error_description).toContain('actor_token');
+	});
+
+	test('rejects a token-exchange request with a mismatched actor_token_type', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-oauth/token').send({
+			grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
+			subject_token: 'a-subject-assertion',
+			subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+			actor_token: 'an-actor-access-token',
+			actor_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+			resource: 'https://n8n.example.com/mcp-server/http',
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.error).toBe('invalid_request');
+		expect(response.body.error_description).toContain('actor_token_type');
 	});
 });
 

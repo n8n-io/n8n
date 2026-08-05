@@ -175,6 +175,15 @@ export function useSettingsItems() {
 		});
 
 		menuItems.push({
+			id: 'settings-audit-log',
+			icon: 'scroll-text',
+			label: i18n.baseText('settings.auditLog.title'),
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.AUDIT_LOG_SETTINGS),
+			route: { to: { name: VIEWS.AUDIT_LOG_SETTINGS } },
+		});
+
+		menuItems.push({
 			id: 'settings-opentelemetry',
 			icon: 'telescope',
 			label: i18n.baseText('settings.opentelemetry'),

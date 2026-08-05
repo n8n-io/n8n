@@ -21,39 +21,43 @@ import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService } from '@/services/cache/cache.service';
-import { ServiceAccountCredentialService } from '@/services/service-account-credential.service';
+import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 /**
- * The Track 3 mint-boundary proof (GATE-6). Where the in-process money proof
- * (`agent-service-account-mint.api.test.ts`) calls `exchangeClientCredentials`
- * directly, this exercises the *full runtime path*: a provisioned agent's
- * service account mints a token through `InternalOAuth2MintService.mintForUser`,
- * which performs a **real HTTP `client_credentials` self-call** against this
- * live test server's own `/oauth/token` endpoint. The minted token then verifies
- * at its own audience and resolves to the agent's SA identity, and is rejected
- * at a different audience — proving the HTTP mint boundary end-to-end. The mint
- * and verify audit events are asserted on the way through.
+ * GATE-OBO — the delegated (on-behalf-of) mint proof across the real HTTP token
+ * boundary. Where the autonomous proof (`agent-mint-hook.api.test.ts`) mints a
+ * `client_credentials` token whose `sub` is the agent's service account, this
+ * exercises the RFC 8693 token-exchange path: a human-triggered agent run mints
+ * a *delegated* token via `InternalOAuth2MintService.mintForUser(..., onBehalfOfUserId)`,
+ * which self-mints a subject assertion for the human and performs a real HTTP
+ * token-exchange self-call against this live test server's own `/oauth/token`.
+ *
+ * The minted token carries `{ sub: human, act: { sub: serviceAccount } }`, the
+ * MCP-trigger verify resolves BOTH identities, and — the point — authorizes
+ * against the SUBJECT (the human), not the actor. A fresh service account that
+ * lacks execute on the human's workflow is admitted when it acts on the human's
+ * behalf, yet denied when it mints autonomously for the same resource: proof
+ * that OBO authorizes as the human.
  */
 const testServer = setupTestServer({
 	endpointGroups: ['mcp'],
 	modules: ['oauth-server', 'mcp', 'agents', 'service-accounts'],
 });
 
-let owner: User;
+// The human subject: an owner, so she holds `workflow:execute` via her global role.
+let alice: User;
 let projectId: string;
 
 let agentId: string;
 let saUserId: string;
-let saClientId: string;
 let priorEditorBaseUrl: string;
 let priorWebhookUrl: string;
 
@@ -71,23 +75,24 @@ const mcpTriggerNode = (): INode => ({
 	parameters: {
 		path: 'unused',
 		authentication: 'n8nOAuth2',
-		// The execute-scope gate is proven elsewhere; this proof is about the mint
-		// boundary + audience isolation, so any authenticated principal is admitted.
-		requireExecuteAccess: false,
+		// Secure default: execute access is required (the param is omitted so the
+		// "absent param ⇒ require execute" path runs). This is what makes the
+		// subject-vs-actor authorization differential observable.
 	},
 });
 
 /**
- * Create an active, published workflow whose MCP trigger is protected with n8n
- * OAuth2, plus the production webhook row the resolver matches on. Returns the
- * canonical resource URL the OAuth server binds tokens and consent to.
+ * Create an active, published workflow owned by `alice` whose MCP trigger is
+ * protected with n8n OAuth2, plus the production webhook row the resolver
+ * matches on. Returns the canonical resource URL the OAuth server binds tokens
+ * and consent to.
  */
 const createProtectedWorkflow = async (workflowName: string) => {
 	const node = mcpTriggerNode();
 	const webhookPath = randomUUID();
 	const workflow = await createWorkflowWithHistory(
 		{ name: workflowName, active: true, nodes: [node] },
-		owner,
+		alice,
 	);
 	await setActiveVersion(workflow.id, workflow.versionId);
 	await Container.get(WebhookRepository).insert({
@@ -103,7 +108,7 @@ beforeAll(async () => {
 	// The mint discovers its token endpoint from n8n's own OAuth2 metadata, fetched
 	// at the protected resource's own origin (the webhook base URL) and the issuer it
 	// advertises (the instance base URL). Point BOTH at the live ephemeral port so
-	// discovery — and the subsequent `client_credentials` self-call — reach THIS test
+	// discovery — and the subsequent token-exchange self-call — reach THIS test
 	// server rather than the default :5678 host, which nothing is listening on in the
 	// vitest environment. Overriding only `editorBaseUrl` would leave the resource URL
 	// (built from the webhook base URL) pointing at :5678, so discovery would fail and
@@ -116,32 +121,27 @@ beforeAll(async () => {
 	globalConfig.editorBaseUrl = liveBaseUrl;
 	globalConfig.webhookUrl = liveBaseUrl;
 
-	owner = await createOwner();
-	projectId = (await getPersonalProject(owner)).id;
+	alice = await createOwner();
+	projectId = (await getPersonalProject(alice)).id;
 
 	// Provision the agent. With the feature flag enabled, `create` eagerly
 	// provisions the 1:1 service account; fall back to the lazy backfill if it
-	// did not fire, so the rest of the proof still runs.
-	const agent = await Container.get(AgentsService).create(projectId, 'Mint Hook Agent');
+	// did not fire, so the rest of the proof still runs. The SA is a FRESH
+	// `global:member` user that is NOT shared into Alice's workflow, so it lacks
+	// `workflow:execute` on the protected resource — which is what the killer
+	// assertion below turns on.
+	const agent = await Container.get(AgentsService).create(projectId, 'OBO Mint Agent');
 	agentId = agent.id;
 
 	const reloaded = await Container.get(AgentRepository).findByIdAndProjectId(agentId, projectId);
 	saUserId =
 		reloaded?.serviceAccountUserId ??
 		(await Container.get(AgentsService).getOrCreateServiceAccountUserId(agent));
-
-	// The runtime mint recovers (decrypts) this same client credential; capture the
-	// clientId so the minted audit event can be asserted precisely.
-	const recovered = await Container.get(ServiceAccountCredentialService).getDecryptedForUser(
-		saUserId,
-	);
-	if (!recovered) throw new Error('Expected a recoverable client credential for the agent SA');
-	saClientId = recovered.clientId;
 });
 
 afterEach(async () => {
 	await Container.get(CacheService).reset();
-	// Only the per-test resources are cleared. The agent, its service account, and
+	// Only per-test resources are cleared. The agent, its service account, and
 	// its (encrypted) client credential survive across tests so the SA identity
 	// stays stable; the SA client's shadow oauth_clients row is re-created
 	// idempotently by the next exchange.
@@ -168,14 +168,15 @@ afterAll(() => {
 	}
 });
 
-describe('agent self-mint across the real HTTP token boundary', () => {
-	// The mint now discovers its endpoint from n8n's own OAuth2 metadata rather than
-	// guessing `/oauth/token`. This asserts that discovery resolves for real against
-	// the live server for the fixture resource, and pins the advertised token endpoint
-	// (`/mcp-oauth/token`) that the mint uses — proving the discovered path, not the
-	// fallback, is what runs end-to-end.
+describe('delegated (on-behalf-of) mint across the real HTTP token boundary', () => {
+	// Proves the mint takes the *discovered* branch, not the fallback: the mint runs
+	// exactly this `resolveResourceAuth` logic (RFC 9728 → RFC 8414) before minting,
+	// and the fallback is only reached when discovery throws. Resolving here against
+	// the live server for the fixture resource — and pinning the advertised
+	// `/mcp-oauth/token` endpoint — confirms discovery succeeds, so the real
+	// discovered token-exchange path is what runs end-to-end below.
 	test('resolves the fixture resource through real OAuth2 discovery (RFC 9728 → RFC 8414)', async () => {
-		const { resourceUrl } = await createProtectedWorkflow('Discovery fixture');
+		const { resourceUrl } = await createProtectedWorkflow('OBO discovery fixture');
 		const target = new URL(resourceUrl);
 		const http = Container.get(OutboundHttp).requests({ ssrf: 'disabled' });
 
@@ -194,52 +195,101 @@ describe('agent self-mint across the real HTTP token boundary', () => {
 		expect(asMetadata.token_endpoint).toBe(`${issuer}/mcp-oauth/token`);
 	});
 
-	test('mints a token via the HTTP client_credentials self-call that resolves to the agent SA at its own audience', async () => {
-		const { resourceUrl } = await createProtectedWorkflow('Mint hook workflow A');
-		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+	test('mints a delegated token whose claims name the human as subject and the service account as actor', async () => {
+		const { resourceUrl } = await createProtectedWorkflow('OBO delegated claims');
 
-		// Real HTTP self-call to this live server's /oauth/token, as the agent SA.
-		const token = await Container.get(InternalOAuth2MintService).mintForUser(saUserId, resourceUrl);
+		// Real HTTP token-exchange self-call: the acting SA mints on behalf of Alice.
+		const token = await Container.get(InternalOAuth2MintService).mintForUser(
+			saUserId,
+			resourceUrl,
+			{},
+			alice.id,
+		);
 		expect(token).toBeTruthy();
+
+		const decoded = Container.get(JwtService).decode<{
+			sub?: string;
+			aud?: string;
+			act?: { sub?: string };
+		}>(token);
+
+		// RFC 8693 delegation shape: subject is the human, actor is the acting SA,
+		// audience is the discovered canonical resource.
+		expect(decoded.sub).toBe(alice.id);
+		expect(decoded.act?.sub).toBe(saUserId);
+		expect(decoded.aud).toBe(resourceUrl);
+	});
+
+	test('verify resolves both identities and authorizes against the subject', async () => {
+		const { resourceUrl } = await createProtectedWorkflow('OBO verify resolves both');
+
+		const token = await Container.get(InternalOAuth2MintService).mintForUser(
+			saUserId,
+			resourceUrl,
+			{},
+			alice.id,
+		);
 
 		const result = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
 			token,
 			resourceUrl,
 		);
-		expect(result.user?.id).toBe(saUserId);
 
-		// Seam F — the mint boundary emits a success audit event bound to the SA.
-		expect(emitSpy).toHaveBeenCalledWith('service-account-token-minted', {
-			sub: saUserId,
-			clientId: saClientId,
-			aud: resourceUrl,
-			outcome: 'success',
-		});
-		// ...and the verify site emits a matching verified event (autonomous: no actor).
-		expect(emitSpy).toHaveBeenCalledWith('service-account-token-verified', {
-			sub: saUserId,
-			act: null,
-			aud: resourceUrl,
-			outcome: 'success',
-		});
+		// The subject (Alice) is the authorized principal; the actor (SA) is
+		// surfaced for attribution. Alice holds execute via her global role, so
+		// the delegated token is accepted.
+		expect(result.user?.id).toBe(alice.id);
+		expect(result.actor?.id).toBe(saUserId);
 	});
 
-	test('rejects the HTTP-minted token at a different audience (audience isolation)', async () => {
-		const { resourceUrl: resourceUrlA } = await createProtectedWorkflow('Mint hook A');
-		const { resourceUrl: resourceUrlB } = await createProtectedWorkflow('Mint hook B');
+	test('authorization follows the subject, not the actor', async () => {
+		const { resourceUrl } = await createProtectedWorkflow('OBO subject-vs-actor');
+
+		// Delegated as Alice (owner, has execute): accepted, resolves to Alice.
+		const delegatedToken = await Container.get(InternalOAuth2MintService).mintForUser(
+			saUserId,
+			resourceUrl,
+			{},
+			alice.id,
+		);
+		const delegated = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
+			delegatedToken,
+			resourceUrl,
+		);
+		expect(delegated.user?.id).toBe(alice.id);
+		expect(delegated.actor?.id).toBe(saUserId);
+
+		// Autonomous as the SA itself (same SA, same resource) — the SA lacks
+		// execute on Alice's workflow, so verify denies it.
+		const autonomousToken = await Container.get(InternalOAuth2MintService).mintForUser(
+			saUserId,
+			resourceUrl,
+		);
+		const autonomous = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
+			autonomousToken,
+			resourceUrl,
+		);
+		expect(autonomous.user).toBeNull();
+		expect(autonomous.context?.reason).toBe('insufficient_scope');
+	});
+
+	test('rejects the delegated token at a different audience (audience isolation)', async () => {
+		const { resourceUrl: resourceUrlA } = await createProtectedWorkflow('OBO audience A');
+		const { resourceUrl: resourceUrlB } = await createProtectedWorkflow('OBO audience B');
 
 		const token = await Container.get(InternalOAuth2MintService).mintForUser(
 			saUserId,
 			resourceUrlA,
+			{},
+			alice.id,
 		);
-		expect(token).toBeTruthy();
 
-		// Its own audience: accepted and bound to the agent SA.
+		// Its own audience: accepted and resolved to Alice.
 		const acceptedAtA = await Container.get(OAuthTokenService).verifyOAuthAccessToken(
 			token,
 			resourceUrlA,
 		);
-		expect(acceptedAtA.user?.id).toBe(saUserId);
+		expect(acceptedAtA.user?.id).toBe(alice.id);
 
 		// A different resource's audience: rejected (audience isolation).
 		const rejectedAtB = await Container.get(OAuthTokenService).verifyOAuthAccessToken(

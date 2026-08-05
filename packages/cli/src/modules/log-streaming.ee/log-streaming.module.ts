@@ -2,6 +2,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 /**
  * Log Streaming module provides enterprise-grade event logging
@@ -25,10 +26,28 @@ export class LogStreamingModule implements ModuleInterface {
 		const destinationService = Container.get(LogStreamingDestinationService);
 		await destinationService.loadDestinationsFromDb();
 		await destinationService.initialize();
+
+		// Debug sink: persist every event to the audit_log_event table. Opt-in and
+		// recreated on every boot, so it lives in-memory only (no config persistence).
+		if (process.env.N8N_AUDIT_LOG_DB_SINK === 'true') {
+			const { MessageEventBusDestinationDatabase } = await import(
+				'./destinations/message-event-bus-destination-database.ee.js'
+			);
+			const { MessageEventBus } = await import('@/eventbus/message-event-bus/message-event-bus.js');
+			destinationService.addInMemoryDestination(
+				new MessageEventBusDestinationDatabase(Container.get(MessageEventBus), {
+					__type: MessageEventBusDestinationTypeNames.database,
+					label: 'Audit Log Database',
+					enabled: true,
+					subscribedEvents: ['*'],
+				}),
+			);
+		}
 	}
 
 	async entities() {
 		const { EventDestinations } = await import('./database/entities/event-destination.entity.js');
-		return [EventDestinations];
+		const { AuditLogEvent } = await import('./database/entities/audit-log-event.entity.js');
+		return [EventDestinations, AuditLogEvent];
 	}
 }

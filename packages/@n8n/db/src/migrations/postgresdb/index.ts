@@ -240,6 +240,7 @@ import { AddSetupCompletedAtToAgents1785500832626 } from '../common/178550083262
 import { AddServiceAccountCredentials1785500832627 } from '../common/1785500832627-AddServiceAccountCredentials';
 import { AddTypeToUser1785763124126 } from '../common/1785763124126-AddTypeToUser';
 import { AddServiceAccountUserIdToAgents1785900000000 } from '../common/1785900000000-AddServiceAccountUserIdToAgents';
+import { CreateAuditLogEventTable1785900000001 } from '../common/1785900000001-CreateAuditLogEventTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -485,4 +486,5 @@ export const postgresMigrations: Migration[] = [
 	AddServiceAccountCredentials1785500832627,
 	AddTypeToUser1785763124126,
 	AddServiceAccountUserIdToAgents1785900000000,
+	CreateAuditLogEventTable1785900000001,
 ];

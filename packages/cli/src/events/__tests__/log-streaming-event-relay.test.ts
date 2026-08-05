@@ -3151,4 +3151,129 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 	});
+
+	describe('service account events', () => {
+		it('should log on `service-account-token-minted` event', () => {
+			const event: RelayEventMap['service-account-token-minted'] = {
+				sub: 'human-1',
+				act: 'sa-1',
+				clientId: 'client-1',
+				aud: 'https://n8n.example.com/mcp',
+				outcome: 'success',
+			};
+
+			eventService.emit('service-account-token-minted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.token.minted',
+				payload: event,
+			});
+		});
+
+		it('should log on `service-account-token-verified` event', () => {
+			const event: RelayEventMap['service-account-token-verified'] = {
+				sub: 'human-1',
+				act: 'sa-1',
+				aud: 'https://n8n.example.com/mcp',
+				outcome: 'success',
+			};
+
+			eventService.emit('service-account-token-verified', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.token.verified',
+				payload: event,
+			});
+		});
+
+		it('should log on `service-account-token-exchanged` event', () => {
+			const event: RelayEventMap['service-account-token-exchanged'] = {
+				sub: 'human-1',
+				act: 'sa-1',
+				clientId: 'client-1',
+				aud: 'https://n8n.example.com/mcp',
+				outcome: 'success',
+			};
+
+			eventService.emit('service-account-token-exchanged', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.token.exchanged',
+				payload: event,
+			});
+		});
+
+		it('should log on `service-account-created` event', () => {
+			const event: RelayEventMap['service-account-created'] = {
+				userId: 'human-1',
+				serviceAccountId: 'sa-1',
+				serviceAccountRole: 'global:member',
+			};
+
+			eventService.emit('service-account-created', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.created',
+				payload: event,
+			});
+		});
+
+		it('should log on `service-account-role-changed` event', () => {
+			const event: RelayEventMap['service-account-role-changed'] = {
+				userId: 'human-1',
+				serviceAccountId: 'sa-1',
+				serviceAccountNewRole: 'global:admin',
+			};
+
+			eventService.emit('service-account-role-changed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.role-changed',
+				payload: event,
+			});
+		});
+
+		it('should log on `service-account-deleted` event', () => {
+			const event: RelayEventMap['service-account-deleted'] = {
+				userId: 'human-1',
+				serviceAccountId: 'sa-1',
+				migrationStrategy: 'delete_data',
+			};
+
+			eventService.emit('service-account-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.deleted',
+				payload: event,
+			});
+		});
+
+		it('should log on `service-account-impersonation-started` event', () => {
+			const event: RelayEventMap['service-account-impersonation-started'] = {
+				userId: 'human-1',
+				serviceAccountId: 'sa-1',
+			};
+
+			eventService.emit('service-account-impersonation-started', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.impersonation.started',
+				payload: event,
+			});
+		});
+
+		it('should log on `service-account-impersonation-ended` event', () => {
+			const event: RelayEventMap['service-account-impersonation-ended'] = {
+				userId: 'human-1',
+				serviceAccountId: 'sa-1',
+			};
+
+			eventService.emit('service-account-impersonation-ended', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.service-account.impersonation.ended',
+				payload: event,
+			});
+		});
+	});
 });

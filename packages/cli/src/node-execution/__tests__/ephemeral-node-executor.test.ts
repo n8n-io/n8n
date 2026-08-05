@@ -822,6 +822,7 @@ describe('EphemeralNodeExecutor', () => {
 	describe('acting service-account identity (outbound mint hook)', () => {
 		const runToolWith = async (
 			actingServiceAccountUserId?: string,
+			actingOnBehalfOfUserId?: string,
 		): Promise<Record<string, unknown>> => {
 			const base: Record<string, unknown> = {};
 			mockGetBase.mockResolvedValue(base);
@@ -837,6 +838,7 @@ describe('EphemeralNodeExecutor', () => {
 				inputData: [],
 				projectId: 'p-1',
 				actingServiceAccountUserId,
+				actingOnBehalfOfUserId,
 			});
 
 			expect(result.status).toBe('success');
@@ -850,18 +852,44 @@ describe('EphemeralNodeExecutor', () => {
 			const additionalData = await runToolWith('sa-user-1');
 
 			expect(additionalData.actingServiceAccountUserId).toBe('sa-user-1');
+			expect(additionalData.actingOnBehalfOfUserId).toBeUndefined();
 			expect(typeof additionalData.mintInternalOAuth2Token).toBe('function');
 
 			const mint = additionalData.mintInternalOAuth2Token as (url: string) => Promise<string>;
 			await expect(mint('https://mcp.example.com/mcp')).resolves.toBe('minted-token');
-			// The identity is server-set; the node never supplies it.
-			expect(mintForUser).toHaveBeenCalledWith('sa-user-1', 'https://mcp.example.com/mcp');
+			// The identity is server-set; the node never supplies it. No human → autonomous mint.
+			expect(mintForUser).toHaveBeenCalledWith(
+				'sa-user-1',
+				'https://mcp.example.com/mcp',
+				{},
+				undefined,
+			);
+		});
+
+		it('threads the on-behalf-of human so the mint hook delegates', async () => {
+			const mintForUser = vi.fn().mockResolvedValue('delegated-token');
+			Container.set(InternalOAuth2MintService, { mintForUser } as never);
+
+			const additionalData = await runToolWith('sa-user-1', 'human-1');
+
+			expect(additionalData.actingServiceAccountUserId).toBe('sa-user-1');
+			expect(additionalData.actingOnBehalfOfUserId).toBe('human-1');
+
+			const mint = additionalData.mintInternalOAuth2Token as (url: string) => Promise<string>;
+			await expect(mint('https://mcp.example.com/mcp')).resolves.toBe('delegated-token');
+			expect(mintForUser).toHaveBeenCalledWith(
+				'sa-user-1',
+				'https://mcp.example.com/mcp',
+				{},
+				'human-1',
+			);
 		});
 
 		it('leaves both unset when no acting identity is threaded (fails closed downstream)', async () => {
 			const additionalData = await runToolWith(undefined);
 
 			expect(additionalData.actingServiceAccountUserId).toBeUndefined();
+			expect(additionalData.actingOnBehalfOfUserId).toBeUndefined();
 			expect(additionalData.mintInternalOAuth2Token).toBeUndefined();
 		});
 	});

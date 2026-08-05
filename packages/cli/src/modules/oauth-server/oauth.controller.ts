@@ -77,6 +77,12 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 	next();
 };
 
+const CLIENT_CREDENTIALS_GRANT_TYPE = 'client_credentials';
+const TOKEN_EXCHANGE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:token-exchange';
+const SUBJECT_TOKEN_TYPE_JWT = 'urn:ietf:params:oauth:token-type:jwt';
+const ACTOR_TOKEN_TYPE_ACCESS = 'urn:ietf:params:oauth:token-type:access_token';
+const ISSUED_TOKEN_TYPE_ACCESS = 'urn:ietf:params:oauth:token-type:access_token';
+
 const ClientCredentialsGrantSchema = z.object({
 	grant_type: z.string(),
 	client_id: z.string().optional(),
@@ -84,9 +90,51 @@ const ClientCredentialsGrantSchema = z.object({
 	resource: z.string().optional(),
 });
 
+const TokenExchangeGrantSchema = z.object({
+	grant_type: z.string(),
+	client_id: z.string().optional(),
+	client_secret: z.string().optional(),
+	subject_token: z.string().optional(),
+	subject_token_type: z.string().optional(),
+	actor_token: z.string().optional(),
+	actor_token_type: z.string().optional(),
+	resource: z.string().optional(),
+});
+
+/**
+ * Extract client credentials from the request body, falling back to HTTP Basic.
+ * Shared by the client_credentials and token-exchange grant guards so both
+ * accept the same client-authentication shapes.
+ */
+function extractClientAuth(
+	req: Request,
+	bodyClientId?: string,
+	bodyClientSecret?: string,
+): { clientId?: string; clientSecret?: string } {
+	let clientId = bodyClientId;
+	let clientSecret = bodyClientSecret;
+
+	if (!clientId || !clientSecret) {
+		const authorizationHeader = req.headers['authorization'];
+		if (authorizationHeader?.startsWith('Basic ')) {
+			const credentials = Buffer.from(
+				authorizationHeader.slice('Basic '.length),
+				'base64',
+			).toString('utf-8');
+			const [authClientId, authClientSecret] = credentials.split(':');
+			if (authClientId && authClientSecret) {
+				clientId = authClientId;
+				clientSecret = authClientSecret;
+			}
+		}
+	}
+
+	return { clientId, clientSecret };
+}
+
 const clientCredentialsExchangeGuard: RequestHandler = async (req, res, next) => {
 	const parseResult = ClientCredentialsGrantSchema.safeParse(req.body);
-	if (!parseResult.success || parseResult.data.grant_type !== 'client_credentials') {
+	if (!parseResult.success || parseResult.data.grant_type !== CLIENT_CREDENTIALS_GRANT_TYPE) {
 		// Not our grant — hand off to the SDK token handler.
 		next();
 		return;
@@ -101,24 +149,12 @@ const clientCredentialsExchangeGuard: RequestHandler = async (req, res, next) =>
 			});
 			return;
 		}
-		let clientId = parseResult.data.client_id;
-		let clientSecret = parseResult.data.client_secret;
 		const resource = parseResult.data.resource;
-
-		if (!clientId || !clientSecret) {
-			const authorizationHeader = req.headers['authorization'];
-			if (authorizationHeader?.startsWith('Basic ')) {
-				const credentials = Buffer.from(
-					authorizationHeader.slice('Basic '.length),
-					'base64',
-				).toString('utf-8');
-				const [authClientId, authClientSecret] = credentials.split(':');
-				if (authClientId && authClientSecret) {
-					clientId = authClientId;
-					clientSecret = authClientSecret;
-				}
-			}
-		}
+		const { clientId, clientSecret } = extractClientAuth(
+			req,
+			parseResult.data.client_id,
+			parseResult.data.client_secret,
+		);
 
 		if (!clientId || !clientSecret) {
 			res.status(400).json({
@@ -146,6 +182,111 @@ const clientCredentialsExchangeGuard: RequestHandler = async (req, res, next) =>
 		// instead of falling through to the SDK handler, which would mask them
 		// as a misleading "invalid_client".
 		logger.error('Error handling client credentials exchange', { error });
+		res.status(500).json({ error: 'server_error' });
+	}
+};
+
+/**
+ * RFC 8693 token-exchange grant (internal on-behalf-of delegation). Sibling to
+ * `clientCredentialsExchangeGuard`: parses the body, and on a non-match hands
+ * off to the SDK token handler via `next()`. Client authentication uses the
+ * same extraction as the client_credentials grant.
+ */
+const tokenExchangeGuard: RequestHandler = async (req, res, next) => {
+	const parseResult = TokenExchangeGrantSchema.safeParse(req.body);
+	if (!parseResult.success || parseResult.data.grant_type !== TOKEN_EXCHANGE_GRANT_TYPE) {
+		// Not our grant — hand off to the SDK token handler.
+		next();
+		return;
+	}
+
+	res.setHeader('Cache-Control', 'no-store');
+	try {
+		const {
+			resource,
+			subject_token: subjectToken,
+			subject_token_type: subjectTokenType,
+			actor_token: actorToken,
+			actor_token_type: actorTokenType,
+		} = parseResult.data;
+
+		if (!resource) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: 'Missing required parameter: resource',
+			});
+			return;
+		}
+
+		if (!subjectToken) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: 'Missing required parameter: subject_token',
+			});
+			return;
+		}
+
+		// Only the AS-issued JWT subject-token type is accepted. Absent is tolerated
+		// (RFC 8693 makes it OPTIONAL), a present mismatch is rejected.
+		if (subjectTokenType && subjectTokenType !== SUBJECT_TOKEN_TYPE_JWT) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: `Unsupported subject_token_type: ${subjectTokenType}`,
+			});
+			return;
+		}
+
+		if (!actorToken) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: 'Missing required parameter: actor_token',
+			});
+			return;
+		}
+
+		// The actor_token is one of our own minted access tokens. Absent type is
+		// tolerated (RFC 8693 makes it OPTIONAL), a present mismatch is rejected.
+		if (actorTokenType && actorTokenType !== ACTOR_TOKEN_TYPE_ACCESS) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: `Unsupported actor_token_type: ${actorTokenType}`,
+			});
+			return;
+		}
+
+		const { clientId, clientSecret } = extractClientAuth(
+			req,
+			parseResult.data.client_id,
+			parseResult.data.client_secret,
+		);
+
+		if (!clientId || !clientSecret) {
+			res.status(400).json({
+				error: 'invalid_request',
+				error_description: 'Missing required parameters: client_id and/or client_secret',
+			});
+			return;
+		}
+
+		// Trace: an inbound token-exchange (delegation) mint was requested. Never the secret/token.
+		logger.debug('token-exchange requested', { clientId, resource });
+
+		const response = await oauthServerService.exchangeToken(
+			clientId,
+			clientSecret,
+			subjectToken,
+			actorToken,
+			resource,
+		);
+		if (!response) {
+			res.status(401).json({ error: 'invalid_client' });
+			return;
+		}
+		res.status(200).json({ ...response, issued_token_type: ISSUED_TOKEN_TYPE_ACCESS });
+	} catch (error) {
+		// We own the token-exchange grant here — surface failures directly instead of
+		// falling through to the SDK handler, which would mask them as `invalid_client`.
+		logger.error('Error handling token exchange', { error });
 		res.status(500).json({ error: 'server_error' });
 	}
 };
@@ -185,7 +326,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
-		middlewares: [clientCredentialsExchangeGuard],
+		middlewares: [clientCredentialsExchangeGuard, tokenExchangeGuard],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitToken,
 			5 * Time.minutes.toMilliseconds,
@@ -263,7 +404,12 @@ export class OAuthController {
 			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
 			revocation_endpoint: `${baseUrl}/mcp-oauth/revoke`,
 			response_types_supported: ['code'],
-			grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
+			grant_types_supported: [
+				'authorization_code',
+				'refresh_token',
+				'client_credentials',
+				TOKEN_EXCHANGE_GRANT_TYPE,
+			],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
 			// RFC 9207: we include the `iss` parameter on authorization responses

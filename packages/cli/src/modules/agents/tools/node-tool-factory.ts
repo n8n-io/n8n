@@ -24,6 +24,12 @@ export interface NodeToolFactoryContext {
 	 * the agent's service account. Server-set only — never from node input.
 	 */
 	actingServiceAccountUserId?: string;
+	/**
+	 * Human on whose behalf an interactive run acts. When set alongside
+	 * `actingServiceAccountUserId`, the node's self-authentication mint is
+	 * delegated (sub = human, act = SA). Server-set only; absent on autonomous runs.
+	 */
+	actingOnBehalfOfUserId?: string;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
@@ -170,6 +176,7 @@ export async function resolveNodeTool(
 				inputData: [{ json: input as IDataObject }],
 				projectId: ctx.projectId,
 				actingServiceAccountUserId: ctx.actingServiceAccountUserId,
+				actingOnBehalfOfUserId: ctx.actingOnBehalfOfUserId,
 				...instrumentedExecution,
 			});
 			// Throw on the executor's structured error so the agent runtime

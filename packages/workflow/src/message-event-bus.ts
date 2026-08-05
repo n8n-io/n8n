@@ -25,6 +25,7 @@ export const enum MessageEventBusDestinationTypeNames {
 	webhook = '$$MessageEventBusDestinationWebhook',
 	sentry = '$$MessageEventBusDestinationSentry',
 	syslog = '$$MessageEventBusDestinationSyslog',
+	database = '$$MessageEventBusDestinationDatabase',
 }
 
 export const messageEventBusDestinationTypeNames = [
@@ -32,6 +33,7 @@ export const messageEventBusDestinationTypeNames = [
 	MessageEventBusDestinationTypeNames.webhook,
 	MessageEventBusDestinationTypeNames.sentry,
 	MessageEventBusDestinationTypeNames.syslog,
+	MessageEventBusDestinationTypeNames.database,
 ];
 
 // ===============================

@@ -92,6 +92,15 @@ export class LogStreamingDestinationService {
 	}
 
 	/**
+	 * Register a destination in the local map only, without DB persistence or pubsub.
+	 * Used for env-provisioned debug destinations that are recreated on every boot.
+	 */
+	addInMemoryDestination(destination: MessageEventBusDestination): void {
+		this.destinations[destination.getId()] = destination;
+		this.logger.debug(`Added in-memory destination ${destination.getId()}`);
+	}
+
+	/**
 	 * Add a destination to the local map and save to database
 	 */
 	async addDestination(

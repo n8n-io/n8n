@@ -145,6 +145,127 @@ describe('OAuthTokenService', () => {
 			expect(pair1.accessToken).not.toBe(pair2.accessToken);
 			expect(pair1.refreshToken).not.toBe(pair2.refreshToken);
 		});
+
+		it('omits the act claim for an autonomous (no-actor) token', () => {
+			const { accessToken } = service.generateTokenPair('user-123', 'client-456', undefined, []);
+
+			expect(jwtService.decode(accessToken).act).toBeUndefined();
+		});
+
+		it('includes an RFC 8693 act.sub claim for a delegated token', () => {
+			const { accessToken } = service.generateTokenPair(
+				'subject-1',
+				'client-456',
+				undefined,
+				[],
+				'actor-1',
+			);
+
+			const decoded = jwtService.decode(accessToken);
+			expect(decoded.sub).toBe('subject-1');
+			expect(decoded.act).toEqual({ sub: 'actor-1' });
+		});
+	});
+
+	describe('subject assertions (token exchange)', () => {
+		it('round-trips a subject assertion through its validator', () => {
+			const token = service.mintSubjectAssertion('human-1');
+
+			expect(service.validateSubjectAssertion(token)).toBe('human-1');
+
+			// It is deliberately not an access token: purpose-scoped, no isOAuth
+			// marker, and no oauth_access_tokens row persisted.
+			const decoded = jwtService.decode(token);
+			expect(decoded.purpose).toBe('subject_token');
+			expect(decoded.meta).toBeUndefined();
+			expect(accessTokenRepository.insertToken).not.toHaveBeenCalled();
+		});
+
+		it('rejects a tampered assertion', () => {
+			const token = service.mintSubjectAssertion('human-1');
+
+			expect(() => service.validateSubjectAssertion(`${token}tampered`)).toThrow(
+				'JWT Verification Failed',
+			);
+		});
+
+		it('rejects an expired assertion', () => {
+			const expired = jwtService.sign({ sub: 'human-1', purpose: 'subject_token', iat: 0, exp: 1 });
+
+			expect(() => service.validateSubjectAssertion(expired)).toThrow('JWT Verification Failed');
+		});
+
+		it('rejects a token without the subject_token purpose', () => {
+			const noPurpose = jwtService.sign({ sub: 'human-1' });
+
+			expect(() => service.validateSubjectAssertion(noPurpose)).toThrow('JWT Verification Failed');
+		});
+
+		it('is not accepted as an access token by verifyOAuthAccessToken', async () => {
+			const token = service.mintSubjectAssertion('human-1');
+
+			const result = await service.verifyOAuthAccessToken(token);
+
+			expect(result.user).toBeNull();
+		});
+	});
+
+	describe('actor tokens (token exchange)', () => {
+		it('returns the sub of a valid minted access token whose row still exists', async () => {
+			const actorSub = 'actor-1';
+			const { accessToken } = service.generateTokenPair(actorSub, 'client-456', undefined, []);
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId: 'client-456', userId: actorSub }),
+			);
+
+			await expect(service.validateActorToken(accessToken)).resolves.toBe(actorSub);
+
+			// Identity proof only: audience is not enforced (no allowed-audiences lookup).
+			expect(accessTokenRepository.findOne).toHaveBeenCalledWith({ where: { token: accessToken } });
+		});
+
+		it('rejects a tampered actor token', async () => {
+			const { accessToken } = service.generateTokenPair('actor-1', 'client-456', undefined, []);
+
+			await expect(service.validateActorToken(`${accessToken}tampered`)).rejects.toThrow(
+				'JWT Verification Failed',
+			);
+		});
+
+		it('rejects an expired actor token', async () => {
+			const expired = jwtService.sign({ sub: 'actor-1', iat: 0, exp: 1 });
+
+			await expect(service.validateActorToken(expired)).rejects.toThrow('JWT Verification Failed');
+		});
+
+		it('rejects an actor token whose row was deleted (revoked)', async () => {
+			const { accessToken } = service.generateTokenPair('actor-1', 'client-456', undefined, []);
+			accessTokenRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.validateActorToken(accessToken)).rejects.toThrow(
+				'Access Token Not Found in Database',
+			);
+		});
+
+		it('rejects a subject assertion presented as an actor token (no access-token row)', async () => {
+			// A subject assertion is signed and unexpired but persists no
+			// oauth_access_tokens row, so it can never stand in as an actor.
+			const subjectAssertion = service.mintSubjectAssertion('human-1');
+			accessTokenRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.validateActorToken(subjectAssertion)).rejects.toThrow(
+				'Access Token Not Found in Database',
+			);
+		});
+
+		it('rejects a signed token missing a sub claim whose row exists', async () => {
+			const noSub = jwtService.sign({ foo: 'bar' });
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: noSub, clientId: 'client-456', userId: 'x' }),
+			);
+
+			await expect(service.validateActorToken(noSub)).rejects.toThrow('JWT Verification Failed');
+		});
 	});
 
 	describe('saveTokenPair', () => {
@@ -484,6 +605,59 @@ describe('OAuthTokenService', () => {
 		});
 	});
 
+	describe('verifyOAuthAccessToken delegation (act claim)', () => {
+		it('resolves the actor and authorizes against the subject for a delegated token', async () => {
+			const subjectId = 'subject-1';
+			const actorId = 'actor-1';
+			const clientId = 'client-456';
+			const { accessToken } = service.generateTokenPair(
+				subjectId,
+				clientId,
+				undefined,
+				[],
+				actorId,
+			);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId: subjectId }),
+			);
+			const subject = mock<User>({ id: subjectId });
+			const actor = mock<User>({ id: actorId });
+			userRepository.findOne.mockResolvedValueOnce(subject).mockResolvedValueOnce(actor);
+
+			const result = await service.verifyOAuthAccessToken(accessToken);
+
+			expect(result.user).toBe(subject);
+			expect(result.actor).toBe(actor);
+			// The subject is resolved first (and is the identity the resource authorizes);
+			// the actor is resolved second, for attribution only.
+			expect(userRepository.findOne).toHaveBeenNthCalledWith(1, {
+				where: { id: subjectId },
+				relations: ['role'],
+			});
+			expect(userRepository.findOne).toHaveBeenNthCalledWith(2, {
+				where: { id: actorId },
+				relations: ['role'],
+			});
+		});
+
+		it('leaves actor undefined for a plain client_credentials token', async () => {
+			const subjectId = 'sub-only';
+			const clientId = 'client-456';
+			const { accessToken } = service.generateTokenPair(subjectId, clientId, undefined, []);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId: subjectId }),
+			);
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: subjectId }));
+
+			const result = await service.verifyOAuthAccessToken(accessToken);
+
+			expect(result.user).not.toBeNull();
+			expect(result.actor).toBeUndefined();
+		});
+	});
+
 	describe('verifyOAuthAccessToken audit events', () => {
 		it('emits service-account-token-verified with success and the resolved subject on the happy path', async () => {
 			const userId = 'user-123';
@@ -497,8 +671,40 @@ describe('OAuthTokenService', () => {
 
 			await service.verifyOAuthAccessToken(accessToken, TEST_RESOURCE_URL);
 
+			// A plain (autonomous) token carries no actor.
 			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-verified', {
 				sub: userId,
+				act: null,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'success',
+			});
+		});
+
+		it('emits service-account-token-verified with the resolved actor for a delegated token', async () => {
+			const subjectId = 'human-1';
+			const actorId = 'actor-1';
+			const clientId = 'client-456';
+			const { accessToken } = service.generateTokenPair(
+				subjectId,
+				clientId,
+				TEST_RESOURCE_URL,
+				[],
+				actorId,
+			);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId: subjectId }),
+			);
+			userRepository.findOne
+				.mockResolvedValueOnce(mock<User>({ id: subjectId }))
+				.mockResolvedValueOnce(mock<User>({ id: actorId }));
+
+			await service.verifyOAuthAccessToken(accessToken, TEST_RESOURCE_URL);
+
+			// `sub` stays the subject; `act` carries the delegated actor from `act.sub`.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-verified', {
+				sub: subjectId,
+				act: actorId,
 				aud: TEST_RESOURCE_URL,
 				outcome: 'success',
 			});
@@ -509,6 +715,7 @@ describe('OAuthTokenService', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-verified', {
 				sub: null,
+				act: null,
 				aud: TEST_RESOURCE_URL,
 				outcome: 'failure',
 			});
@@ -528,6 +735,7 @@ describe('OAuthTokenService', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-verified', {
 				sub: userId,
+				act: null,
 				aud: TEST_RESOURCE_URL,
 				outcome: 'failure',
 			});

@@ -8,6 +8,8 @@ import { EventService } from '@/events/event.service';
 import { ServiceAccountCredentialService } from '@/services/service-account-credential.service';
 import { UrlService } from '@/services/url.service';
 
+import { OAuthTokenService } from './oauth-token.service';
+
 /**
  * Fallback root-level token endpoint (no `/rest` prefix), used only when the
  * target isn't an n8n-served protected resource and discovery can't find an
@@ -44,6 +46,7 @@ export class InternalOAuth2MintService {
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
+		private readonly oauthTokenService: OAuthTokenService,
 		outboundHttp: OutboundHttp,
 	) {
 		this.http = outboundHttp.requests({
@@ -53,20 +56,30 @@ export class InternalOAuth2MintService {
 	}
 
 	/**
-	 * Mint a bearer access token for `userId`, audience-locked to `targetUrl`.
+	 * Mint a bearer access token for `userId` (the acting service account),
+	 * audience-locked to `targetUrl`.
+	 *
+	 * When `onBehalfOfUserId` is set — an interactive run a human triggered — the
+	 * mint is *delegated* and runs in two token-endpoint calls: (1) obtain the
+	 * service account's OWN access token via the `client_credentials` grant, then
+	 * (2) present that token as the RFC 8693 `actor_token` in a token-exchange
+	 * request alongside a subject assertion for the human, yielding a token whose
+	 * `sub` is the human and whose `act` is the acting service account. Omitting it
+	 * keeps the single-call autonomous `client_credentials` path unchanged.
 	 *
 	 * @throws OperationalError when the user has no service-account credential, or when
-	 * the token endpoint call fails (network error or non-2xx). The client secret is
-	 * never included in the thrown error.
+	 * a token endpoint call fails (network error or non-2xx). The client secret,
+	 * minted tokens and subject assertion are never included in the thrown error.
 	 */
 	async mintForUser(
 		userId: string,
 		targetUrl: string,
 		ctx: OperationContext = {},
+		onBehalfOfUserId?: string,
 	): Promise<string> {
 		const credential = await this.serviceAccountCredentialService.getDecryptedForUser(userId, ctx);
 		if (!credential) {
-			this.emitOutcome(userId, '', targetUrl, 'failure');
+			this.emitOutcome(userId, '', targetUrl, 'failure', onBehalfOfUserId);
 			throw new OperationalError('No service-account credential for identity');
 		}
 
@@ -100,14 +113,95 @@ export class InternalOAuth2MintService {
 			resource = targetUrl;
 		}
 
-		const body = new URLSearchParams({
-			grant_type: 'client_credentials',
-			client_id: clientId,
-			client_secret: clientSecret,
-			resource,
-		});
-
 		// TODO: external AS support — flip OutboundHttp ssrf off-'disabled' to the egress filter + validate the issuer against the credential's AS binding before sending the secret. Internal-only today.
+		let accessToken: string;
+		try {
+			// Step 1 (both paths): the service account's OWN access token via the
+			// `client_credentials` grant. Autonomously this IS the minted token.
+			const clientCredentialsToken = await this.mintClientCredentials(
+				clientId,
+				clientSecret,
+				tokenEndpoint,
+				resource,
+			);
+
+			if (onBehalfOfUserId) {
+				// Step 2 (delegated): present the SA's own token as the RFC 8693
+				// `actor_token` alongside a subject assertion vouching for the human, so
+				// the exchanged token's `sub` is the human and its `act` is the acting
+				// service account. The SA's client credentials authenticate the caller.
+				const subjectToken = this.oauthTokenService.mintSubjectAssertion(onBehalfOfUserId);
+				accessToken = await this.requestAccessToken(
+					tokenEndpoint,
+					new URLSearchParams({
+						grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+						client_id: clientId,
+						client_secret: clientSecret,
+						subject_token: subjectToken,
+						subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+						actor_token: clientCredentialsToken,
+						actor_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+						resource,
+					}),
+				);
+			} else {
+				accessToken = clientCredentialsToken;
+			}
+		} catch (error) {
+			this.emitOutcome(userId, clientId, resource, 'failure', onBehalfOfUserId);
+			throw error;
+		}
+
+		// Trace: the acting identity self-authenticated and now holds a token for `resource`.
+		this.logger.info('Service account self-authenticated (internal OAuth2 mint)', {
+			userId,
+			clientId,
+			resource,
+			tokenEndpoint,
+		});
+		if (onBehalfOfUserId) {
+			// Trace: the token is delegated — it acts for the human, as the service account.
+			this.logger.info('Minted delegated (on-behalf-of) service-account token', {
+				sub: onBehalfOfUserId,
+				act: userId,
+				resource,
+			});
+		}
+		this.emitOutcome(userId, clientId, resource, 'success', onBehalfOfUserId);
+		return accessToken;
+	}
+
+	/**
+	 * Obtain the service account's OWN access token via the `client_credentials`
+	 * grant. Autonomously this is the token we return; for a delegated mint it
+	 * becomes the RFC 8693 `actor_token`.
+	 */
+	private async mintClientCredentials(
+		clientId: string,
+		clientSecret: string,
+		tokenEndpoint: string,
+		resource: string,
+	): Promise<string> {
+		return await this.requestAccessToken(
+			tokenEndpoint,
+			new URLSearchParams({
+				grant_type: 'client_credentials',
+				client_id: clientId,
+				client_secret: clientSecret,
+				resource,
+			}),
+		);
+	}
+
+	/**
+	 * POST an OAuth2 grant `body` to `tokenEndpoint` and return its `access_token`.
+	 * Shared by the `client_credentials` and token-exchange grants. On a network
+	 * error or non-2xx only the HTTP status is surfaced — never the request body,
+	 * which carries the client secret and (for a delegated mint) the actor token.
+	 *
+	 * @throws OperationalError when the call fails or no `access_token` is returned.
+	 */
+	private async requestAccessToken(tokenEndpoint: string, body: URLSearchParams): Promise<string> {
 		let accessToken: string | undefined;
 		try {
 			const response = await this.http.request<{ access_token?: string }>({
@@ -118,26 +212,15 @@ export class InternalOAuth2MintService {
 			});
 			accessToken = response?.access_token;
 		} catch (error) {
-			// Only surface the HTTP status — never the request body, which carries the secret.
 			const status = isHttpRequestError(error) ? error.response?.status : undefined;
-			this.logger.warn('Failed to mint service-account token', { userId, targetUrl, status });
-			this.emitOutcome(userId, clientId, resource, 'failure');
+			this.logger.warn('Failed to mint service-account token', { tokenEndpoint, status });
 			throw new OperationalError('Failed to mint service-account token');
 		}
 
 		if (!accessToken) {
-			this.emitOutcome(userId, clientId, resource, 'failure');
 			throw new OperationalError('Token endpoint returned no access_token');
 		}
 
-		// Trace: the acting identity self-authenticated and now holds a token for `resource`.
-		this.logger.info('Service account self-authenticated (internal OAuth2 mint)', {
-			userId,
-			clientId,
-			resource,
-			tokenEndpoint,
-		});
-		this.emitOutcome(userId, clientId, resource, 'success');
 		return accessToken;
 	}
 
@@ -206,9 +289,13 @@ export class InternalOAuth2MintService {
 		clientId: string,
 		targetUrl: string,
 		outcome: 'success' | 'failure',
+		onBehalfOfUserId?: string,
 	): void {
+		// Autonomous: `sub` is the acting service account, no actor. Delegated: the
+		// human on whose behalf we mint is the `sub`, the acting SA is the `act`.
 		this.eventService.emit('service-account-token-minted', {
-			sub: userId,
+			sub: onBehalfOfUserId ?? userId,
+			...(onBehalfOfUserId ? { act: userId } : {}),
 			clientId,
 			aud: targetUrl,
 			outcome,

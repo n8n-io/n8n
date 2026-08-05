@@ -2,6 +2,7 @@ import {
 	CreateDestinationDto,
 	DeleteDestinationQueryDto,
 	GetDestinationQueryDto,
+	ListAuditLogEventsQueryDto,
 	TestDestinationQueryDto,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
@@ -16,6 +17,8 @@ import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import { createMessageEventBusDestination } from './create-message-event-bus-destination';
+import type { AuditLogEvent } from './database/entities/audit-log-event.entity';
+import { AuditLogEventRepository } from './database/repositories/audit-log-event.repository';
 import { LogStreamingDestinationService } from './log-streaming-destination.service';
 
 @RestController('/eventbus')
@@ -25,6 +28,7 @@ export class EventBusController {
 		private readonly destinationService: LogStreamingDestinationService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly auditLogEventRepository: AuditLogEventRepository,
 	) {}
 
 	private assertNotManagedByEnv() {
@@ -38,6 +42,21 @@ export class EventBusController {
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
 		return eventNamesAll;
+	}
+
+	@Get('/audit-log-events')
+	@GlobalScope('eventBusDestination:list')
+	async listAuditLogEvents(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Query query: ListAuditLogEventsQueryDto,
+	): Promise<{ data: AuditLogEvent[]; count: number }> {
+		const [data, count] = await this.auditLogEventRepository.listByPrefix({
+			prefix: query.prefix,
+			skip: query.skip,
+			take: query.take,
+		});
+		return { data, count };
 	}
 
 	@Licensed('feat:logStreaming')

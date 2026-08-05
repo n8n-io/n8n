@@ -60,6 +60,8 @@ const SettingsApiView = async () =>
 	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
 const SettingsLogStreamingView = async () =>
 	await import('@/features/integrations/logStreaming.ee/views/SettingsLogStreamingView.vue');
+const AuditLogView = async () =>
+	await import('@/features/settings/auditLog/views/AuditLogView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -1081,6 +1083,22 @@ export const routes: RouteRecordRaw[] = [
 				path: 'log-streaming',
 				name: VIEWS.LOG_STREAMING_SETTINGS,
 				component: SettingsLogStreamingView,
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'logStreaming:manage',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+					},
+				},
+			},
+			{
+				path: 'audit-log',
+				name: VIEWS.AUDIT_LOG_SETTINGS,
+				component: AuditLogView,
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {

@@ -117,6 +117,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		);
 	});
 
@@ -131,6 +132,26 @@ describe('AgentRuntimeCacheService', () => {
 		await service.getRuntime({ agentId, projectId });
 
 		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0]?.[6]).toBe('sa-user-1');
+	});
+
+	it('threads the triggering human as the on-behalf-of identity, only when a user is present', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const user = mock<User>({ id: 'human-1' });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+		actingIdentityResolver.mockResolvedValue('sa-user-1');
+
+		// Human-triggered (interactive) run: the human is threaded as the OBO identity
+		// alongside the acting SA, so downstream minting delegates.
+		await service.getRuntime({ agentId, projectId, user });
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0]?.[6]).toBe('sa-user-1');
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0]?.[7]).toBe('human-1');
+
+		// Integration run (no user, distinct cache key): no OBO identity → autonomous minting.
+		await service.getRuntime({ agentId, projectId, integrationType: 'slack' });
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[1]?.[7]).toBeUndefined();
 	});
 
 	it('keeps draft runtimes separate by integration type', async () => {
@@ -160,6 +181,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			'test',
 			'n8n_chat',
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -196,6 +218,7 @@ describe('AgentRuntimeCacheService', () => {
 			userA,
 			undefined,
 			undefined,
+			'user-a',
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -206,6 +229,7 @@ describe('AgentRuntimeCacheService', () => {
 			userB,
 			undefined,
 			undefined,
+			'user-b',
 		);
 	});
 
@@ -333,6 +357,7 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			'production',
 			'slack',
+			undefined,
 			undefined,
 			undefined,
 			undefined,

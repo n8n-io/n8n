@@ -185,6 +185,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
 		actingServiceAccountUserId?: string,
+		actingOnBehalfOfUserId?: string,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = agentEntity.schema;
 		if (!config) {
@@ -232,6 +233,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			actingServiceAccountUserId,
+			actingOnBehalfOfUserId,
 		});
 	}
 
@@ -349,6 +351,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
 		actingServiceAccountUserId?: string;
+		actingOnBehalfOfUserId?: string;
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -367,6 +370,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 			actingServiceAccountUserId,
+			actingOnBehalfOfUserId,
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
@@ -374,6 +378,7 @@ export class AgentRuntimeReconstructionService {
 			projectId,
 			instrumentation,
 			actingServiceAccountUserId,
+			actingOnBehalfOfUserId,
 		);
 		const resolvedTools: BuiltTool[] = [];
 
@@ -397,6 +402,7 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				internalOAuth2MintService: this.internalOAuth2MintService,
 				actingServiceAccountUserId,
+				actingOnBehalfOfUserId,
 				projectId,
 				proxyFetch: aiMcpFetch,
 				onConnectionFailed: (event) => {
@@ -530,6 +536,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		instrumentation?: AgentRuntimeInstrumentation,
 		actingServiceAccountUserId?: string,
+		actingOnBehalfOfUserId?: string,
 	): ToolResolver {
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
@@ -551,6 +558,7 @@ export class AgentRuntimeReconstructionService {
 					executor: this.ephemeralNodeExecutor,
 					projectId,
 					actingServiceAccountUserId,
+					actingOnBehalfOfUserId,
 					instrumentToolAdditionalData,
 				});
 			}

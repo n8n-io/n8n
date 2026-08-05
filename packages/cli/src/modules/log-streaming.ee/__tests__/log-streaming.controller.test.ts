@@ -9,6 +9,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
+import type { AuditLogEventRepository } from '../database/repositories/audit-log-event.repository';
 import type { LogStreamingDestinationService } from '../log-streaming-destination.service';
 import { EventBusController } from '../log-streaming.controller';
 
@@ -19,6 +20,7 @@ describe('EventBusController', () => {
 		logStreamingManagedByEnv: false,
 	});
 	const outboundHttp = mock<OutboundHttp>();
+	const auditLogEventRepository = mock<AuditLogEventRepository>();
 
 	let controller: EventBusController;
 
@@ -30,6 +32,7 @@ describe('EventBusController', () => {
 			destinationService,
 			instanceSettingsLoaderConfig,
 			outboundHttp,
+			auditLogEventRepository,
 		);
 	});
 

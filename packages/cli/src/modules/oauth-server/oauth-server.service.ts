@@ -463,6 +463,106 @@ export class OAuthServerService implements OAuthServerProvider {
 		};
 	}
 
+	/**
+	 * RFC 8693 token exchange (internal on-behalf-of / delegation).
+	 *
+	 * Client authentication (`client_id`/`client_secret`) authenticates the *caller*
+	 * of the endpoint. The RFC 8693 *actor* is derived separately from `actorToken`
+	 * — a security token representing the acting party — decoupled from the client,
+	 * so an actor need not be a client-credentials holder. We mint a *delegated*
+	 * access token whose `sub` is the human named by the subject assertion and whose
+	 * `act.sub` is the actor_token's subject, audience-locked to `resource`.
+	 * Authorization at verify time keys on the subject; the actor is attribution only.
+	 */
+	async exchangeToken(
+		clientId: string,
+		clientSecret: string,
+		subjectToken: string,
+		actorToken: string,
+		resource: string,
+	): Promise<OAuthTokens | null> {
+		const decrypted = await this.serviceAccountCredentialService.getDecryptedByClientId(clientId);
+
+		if (!decrypted) {
+			// Keep the precise reason (a mild client-enumeration oracle) at debug; ops
+			// still see a generic warn without the oracle.
+			this.logger.debug('token-exchange rejected', { clientId, reason: 'unknown_client' });
+			this.logger.warn('token-exchange rejected', { clientId, reason: 'invalid_client' });
+			this.emitTokenExchanged(null, null, clientId, resource, 'failure');
+			return null;
+		}
+
+		const { clientSecret: storedSecret } = decrypted;
+
+		if (!timingSafeEqualStrings(clientSecret, storedSecret)) {
+			this.logger.debug('token-exchange rejected', { clientId, reason: 'bad_secret' });
+			this.logger.warn('token-exchange rejected', { clientId, reason: 'invalid_client' });
+			this.emitTokenExchanged(null, null, clientId, resource, 'failure');
+			return null;
+		}
+
+		// `sub`/`act` are surfaced to the failure audit below as they become known:
+		// the subject first, then the actor. Both null until validated.
+		let subjectUserId: string | null = null;
+		let actorUserId: string | null = null;
+		try {
+			// The subject assertion the AS itself signed identifies the human on whose
+			// behalf we act. Throws (rejecting the exchange) on a bad/expired assertion.
+			subjectUserId = this.tokenService.validateSubjectAssertion(subjectToken);
+
+			// The actor is derived from the actor_token (RFC 8693), NOT from the
+			// authenticating client — this is what lets a non-service-account actor work.
+			// Throws (rejecting the exchange) on a bad/expired/revoked actor token.
+			actorUserId = await this.tokenService.validateActorToken(actorToken);
+		} catch (error) {
+			this.emitTokenExchanged(subjectUserId, actorUserId, clientId, resource, 'failure');
+			throw error;
+		}
+
+		// TODO: policy — whether this client may present this actor_token, and RFC 8693
+		// may_act (whether the actor may act for the subject). Always-allowed for the
+		// internal PoC.
+
+		// oauth_access_tokens FKs clientId -> oauth_clients (see exchangeClientCredentials).
+		await this.ensureServiceAccountClient(clientId);
+
+		const { accessToken, jti } = await this.tokenService.generateAccessTokenOnly(
+			subjectUserId,
+			clientId,
+			resource,
+			[],
+			actorUserId,
+		);
+
+		// Trace: the delegation edge (subject on-behalf-of, actor service account) and
+		// the audience. `jti` correlates this mint to its later verify. Never the token/secret.
+		this.logger.info('Minted delegated (on-behalf-of) token', {
+			sub: subjectUserId,
+			act: actorUserId,
+			clientId,
+			resource,
+			jti,
+		});
+
+		this.emitTokenExchanged(subjectUserId, actorUserId, clientId, resource, 'success');
+
+		return {
+			access_token: accessToken,
+			token_type: 'Bearer',
+			expires_in: this.tokenService.getAccessTokenExpirySeconds(),
+		};
+	}
+
+	private emitTokenExchanged(
+		sub: string | null,
+		act: string | null,
+		clientId: string | null,
+		aud: string,
+		outcome: 'success' | 'failure',
+	): void {
+		this.eventService.emit('service-account-token-exchanged', { sub, act, clientId, aud, outcome });
+	}
+
 	/** Idempotently create the oauth_clients row backing a service-account client. */
 	private async ensureServiceAccountClient(clientId: string): Promise<void> {
 		const existing = await this.oauthClientRepository.findOneBy({ id: clientId });

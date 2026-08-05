@@ -137,6 +137,14 @@ export class LogStreamingEventRelay extends EventRelay {
 			'token-exchange-role-updated': (event) => this.tokenExchangeRoleUpdated(event),
 			'service-account-token-minted': (event) => this.serviceAccountTokenMinted(event),
 			'service-account-token-verified': (event) => this.serviceAccountTokenVerified(event),
+			'service-account-token-exchanged': (event) => this.serviceAccountTokenExchanged(event),
+			'service-account-created': (event) => this.serviceAccountCreated(event),
+			'service-account-role-changed': (event) => this.serviceAccountRoleChanged(event),
+			'service-account-deleted': (event) => this.serviceAccountDeleted(event),
+			'service-account-impersonation-started': (event) =>
+				this.serviceAccountImpersonationStarted(event),
+			'service-account-impersonation-ended': (event) =>
+				this.serviceAccountImpersonationEnded(event),
 			'embed-login': (event) => this.embedLogin(event),
 			'embed-login-failed': (event) => this.embedLoginFailed(event),
 			'expression-mapping-roles-resolved': (event) => this.expressionMappingRolesResolved(event),
@@ -1207,6 +1215,55 @@ export class LogStreamingEventRelay extends EventRelay {
 	private serviceAccountTokenVerified(event: RelayEventMap['service-account-token-verified']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.service-account.token.verified',
+			payload: event,
+		});
+	}
+
+	private serviceAccountTokenExchanged(event: RelayEventMap['service-account-token-exchanged']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.token.exchanged',
+			payload: event,
+		});
+	}
+
+	// `userId` on these lifecycle events is the human actor (never the SA), so the
+	// payload carries a plain id — no `@Redactable` (that decorator redacts a
+	// `user`/`UserLike` object, which these events don't carry).
+	private serviceAccountCreated(event: RelayEventMap['service-account-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.created',
+			payload: event,
+		});
+	}
+
+	private serviceAccountRoleChanged(event: RelayEventMap['service-account-role-changed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.role-changed',
+			payload: event,
+		});
+	}
+
+	private serviceAccountDeleted(event: RelayEventMap['service-account-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.deleted',
+			payload: event,
+		});
+	}
+
+	private serviceAccountImpersonationStarted(
+		event: RelayEventMap['service-account-impersonation-started'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.impersonation.started',
+			payload: event,
+		});
+	}
+
+	private serviceAccountImpersonationEnded(
+		event: RelayEventMap['service-account-impersonation-ended'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.impersonation.ended',
 			payload: event,
 		});
 	}

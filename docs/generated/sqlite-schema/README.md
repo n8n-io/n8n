@@ -35,6 +35,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_threads](agents_threads.md) | 6 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
+| [audit_log_event](audit_log_event.md) | 7 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -619,6 +620,15 @@ erDiagram
   datetime_3_ createdAt
   varchar_16_ id PK
   varchar_24_ name
+  datetime_3_ updatedAt
+}
+"audit_log_event" {
+  datetime_3_ createdAt
+  varchar_255_ eventName
+  varchar_36_ id PK
+  varchar_255_ message
+  TEXT payload
+  datetime_3_ ts
   datetime_3_ updatedAt
 }
 "auth_identity" {

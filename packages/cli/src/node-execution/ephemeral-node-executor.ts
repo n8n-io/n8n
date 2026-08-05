@@ -51,6 +51,12 @@ export type EphemeralWorkflowToolLike = {
 	 * only — never derived from node input.
 	 */
 	actingServiceAccountUserId?: string;
+	/**
+	 * Human on whose behalf an interactive run acts. When set alongside
+	 * `actingServiceAccountUserId`, the ephemeral execution's mint hook is
+	 * delegated (sub = human, act = SA). Server-set only.
+	 */
+	actingOnBehalfOfUserId?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
 	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 };
@@ -74,6 +80,11 @@ export interface InlineNodeExecutionRequest {
 	 * {@link EphemeralWorkflowToolLike.actingServiceAccountUserId}). Server-set only.
 	 */
 	actingServiceAccountUserId?: string;
+	/**
+	 * Human on whose behalf an interactive run acts (see
+	 * {@link EphemeralWorkflowToolLike.actingOnBehalfOfUserId}). Server-set only.
+	 */
+	actingOnBehalfOfUserId?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
 	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 }
@@ -324,11 +335,17 @@ export class EphemeralNodeExecutor {
 			// agent's service account. Built here (rather than threaded as a closure) so
 			// the identity string is the only thing carried through the tool layers.
 			const actingServiceAccountUserId = tool.actingServiceAccountUserId;
+			// Present only on human-triggered (interactive) runs; delegates the mint
+			// (sub = human, act = SA). Undefined on autonomous runs → autonomous mint.
+			const actingOnBehalfOfUserId = tool.actingOnBehalfOfUserId;
 			additionalData.actingServiceAccountUserId = actingServiceAccountUserId;
+			additionalData.actingOnBehalfOfUserId = actingOnBehalfOfUserId;
 			additionalData.mintInternalOAuth2Token = async (targetUrl: string) =>
 				await Container.get(InternalOAuth2MintService).mintForUser(
 					actingServiceAccountUserId,
 					targetUrl,
+					{},
+					actingOnBehalfOfUserId,
 				);
 		}
 		tool.configureAdditionalData?.(additionalData);
@@ -452,6 +469,7 @@ export class EphemeralNodeExecutor {
 			credentials: mergedCredentials,
 			nodeName: request.nodeName,
 			actingServiceAccountUserId: request.actingServiceAccountUserId,
+			actingOnBehalfOfUserId: request.actingOnBehalfOfUserId,
 			configureAdditionalData: request.configureAdditionalData,
 		};
 

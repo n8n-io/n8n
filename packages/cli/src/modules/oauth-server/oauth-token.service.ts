@@ -3,6 +3,7 @@ import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
+import type { User } from '@n8n/db';
 import { TransactionRunner, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -34,6 +35,9 @@ import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 export class OAuthTokenService implements OAuthTokenVerifier {
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
+	// A subject assertion is a short-lived, single-use bridge consumed synchronously
+	// by the token-exchange grant; it never travels further than the AS itself.
+	private readonly SUBJECT_ASSERTION_EXPIRY_SECONDS = 60;
 
 	constructor(
 		private readonly logger: Logger,
@@ -50,13 +54,96 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
 	}
 
+	/**
+	 * Mint a short-lived subject assertion for the internal token-exchange
+	 * (on-behalf-of) grant. It represents the human "subject" the AS itself
+	 * vouches for; the exchange grant validates it and mints a delegated access
+	 * token whose `sub` is this user.
+	 *
+	 * It is NOT an access token: no `oauth_access_tokens` row is persisted and no
+	 * `meta.isOAuth` marker is set, and the `purpose` claim keeps it from ever
+	 * being replayed as one (see {@link validateSubjectAssertion}).
+	 */
+	mintSubjectAssertion(userId: string): string {
+		const now = Math.floor(Date.now() / 1000);
+		return this.jwtService.sign({
+			sub: userId,
+			purpose: 'subject_token',
+			iat: now,
+			exp: now + this.SUBJECT_ASSERTION_EXPIRY_SECONDS,
+		});
+	}
+
+	/**
+	 * Validate a subject assertion minted by {@link mintSubjectAssertion}:
+	 * signature + expiry (enforced by `jwtService.verify`) and
+	 * `purpose === 'subject_token'`. Returns the subject `sub`; throws otherwise.
+	 */
+	validateSubjectAssertion(token: string): string {
+		let decoded: unknown;
+		try {
+			decoded = this.jwtService.verify(token);
+		} catch {
+			throw new JWTVerificationError();
+		}
+
+		const purpose = this.getStringClaim(decoded, 'purpose');
+		const sub = this.getStringClaim(decoded, 'sub');
+		if (purpose !== 'subject_token' || !sub) {
+			throw new JWTVerificationError();
+		}
+
+		return sub;
+	}
+
+	/**
+	 * Validate an `actor_token` for the RFC 8693 token-exchange grant. Unlike a
+	 * subject assertion, this is one of our OWN minted access tokens presented as
+	 * an *identity proof* of the acting party: verify its signature/expiry, confirm
+	 * its `oauth_access_tokens` row still exists (so a revoked token can't stand in
+	 * as an actor — the same existence check {@link verifyTokenWithAudiences} uses),
+	 * and return its `sub`. Throws otherwise.
+	 *
+	 * Audience is deliberately NOT enforced: an actor_token proves who is acting,
+	 * it is not an access grant for a specific resource.
+	 */
+	async validateActorToken(token: string): Promise<string> {
+		let decoded: unknown;
+		try {
+			decoded = this.jwtService.verify(token);
+		} catch {
+			throw new JWTVerificationError();
+		}
+
+		const accessTokenRecord = await this.accessTokenRepository.findOne({
+			where: { token },
+		});
+		if (!accessTokenRecord) {
+			throw new AccessTokenNotFoundError();
+		}
+
+		const sub = this.getStringClaim(decoded, 'sub');
+		if (!sub) {
+			throw new JWTVerificationError();
+		}
+
+		return sub;
+	}
+
 	async generateAccessTokenOnly(
 		userId: string,
 		clientId: string,
 		resource: string | undefined,
 		scopes: string[],
+		actorUserId?: string,
 	): Promise<{ accessToken: string; jti: string }> {
-		const { accessToken, jti } = this.generateTokenPair(userId, clientId, resource, scopes);
+		const { accessToken, jti } = this.generateTokenPair(
+			userId,
+			clientId,
+			resource,
+			scopes,
+			actorUserId,
+		);
 		// Persist the access token: verification checks the token row exists, so an
 		// unsaved token would be rejected. No refresh token is issued for
 		// client_credentials (RFC 6749 §4.4.3).
@@ -71,6 +158,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		clientId: string,
 		resource: string | undefined,
 		scopes: string[],
+		actorUserId?: string,
 	): { accessToken: string; refreshToken: string; jti: string } {
 		// Pre-RFC-8707 clients omit the resource indicator; fall back to the
 		// registry's default resource (the instance MCP server).
@@ -87,6 +175,9 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 		const accessToken = this.jwtService.sign({
 			sub: userId,
+			// RFC 8693 `act` claim: the delegated (on-behalf-of) actor. Present only
+			// for token-exchange grants; autonomous client_credentials pass nothing.
+			...(actorUserId ? { act: { sub: actorUserId } } : {}),
 			aud: audience,
 			client_id: clientId,
 			jti,
@@ -234,6 +325,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		// `jti` is carried through `extra` purely as a log-correlation handle (mint↔verify).
 		const jti = this.getStringClaim(decoded, 'jti');
 
+		// RFC 8693 `act.sub`: the delegated actor (agent SA) on an on-behalf-of token.
+		// Absent on autonomous (client_credentials) tokens.
+		const actorId = this.getActorSub(decoded);
+
 		return {
 			token,
 			clientId,
@@ -241,6 +336,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			extra: {
 				userId,
 				...(jti ? { jti } : {}),
+				...(actorId ? { actorId } : {}),
 			},
 		};
 	}
@@ -266,8 +362,14 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		sub: string | null,
 		aud: string | undefined,
 		outcome: 'success' | 'failure',
+		act: string | null = null,
 	) {
-		this.eventService.emit('service-account-token-verified', { sub, aud: aud ?? '', outcome });
+		this.eventService.emit('service-account-token-verified', {
+			sub,
+			act,
+			aud: aud ?? '',
+			outcome,
+		});
 	}
 
 	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
@@ -328,6 +430,11 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
+			// On a delegated (on-behalf-of) token, resolve the actor (agent SA)
+			// alongside the subject. Authorization stays keyed on the SUBJECT above —
+			// the actor is surfaced for attribution only, never authorized against.
+			const { actorId, actor } = await this.resolveActor(authInfo);
+
 			// Trace: who is acting (verified user + client) against which resource, now.
 			// `jti` correlates this verify back to the mint that issued the token.
 			const jti =
@@ -340,9 +447,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				aud: expectedAudience,
 				scope: authInfo.scopes.join(' '),
 				...(jti ? { jti } : {}),
+				...(actorId ? { act: actorId } : {}),
 			});
-			this.emitTokenVerified(userId, expectedAudience, 'success');
-			return { user, authType: 'oauth', scopes: authInfo.scopes };
+			this.emitTokenVerified(userId, expectedAudience, 'success', actorId);
+			return { user, authType: 'oauth', scopes: authInfo.scopes, ...(actor ? { actor } : {}) };
 		} catch (error) {
 			this.emitTokenVerified(null, expectedAudience, 'failure');
 			const errorForSure = ensureError(error);
@@ -481,5 +589,35 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		if (!payload || typeof payload !== 'object') return null;
 		const claimValue = (payload as Record<string, unknown>)[claim];
 		return typeof claimValue === 'string' ? claimValue : null;
+	}
+
+	/** Extract the RFC 8693 `act.sub` (delegated actor), or null when absent. */
+	private getActorSub(payload: unknown): string | null {
+		if (!payload || typeof payload !== 'object') return null;
+		const act = (payload as Record<string, unknown>).act;
+		return this.getStringClaim(act, 'sub');
+	}
+
+	/**
+	 * Resolve the delegated actor (agent SA) carried on an on-behalf-of token via
+	 * `authInfo.extra.actorId`. Returns the raw `actorId` (for trace logging) and
+	 * the resolved `User` when it exists. Both are absent on autonomous tokens.
+	 */
+	private async resolveActor(
+		authInfo: AuthInfo,
+	): Promise<{ actorId: string | null; actor?: User }> {
+		const actorId =
+			authInfo.extra && typeof authInfo.extra === 'object'
+				? this.getStringClaim(authInfo.extra, 'actorId')
+				: null;
+		if (!actorId) {
+			return { actorId: null };
+		}
+		const actor =
+			(await this.userRepository.findOne({
+				where: { id: actorId },
+				relations: ['role'],
+			})) ?? undefined;
+		return { actorId, actor };
 	}
 }

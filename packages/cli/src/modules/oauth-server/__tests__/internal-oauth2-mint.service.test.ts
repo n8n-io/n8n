@@ -13,6 +13,7 @@ import type { ServiceAccountCredentialService } from '@/services/service-account
 import type { UrlService } from '@/services/url.service';
 
 import { InternalOAuth2MintService } from '../internal-oauth2-mint.service';
+import type { OAuthTokenService } from '../oauth-token.service';
 
 const ORIGIN = 'http://localhost:5678';
 const TARGET_URL = `${ORIGIN}/mcp/proof`;
@@ -52,9 +53,16 @@ describe('InternalOAuth2MintService', () => {
 	const urlService = mock<UrlService>();
 	const eventService = mock<EventService>();
 	const logger = mock<Logger>();
+	const oauthTokenService = mock<OAuthTokenService>();
 	const request = vi.fn();
 	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	const outboundHttp = mock<OutboundHttp>({ requests });
+
+	const SUBJECT_ASSERTION = 'subject-assertion-jwt';
+	const HUMAN_USER_ID = 'human-user-id';
+	// The SA's OWN access token, minted via client_credentials, then presented as
+	// the RFC 8693 actor_token in the delegated exchange.
+	const SA_ACCESS_TOKEN = 'sa-access-token';
 
 	let service: InternalOAuth2MintService;
 
@@ -65,17 +73,27 @@ describe('InternalOAuth2MintService', () => {
 			clientId: CLIENT_ID,
 			clientSecret: CLIENT_SECRET,
 		});
+		oauthTokenService.mintSubjectAssertion.mockReturnValue(SUBJECT_ASSERTION);
 		service = new InternalOAuth2MintService(
 			serviceAccountCredentialService,
 			urlService,
 			eventService,
 			logger,
+			oauthTokenService,
 			outboundHttp,
 		);
 	});
 
 	const findCall = (url: string) =>
 		request.mock.calls.map(([options]) => options as RequestOptions).find((o) => o.url === url);
+
+	// Both delegated POSTs hit the same discovered endpoint; distinguish them by grant.
+	const mintCalls = () =>
+		request.mock.calls
+			.map(([options]) => options as RequestOptions)
+			.filter((o) => o.url === DISCOVERED_TOKEN_ENDPOINT);
+	const findMintCall = (grantType: string) =>
+		mintCalls().find((o) => new URLSearchParams(o.body).get('grant_type') === grantType);
 
 	describe('protocol-driven discovery', () => {
 		beforeEach(() => {
@@ -154,6 +172,129 @@ describe('InternalOAuth2MintService', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-minted', {
 				sub: USER_ID,
+				clientId: CLIENT_ID,
+				aud: CANONICAL_RESOURCE,
+				outcome: 'failure',
+			});
+		});
+	});
+
+	describe('delegated (on-behalf-of) mint', () => {
+		const TOKEN_EXCHANGE_GRANT = 'urn:ietf:params:oauth:grant-type:token-exchange';
+
+		beforeEach(() => {
+			// Both delegated POSTs hit the discovered endpoint; route by grant: the
+			// client_credentials call returns the SA's own token, the token-exchange
+			// call (which must carry that token as actor_token) returns the final token.
+			request.mockImplementation(({ url, body }: RequestOptions) => {
+				if (url === PRM_WELL_KNOWN) {
+					return { resource: CANONICAL_RESOURCE, authorization_servers: [ISSUER] };
+				}
+				if (url === AS_WELL_KNOWN) return { token_endpoint: DISCOVERED_TOKEN_ENDPOINT };
+				if (url === DISCOVERED_TOKEN_ENDPOINT) {
+					const grant = new URLSearchParams(body).get('grant_type');
+					if (grant === 'client_credentials') return { access_token: SA_ACCESS_TOKEN };
+					if (grant === TOKEN_EXCHANGE_GRANT) return { access_token: 'delegated-token' };
+				}
+				throw new Error(`unexpected request url: ${url}`);
+			});
+		});
+
+		it('mints the SA access token, then exchanges it as the actor_token for the human', async () => {
+			const token = await service.mintForUser(USER_ID, TARGET_URL, {}, HUMAN_USER_ID);
+
+			expect(token).toBe('delegated-token');
+
+			// The subject assertion is minted for the human (never the acting SA).
+			expect(oauthTokenService.mintSubjectAssertion).toHaveBeenCalledWith(HUMAN_USER_ID);
+
+			// Step 1: the SA obtained its OWN access token via client_credentials.
+			const ccCall = findMintCall('client_credentials');
+			expect(ccCall?.method).toBe('POST');
+			const ccParams = new URLSearchParams(ccCall?.body);
+			expect(ccParams.get('client_id')).toBe(CLIENT_ID);
+			expect(ccParams.get('client_secret')).toBe(CLIENT_SECRET);
+			expect(ccParams.get('resource')).toBe(CANONICAL_RESOURCE);
+
+			// Step 2: the token-exchange POST carries that token as the RFC 8693 actor_token.
+			const exchangeCall = findMintCall(TOKEN_EXCHANGE_GRANT);
+			expect(exchangeCall?.method).toBe('POST');
+			const params = new URLSearchParams(exchangeCall?.body);
+			expect(params.get('grant_type')).toBe(TOKEN_EXCHANGE_GRANT);
+			expect(params.get('subject_token')).toBe(SUBJECT_ASSERTION);
+			expect(params.get('subject_token_type')).toBe('urn:ietf:params:oauth:token-type:jwt');
+			// The actor_token is exactly the token the client_credentials call returned.
+			expect(params.get('actor_token')).toBe(SA_ACCESS_TOKEN);
+			expect(params.get('actor_token_type')).toBe('urn:ietf:params:oauth:token-type:access_token');
+			// The actor SA's own client credentials still authenticate the exchange.
+			expect(params.get('client_id')).toBe(CLIENT_ID);
+			expect(params.get('client_secret')).toBe(CLIENT_SECRET);
+			expect(params.get('resource')).toBe(CANONICAL_RESOURCE);
+
+			// Both grants ran: client_credentials first, token-exchange second.
+			expect(mintCalls().map((o) => new URLSearchParams(o.body).get('grant_type'))).toEqual([
+				'client_credentials',
+				TOKEN_EXCHANGE_GRANT,
+			]);
+
+			// The delegated mint audit records the human as `sub` and the acting SA as
+			// the RFC 8693 `act`, keyed on the canonical resource.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-minted', {
+				sub: HUMAN_USER_ID,
+				act: USER_ID,
+				clientId: CLIENT_ID,
+				aud: CANONICAL_RESOURCE,
+				outcome: 'success',
+			});
+		});
+
+		it('mints autonomously (single client_credentials call, no assertion) when no human is present', async () => {
+			const token = await service.mintForUser(USER_ID, TARGET_URL);
+
+			expect(token).toBe(SA_ACCESS_TOKEN);
+			expect(oauthTokenService.mintSubjectAssertion).not.toHaveBeenCalled();
+			// A single client_credentials POST — no token-exchange call.
+			expect(mintCalls().map((o) => new URLSearchParams(o.body).get('grant_type'))).toEqual([
+				'client_credentials',
+			]);
+			expect(findMintCall('client_credentials')?.body).toContain('grant_type=client_credentials');
+			expect(
+				new URLSearchParams(findMintCall('client_credentials')?.body).get('subject_token'),
+			).toBeNull();
+
+			// An autonomous mint records the acting SA as `sub` with no `act`.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-minted', {
+				sub: USER_ID,
+				clientId: CLIENT_ID,
+				aud: CANONICAL_RESOURCE,
+				outcome: 'success',
+			});
+		});
+
+		it('emits failure and does not attempt the exchange when the client_credentials step fails', async () => {
+			request.mockImplementation(({ url, body }: RequestOptions) => {
+				if (url === PRM_WELL_KNOWN) {
+					return { resource: CANONICAL_RESOURCE, authorization_servers: [ISSUER] };
+				}
+				if (url === AS_WELL_KNOWN) return { token_endpoint: DISCOVERED_TOKEN_ENDPOINT };
+				if (url === DISCOVERED_TOKEN_ENDPOINT) {
+					const grant = new URLSearchParams(body).get('grant_type');
+					if (grant === 'client_credentials') throw http401();
+				}
+				throw new Error(`unexpected request url: ${url}`);
+			});
+
+			await expect(service.mintForUser(USER_ID, TARGET_URL, {}, HUMAN_USER_ID)).rejects.toThrow(
+				OperationalError,
+			);
+
+			// The exchange never ran, and no subject assertion was minted for it.
+			expect(findMintCall('urn:ietf:params:oauth:grant-type:token-exchange')).toBeUndefined();
+			expect(oauthTokenService.mintSubjectAssertion).not.toHaveBeenCalled();
+			// A delegated failure still records the human as `sub` and the SA as `act`.
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-minted', {
+				sub: HUMAN_USER_ID,
+				act: USER_ID,
 				clientId: CLIENT_ID,
 				aud: CANONICAL_RESOURCE,
 				outcome: 'failure',

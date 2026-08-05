@@ -186,8 +186,29 @@ describe('buildMcpClientForServer — n8nInternalOAuth2', () => {
 		expect(internalOAuth2MintService.mintForUser).toHaveBeenCalledWith(
 			'sa-user-1',
 			'https://example.test/mcp',
+			{},
+			undefined,
 		);
 		expect(headers.Authorization).toBe('Bearer minted-token');
+	});
+
+	it('delegates the mint (passes the on-behalf-of human) on a human-triggered run', async () => {
+		const internalOAuth2MintService = mock<InternalOAuth2MintService>();
+		internalOAuth2MintService.mintForUser.mockResolvedValue('delegated-token');
+
+		const headers = await buildAndCaptureHeaders({
+			internalOAuth2MintService,
+			actingServiceAccountUserId: 'sa-user-1',
+			actingOnBehalfOfUserId: 'human-1',
+		});
+
+		expect(internalOAuth2MintService.mintForUser).toHaveBeenCalledWith(
+			'sa-user-1',
+			'https://example.test/mcp',
+			{},
+			'human-1',
+		);
+		expect(headers.Authorization).toBe('Bearer delegated-token');
 	});
 
 	it('fails closed (no auth header, no mint) when there is no acting identity', async () => {
