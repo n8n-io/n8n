@@ -321,6 +321,7 @@ export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 export {
 	ListWorkflowReviewActivityQueryDto,
 	CreateWorkflowReviewCommentDto,
+	WORKFLOW_REVIEW_COMMENT_MAX_LENGTH,
 	type ListWorkflowReviewActivityResponse,
 } from './workflow-reviews/workflow-review-activity.dto';
 

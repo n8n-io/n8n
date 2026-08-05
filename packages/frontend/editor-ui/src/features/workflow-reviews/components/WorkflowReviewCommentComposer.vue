@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { WORKFLOW_REVIEW_COMMENT_MAX_LENGTH } from '@n8n/api-types';
 import { N8nChatInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -23,12 +24,14 @@ const submitDisabled = computed(
 );
 
 async function onSubmit() {
-	const body = draft.value.trim();
+	const submitted = draft.value;
+	const body = submitted.trim();
 	if (!body) return;
 
 	try {
 		await store.postComment(body);
-		draft.value = '';
+		// The textarea stays enabled while posting, so anything typed meanwhile survives.
+		if (draft.value === submitted) draft.value = '';
 	} catch (error) {
 		showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
 	}
@@ -44,8 +47,7 @@ async function onSubmit() {
 		</span>
 		<N8nChatInput
 			v-model="draft"
-			layout="multiline"
-			:max-length="10000"
+			:max-length="WORKFLOW_REVIEW_COMMENT_MAX_LENGTH"
 			:autosize="{ minRows: 3, maxRows: 10 }"
 			:button-label="i18n.baseText('workflowReviews.detail.activity.composer.submit')"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"

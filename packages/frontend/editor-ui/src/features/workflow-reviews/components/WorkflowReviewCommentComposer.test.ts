@@ -63,6 +63,28 @@ describe('WorkflowReviewCommentComposer', () => {
 		await waitFor(() => expect(textarea).toHaveValue(''));
 	});
 
+	it('keeps text typed while the previous comment was still posting', async () => {
+		let resolvePost!: () => void;
+		store.postComment.mockImplementation(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolvePost = resolve;
+				}),
+		);
+		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });
+		const textarea = getByRole('textbox');
+
+		await userEvent.type(textarea, 'Nice work');
+		await userEvent.click(getByTestId('send-message-button'));
+		// The textarea stays enabled during the request, so the user keeps typing
+		await userEvent.type(textarea, ' and the next one');
+		expect(store.postComment).toHaveBeenCalledWith('Nice work');
+		resolvePost();
+		await new Promise(setImmediate);
+
+		expect(textarea).toHaveValue('Nice work and the next one');
+	});
+
 	it('keeps the draft and surfaces an error when posting fails', async () => {
 		store.postComment.mockRejectedValue(new Error('boom'));
 		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });

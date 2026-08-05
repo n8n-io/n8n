@@ -18,12 +18,15 @@ export interface ListWorkflowReviewActivityResponse {
 	hasMore: boolean;
 }
 
+/** Shared with the composer, so its character counter cannot drift from the validator. */
+export const WORKFLOW_REVIEW_COMMENT_MAX_LENGTH = 10_000;
+
 export class CreateWorkflowReviewCommentDto extends Z.class({
 	body: z
 		.string()
 		.trim()
 		.min(1)
-		.max(10_000)
+		.max(WORKFLOW_REVIEW_COMMENT_MAX_LENGTH)
 		// C0 controls other than \n, \r and \t make the Postgres driver throw, turning user
 		// input into a 500.
 		// eslint-disable-next-line no-control-regex
