@@ -192,7 +192,7 @@ function onListBackgroundClick() {
 .sidebar {
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 26rem;
+	flex: 0 0 22rem;
 	height: 100%;
 	border-right: var(--border-width) solid var(--color--foreground--tint-1);
 }

@@ -2,10 +2,11 @@
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nTabs, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
+import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
 
 export type WorkflowReviewDetailTab = 'activity' | 'changes';
 
@@ -21,9 +22,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const pendingWorkflowId = ref<string | null>(null);
 
-// The view falls back to the inbox list item while the full detail payload is
-// missing.
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
 );
@@ -49,6 +49,34 @@ const tabOptions = computed(() => [
 		value: 'changes' as const,
 	},
 ]);
+
+function scrollToWorkflow(workflowId: string) {
+	document
+		.getElementById(`workflow-review-changes-${workflowId}`)
+		?.scrollIntoView({ block: 'start' });
+}
+
+function onSelectWorkflow(workflowId: string) {
+	if (props.tab === 'changes') {
+		scrollToWorkflow(workflowId);
+		return;
+	}
+
+	pendingWorkflowId.value = workflowId;
+	emit('update:tab', 'changes');
+}
+
+watch(
+	() => props.tab,
+	async (tab) => {
+		if (tab !== 'changes' || !pendingWorkflowId.value) return;
+		const workflowId = pendingWorkflowId.value;
+		pendingWorkflowId.value = null;
+		await nextTick();
+		scrollToWorkflow(workflowId);
+	},
+	{ flush: 'post' },
+);
 </script>
 
 <template>
@@ -89,57 +117,69 @@ const tabOptions = computed(() => [
 			</div>
 		</div>
 
-		<div
-			v-if="tab === 'activity'"
-			:class="$style.panel"
-			data-test-id="workflow-review-activity-panel"
-		>
-			<N8nText
-				v-if="detail?.description"
-				color="text-base"
-				size="medium"
-				:class="$style.description"
-				data-test-id="workflow-review-description"
+		<div :class="$style.detailBody">
+			<div
+				v-if="tab === 'activity'"
+				:class="$style.panel"
+				data-test-id="workflow-review-activity-panel"
 			>
-				{{ detail.description }}
-			</N8nText>
-			<N8nText
-				v-else
-				color="text-light"
-				size="medium"
-				data-test-id="workflow-review-no-description"
-			>
-				{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
-			</N8nText>
-		</div>
+				<N8nText
+					v-if="detail?.description"
+					color="text-base"
+					size="medium"
+					:class="$style.description"
+					data-test-id="workflow-review-description"
+				>
+					{{ detail.description }}
+				</N8nText>
+				<N8nText
+					v-else
+					color="text-light"
+					size="medium"
+					data-test-id="workflow-review-no-description"
+				>
+					{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
+				</N8nText>
+			</div>
 
-		<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
-			<N8nCallout
-				v-if="review.state === 'closed'"
-				theme="info"
-				:class="$style.callout"
-				data-test-id="workflow-review-changes-closed"
-			>
-				{{ i18n.baseText('workflowReviews.changes.closed.body') }}
-			</N8nCallout>
-			<N8nCallout
-				v-else-if="!detail"
-				theme="warning"
-				:class="$style.callout"
-				data-test-id="workflow-review-changes-unavailable"
-			>
-				{{ i18n.baseText('workflowReviews.changes.unavailable') }}
-			</N8nCallout>
-			<template v-else-if="detail.workflows.length > 0">
-				<WorkflowReviewChangesSection
-					v-for="workflow in detail.workflows"
-					:key="workflow.workflowId"
-					:workflow="workflow"
-				/>
-			</template>
-			<N8nText v-else color="text-light" size="medium" data-test-id="workflow-review-changes-empty">
-				{{ i18n.baseText('workflowReviews.changes.empty') }}
-			</N8nText>
+			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
+				<N8nCallout
+					v-if="review.state === 'closed'"
+					theme="info"
+					:class="$style.callout"
+					data-test-id="workflow-review-changes-closed"
+				>
+					{{ i18n.baseText('workflowReviews.changes.closed.body') }}
+				</N8nCallout>
+				<N8nCallout
+					v-else-if="!detail"
+					theme="warning"
+					:class="$style.callout"
+					data-test-id="workflow-review-changes-unavailable"
+				>
+					{{ i18n.baseText('workflowReviews.changes.unavailable') }}
+				</N8nCallout>
+				<template v-else-if="detail.workflows.length > 0">
+					<section
+						v-for="workflow in detail.workflows"
+						:id="`workflow-review-changes-${workflow.workflowId}`"
+						:key="workflow.workflowId"
+						:class="$style.workflowSection"
+					>
+						<WorkflowReviewChangesSection :workflow="workflow" />
+					</section>
+				</template>
+				<N8nText
+					v-else
+					color="text-light"
+					size="medium"
+					data-test-id="workflow-review-changes-empty"
+				>
+					{{ i18n.baseText('workflowReviews.changes.empty') }}
+				</N8nText>
+			</div>
+
+			<WorkflowReviewDetailMetadata :review="review" @select-workflow="onSelectWorkflow" />
 		</div>
 	</div>
 </template>
@@ -159,11 +199,24 @@ const tabOptions = computed(() => [
 	gap: var(--spacing--sm);
 }
 
+.detailBody {
+	display: flex;
+	flex: 1;
+	gap: var(--spacing--sm);
+	min-height: 0;
+	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+}
+
 .panel {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+}
+
+.workflowSection {
+	height: 100%;
+	min-height: 0;
+	scroll-margin-top: var(--spacing--sm);
 }
 
 .callout {
@@ -179,5 +232,17 @@ const tabOptions = computed(() => [
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+}
+
+@media (max-width: 60rem) {
+	.detailBody {
+		flex-direction: column;
+		overflow: auto;
+	}
+
+	.panel {
+		flex: 0 0 auto;
+		overflow: visible;
+	}
 }
 </style>

@@ -4,6 +4,8 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 
+import { resolveWorkflowReviewStatus } from '../workflowReviewStatus';
+
 const props = defineProps<{
 	state: WorkflowReviewRequestState;
 	decision: WorkflowReviewRequestDecision;
@@ -12,17 +14,8 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const status = computed(() => {
-	if (props.state === 'open') {
-		return props.decision === 'changes_requested'
-			? {
-					variant: 'changesRequested',
-					label: i18n.baseText('workflowReviews.status.changesRequested'),
-				}
-			: { variant: 'pending', label: i18n.baseText('workflowReviews.status.pending') };
-	}
-	return props.decision === 'approved'
-		? { variant: 'approved', label: i18n.baseText('workflowReviews.status.approved') }
-		: { variant: 'closed', label: i18n.baseText('workflowReviews.status.closed') };
+	const resolved = resolveWorkflowReviewStatus(props.state, props.decision);
+	return { variant: resolved.variant, label: i18n.baseText(resolved.labelKey) };
 });
 </script>
 
