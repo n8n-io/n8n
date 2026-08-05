@@ -1626,6 +1626,11 @@ export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
 /** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
 export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
+/** Enables MCP connections for Instance AI */
+export const INSTANCE_AI_MCP_CONNECTIONS_FLAG = '089_instance_ai_mcp_connections';
+
+export const INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT = 'variant';
+
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire
  * server) during evaluation. Populated for every AI root the server intercepts;
@@ -1748,6 +1753,15 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 * filtered to this set — an empty array means the thread sees no credentials.
 	 */
 	credentialIds: z.array(z.string().min(1)).max(50),
+	/**
+	 * Credential IDs whose connection test resolves as successful without
+	 * contacting the provider. Lets an eval exercise a flow the product gates
+	 * behind a passing test (the workflow setup card won't apply a credential
+	 * that fails one) while honouring "no stored provider credentials" — the
+	 * seeded token stays a placeholder. Omitted/empty reproduces today's
+	 * behaviour, so every existing case is unaffected.
+	 */
+	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
 /** A workflow a conversation seed references, recreated at its given id so the

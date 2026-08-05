@@ -82,6 +82,25 @@ describe('AgentEvalRunRepository', () => {
 			});
 		});
 
+		it('stores metrics alongside the error so a partial run keeps its tally', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsError(
+				'run-1',
+				'timeout',
+				{ message: 'deadline exceeded' },
+				{ total: 5, success: 3, usage: { inputTokens: 20, outputTokens: 40 } },
+			);
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[2]).toMatchObject({
+				status: 'error',
+				errorCode: 'timeout',
+				errorDetails: { message: 'deadline exceeded' },
+				metrics: { total: 5, success: 3, usage: { inputTokens: 20, outputTokens: 40 } },
+			});
+		});
+
 		it('clears the running instance so finished runs leave no stale pointer', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
 
@@ -149,6 +168,69 @@ describe('AgentEvalRunRepository', () => {
 			await repo.findById('run-1');
 
 			expect(entityManager.findOneBy.mock.calls[0]?.[1]).toEqual({ id: 'run-1' });
+		});
+	});
+
+	// A run has no agent column of its own — the agent under test is its
+	// dataset's — so these scoped reads walk the relation.
+	describe('findByIdAndAgentId', () => {
+		it('constrains the run by its dataset’s agent', async () => {
+			entityManager.findOne.mockResolvedValueOnce(null);
+
+			await repo.findByIdAndAgentId('run-1', 'agent-1');
+
+			expect(entityManager.findOne.mock.calls[0]?.[1]).toEqual({
+				where: { id: 'run-1', dataset: { agentId: 'agent-1' } },
+			});
+		});
+	});
+
+	describe('findAndCountByDatasetIdAndAgentId', () => {
+		it('constrains the dataset’s runs by that agent, newest first', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1');
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				where: { datasetId: 'ds-1', dataset: { agentId: 'agent-1' } },
+			});
+		});
+
+		// `createdAt` alone is not a total order, so without the tiebreak a run
+		// sharing a timestamp could show up on two pages, or on none.
+		it('breaks createdAt ties deterministically so paging cannot skip a run', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1');
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				order: { createdAt: 'DESC', id: 'DESC' },
+			});
+		});
+
+		// The point of the method: one page from the database, not every run.
+		it('pushes the page window into the query', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1', { take: 20, skip: 40 });
+
+			expect(entityManager.findAndCount.mock.calls[0]?.[1]).toMatchObject({
+				take: 20,
+				skip: 40,
+			});
+		});
+
+		it('returns the unpaginated total alongside the page', async () => {
+			const page = [{ id: 'run-1' }, { id: 'run-2' }] as AgentEvalRun[];
+			entityManager.findAndCount.mockResolvedValueOnce([page, 137]);
+
+			const [runs, count] = await repo.findAndCountByDatasetIdAndAgentId('ds-1', 'agent-1', {
+				take: 2,
+				skip: 0,
+			});
+
+			expect(runs).toEqual(page);
+			expect(count).toBe(137);
 		});
 	});
 

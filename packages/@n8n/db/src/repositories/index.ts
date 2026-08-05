@@ -79,7 +79,7 @@ export { WorkflowPublishHistoryRepository } from './workflow-publish-history.rep
 export {
 	WorkflowReviewRequestRepository,
 	type InboxCursor,
-	type WorkflowReviewRequestForWorkflow,
+	type WorkflowReviewRequestForWorkflowRow,
 } from './workflow-review-request.repository';
 export {
 	WorkflowReviewRequestWorkflowRepository,

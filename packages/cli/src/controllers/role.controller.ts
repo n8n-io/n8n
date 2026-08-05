@@ -47,6 +47,23 @@ export class RoleController {
 		throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
 	}
 
+	/**
+	 * Reassigning a deleted role's users is effectively a bulk instance-role change,
+	 * so it is only honored for callers entitled to change users' instance roles
+	 * (the same scopes the dedicated role-change endpoint requires), never for
+	 * project roles, and never for the caller's own role. When it is not honored the
+	 * reassignment target is ignored, so a role that still has users cannot be
+	 * deleted.
+	 */
+	private canReassignUsers(user: User, role: RoleDTO): boolean {
+		return (
+			role.roleType === 'global' &&
+			user.role.slug !== role.slug &&
+			hasGlobalScope(user, 'role:manage') &&
+			hasGlobalScope(user, 'user:changeRole')
+		);
+	}
+
 	@Get('/')
 	async getAllRoles(
 		_req: AuthenticatedRequest,
@@ -137,7 +154,10 @@ export class RoleController {
 	): Promise<RoleDTO> {
 		const role = await this.roleService.getRole(slug);
 		this.assertCanManageRoleType(req.user, role.roleType);
-		const result = await this.roleService.removeCustomRole(slug, query.reassignRoleSlug);
+		const reassignRoleSlug = this.canReassignUsers(req.user, role)
+			? query.reassignRoleSlug
+			: undefined;
+		const result = await this.roleService.removeCustomRole(slug, reassignRoleSlug);
 		this.eventService.emit('custom-role-deleted', {
 			userId: req.user.id,
 			roleSlug: result.slug,

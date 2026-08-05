@@ -180,6 +180,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 							{
 								timeout: resolvedInput.timeout,
 								verificationPinData: prepared.verificationPinData,
+								isVerificationRun: true,
 								abortSignal: context.abortSignal,
 							},
 						);
@@ -195,6 +196,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 							}),
 						};
 					})();
+
 			await persistVerificationOutcome({
 				input: resolvedInput,
 				context,

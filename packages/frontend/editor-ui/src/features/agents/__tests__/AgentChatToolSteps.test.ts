@@ -463,4 +463,29 @@ describe('AgentChatToolSteps', () => {
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('Partial work before it died');
 	});
+
+	it('skips reasoning segments whose content the provider never revealed', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+				toolCallId: 'tc-delegate',
+				state: TOOL_CALL_STATE.DONE,
+				input: { subAgentId: 'inline', taskName: 'research_api' },
+				output: { status: 'completed', answer: 'Final child answer' },
+				childProgress: {
+					text: '',
+					reasoningSegments: [
+						{ id: 'r-1', content: '' },
+						{ id: 'r-2', content: 'Weighing the sources.' },
+						{ id: 'r-3', content: '' },
+					],
+					steps: [],
+				},
+			},
+		]);
+
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.text()).toContain('Weighing the sources.');
+		expect(wrapper.text()).not.toContain('Reasoning');
+	});
 });

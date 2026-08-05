@@ -179,8 +179,9 @@ These only run if specific files changed:
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
-| `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-publish-api-schema.yml` | master   |
+| `packages/cli/src/public-api/**/*.yml`, `packages/cli/src/public-api/**/*.yaml`, `packages/cli/src/public-api/**/*.css`, `packages/cli/src/public-api/v1/openapi-gen/**/*.ts`, `packages/cli/scripts/build.mjs`, `packages/cli/package.json` | `util-publish-api-schema.yml` | master   |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
+| `docker/get-n8n.sh`, `docker/test-get-n8n.sh`                          | `test-get-n8n.yml`          | any        |
 
 ### On PR Review
 
@@ -392,8 +393,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.16.0, 26.x)
-│   └─ Coverage only on 24.16.0
+├─ unit-test (matrix: Node 22.23.2, 24.18.1)
+│   └─ Coverage only on 24.18.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -411,9 +412,10 @@ Push to master/1.x
 | Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
+| Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
-| Daily 06:00               | `util-sync-master-to-3x.yml`      | Sync master → 3.x (v3)   |
+| Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -424,10 +426,14 @@ Push to master/1.x
 ## v3 development (master + 3.x)
 
 During the v3 release window, `master` carries normal feature work (behind opt-in
-flags) and the long-lived `3.x` branch carries breaking changes. `master` is
-synced into `3.x` daily by `util-sync-master-to-3x.yml` (conflicts open a draft PR
-labeled `automation:v3-sync`, request the breaking-commit authors as reviewers via
-`sync-conflict-owners.mjs`, post to `#alerts-v3-sync`, and pause further syncs).
+flags) and the long-lived `3.x` branch carries breaking changes. `util-sync-master-to-3x.yml`
+syncs daily by **replaying the `3.x`-only commits onto `master` and force-pushing `3.x`**, so a
+clean sync adds no commit and nothing is squashed. What it pushes is always verified to be
+exactly the tree a merge of `3.x` and `master` produces, and marker-free. On a real conflict
+`3.x` is left untouched and a draft PR carrying the conflict markers (labeled
+`automation:v3-sync`) is opened on `sync/master-to-3x`, requesting the breaking-commit authors
+as reviewers via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further
+syncs until it is resolved and merged normally.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`.
 
@@ -448,7 +454,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.16.0'
+  node-version:        # default: '24.18.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -501,6 +507,7 @@ Scripts in `.github/scripts/`:
 |-------------------------|-------------------|------------------------|
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
+| `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-push.yml`|
 
 ### Validation Scripts
 

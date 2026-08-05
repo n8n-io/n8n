@@ -29,11 +29,12 @@ describe('casesFromExportedFiles', () => {
 		expect(cases[0].testCase.outcomeExpectations).toEqual(['has a trigger']);
 	});
 
-	it('keeps an inline conversationSeed on a suite-sourced case', () => {
+	it('keeps an inline seed on a suite-sourced case', () => {
 		const cases = casesFromExportedFiles(
 			{
 				'repair-it.json': validCase({
-					conversationSeed: {
+					seed: {
+						mode: 'inline',
 						messages: [
 							{
 								id: 'm1',
@@ -49,16 +50,36 @@ describe('casesFromExportedFiles', () => {
 			},
 			{ suite: 'demo' },
 		);
-		expect(cases[0].testCase.conversationSeed?.workflows[0].id).toBe('wKk3RmT9xQ2bVn7L');
+		const seed = cases[0].testCase.seed;
+		expect(seed?.mode === 'inline' && seed.workflows[0].id).toBe('wKk3RmT9xQ2bVn7L');
 	});
 
-	it('refuses a suite-sourced case that points at a seed FILE', () => {
+	// The normalizer whitelists to the schema's keys, so a hosted case carrying a
+	// pre-union seed key would be STRIPPED and run unseeded — silently grading a
+	// seeded case as build-from-scratch. Each removed key needs a raw-body guard.
+	it.each([
+		['seedFile', 'repair-it.seed'],
+		['conversationSeed', { messages: [] }],
+		['priorConversation', [{ role: 'user', text: 'earlier' }]],
+		['seedThread', { threadId: 't1' }],
+	])('refuses a suite-sourced case carrying the legacy %s key', (key, value) => {
+		expect(() =>
+			casesFromExportedFiles({ 'repair-it.json': validCase({ [key]: value }) }, { suite: 'demo' }),
+		).toThrow(`${key}: no longer supported`);
+	});
+
+	it('names every legacy seed key a case carries, not just the first', () => {
 		expect(() =>
 			casesFromExportedFiles(
-				{ 'repair-it.json': validCase({ seedFile: 'repair-it.seed' }) },
+				{
+					'repair-it.json': validCase({
+						priorConversation: [{ role: 'user', text: 'earlier' }],
+						seedThread: { threadId: 't1' },
+					}),
+				},
 				{ suite: 'demo' },
 			),
-		).toThrow(/seedFile/);
+		).toThrow(/repair-it\.json[\s\S]*priorConversation[\s\S]*seedThread/);
 	});
 
 	it('aggregates validation errors and names the offending file', () => {

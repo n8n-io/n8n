@@ -11,7 +11,9 @@ import {
 import type { Project, User } from '@n8n/db';
 import {
 	UserRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -29,7 +31,7 @@ import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
-mockInstance(ActiveWorkflowManager);
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 
 const testServer = utils.setupTestServer({
@@ -53,7 +55,9 @@ let authorRepository: WorkflowReviewRequestAuthorRepository;
 let reviewerRepository: WorkflowReviewRequestReviewerRepository;
 let userRepository: UserRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let publishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowEntityRepository: WorkflowRepository;
+let workflowHistoryRepository: WorkflowHistoryRepository;
 let policyService: WorkflowReviewPolicyService;
 
 beforeAll(async () => {
@@ -64,7 +68,9 @@ beforeAll(async () => {
 	reviewerRepository = Container.get(WorkflowReviewRequestReviewerRepository);
 	userRepository = Container.get(UserRepository);
 	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+	publishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowEntityRepository = Container.get(WorkflowRepository);
+	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 	policyService = Container.get(WorkflowReviewPolicyService);
 });
 
@@ -116,6 +122,11 @@ async function createReviewableWorkflow(versionId = uuid()) {
 	return { workflow, versionId };
 }
 
+async function findVersionName(workflowId: string, versionId: string) {
+	const version = await workflowHistoryRepository.findOneBy({ workflowId, versionId });
+	return version?.name;
+}
+
 async function createOpenReview(
 	workflowId: string,
 	versionId: string,
@@ -148,7 +159,13 @@ describe('POST /workflow-review-requests', () => {
 			.send({
 				title: 'Please review my workflow',
 				description: 'It is ready',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(201);
 
@@ -190,7 +207,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'With a reviewer',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 				reviewerUserIds: [reviewer.id, reviewer.id],
 			})
 			.expect(201);
@@ -207,7 +230,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 				reviewerUserIds: [owner.id],
 			})
 			.expect(400);
@@ -223,7 +252,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 				reviewerUserIds: [member.id],
 			})
 			.expect(400);
@@ -239,7 +274,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 				reviewerUserIds: Array.from({ length: 11 }, (_, i) => `user-${i}`),
 			})
 			.expect(400);
@@ -260,8 +301,16 @@ describe('POST /workflow-review-requests', () => {
 			.send({
 				title: 'x',
 				workflows: [
-					{ workflowId: workflow.id, workflowVersionId: versionId },
-					{ workflowId: workflow.id, workflowVersionId: versionId },
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
 				],
 			})
 			.expect(400);
@@ -276,7 +325,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: 'version-b' }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: 'version-b',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(400);
 	});
@@ -288,7 +343,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: '   ',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(400);
 	});
@@ -300,7 +361,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'a'.repeat(129),
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(400);
 	});
@@ -313,7 +380,13 @@ describe('POST /workflow-review-requests', () => {
 			.send({
 				title: 'x',
 				description: 'a'.repeat(513),
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(400);
 	});
@@ -326,7 +399,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: 'version-1',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(400);
 	});
@@ -336,7 +415,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: 'unknown-workflow', workflowVersionId: 'version-1' }],
+				workflows: [
+					{
+						workflowId: 'unknown-workflow',
+						workflowVersionId: 'version-1',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(404);
 	});
@@ -348,7 +433,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(404);
 	});
@@ -363,7 +454,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: 'version-1',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(404);
 	});
@@ -378,7 +475,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: 'version-1',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(201);
 	});
@@ -402,7 +505,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'New',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: 'version-2' }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: 'version-2',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(409);
 
@@ -433,7 +542,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'New',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(409);
 
@@ -459,7 +574,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'New',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(201);
 
@@ -472,7 +593,13 @@ describe('POST /workflow-review-requests', () => {
 
 		const body = {
 			title: 'Race',
-			workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
 		};
 
 		const [first, second] = await Promise.all([
@@ -495,7 +622,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'First',
-				workflows: [{ workflowId: workflow.id, workflowVersionId: versionId }],
+				workflows: [
+					{
+						workflowId: workflow.id,
+						workflowVersionId: versionId,
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(201);
 
@@ -508,7 +641,13 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'Second',
-				workflows: [{ workflowId: other.id, workflowVersionId: 'v-other' }],
+				workflows: [
+					{
+						workflowId: other.id,
+						workflowVersionId: 'v-other',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(403);
 	});
@@ -520,11 +659,101 @@ describe('POST /workflow-review-requests', () => {
 			.post('/workflow-review-requests')
 			.send({
 				title: 'x',
-				workflows: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
+				workflows: [
+					{
+						workflowId: 'wf-1',
+						workflowVersionId: 'version-1',
+						workflowVersionName: 'Release candidate',
+					},
+				],
 			})
 			.expect(403);
 
 		testServer.license.enable('feat:workflowReviews');
+	});
+
+	describe('pinned version naming', () => {
+		test('names the pinned version', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Please review my workflow',
+					workflows: [
+						{
+							workflowId: workflow.id,
+							workflowVersionId: versionId,
+							workflowVersionName: 'Release candidate',
+						},
+					],
+				})
+				.expect(201);
+
+			expect(await findVersionName(workflow.id, versionId)).toBe('Release candidate');
+		});
+
+		test.each([
+			{ name: 'no name is sent', workflowVersionName: undefined },
+			{ name: 'the name is blank', workflowVersionName: '   ' },
+		])('returns 400 and creates nothing when $name', async ({ workflowVersionName }) => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Please review my workflow',
+					workflows: [
+						{ workflowId: workflow.id, workflowVersionId: versionId, workflowVersionName },
+					],
+				})
+				.expect(400);
+
+			expect(await requestRepository.find()).toHaveLength(0);
+			expect(await findVersionName(workflow.id, versionId)).toBeNull();
+		});
+
+		test('rolls the name back when the create conflicts with an open review', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			await createOpenReview(workflow.id, versionId);
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Second review',
+					workflows: [
+						{
+							workflowId: workflow.id,
+							workflowVersionId: versionId,
+							workflowVersionName: 'Release candidate',
+						},
+					],
+				})
+				.expect(409);
+
+			expect(await findVersionName(workflow.id, versionId)).toBeNull();
+		});
+
+		test('returns 400 for a name longer than 128 characters', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+
+			await ownerAgent
+				.post('/workflow-review-requests')
+				.send({
+					title: 'Please review my workflow',
+					workflows: [
+						{
+							workflowId: workflow.id,
+							workflowVersionId: versionId,
+							workflowVersionName: 'a'.repeat(129),
+						},
+					],
+				})
+				.expect(400);
+
+			expect(await requestRepository.find()).toHaveLength(0);
+			expect(await findVersionName(workflow.id, versionId)).toBeNull();
+		});
 	});
 });
 
@@ -554,20 +783,88 @@ describe('publishing a workflow under review', () => {
 		},
 	);
 
-	test('allows publication after the review is approved and closed', async () => {
+	test('publishes the pinned version automatically when the review is approved', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const request = await createOpenReview(workflow.id, versionId);
 
-		await ownerAgent
+		const response = await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
 			.send({ decision: 'approved' })
 			.expect(200);
 
+		expect(response.body.data.autoPublish).toEqual({ status: 'published' });
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBe(versionId);
+	});
+
+	test('keeps the approval and allows manual publish when auto-publish fails', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+
+		// Activation fails once — after the approval has already committed.
+		workflowValidationService.validateForActivation.mockReturnValueOnce({
+			isValid: false,
+			error: 'The workflow has issues',
+		});
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: { status: 'failed', message: 'The workflow has issues' },
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
+
+		// Retry path: the review is closed, so the regular publish flow is unblocked.
 		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
 
 		expect(
 			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
 		).toBe(versionId);
+	});
+
+	// R2 (P3): the previously covered case was a first publish, which fails safe.
+	// A replacement does not. See .claude/plans/reviews/LIGO-787_review.md
+	test('leaves an already published workflow deactivated when the approval publish fails at registration', async () => {
+		const { workflow, versionId: firstVersionId } = await createReviewableWorkflow();
+
+		// Publish once, so the approval below replaces a live version.
+		await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: firstVersionId })
+			.expect(200);
+
+		const secondVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: secondVersionId });
+		const request = await createOpenReview(workflow.id, secondVersionId);
+
+		// Fails at trigger registration — after the live version was removed, so
+		// activation rolls the row back to unpublished rather than restoring it.
+		activeWorkflowManager.add.mockRejectedValueOnce(new Error('Webhook path already taken'));
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: { status: 'failed', message: 'Webhook path already taken' },
+		});
+
+		// The workflow that was live before the approval is now unpublished — which
+		// is why the copy says so and the failure is logged at error level.
+		const updated = await workflowEntityRepository.findOneByOrFail({ id: workflow.id });
+		expect(updated.activeVersionId).toBeNull();
+		expect(updated.active).toBe(false);
 	});
 
 	test.each(['policy disabled', 'license unavailable'] as const)(
@@ -637,7 +934,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		const response = await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: 'version-2' })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(200);
 
 		expect(response.body.data).toEqual({
@@ -670,7 +971,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: 'version-2' })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(200);
 
 		const authorRows = await authorRepository.find();
@@ -688,7 +993,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		const response = await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: versionId })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(200);
 
 		// No-op: nothing new to review, so the decision is deliberately NOT reset.
@@ -708,7 +1017,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await ownerAgent
 			.post('/workflow-review-requests/unknown-request/update-version')
-			.send({ workflowId: workflow.id, workflowVersionId: versionId })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(404);
 	});
 
@@ -718,7 +1031,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: versionId })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(404);
 	});
 
@@ -729,7 +1046,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: otherWorkflow.id, workflowVersionId: 'version-other' })
+			.send({
+				workflowId: otherWorkflow.id,
+				workflowVersionId: 'version-other',
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(404);
 	});
 
@@ -741,7 +1062,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		const response = await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: versionId })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(409);
 
 		expect(JSON.stringify(response.body)).not.toMatch(/sync/i);
@@ -754,7 +1079,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: 'version-1' })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-1',
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(400);
 	});
 
@@ -764,7 +1093,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: 'unknown-version' })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'unknown-version',
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(400);
 	});
 
@@ -785,7 +1118,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: versionId })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(403);
 	});
 
@@ -794,10 +1131,80 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 
 		await ownerAgent
 			.post('/workflow-review-requests/some-request/update-version')
-			.send({ workflowId: 'wf-1', workflowVersionId: 'version-1' })
+			.send({
+				workflowId: 'wf-1',
+				workflowVersionId: 'version-1',
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(403);
 
 		testServer.license.enable('feat:workflowReviews');
+	});
+
+	describe('pinned version naming', () => {
+		test('names the newly pinned version', async () => {
+			const { workflow } = await createReviewableWorkflow('version-1');
+			await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+			const request = await seedOpenRequest(workflow.id, 'version-1', owner);
+
+			await ownerAgent
+				.post(`/workflow-review-requests/${request.id}/update-version`)
+				.send({
+					workflowId: workflow.id,
+					workflowVersionId: 'version-2',
+					workflowVersionName: 'Release candidate',
+				})
+				.expect(200);
+
+			expect(await findVersionName(workflow.id, 'version-2')).toBe('Release candidate');
+			// The previously pinned version keeps whatever name it had.
+			expect(await findVersionName(workflow.id, 'version-1')).toBeNull();
+		});
+
+		test('renames the version on a re-pin to the version already pinned', async () => {
+			const { workflow, versionId } = await createReviewableWorkflow();
+			const request = await seedOpenRequest(workflow.id, versionId, owner);
+
+			await ownerAgent
+				.post(`/workflow-review-requests/${request.id}/update-version`)
+				.send({
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Renamed',
+				})
+				.expect(200);
+
+			expect(await findVersionName(workflow.id, versionId)).toBe('Renamed');
+			// Still a no-op for the review itself.
+			const unchanged = await requestRepository.findById(request.id);
+			expect(unchanged?.updatedAt).toEqual(request.updatedAt);
+		});
+
+		test.each([
+			{ name: 'longer than 128 characters', workflowVersionName: 'a'.repeat(129) },
+			{ name: 'missing', workflowVersionName: undefined },
+			{ name: 'blank', workflowVersionName: '   ' },
+		])(
+			'returns 400 and re-pins nothing when the name is $name',
+			async ({ workflowVersionName }) => {
+				const { workflow } = await createReviewableWorkflow('version-1');
+				await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+				const request = await seedOpenRequest(workflow.id, 'version-1', owner);
+
+				await ownerAgent
+					.post(`/workflow-review-requests/${request.id}/update-version`)
+					.send({
+						workflowId: workflow.id,
+						workflowVersionId: 'version-2',
+						workflowVersionName,
+					})
+					.expect(400);
+
+				const childRows = await workflowRepository.find();
+				expect(childRows[0]).toMatchObject({ workflowVersionId: 'version-1' });
+				expect(await findVersionName(workflow.id, 'version-2')).toBeNull();
+			},
+		);
 	});
 });
 
@@ -843,6 +1250,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			workflowVersionId: 'version-1',
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			autoPublish: { status: 'published' },
 		});
 
 		// the service relies on `save` (not `update`) so @BeforeUpdate bumps
@@ -859,8 +1267,26 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 		expect(updated?.approvedAt).toBeInstanceOf(Date);
 	});
 
-	test('requests changes: the review stays open and unstamped', async () => {
-		const { request } = await seedRequest(owner);
+	test('approval publishes the pinned version under the reviewer identity', async () => {
+		const { request, workflow } = await seedRequest(owner);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBe('version-1');
+		// Publish history must record the approving reviewer, not the author.
+		const records = await publishHistoryRepository.findBy({ workflowId: workflow.id });
+		expect(records).toEqual([
+			expect.objectContaining({ event: 'activated', versionId: 'version-1', userId: member.id }),
+		]);
+	});
+
+	test('requests changes: the review stays open, unstamped and unpublished', async () => {
+		const { request, workflow } = await seedRequest(owner);
 
 		const response = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
@@ -871,6 +1297,10 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			state: 'open',
 			decision: 'changes_requested',
 		});
+		expect(response.body.data.autoPublish).toBeUndefined();
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
 
 		const updated = await requestRepository.findById(request.id);
 		expect(updated).toMatchObject({
@@ -931,7 +1361,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 
 		await memberAgent
 			.post(`/workflow-review-requests/${request.id}/update-version`)
-			.send({ workflowId: workflow.id, workflowVersionId: 'version-2' })
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Release candidate',
+			})
 			.expect(200);
 
 		await memberAgent
@@ -1072,9 +1506,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 			memberAgent
 				.post(`/workflow-review-requests/${request.id}/decision`)
 				.send({ decision: 'approved' }),
-			ownerAgent
-				.post(`/workflow-review-requests/${request.id}/update-version`)
-				.send({ workflowId: workflow.id, workflowVersionId: 'version-2' }),
+			ownerAgent.post(`/workflow-review-requests/${request.id}/update-version`).send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Release candidate',
+			}),
 		]);
 
 		// Whichever wins the lock, the loser must observe the winner's write:
@@ -1270,6 +1706,144 @@ describe('GET /workflow-review-requests', () => {
 			workflowVersionId: versionId,
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
+			// Neither applies to a pending review
+			decisionBy: null,
+			approvedVersionPublicationState: null,
+		});
+	});
+
+	test('returns the newest review, closed included, with take=1 and no state filter', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const older = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'closed',
+			title: 'Older',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(older.id, workflow.id, versionId);
+		const newest = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'open',
+			title: 'Newest',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(newest.id, workflow.id, versionId);
+		// Both rows are created within the same millisecond, so state the age
+		// explicitly instead of asserting against a timestamp tie.
+		await requestRepository.update(older.id, { createdAt: new Date('2026-01-01T00:00:00.000Z') });
+		await requestRepository.update(newest.id, { createdAt: new Date('2026-01-02T00:00:00.000Z') });
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data).toHaveLength(1);
+		expect(response.body.data.data[0]).toMatchObject({ id: newest.id, state: 'open' });
+	});
+
+	test('resolves the actor of a changes-requested decision', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			decision: 'changes_requested',
+			title: 'Needs work',
+			createdById: owner.id,
+			updatedById: member.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			decision: 'changes_requested',
+			decisionBy: {
+				id: member.id,
+				email: member.email,
+				firstName: member.firstName,
+				lastName: member.lastName,
+			},
+			approvedVersionPublicationState: null,
+		});
+	});
+
+	test('returns no actor when the deciding user was deleted', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const reviewer = await createMember();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			decision: 'changes_requested',
+			title: 'Needs work',
+			createdById: owner.id,
+			updatedById: reviewer.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+		await userRepository.delete(reviewer.id);
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			decision: 'changes_requested',
+			decisionBy: null,
+		});
+	});
+
+	test('reports an approved version that was never published', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'closed',
+			decision: 'approved',
+			title: 'Approved',
+			createdById: owner.id,
+			updatedById: member.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			// Approval is never attributed in the canvas banner
+			decisionBy: null,
+			approvedVersionPublicationState: 'not_published',
+		});
+	});
+
+	test('reports an approved version that has been published', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'closed',
+			decision: 'approved',
+			title: 'Approved',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+		await publishHistoryRepository.addRecord({
+			workflowId: workflow.id,
+			versionId,
+			event: 'activated',
+			userId: owner.id,
+		});
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, take: 1 })
+			.expect(200);
+
+		expect(response.body.data.data[0]).toMatchObject({
+			approvedVersionPublicationState: 'published',
 		});
 	});
 
@@ -1716,7 +2290,10 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		const baseline = await createWorkflowHistoryItem(workflow.id, {
 			versionId: 'version-published',
 		});
-		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		await createWorkflowHistoryItem(workflow.id, {
+			versionId: 'version-pinned',
+			name: 'Release candidate',
+		});
 		await publishedVersionRepository.setPublishedVersion(workflow.id, baseline.versionId);
 		const reviewer = await createAdmin();
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
@@ -1749,13 +2326,18 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		});
 		expect(child.pinnedVersion).toMatchObject({
 			versionId: 'version-pinned',
+			// The diff labels each side by name, so it travels with the snapshot
+			name: 'Release candidate',
 			connections: {},
 			nodeGroups: [],
 		});
 		expect(child.pinnedVersion.nodes).toHaveLength(1);
 		expect(child.pinnedVersion.nodes[0]).toMatchObject({ name: 'Start' });
 		expect(child.pinnedVersion).not.toHaveProperty('authors');
-		expect(child.baselineVersion).toMatchObject({ versionId: 'version-published' });
+		expect(child.baselineVersion).toMatchObject({
+			versionId: 'version-published',
+			name: null,
+		});
 	});
 
 	test('has nothing to compare against when the workflow was never published', async () => {
@@ -1858,6 +2440,54 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		const response = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
 
 		expect(response.body.data.id).toBe(request.id);
+	});
+
+	describe('viewer decision eligibility', () => {
+		test('tells a non-author with publish access that they can decide', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, owner);
+
+			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(true);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
+		});
+
+		test('tells an author why they cannot decide their own review', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, member);
+
+			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(false);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBe('author');
+		});
+
+		test('lets an instance admin decide a review they authored', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, owner);
+
+			const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(true);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
+		});
+
+		test('reports missing publish permission once the workflow moved out of the requester reach', async () => {
+			// Same transfer scenario the read filter covers: the requester keeps the
+			// record, but could no longer decide — and the reason says why.
+			const destinationProject = await createTeamProject('Out Of Reach', owner);
+			const workflow = await createWorkflow({}, destinationProject);
+			await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+			const request = await seedRequest(workflow.id, 'version-pinned', viewer, teamProject.id);
+
+			const response = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(false);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBe(
+				'missing_publish_permission',
+			);
+		});
 	});
 
 	test('reports a review that does not exist as not found', async () => {

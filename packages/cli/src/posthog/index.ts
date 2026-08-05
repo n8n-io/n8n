@@ -3,6 +3,8 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
@@ -10,6 +12,8 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
+
+import { N8N_VERSION } from '@/constants';
 
 /**
  * PostHog group type for instance-level properties.
@@ -136,6 +140,8 @@ export class PostHogClient {
 		const evaluatedFlags = await this.postHog.evaluateFlags(fullId, {
 			personProperties: {
 				created_at_timestamp: user.createdAt.getTime().toString(),
+				instance_id: instanceId,
+				version_cli: N8N_VERSION,
 			},
 			...(instanceId && { groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId } }),
 		});
@@ -180,6 +186,9 @@ export class PostHogClient {
 		}
 		if (this.globalConfig.evaluation.agentEvalsEnabled) {
 			overrides[AGENT_EVALS_FLAG] = true;
+		}
+		if (this.globalConfig.instanceAi.mcpConnectionsEnabled) {
+			overrides[INSTANCE_AI_MCP_CONNECTIONS_FLAG] = INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
 		}
 		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}

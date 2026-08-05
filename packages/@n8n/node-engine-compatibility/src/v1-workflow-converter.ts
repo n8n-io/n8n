@@ -1,6 +1,7 @@
 import type { GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
 import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
 
+import { MAIN_CONNECTION_TYPE, MANUAL_TRIGGER_TYPE, SPLIT_IN_BATCHES_TYPE } from './constants';
 import {
 	UnsupportedConnectionTypeError,
 	UnsupportedCycleError,
@@ -9,10 +10,6 @@ import {
 	UnsupportedWorkflowError,
 } from './errors';
 import type { V1NodeStepConfig } from './types';
-
-const MANUAL_TRIGGER_TYPE = 'n8n-nodes-base.manualTrigger';
-const SPLIT_IN_BATCHES_TYPE = 'n8n-nodes-base.splitInBatches';
-const MAIN_CONNECTION_TYPE = 'main';
 
 /**
  * Common v1 trigger types that don't end in "Trigger". Non-exhaustive: combined

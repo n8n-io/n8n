@@ -11,7 +11,7 @@ import WorkflowPreviewNode from './WorkflowPreviewNode.vue';
 import SlackMessageVisualization from './visualizations/SlackMessageVisualization.vue';
 import SalesforceCardVisualization from './visualizations/SalesforceCardVisualization.vue';
 import InvoiceSpreadsheetVisualization from './visualizations/InvoiceSpreadsheetVisualization.vue';
-import WhatsAppChatVisualization from './visualizations/WhatsAppChatVisualization.vue';
+import AgentBuilderVisualization from './visualizations/AgentBuilderVisualization.vue';
 
 const NODE_HALF_WIDTH = 48;
 const EDGE_CURVE_OFFSET = 60;
@@ -28,7 +28,7 @@ const visualizationComponents: Record<PreviewVisualizationType, Component> = {
 	'slack-message': SlackMessageVisualization,
 	'salesforce-card': SalesforceCardVisualization,
 	'invoice-spreadsheet': InvoiceSpreadsheetVisualization,
-	'whatsapp-chat': WhatsAppChatVisualization,
+	'agent-builder': AgentBuilderVisualization,
 };
 
 const props = withDefaults(
@@ -40,13 +40,20 @@ const props = withDefaults(
 );
 
 const canvasRef = ref<HTMLElement | null>(null);
-const { width: canvasRenderedWidth } = useElementSize(canvasRef);
+const { width: canvasRenderedWidth, height: canvasRenderedHeight } = useElementSize(canvasRef);
 
 const animationPhase = ref<AnimationPhase>('idle');
 const nodeStates = reactive<Record<string, NodeAnimationState>>({});
 
 const hasInputViz = computed(() => !!props.workflow.inputVisualization);
 const hasOutputViz = computed(() => !!props.workflow.outputVisualization);
+const hasFullCanvasViz = computed(() => !!props.workflow.fullCanvasVisualization);
+
+const fullCanvasVizComponent = computed(() =>
+	props.workflow.fullCanvasVisualization
+		? visualizationComponents[props.workflow.fullCanvasVisualization.type]
+		: undefined,
+);
 
 const outputVizItems = computed((): PreviewOutputVisualization[] => {
 	const viz = props.workflow.outputVisualization;
@@ -147,7 +154,7 @@ async function runNodeAnimation() {
 function startAnimation() {
 	stopped = false;
 	resetStates();
-	if (hasInputViz.value) {
+	if (hasFullCanvasViz.value || hasInputViz.value) {
 		animationPhase.value = 'input';
 	} else {
 		animationPhase.value = 'nodes';
@@ -167,6 +174,11 @@ function handleInputComplete() {
 	if (stopped) return;
 	animationPhase.value = 'nodes';
 	void runNodeAnimation();
+}
+
+function handleFullCanvasComplete() {
+	if (stopped) return;
+	animationPhase.value = 'done';
 }
 
 function handleOutputComplete() {
@@ -291,7 +303,9 @@ const renderScale = computed(() =>
 
 const contentStyle = computed(() => {
 	const rs = renderScale.value;
-	const verticalOffset = (CANVAS_HEIGHT * (1 - rs)) / 2;
+	const renderedHeight =
+		canvasRenderedHeight.value > 0 ? canvasRenderedHeight.value : CANVAS_HEIGHT;
+	const verticalOffset = Math.max(0, (renderedHeight - CANVAS_HEIGHT * rs) / 2);
 	return {
 		width: `${CANVAS_WIDTH}px`,
 		height: `${CANVAS_HEIGHT}px`,
@@ -436,6 +450,15 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 				</div>
 			</div>
 
+			<div v-if="fullCanvasVizComponent" :class="$style.fullCanvasSlot">
+				<component
+					:is="fullCanvasVizComponent"
+					:active="animationPhase !== 'idle'"
+					v-bind="props.workflow.fullCanvasVisualization?.props"
+					@complete="handleFullCanvasComplete"
+				/>
+			</div>
+
 			<div v-if="inputVizComponent" :class="$style.vizSlot" :style="inputSlotStyle">
 				<component
 					:is="inputVizComponent"
@@ -472,7 +495,7 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 	position: relative;
 	width: 100%;
 	max-width: 1600px;
-	height: 420px;
+	height: var(--workflow-preview-canvas-height, 420px);
 	margin: 0 auto;
 	overflow: hidden;
 	background-color: var(--canvas--color--background);
@@ -523,6 +546,15 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 
 .vizSlot {
 	position: absolute;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.fullCanvasSlot {
+	position: absolute;
+	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;

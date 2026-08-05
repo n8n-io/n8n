@@ -61,6 +61,14 @@ describe('isQuotaExhaustedError', () => {
 		expect(isQuotaExhaustedError(sdkError('rate limited', 429, 'rate_limit'))).toBe(false);
 		expect(isQuotaExhaustedError(undefined)).toBe(false);
 	});
+
+	it('stops walking a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(isQuotaExhaustedError(outer)).toBe(false);
+	});
 });
 
 describe('mapAgentChunkToEvent', () => {
@@ -514,6 +522,70 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps overloaded error records to an actionable message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'overloaded_error', message: 'Overloaded' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: {
+				content: 'The model is overloaded. Try again in a few minutes.',
+			},
+		});
+	});
+
+	it('maps plain error records with a non-empty message', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 'Provider failed' },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Provider failed' },
+		});
+	});
+
+	it('falls back to an unknown error for malformed error records', () => {
+		expect(
+			map({
+				type: 'error',
+				error: { type: 'api_error', message: 42 },
+			}),
+		).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+
+		expect(map({ type: 'error', error: null })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'Unknown error' },
+		});
+	});
+
+	it('maps an error with a cyclic cause chain', () => {
+		const outer = new Error('stream failed');
+		const inner = new Error('request failed', { cause: outer });
+		outer.cause = inner;
+
+		expect(map({ type: 'error', error: outer })).toEqual({
+			type: 'error',
+			runId,
+			agentId,
+			payload: { content: 'stream failed' },
+		});
+	});
+
 	it('tags quota-exhausted error chunks with a quota_exhausted code', () => {
 		const responseBody = JSON.stringify({
 			error: { type: 'quota_exhausted', message: 'Have reached end of quota' },
@@ -554,6 +626,8 @@ describe('mapAgentChunkToEvent', () => {
 				content:
 					"n8n Connect doesn't currently support this operation. Switch to using your own credential to continue.",
 				technicalDetails: responseBody,
+				// Unwrapped from the same cause as the body — a wrapped error must not lose it.
+				statusCode: 400,
 			},
 		});
 	});

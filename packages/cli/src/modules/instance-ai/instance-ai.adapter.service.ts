@@ -41,7 +41,8 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
-	InstanceAiBuilderDelegate,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
@@ -56,15 +57,18 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	upsertEvaluationConfigSchema,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES, Time } from '@n8n/constants';
+import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMcpRegistryService } from './mcp';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	buildInstanceAiRunPinDataPlan,
@@ -139,6 +143,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
@@ -291,12 +296,19 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			/** Eval-only: restrict the credential `list()` view to these IDs. */
 			credentialIdAllowlist?: string[];
+			/** Eval-only: resolve a credential's connection test as successful without
+			 *  contacting the provider. A predicate rather than a list because the
+			 *  harness registers bypasses mid-run, after this context is built. */
+			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
 			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			 *  mcp service/tool not wired. */
+			mcpConnectionsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -308,8 +320,10 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			credentialIdAllowlist,
+			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
+			mcpConnectionsEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -325,7 +339,12 @@ export class InstanceAiAdapterService {
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
+			credentialService: this.createCredentialAdapter(
+				user,
+				projectId,
+				credentialIdAllowlist,
+				shouldBypassCredentialTest,
+			),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
@@ -336,6 +355,7 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
+			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -352,37 +372,13 @@ export class InstanceAiAdapterService {
 				: {}),
 			...(builderDelegateAdapter && projectId
 				? {
-						builderDelegate: this.withBuilderCreateTelemetry(
-							builderDelegateAdapter.createDelegate(
-								user,
-								projectId,
-								new AgentsCredentialProvider(this.credentialsService, projectId, user),
-							),
-							threadId,
+						builderDelegate: builderDelegateAdapter.createDelegate(
+							user,
+							projectId,
+							new AgentsCredentialProvider(this.credentialsService, projectId, user),
 						),
 					}
 				: {}),
-		};
-	}
-
-	/** Mirror of the workflow-adapter telemetry: track agent creation via the
-	 *  builder sub-agent at the delegate boundary, only in a thread context. */
-	private withBuilderCreateTelemetry(
-		delegate: InstanceAiBuilderDelegate,
-		threadId: string | undefined,
-	): InstanceAiBuilderDelegate {
-		if (!threadId) return delegate;
-		return {
-			...delegate,
-			createAgent: async (name) => {
-				const created = await delegate.createAgent(name);
-				this.telemetry.track('Builder created agent', {
-					thread_id: threadId,
-					agent_id: created.agentId,
-					project_id: created.projectId,
-				});
-				return created;
-			},
 		};
 	}
 
@@ -408,19 +404,14 @@ export class InstanceAiAdapterService {
 
 	/**
 	 * Fail-open read of the AI Gateway config. Returns null when the instance is
-	 * unlicensed for the gateway or the fetch fails for any reason. Every consumer
+	 * disabled or the fetch fails for any reason. Every consumer
 	 * (node annotations, credential list, verifier) treats a null as "gateway not
 	 * available", a valid degraded state. Backed by `AiGatewayService`'s own
 	 * process-wide cache (1h TTL), so repeated calls are cheap.
 	 */
 	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
-		// Gate on the AI Gateway license before touching the config. The FE path
-		// is gated by `@Licensed('feat:aiGateway')` on the controller; this adapter
-		// calls the service directly, so it must enforce the same license itself —
-		// otherwise unlicensed instances would surface n8n Connect (node metadata,
-		// managed credentials) and count it as available in telemetry.
-		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
 		try {
+			this.aiGatewayService.assertEnabled();
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch {
 			return null;
@@ -433,6 +424,57 @@ export class InstanceAiAdapterService {
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	}
+
+	/** Gate for MCP registry discovery tool. All three must hold:
+	 * 1. the `mcp-registry` module is active
+	 * 2. the admin allows MCP access instance-wide
+	 * 3. the user is part of the MCP connections experiment */
+	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
+		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
+		if (!this.settingsService.isMcpAccessEnabled()) return false;
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return (
+			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+		);
+	}
+
+	private createMcpAdapter(user: User): InstanceAiMcpService {
+		return {
+			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
+				const [servers, connectedSlugs] = await Promise.all([
+					Container.get(McpRegistryService).search(queries),
+					this.listConnectedMcpRegistrySlugs(user),
+				]);
+				return servers
+					.filter((server) => !connectedSlugs.has(server.slug))
+					.map((server) => ({
+						slug: server.slug,
+						title: server.title,
+						description: server.description,
+						tools: server.tools.map((tool) => tool.name),
+					}));
+			},
+		};
+	}
+
+	/** Slugs the user already has a connection row for. Reads the rows rather than
+	 *  resolving them into loadable servers: resolving decrypts credentials per
+	 *  connection, and a row that fails to resolve still blocks connecting again
+	 *  (one connection per user+slug), so re-offering it would dead-end. */
+	private async listConnectedMcpRegistrySlugs(user: User): Promise<Set<string>> {
+		try {
+			const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
+				user,
+			);
+			return new Set(connections.map((connection) => connection.serverSlug));
+		} catch (error) {
+			this.logger.warn('Failed to list connected MCP registry servers for registry search', {
+				userId: user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return new Set();
+		}
 	}
 
 	private buildAiGatewayNodeMeta(
@@ -668,6 +710,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder published workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
@@ -847,6 +890,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: updated.id,
 					});
@@ -928,6 +972,7 @@ export class InstanceAiAdapterService {
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 					});
@@ -1174,6 +1219,12 @@ export class InstanceAiAdapterService {
 					},
 					userId: user.id,
 					pushRef,
+					// A verification run picks a production execution mode above so the
+					// trigger behaves realistically. Without this opt-out, a failed build
+					// attempt would dispatch the user's error workflow as if production
+					// had broken — the one side effect node simulation cannot pin, since
+					// it is dispatched by the execution lifecycle, not by a node.
+					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
 				};
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
@@ -1206,12 +1257,16 @@ export class InstanceAiAdapterService {
 
 				// In queue mode the worker rebuilds the run from persisted `execution.data`,
 				// where top-level `runData.source` doesn't survive. Persist it in
-				// `manualData` so worker-side statistics can classify IAI runs.
+				// `manualData` so worker-side statistics can classify IAI runs, and so
+				// the worker's save hook honours `suppressErrorWorkflow`. A run without
+				// `executionData` has no trigger node, which means `executionMode` is
+				// 'manual' and the error workflow is already skipped.
 				if (runData.executionData) {
 					runData.executionData.manualData = {
 						...runData.executionData.manualData,
 						userId: user.id,
 						source: runData.source,
+						suppressErrorWorkflow: runData.suppressErrorWorkflow,
 					};
 				}
 
@@ -1248,6 +1303,7 @@ export class InstanceAiAdapterService {
 					if (!threadId) return;
 
 					telemetry.track('Builder executed workflow', {
+						user_id: user.id,
 						thread_id: threadId,
 						workflow_id: workflowId,
 						executed_by: 'ai',
@@ -1457,6 +1513,7 @@ export class InstanceAiAdapterService {
 		user: User,
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
+		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
@@ -1538,6 +1595,17 @@ export class InstanceAiAdapterService {
 
 				if (!credential) {
 					throw new Error(`Credential ${credentialId} not found or not accessible`);
+				}
+
+				// Eval-only, and deliberately AFTER the access check above so a bypass can
+				// never turn "not accessible" into a synthetic success: an eval seeds
+				// placeholder tokens, so a real test would always fail and the setup card
+				// refuses to apply a credential that fails one. The message stays
+				// indistinguishable from a genuine pass on purpose — a hint that it was
+				// bypassed would make the agent hedge, which is the very behaviour such a
+				// case exists to rule out. The harness records the bypass on its own side.
+				if (shouldBypassCredentialTest?.(credentialId) === true) {
+					return { success: true, message: 'Connection tested successfully' };
 				}
 
 				const credentialsToTest: ICredentialsDecrypted = {

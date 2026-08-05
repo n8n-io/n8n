@@ -24,6 +24,7 @@ import { registerMcpAppTool, registerWorkflowPreviewApp } from '@n8n/mcp-apps/se
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -44,7 +45,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 
 const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
@@ -76,6 +77,14 @@ describe('getAllowedToolNames', () => {
 
 	it('ignores unknown scopes', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
+	});
+
+	it('allows integration updates and publishing with agent:write', () => {
+		const allowed = getAllowedToolNames(['agent:write']);
+
+		expect(allowed).toContain('update_agent_integration');
+		expect(allowed).toContain('publish_agent');
+		expect(allowed).toContain('unpublish_agent');
 	});
 });
 
@@ -128,6 +137,7 @@ describe('McpService scope enforcement', () => {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
 			mockInstance(ModuleRegistry),
+			mockInstance(EventService),
 		);
 
 	beforeEach(() => {
@@ -147,7 +157,11 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		const unregistered = [...ALL_MAPPED_TOOLS].filter((name) => !registered.has(name));
+		// Agent tools require the agents module (inactive here); their own
+		// drift guard lives in agent-tools.service.test.ts.
+		const unregistered = [...ALL_MAPPED_TOOLS].filter(
+			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+		);
 		expect(unregistered).toEqual([]);
 	});
 

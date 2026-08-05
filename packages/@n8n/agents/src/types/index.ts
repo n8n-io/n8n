@@ -66,8 +66,10 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	BuiltTool,
 	BuiltProviderTool,
 } from './sdk/tool';

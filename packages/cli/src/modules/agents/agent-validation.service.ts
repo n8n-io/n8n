@@ -181,13 +181,6 @@ export class AgentValidationService {
 		tasks: ReadonlyMap<string, TaskBody>,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
-		/**
-		 * Validate against these integrations instead of `agent.integrations`.
-		 * Used by connect-time publishes to exclude not-yet-connected draft
-		 * entries (`credentialId: ''`) that would otherwise block publishing
-		 * the channel currently being connected.
-		 */
-		integrationsOverride?: AgentIntegrationConfig[],
 	): Promise<AgentConfigValidationResponse> {
 		return await this.runValidation(
 			{
@@ -196,7 +189,7 @@ export class AgentValidationService {
 				config: agent.schema as unknown as AgentJsonConfig | null,
 				skills: agent.skills ?? {},
 				customTools: agent.tools ?? {},
-				integrations: integrationsOverride ?? agent.integrations ?? [],
+				integrations: agent.integrations ?? [],
 				tasks,
 				credentialProvider,
 			},
@@ -362,8 +355,10 @@ export class AgentValidationService {
 			// Only flag a definitive "gateway does not serve this provider". When
 			// support can't be determined (no cached gateway config), don't fail
 			// closed — a transient/cold config must not make a working managed agent
-			// look broken and block Publish / chat runs.
-			if (!model || this.isAiGatewayModelSupported(model) === false) {
+			// look broken and block Publish / chat runs. A missing model is already
+			// reported against `model` by `collectCoreIssues`, so it is not the
+			// credential's problem.
+			if (model && this.isAiGatewayModelSupported(model) === false) {
 				issues.push(agentIssue('incompatible_credential', 'credential'));
 			}
 			return;

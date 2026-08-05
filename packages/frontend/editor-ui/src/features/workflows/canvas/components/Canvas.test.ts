@@ -61,7 +61,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ prompt: messagePrompt }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast }),
 }));
 

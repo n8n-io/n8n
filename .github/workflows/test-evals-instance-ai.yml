@@ -1,4 +1,5 @@
 name: 'Instance AI Evals: Experiments'
+run-name: "Instance AI Evals: ${{ inputs.branch || 'master' }} (tier=${{ inputs.tier || 'all' }}, iterations=${{ inputs.iterations }}, model=${{ inputs.model || 'default' }}, experiment=${{ inputs['experiment-name'] || '-' }})"
 
 on:
   workflow_call:
@@ -223,6 +224,7 @@ jobs:
           EVALS_AZURE_FOUNDRY_KEY: ${{ secrets.EVALS_AZURE_FOUNDRY_KEY }}
           EVALS_VERTEX_SA_JSON: ${{ secrets.EVALS_VERTEX_SA_JSON }}
           EVALS_VERTEX_PROJECT: ${{ secrets.EVALS_VERTEX_PROJECT }}
+          INSTANCE_AI_BRAVE_SEARCH_API_KEY: ${{ secrets.INSTANCE_AI_BRAVE_SEARCH_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -391,6 +393,7 @@ jobs:
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$MODEL_API_KEY" \
+              -e INSTANCE_AI_BRAVE_SEARCH_API_KEY="$INSTANCE_AI_BRAVE_SEARCH_API_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               "${SANDBOX_ARGS[@]}" \

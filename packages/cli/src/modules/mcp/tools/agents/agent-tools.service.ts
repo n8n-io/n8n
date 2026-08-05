@@ -21,7 +21,7 @@ import {
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { ProjectRelationRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
@@ -55,6 +55,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
@@ -71,7 +72,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 
 const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
-	'Integrations are a published runtime surface, not editable config. Use update_agent_integration to connect or disconnect Slack, Telegram, or Linear.';
+	"Integrations can't be changed through config.replace or config.patch. Use update_agent_integration to configure or disconnect Slack, Telegram, or Linear. Configuration never publishes the Agent; an unpublished Agent's channel stays inactive until publish_agent is called.";
 
 /** LLM-facing follow-up guidance for the MCP builder surface. */
 const MCP_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
@@ -362,24 +363,37 @@ export class McpAgentToolsService {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
-	registerTools(server: McpServer, user: User): void {
-		this.register(server, this.searchAgentsTool(user));
-		this.register(server, this.getAgentTool(user));
-		this.register(server, this.createAgentTool(user));
-		this.register(server, this.mutateAgentTool(user));
-		this.register(server, this.validateAgentTool(user));
-		this.register(server, this.publishAgentTool(user));
-		this.register(server, this.unpublishAgentTool(user));
-		this.register(server, this.revertAgentTool(user));
-		this.register(server, this.listAgentVersionsTool(user));
-		this.register(server, this.deleteAgentTool(user));
-		this.register(server, this.discoverAssetsTool(user));
-		this.register(server, this.verifyMcpServerTool(user));
-		this.register(server, this.updateIntegrationTool(user));
-		this.register(server, this.referenceTool(user));
+	/**
+	 * `allowedToolNames` carries the OAuth grant's scope-derived allow-list
+	 * (undefined means a non-scope-bearing credential with full access).
+	 */
+	registerTools(server: McpServer, user: User, allowedToolNames?: Set<string>): void {
+		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
+			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
+			this.register(server, tool);
+		};
+
+		registerIfAllowed(this.searchAgentsTool(user));
+		registerIfAllowed(this.getAgentTool(user));
+		registerIfAllowed(this.createAgentTool(user));
+		registerIfAllowed(this.mutateAgentTool(user));
+		registerIfAllowed(this.validateAgentTool(user));
+		registerIfAllowed(this.publishAgentTool(user));
+		registerIfAllowed(this.unpublishAgentTool(user));
+		registerIfAllowed(this.revertAgentTool(user));
+		registerIfAllowed(this.listAgentVersionsTool(user));
+		registerIfAllowed(this.deleteAgentTool(user));
+		registerIfAllowed(this.discoverAssetsTool(user));
+		registerIfAllowed(this.verifyMcpServerTool(user));
+		registerIfAllowed(this.updateIntegrationTool(user));
+		registerIfAllowed(this.referenceTool(user));
+
+		// The reference resource complements get_agent_builder_reference, so it
+		// follows that tool's scope gate.
+		if (allowedToolNames && !allowedToolNames.has('get_agent_builder_reference')) return;
 
 		server.resource(
 			'agent-builder-reference',
@@ -409,7 +423,7 @@ export class McpAgentToolsService {
 			name: 'search_agents',
 			config: {
 				description:
-					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents.',
+					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
 				inputSchema: searchAgentsInput,
 				annotations: {
 					title: 'Search Agents',
@@ -421,12 +435,12 @@ export class McpAgentToolsService {
 			},
 			handler: async (input: SearchAgentsInput) =>
 				await this.run(user, 'search_agents', { projectId: input.projectId }, async () => {
-					let projectIds: string[];
+					let projectIds: string[] | null;
 					if (input.projectId) {
 						await this.assertScope(user, input.projectId, 'agent:list');
 						projectIds = [input.projectId];
 					} else {
-						projectIds = await this.listProjectIdsWithAgentList(user);
+						projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 					}
 					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
 						query: input.query?.trim() || undefined,
@@ -439,6 +453,7 @@ export class McpAgentToolsService {
 						name: agent.name,
 						projectId: agent.projectId,
 						published: agent.activeVersionId !== null,
+						availableInMCP: agent.availableInMCP,
 						updatedAt: agent.updatedAt.toISOString(),
 					}));
 					return { ok: true, data, count: data.length };
@@ -505,7 +520,10 @@ export class McpAgentToolsService {
 						await this.assertAccessibleCredentials(initialConfig, user, projectId);
 					}
 
-					const agent = await this.agentsService.create(projectId, name);
+					// Agents created over MCP stay operable over MCP.
+					const agent = await this.agentsService.create(projectId, name, {
+						availableInMCP: true,
+					});
 					let configHash: string | null;
 					let versionId = agent.versionId;
 					try {
@@ -515,6 +533,7 @@ export class McpAgentToolsService {
 								projectId,
 								initialConfig,
 								user,
+								{ modifiedBy: 'mcp' },
 							);
 							configHash = getAgentConfigHash(result.config);
 							versionId = result.versionId;
@@ -665,7 +684,7 @@ export class McpAgentToolsService {
 							agentId,
 							projectId,
 							user,
-							'builder',
+							{ by: 'mcp', trigger: 'explicit' },
 							versionId,
 						);
 						return {
@@ -705,8 +724,19 @@ export class McpAgentToolsService {
 						const { projectId } = await this.resolveAgent(user, agentId);
 						await this.assertScope(user, projectId, 'agent:update');
 						const agent = versionId
-							? await this.agentPublishService.revertToVersion(agentId, projectId, versionId)
-							: await this.agentPublishService.revertToPublishedAgent(agentId, projectId);
+							? await this.agentPublishService.revertToVersion(
+									agentId,
+									projectId,
+									versionId,
+									user,
+									'mcp',
+								)
+							: await this.agentPublishService.revertToPublishedAgent(
+									agentId,
+									projectId,
+									user,
+									'mcp',
+								);
 						return {
 							ok: true,
 							agentId,
@@ -772,7 +802,7 @@ export class McpAgentToolsService {
 						agentId,
 						projectId,
 						user,
-						'builder',
+						'mcp',
 					);
 					return {
 						ok: true,
@@ -872,7 +902,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					'Connect or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch cannot touch them. Connecting publishes the current Agent draft, so only connect after explicit user confirmation.',
+					"Configure or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called.",
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
@@ -921,18 +951,6 @@ export class McpAgentToolsService {
 		};
 	}
 
-	/** Projects from the user's relations where the user holds agent:list. */
-	private async listProjectIdsWithAgentList(user: User): Promise<string[]> {
-		const relations = await this.projectRelationRepository.findAllByUser(user.id);
-		const projectIds = [...new Set(relations.map((relation) => relation.projectId))];
-		const allowed = await Promise.all(
-			projectIds.map(
-				async (projectId) => await userHasScopes(user, ['agent:list'], false, { projectId }),
-			),
-		);
-		return projectIds.filter((_, index) => allowed[index]);
-	}
-
 	private async getAgentSnapshot(user: User, agent: Agent) {
 		const { id: agentId, projectId } = agent;
 		const config = this.configFromEntity(agent);
@@ -946,8 +964,8 @@ export class McpAgentToolsService {
 
 		// The hash covers the full persisted config (integrations included) so it
 		// stays consistent with mutate_agent and update_agent_integration, but the
-		// config exposed to the client omits integrations: they are a read-only
-		// runtime surface reported separately, not part of the editable config.
+		// config exposed to the client omits integrations: they are managed
+		// separately and reported in a read-only field.
 		const { integrations: _integrations, ...editableConfig } = config;
 
 		return {
@@ -987,8 +1005,8 @@ export class McpAgentToolsService {
 			versionId,
 		);
 		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
-		// Integrations are a read-only runtime surface, omitted from the config
-		// here for the same reason as in getAgentSnapshot.
+		// Integrations are managed separately and are not versioned, so omit any
+		// legacy snapshot field here for the same reason as in getAgentSnapshot.
 		const { integrations: _integrations, ...editableConfig } = version.schema;
 
 		return {
@@ -1049,6 +1067,7 @@ export class McpAgentToolsService {
 		projectId: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
 		const { agentId, operation } = input;
+		const telemetryContext = { user, modifiedBy: 'mcp' as const };
 		switch (operation.type) {
 			case 'config.replace': {
 				if (operation.config.integrations !== undefined) {
@@ -1062,7 +1081,7 @@ export class McpAgentToolsService {
 					projectId,
 					operation.config,
 					user,
-					{ clearOmittedOptionalFields: true },
+					{ clearOmittedOptionalFields: true, modifiedBy: 'mcp' },
 				);
 				return { config: result.config };
 			}
@@ -1087,6 +1106,7 @@ export class McpAgentToolsService {
 					user,
 					{
 						clearOmittedOptionalFields: true,
+						modifiedBy: 'mcp',
 					},
 				);
 				return { config: result.config };
@@ -1098,6 +1118,7 @@ export class McpAgentToolsService {
 						projectId,
 						operation.skillId,
 						operation.skill,
+						telemetryContext,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				} else {
@@ -1105,18 +1126,26 @@ export class McpAgentToolsService {
 						agentId,
 						projectId,
 						operation.skill,
+						telemetryContext,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				}
 			case 'skill.delete':
-				await this.agentSkillsService.deleteSkill(agentId, projectId, operation.skillId);
+				await this.agentSkillsService.deleteSkill(
+					agentId,
+					projectId,
+					operation.skillId,
+					telemetryContext,
+				);
 				return { resource: { type: 'skill', id: operation.skillId } };
 			case 'task.upsert':
 				if (operation.taskId) {
 					const result = await this.agentTaskService.update(
 						agentId,
+						projectId,
 						operation.taskId,
 						operation.task,
+						telemetryContext,
 					);
 					if (operation.enabled !== undefined) {
 						const updated = await this.setTaskEnabled(
@@ -1131,24 +1160,34 @@ export class McpAgentToolsService {
 					}
 					return { resource: { type: 'task', id: result.id } };
 				} else {
-					const result = await this.agentTaskService.create(agentId, {
-						...operation.task,
-						enabled: operation.enabled ?? true,
-					});
+					const result = await this.agentTaskService.create(
+						agentId,
+						projectId,
+						{
+							...operation.task,
+							enabled: operation.enabled ?? true,
+						},
+						telemetryContext,
+					);
 					return { resource: { type: 'task', id: result.id } };
 				}
 			case 'task.delete':
-				await this.agentTaskService.delete(agentId, operation.taskId);
+				await this.agentTaskService.delete(agentId, projectId, operation.taskId, telemetryContext);
 				return { resource: { type: 'task', id: operation.taskId } };
 			case 'customTool.upsert': {
 				const descriptor = await this.agentSecureRuntime.describeToolSecurely(operation.code);
+				const isAttached = (config.tools ?? []).some(
+					(tool) => tool.type === 'custom' && tool.id === descriptor.name,
+				);
 				const built = await this.agentCustomToolsService.buildCustomTool(
 					agentId,
 					projectId,
 					operation.code,
 					descriptor,
+					telemetryContext,
+					{ recordTelemetry: isAttached },
 				);
-				if ((config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
+				if (isAttached) {
 					return { resource: { type: 'customTool', id: built.id }, config };
 				}
 				const next = {
@@ -1156,11 +1195,18 @@ export class McpAgentToolsService {
 					tools: [...(config.tools ?? []), { type: 'custom' as const, id: built.id }],
 				};
 				await this.assertAccessibleCredentials(next, user, projectId);
-				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+					modifiedBy: 'mcp',
+				});
 				return { resource: { type: 'customTool', id: built.id }, config: result.config };
 			}
 			case 'customTool.delete':
-				await this.agentCustomToolsService.deleteCustomTool(agentId, projectId, operation.toolId);
+				await this.agentCustomToolsService.deleteCustomTool(
+					agentId,
+					projectId,
+					operation.toolId,
+					telemetryContext,
+				);
 				return { resource: { type: 'customTool', id: operation.toolId } };
 		}
 	}
@@ -1252,7 +1298,9 @@ export class McpAgentToolsService {
 		if (!found) throw new UserError(`Task "${taskId}" is not attached to the Agent`);
 		const next = { ...config, tasks };
 		await this.assertAccessibleCredentials(next, user, projectId);
-		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user, {
+			modifiedBy: 'mcp',
+		});
 		return result.config;
 	}
 
@@ -1377,11 +1425,11 @@ export class McpAgentToolsService {
 		const projectId = agent.projectId;
 		await this.assertScope(user, projectId, 'agent:update');
 		return input.action === 'disconnect'
-			? await this.disconnectIntegration(input, agent)
+			? await this.disconnectIntegration(user, input, agent)
 			: await this.connectIntegration(user, input, agent, projectId);
 	}
 
-	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
+	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
 		const persisted = (agent.integrations ?? []).find(
 			(item) => item.type === input.type && item.credentialId === input.credentialId,
 		);
@@ -1405,7 +1453,7 @@ export class McpAgentToolsService {
 			agent,
 			input.type,
 			input.credentialId,
-			{ broadcast: false },
+			{ user, modifiedBy: 'mcp', broadcast: false },
 		);
 		return {
 			ok: true,
@@ -1449,16 +1497,19 @@ export class McpAgentToolsService {
 		const saved = await this.integrationPersistenceService.saveCredentialIntegration(
 			agent,
 			parsed.data,
-			{ broadcast: false },
+			{ user, modifiedBy: 'mcp', broadcast: false },
 		);
-		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
-			input.agentId,
-			projectId,
-			user,
-			'channel_connect',
-			undefined,
-			{ syncIntegrations: false, ignoreDraftIntegrations: true },
-		);
+		const result = {
+			ok: true,
+			agentId: input.agentId,
+			integration: { type: input.type, credentialId: input.credentialId },
+			configured: true,
+			published: saved.activeVersionId !== null,
+			activeVersionId: saved.activeVersionId,
+			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+		};
+		if (saved.activeVersionId === null) return { ...result, connected: false };
+
 		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			input.agentId,
@@ -1466,15 +1517,8 @@ export class McpAgentToolsService {
 			'connect',
 		);
 		return {
-			ok: true,
-			agentId: input.agentId,
-			integration: { type: input.type, credentialId: input.credentialId },
+			...result,
 			connected: true,
-			published: true,
-			activeVersionId: publishedAgent.activeVersionId,
-			// Publishing with syncIntegrations:false touches neither schema nor
-			// integrations, so the entity saved above still hashes correctly.
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 	}
 
@@ -1496,10 +1540,20 @@ export class McpAgentToolsService {
 	 * from the agentId rather than making the client supply it, scoped to the
 	 * projects the user can access. Returns the loaded entity so callers don't
 	 * re-fetch the same row.
+	 *
+	 * Mirrors the per-workflow `availableInMCP` guard in `getMcpWorkflow`: MCP
+	 * tools may only operate on agents explicitly made available in MCP.
+	 * `search_agents` intentionally still sees every accessible agent so
+	 * clients can tell the user what exists.
 	 */
 	private async resolveAgent(user: User, agentId: string): Promise<Agent> {
 		const agent = await this.agentsService.findByIdForUser(agentId, user);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		if (!agent.availableInMCP) {
+			throw new UserError(
+				'Agent is not available in MCP. Enable MCP access from the agents list, or from the MCP settings page.',
+			);
+		}
 		return agent;
 	}
 
