@@ -171,19 +171,21 @@ export const workflowDetailsOutputSchema = z.object({
 				.optional()
 				.describe(`Node groups in the workflow. ${FULL_DETAIL_ONLY_NOTE}`),
 			activeVersion: z
-				.object({
-					sameAsDraft: z
-						.boolean()
-						.describe(
-							'True when the published version is identical to the current draft. The graph fields are omitted then — use the top-level nodes, connections and nodeGroups.',
-						),
-					nodes: z.array(nodeSchema).optional(),
-					connections: z.record(z.unknown()).optional(),
-					nodeGroups: z
-						.array(nodeGroupSchema)
-						.optional()
-						.describe('Node groups in the active version'),
-				})
+				.discriminatedUnion('sameAsDraft', [
+					z.object({
+						sameAsDraft: z
+							.literal(true)
+							.describe(
+								'The published version is identical to the current draft — use the top-level nodes, connections and nodeGroups.',
+							),
+					}),
+					z.object({
+						sameAsDraft: z.literal(false),
+						nodes: z.array(nodeSchema),
+						connections: z.record(z.unknown()),
+						nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
+					}),
+				])
 				.nullable()
 				.optional()
 				.describe(

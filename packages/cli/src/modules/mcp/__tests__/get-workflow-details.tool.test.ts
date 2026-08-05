@@ -101,12 +101,13 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
 			expect(payload.workflow.versionId).toBe(workflow.versionId);
 			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
-			expect(payload.workflow.activeVersion).not.toBeNull();
-			expect(payload.workflow.activeVersion?.sameAsDraft).toBe(false);
-			expect(payload.workflow.activeVersion?.nodes?.map((n) => n.credentials)).toEqual([
-				{ httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } },
-				{ httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } },
-			]);
+			expect(payload.workflow.activeVersion).toMatchObject({
+				sameAsDraft: false,
+				nodes: [
+					{ credentials: { httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' } } },
+					{ credentials: { httpHeaderAuth: { id: 'cred-2', name: 'HeaderAuth2' } } },
+				],
+			});
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
 		});
