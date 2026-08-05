@@ -32,10 +32,9 @@ export class ExecutionStartHandler {
 
 		const trigger = findTriggerNode(execution.graph);
 		if (!trigger) {
-			// Failsafe: the start boundary validates graphs, so no entry point here
-			// means a corrupted record.
-			await this.executionStore.finishExecution(event.executionId, 'failed');
-			return;
+			// The start boundary rejects triggerless graphs, so this execution
+			// should never have been created.
+			throw new UnexpectedError(`Execution ${event.executionId} has no trigger node in its graph`);
 		}
 
 		// The trigger's output was captured at execution start; record it as

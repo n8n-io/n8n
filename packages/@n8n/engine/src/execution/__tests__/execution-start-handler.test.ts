@@ -113,8 +113,9 @@ describe('ExecutionStartHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('finishes the execution as failed when the graph has no trigger node', async () => {
-		// Unreachable when the start boundary validates graphs; kept as a failsafe.
+	it('throws when the graph has no trigger node', async () => {
+		// The start boundary rejects such graphs, so this execution should never
+		// have been created — an invariant violation, not a run that failed.
 		const graph: WorkflowGraph = { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] };
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
@@ -123,10 +124,11 @@ describe('ExecutionStartHandler', () => {
 		const queue = makeOrchestrationQueue();
 		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
 
-		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+		await expect(
+			handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' }),
+		).rejects.toMatchObject({ name: 'UnexpectedError' });
 
-		// finishExecution, not a bare status transition, so `finishedAt` is stamped
-		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
