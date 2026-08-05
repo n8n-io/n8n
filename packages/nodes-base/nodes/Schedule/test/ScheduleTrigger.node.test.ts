@@ -1,4 +1,5 @@
 import * as n8nWorkflow from 'n8n-workflow';
+import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -14,6 +15,59 @@ describe('ScheduleTrigger', () => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 		vi.setSystemTime(mockDate);
+	});
+
+	describe('description', () => {
+		const node = new ScheduleTrigger();
+		const { properties } = node.description;
+
+		it('includes 1.4 in the version array', () => {
+			expect(node.description.version).toContain(1.4);
+		});
+
+		it('defines misfirePolicy as an options property defaulting to skip with exactly two values', () => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+
+			expect(misfirePolicy).toMatchObject({
+				type: 'options',
+				default: 'skip',
+				options: [
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
+					{ name: "Don't Run Missed Executions", value: 'skip' },
+				],
+			});
+		});
+
+		it('places misfirePolicy after rule and before skipDurableScheduler', () => {
+			const ruleIndex = properties.findIndex((property) => property.name === 'rule');
+			const misfirePolicyIndex = properties.findIndex(
+				(property) => property.name === 'misfirePolicy',
+			);
+			const skipDurableSchedulerIndex = properties.findIndex(
+				(property) => property.name === 'skipDurableScheduler',
+			);
+
+			expect(ruleIndex).toBeGreaterThanOrEqual(0);
+			expect(misfirePolicyIndex).toBeGreaterThan(ruleIndex);
+			expect(skipDurableSchedulerIndex).toBeGreaterThan(misfirePolicyIndex);
+		});
+
+		it.each<[number, boolean]>([
+			[1.3, false],
+			[1.4, true],
+		])('shows misfirePolicy at typeVersion %s: %s', (typeVersion, shown) => {
+			const misfirePolicy = properties.find((property) => property.name === 'misfirePolicy');
+			expect(misfirePolicy).toBeDefined();
+
+			expect(
+				NodeHelpers.displayParameter(
+					{},
+					misfirePolicy as INodeProperties,
+					{ typeVersion },
+					node.description,
+				),
+			).toBe(shown);
+		});
 	});
 
 	describe('trigger', () => {
