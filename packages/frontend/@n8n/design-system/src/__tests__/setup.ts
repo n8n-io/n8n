@@ -3,7 +3,7 @@ import { configure } from '@testing-library/vue';
 import { config } from '@vue/test-utils';
 import { beforeAll } from 'vitest';
 
-import { N8nPlugin } from '@n8n/design-system/plugin';
+import { N8nPlugin } from '../plugin';
 
 configure({ testIdAttribute: 'data-test-id' });
 

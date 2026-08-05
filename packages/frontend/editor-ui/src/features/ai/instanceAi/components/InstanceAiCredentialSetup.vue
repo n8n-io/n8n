@@ -12,7 +12,7 @@ import { useQuickConnect } from '@/features/credentials/quickConnect/composables
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
 import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
