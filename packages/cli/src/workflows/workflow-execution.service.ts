@@ -72,6 +72,12 @@ export class WorkflowExecutionService {
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		deduplicationKey?: string,
+		/**
+		 * Credential context for a run nobody is present for. A live caller's
+		 * identity travels on the request; an unattended run has to carry a minted
+		 * one instead, and this is where it joins the execution.
+		 */
+		options: { encryptedRunnerIdentity?: string } = {},
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -103,6 +109,7 @@ export class WorkflowExecutionService {
 			deduplicationKey,
 			projectId,
 			projectName,
+			encryptedRunnerIdentity: options.encryptedRunnerIdentity,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);

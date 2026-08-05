@@ -13,6 +13,8 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
+import { CatalogSubscriptionTaskHandler } from '@/workflows/catalog-subscription-task-handler';
+
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
@@ -37,6 +39,7 @@ export class DurableScheduler implements Scheduler {
 		tracing: Tracing,
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
 		pollTriggerTaskHandler: PollTriggerTaskHandler,
+		catalogSubscriptionTaskHandler: CatalogSubscriptionTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
 	) {
 		const config = globalConfig.scheduler;
@@ -94,6 +97,10 @@ export class DurableScheduler implements Scheduler {
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
+		this.registerTaskHandler(
+			catalogSubscriptionTaskHandler.taskType,
+			catalogSubscriptionTaskHandler,
+		);
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {

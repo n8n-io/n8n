@@ -1,31 +1,24 @@
+import { WorkflowCredentialBindingRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 /**
- * Whether a user still consents to a workflow running on their behalf.
+ * Whether a person still consents to a workflow running on their behalf.
  *
- * SPIKE: backed by an in-memory map so the identity path can be exercised end
- * to end without a schema change. The real implementation reads the
- * `workflow_credential_binding` row, whose `(workflowId, userId)` pair is the
- * grant itself; revoking it must also deprovision the user's scheduled jobs,
- * which a database cascade cannot do on its own.
+ * A thin read over the `workflow_credential_binding` row, whose
+ * `(workflowId, userId)` pair is the grant itself. Kept as its own service so the
+ * credential resolver depends on the question rather than on the table: the
+ * resolver runs on the hot path of every unattended run and has no business
+ * knowing how consent is stored.
+ *
+ * Withdrawing consent does not stop the scheduler on its own — the jobs a grant
+ * made possible have to be deprovisioned by the service that created them. This
+ * check is the backstop for the window in between.
  */
 @Service()
 export class RunnerBindingService {
-	private readonly active = new Set<string>();
-
-	private key(workflowId: string, userId: string) {
-		return `${workflowId}:${userId}`;
-	}
-
-	grant(workflowId: string, userId: string) {
-		this.active.add(this.key(workflowId, userId));
-	}
-
-	revoke(workflowId: string, userId: string) {
-		this.active.delete(this.key(workflowId, userId));
-	}
+	constructor(private readonly bindings: WorkflowCredentialBindingRepository) {}
 
 	async isActive(workflowId: string, userId: string): Promise<boolean> {
-		return this.active.has(this.key(workflowId, userId));
+		return await this.bindings.isActive(workflowId, userId);
 	}
 }

@@ -119,6 +119,7 @@ export {
 export { CreateWorkflowDto } from './workflows/create-workflow.dto';
 export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export { CatalogRunDto } from './workflows/catalog-run.dto';
+export { CatalogSubscriptionDto } from './workflows/catalog-subscription.dto';
 export {
 	ManualRunDto,
 	type ManualRunPayload,

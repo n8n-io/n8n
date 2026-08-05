@@ -9,6 +9,9 @@ import { mock } from 'vitest-mock-extended';
 import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { DurableScheduler } from '../durable-scheduler';
+import { CATALOG_SUBSCRIPTION_TASK_TYPE } from '@/workflows/catalog-subscription-task';
+import type { CatalogSubscriptionTaskHandler } from '@/workflows/catalog-subscription-task-handler';
+
 import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
 import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
@@ -66,6 +69,7 @@ describe('DurableScheduler', () => {
 			tracing,
 			scheduleTriggerTaskHandler,
 			pollTriggerTaskHandler,
+			mock<CatalogSubscriptionTaskHandler>({ taskType: CATALOG_SUBSCRIPTION_TASK_TYPE }),
 			mock<PrometheusSchedulerMetricsService>(),
 		);
 		return { scheduler, inner, logger, tracing, tasks };

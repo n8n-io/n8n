@@ -12,6 +12,20 @@ import { WorkflowInputSchemaService } from '@/workflows/workflow-input-schema.se
 /** Marks an execution as belonging to a person's catalog run rather than the workflow's own. */
 export const CATALOG_RUN_USER_KEY = 'catalogRunUserId';
 
+/** What an unattended caller has to supply that a present one gets for free. */
+export type RunOptions = {
+	/**
+	 * Credential context standing in for the session the run has no access to.
+	 * Absent for a run someone started themselves.
+	 */
+	encryptedRunnerIdentity?: string;
+	/**
+	 * Identity of the occurrence this run belongs to, so a redelivered scheduler
+	 * task recognises the execution a previous delivery already created.
+	 */
+	deduplicationKey?: string;
+};
+
 @Service()
 export class CatalogRunService {
 	constructor(
@@ -33,6 +47,7 @@ export class CatalogRunService {
 		workflowData: IWorkflowBase,
 		user: User,
 		inputs: IDataObject = {},
+		options: RunOptions = {},
 	): Promise<{ executionId: string }> {
 		const schema = await this.workflowInputSchemaService.describe(workflowData);
 
@@ -66,6 +81,9 @@ export class CatalogRunService {
 			[[{ json }]],
 			additionalData,
 			'trigger',
+			/* responsePromise= */ undefined,
+			options.deduplicationKey,
+			{ encryptedRunnerIdentity: options.encryptedRunnerIdentity },
 		);
 
 		// Attribution rides on metadata rather than a column, so "my runs" is a
