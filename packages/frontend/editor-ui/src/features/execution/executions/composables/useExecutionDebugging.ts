@@ -12,7 +12,7 @@ import {
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';

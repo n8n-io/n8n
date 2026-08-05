@@ -25,7 +25,7 @@ import {
 	EXECUTION_DATA_REDACTION_ENFORCEMENT_DOCS_URL,
 } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 type EnforcedFloor = Exclude<RedactionFloor, 'off'>;

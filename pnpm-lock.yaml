@@ -687,8 +687,8 @@ catalogs:
       version: 6.27.0
   undici-v7:
     undici:
-      specifier: ^7.28.0
-      version: 7.28.0
+      specifier: ^7.29.0
+      version: 7.29.0
 
 overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
@@ -786,8 +786,8 @@ overrides:
   ibm-cloud-sdk-core: ^5.5.0
   undici@5: ^6.27.0
   undici@6: ^6.27.0
-  undici@7: ^7.28.0
-  node-gyp>undici: ^7.28.0
+  undici@7: ^7.29.0
+  node-gyp>undici: ^7.29.0
   '@babel/traverse': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
 
@@ -1009,7 +1009,7 @@ importers:
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       undici:
         specifier: catalog:undici-v7
-        version: 7.28.0
+        version: 7.29.0
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -1510,7 +1510,7 @@ importers:
         version: 0.2.2
       undici:
         specifier: catalog:undici-v7
-        version: 7.28.0
+        version: 7.29.0
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -1906,8 +1906,8 @@ importers:
   packages/@n8n/computer-use:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
-        specifier: ^0.0.61
-        version: 0.0.61
+        specifier: ^0.0.66
+        version: 0.0.66
       '@inquirer/prompts':
         specifier: ^8.3.2
         version: 8.3.2(@types/node@20.19.41)
@@ -2683,7 +2683,7 @@ importers:
         version: 7.2.2
       undici:
         specifier: catalog:undici-v7
-        version: 7.28.0
+        version: 7.29.0
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -6746,7 +6746,7 @@ importers:
         version: 11.13.0
       undici:
         specifier: catalog:undici-v7
-        version: 7.28.0
+        version: 7.29.0
     devDependencies:
       tsx:
         specifier: 'catalog:'
@@ -7252,9 +7252,9 @@ packages:
   '@antfu/utils@0.7.10':
     resolution: {integrity: sha512-+562v9k4aI80m1+VuMHehNJWLOFjBnXn3tdOitzD0il5b7smkSBal4+a3oKiQTbrwMmN/TBUMDvbdoWDehgOww==}
 
-  '@anthropic-ai/sandbox-runtime@0.0.61':
-    resolution: {integrity: sha512-5atex1pnNZW/Ba83376+m83FFIbWrqzoCKCxeC4Kx7YF9El/50WBW3zAbDxYONP2k1SvK9XL07s5EZC6JhQ2jA==}
-    engines: {node: '>=18.0.0'}
+  '@anthropic-ai/sandbox-runtime@0.0.66':
+    resolution: {integrity: sha512-OE7QiGZJXe7ZshP47U2vk2z9FGSyiSN4ca9krVrE28LS2Qj0AHRWZz+gAce6FzG3gx/4OjNFwIhDuHXnI0WWwA==}
+    engines: {node: '>=20.11.0'}
     hasBin: true
 
   '@anthropic-ai/sdk@0.91.1':
@@ -22111,8 +22111,8 @@ packages:
     resolution: {integrity: sha512-YmfV3YnEDzXRC5lZ2jWtWWHKGUm1zIt8AhesR1tens+HTNv+YZlN/dp6G727LOvMJ8xjP9Be7Y2Sdr96LDm+pg==}
     engines: {node: '>=18.17'}
 
-  undici@7.28.0:
-    resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
+  undici@7.29.0:
+    resolution: {integrity: sha512-IDxfleLmmbSskfWSUATiN1nfn2rDuvnMOqb5CWR92iIfojA0Ud+ulOAAEQ57LPr9rWmsreUyf5lwyao+7GNNVw==}
     engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -23215,12 +23215,11 @@ snapshots:
 
   '@antfu/utils@0.7.10': {}
 
-  '@anthropic-ai/sandbox-runtime@0.0.61':
+  '@anthropic-ai/sandbox-runtime@0.0.66':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0
       node-forge: 1.4.0
-      shell-quote: 1.9.0
       zod: 3.25.76
 
   '@anthropic-ai/sdk@0.91.1(zod@3.25.76)':
@@ -25842,7 +25841,7 @@ snapshots:
       semver: 7.7.3
       sumchecker: 3.0.1
     optionalDependencies:
-      undici: 7.28.0
+      undici: 7.29.0
     transitivePeerDependencies:
       - supports-color
 
@@ -27461,7 +27460,7 @@ snapshots:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 2.0.0
-      undici: 7.28.0
+      undici: 7.29.0
 
   '@napi-rs/canvas-android-arm64@0.1.80':
     optional: true
@@ -32613,7 +32612,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 7.28.0
+      undici: 7.29.0
       whatwg-mimetype: 4.0.0
 
   chokidar@4.0.3:
@@ -37968,7 +37967,7 @@ snapshots:
       semver: 7.7.3
       tar: 7.5.19
       tinyglobby: 0.2.17
-      undici: 7.28.0
+      undici: 7.29.0
       which: 6.0.1
 
   node-gyp@8.4.1:
@@ -41149,7 +41148,7 @@ snapshots:
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.5
       tmp: 0.2.7
-      undici: 7.28.0
+      undici: 7.29.0
     transitivePeerDependencies:
       - supports-color
 
@@ -41724,7 +41723,7 @@ snapshots:
 
   undici@6.27.0: {}
 
-  undici@7.28.0: {}
+  undici@7.29.0: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 

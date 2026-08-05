@@ -45,7 +45,7 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 // control the return value per-test via the mockSettingsImpl variable below.
 const mockSettingsImpl = vi.hoisted(() => ({ isWorkflowPublicationServiceEnabled: false }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => mockSettingsImpl),
 }));
 
