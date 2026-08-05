@@ -16,6 +16,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
+	InstanceAiWorkflowAttachment,
 	AgentJsonConfig,
 	AgentSkill,
 	EvaluationConfigDto,
@@ -78,6 +79,10 @@ export interface WorkflowNodeResponse {
 	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
+	alwaysOutputData?: boolean;
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -208,12 +213,20 @@ export class N8nClient {
 
 	/**
 	 * Send a chat message to the instance-ai agent.
-	 * POST /rest/instance-ai/chat/:threadId  body: { message }
+	 * POST /rest/instance-ai/chat/:threadId  body: { message, attachments? }
+	 *
+	 * `attachments` are resource references the agent resolves with its tools — the
+	 *  same channel the editor uses when a user opens the assistant with a workflow
+	 * in front of them, so the agent is handed it by id instead of hunting by name.
 	 */
-	async sendMessage(threadId: string, message: string): Promise<{ runId: string }> {
+	async sendMessage(
+		threadId: string,
+		message: string,
+		attachments?: InstanceAiWorkflowAttachment[],
+	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: { message },
+			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
 		});
 		return result as { runId: string };
 	}
@@ -715,10 +728,21 @@ export class N8nClient {
 	 * GET /rest/projects/:projectId/data-tables
 	 */
 	async listDataTables(projectId: string): Promise<Array<{ id: string; name: string }>> {
-		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`)) as {
-			data: Array<{ id: string; name: string }>;
+		// The list endpoint paginates: `{ data: { count, data: [...] } }`. Reading
+		// `result.data` as the array made this return [] for every project, silently —
+		// it has no error path, so every caller just saw "no tables".
+		//
+		// `take` is explicit because the default page is 10, and every caller here
+		// enumerates the WHOLE set (seed eviction, CU cleanup, discovery's pre-existing
+		// set) — a short page silently leaves leftovers behind. 250 is the server's
+		// per-page cap; a case declares at most 20 tables and eviction runs before
+		// every build, so the backlog drains rather than outgrowing one page.
+		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables?take=250`)) as {
+			data?: { data?: Array<{ id: string; name: string }> } | Array<{ id: string; name: string }>;
 		};
-		return Array.isArray(result.data) ? result.data : [];
+		const payload = result.data;
+		if (Array.isArray(payload)) return payload;
+		return payload?.data ?? [];
 	}
 
 	/** List data table IDs for a project. */

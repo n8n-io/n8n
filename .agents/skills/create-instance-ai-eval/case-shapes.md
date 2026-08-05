@@ -345,19 +345,19 @@ assertion: two credentials with one scripted invalid should show exactly `1`.
 
 ## Seeded cases (start mid-conversation)
 
-A seeded case restores prior history into the build thread *before* the live
-turn, so the eval drives only the turn under test. Use it to reproduce a real
-situation — a conversation up to some point, then a message that should trigger
-(or correct) a behaviour.
+A seeded case puts prior history into the build thread *before* the live turn, so
+the eval drives only the turn under test. Use it to set up the situation you want
+to test — history up to some point, then a message that should trigger (or
+correct) a behaviour.
 
 Pick the lightest mode that fits:
 
 | Situation | Mode | Pairs with |
 |---|---|---|
-| Reproduce a real conversation (common case) | `seed.mode: "replay"` — fetch + reconstruct its LangSmith trace at run time; nothing committed | supplies its own live turn (omit `conversation`) |
 | Prior work already exists (a workflow to repair) | `seed.mode: "inline"` — prior messages + the workflows they reference, in the case body | a normal `conversation` for the live turn |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `seed.mode: "inline"` with `{role, text}` shorthand messages | a normal `conversation` for the live turn |
 | Shallow 2–3 turn prelude where the agent's live replies matter | none — a plain multi-turn `conversation` re-drives it live | — |
+| Confirming a real failure locally, before authoring the case | `seed.mode: "replay"` — rebuilds a thread from its LangSmith trace at run time; nothing committed, expires with the trace | supplies its own live turn (omit `conversation`) |
 
 Both modes are implemented and wired (`harness/conversation-seed.ts` +
 `harness/langsmith-seed.ts`, threaded through the runner). The literals match
@@ -365,13 +365,12 @@ lang-tracer's `metadata.seed` verbatim, so nothing translates between the repos.
 
 ### What the seed does — and does not — exercise
 
-**The seeded portion is restored, not re-run.** The message log is written into
-the thread verbatim (marked `seeded: true` so the judge and checks can tell it
-apart), and the workflows and data tables the history references are **recreated
-on the instance** — so when the live turn runs, the agent sees the same
-workspace the original conversation left behind. Data tables are recreated
-**schema-only, no rows** (row values are the most sensitive part of a trace and
-are kept out of the eval instance).
+**The seeded portion is replayed, not re-run.** The prior messages are written into
+the thread as they stand (marked `seeded: true` so the judge and checks can tell
+them apart), and the workflows and data tables they reference are **created on the
+instance** — so when the live turn runs, the agent sees the workspace the case says
+it should. Data tables are created **schema-only, no rows**: row values are the most
+sensitive thing a table holds, and they stay off the eval instance.
 
 The consequence to internalise: **nothing you assert can change what already
 happened in the seeded turns** — the agent didn't produce them, it's only
@@ -391,18 +390,21 @@ the issue is in a *later* turn. (A turn-0 issue can't be isolated by seeding: it
 lands inside the seed, so you'd bake the bug into the prelude.) Two standing
 costs keep it a last resort, not a default:
 
-- **Data handling.** It recreates a real conversation on the eval instance. The
-  most sensitive content is scrubbed first — data-table row values are kept out
-  and redacted from the restored history, node credentials stripped — but that
-  isn't guaranteed exhaustive, so treat reproduced content as if it may carry
-  user data and follow your team's data-handling policy.
+- **Data handling.** A replay stands someone's own conversation up on the eval
+  instance. The most sensitive parts are removed first — data-table row values are
+  kept out and redacted from the history, node credentials stripped — but that pass
+  can't be assumed exhaustive, so treat what comes back as potentially personal data
+  and follow your team's data-handling policy. Cleanup deletes the thread, workflows
+  and tables when the build finishes, though it is best-effort: a crashed run can
+  leave them on the instance. Scrubbing the workflow into an `inline` seed is how the
+  whole concern goes away for good.
 - **Transience.** It depends on LangSmith trace retention (~14 days); the case
   stops running once the source trace ages out (tag it `seeded`, keep it out of
   `full`/`pr`).
 
 If a plain prompt + director script can reproduce the situation, prefer that.
 
-### `mode: "replay"` — reproduce a real conversation
+### `mode: "replay"` — rebuild a thread for a local run
 
 ```json
 "seed": { "mode": "replay", "threadId": "<thread-id>", "project": "instance-ai" }
@@ -416,13 +418,11 @@ sent live. `project` defaults to `instance-ai`. Optional `endpoint` pins a
 US-tenant source host during the US→EU migration; optional `liveTurnRunId` pins
 which user turn goes live.
 
-- **Cross-workspace, zero config.** A prod thread can be reproduced in a staging
+- **Cross-workspace, zero config.** A production thread can be replayed in a staging
   eval — the harness enumerates the workspaces your `LANGSMITH_API_KEY` can reach
   and finds the one holding the thread. It only *reads* the source; the eval
-  writes its own traces/datasets to its own workspace. Reproducing a real thread
-  recreates its conversation on the eval instance; the most sensitive content is
-  scrubbed first (see the data-handling note above), and it's still worth
-  handling per your team's data policy.
+  writes its own traces/datasets to its own workspace. What it rebuilds still lands
+  on the eval instance, so the data-handling note above applies.
 - **Continue past the live turn.** Add a `conversation` to keep driving after the
   trace's last message replays (first authored turn = expected assistant reply as
   proxy reference; subsequent `user` turns become follow-ups). Omit it to replay
@@ -443,13 +443,12 @@ which user turn goes live.
   seeds with **no workflow to inspect**. Reproduce the target workflow yourself
   (a synthetic case whose `executionScenarios` precondition builds the stand-in),
   or grade the live turn with `processExpectations` only.
-- **Can't be pushed to a lang-tracer suite either.** The case-write API has no
-  `seed` field, so `eval:langtracer-push` silently lists any seeded case under
-  `skipped:`. Combined with the don't-commit rule above, a `replay` case has **no
-  durable home by design** — the durable artifact is always the synthetic case you
-  derive from it. (An `inline` seed carries no thread dependency and can't be
-  pushed either, so — unlike a normal case — it's the one exception to the skill's
-  "push, don't commit the JSON" rule: it lives as a committed artifact.)
+- **Can't be pushed to a lang-tracer suite either.** `eval:langtracer-push`
+  refuses a `replay` case and lists it under `skipped:` — a suite is a durable
+  home and this seed isn't. Combined with the don't-commit rule above, a `replay`
+  case has **no durable home by design** — the durable artifact is always the
+  synthetic case you derive from it. (An `inline` seed has no such problem: it
+  pushes with the case and lives in the suite like any other.)
 
 ### `mode: "inline"` — durable synthetic fixture
 
@@ -487,10 +486,73 @@ write a message as `{role, text}` and the schema expands it to a full envelope:
 `text` also takes an array of lines (newline-joined), like a `conversation` turn.
 The expansion stamps `createdAt` itself — ascending, in the past — so a shorthand
 message can't order *after* the live turn. Shorthand and full envelopes mix freely
-in one array; a full envelope keeps its authored `createdAt` — **unless any message
-in the array is in the FUTURE**, in which case the whole sequence is restamped onto
-ascending pre-live slots (a future stamp would sort a seeded turn after the live
-turn, and moving only that one entry would reorder it against the array the
-transcript is graded from). A near-miss (say
+in one array; a full envelope keeps its authored `createdAt` — **unless the authored
+stamps don't already ascend and sit in the past**, in which case the whole sequence
+is restamped onto ascending pre-live slots. A future stamp would sort a seeded turn
+after the live turn, and a non-ascending sequence (a shorthand turn appended after
+later-stamped envelopes, say) would present the history in an order the graded
+transcript never had; restamping only the offending entry would reorder it against
+the array the transcript is graded from. A near-miss (say
 `text: 123`) is deliberately **not** expanded — it fails at load instead of
 becoming a message the transcript builder would silently drop.
+
+#### Which opening shape — the agent is handed the workflow, or it has to find it
+
+Two real conversations look the same in a case file but test different things, and
+picking wrong makes the case harder than reality.
+
+**Handed it.** The user is looking at a workflow and opens the assistant: "why is
+this failing?", "add error handling". They never name it — the editor sends the
+workflow along as a resource reference and the agent resolves it by **id**. Declare
+that with `attach` on the opening turn:
+
+```json
+"conversation": [
+  { "role": "user", "text": "why is this failing?", "attach": { "workflow": "wKk3RmT9xQ2bVn7L" } }
+],
+"seed": {
+  "mode": "inline",
+  "messages": [ … ],
+  "workflows": [ { "id": "wKk3RmT9xQ2bVn7L", "name": "Batch loop", … } ]
+}
+```
+
+The id is the one the **seed declares**; the harness swaps in the per-run id, so you
+track nothing. Only the opening turn may carry `attach` (an attachment is a hand-off,
+not something a user re-sends), and it must name a workflow the inline seed declares —
+both are refused at load rather than ignored.
+
+**The opening often has no text at all** — the user opens the assistant on a workflow
+and waits for it to speak first. Keep `"text": ""` when that's what happened; it's the
+faithful shape, and openings with no user text jumped from 1% to 31% of the corpus when
+the editor hand-off shipped, so it is not an edge case. Note that an empty text is
+valid *only* alongside `attach`: the chat API rejects a message that is empty with
+nothing attached ("Either message or attachments must be provided"), so the two stand
+or fall together.
+
+**Has to find it.** The user refers to the workflow in words: by name ("the Wait node
+in *Generate leads* failed") or loosely ("the batch image workflow"). No `attach` —
+finding it *is* part of what the case tests. This also works when the seeded history
+already shows the agent building it, since the id is in its own record.
+
+Get this wrong in the "handed it" direction — omit `attach` on a conversation that
+really had one — and the agent has to guess from prose that deliberately names
+nothing. It will list workflows and pick, or ask which one, and you will score a
+clarification failure the real user never hit.
+
+#### Before you ship a seeded case — three checks
+
+1. **The defect still bites.** A seed whose workflow isn't broken any more makes the
+   case a silent no-op that passes forever.
+2. **Run it once with the seed removed. It must fail.** Copy the case, delete `seed`,
+   run both. If the no-seed copy also passes, the seed isn't carrying the test. Name
+   the copy so it doesn't share a `--filter` substring with the real case
+   (`control-noseed-<slug>` works; `<slug>-noseed` would match both).
+3. **The workflow's skeleton is untouched** if you scrubbed it from a real one: node
+   types, versions and connection topology byte-identical, only string leaves moved.
+
+Don't grade a seeded case on cost, turn count, `messageBudget`, or "fixed it in one
+build". A seeded thread starts with an empty sandbox, so the agent re-reads the
+workflow from the database and re-derives SDK source a real resumed session would
+still have on disk. The bias is *harder* than reality, so those numbers read worse
+for a reason that has nothing to do with the builder.

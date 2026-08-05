@@ -5,7 +5,7 @@ import { setActivePinia } from 'pinia';
 import type { ICredentialType, INodeCredentialTestResult } from 'n8n-workflow';
 import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ConnectionDialog from '../ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../../../instanceAiSettings.store';

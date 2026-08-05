@@ -11,8 +11,8 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId` and `folderId` (omit or send empty for defaults). Every optional
-    mode/policy field (credential, workflow, folder, data table, variable, and tag)
-    takes its default when omitted. The required
+    mode/policy field (credential, workflow, project, folder, data table, variable,
+    and tag) takes its default when omitted. The required
     `workflowConflictPolicy` field controls what happens when a package workflow
     matches an existing workflow by source id in the target project. Maximum upload
     size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
@@ -143,6 +143,24 @@ post:
                 `publish-all` publishes every imported workflow.
                 `unpublish-all` leaves new workflows inactive and unpublishes
                 updated workflows that were published.
+            projectConflictPolicy:
+              type: string
+              enum:
+                - merge
+                - fail
+                - overwrite
+              default: merge
+              description: >
+                What to do when a project the package defines already exists here
+                (matched by id), and — unless `folderConflictPolicy` overrides it — how
+                its contents are treated. `merge` (default) leaves the existing
+                project's name, description, icon and custom span attributes untouched
+                and adds the package's contents alongside. `overwrite` replaces those
+                details with the package's; a detail the package omits is left as it is,
+                not cleared. `fail` rejects the import before anything is written, with
+                one `project-conflict` issue per existing project. A package project id
+                belonging to a personal project, or to a team project the caller cannot
+                update, always rejects the import. Ignored for workflow packages.
             folderConflictPolicy:
               type: string
               enum:
@@ -225,6 +243,39 @@ post:
                 creates a variable requires a license that permits variables and, for
                 API key callers, the `variable:create` scope; a package whose
                 variables all already resolve creates nothing and needs neither.
+            variableConflictPolicy:
+              type: string
+              enum:
+                - keep-existing
+                - overwrite
+                - fail
+              default: keep-existing
+              description: >
+                What to do when a referenced variable resolves in the target
+                project or global scope but the package bundles a *different*
+                value for it. `keep-existing` (default) leaves the target value
+                untouched and reports the name under `variables.matched`.
+                `overwrite` silently replaces the value of the existing variable
+                at whichever scope it was found — the target project or the
+                global scope, so a global variable other projects also read can
+                be rewritten by this import — and reports the name under
+                `variables.updated`; it needs a license that permits variables,
+                the `variable:update` / `projectVariable:update` permission on
+                that scope, and, for API key callers, the `variable:update`
+                scope. `fail` rejects the import with a 409 instead. Every
+                policy leaves a resolved variable alone when there is nothing
+                to change — either the package bundles no value for it (values
+                were excluded at export, or the exported value was itself
+                empty), or the value it bundles already matches the target's.
+                The reverse does not hold: a resolved variable holding an empty
+                value — a stub an earlier import created, say — still counts as
+                a value, so `overwrite` fills it and `fail` rejects it. Under
+                `overwrite`, a project package whose projects hold *different*
+                values for a name they all resolve to one row — a global none of
+                them shadows, typically — is rejected with a 409: one row cannot
+                carry both values, and the import will not pick for you. Give
+                the projects their own variables in the target, or import them
+                separately.
             variableParentPolicy:
               type: string
               enum:
@@ -431,8 +482,9 @@ post:
               projects:
                 type: array
                 description: >
-                  Project shells created or matched-and-updated. Present for project
-                  packages; empty when importing loose workflows/folders.
+                  Project shells created, or matched and then updated or left as-is
+                  (see `projectConflictPolicy`). Present for project packages; empty
+                  when importing loose workflows/folders.
                 items:
                   type: object
                   required:
@@ -449,12 +501,19 @@ post:
                       description: Project id on the target instance (equal to `sourceProjectId`; project ids are reused).
                     name:
                       type: string
+                      description: >
+                        The project's name on the target: the package's under
+                        `overwrite`, the pre-existing one under `merge`.
                     status:
                       type: string
                       enum:
                         - created
                         - updated
-                      description: Import outcome for this package project.
+                        - skipped
+                      description: >
+                        Import outcome for this package project. `skipped` means the
+                        project already existed and `projectConflictPolicy=merge` left
+                        its details untouched — its contents were still imported.
               credentials:
                 type: object
                 description: >
@@ -493,6 +552,7 @@ post:
                   - missing
                   - created
                   - stubbed
+                  - updated
                 properties:
                   matched:
                     type: array
@@ -500,7 +560,9 @@ post:
                       type: string
                     description: >
                       Variable names that resolved to an existing variable
-                      (importing project's scope first, then global).
+                      (importing project's scope first, then global) and were
+                      left untouched. A resolved variable this import rewrote is
+                      listed under `updated` instead.
                   missing:
                     type: array
                     items:
@@ -526,6 +588,14 @@ post:
                       Variable names created with an empty value by this import under
                       `variableMissingMode=create-stub`, or because `create-with-value`
                       had no exported value. Empty for other outcomes.
+                  updated:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names whose existing value this import replaced with
+                      the package value under `variableConflictPolicy=overwrite`.
+                      Empty for other policies.
               tags:
                 type: object
                 description: >
@@ -600,8 +670,11 @@ post:
       description: >
         Import blocked by at least one conflict among the issues — a workflow
         source-id conflict, a folder conflict (id under a different parent, id
-        owned by another project, or a `fail`-policy match), or a tag conflict
-        (rename drift or name collision).
+        owned by another project, or a `fail`-policy match), a tag conflict
+        (rename drift or name collision), a variable whose bundled value
+        differs from the resolved target's under
+        `variableConflictPolicy=fail`, or one row two projects of a package
+        would overwrite with different values.
       content:
         application/json:
           schema:
