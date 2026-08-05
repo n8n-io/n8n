@@ -150,8 +150,12 @@ describe('toVerifiedClaim', () => {
 		).toThrow();
 	});
 
-	it('never carries a plaintext principal id field', () => {
-		const parsed = toVerifiedClaim(baseClaim);
+	it('strips an injected principal id rather than carrying it through', () => {
+		// Simulates a forged/injected principalId on the raw (pre-parse) input -
+		// the schema has no such field, so it must be dropped, not echoed back.
+		const tampered = { ...baseClaim, principalId: 'admin', principal: 'admin' };
+
+		const parsed = toVerifiedClaim(tampered);
 
 		expect(parsed).not.toHaveProperty('principalId');
 		expect(parsed).not.toHaveProperty('principal');
