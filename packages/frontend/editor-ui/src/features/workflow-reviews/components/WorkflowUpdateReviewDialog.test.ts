@@ -229,6 +229,18 @@ describe('WorkflowUpdateReviewDialog', () => {
 			expect(input).toHaveAttribute('maxlength', '128');
 		});
 
+		// The publish endpoints accept an empty name, so '' must not leave the
+		// required field blank with submission blocked.
+		it('prefills a generated label when the current version name is empty', async () => {
+			const { getByTestId } = await renderDialog({
+				versionData: { versionId: SAVED_VERSION_ID, name: '', description: null },
+			});
+
+			expect(getByTestId('workflow-update-review-version-name-input')).toHaveValue(
+				GENERATED_VERSION_NAME,
+			);
+		});
+
 		it('blocks submission while the name is empty', async () => {
 			const { getByTestId } = await renderDialog();
 

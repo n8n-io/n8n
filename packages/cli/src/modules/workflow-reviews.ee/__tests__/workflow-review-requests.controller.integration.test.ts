@@ -2290,7 +2290,10 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		const baseline = await createWorkflowHistoryItem(workflow.id, {
 			versionId: 'version-published',
 		});
-		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+		await createWorkflowHistoryItem(workflow.id, {
+			versionId: 'version-pinned',
+			name: 'Release candidate',
+		});
 		await publishedVersionRepository.setPublishedVersion(workflow.id, baseline.versionId);
 		const reviewer = await createAdmin();
 		const request = await seedRequest(workflow.id, 'version-pinned', owner);
@@ -2323,13 +2326,18 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		});
 		expect(child.pinnedVersion).toMatchObject({
 			versionId: 'version-pinned',
+			// The diff labels each side by name, so it travels with the snapshot
+			name: 'Release candidate',
 			connections: {},
 			nodeGroups: [],
 		});
 		expect(child.pinnedVersion.nodes).toHaveLength(1);
 		expect(child.pinnedVersion.nodes[0]).toMatchObject({ name: 'Start' });
 		expect(child.pinnedVersion).not.toHaveProperty('authors');
-		expect(child.baselineVersion).toMatchObject({ versionId: 'version-published' });
+		expect(child.baselineVersion).toMatchObject({
+			versionId: 'version-published',
+			name: null,
+		});
 	});
 
 	test('has nothing to compare against when the workflow was never published', async () => {

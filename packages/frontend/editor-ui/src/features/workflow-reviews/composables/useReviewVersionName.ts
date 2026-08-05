@@ -14,10 +14,11 @@ export const useReviewVersionName = () => {
 	/**
 	 * Every path into either dialog is gated on a saved workflow, so the document
 	 * store's version is the one `flushSave()` will return.
+	 * Falsy rather than nullish: the publish endpoints accept `name: ""`.
 	 */
 	const prefillVersionName = () => {
 		versionName.value =
-			workflowDocumentStore.value.versionData?.name ??
+			workflowDocumentStore.value.versionData?.name ||
 			generateVersionLabelFromId(workflowDocumentStore.value.versionId);
 	};
 
