@@ -55,3 +55,19 @@ ActionToggle.args = {
 		},
 	],
 };
+
+export const WithDisabledTooltip = Template.bind({});
+WithDisabledTooltip.args = {
+	actions: [
+		{
+			label: 'Duplicate',
+			value: 'duplicate',
+		},
+		{
+			label: 'Delete',
+			value: 'delete',
+			disabled: true,
+			tooltip: 'This item is assigned and can’t be deleted.',
+		},
+	],
+};

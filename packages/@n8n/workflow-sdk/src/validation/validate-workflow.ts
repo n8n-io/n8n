@@ -1,7 +1,12 @@
 import { isRecord } from '@n8n/utils/is-record';
 import get from 'lodash/get';
-import type { INodeTypes, IConnections as N8nIConnections, IDisplayOptions } from 'n8n-workflow';
-import { mapConnectionsByDestination } from 'n8n-workflow';
+import type {
+	INodeType,
+	INodeTypes,
+	IConnections as N8nIConnections,
+	IDisplayOptions,
+} from 'n8n-workflow';
+import { mapConnectionsByDestination, NodeVersionNotFoundError } from 'n8n-workflow';
 
 import { matchesDisplayOptions } from './display-options';
 import type { DisplayOptions, DisplayOptionsContext } from './display-options';
@@ -47,7 +52,8 @@ export type ValidationErrorCode =
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
 	| 'INVALID_DATE_METHOD'
-	| 'UNKNOWN_CONFIG_KEY';
+	| 'UNKNOWN_CONFIG_KEY'
+	| 'UNKNOWN_NODE_VERSION';
 
 /**
  * Validation error class
@@ -396,6 +402,68 @@ function findDisconnectedNodes(json: WorkflowJSON): string[] {
 	return disconnected;
 }
 
+/** Normalize a node's `typeVersion` (string or number) to a lookup number. */
+function resolveTypeVersion(typeVersion: string | number | undefined): number {
+	return typeof typeVersion === 'string' ? parseFloat(typeVersion) : (typeVersion ?? 1);
+}
+
+/**
+ * Wraps a provider so resolving a node at a `typeVersion` its installed node
+ * doesn't have returns `undefined` instead of throwing. Every provider-backed
+ * check below already null-checks the result; without this guard the
+ * `NodeVersionNotFoundError` would escape validation and surface as an opaque
+ * crash. The bad version is reported separately as an `UNKNOWN_NODE_VERSION`
+ * warning. Other resolution errors (e.g. unknown node type) are left to
+ * propagate as before.
+ */
+function guardNodeTypesProvider(provider: INodeTypes): INodeTypes {
+	return {
+		getByName: (nodeType) => provider.getByName(nodeType),
+		getKnownTypes: () => provider.getKnownTypes(),
+		getByNameAndVersion: (nodeType, version) => {
+			try {
+				return provider.getByNameAndVersion(nodeType, version);
+			} catch (error) {
+				if (error instanceof NodeVersionNotFoundError) {
+					return undefined as unknown as INodeType;
+				}
+				throw error;
+			}
+		},
+	};
+}
+
+/**
+ * Emits an `UNKNOWN_NODE_VERSION` warning for each node whose `typeVersion` is
+ * absent from its node's version map. Only acts on `NodeVersionNotFoundError`;
+ * any other resolution failure is ignored here and left to the checks that
+ * already handle it.
+ */
+function collectUnknownVersionWarnings(
+	json: WorkflowJSON,
+	provider: INodeTypes,
+	warnings: ValidationWarning[],
+): void {
+	for (const node of json.nodes) {
+		try {
+			provider.getByNameAndVersion(node.type, resolveTypeVersion(node.typeVersion));
+		} catch (error) {
+			if (error instanceof NodeVersionNotFoundError) {
+				warnings.push(
+					new ValidationWarning(
+						'UNKNOWN_NODE_VERSION',
+						error.message,
+						node.name,
+						undefined,
+						undefined,
+						'major',
+					),
+				);
+			}
+		}
+	}
+}
+
 /**
  * Validate a workflow
  *
@@ -430,6 +498,15 @@ export function validateWorkflow(
 
 	const errors: ValidationError[] = [];
 	const warnings: ValidationWarning[] = [];
+
+	// Resolving a node at a version its installed node lacks throws; guard the
+	// provider so that never crashes validation, and report each such node once.
+	const nodeTypesProvider = options.nodeTypesProvider
+		? guardNodeTypesProvider(options.nodeTypesProvider)
+		: undefined;
+	if (options.nodeTypesProvider) {
+		collectUnknownVersionWarnings(json, options.nodeTypesProvider, warnings);
+	}
 
 	// Check for trigger node
 	if (!options.allowNoTrigger) {
@@ -515,12 +592,8 @@ export function validateWorkflow(
 					let message = error.message;
 
 					// Enhance subnode errors with valid options when nodeTypesProvider is available
-					if (
-						error.path === 'subnodes' &&
-						message.includes('Unknown field') &&
-						options.nodeTypesProvider
-					) {
-						const nodeType = options.nodeTypesProvider.getByNameAndVersion(node.type, version);
+					if (error.path === 'subnodes' && message.includes('Unknown field') && nodeTypesProvider) {
+						const nodeType = nodeTypesProvider.getByNameAndVersion(node.type, version);
 						const validInputs = nodeType?.description?.builderHint?.inputs;
 						if (validInputs) {
 							const validSubnodes = Object.keys(validInputs)
@@ -551,20 +624,20 @@ export function validateWorkflow(
 	}
 
 	// Input index validation (only if provider is given)
-	if (options.nodeTypesProvider) {
-		checkNodeInputIndices(json, options.nodeTypesProvider, warnings);
+	if (nodeTypesProvider) {
+		checkNodeInputIndices(json, nodeTypesProvider, warnings);
 		// Validate that connections originate from output ports that actually exist
-		checkNodeOutputIndices(json, options.nodeTypesProvider, warnings);
+		checkNodeOutputIndices(json, nodeTypesProvider, warnings);
 		// Validate subnode parameters match parent's displayOptions requirements
-		validateSubnodeParameters(json, options.nodeTypesProvider, warnings);
+		validateSubnodeParameters(json, nodeTypesProvider, warnings);
 		// Validate parent nodes actually support their connected AI input types
-		validateParentSupportsInputs(json, options.nodeTypesProvider, warnings);
+		validateParentSupportsInputs(json, nodeTypesProvider, warnings);
 		// Validate required AI inputs on parent nodes are actually connected
-		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
+		validateRequiredInputsConnected(json, nodeTypesProvider, errors);
 		// Validate that emitted connection types are actually exposed by the source node's mode
-		validateOutputUsage(json, options.nodeTypesProvider, warnings);
+		validateOutputUsage(json, nodeTypesProvider, warnings);
 		// Reject placeholder() in slots that opt out via builderHint.placeholderSupported === false
-		validatePlaceholderSlots(json, options.nodeTypesProvider, errors);
+		validatePlaceholderSlots(json, nodeTypesProvider, errors);
 	}
 
 	// Switch fallback output validation does not need node metadata. It is derived from

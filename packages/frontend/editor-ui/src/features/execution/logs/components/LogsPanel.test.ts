@@ -65,7 +65,7 @@ vi.mock('@vueuse/core', async () => {
 	};
 });
 
-vi.mock('@/stores/pushConnection.store', () => ({
+vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
 	}),

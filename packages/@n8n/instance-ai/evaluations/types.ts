@@ -11,6 +11,7 @@ import type {
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
+import type { EvalAttribution } from './harness/attribution';
 import type { CaseSeed } from './harness/schema';
 
 // ---------------------------------------------------------------------------
@@ -265,10 +266,15 @@ export interface ExecutionScenarioResult {
 	workflowId?: string;
 	score: number;
 	reasoning: string;
-	/** Root cause category when the scenario fails */
+	/** Root cause category when the scenario fails. Free-form on purpose: it
+	 *  carries whatever the LLM verifier picked, and older harness commits used
+	 *  a different spelling. Read `attribution` for the meaning. */
 	failureCategory?: string;
 	/** Detailed root cause explanation */
 	rootCause?: string;
+	/** Who owns this failure — the harness's own verdict, and what LangTracer
+	 *  stores. Undefined on a pass. See `harness/attribution.ts`. */
+	attribution?: EvalAttribution;
 	/** Verifier returned no verdict after all attempts (infra failure, not a
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
@@ -283,6 +289,9 @@ export interface BuildExpectationResult {
 	reason: string;
 	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
+	/** Who owns a failed expectation. Stamped where the verdicts are attached to
+	 *  a row (the only place that also knows whether the build died on infra). */
+	attribution?: EvalAttribution;
 }
 
 export interface WorkflowTestCaseResult {

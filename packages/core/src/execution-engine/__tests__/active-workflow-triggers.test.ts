@@ -822,6 +822,31 @@ describe('ActiveWorkflowTriggers', () => {
 			});
 		});
 
+		it('should report success and permanently drop the trigger reference when closeFunction fails with TriggerCloseError', async () => {
+			// Characterizes the current leak (ENT-104): a trigger whose connection
+			// outlives a failed close (e.g. a Kafka consumer) is reported as
+			// deactivated while the connection keeps running, and the dropped
+			// reference makes any later stop attempt a no-op.
+			let connectionRunning = true;
+			(triggerResponse.closeFunction as Mock).mockImplementationOnce(async () => {
+				// a successful close would set connectionRunning = false before this
+				throw new TriggerCloseError(triggerNode, { level: 'warning' });
+			});
+			await addWorkflow({ triggerNodes: [triggerNode] });
+
+			const result = await activeWorkflowTriggers.remove(workflowId);
+
+			expect(result).toBe(true);
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+			expect(activeWorkflowTriggers.get(workflowId)).toBeUndefined();
+			expect(connectionRunning).toBe(true);
+
+			const secondAttempt = await activeWorkflowTriggers.remove(workflowId);
+
+			expect(secondAttempt).toBe(false);
+			expect(triggerResponse.closeFunction).toHaveBeenCalledTimes(1);
+		});
+
 		it('should throw WorkflowDeactivationError when closeFunction throws regular error', async () => {
 			const error = new Error('Close function failed');
 			(triggerResponse.closeFunction as Mock).mockRejectedValueOnce(error);
