@@ -27,12 +27,6 @@ export const BATCH_11AUG_EXPERIMENT = createExperiment('37_onboarding_experiment
 
 export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-worfklow_v2', {
-	control: 'control',
-	variant1: 'variant-1-singlebox',
-	variant2: 'variant-2-twoboxes',
-});
-
 export const READY_TO_RUN_V2_P3_EXPERIMENT = createExperiment('059_ready-to-run-worfklow_v2-3', {
 	control: 'control',
 	variant5: 'variant-5',
@@ -89,6 +83,8 @@ export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
 );
+// A/A test validating the experimentation system itself (#26387): both arms are
+// identical, so having no reader is the point. Keep it out of unread-flag cleanups.
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
