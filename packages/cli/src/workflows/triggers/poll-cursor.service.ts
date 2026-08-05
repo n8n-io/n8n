@@ -23,10 +23,12 @@ export class PollCursorService {
 	}
 
 	/**
-	 * A node with a stored row is migrated for good; an unmigrated node checks the
-	 * flag, so disabling it blocks new migrations without affecting nodes that
-	 * already migrated. Seeds the row from the node's static data on first
-	 * migration, so it resumes where it left off.
+	 * A node with a stored row is migrated for good and always preferred; an
+	 * unmigrated node checks the flag, so disabling it blocks new migrations
+	 * without affecting nodes that already migrated.
+	 *
+	 * Seeds the row from the node's static data on first migration, so it
+	 * resumes where it left off.
 	 */
 	async resolveCursor(
 		workflowId: string,
@@ -49,9 +51,9 @@ export class PollCursorService {
 
 	/**
 	 * Commits the cursor advance and the execution row together, so a poll never
-	 * advances past items no execution carried. Atomic when the flag is on; written
-	 * as two sequential steps when it's off, reopening the race as the cost of
-	 * keeping the flag as a kill switch.
+	 * advances past items no execution carried. Atomic when the flag is on;
+	 * written as two sequential steps when it's off, reopening the race between
+	 * them as the cost of keeping the flag as a kill switch.
 	 */
 	async commitWithExecution(args: {
 		workflowId: string;
