@@ -164,6 +164,30 @@ describe('Posthog store', () => {
 			);
 		});
 
+		it('disables client-side flag refetch when flags are bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init({ test: 'variant' });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					advanced_disable_feature_flags: true,
+				}),
+			);
+		});
+
+		it('keeps client-side flag refetch when flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.not.objectContaining({
+					advanced_disable_feature_flags: expect.anything(),
+				}),
+			);
+		});
+
 		it('should identify user', () => {
 			const posthog = usePostHog();
 			posthog.init();
