@@ -194,8 +194,6 @@ export class NodeResourceExplorerService {
 			unavailable.push({
 				name: candidate.name,
 				displayName: candidate.displayName,
-				type: candidate.type,
-				...(candidate.default !== undefined ? { default: candidate.default } : {}),
 				currentValue: candidate.currentValue,
 				availableOptions: listing.options,
 			});
@@ -280,22 +278,15 @@ export class NodeResourceExplorerService {
 export interface UnavailableResourceLocatorValue {
 	name: string;
 	displayName: string;
-	/** The property's declared `type`, resolved from the node description. Passed on so
-	 *  callers never have to re-find the property by name — a node can declare the same
-	 *  parameter more than once across versions (e.g. `model` as both `options` and
-	 *  `resourceLocator`), and a name lookup would pick whichever comes first. */
-	type: string;
-	/** The property's declared default, for callers that want a vetted fallback value. */
-	default?: unknown;
 	currentValue: string;
+	/** Everything the credential can reach for this parameter, so callers can say what
+	 *  the usable values are instead of only that the current one isn't. */
 	availableOptions: Array<{ name: string; value: string }>;
 }
 
 interface CandidateLocator {
 	name: string;
 	displayName: string;
-	type: string;
-	default?: unknown;
 	methodName: string;
 	currentValue: string;
 }
@@ -337,8 +328,6 @@ function collectListBackedLocators(
 		candidates.push({
 			name: property.name,
 			displayName: property.displayName,
-			type: property.type,
-			...(property.default !== undefined ? { default: property.default } : {}),
 			methodName,
 			currentValue,
 		});

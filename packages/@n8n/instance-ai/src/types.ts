@@ -516,11 +516,8 @@ export interface ExploreResourcesResult {
 export interface UnavailableLocatorValue {
 	name: string;
 	displayName: string;
-	/** The property's declared `type`, resolved by the host from the node description. */
-	type: string;
-	/** The property's declared default — the only value safe to fill in for the user. */
-	default?: unknown;
 	currentValue: string;
+	/** Everything the credential can reach for this parameter. */
 	availableOptions: Array<{ name: string; value: string }>;
 }
 

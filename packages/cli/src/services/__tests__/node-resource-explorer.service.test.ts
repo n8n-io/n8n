@@ -351,10 +351,10 @@ describe('NodeResourceExplorerService', () => {
 			mockCredentialOwned({ type: 'openAiApi', name: 'n8n free OpenAI API credits' });
 		});
 
-		test("reports the probed property's own type, not a same-named sibling's", async () => {
+		test('ignores a same-named non-locator sibling and probes the locator', async () => {
 			// lmChatOpenAi declares `model` twice: a legacy `options` field for old type
-			// versions and the resource locator for current ones. A name lookup would pick
-			// the legacy one and the setup wizard would fail to render the field.
+			// versions and the resource locator for current ones. Only the locator carries a
+			// search method, so it is the only one whose value can be checked.
 			mockAiNode([
 				{ displayName: 'Model', name: 'model', type: 'options', default: 'gpt-5-mini' },
 				modelLocator,
@@ -366,8 +366,11 @@ describe('NodeResourceExplorerService', () => {
 				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
 			});
 
-			expect(result[0]?.type).toBe('resourceLocator');
-			expect(result[0]?.default).toEqual({ mode: 'list', value: 'gpt-5-mini' });
+			expect(result).toHaveLength(1);
+			expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledTimes(1);
+			expect(dynamicNodeParametersService.getResourceLocatorResults.mock.calls[0]?.[0]).toBe(
+				'searchModels',
+			);
 		});
 
 		test('reports a model the credential cannot reach, with the reachable options', async () => {
@@ -383,8 +386,6 @@ describe('NodeResourceExplorerService', () => {
 				{
 					name: 'model',
 					displayName: 'Model',
-					type: 'resourceLocator',
-					default: { mode: 'list', value: 'gpt-5-mini' },
 					currentValue: 'gpt-5.4',
 					availableOptions: [
 						{ name: 'gpt-5-mini', value: 'gpt-5-mini' },
@@ -417,7 +418,6 @@ describe('NodeResourceExplorerService', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0]?.currentValue).toBe('gpt-4o');
-			expect(result[0]?.type).toBe('resourceLocator');
 		});
 
 		test('covers non-AI nodes too, e.g. a channel the account cannot reach', async () => {
