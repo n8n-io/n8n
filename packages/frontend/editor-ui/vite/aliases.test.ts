@@ -1,13 +1,10 @@
-import {
-	findFrontendSourcePackages,
-	frontendSourceAliases as generatedSourceAliases,
-} from '@n8n/vitest-config/frontend-aliases';
-import { existsSync } from 'node:fs';
+import { findFrontendSourcePackages } from '@n8n/vitest-config/frontend-aliases';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import type { Alias } from 'vite';
 import { describe, expect, it } from 'vitest';
 
-import { frontendSourceAliases as handWrittenSourceAliases } from './aliases.mjs';
+import { editorUiAliases } from './aliases.mjs';
 
 // vitest runs with the package root as cwd; `import.meta.url` is not a file URL under jsdom.
 const editorUiDir = process.cwd();
@@ -35,82 +32,40 @@ const resolveSpecifier = (specifier: string, aliases: Alias[]): string => {
 	return relative(repoRoot, existsSync(asIndex) ? asIndex : target);
 };
 
-/**
- * Packages the hand-written list aliases but the scan does not produce, so switching over drops
- * them: `@n8n/tournament` is not a declared dependency of editor-ui and has no importers, and
- * `packages/frontend/@n8n/api-requests` does not exist at all.
- */
-const RETIRED_PACKAGES = ['@n8n/tournament', '@n8n/api-requests'];
+const manifest = JSON.parse(readFileSync(join(editorUiDir, 'package.json'), 'utf8')) as {
+	dependencies?: Record<string, string>;
+	devDependencies?: Record<string, string>;
+};
+const declared = new Set([
+	...Object.keys(manifest.dependencies ?? {}),
+	...Object.keys(manifest.devDependencies ?? {}),
+]);
 
-/** One bare and one subpath specifier per package — the two resolution classes an alias covers. */
-const specifiers = [
-	...findFrontendSourcePackages(repoRoot).map(({ name }) => name),
-	...RETIRED_PACKAGES,
-]
-	.flatMap((name) => [name, `${name}/probe`])
-	.sort();
+const sourcePackages = findFrontendSourcePackages(repoRoot).filter(({ name }) =>
+	declared.has(name),
+);
 
 describe('editor-ui vite aliases', () => {
-	it('matches the generated frontend source mapping, except where that mapping is wider', () => {
-		const handWritten = handWrittenSourceAliases(packagesDir);
-		const generated = generatedSourceAliases({ repoRoot, consumerDir: editorUiDir });
+	const aliases = editorUiAliases(editorUiDir, packagesDir);
 
-		const deltas = Object.fromEntries(
-			specifiers
-				.map((specifier) => ({
-					specifier,
-					before: resolveSpecifier(specifier, handWritten),
-					after: resolveSpecifier(specifier, generated),
-				}))
-				.filter(({ before, after }) => before !== after)
-				.map(({ specifier, before, after }) => [specifier, { before, after }]),
-		);
+	it.each(sourcePackages)(
+		'resolves $name from source, not from its dist',
+		({ name, srcDir, entry }) => {
+			const src = relative(repoRoot, srcDir);
 
-		// Every entry below is a specifier the hand-written list resolves from `dist` while
-		// editor-ui's tsconfig already types it from `src` — the divergence the generated mapping
-		// closes. Landing that is a separate commit, so it is spelled out here rather than assumed.
-		expect(deltas).toEqual({
-			'@n8n/api-requests/probe': {
-				before: 'packages/frontend/@n8n/api-requests/src/probe',
-				after: 'dist',
-			},
-			'@n8n/api-types': { before: 'dist', after: 'packages/@n8n/api-types/src/index.ts' },
-			'@n8n/api-types/probe': { before: 'dist', after: 'packages/@n8n/api-types/src/probe' },
-			'@n8n/chat': { before: 'dist', after: 'packages/frontend/@n8n/chat/src/index.ts' },
-			'@n8n/constants': { before: 'dist', after: 'packages/@n8n/constants/src/index.ts' },
-			'@n8n/frontend-constants/probe': {
-				before: 'dist',
-				after: 'packages/frontend/@n8n/frontend-constants/src/probe',
-			},
-			'@n8n/frontend-module-sdk/probe': {
-				before: 'dist',
-				after: 'packages/frontend/@n8n/frontend-module-sdk/src/probe',
-			},
-			'@n8n/frontend-utils/probe': {
-				before: 'dist',
-				after: 'packages/frontend/@n8n/frontend-utils/src/probe',
-			},
-			'@n8n/rest-api-client': {
-				before: 'dist',
-				after: 'packages/frontend/@n8n/rest-api-client/src/index.ts',
-			},
-			'@n8n/rest-api-client/probe': {
-				before: 'dist',
-				after: 'packages/frontend/@n8n/rest-api-client/src/probe',
-			},
-			'@n8n/stores': { before: 'dist', after: 'packages/frontend/@n8n/stores/src/index.ts' },
-			'@n8n/tournament': { before: 'packages/@n8n/tournament/src/index.ts', after: 'dist' },
-			'@n8n/tournament/probe': { before: 'packages/@n8n/tournament/src/probe', after: 'dist' },
-		});
-	});
+			// Subpath and bare imports are separate resolution classes; a list can cover one and
+			// silently leave the other on `dist`, which is how vue-tsc and the bundle came to
+			// disagree on four packages. `entry`-less packages expose no `.` and so have no bare form.
+			expect(resolveSpecifier(`${name}/probe`, aliases)).toBe(`${src}/probe`);
+			if (entry) expect(resolveSpecifier(name, aliases)).toBe(relative(repoRoot, entry));
+		},
+	);
 
 	it('resolves a package and its subpaths independently of entry order', () => {
-		// `^@n8n/chat(.+)$` also matches `@n8n/chat-hub/…`; the hand-written list is only correct
-		// because an earlier entry happens to shadow it. The generated pairs are slash-anchored.
-		const generated = generatedSourceAliases({ repoRoot, consumerDir: editorUiDir });
-
-		expect(resolveSpecifier('@n8n/chat-hub/api', generated)).toBe('packages/@n8n/chat-hub/src/api');
-		expect(resolveSpecifier('@n8n/chat-hub/api', [...generated].reverse())).toBe(
+		// An open-ended `^@n8n/chat(.+)$` also matches `@n8n/chat-hub/…`, so a list carrying both
+		// only resolves correctly while the more specific entry happens to come first.
+		expect(resolveSpecifier('@n8n/chat-hub/api', aliases)).toBe('packages/@n8n/chat-hub/src/api');
+		expect(resolveSpecifier('@n8n/chat-hub/api', [...aliases].reverse())).toBe(
 			'packages/@n8n/chat-hub/src/api',
 		);
 	});
