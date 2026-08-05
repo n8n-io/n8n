@@ -148,6 +148,41 @@ describe('poll cursor atomicity', () => {
 		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toBeNull();
 	});
 
+	it('seeds the row from the static-data cursor already accrued while the flag was off, rather than resetting it', async () => {
+		pollerConfig.durableCursorsEnabled = false;
+
+		// Simulate several polls accruing a cursor in the node's static data while
+		// durable cursors are off: resolveCursor reports `migrated: false` and never
+		// touches poller_state, mirroring the unmigrated path e2e-tested in
+		// poll-trigger-cursor-unmigrated.spec.ts.
+		for (const lastItemId of ['a', 'b', 'c']) {
+			expect(await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId })).toEqual({
+				migrated: false,
+			});
+		}
+		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toBeNull();
+
+		// Flip the flag on for this already-running workflow and poll again, passing
+		// through the cursor its static data accrued while the flag was off.
+		pollerConfig.durableCursorsEnabled = true;
+		const migrated = await pollCursorService.resolveCursor(workflow.id, nodeId, {
+			lastItemId: 'c',
+		});
+
+		// The row resumes forward from the accrued value - it is not seeded null, which
+		// would otherwise re-emit every item the workflow already saw as unmigrated.
+		expect(migrated).toEqual({ migrated: true, cursor: { lastItemId: 'c' } });
+		expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
+			lastItemId: 'c',
+		});
+
+		// Once migrated, the row is the source of truth: a later poll's static-data
+		// blob no longer has any effect, even if it disagrees with the stored cursor.
+		expect(
+			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'stale' }),
+		).toEqual({ migrated: true, cursor: { lastItemId: 'c' } });
+	});
+
 	it('still advances the cursor when the execution insert fails and the flag is off, for a node that already migrated', async () => {
 		// Migrate the row while the flag is on, then flip it off: reads still prefer
 		// the row, and the flag only narrows to write atomicity from here on.
