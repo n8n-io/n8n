@@ -49,11 +49,3 @@ export function childRecord(
 	const child = record[key];
 	return isRecord(child) ? child : undefined;
 }
-
-export function stringProperty(
-	record: Record<string, unknown> | undefined,
-	key: string,
-): string | undefined {
-	const value = record?.[key];
-	return typeof value === 'string' ? value : undefined;
-}

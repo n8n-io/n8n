@@ -675,7 +675,7 @@ describe('Slack setup services', () => {
 		});
 	});
 
-	it('refreshes the manager token and auto-installs with a project-owned bot credential', async () => {
+	it('refreshes the manager token during icon setup and auto-installs the bot credential', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue({
 			clientId: 'client',
 			clientSecret: 'secret',
@@ -703,7 +703,6 @@ describe('Slack setup services', () => {
 		});
 		requestMock
 			.mockResolvedValueOnce(slackAppCreatedResponse())
-			.mockResolvedValueOnce(slackResponse({ ok: true }))
 			.mockResolvedValueOnce(slackResponse({ ok: false, error: 'token_expired' }))
 			.mockResolvedValueOnce(
 				slackResponse({
@@ -714,6 +713,7 @@ describe('Slack setup services', () => {
 					},
 				}),
 			)
+			.mockResolvedValueOnce(slackResponse({ ok: true }))
 			.mockResolvedValueOnce(
 				slackResponse({
 					ok: true,
@@ -759,8 +759,14 @@ describe('Slack setup services', () => {
 		expect(iconRequest.body.get('app_id')).toBe('A123');
 		expect(iconRequest.body.get('token')).toBe('xoxp-manager');
 		expect(iconRequest.body.get('file')).toBeInstanceOf(Blob);
-		expect(fetchParams(requestMock, 2).get('bot_scopes')).toContain('chat:write');
-		expect(fetchParams(requestMock, 3).get('grant_type')).toBe('refresh_token');
+		expect(fetchParams(requestMock, 2).get('grant_type')).toBe('refresh_token');
+		const retriedIconRequest = requestMock.mock.calls[3]?.[0] as {
+			url: string;
+			body: FormData;
+		};
+		expect(retriedIconRequest.url).toBe('https://slack.com/api/apps.icon.set');
+		expect(retriedIconRequest.body.get('token')).toBe('xoxp-refreshed');
+		expect(fetchParams(requestMock, 4).get('bot_scopes')).toContain('chat:write');
 		expect(fetchParams(requestMock, 4).get('token')).toBe('xoxp-refreshed');
 		expect(credentialsService.update).toHaveBeenCalledWith(
 			'manager',
@@ -785,6 +791,55 @@ describe('Slack setup services', () => {
 				}),
 			}),
 			user,
+		);
+	});
+
+	it('deletes a newly created managed app when icon setup fails', async () => {
+		credentialsOverwrites.getOverwrites.mockReturnValue({
+			clientId: 'client',
+			clientSecret: 'secret',
+			userScope: 'app_configurations:read app_configurations:write managed_apps:install',
+		});
+		credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'manager', type: 'slackManagerOAuth2Api' },
+		] as never);
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'manager',
+			name: 'Slack manager',
+			type: 'slackManagerOAuth2Api',
+		} as CredentialsEntity);
+		credentialsService.decrypt.mockResolvedValue({
+			oauthTokenData: {
+				authed_user: {
+					access_token: 'xoxp-manager',
+					scope: 'app_configurations:read app_configurations:write managed_apps:install',
+				},
+				team: { id: 'T123', name: 'Example workspace' },
+			},
+		});
+		requestMock
+			.mockResolvedValueOnce(slackAppCreatedResponse())
+			.mockResolvedValueOnce(slackResponse({ ok: false, error: 'slack_request_failed' }))
+			.mockResolvedValueOnce(slackResponse({ ok: true }));
+
+		await expect(
+			service.installManagedApp({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				managerCredentialId: 'manager',
+				workspaceId: 'T123',
+				user,
+			}),
+		).rejects.toThrow('Slack could not set the Slack app icon: slack_request_failed');
+
+		expect(requestMock.mock.calls[2]?.[0]).toEqual(
+			expect.objectContaining({ url: 'https://slack.com/api/apps.manifest.delete' }),
+		);
+		expect(fetchParams(requestMock, 2).get('app_id')).toBe('A123');
+		expect(fetchParams(requestMock, 2).get('token')).toBe('xoxp-manager');
+		expect(cacheService.delete).toHaveBeenCalledWith(
+			'agents:slack-managed-app:project-1:agent-1:manager:T123',
 		);
 	});
 
@@ -844,6 +899,77 @@ describe('Slack setup services', () => {
 			),
 		).toHaveLength(1);
 		expect(credentialsService.createManagedCredential).not.toHaveBeenCalled();
+	});
+
+	it('preserves managed app provenance after fallback OAuth installation', async () => {
+		credentialsOverwrites.getOverwrites.mockReturnValue({
+			clientId: 'client',
+			clientSecret: 'secret',
+			userScope: 'app_configurations:read app_configurations:write managed_apps:install',
+		});
+		credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'manager', type: 'slackManagerOAuth2Api' },
+		] as never);
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'manager',
+			name: 'Slack manager',
+			type: 'slackManagerOAuth2Api',
+		} as CredentialsEntity);
+		credentialsService.decrypt.mockResolvedValue({
+			oauthTokenData: {
+				authed_user: {
+					access_token: 'xoxp-manager',
+					scope: 'app_configurations:read app_configurations:write managed_apps:install',
+				},
+				team: { id: 'T123', name: 'Example workspace' },
+			},
+		});
+		requestMock
+			.mockResolvedValueOnce(slackAppCreatedResponse())
+			.mockResolvedValueOnce(slackResponse({ ok: true }))
+			.mockResolvedValueOnce(slackResponse({ ok: false, error: 'app_approval_request_eligible' }))
+			.mockResolvedValueOnce(slackOAuthResponse());
+		userRepository.findOne.mockResolvedValue(user);
+		credentialsService.createManagedCredential.mockResolvedValue({
+			id: 'bot-credential',
+		} as never);
+		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(agent as never);
+
+		const result = await service.installManagedApp({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			managerCredentialId: 'manager',
+			workspaceId: 'T123',
+			user,
+		});
+		expect(result.status).toBe('manual_install_required');
+		if (result.status !== 'manual_install_required') return;
+
+		const state = new URL(result.installUrl).searchParams.get('state') ?? '';
+		await service.completeInstall({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			code: 'slack-code',
+			state,
+		});
+
+		expect(credentialsService.createManagedCredential).toHaveBeenCalledWith(
+			{
+				name: 'Example workspace - Support Agent',
+				type: 'slackApi',
+				data: {
+					accessToken: 'xoxb-installed-token',
+					signatureSecret: 'signing-secret',
+					managedAppId: 'A123',
+					teamId: 'T123',
+					managerCredentialId: 'manager',
+				},
+				projectId: 'project-1',
+			},
+			user,
+		);
+		expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
 	});
 
 	it('exports settings for a managed Slack bot credential', async () => {

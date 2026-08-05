@@ -19,12 +19,12 @@ import {
 	SLACK_BOT_SCOPES,
 	type SlackAppSetupSession,
 	slackSetupCacheKey,
-	stringProperty,
 } from './slack-setup.types';
 import { AgentIntegrationPersistenceService } from '../../../agent-integration-persistence.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { ChatIntegrationService } from '../../chat-integration.service';
+import { stringProperty } from '../../integration-helpers';
 
 const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;

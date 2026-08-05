@@ -127,7 +127,7 @@ describe('AgentChannelSlackManagedSetup', () => {
 	it('shows the Slack quick-connect button when no manager credential exists', async () => {
 		const { wrapper, connectManager } = mountSetup(0, 0);
 
-		expect(wrapper.find('[data-testid="slack-manager-credential-select"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="slack-manager-credential-select"]').exists()).toBe(false);
 		const connectButton = wrapper.get('[data-testid="slack-manager-connect"]');
 		expect(connectButton.attributes('icon')).toBe('slack');
 		expect(connectButton.text()).toBe('agents.channels.slack.managed.connect.button');
@@ -148,6 +148,7 @@ describe('AgentChannelSlackManagedSetup', () => {
 		const { wrapper, editManager } = mountSetup(1);
 
 		expect(wrapper.find('[data-testid="slack-manager-connect"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="slack-manager-credential-select"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="select-manager"]').exists()).toBe(true);
 		await wrapper.get('[data-testid="slack-manager-edit"]').trigger('click');
 

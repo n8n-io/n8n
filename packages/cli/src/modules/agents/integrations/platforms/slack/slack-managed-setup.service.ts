@@ -25,14 +25,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { SlackMethodsService } from './slack-methods.service';
-import {
-	childRecord,
-	SLACK_BOT_SCOPES,
-	type SlackAppSetupSession,
-	stringProperty,
-} from './slack-setup.types';
+import { childRecord, SLACK_BOT_SCOPES, type SlackAppSetupSession } from './slack-setup.types';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
+import { stringProperty } from '../../integration-helpers';
 
 const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
@@ -110,6 +106,9 @@ interface ManagedBotCredentialContext {
 	managerCredentialId: string;
 	teamId: string;
 }
+
+type SlackApiParams = Record<string, string> | FormData;
+type SlackApiParamsFactory = (accessToken: string) => SlackApiParams;
 
 function stringsFromScope(value: unknown): Set<string> {
 	if (typeof value !== 'string') return new Set();
@@ -715,31 +714,41 @@ export class SlackManagedSetupService {
 		const clientSecret = stringProperty(credentials, 'client_secret');
 		const signingSecret = stringProperty(credentials, 'signing_secret');
 		const oauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
-		if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
-			throw new BadRequestError('Slack returned an incomplete app setup response');
-		}
-		await this.setManagedAppIcon(manager, appId);
+		try {
+			if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
+				throw new BadRequestError('Slack returned an incomplete app setup response');
+			}
+			await this.setManagedAppIcon(manager, appId);
 
-		const session = {
-			projectId: options.projectId,
-			agentId: options.agentId,
-			userId: options.user.id,
-			appId,
-			clientId,
-			clientSecret,
-			signingSecret,
-			redirectUrl,
-			managerCredentialId: options.managerCredentialId,
-			teamId: options.workspaceId,
-			teamName: workspaceName,
-			oauthAuthorizeUrl,
-		} satisfies ManagedSlackAppSession;
-		await this.cacheService.set(
-			key,
-			await this.cipher.encryptV2(JSON.stringify(session)),
-			SLACK_APP_SETUP_TTL_MS,
-		);
-		return { session, created: true };
+			const session = {
+				projectId: options.projectId,
+				agentId: options.agentId,
+				userId: options.user.id,
+				appId,
+				clientId,
+				clientSecret,
+				signingSecret,
+				redirectUrl,
+				managerCredentialId: options.managerCredentialId,
+				teamId: options.workspaceId,
+				teamName: workspaceName,
+				oauthAuthorizeUrl,
+			} satisfies ManagedSlackAppSession;
+			await this.cacheService.set(
+				key,
+				await this.cipher.encryptV2(JSON.stringify(session)),
+				SLACK_APP_SETUP_TTL_MS,
+			);
+			return { session, created: true };
+		} catch (error) {
+			if (appId) {
+				await Promise.allSettled([
+					this.callManagerSlackApi(manager, 'apps.manifest.delete', { app_id: appId }),
+					this.cacheService.delete(key),
+				]);
+			}
+			throw error;
+		}
 	}
 
 	private async decryptManagedAppSession(
@@ -758,12 +767,11 @@ export class SlackManagedSetupService {
 	private async callManagerSlackApi(
 		manager: ManagerCredentialContext,
 		method: string,
-		params: Record<string, string>,
+		params: Record<string, string> | SlackApiParamsFactory,
 	): Promise<Record<string, unknown>> {
-		let response = await this.methods.callSlackApi(method, {
-			...params,
-			token: manager.accessToken,
-		});
+		const paramsForToken = (accessToken: string): SlackApiParams =>
+			typeof params === 'function' ? params(accessToken) : { ...params, token: accessToken };
+		let response = await this.methods.callSlackApi(method, paramsForToken(manager.accessToken));
 		const error = stringProperty(response, 'error');
 		if (!['invalid_auth', 'token_expired'].includes(error ?? '')) return response;
 
@@ -805,7 +813,7 @@ export class SlackManagedSetupService {
 		await this.credentialsService.update(manager.credential.id, encrypted, updatedData);
 		manager.oauthTokenData = oauthTokenData;
 		manager.accessToken = refreshedAccessToken;
-		response = await this.methods.callSlackApi(method, { ...params, token: refreshedAccessToken });
+		response = await this.methods.callSlackApi(method, paramsForToken(refreshedAccessToken));
 		return response;
 	}
 
@@ -823,15 +831,17 @@ export class SlackManagedSetupService {
 		managedAppId: string,
 	): Promise<void> {
 		const image = await readFile(join(__dirname, 'assets', 'n8n-bot-icon.png'));
-		const formData = new FormData();
-		formData.set('token', manager.accessToken);
-		formData.set('app_id', managedAppId);
-		formData.set(
-			'file',
-			new Blob([new Uint8Array(image)], { type: 'image/png' }),
-			'n8n-bot-icon.png',
-		);
-		const response = await this.methods.callSlackApi('apps.icon.set', formData);
+		const response = await this.callManagerSlackApi(manager, 'apps.icon.set', (accessToken) => {
+			const formData = new FormData();
+			formData.set('token', accessToken);
+			formData.set('app_id', managedAppId);
+			formData.set(
+				'file',
+				new Blob([new Uint8Array(image)], { type: 'image/png' }),
+				'n8n-bot-icon.png',
+			);
+			return formData;
+		});
 		if (response.ok !== true) {
 			throw this.methods.slackError('set the Slack app icon', response);
 		}

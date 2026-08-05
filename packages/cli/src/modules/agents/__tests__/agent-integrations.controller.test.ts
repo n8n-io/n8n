@@ -647,6 +647,42 @@ describe('AgentIntegrationsController integration credentials', () => {
 		);
 	});
 
+	it.each([
+		['unpublished', null, true],
+		['published', 'v1', false],
+	])(
+		'defaults external resource deletion to %s agent behavior',
+		async (_status, activeVersionId, expectedDeleteExternalResource) => {
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				id: 'agent-1',
+				projectId: 'project-1',
+				activeVersionId,
+				integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+			} as never);
+			const slackAppSetupService = mock<SlackAppSetupService>();
+			const { controller } = makeController({ agentRepository, slackAppSetupService });
+
+			await controller.disconnectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'slack', credentialId: 'cred-slack' },
+			);
+
+			expect(slackAppSetupService.deleteManagedAppForCredential).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				credentialId: 'cred-slack',
+				user: { id: 'user-1' },
+				deleteExternalResource: expectedDeleteExternalResource,
+			});
+		},
+	);
+
 	it('returns a warning while still disconnecting when the managed Slack app remains', async () => {
 		const agentRepository = mock<AgentRepository>();
 		const agent = {

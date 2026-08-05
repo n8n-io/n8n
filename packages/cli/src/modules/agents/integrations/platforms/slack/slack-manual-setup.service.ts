@@ -12,12 +12,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
 
 import { SlackMethodsService } from './slack-methods.service';
-import {
-	childRecord,
-	type SlackAppSetupSession,
-	slackSetupCacheKey,
-	stringProperty,
-} from './slack-setup.types';
+import { childRecord, type SlackAppSetupSession, slackSetupCacheKey } from './slack-setup.types';
+import { stringProperty } from '../../integration-helpers';
 
 export interface CreateSlackAppOptions {
 	projectId: string;
