@@ -440,4 +440,11 @@ export type {
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
 
-export { isZodSchema, zodToJsonSchema } from './utils/zod';
+export {
+	isZodSchema,
+	toModelJsonSchema,
+	toValidationJsonSchema,
+	toJsonSchemaOrNull,
+	zodToJsonSchema,
+} from './utils/zod';
+export type { SchemaAudience } from './utils/zod';

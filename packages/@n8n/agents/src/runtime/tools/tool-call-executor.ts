@@ -22,7 +22,7 @@ import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/a
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
-import { zodToJsonSchema } from '../../utils/zod';
+import { toJsonSchemaOrNull } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -160,13 +160,24 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 	return !isDeniedApprovalResumeData(resumeData);
 }
 
+/** The resume schema a suspension will be checkpointed with — the per-suspension
+ *  override if the tool picked one, else the tool's own. */
+function getDeclaredResumeSchema(
+	tool: BuiltTool,
+	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
+): ToolSuspendOptions['resumeSchema'] {
+	return resumeSchemaOverride ?? tool.resumeSchema;
+}
+
 function getToolResumeJsonSchema(
 	tool: BuiltTool,
 	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
 ): JsonSchema7Type | undefined {
-	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
+	const resolvedSchema = getDeclaredResumeSchema(tool, resumeSchemaOverride);
 	if (!resolvedSchema) return undefined;
-	return zodToJsonSchema(resolvedSchema, { closeObjects: false }) ?? undefined;
+	// The checkpointed copy validates the resume payload, so it must not be
+	// closed to unknown keys the authored Zod schema would have stripped.
+	return toJsonSchemaOrNull(resolvedSchema, 'validation') ?? undefined;
 }
 
 export interface ToolCallExecutorDeps {
@@ -984,7 +995,17 @@ export class ToolCallExecutor {
 		}
 		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.resumeSchema);
 		if (!resumeSchema) {
-			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
+			// A declared-but-unserializable schema is a different defect from no
+			// schema at all, and only one of them is the tool author's oversight.
+			const declared = getDeclaredResumeSchema(builtTool, toolResult.resumeSchema);
+			return this.toolError(
+				params,
+				new Error(
+					declared
+						? `Tool ${params.toolName} has a resume schema that could not be serialized`
+						: `Tool ${params.toolName} has no resume schema`,
+				),
+			);
 		}
 		return {
 			outcome: 'suspended',

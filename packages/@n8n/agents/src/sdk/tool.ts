@@ -6,7 +6,7 @@ import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
-import { isZodSchema, zodToJsonSchema } from '../utils/zod';
+import { isZodSchema, toModelJsonSchema, toValidationJsonSchema } from '../utils/zod';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
@@ -65,7 +65,7 @@ function combineInterruptSchemas(
 	if (innerSchema === undefined) return approvalSchema;
 	if (isZodSchema(innerSchema)) return z.union([innerSchema, approvalSchema]);
 
-	const approvalJsonSchema = zodToJsonSchema(approvalSchema, { closeObjects: false });
+	const approvalJsonSchema = toValidationJsonSchema(approvalSchema);
 	return approvalJsonSchema ? { anyOf: [approvalJsonSchema, innerSchema] } : innerSchema;
 }
 
@@ -419,12 +419,15 @@ export class Tool<
 		if (!this.desc) throw new Error(`Tool "${this.name}" requires a description`);
 		if (!this.inputSchema) throw new Error(`Tool "${this.name}" requires an input schema`);
 
+		// Closed, because this descriptor is what the model is shown. It is also
+		// what `from-json-config` reconstructs the tool from — which re-opens it
+		// before using it to validate the model's arguments.
 		const inputSchema = isZodSchema(this.inputSchema)
-			? zodToJsonSchema(this.inputSchema)
+			? toModelJsonSchema(this.inputSchema)
 			: this.inputSchema;
 		const outputSchema = this.outputSchema
 			? isZodSchema(this.outputSchema)
-				? zodToJsonSchema(this.outputSchema)
+				? toModelJsonSchema(this.outputSchema)
 				: this.outputSchema
 			: null;
 		return {
