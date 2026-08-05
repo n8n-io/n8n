@@ -10,13 +10,14 @@ import {
 	N8nIconButton,
 	N8nLoading,
 	N8nNotice,
+	N8nPagination,
 	N8nText,
 	N8nTooltip,
 	type BadgeTheme,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ExecutionStatus } from 'n8n-workflow';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -29,6 +30,8 @@ import type {
 } from '@/features/catalog/catalog.types';
 import CatalogRunDialog from '@/features/catalog/components/CatalogRunDialog.vue';
 import CatalogScheduleDialog from '@/features/catalog/components/CatalogScheduleDialog.vue';
+import type { OwnSchedule } from '@/features/catalog/catalog.utils';
+import { summariseOwnSchedules } from '@/features/catalog/catalog.utils';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -49,6 +52,32 @@ const subscriptions = computed(() => catalogStore.subscriptions);
 
 const entriesById = computed(
 	() => new Map(catalogStore.workflows.map((entry) => [entry.id, entry])),
+);
+
+/**
+ * Paged in the browser rather than by the API: the listing is already capped
+ * server-side (and says so when it truncates), so the whole set is in hand and
+ * paging it is presentation, not fetching.
+ */
+const CATALOG_PAGE_SIZE = 12;
+
+const page = ref(1);
+
+const pagedWorkflows = computed(() =>
+	catalogStore.workflows.slice(
+		(page.value - 1) * CATALOG_PAGE_SIZE,
+		page.value * CATALOG_PAGE_SIZE,
+	),
+);
+
+// A refetch can shrink the list under the current page; land on the last real
+// one rather than on an empty grid.
+watch(
+	() => catalogStore.workflows.length,
+	(total) => {
+		const lastPage = Math.max(1, Math.ceil(total / CATALOG_PAGE_SIZE));
+		if (page.value > lastPage) page.value = lastPage;
+	},
 );
 
 onMounted(async () => {
@@ -79,8 +108,45 @@ const inputsLabel = (entry: CatalogEntry) =>
 				interpolate: { count: entry.fields.length },
 			});
 
-const scheduleCount = (entry: CatalogEntry) =>
-	catalogStore.subscriptionsByWorkflow[entry.id]?.length ?? 0;
+/** This person's own standing with a workflow — never anyone else's. */
+const ownSchedule = (entry: CatalogEntry): OwnSchedule =>
+	summariseOwnSchedules(catalogStore.subscriptionsByWorkflow[entry.id] ?? []);
+
+const ownScheduleLabel = (entry: CatalogEntry) => {
+	const own = ownSchedule(entry);
+	if (own.state === 'none') return '';
+	if (own.state === 'paused') return i18n.baseText('catalog.card.schedulePaused');
+
+	const when = i18n.baseText('catalog.card.scheduleNext', {
+		interpolate: { when: displayTime(own.nextRunAt) },
+	});
+	// Only when there is more than one, so the common case stays a plain sentence.
+	return own.count > 1
+		? `${when} ${i18n.baseText('catalog.card.scheduleMore', {
+				adjustToNumber: own.count - 1,
+				interpolate: { count: own.count - 1 },
+			})}`
+		: when;
+};
+
+/**
+ * What the calendar button does, spelled out in its tooltip so it never changes
+ * meaning silently. With one schedule it edits that one, which is the common
+ * case and saves a trip to the list below.
+ */
+const scheduleAction = (entry: CatalogEntry) => {
+	const held = catalogStore.subscriptionsByWorkflow[entry.id] ?? [];
+	if (held.length === 1) {
+		return { label: i18n.baseText('catalog.schedule.change'), subscription: held[0] };
+	}
+	return {
+		label:
+			held.length === 0
+				? i18n.baseText('catalog.schedule.add')
+				: i18n.baseText('catalog.schedule.addAnother'),
+		subscription: undefined,
+	};
+};
 
 const RUN_STATUS_THEMES: Partial<Record<ExecutionStatus, BadgeTheme>> = {
 	success: 'success',
@@ -199,7 +265,7 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 
 			<div v-else :class="$style.grid">
 				<N8nCard
-					v-for="entry in catalogStore.workflows"
+					v-for="entry in pagedWorkflows"
 					:key="entry.id"
 					:class="$style.card"
 					data-test-id="catalog-workflow"
@@ -227,26 +293,25 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 								{{ triggerLabel(entry) }}
 							</N8nBadge>
 							<N8nBadge theme="default">{{ inputsLabel(entry) }}</N8nBadge>
-							<N8nBadge v-if="scheduleCount(entry) > 0" theme="success">
+							<N8nBadge
+								v-if="ownSchedule(entry).state !== 'none'"
+								:theme="ownSchedule(entry).state === 'scheduled' ? 'success' : 'warning'"
+								data-test-id="catalog-own-schedule"
+							>
 								<N8nIcon icon="calendar" size="xsmall" :class="$style.badgeIcon" />
-								{{
-									i18n.baseText('catalog.schedule.count', {
-										adjustToNumber: scheduleCount(entry),
-										interpolate: { count: scheduleCount(entry) },
-									})
-								}}
+								{{ ownScheduleLabel(entry) }}
 							</N8nBadge>
 						</div>
 
 						<div :class="$style.actions">
-							<N8nTooltip :content="i18n.baseText('catalog.schedule.add')">
+							<N8nTooltip :content="scheduleAction(entry).label">
 								<N8nIconButton
 									icon="calendar"
 									type="tertiary"
 									size="small"
-									:aria-label="i18n.baseText('catalog.schedule.add')"
+									:aria-label="scheduleAction(entry).label"
 									data-test-id="catalog-schedule-button"
-									@click="scheduling = { entry }"
+									@click="scheduling = { entry, subscription: scheduleAction(entry).subscription }"
 								/>
 							</N8nTooltip>
 							<N8nButton
@@ -262,6 +327,17 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 					</template>
 				</N8nCard>
 			</div>
+
+			<N8nPagination
+				v-if="!catalogStore.isEmpty && catalogStore.workflows.length > CATALOG_PAGE_SIZE"
+				:class="$style.pagination"
+				layout="prev, pager, next"
+				:current-page="page"
+				:page-size="CATALOG_PAGE_SIZE"
+				:total="catalogStore.workflows.length"
+				data-test-id="catalog-pagination"
+				@update:current-page="page = $event"
+			/>
 
 			<section :class="$style.section">
 				<N8nHeading tag="h2" size="medium" bold>
@@ -409,6 +485,11 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 
 .badgeIcon {
 	margin-right: var(--spacing--5xs);
+}
+
+.pagination {
+	display: flex;
+	justify-content: center;
 }
 
 .actions {

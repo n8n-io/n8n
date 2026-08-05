@@ -1,4 +1,36 @@
-import type { ScheduleDraft, ScheduleFrequency } from '@/features/catalog/catalog.types';
+import type {
+	CatalogSubscription,
+	ScheduleDraft,
+	ScheduleFrequency,
+} from '@/features/catalog/catalog.types';
+
+/**
+ * What a card says about the person looking at it: whether they have taken this
+ * workflow on, and when it next runs for them.
+ *
+ * Only ever their own — the listing it reads is scoped to the requesting person
+ * server-side. How many other people subscribed is not their business and would
+ * not help them either.
+ */
+export type OwnSchedule =
+	| { state: 'none' }
+	| { state: 'scheduled'; nextRunAt: string; count: number }
+	| { state: 'paused'; count: number };
+
+export function summariseOwnSchedules(subscriptions: CatalogSubscription[]): OwnSchedule {
+	if (subscriptions.length === 0) return { state: 'none' };
+
+	const upcoming = subscriptions
+		.filter((subscription) => subscription.enabled && subscription.nextRunAt !== null)
+		.map((subscription) => subscription.nextRunAt as string)
+		.sort();
+
+	// Several schedules for one workflow collapse to the soonest: that is the
+	// question the card answers — "when does this next happen for me".
+	return upcoming.length > 0
+		? { state: 'scheduled', nextRunAt: upcoming[0], count: subscriptions.length }
+		: { state: 'paused', count: subscriptions.length };
+}
 
 /**
  * Cron is the storage format, not the interface. The people this is for pick a

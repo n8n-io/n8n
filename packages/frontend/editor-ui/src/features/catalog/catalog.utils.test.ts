@@ -1,5 +1,10 @@
-import type { ScheduleDraft } from '@/features/catalog/catalog.types';
-import { cronToDraft, DEFAULT_SCHEDULE_DRAFT, draftToCron } from '@/features/catalog/catalog.utils';
+import type { CatalogSubscription, ScheduleDraft } from '@/features/catalog/catalog.types';
+import {
+	cronToDraft,
+	DEFAULT_SCHEDULE_DRAFT,
+	draftToCron,
+	summariseOwnSchedules,
+} from '@/features/catalog/catalog.utils';
 
 describe('draftToCron', () => {
 	it.each([
@@ -42,5 +47,52 @@ describe('cronToDraft', () => {
 		// Better an obvious default than a wrong-but-plausible choice presented as
 		// what is currently saved.
 		expect(cronToDraft(cron)).toEqual(DEFAULT_SCHEDULE_DRAFT);
+	});
+});
+
+describe('summariseOwnSchedules', () => {
+	const subscription = (overrides: Partial<CatalogSubscription> = {}): CatalogSubscription => ({
+		id: 's1',
+		workflowId: 'a',
+		workflowName: 'Weekly report',
+		cronExpression: '0 0 9 * * *',
+		timezone: 'UTC',
+		inputs: {},
+		enabled: true,
+		nextRunAt: '2026-02-01T09:00:00.000Z',
+		...overrides,
+	});
+
+	it('reports nothing when the person has not subscribed', () => {
+		expect(summariseOwnSchedules([])).toEqual({ state: 'none' });
+	});
+
+	it('reports the soonest run across several of their own schedules', () => {
+		const summary = summariseOwnSchedules([
+			subscription({ id: 's1', nextRunAt: '2026-02-03T09:00:00.000Z' }),
+			subscription({ id: 's2', nextRunAt: '2026-02-01T09:00:00.000Z' }),
+		]);
+
+		// The card answers "when does this next happen for me", not "how many do I have".
+		expect(summary).toEqual({
+			state: 'scheduled',
+			nextRunAt: '2026-02-01T09:00:00.000Z',
+			count: 2,
+		});
+	});
+
+	it('ignores a paused schedule when picking the soonest run', () => {
+		const summary = summariseOwnSchedules([
+			subscription({ id: 's1', enabled: false, nextRunAt: null }),
+			subscription({ id: 's2', nextRunAt: '2026-02-05T09:00:00.000Z' }),
+		]);
+
+		expect(summary).toMatchObject({ state: 'scheduled', nextRunAt: '2026-02-05T09:00:00.000Z' });
+	});
+
+	it('reports paused when every schedule they hold is paused', () => {
+		const summary = summariseOwnSchedules([subscription({ enabled: false, nextRunAt: null })]);
+
+		expect(summary).toEqual({ state: 'paused', count: 1 });
 	});
 });
