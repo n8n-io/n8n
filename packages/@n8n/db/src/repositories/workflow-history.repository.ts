@@ -1,12 +1,14 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, In, LessThan } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../entities';
+import { BaseRepository } from './base-repository';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+import type { OperationContext } from '../services/transaction';
 
 @Service()
-export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
+export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 	constructor(
 		dataSource: DataSource,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
@@ -16,6 +18,23 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 
 	async deleteEarlierThan(date: Date) {
 		return await this.delete({ createdAt: LessThan(date) });
+	}
+
+	/**
+	 * Name a single version. Scoped by `workflowId` too so a version of another
+	 * workflow can never be renamed, and returns the affected row count so
+	 * callers running inside a transaction can treat `0` as "already pruned".
+	 */
+	async updateVersionName(
+		{ workflowId, versionId, name }: { workflowId: string; versionId: string; name: string },
+		ctx: OperationContext,
+	): Promise<number | undefined> {
+		const result = await this.managerFor(ctx).update(
+			WorkflowHistory,
+			{ workflowId, versionId },
+			{ name },
+		);
+		return result.affected ?? undefined;
 	}
 
 	/**

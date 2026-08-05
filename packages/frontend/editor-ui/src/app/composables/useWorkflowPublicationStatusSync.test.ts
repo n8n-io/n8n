@@ -9,7 +9,7 @@ import {
 	PUBLICATION_STATUS_POLL_INTERVAL_MS,
 } from './useWorkflowPublicationStatusSync';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,

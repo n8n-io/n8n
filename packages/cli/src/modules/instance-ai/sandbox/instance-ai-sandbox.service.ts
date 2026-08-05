@@ -12,7 +12,7 @@ import {
 	type SandboxConfig,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
@@ -274,10 +274,16 @@ export class InstanceAiSandboxService {
 
 			// Direct mode: Daytona credentials from env vars or admin credential
 			const daytona = await this.options.settingsService.resolveDaytonaConfig();
+			const daytonaApiKey = daytona.apiKey ?? base.daytonaApiKey;
+			if (!daytonaApiKey) {
+				throw new OperationalError(
+					'The Daytona sandbox is enabled in direct mode but no API key is configured. Set the Daytona API key environment variable or connect the Daytona credential.',
+				);
+			}
 			return {
 				...base,
 				daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
-				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
+				daytonaApiKey,
 			};
 		}
 		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig();

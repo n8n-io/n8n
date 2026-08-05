@@ -35,6 +35,8 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+		/** No agent row exists yet — an unsaved agent has no tasks to load. */
+		agentUnsaved?: boolean;
 
 		/** Structured backend validation issues — drives the invalid state on capability chips. */
 		validationIssues?: AgentConfigValidationIssue[];
@@ -219,6 +221,10 @@ const subAgentIssueMessages = computed(() =>
 
 async function reloadTasks() {
 	taskErrorMessage.value = '';
+	if (props.agentUnsaved) {
+		taskBodies.value = [];
+		return;
+	}
 	try {
 		taskBodies.value = await getAgentTasks(
 			rootStore.restApiContext,
@@ -835,18 +841,19 @@ function openExistingSubAgentModal(subAgent: {
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: var(--spacing--3xs);
-	max-width: 100%;
 	min-width: 0;
+	/** Truncates chip to stop overly-long labels **/
+	max-width: min(var(--spacing--5xl), 100%);
+
+	> .capabilityChip {
+		width: 100%;
+	}
 }
 
 .addButtonEmpty {
 	--button--color: var(--text-color--subtler);
 	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
-}
-
-.capabilityChip {
-	max-width: min(12rem, 100%);
 }
 
 .groupChipLabel {

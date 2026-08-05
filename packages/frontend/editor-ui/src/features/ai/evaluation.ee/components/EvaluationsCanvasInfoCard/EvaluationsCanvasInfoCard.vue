@@ -10,7 +10,7 @@ import { useAiRootNodes } from '../../composables/useAiRootNodes';
 import { listEvaluationConfigs } from '../../evaluation.api';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useStorage } from '@/app/composables/useStorage';
+import { useStorage } from '@n8n/composables/useStorage';
 import { LOCAL_STORAGE_EVALUATIONS_CANVAS_INFO_CARD_DISMISSED } from '@/app/constants';
 import { CANNED_METRICS, LLM_JUDGE_METRIC_KEYS } from '../../evaluation.constants';
 import CheckCard from '../WizardSidepanel/CheckCard.vue';

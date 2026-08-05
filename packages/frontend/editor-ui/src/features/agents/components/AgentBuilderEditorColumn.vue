@@ -12,7 +12,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
@@ -45,6 +45,9 @@ const props = defineProps<{
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	/** No agent row exists yet, so agent-scoped endpoints would 404. */
+	agentUnsaved?: boolean;
+	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
@@ -114,9 +117,10 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:agent-id="agentId"
 						:project-id="projectId"
-						:is-published="Boolean(agent?.activeVersionId)"
 						:validation-issues="configValidationIssues ?? []"
 						:simple-channel-setup="artifactMode"
+						:agent-unsaved="agentUnsaved"
+						:ensure-agent-persisted="ensureAgentPersisted"
 						@update:connected-triggers="emit('update:connected-triggers', $event)"
 						@trigger-added="emit('trigger-added', $event)"
 						@agent-changed="emit('agent-changed')"
@@ -134,6 +138,7 @@ const i18n = useI18n();
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
 						:validation-issues="configValidationIssues ?? []"
+						:agent-unsaved="agentUnsaved"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"

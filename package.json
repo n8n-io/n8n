@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -21,11 +21,12 @@
     "build:docker:clean": "TURBO_FORCE=true node scripts/build-n8n.mjs && DOCKER_BUILD_NO_CACHE=true DOCKER_BUILD_BASE_IMAGE=true node scripts/dockerize-n8n.mjs",
     "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:container:standard --filter=n8n-playwright",
     "typecheck": "turbo typecheck",
-    "dev": "turbo run dev --concurrency=150 --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner",
-    "dev:be": "turbo run dev --concurrency=150 --env-mode=loose --filter=!@n8n/design-system --filter=!@n8n/chat --filter=!@n8n/task-runner --filter=!n8n-editor-ui",
+    "dev": "node scripts/dev-command-removed-notice.mjs",
+    "dev:be": "turbo run dev --env-mode=loose --log-prefix=none --filter=n8n",
     "dev:ai": "turbo run dev --concurrency=150 --env-mode=loose --filter=@n8n/n8n-nodes-langchain --filter=n8n --filter=n8n-core",
-    "dev:fe": "run-p start \"dev:fe:editor --filter=@n8n/design-system\"",
-    "dev:fe:editor": "turbo run dev --concurrency=150 --env-mode=loose --filter=n8n-editor-ui",
+    "dev:fe": "run-p start dev:fe:editor",
+    "dev:fe:editor": "turbo run dev --env-mode=loose --filter=n8n-editor-ui",
+    "dev:design-system": "turbo run dev --env-mode=loose --log-prefix=none --filter=@n8n/design-system",
     "dev:e2e": "pnpm --filter=n8n-playwright dev --ui",
     "dev-metrics:opt-in": "node scripts/dev-metrics/setup.mjs --enable",
     "dev-metrics:status": "node scripts/dev-metrics/setup.mjs --status",
@@ -103,6 +104,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@confluentinc/kafka-javascript",
       "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
@@ -180,7 +182,7 @@
       "postcss@<=8.5.9": "8.5.10",
       "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
       "uuid@<=13.0.1": "13.0.1",
-      "fast-uri": "3.1.3",
+      "fast-uri": "3.1.5",
       "cjs-module-lexer@<2.2.0": "2.2.0",
       "protobufjs": "7.6.5",
       "shell-quote": "1.9.0",
@@ -205,7 +207,8 @@
       "undici@6": "catalog:undici-v6",
       "undici@7": "catalog:undici-v7",
       "node-gyp>undici": "catalog:undici-v7",
-      "@babel/traverse": "^7.23.2"
+      "@babel/traverse": "^7.23.2",
+      "@vitest/browser@<4.1.10": "4.1.10"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",

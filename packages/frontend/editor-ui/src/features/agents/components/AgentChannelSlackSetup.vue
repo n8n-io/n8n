@@ -24,7 +24,6 @@ const props = withDefaults(
 	defineProps<{
 		connected?: boolean;
 		disabled?: boolean;
-		isPublished?: boolean;
 		setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
 		projectId?: string;
 		agentId?: string;
@@ -42,7 +41,6 @@ const props = withDefaults(
 		connected: false,
 		disabled: false,
 		setupMode: 'advanced',
-		isPublished: true,
 		setupSlackApp: undefined,
 		projectId: undefined,
 		agentId: undefined,
@@ -252,14 +250,6 @@ defineExpose({ credentialId, validationError: null });
 							{{ i18n.baseText('agents.channels.slack.setup.installApp.button') }}
 						</N8nButton>
 						<N8nText
-							v-if="!isPublished"
-							:class="$style.publishNotice"
-							size="small"
-							data-testid="slack-app-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-						</N8nText>
-						<N8nText
 							v-if="setupError === 'generic'"
 							:class="$style.setupError"
 							size="small"
@@ -386,8 +376,7 @@ defineExpose({ credentialId, validationError: null });
 	height: var(--height--xs);
 }
 
-.setupDescription,
-.publishNotice {
+.setupDescription {
 	color: var(--text-color--subtler);
 }
 
