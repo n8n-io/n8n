@@ -325,24 +325,44 @@ describe('components.N8nSegmentControl', () => {
 			});
 		});
 
-		it('stops arrow key propagation so parent handlers do not run', async () => {
+		it.each(['{ArrowUp}', '{ArrowDown}', '{ArrowLeft}', '{ArrowRight}'] as const)(
+			'stops %s propagation so parent handlers do not run',
+			async (key) => {
+				const user = userEvent.setup();
+				const onParentKeydown = vi.fn();
+				const { getByRole } = render({
+					components: { SegmentControl },
+					props: { onParentKeydown },
+					template: `
+						<div @keydown="onParentKeydown">
+							<SegmentControl model-value="one" :options="options" />
+						</div>
+					`,
+					data: () => ({ options }),
+				});
+
+				getByRole('radio', { name: 'One' }).focus();
+				await user.keyboard(key);
+
+				expect(onParentKeydown).not.toHaveBeenCalled();
+			},
+		);
+
+		it('does not change selection with ArrowUp or ArrowDown', async () => {
 			const user = userEvent.setup();
-			const onParentKeydown = vi.fn();
-			const { getByRole } = render({
-				components: { SegmentControl },
-				props: { onParentKeydown },
-				template: `
-					<div @keydown="onParentKeydown">
-						<SegmentControl model-value="one" :options="options" />
-					</div>
-				`,
-				data: () => ({ options }),
+			const { getByRole, emitted } = render(SegmentControl, {
+				props: {
+					modelValue: 'one',
+					options,
+				},
 			});
 
 			getByRole('radio', { name: 'One' }).focus();
-			await user.keyboard('{ArrowRight}');
+			await user.keyboard('{ArrowDown}');
+			await user.keyboard('{ArrowUp}');
 
-			expect(onParentKeydown).not.toHaveBeenCalled();
+			expect(getByRole('radio', { name: 'One' })).toBeChecked();
+			expect(emitted('update:modelValue')).toBeUndefined();
 		});
 
 		it('loops from the last option to the first with ArrowRight when loop is enabled', async () => {

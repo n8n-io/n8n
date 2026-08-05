@@ -69,7 +69,7 @@ type SegmentControlProps<Value extends string | boolean = string | boolean> = {
 - Option values may be `string` or `boolean`. Boolean `false` and string `"false"` are distinct (values are keyed as `` `${typeof value}:${String(value)}` `` internally).
 - Each option gets `data-test-id="radio-button-${value}"` (e.g. `radio-button-false` for boolean false).
 - A controlled `modelValue` that is not in `options` renders with no selection.
-- Arrow keys stop bubbling so parent canvas/editor shortcuts do not also fire while focus is in the control.
+- All arrow keys stop bubbling so parent canvas/editor shortcuts do not also fire while focus is in the control (canvas binds Up/Down as well as Left/Right). Only Left/Right change selection in this horizontal control.
 - Reka selects on arrows via a `window` keydown listener. That is blocked when keydown does not reach `window` (this control’s own `stopPropagation`, or an ancestor `@keydown.stop`). Roving focus still moves; the control completes selection by clicking the focused radio after `nextTick`.
 - `class` is applied to the outer wrapper; other fallthrough attrs are forwarded to the Reka `RadioGroupRoot`.
 
