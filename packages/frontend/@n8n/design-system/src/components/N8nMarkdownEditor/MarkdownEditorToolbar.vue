@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { t } from '@n8n/design-system/locale';
 
 import N8nButton from '../N8nButton';
+import { N8nDialog, N8nDialogFooter } from '../N8nDialog';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '../N8nDropdownMenu';
 import N8nIcon from '../N8nIcon';
+import N8nInput from '../N8nInput';
 import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import N8nTooltip from '../N8nTooltip';
@@ -34,6 +36,9 @@ const emit = defineEmits<{
 	'update:isRawMode': [value: boolean];
 }>();
 
+const isLinkDialogOpen = ref(false);
+const linkUrl = ref('');
+
 const markControls = computed<ToolbarControl[]>(() => [
 	{
 		id: 'bold',
@@ -53,9 +58,36 @@ const markControls = computed<ToolbarControl[]>(() => [
 		icon: 'strikethrough',
 		command: ({ editor }) => editor.chain().focus().toggleStrike().run(),
 	},
+	{
+		id: 'underline',
+		label: translate('markdownEditor.underline'),
+		icon: 'underline',
+		command: ({ editor }) => editor.chain().focus().toggleUnderline().run(),
+	},
 ]);
 
 const blockControls = computed<ToolbarControl[]>(() => [
+	{
+		id: 'blockquote',
+		label: translate('markdownEditor.blockquote'),
+		icon: 'quote',
+		command: ({ editor }) => editor.chain().focus().toggleBlockquote().run(),
+	},
+	{
+		id: 'codeBlock',
+		label: translate('markdownEditor.codeBlock'),
+		icon: 'file-code',
+		command: ({ editor }) => editor.chain().focus().toggleCodeBlock().run(),
+	},
+]);
+
+const listControls = computed<ToolbarControl[]>(() => [
+	{
+		id: 'orderedList',
+		label: translate('markdownEditor.orderedList'),
+		icon: 'list-ordered',
+		command: ({ editor }) => editor.chain().focus().toggleOrderedList().run(),
+	},
 	{
 		id: 'bulletList',
 		label: translate('markdownEditor.bulletList'),
@@ -67,18 +99,6 @@ const blockControls = computed<ToolbarControl[]>(() => [
 		label: translate('markdownEditor.taskList'),
 		icon: 'list-checks',
 		command: ({ editor }) => editor.chain().focus().toggleTaskList().run(),
-	},
-	{
-		id: 'codeBlock',
-		label: translate('markdownEditor.codeBlock'),
-		icon: 'file-code',
-		command: ({ editor }) => editor.chain().focus().toggleCodeBlock().run(),
-	},
-	{
-		id: 'blockquote',
-		label: translate('markdownEditor.blockquote'),
-		icon: 'quote',
-		command: ({ editor }) => editor.chain().focus().toggleBlockquote().run(),
 	},
 ]);
 
@@ -132,6 +152,12 @@ const activeBlocks = computed(() =>
 		.map((control) => control.id),
 );
 
+const activeLists = computed(() =>
+	listControls.value
+		.filter((control) => props.editor.isActive(control.id))
+		.map((control) => control.id),
+);
+
 const activeTextStyle = computed(() => {
 	if (props.editor.isActive('heading', { level: 1 })) return 'heading-1';
 	if (props.editor.isActive('heading', { level: 2 })) return 'heading-2';
@@ -159,6 +185,25 @@ const runControl = (control: ToolbarControl) => {
 
 	control.command({ editor: props.editor });
 };
+
+function openLinkDialog() {
+	if (props.disabled || props.isRawMode) return;
+
+	linkUrl.value = props.editor.getAttributes('link').href ?? '';
+	isLinkDialogOpen.value = true;
+}
+
+function applyLink() {
+	const href = linkUrl.value.trim();
+
+	if (href) {
+		props.editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+	} else {
+		props.editor.chain().focus().extendMarkRange('link').unsetLink().run();
+	}
+
+	isLinkDialogOpen.value = false;
+}
 
 const setTextStyle = (value: string | number) => {
 	if (props.disabled || props.isRawMode) return;
@@ -188,52 +233,87 @@ const setTextStyle = (value: string | number) => {
 		data-test-id="markdown-editor-toolbar"
 	>
 		<div :class="[$style.toolbarInner, variant === 'contained' ? $style.containedToolbar : '']">
-			<N8nTooltip :content="activeTextStyleLabel">
-				<N8nDropdownMenu
-					:items="textStyleOptions"
+			<div :class="$style.toolbarGroup">
+				<N8nTooltip :content="activeTextStyleLabel">
+					<N8nDropdownMenu
+						:items="textStyleOptions"
+						:disabled="disabled || isRawMode"
+						:class="$style.textStyleDropdown"
+						placement="bottom-start"
+						@select="setTextStyle"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="ghost"
+								size="small"
+								:disabled="disabled || isRawMode"
+								:class="$style.textStyleTrigger"
+								:aria-label="activeTextStyleLabel"
+							>
+								<N8nIcon :icon="activeTextStyleIcon" size="small" />
+								<N8nIcon icon="chevron-down" size="small" />
+							</N8nButton>
+						</template>
+					</N8nDropdownMenu>
+				</N8nTooltip>
+
+				<N8nToggleGroup
+					:model-value="activeMarks"
+					type="multiple"
+					variant="ghost"
+					size="small"
 					:disabled="disabled || isRawMode"
-					:class="$style.textStyleDropdown"
-					placement="bottom-start"
-					@select="setTextStyle"
 				>
-					<template #trigger>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:disabled="disabled || isRawMode"
-							:class="$style.textStyleTrigger"
-							:aria-label="activeTextStyleLabel"
-						>
-							<N8nIcon :icon="activeTextStyleIcon" size="small" />
-							<N8nIcon icon="chevron-down" size="small" />
-						</N8nButton>
+					<template #default="slotProps">
+						<N8nToggle
+							v-for="control in markControls"
+							:key="control.id"
+							:value="control.id"
+							:label="control.label"
+							:icon="control.icon"
+							v-bind="slotProps"
+							@click="runControl(control)"
+						/>
 					</template>
-				</N8nDropdownMenu>
-			</N8nTooltip>
+				</N8nToggleGroup>
+			</div>
 
-			<N8nToggleGroup
-				:model-value="activeMarks"
-				type="multiple"
-				variant="ghost"
-				size="small"
-				:disabled="disabled || isRawMode"
-				:class="$style.toolbarGroup"
-			>
-				<template #default="slotProps">
-					<N8nToggle
-						v-for="control in markControls"
-						:key="control.id"
-						:value="control.id"
-						:label="control.label"
-						:icon="control.icon"
-						v-bind="slotProps"
-						@click="runControl(control)"
+			<div :class="$style.toolbarGroup">
+				<N8nToggleGroup
+					:model-value="activeBlocks"
+					type="multiple"
+					variant="ghost"
+					size="small"
+					:disabled="disabled || isRawMode"
+				>
+					<template #default="slotProps">
+						<N8nToggle
+							v-for="control in blockControls"
+							:key="control.id"
+							:value="control.id"
+							:label="control.label"
+							:icon="control.icon"
+							v-bind="slotProps"
+							@click="runControl(control)"
+						/>
+					</template>
+				</N8nToggleGroup>
+
+				<N8nTooltip :content="translate('markdownEditor.link')">
+					<N8nButton
+						variant="ghost"
+						size="small"
+						icon="link"
+						:disabled="disabled || isRawMode"
+						:aria-label="translate('markdownEditor.link')"
+						:class="$style.linkButton"
+						@click="openLinkDialog"
 					/>
-				</template>
-			</N8nToggleGroup>
+				</N8nTooltip>
+			</div>
 
 			<N8nToggleGroup
-				:model-value="activeBlocks"
+				:model-value="activeLists"
 				type="multiple"
 				variant="ghost"
 				size="small"
@@ -242,7 +322,7 @@ const setTextStyle = (value: string | number) => {
 			>
 				<template #default="slotProps">
 					<N8nToggle
-						v-for="control in blockControls"
+						v-for="control in listControls"
 						:key="control.id"
 						:value="control.id"
 						:label="control.label"
@@ -290,6 +370,29 @@ const setTextStyle = (value: string | number) => {
 				/>
 			</div>
 		</div>
+
+		<N8nDialog
+			:open="isLinkDialogOpen"
+			:header="translate('markdownEditor.linkDialogTitle')"
+			size="small"
+			@update:open="isLinkDialogOpen = $event"
+		>
+			<form @submit.prevent="applyLink">
+				<N8nInput
+					v-model="linkUrl"
+					type="text"
+					autofocus
+					:placeholder="translate('markdownEditor.linkPlaceholder')"
+					:aria-label="translate('markdownEditor.linkUrl')"
+				/>
+				<N8nDialogFooter>
+					<N8nButton variant="outline" @click="isLinkDialogOpen = false">
+						{{ translate('markdownEditor.cancel') }}
+					</N8nButton>
+					<N8nButton type="submit">{{ translate('markdownEditor.addLink') }}</N8nButton>
+				</N8nDialogFooter>
+			</form>
+		</N8nDialog>
 	</div>
 </template>
 
@@ -338,7 +441,15 @@ const setTextStyle = (value: string | number) => {
 	padding-inline: var(--spacing--2xs);
 }
 
+.linkButton {
+	flex: 0 0 auto;
+}
+
 .toolbarGroup {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+
 	&:not(:last-child)::after {
 		content: '';
 		width: 1px;
