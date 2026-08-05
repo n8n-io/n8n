@@ -424,6 +424,9 @@ describe('ActiveWorkflowManager', () => {
 				mock<Project>({ id: 'project-1', name: 'Test Project' }),
 			);
 
+			const pollCursorService = mock<PollCursorService>({ enabled: false });
+			pollCursorService.resolveCursor.mockResolvedValue({ migrated: false });
+
 			factory = new TriggerExecutionContextFactory(
 				rootLogger,
 				mock(), // errorReporter
@@ -437,7 +440,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // scheduleTriggerJobRegistrar
 				ownershipService,
 				mock(), // nodeTypes
-				mock<PollCursorService>({ enabled: false }),
+				pollCursorService,
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
