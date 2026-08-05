@@ -79,8 +79,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 		agent: {
 			name: 'Runtime Agent',
 			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
-			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			stream: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
+			resume: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
 			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
@@ -104,7 +108,8 @@ function makeService() {
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
 
-	executionService.recordMessage.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
 
 	const service = new AgentExecutionOrchestratorService(
@@ -172,6 +177,54 @@ describe('AgentExecutionOrchestratorService', () => {
 		vi.clearAllMocks();
 	});
 
+	it('starts durable recording before consuming timeline events and finalizes the same row', async () => {
+		const { service, executionService } = makeService();
+		executionService.startExecutionRecording.mockResolvedValue('execution-running');
+		executionService.finalizeExecution.mockResolvedValue('execution-running');
+		const runtime = makeRuntime([
+			{ type: 'text-delta', id: 'text-1', delta: 'Working' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				telemetry: telemetryContext,
+			}),
+		);
+
+		expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'thread-1', userMessage: 'hello' }),
+			expect.any(Date),
+		);
+		expect(executionService.startExecutionRecording.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.recordTimelineSnapshot.mock.invocationCallOrder[0],
+		);
+		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'execution-running',
+			}),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-running',
+			expect.objectContaining({
+				record: expect.objectContaining({ assistantResponse: 'Working' }),
+			}),
+		);
+		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
+	});
+
 	it('streams chat responses and records suspended executions', async () => {
 		const { service, executionService } = makeService();
 		const abortController = new AbortController();
@@ -209,7 +262,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				abortSignal: abortController.signal,
 			}),
 		);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				threadId: 'thread-1',
 				userMessage: 'hello',
@@ -219,7 +273,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
-	it('awaits recordMessage and notifies onExecutionRecorded with the returned id', async () => {
+	it('awaits finalization and notifies onExecutionRecorded with the returned id', async () => {
 		const { service, executionService } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		const onExecutionRecorded = vi.fn();
@@ -238,7 +292,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(executionService.recordMessage).toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalled();
 		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
 	});
 
@@ -259,7 +313,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(executionService.recordMessage).toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalled();
 	});
 
 	it('executes in-app chat against the draft runtime', async () => {
@@ -311,7 +365,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				source: undefined,
 				taskId: undefined,
@@ -364,7 +419,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
 		);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				source: 'slack',
 				telemetry: {
@@ -411,7 +467,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
 			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
 		);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				source: 'task',
 				taskId: 'task-1',
@@ -491,7 +548,8 @@ describe('AgentExecutionOrchestratorService', () => {
 
 		expect(generatedTextIndex).toBeGreaterThan(-1);
 		expect(generatedTextIndex).toBeLessThan(finishIndex);
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
 					assistantResponse: expect.stringContaining('maximum number of iterations'),
@@ -520,7 +578,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			),
 		).rejects.toThrow('reader failed while consuming stream');
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				threadId: 'thread-1',
 				agentId,
@@ -560,7 +619,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		abortController.abort();
 		await collect(stream);
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				userMessage: 'hello',
 				record: expect.objectContaining({
@@ -654,7 +714,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				threadId: 'thread-1',
 				userMessage: null,
@@ -696,7 +757,8 @@ describe('AgentExecutionOrchestratorService', () => {
 		abortController.abort();
 		await collect(stream);
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				userMessage: null,
 				hitlStatus: 'resumed',
@@ -1029,7 +1091,8 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 		);
 
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({ threadId: 'thread-1', userMessage: null, hitlStatus: 'suspended' }),
 		);
 	});

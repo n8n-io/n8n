@@ -187,6 +187,20 @@ export class SubAgentForegroundRunner {
 		const telemetry = deriveSubAgentTelemetry(context.telemetry);
 		const userMessage =
 			operation.type === 'run' ? renderDelegateSubAgentPrompt(operation.request) : null;
+		let executionId: string | undefined;
+		const recorder = new ExecutionRecorder(undefined, (timeline) => {
+			if (executionId) {
+				this.agentExecutionService.recordTimelineSnapshot({
+					projectId: context.projectId,
+					agentId: runtimeSource.source.sourceId,
+					threadId,
+					executionId,
+					timeline,
+				});
+			}
+		});
+		const startedAt = recorder.startedAt;
+		let recorded = false;
 		try {
 			const executionOptions = {
 				...(context.abortSignal !== undefined ? { abortSignal: context.abortSignal } : {}),
@@ -208,7 +222,41 @@ export class SubAgentForegroundRunner {
 							runId: operation.request.childRunId,
 							toolCallId: operation.request.childToolCallId,
 						});
-			const { messageRecord, result } = await consumeAgentStream(resultStream, context.onChunk);
+			try {
+				const currentExecutionId = await this.agentExecutionService.startExecutionRecording(
+					{
+						threadId,
+						agentId: runtimeSource.source.sourceId,
+						agentName: runtimeSource.source.config.name,
+						projectId: context.projectId,
+						userMessage,
+						source: 'subagent',
+						threadMetadata: {
+							parentThreadId: operation.request.parentThreadId,
+							parentAgentId: context.parentAgentId,
+						},
+						telemetry: {
+							runType: context.runType,
+							configuration: buildAgentConfigurationTelemetryFromConfig(
+								runtimeSource.source.config,
+							),
+						},
+					},
+					startedAt,
+				);
+				executionId = currentExecutionId;
+			} catch (error) {
+				this.logger.warn('Failed to start subagent execution recording', {
+					agentId: runtimeSource.source.sourceId,
+					taskPath: operation.taskPath,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+			const { messageRecord, result } = await consumeAgentStream(
+				resultStream,
+				recorder,
+				context.onChunk,
+			);
 			const suspended = result.pendingSuspend !== undefined && result.pendingSuspend.length > 0;
 			const hitlStatus = suspended
 				? 'suspended'
@@ -225,8 +273,10 @@ export class SubAgentForegroundRunner {
 				taskPath: operation.taskPath,
 				userMessage,
 				record: messageRecord,
+				executionId,
 				...(hitlStatus !== undefined ? { hitlStatus } : {}),
 			});
+			recorded = true;
 
 			return {
 				taskPath: operation.taskPath,
@@ -239,6 +289,25 @@ export class SubAgentForegroundRunner {
 				result,
 				...(suspended ? { resumeContext: createResumeContext(runtimeSource.source) } : {}),
 			};
+		} catch (error) {
+			if (!recorded) {
+				recorder.record({ type: 'error', error });
+				recorder.record({ type: 'finish', finishReason: 'error' });
+				await this.recordSubAgentExecution({
+					runtimeSource: runtimeSource.source,
+					projectId: context.projectId,
+					threadId,
+					parentThreadId: operation.request.parentThreadId,
+					parentAgentId: context.parentAgentId,
+					runType: context.runType,
+					taskPath: operation.taskPath,
+					userMessage,
+					record: recorder.getMessageRecord(),
+					executionId,
+					...(operation.type === 'resume' ? { hitlStatus: 'resumed' as const } : {}),
+				});
+			}
+			throw error;
 		} finally {
 			await agent.close().catch((error) => {
 				this.logger.warn(`Failed to close subagent after ${operation.type}`, {
@@ -260,6 +329,7 @@ export class SubAgentForegroundRunner {
 		taskPath: SubAgentTaskPath;
 		userMessage: string | null;
 		record: MessageRecord;
+		executionId?: string;
 		hitlStatus?: 'suspended' | 'resumed';
 	}): Promise<void> {
 		const {
@@ -272,11 +342,13 @@ export class SubAgentForegroundRunner {
 			taskPath,
 			userMessage,
 			record,
+			executionId,
 			hitlStatus,
 		} = params;
 
+		if (!executionId) return;
 		try {
-			await this.agentExecutionService.recordMessage({
+			await this.agentExecutionService.finalizeExecution(executionId, {
 				threadId,
 				agentId: runtimeSource.sourceId,
 				agentName: runtimeSource.config.name,
@@ -319,9 +391,9 @@ async function getReconstructionService() {
 
 async function consumeAgentStream(
 	resultStream: StreamResult,
+	recorder: ExecutionRecorder,
 	onChunk?: (chunk: StreamChunk) => void,
 ): Promise<{ messageRecord: MessageRecord; result: GenerateResult }> {
-	const recorder = new ExecutionRecorder();
 	const pendingSuspend: NonNullable<GenerateResult['pendingSuspend']> = [];
 	let structuredOutput: unknown;
 

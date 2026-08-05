@@ -213,7 +213,13 @@ export class RuntimeContextBuilder {
 				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
 			);
 		}
-		return createRecallMemoryTool({ memory, config: episodicMemory, scope, executionCounter });
+		return createRecallMemoryTool({
+			memory,
+			config: episodicMemory,
+			scope,
+			executionCounter,
+			agentName: this.config.name,
+		});
 	}
 
 	/**
