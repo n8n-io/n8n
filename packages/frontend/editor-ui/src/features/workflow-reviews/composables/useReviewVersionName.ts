@@ -5,11 +5,13 @@ import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory
 
 /**
  * Shared by the submit-for-review and update-review dialogs, which both prefill
- * the current version's name and write the submitted one back to the editor.
+ * the current version's name and description and write the submitted ones back
+ * to the editor.
  */
 export const useReviewVersionName = () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const versionName = ref('');
+	const versionDescription = ref('');
 
 	/**
 	 * Every path into either dialog is gated on a saved workflow, so the document
@@ -20,22 +22,23 @@ export const useReviewVersionName = () => {
 		versionName.value =
 			workflowDocumentStore.value.versionData?.name ||
 			generateVersionLabelFromId(workflowDocumentStore.value.versionId);
+		versionDescription.value = workflowDocumentStore.value.versionData?.description ?? '';
 	};
 
 	/**
-	 * Mirror the persisted name into the editor so version history and the
-	 * publish modal's prefill reflect it without a refetch..
+	 * Mirror the persisted name and description into the editor so version
+	 * history and the publish modal's prefill reflect them without a refetch.
 	 */
-	const applyVersionName = (workflowVersionId: string, name: string) => {
+	const applyVersionName = (workflowVersionId: string, name: string, description: string) => {
 		const store = workflowDocumentStore.value;
 		if (store.versionId !== workflowVersionId) return;
 
 		store.setVersionData({
 			versionId: workflowVersionId,
 			name,
-			description: store.versionData?.description ?? null,
+			description: description.trim() || null,
 		});
 	};
 
-	return { versionName, prefillVersionName, applyVersionName };
+	return { versionName, versionDescription, prefillVersionName, applyVersionName };
 };

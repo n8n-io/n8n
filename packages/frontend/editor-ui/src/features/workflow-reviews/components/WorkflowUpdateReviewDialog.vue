@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { WORKFLOW_VERSION_NAME_MAX_LENGTH } from '@n8n/api-types';
+import {
+	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
+	WORKFLOW_VERSION_NAME_MAX_LENGTH,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	N8nButton,
@@ -35,7 +38,8 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
 const reviewStatusStore = useWorkflowReviewStatusStore();
-const { versionName, prefillVersionName, applyVersionName } = useReviewVersionName();
+const { versionName, versionDescription, prefillVersionName, applyVersionName } =
+	useReviewVersionName();
 
 const isSubmitting = ref(false);
 const workflowReviewRequestId = computed(
@@ -72,9 +76,10 @@ const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
 	const workflowId = props.workflowId;
-	// `flushSave()` awaits a full workflow save, so reading the field afterwards
-	// could send a name the guard never validated.
+	// `flushSave()` awaits a full workflow save, so reading the fields afterwards
+	// could send values the guard never validated.
 	const trimmedVersionName = versionName.value.trim();
+	const trimmedVersionDescription = versionDescription.value.trim();
 
 	isSubmitting.value = true;
 	try {
@@ -106,9 +111,10 @@ const submit = async () => {
 			workflowId,
 			workflowVersionId,
 			workflowVersionName: trimmedVersionName,
+			workflowVersionDescription: trimmedVersionDescription,
 		});
 
-		applyVersionName(workflowVersionId, trimmedVersionName);
+		applyVersionName(workflowVersionId, trimmedVersionName, trimmedVersionDescription);
 
 		void reviewStatusStore.fetchStatus(workflowId);
 		emit('update:open', false);
@@ -164,6 +170,21 @@ const submit = async () => {
 				data-test-id="workflow-update-review-version-name-input"
 			/>
 		</N8nInputLabel>
+		<N8nInputLabel
+			input-name="workflow-update-review-version-description"
+			:label="i18n.baseText('workflows.publishModal.descriptionPlaceholder')"
+			:class="$style.versionDescription"
+		>
+			<N8nInput
+				id="workflow-update-review-version-description"
+				v-model="versionDescription"
+				type="textarea"
+				:rows="4"
+				:maxlength="WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH"
+				:disabled="isSubmitting"
+				data-test-id="workflow-update-review-version-description-input"
+			/>
+		</N8nInputLabel>
 		<N8nDialogFooter data-test-id="workflow-update-review-dialog">
 			<N8nButton
 				type="button"
@@ -195,5 +216,9 @@ const submit = async () => {
 
 .versionName {
 	margin-top: var(--spacing--sm);
+}
+
+.versionDescription {
+	margin-top: var(--spacing--xs);
 }
 </style>
