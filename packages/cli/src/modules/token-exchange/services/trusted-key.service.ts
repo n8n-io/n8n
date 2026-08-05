@@ -186,6 +186,7 @@ export class TrustedKeyService {
 			if (!cryptoKey) continue;
 
 			return {
+				sourceId: entity.sourceId,
 				kid,
 				algorithms: data.algorithms,
 				key: cryptoKey,

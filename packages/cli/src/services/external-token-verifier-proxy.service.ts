@@ -1,0 +1,52 @@
+import { Service } from '@n8n/di';
+
+export type ExternalTokenVerificationFailureReason = 'verifier_not_registered' | 'invalid_token';
+
+export type ExternalVerificationContext = {
+	reason: ExternalTokenVerificationFailureReason;
+	errorDetails?: string;
+};
+
+/** Attested facts from an externally-issued token. No `User`, no principal. */
+export interface VerifiedClaim {
+	sourceId: string;
+	issuer: string;
+	subject: string;
+	audience: string | string[];
+	attributes: Record<string, unknown>;
+	expiresAt: Date;
+}
+
+export type VerifiedClaimResult =
+	| { claim: VerifiedClaim; context?: undefined }
+	| { claim: null; context: ExternalVerificationContext };
+
+export interface ExternalTokenVerifier {
+	verifyExternalToken(token: string, expectedAudience: string): Promise<VerifiedClaimResult>;
+}
+
+/**
+ * Lets modules verify externally-issued tokens without importing
+ * `token-exchange` directly — same pattern as `OAuthTokenVerifierProxy`.
+ */
+@Service()
+export class ExternalTokenVerifierProxy implements ExternalTokenVerifier {
+	private provider: ExternalTokenVerifier | null = null;
+
+	registerProvider(provider: ExternalTokenVerifier): void {
+		this.provider = provider;
+	}
+
+	async verifyExternalToken(token: string, expectedAudience: string): Promise<VerifiedClaimResult> {
+		if (!this.provider) {
+			return {
+				claim: null,
+				context: {
+					reason: 'verifier_not_registered',
+					errorDetails: 'No external token verifier is registered on this instance',
+				},
+			};
+		}
+		return await this.provider.verifyExternalToken(token, expectedAudience);
+	}
+}

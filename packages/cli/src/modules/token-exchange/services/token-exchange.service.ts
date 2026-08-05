@@ -4,6 +4,10 @@ import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
+import type {
+	ExternalTokenVerifier,
+	VerifiedClaimResult,
+} from '@/services/external-token-verifier-proxy.service';
 import { JwtService } from '@/services/jwt.service';
 
 import { TokenExchangeConfig } from '../token-exchange.config';
@@ -32,7 +36,7 @@ const MAX_TOKEN_LIFETIME_SECONDS = 60;
 const MIN_REMAINING_LIFETIME_SECONDS = 5;
 
 @Service()
-export class TokenExchangeService {
+export class TokenExchangeService implements ExternalTokenVerifier {
 	private readonly logger: Logger;
 
 	constructor(
@@ -201,6 +205,33 @@ export class TokenExchangeService {
 		}
 
 		return { claims, resolvedKey };
+	}
+
+	/** Registered as the `ExternalTokenVerifierProxy` provider on module init. Never throws. */
+	async verifyExternalToken(token: string, expectedAudience: string): Promise<VerifiedClaimResult> {
+		try {
+			const { claims, resolvedKey } = await this.verifyToken(token, {
+				expectedAudience,
+				consumeJti: false,
+				requireJti: false,
+			});
+			const { sub, iss, aud, iat, exp, jti, ...attributes } = claims;
+
+			return {
+				claim: {
+					sourceId: resolvedKey.sourceId,
+					issuer: iss,
+					subject: sub,
+					audience: aud,
+					attributes,
+					expiresAt: new Date(exp * 1000),
+				},
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'unknown error';
+			this.logger.warn('External token verification failed', { error: message });
+			return { claim: null, context: { reason: 'invalid_token', errorDetails: message } };
+		}
 	}
 
 	async embedLogin(

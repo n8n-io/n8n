@@ -45,6 +45,13 @@ export class TokenExchangeModule implements ModuleInterface {
 				await trustedKeyService.registerSsoDerivedSource(issuer, jwksUri),
 		});
 
+		// Register as the ExternalTokenVerifierProxy provider so other modules can verify without importing this one.
+		const { ExternalTokenVerifierProxy } = await import(
+			'@/services/external-token-verifier-proxy.service.js'
+		);
+		const { TokenExchangeService } = await import('./services/token-exchange.service.js');
+		Container.get(ExternalTokenVerifierProxy).registerProvider(Container.get(TokenExchangeService));
+
 		await import('./controllers/token-exchange.controller.js');
 		await import('./controllers/embed-auth.controller.js');
 

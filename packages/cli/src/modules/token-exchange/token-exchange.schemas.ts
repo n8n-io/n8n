@@ -127,6 +127,9 @@ export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
  * already been parsed into a type accepted by `jwt.verify()`.
  */
 export interface ResolvedTrustedKey {
+	/** The trusted key source this key resolved from. */
+	sourceId: string;
+
 	/** The Key ID that identifies this key in JWT headers. */
 	kid: string;
 
