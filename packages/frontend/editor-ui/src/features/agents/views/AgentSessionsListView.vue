@@ -256,16 +256,20 @@ async function loadMore() {
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
 						:class="$style.clickableRow"
-						tabindex="0"
 						data-test-id="agent-session-list-item"
 						@click="openConversation(thread.id)"
-						@keydown.enter.self="openConversation(thread.id)"
-						@keydown.space.self.prevent="openConversation(thread.id)"
 					>
 						<td :class="$style.titleCell">
-							<span :class="$style.sessionTitle" data-test-id="agent-session-title">
-								{{ threadTitleOf(thread) }}
-							</span>
+							<button
+								type="button"
+								:class="$style.sessionOpen"
+								data-test-id="agent-session-open"
+								@click.stop="openConversation(thread.id)"
+							>
+								<span :class="$style.sessionTitle" data-test-id="agent-session-title">
+									{{ threadTitleOf(thread) }}
+								</span>
+							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
 							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
@@ -332,6 +336,8 @@ async function loadMore() {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .wrapper {
 	display: flex;
 	flex-direction: column;
@@ -370,6 +376,21 @@ async function loadMore() {
 	font-weight: var(--font-weight--medium);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.sessionOpen {
+	@include focus.focus-visible-ring-offset;
+
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	color: inherit;
+	background: transparent;
+	font: inherit;
+	text-align: left;
+	appearance: none;
+	cursor: pointer;
 }
 
 .originCell,

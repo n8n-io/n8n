@@ -202,46 +202,35 @@ describe('AgentSessionsListView', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		['Enter', false],
-		[' ', true],
-	] as const)(
-		'activates a session row with %j through both route and intent navigation',
-		async (key, preventsDefault) => {
-			const wrapper = await mountView();
-			const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+	it('keeps the table row out of the tab order and ignores keyboard activation', async () => {
+		const wrapper = await mountView();
+		const row = wrapper.get('[data-test-id="agent-session-list-item"]');
 
-			wrapper.get('[data-test-id="agent-session-list-item"]').element.dispatchEvent(event);
-			await flushPromises();
+		expect(row.attributes('tabindex')).toBeUndefined();
 
-			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-				name: 'AgentPreviewView',
-				params: { projectId: 'project-1', agentId: 'agent-1' },
-				query: { continueSessionId: 'thread-1', section: '__executions' },
-			});
-			expect(event.defaultPrevented).toBe(preventsDefault);
+		await row.trigger('keydown', { key: 'Enter' });
+		await row.trigger('keydown', { key: ' ' });
 
-			routerPush.mockClear();
-			const intentWrapper = await mountView({
-				navigationMode: 'intent',
-				manageStoreLifecycle: false,
-			});
-			const intentEvent = new KeyboardEvent('keydown', {
-				key,
-				bubbles: true,
-				cancelable: true,
-			});
+		expect(routerPush).not.toHaveBeenCalled();
+	});
 
-			intentWrapper
-				.get('[data-test-id="agent-session-list-item"]')
-				.element.dispatchEvent(intentEvent);
-			await flushPromises();
+	it('opens the conversation exactly once from a native session title button', async () => {
+		const wrapper = await mountView();
+		const openButton = wrapper.find('[data-test-id="agent-session-open"]');
 
-			expect(intentWrapper.emitted('open-conversation')).toEqual([['thread-1']]);
-			expect(intentEvent.defaultPrevented).toBe(preventsDefault);
-			expect(routerPush).not.toHaveBeenCalled();
-		},
-	);
+		expect(openButton.exists()).toBe(true);
+		expect(openButton.element.tagName).toBe('BUTTON');
+		expect(openButton.attributes('type')).toBe('button');
+		expect(openButton.text()).toBe('My session');
+
+		await openButton.trigger('click');
+
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+			name: 'AgentPreviewView',
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			query: { continueSessionId: 'thread-1', section: '__executions' },
+		});
+	});
 
 	it('opens the conversation in a new tab in new-tab navigation mode', async () => {
 		const wrapper = await mountView({ navigationMode: 'new-tab' });

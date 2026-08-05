@@ -1456,6 +1456,19 @@ watch(
 	{ immediate: true },
 );
 
+watch(continueSessionId, (routeSessionId) => {
+	if (
+		isArtifactMode.value ||
+		!isPreviewDockOpen.value ||
+		!sessionDetailId.value ||
+		!routeSessionId
+	) {
+		return;
+	}
+
+	sessionDetailId.value = routeSessionId;
+});
+
 // If another surface creates the pending artifact, reload the now-persisted
 // agent. Local Preview sends already clear `isUnsaved` before emitting
 // `persisted`; reinitializing in that path would unmount the active chat stream.

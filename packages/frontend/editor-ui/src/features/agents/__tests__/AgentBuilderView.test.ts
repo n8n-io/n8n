@@ -752,6 +752,29 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(editor.props('sessionDetailId')).toBeUndefined();
 	});
 
+	it('keeps an open center trace synchronized with the Preview route session', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+		routeQuery.section = '__executions';
+		fetchedSessionThreads.push(
+			{ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' },
+			{ id: 'thread-2', updatedAt: '2026-01-02T00:00:00Z' },
+		);
+
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(editor.props('sessionDetailId')).toBe('thread-1');
+
+		routeQuery.continueSessionId = 'thread-2';
+		await nextTick();
+
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			'thread-2',
+		);
+		expect(editor.props('sessionDetailId')).toBe('thread-2');
+	});
+
 	it('returns to the Sessions tab when closing preview opened with section=__executions', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';

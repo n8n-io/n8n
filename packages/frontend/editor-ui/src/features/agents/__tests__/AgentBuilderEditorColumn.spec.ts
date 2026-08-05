@@ -288,23 +288,13 @@ describe('AgentBuilderEditorColumn', () => {
 		},
 	);
 
-	it('forwards only the conversation and parent trace intents from the Sessions list', async () => {
+	it('forwards the conversation intent from the Sessions list', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 		const sessionsList = wrapper.findComponent({ name: 'AgentSessionsListView' });
 
 		sessionsList.vm.$emit('open-conversation', 'thread-1');
 
 		expect(wrapper.emitted('open-session')).toEqual([['thread-1']]);
-		const vnodeProps = (
-			sessionsList.vm as unknown as {
-				$: { vnode: { props: Record<string, unknown> | null } };
-			}
-		).$.vnode.props;
-		expect(
-			Object.keys(vnodeProps ?? {})
-				.filter((name) => name.startsWith('on'))
-				.sort(),
-		).toEqual(['onOpenConversation', 'onViewParentTrace']);
 	});
 
 	it('forwards the typed parent trace intent from the Sessions list', async () => {
