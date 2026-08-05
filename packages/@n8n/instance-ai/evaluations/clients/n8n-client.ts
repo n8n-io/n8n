@@ -16,6 +16,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
+	InstanceAiWorkflowAttachment,
 	AgentJsonConfig,
 	AgentSkill,
 	EvaluationConfigDto,
@@ -212,12 +213,20 @@ export class N8nClient {
 
 	/**
 	 * Send a chat message to the instance-ai agent.
-	 * POST /rest/instance-ai/chat/:threadId  body: { message }
+	 * POST /rest/instance-ai/chat/:threadId  body: { message, attachments? }
+	 *
+	 * `attachments` are resource references the agent resolves with its tools — the
+	 *  same channel the editor uses when a user opens the assistant with a workflow
+	 * in front of them, so the agent is handed it by id instead of hunting by name.
 	 */
-	async sendMessage(threadId: string, message: string): Promise<{ runId: string }> {
+	async sendMessage(
+		threadId: string,
+		message: string,
+		attachments?: InstanceAiWorkflowAttachment[],
+	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: { message },
+			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
 		});
 		return result as { runId: string };
 	}

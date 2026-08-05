@@ -198,6 +198,11 @@ export interface ExecutionScenario {
 export interface ConversationTurn {
 	role: 'user' | 'assistant';
 	text: string;
+	/** Hand the agent a seeded workflow with this turn (opening turn only), the way
+	 *  the editor does when a user opens the assistant with a workflow in front of
+	 *  them. `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  per-run remapped id. See `ConversationTurnSchema`. */
+	attach?: { workflow: string };
 }
 
 export interface TestCaseCredential {
