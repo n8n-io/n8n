@@ -153,6 +153,18 @@ describe('PollTriggerExecutor', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
+		it('routes a cursor resolution failure through __emitError instead of rejecting', async () => {
+			const error = new Error('could not resolve poll cursor');
+			pollFunctions.__runPoll.mockRejectedValueOnce(error);
+
+			const execute = executor.create(workflow, node, pollFunctions, () => true);
+			await expect(execute()).resolves.toBeUndefined();
+
+			expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
+			expect(acquireIsolate).not.toHaveBeenCalled();
+			expect(releaseIsolate).not.toHaveBeenCalled();
+		});
+
 		it('emits an error when the poll fails for a current workflow', async () => {
 			const error = new Error('poll failed');
 			triggersAndPollers.runPollFunction.mockRejectedValueOnce(error);
