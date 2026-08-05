@@ -6,14 +6,16 @@ import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../en
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 
 @Service()
 export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 	constructor(
 		dataSource: DataSource,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		transactionRunner: TransactionRunner,
 	) {
-		super(WorkflowHistory, dataSource.manager);
+		super(WorkflowHistory, dataSource.manager, transactionRunner);
 	}
 
 	async deleteEarlierThan(date: Date) {
