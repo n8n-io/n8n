@@ -29,8 +29,8 @@ export type SchemaAudience = 'model' | 'validation';
  * negative would route a v4 schema to the v3 converter, which renders it as
  * `{}`. Not `_def`: `zod/v4/mini` has none.
  */
-function isZodV4Schema(schema: ZodType): boolean {
-	return typeof (schema as { _zod?: unknown })._zod === 'object';
+function isZodV4Schema(schema: ZodType): schema is ZodType & zodV4Core.$ZodType {
+	return typeof (schema as Partial<zodV4Core.$ZodType>)._zod === 'object';
 }
 
 function serializeV3(schema: ZodType, audience: SchemaAudience): JSONSchema7 {
@@ -42,8 +42,8 @@ function serializeV3(schema: ZodType, audience: SchemaAudience): JSONSchema7 {
 	) as JSONSchema7;
 }
 
-function serializeV4(schema: ZodType, audience: SchemaAudience): JSONSchema7 {
-	return toJsonSchemaV4(schema as unknown as zodV4Core.$ZodType, {
+function serializeV4(schema: zodV4Core.$ZodType, audience: SchemaAudience): JSONSchema7 {
+	return toJsonSchemaV4(schema, {
 		// Tool arguments and resume payloads are both inputs. Input mode is also
 		// what leaves a plain object's `additionalProperties` unset.
 		io: 'input',
@@ -62,13 +62,18 @@ function serializeV4(schema: ZodType, audience: SchemaAudience): JSONSchema7 {
 	}) as JSONSchema7;
 }
 
+/** Anything that is neither a Zod schema nor a primitive is taken at its word as
+ *  raw JSON Schema — there is nothing further to check at runtime. */
+function isJsonSchemaObject(schema: unknown): schema is JSONSchema7 {
+	return typeof schema === 'object' && schema !== null;
+}
+
 function serialize(schema: unknown, audience: SchemaAudience): JSONSchema7 | null {
 	if (!schema) return null;
 	if (isZodSchema(schema)) {
 		return isZodV4Schema(schema) ? serializeV4(schema, audience) : serializeV3(schema, audience);
 	}
-	if (typeof schema === 'object') return schema as JSONSchema7;
-	return null;
+	return isJsonSchemaObject(schema) ? schema : null;
 }
 
 /**

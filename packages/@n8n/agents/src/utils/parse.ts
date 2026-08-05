@@ -56,18 +56,16 @@ function getAjv(dialect: Dialect, unicodeRegExp: boolean): InstanceType<typeof A
 /** Bundle preference for a schema: the dialect it declares, else 2020-12 —
  *  MCP's default for embedded schemas when `$schema` is absent (SEP-1613). */
 function preferredDialects(schema: JSONSchema7): [Dialect, Dialect] {
-	const declared = (schema as { $schema?: unknown }).$schema;
-	return typeof declared === 'string' && LEGACY_DIALECT.test(declared)
+	return schema.$schema && LEGACY_DIALECT.test(schema.$schema)
 		? ['draft-07', '2020-12']
 		: ['2020-12', 'draft-07'];
 }
 
-interface CompiledSchema {
-	ajv: InstanceType<typeof AjvType>;
-	validate: ValidateFunction;
-}
+type CompileResult =
+	| { success: true; ajv: InstanceType<typeof AjvType>; validate: ValidateFunction }
+	| { success: false; errors: string[] };
 
-function compileJsonSchema(schema: JSONSchema7): CompiledSchema | undefined {
+function compileJsonSchema(schema: JSONSchema7): CompileResult {
 	const [preferred, fallback] = preferredDialects(schema);
 	// `unicodeRegExp: false` is the retry for a pattern Node's `u` flag rejects;
 	// the other dialect is the retry for keyword semantics the bundle cannot model.
@@ -78,21 +76,19 @@ function compileJsonSchema(schema: JSONSchema7): CompiledSchema | undefined {
 		[fallback, false],
 	];
 
-	let lastError: unknown;
+	// Each bundle rejects the schema for its own reason and no one of them is the
+	// authoritative complaint, so keep them all. The set collapses the pairs that
+	// differ only by `unicodeRegExp`.
+	const errors = new Set<string>();
 	for (const [dialect, unicodeRegExp] of attempts) {
 		const ajv = getAjv(dialect, unicodeRegExp);
 		try {
-			return { ajv, validate: ajv.compile(schema) };
+			return { success: true, ajv, validate: ajv.compile(schema) };
 		} catch (error) {
-			lastError = error;
+			errors.add(error instanceof Error ? error.message : String(error));
 		}
 	}
-
-	// A schema we cannot compile is a defect in the schema, not in the payload.
-	// Failing the payload would strand the run — which is the failure this whole
-	// path exists to avoid — so skip validation and say so loudly.
-	console.warn('Skipping validation: schema failed to compile on every dialect', lastError);
-	return undefined;
+	return { success: false, errors: [...errors] };
 }
 
 /**
@@ -115,7 +111,11 @@ export async function parseWithSchema(
 	}
 
 	const compiled = compileJsonSchema(schema);
-	if (!compiled) return { success: true, data };
+	if (!compiled.success) {
+		// Name the schema as the defect. Reporting success here would run a handler
+		// on input nothing ever checked.
+		return { success: false, error: `Schema could not be compiled: ${compiled.errors.join('; ')}` };
+	}
 
 	const { ajv, validate } = compiled;
 	if (validate(data)) return { success: true, data };

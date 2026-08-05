@@ -1,6 +1,6 @@
 import type { JSONSchema7 } from 'json-schema';
 
-import { fixSchema, lockAdditionalProperties } from '../json-schema';
+import { fixSchema, lockAdditionalProperties, unlockAdditionalProperties } from '../json-schema';
 
 describe('fixSchema', () => {
 	it('adds type "object" when properties is present but type is absent', () => {
@@ -120,5 +120,58 @@ describe('lockAdditionalProperties', () => {
 		// prototype is left untouched (Object.defineProperty, not bracket assignment).
 		expect(Object.getPrototypeOf(resultProps)).toBe(Object.prototype);
 		expect(Object.prototype.hasOwnProperty.call(resultProps, '__proto__')).toBe(true);
+	});
+});
+
+describe('unlockAdditionalProperties', () => {
+	it('drops additionalProperties: false at every depth', () => {
+		const result = unlockAdditionalProperties({
+			type: 'object',
+			additionalProperties: false,
+			properties: {
+				nested: {
+					type: 'object',
+					additionalProperties: false,
+					properties: { a: { type: 'string' } },
+				},
+			},
+			$defs: {
+				Inner: { type: 'object', additionalProperties: false, properties: {} },
+			},
+			anyOf: [{ type: 'object', additionalProperties: false, properties: {} }],
+		});
+
+		expect(result.additionalProperties).toBeUndefined();
+		const props = result.properties as Record<string, JSONSchema7>;
+		expect(props.nested.additionalProperties).toBeUndefined();
+		const defs = result.$defs as Record<string, JSONSchema7>;
+		expect(defs.Inner.additionalProperties).toBeUndefined();
+		const anyOf = (result.anyOf ?? []) as JSONSchema7[];
+		expect(anyOf[0].additionalProperties).toBeUndefined();
+	});
+
+	it('leaves an additionalProperties sub-schema in place', () => {
+		const result = unlockAdditionalProperties({
+			type: 'object',
+			properties: {},
+			additionalProperties: { type: 'string' },
+		});
+
+		expect(result.additionalProperties).toEqual({ type: 'string' });
+	});
+
+	it('round-trips a locked schema back to its unlocked shape', () => {
+		const original: JSONSchema7 = {
+			type: 'object',
+			properties: { nested: { type: 'object', properties: { a: { type: 'string' } } } },
+		};
+
+		expect(unlockAdditionalProperties(lockAdditionalProperties(original))).toEqual(original);
+	});
+
+	it('does not mutate the input schema', () => {
+		const input: JSONSchema7 = { type: 'object', properties: {}, additionalProperties: false };
+		unlockAdditionalProperties(input);
+		expect(input.additionalProperties).toBe(false);
 	});
 });

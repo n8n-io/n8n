@@ -14,6 +14,7 @@ import type {
 	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { unlockAdditionalProperties } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
 import {
 	getNativeWebSearchProviderTools,
@@ -444,7 +445,12 @@ async function resolveToolRef(
 				name: descriptor.name,
 				description: descriptor.description,
 				systemInstruction: descriptor.systemInstruction ?? undefined,
-				inputSchema: descriptor.inputSchema ?? undefined,
+				// The descriptor was serialized closed, for the model. It is also what
+				// validates the model's arguments, and there it has to behave like the
+				// authored Zod object, which strips unknown keys rather than rejecting.
+				inputSchema: descriptor.inputSchema
+					? unlockAdditionalProperties(descriptor.inputSchema)
+					: undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,

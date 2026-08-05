@@ -250,6 +250,40 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
 	});
 
+	it('reopens a custom tool input schema stored closed for the model', async () => {
+		const descriptor = makeToolDescriptor({
+			inputSchema: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					query: { type: 'string' },
+					filters: {
+						type: 'object',
+						additionalProperties: false,
+						properties: { since: { type: 'string' } },
+					},
+				},
+			} as JSONSchema7,
+		});
+		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
+
+		const agent = await buildFromJson(
+			config,
+			{ search_tool: descriptor },
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const { tools } = agent as unknown as { tools: Array<{ name: string; inputSchema?: unknown }> };
+		const inputSchema = tools.find((t) => t.name === 'search')?.inputSchema as JSONSchema7;
+		expect(inputSchema.additionalProperties).toBeUndefined();
+		const properties = inputSchema.properties as Record<string, JSONSchema7>;
+		expect(properties.filters.additionalProperties).toBeUndefined();
+	});
+
 	it('wires attached skills through the shared runtime skill loader without inlining bodies', async () => {
 		const config = makeConfig({
 			skills: [{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }],

@@ -249,15 +249,31 @@ describe('parseWithSchema — JSON Schema dialects', () => {
 		expect(invalid.success).toBe(false);
 	});
 
-	it('skips validation when a schema cannot be compiled on any dialect', async () => {
-		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	it('reports the schema as the defect when it compiles on no dialect', async () => {
 		const schema = { type: 'objct' } as unknown as JSONSchema7;
 
 		const result = await parseWithSchema(schema, { anything: true });
 
-		expect(result.success).toBe(true);
-		expect(warn).toHaveBeenCalled();
-		warn.mockRestore();
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error).toContain('Schema could not be compiled');
+	});
+
+	it('reports every distinct reason the bundles rejected the schema', async () => {
+		// Each bundle refuses this for a different reason: 2020-12 for the
+		// draft-07 tuple, draft-07 for the malformed `required`.
+		const schema = {
+			type: 'array',
+			items: [{ type: 'string' }],
+			required: 'nope',
+		} as unknown as JSONSchema7;
+
+		const result = await parseWithSchema(schema, []);
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error).toContain('items');
+			expect(result.error).toContain('required');
+		}
 	});
 });
 

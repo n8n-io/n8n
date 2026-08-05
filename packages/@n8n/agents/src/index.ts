@@ -448,3 +448,4 @@ export {
 	zodToJsonSchema,
 } from './utils/zod';
 export type { SchemaAudience } from './utils/zod';
+export { lockAdditionalProperties, unlockAdditionalProperties } from './utils/json-schema';
