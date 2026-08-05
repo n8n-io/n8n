@@ -230,6 +230,7 @@ import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138
 import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
+import { CreatePollerStateTable1785926660580 } from '../common/1785926660580-CreatePollerStateTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -463,6 +464,7 @@ const sqliteMigrations: Migration[] = [
 	CreateAgentChatAttachmentsTable1785255306000,
 	AddSetupCompletedAtToAgents1785500832626,
 	AddAgentExecutionRuntimeState1785828155091,
+	CreatePollerStateTable1785926660580,
 ];
 
 export { sqliteMigrations };

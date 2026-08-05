@@ -26,6 +26,7 @@ import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
@@ -97,6 +98,7 @@ export {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	PollerState,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -177,6 +179,7 @@ export const entities = {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	PollerState,
 	ProcessedData,
 	Settings,
 	Variables,
