@@ -479,10 +479,11 @@ describe('ChatView', () => {
 			await vi.waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith({ name: 'chat' }));
 		});
 
-		// A conversation's agent can disappear (deleted, credentials revoked, provider
-		// disabled). `chatStore.getAgent` then falls back to a placeholder built from the
-		// name cached on the session, so the conversation stays readable and usable rather
-		// than blanking out.
+		// An agent can drop out of the model list (credentials revoked, provider disabled)
+		// while the session keeps its reference to it. `chatStore.getAgent` then falls back
+		// to a placeholder built from the name cached on the session, so the conversation
+		// stays readable and usable rather than blanking out. A deleted agent differs:
+		// `agentId` goes NULL and the reselect-a-model callout renders instead.
 		it('handles when the agent selected for the conversation is not available anymore', async () => {
 			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
 
