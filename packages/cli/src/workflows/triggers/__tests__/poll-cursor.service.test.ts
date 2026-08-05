@@ -53,10 +53,10 @@ describe('PollCursorService', () => {
 	});
 
 	describe('resolveCursor', () => {
-		it('seeds ensureCursor from the static-data blob and returns the stored cursor when the flag is on', async () => {
+		it('seeds getOrCreateCursor from the static-data blob and returns the stored cursor when the flag is on', async () => {
 			const service = buildService(true);
 			let seenSeed: unknown;
-			pollerStateRepository.ensureCursor.mockImplementationOnce(async (_wf, _node, seed) => {
+			pollerStateRepository.getOrCreateCursor.mockImplementationOnce(async (_wf, _node, seed) => {
 				seenSeed = { ...seed };
 				return { lastItemId: 'from-db' };
 			});
@@ -68,7 +68,7 @@ describe('PollCursorService', () => {
 			expect(seenSeed).toEqual({ lastItemId: 'from-static-data' });
 			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'from-db' } });
 			expect(txRunner.run).toHaveBeenCalledTimes(1);
-			expect(pollerStateRepository.ensureCursor).toHaveBeenCalledWith(
+			expect(pollerStateRepository.getOrCreateCursor).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
 				expect.anything(),
@@ -84,7 +84,7 @@ describe('PollCursorService', () => {
 				migrated: false,
 			});
 
-			expect(pollerStateRepository.ensureCursor).not.toHaveBeenCalled();
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
 		});
 
 		it('still prefers an existing row when the flag is off', async () => {
@@ -94,13 +94,13 @@ describe('PollCursorService', () => {
 			const resolved = await service.resolveCursor('wf-1', 'node-1', {});
 
 			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'from-db' } });
-			expect(pollerStateRepository.ensureCursor).not.toHaveBeenCalled();
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
 		});
 
 		it('propagates a failing read so the poll does not run against an unknown cursor', async () => {
 			const service = buildService();
 			const readError = new Error('poller state read failed');
-			pollerStateRepository.ensureCursor.mockRejectedValue(readError);
+			pollerStateRepository.getOrCreateCursor.mockRejectedValue(readError);
 
 			await expect(service.resolveCursor('wf-1', 'node-1', {})).rejects.toBe(readError);
 		});

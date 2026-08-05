@@ -106,9 +106,9 @@ describe('PollerStateRepository', () => {
 		});
 	});
 
-	describe('ensureCursor', () => {
+	describe('getOrCreateCursor', () => {
 		it('creates the row with the given cursor and returns it', async () => {
-			const cursor = await repository.ensureCursor(
+			const cursor = await repository.getOrCreateCursor(
 				workflowId,
 				'node-1',
 				{ lastTimeChecked: '2026-07-28' },
@@ -119,9 +119,9 @@ describe('PollerStateRepository', () => {
 		});
 
 		it('returns the stored cursor rather than the starting value when a row exists', async () => {
-			await repository.ensureCursor(workflowId, 'node-1', { lastItemId: 'first' }, {});
+			await repository.getOrCreateCursor(workflowId, 'node-1', { lastItemId: 'first' }, {});
 
-			const cursor = await repository.ensureCursor(
+			const cursor = await repository.getOrCreateCursor(
 				workflowId,
 				'node-1',
 				{ lastItemId: 'second' },
@@ -133,8 +133,8 @@ describe('PollerStateRepository', () => {
 
 		it('returns one shared cursor when two callers race to create the row', async () => {
 			const [first, second] = await Promise.all([
-				repository.ensureCursor(workflowId, 'node-1', { lastItemId: 'a' }, {}),
-				repository.ensureCursor(workflowId, 'node-1', { lastItemId: 'b' }, {}),
+				repository.getOrCreateCursor(workflowId, 'node-1', { lastItemId: 'a' }, {}),
+				repository.getOrCreateCursor(workflowId, 'node-1', { lastItemId: 'b' }, {}),
 			]);
 
 			expect([{ lastItemId: 'a' }, { lastItemId: 'b' }]).toContainEqual(first);
@@ -144,7 +144,7 @@ describe('PollerStateRepository', () => {
 		it('discards the new row when the surrounding transaction rolls back', async () => {
 			await expect(
 				txRunner.run({}, async (ctx) => {
-					await repository.ensureCursor(workflowId, 'node-1', { lastItemId: 'a' }, ctx);
+					await repository.getOrCreateCursor(workflowId, 'node-1', { lastItemId: 'a' }, ctx);
 					throw new Error('execution insert failed');
 				}),
 			).rejects.toThrow('execution insert failed');

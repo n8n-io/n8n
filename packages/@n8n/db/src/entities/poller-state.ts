@@ -4,7 +4,10 @@ import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
 export type PollerCursor = Record<string, unknown>;
 
-// Kept per node, not per workflow, so two poll nodes in one workflow don't contend on every write.
+/**
+ * Durable state for one poll trigger node, kept per node rather than per
+ * workflow so two poll nodes in one workflow don't contend on every write.
+ */
 @Entity({ name: 'poller_state' })
 export class PollerState extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
