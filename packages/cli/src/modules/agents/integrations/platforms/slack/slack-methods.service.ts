@@ -19,11 +19,11 @@ import {
 	SLACK_BOT_SCOPES,
 	type SlackAppSetupSession,
 	slackSetupCacheKey,
-	stringProperty,
 } from './slack-setup.types';
 import { AgentIntegrationManagementService } from '../../../agent-integration-management.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
+import { stringProperty } from '../../integration-helpers';
 
 const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
@@ -216,42 +216,6 @@ export class SlackMethodsService {
 		});
 		await this.clearManagedAppSession(session);
 		return credential.id;
-	}
-
-	async createAndConnectBotCredential(options: {
-		agent: Agent;
-		user: User;
-		accessToken: string;
-		signingSecret: string;
-	}): Promise<string> {
-		const credential = await this.credentialsService.createUnmanagedCredential(
-			{
-				name: this.credentialName(undefined, options.agent.name),
-				type: SLACK_CREDENTIAL_TYPE,
-				data: {
-					accessToken: options.accessToken,
-					signatureSecret: options.signingSecret,
-				},
-				projectId: options.agent.projectId,
-			},
-			options.user,
-		);
-		await this.integrationManagementService.connect({
-			agent: options.agent,
-			user: options.user,
-			integration: { type: 'slack', credentialId: credential.id },
-		});
-		return credential.id;
-	}
-
-	childRecord(record: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
-		const child = record[key];
-		return isRecord(child) ? child : undefined;
-	}
-
-	stringProperty(record: Record<string, unknown> | undefined, key: string): string | undefined {
-		const value = record?.[key];
-		return typeof value === 'string' ? value : undefined;
 	}
 
 	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {

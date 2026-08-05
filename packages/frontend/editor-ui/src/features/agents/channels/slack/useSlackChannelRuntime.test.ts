@@ -36,19 +36,14 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	}),
 }));
 
-vi.mock('./api', () => ({
+vi.mock('./api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./api')>()),
 	createSlackAgentApp: vi.fn(),
 	createSlackManagerCredential: vi.fn(),
 	getSlackManagedSetup: mocks.getSetup,
 	getSlackManagedAppSettings: mocks.getSettings,
 	updateSlackManagedAppSettings: mocks.updateSettings,
 	installSlackManagedApp: mocks.install,
-	getSlackApiErrorCode: (error: unknown) => {
-		if (typeof error !== 'object' || error === null || !('meta' in error)) return undefined;
-		const meta = error.meta;
-		if (typeof meta !== 'object' || meta === null || !('code' in meta)) return undefined;
-		return typeof meta.code === 'string' ? meta.code : undefined;
-	},
 }));
 
 function createRuntime(

@@ -33,7 +33,7 @@ describe('SlackMethodsService', () => {
 		};
 	}
 
-	it('creates a bot credential and delegates published activation to integration management', async () => {
+	it('creates a bot credential and delegates activation to integration management', async () => {
 		const { service, credentialsService, managementService } = makeService();
 		const agent = {
 			id: 'agent-1',
@@ -49,11 +49,15 @@ describe('SlackMethodsService', () => {
 			integration: { type: 'slack', credentialId: 'credential-1' },
 			savedAgent: agent,
 		});
-		await service.createAndConnectBotCredential({
-			agent,
-			user: user as never,
-			accessToken: 'xoxb-token',
+		await service.connectBotCredential(agent, user as never, 'xoxb-token', {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			userId: 'user-1',
+			appId: 'app-1',
+			clientId: 'client-1',
+			clientSecret: 'client-secret',
 			signingSecret: 'signing-secret',
+			redirectUrl: 'https://n8n.example/callback',
 		});
 
 		expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(

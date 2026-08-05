@@ -305,7 +305,7 @@ export function useCredentialOAuth() {
 		} finally {
 			oauthAbortController.value = null;
 			if (!success) {
-				await credentialsStore.deleteCredential({ id: credential.id });
+				await credentialsStore.deleteCredential({ id: credential.id }).catch(() => {});
 			}
 		}
 	}

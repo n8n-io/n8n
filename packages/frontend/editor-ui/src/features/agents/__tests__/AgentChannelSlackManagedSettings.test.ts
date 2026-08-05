@@ -34,18 +34,18 @@ function mountForm(
 					template:
 						'<input :data-testid="$attrs[\'data-testid\']" :data-label="label" :data-info="infoText" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 				},
-				Switch2: {
+				Switch: {
 					props: ['modelValue'],
 					emits: ['update:modelValue'],
 					template:
 						'<button data-testid="slack-managed-app-always-online" @click="$emit(\'update:modelValue\', !modelValue)" />',
 				},
-				Link: {
+				N8nLink: {
 					props: ['href', 'bold'],
 					template: '<a :href="href" :data-bold="bold"><slot /></a>',
 				},
 				N8nIcon: { template: '<i data-testid="external-link-icon" />' },
-				Text: { template: '<span><slot /></span>' },
+				N8nText: { template: '<span><slot /></span>' },
 			},
 		},
 	});

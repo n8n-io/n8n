@@ -95,13 +95,16 @@ export class AgentIntegrationManagementService {
 			credentialId: options.credentialId,
 		});
 		const integration = persisted ?? (parsed.success ? parsed.data : undefined);
+		// if agent is not published fallback to delete external resource
+		const deleteExternalResource =
+			options.deleteExternalResource ?? options.agent.activeVersionId === null;
 		const warning = persisted
 			? await this.registry.get(options.type)?.onRemove?.({
 					agentId: options.agent.id,
 					projectId: options.agent.projectId,
 					credentialId: options.credentialId,
 					user: options.user,
-					deleteExternalResource: options.deleteExternalResource,
+					deleteExternalResource,
 				})
 			: undefined;
 

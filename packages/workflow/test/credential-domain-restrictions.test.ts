@@ -632,7 +632,10 @@ describe('injectDomainRestrictionFields', () => {
 
 		it('does not inject fields when hideDomainRestrictionFields is true', () => {
 			const result = injectDomainRestrictionFields(
-				baseCredential({ hideDomainRestrictionFields: true }),
+				baseCredential({
+					extends: ['oAuth2Api'],
+					hideDomainRestrictionFields: true,
+				}),
 			);
 			expect(result).toHaveLength(1);
 			expect(result[0]).toBe(dummyField);
