@@ -5,6 +5,7 @@ import {
 	getSessionAgentByRef,
 	normalizeAgentRef,
 	PENDING_AGENT_METADATA_KEY,
+	clearedAgentBuilderTargetMetadata,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	seedAgentBuilderTargetMetadata,
@@ -402,5 +403,36 @@ describe('seedAgentBuilderTargetMetadata', () => {
 		expect(metadata.instanceAiAgentBuilderTargets).toMatchObject({
 			'support-triage': { agentId: 'agent-1' },
 		});
+	});
+});
+
+describe('clearedAgentBuilderTargetMetadata', () => {
+	it('clears both binding keys while keeping unrelated metadata', async () => {
+		// `updateThread` MERGES, so a rollback that hands back only the prior snapshot
+		// leaves the thread bound to agents a failed restore already deleted.
+		const bound = seedAgentBuilderTargetMetadata(
+			[{ agentId: 'agent-1', projectId: 'p', name: 'Support Triage', ref: 'Support Triage' }],
+			[],
+		);
+		const prior = { somethingElse: 'keep me' };
+
+		const merged = { ...prior, ...bound, ...clearedAgentBuilderTargetMetadata(prior) };
+
+		expect(merged.somethingElse).toBe('keep me');
+		expect(merged.instanceAiAgentBuilderTarget).toBeUndefined();
+		expect(merged.instanceAiAgentBuilderTargets).toBeUndefined();
+		// And it resolves as no binding through the real reader.
+		const context = createContext({ threadMemory: createThreadMemory(merged) });
+		await expect(resolveAgentBuilderTarget(context)).resolves.toBeUndefined();
+	});
+
+	it('restores a binding the thread already had before the seed wrote one', () => {
+		const existing = agentBuilderTargetMetadata([
+			{ agentId: 'agent-old', projectId: 'p', ref: 'old' },
+		]);
+
+		const restored = clearedAgentBuilderTargetMetadata(existing);
+
+		expect(restored.instanceAiAgentBuilderTarget).toEqual(existing.instanceAiAgentBuilderTarget);
 	});
 });

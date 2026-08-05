@@ -19,6 +19,12 @@ vi.mock('@n8n/instance-ai', () => {
 		// Shape is the instance-ai package's contract (covered by its own tests); the
 		// controller only owns which targets it feeds in and that it persists the result.
 		seedAgentBuilderTargetMetadata: vi.fn((targets: unknown) => ({ boundTargets: targets })),
+		// Real behaviour matters here: `updateThread` merges, so the rollback has to
+		// name the binding keys rather than hand back the prior snapshot.
+		clearedAgentBuilderTargetMetadata: vi.fn((prior: Record<string, unknown> | undefined) => ({
+			...(prior ?? {}),
+			boundTargets: prior?.boundTargets,
+		})),
 	};
 });
 
@@ -904,8 +910,11 @@ describe('InstanceAiController', () => {
 				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow('boom');
 
 				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
+				// The prior metadata survives AND the binding key is cleared — handing
+				// back only the snapshot would leave the thread bound to agents the
+				// rollback just deleted, because updateThread merges.
 				expect(memoryService.updateThread).toHaveBeenLastCalledWith(THREAD_ID, {
-					metadata: { somethingElse: 'keep me' },
+					metadata: { somethingElse: 'keep me', boundTargets: undefined },
 				});
 			});
 

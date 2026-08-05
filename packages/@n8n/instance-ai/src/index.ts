@@ -193,6 +193,7 @@ export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thr
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
+	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
 	saveAgentBuilderTarget,
 } from './tools/orchestration/agent-target-binding';

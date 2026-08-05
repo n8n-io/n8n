@@ -43,7 +43,11 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
+import {
+	buildAgentTreeFromEvents,
+	clearedAgentBuilderTargetMetadata,
+	seedAgentBuilderTargetMetadata,
+} from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -1112,8 +1116,10 @@ export class InstanceAiController {
 		} catch (error) {
 			if (bindingWritten) {
 				try {
+					// `updateThread` MERGES, so the prior snapshot alone would leave the
+					// binding keys standing — this names them and restores each.
 					await this.memoryService.updateThread(payload.threadId, {
-						metadata: priorMetadata ?? {},
+						metadata: clearedAgentBuilderTargetMetadata(priorMetadata),
 					});
 				} catch {
 					// Best-effort, like the artifact deletes: never throw over the failure

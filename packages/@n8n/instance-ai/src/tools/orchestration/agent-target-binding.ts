@@ -172,6 +172,26 @@ function idOf(message: Record<string, unknown>): string {
 	return typeof message.id === 'string' ? message.id : '';
 }
 
+/**
+ * The metadata patch that UNDOES `seedAgentBuilderTargetMetadata`, given the
+ * thread's metadata from before it was written.
+ *
+ * `updateThread` MERGES its patch, so handing back the prior snapshot leaves the
+ * binding keys standing — the thread would still point at agents a failed restore
+ * has since deleted. This names both keys explicitly and restores each to what it
+ * was (absent → `undefined`, which the readers' `safeParse` treats as no binding
+ * and which drops out of the persisted JSON).
+ */
+export function clearedAgentBuilderTargetMetadata(
+	priorMetadata: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+	return {
+		...(priorMetadata ?? {}),
+		[METADATA_KEY]: priorMetadata?.[METADATA_KEY],
+		[REGISTRY_METADATA_KEY]: priorMetadata?.[REGISTRY_METADATA_KEY],
+	};
+}
+
 export function seedAgentBuilderTargetMetadata(
 	agents: AgentBuilderTarget[],
 	seededMessages: Array<Record<string, unknown>>,
