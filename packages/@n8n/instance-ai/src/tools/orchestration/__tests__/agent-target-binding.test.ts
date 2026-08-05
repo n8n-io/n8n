@@ -416,7 +416,11 @@ describe('clearedAgentBuilderTargetMetadata', () => {
 		);
 		const prior = { somethingElse: 'keep me' };
 
-		const merged = { ...prior, ...bound, ...clearedAgentBuilderTargetMetadata(prior) };
+		const merged: Record<string, unknown> = {
+			...prior,
+			...bound,
+			...clearedAgentBuilderTargetMetadata(prior),
+		};
 
 		expect(merged.somethingElse).toBe('keep me');
 		expect(merged.instanceAiAgentBuilderTarget).toBeUndefined();
