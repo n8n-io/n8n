@@ -9,6 +9,7 @@ import type {
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
+	mcpConnectRequestSchema,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -460,6 +461,8 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 			return { approved: true, autoSetup: { credentialType: request.credentialType } };
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'mcpConnect':
+			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
 		case 'setupWorkflowApply':
 			return {
 				approved: true,
@@ -4673,7 +4676,13 @@ export class InstanceAiService {
 		}
 	}
 
-	private async rebuildAgentForAutoSetupResume(
+	/**
+	 * Rebuild the agent for a resume whose confirmation changed what the agent
+	 * can reach — credentials created by auto-setup, tools from a just-connected
+	 * MCP server. Both attach at construction time, so the suspended instance
+	 * would keep running against the pre-confirmation environment.
+	 */
+	private async rebuildAgentForResume(
 		user: User,
 		threadId: string,
 		runId: string,
@@ -4706,7 +4715,7 @@ export class InstanceAiService {
 				orchestrationContext: rebuilt.orchestrationContext,
 			};
 		} catch (error: unknown) {
-			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
+			this.logger.warn('Failed to rebuild agent for resume', {
 				threadId,
 				runId,
 				error: getErrorMessage(error),
@@ -4787,6 +4796,7 @@ export class InstanceAiService {
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 			...(data.scope ? { scope: data.scope } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
+			...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 		};
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
@@ -4828,8 +4838,8 @@ export class InstanceAiService {
 		let resumeAgent = agent;
 		let resumeModelId = modelId;
 		let resumeOrchestrationContext = orchestrationContext;
-		if (data.autoSetup) {
-			const rebuilt = await this.rebuildAgentForAutoSetupResume(
+		if (data.autoSetup || data.connectedSlugs?.length) {
+			const rebuilt = await this.rebuildAgentForResume(
 				activeUser,
 				threadId,
 				runId,
@@ -4838,7 +4848,14 @@ export class InstanceAiService {
 				runHandoff,
 				messageGroupId,
 			);
-			if (!rebuilt) {
+			if (rebuilt) {
+				resumeAgent = rebuilt.agent;
+				resumeModelId = rebuilt.modelId;
+				resumeOrchestrationContext = rebuilt.orchestrationContext;
+			} else {
+				// Auto-setup credentials and just-connected tools only reach the run
+				// through a rebuilt agent, so a failed rebuild leaves nothing worth
+				// resuming.
 				await this.tracing.finalizeDetachedTraceRun(
 					`resume-rebuild:${runId}`,
 					unregisteredResumeTracing,
@@ -4849,11 +4866,13 @@ export class InstanceAiService {
 					},
 				);
 				this.cancelRun(threadId, 'agent_rebuild_failed');
+				// `cancelRun` leaves the active slot and the terminal `run-finish` to
+				// the resumed stream's teardown, which never runs here — without this
+				// the thread stays live and rejects the user's next message.
+				this.runState.clearActiveRun(threadId, resumeExecutionToken);
+				await this.finalizeCancelledSuspendedRun(suspended, 'agent_rebuild_failed');
 				return null;
 			}
-			resumeAgent = rebuilt.agent;
-			resumeModelId = rebuilt.modelId;
-			resumeOrchestrationContext = rebuilt.orchestrationContext;
 		}
 
 		this.startProcessResumedStream(resumeAgent, resumeData, {
@@ -5762,6 +5781,9 @@ export class InstanceAiService {
 		payload.inputThreadId = inputThreadId;
 
 		const inputType = payload.inputType as string | undefined;
+		// The connect card carries no `inputType`; classify it as the kind the answer
+		// side reports so the ask→answer funnel can be joined.
+		const mcpConnect = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest);
 		let type: string;
 		if (inputType) {
 			type = inputType;
@@ -5769,6 +5791,8 @@ export class InstanceAiService {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
 			type = 'credential-setup';
+		} else if (mcpConnect.success) {
+			type = 'mcp-connect';
 		} else {
 			type = 'approval';
 		}
@@ -5780,6 +5804,8 @@ export class InstanceAiService {
 			numSteps = payload.setupRequests.length;
 		} else if (Array.isArray(payload.credentialRequests)) {
 			numSteps = payload.credentialRequests.length;
+		} else if (mcpConnect.success) {
+			numSteps = mcpConnect.data.servers.length;
 		}
 
 		if (inputType === 'plan-review') {

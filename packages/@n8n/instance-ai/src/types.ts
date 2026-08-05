@@ -490,11 +490,18 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
+	credentialType: string;
 	tools: string[];
 }
 
 export interface InstanceAiMcpService {
+	/** Only servers the user has NOT connected, most relevant first. */
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+	/** Unknown or unconnectable slugs are omitted, so the caller can tell the agent
+	 *  it invented one instead of offering a card for nothing. */
+	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	/** The one source of truth for connectedness, on both legs of `connect`. */
+	listConnectedSlugs(): Promise<Set<string>>;
 }
 
 export interface ExploreResourcesParams {

@@ -159,6 +159,12 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			expect(prompt).toContain('never call `mcp-servers` for a build request');
 		});
 
+		it('leaves the connect flow itself to the tool', () => {
+			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+
+			expect(prompt).not.toContain('action: "connect"');
+		});
+
 		it('omits the section when the tool is not registered', () => {
 			const prompt = getSystemPrompt({});
 

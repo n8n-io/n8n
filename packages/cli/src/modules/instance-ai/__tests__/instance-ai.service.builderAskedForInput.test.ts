@@ -135,4 +135,35 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 			expect.objectContaining({ type: 'setup', num_steps: 3 }),
 		);
 	});
+
+	it('derives mcp-connect type and server count from an mcpConnectRequest', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('user-1', 'thread-a', {
+			payload: {
+				mcpConnectRequest: {
+					servers: [
+						{ serverSlug: 'brave', title: 'Brave' },
+						{ serverSlug: 'linear', title: 'Linear' },
+					],
+				},
+			},
+		});
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'mcp-connect', num_steps: 2 }),
+		);
+	});
+
+	it('falls back to approval when the payload carries no recognised request', () => {
+		const service = makeService();
+
+		service.trackConfirmationRequest('user-1', 'thread-a', { payload: {} });
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Builder asked for input',
+			expect.objectContaining({ type: 'approval', num_steps: 1 }),
+		);
+	});
 });

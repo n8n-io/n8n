@@ -74,9 +74,9 @@ function getMcpRegistrySection(mcpRegistrySearchEnabled?: boolean): string {
 	return `
 ## Connecting Services through MCP
 
-When the user wants to work with a third-party service here and no tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively.
+When the user wants a third-party service and no connected tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively, without being asked.
 
-This is only about tools **you** use in this conversation. It is not part of building: a workflow that talks to a service uses that service's node and credential, so never call \`mcp-servers\` for a build request, and never offer to connect a service instead of adding the node.
+Not for building: a workflow that talks to a service uses that service's node and credential, so never call \`mcp-servers\` for a build request, and never offer to connect a service instead of adding the node.
 `;
 }
 

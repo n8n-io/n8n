@@ -143,6 +143,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -440,21 +441,33 @@ export class InstanceAiAdapterService {
 	}
 
 	private createMcpAdapter(user: User): InstanceAiMcpService {
+		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
+			servers.map((server) => ({
+				slug: server.slug,
+				title: server.title,
+				description: server.description,
+				credentialType: server.credentialType,
+				tools: server.tools.map((tool) => tool.name),
+			}));
+
 		return {
 			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
 				const [servers, connectedSlugs] = await Promise.all([
 					Container.get(McpRegistryService).search(queries),
-					this.listConnectedMcpRegistrySlugs(user),
+					this.listConnectedMcpRegistrySlugs(user).catch((error: unknown) => {
+						this.logger.warn('Failed to list connected MCP registry servers for registry search', {
+							userId: user.id,
+							error: error instanceof Error ? error.message : String(error),
+						});
+						return new Set<string>();
+					}),
 				]);
-				return servers
-					.filter((server) => !connectedSlugs.has(server.slug))
-					.map((server) => ({
-						slug: server.slug,
-						title: server.title,
-						description: server.description,
-						tools: server.tools.map((tool) => tool.name),
-					}));
+				return toSummaries(servers.filter((server) => !connectedSlugs.has(server.slug)));
 			},
+			getServers: async (slugs: string[]): Promise<McpRegistryServerSummary[]> =>
+				toSummaries(await Container.get(McpRegistryService).resolveBySlugs(slugs)),
+			listConnectedSlugs: async (): Promise<Set<string>> =>
+				await this.listConnectedMcpRegistrySlugs(user),
 		};
 	}
 
@@ -463,18 +476,10 @@ export class InstanceAiAdapterService {
 	 *  connection, and a row that fails to resolve still blocks connecting again
 	 *  (one connection per user+slug), so re-offering it would dead-end. */
 	private async listConnectedMcpRegistrySlugs(user: User): Promise<Set<string>> {
-		try {
-			const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
-				user,
-			);
-			return new Set(connections.map((connection) => connection.serverSlug));
-		} catch (error) {
-			this.logger.warn('Failed to list connected MCP registry servers for registry search', {
-				userId: user.id,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return new Set();
-		}
+		const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
+			user,
+		);
+		return new Set(connections.map((connection) => connection.serverSlug));
 	}
 
 	private buildAiGatewayNodeMeta(

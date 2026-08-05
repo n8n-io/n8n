@@ -85,7 +85,7 @@ function createCredential(source: 'direct' | 'dropdown') {
 	} else {
 		emit('new-credential-connect', props.item);
 	}
-	adapter?.openNewCredential(createAuthType.value);
+	adapter?.openNewCredential(createAuthType.value, props.item);
 	isOpen.value = false;
 }
 

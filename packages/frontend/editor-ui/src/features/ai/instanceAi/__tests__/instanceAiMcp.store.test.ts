@@ -122,6 +122,35 @@ describe('useInstanceAiMcpStore', () => {
 			expect(mockShowError).toHaveBeenCalledWith(error, 'instanceAi.mcp.error.fetchConnections');
 			expect(store.connections).toEqual([]);
 		});
+
+		it('sends one request for callers that mount together', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await Promise.all([store.fetchConnections(), store.fetchConnections()]);
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(1);
+			expect(store.connections).toHaveLength(1);
+		});
+
+		it('refetches once the in-flight request has settled', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await store.fetchConnections();
+			await store.fetchConnections();
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
+		});
+
+		it('leaves a failed fetch for the next caller to retry', async () => {
+			mockFetchMcpConnections.mockRejectedValueOnce(new Error('boom'));
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await store.fetchConnections();
+			await store.fetchConnections();
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
+			expect(store.connections).toHaveLength(1);
+		});
 	});
 
 	describe('fetchCatalogLazy', () => {
@@ -132,6 +161,25 @@ describe('useInstanceAiMcpStore', () => {
 			await store.fetchCatalogLazy();
 
 			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
+			expect(store.catalog).toHaveLength(1);
+		});
+
+		it('fetches once for concurrent callers', async () => {
+			mockFetchMcpRegistryServers.mockResolvedValue([makeServer('linear')]);
+
+			await Promise.all([store.fetchCatalogLazy(), store.fetchCatalogLazy()]);
+
+			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves a failed fetch for the next caller to retry', async () => {
+			mockFetchMcpRegistryServers.mockRejectedValueOnce(new Error('boom'));
+			mockFetchMcpRegistryServers.mockResolvedValue([makeServer('linear')]);
+
+			await store.fetchCatalogLazy();
+			await store.fetchCatalogLazy();
+
+			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(2);
 			expect(store.catalog).toHaveLength(1);
 		});
 	});
