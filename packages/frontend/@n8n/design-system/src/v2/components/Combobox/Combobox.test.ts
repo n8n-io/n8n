@@ -229,7 +229,7 @@ describe('v2/components/Combobox', () => {
 			await userEvent.type(input, 'zzzz');
 
 			await waitFor(() => {
-				expect(wrapper.getByText('Nothing here')).toBeVisible();
+				expect(wrapper.getByRole('status')).toHaveTextContent('Nothing here');
 			});
 		});
 
@@ -245,7 +245,7 @@ describe('v2/components/Combobox', () => {
 			await userEvent.type(input, 'zzzz');
 
 			await waitFor(() => {
-				expect(wrapper.getByText('No results found.')).toBeVisible();
+				expect(wrapper.getByRole('status')).toHaveTextContent('No results found.');
 			});
 		});
 	});

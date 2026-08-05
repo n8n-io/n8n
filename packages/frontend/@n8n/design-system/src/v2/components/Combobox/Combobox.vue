@@ -338,7 +338,7 @@ function onInput(event: Event) {
 				<slot name="header" />
 
 				<ComboboxViewport :class="$style.comboboxViewport">
-					<ComboboxEmpty :class="$style.comboboxEmpty">
+					<ComboboxEmpty :class="$style.comboboxEmpty" role="status">
 						{{ props.emptyText }}
 					</ComboboxEmpty>
 

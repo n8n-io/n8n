@@ -314,6 +314,39 @@ export const Clearable = {
 	},
 } satisfies Story;
 
+export const Empty = {
+	name: 'Empty',
+	render: (args) => ({
+		components: { Combobox },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<Combobox
+				v-bind="args"
+				v-model="value"
+				placeholder="Search options..."
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: [],
+		emptyText: 'No results found.',
+		modelValue: undefined,
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Empty list state (`role="status"`) when there are no matching options. Focus or open the combobox to see it.',
+			},
+		},
+	},
+} satisfies Story;
+
 export const Multiple = {
 	render: (args) => ({
 		components: { Combobox },
