@@ -539,6 +539,22 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(errorOf(result)).toContain('does not declare');
 	});
 
+	it('rejects an agent that delegates to itself', () => {
+		// The agent config service forbids it too; a restored self-delegating config
+		// either fails or recurses.
+		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
+			threadId: '11111111-1111-4111-8111-111111111111',
+			messages: [],
+			agents: [
+				agent({
+					config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT12345678901' }] } },
+				}),
+			],
+		});
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('delegates to itself');
+	});
+
 	it('accepts a sub-agent reference to another seeded agent', () => {
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',

@@ -348,6 +348,31 @@ describe('seedAgentBuilderTargetMetadata', () => {
 		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
 	});
 
+	it('orders by createdAt, not array order', () => {
+		// The restore sorts messages by `createdAt` and so does every read, so an
+		// authored array in a different order would pick the wrong active target.
+		const later = buildAgentTurn('agent-1', 'triage');
+		later.createdAt = '2026-01-01T00:00:09.000Z';
+		const earlier = buildAgentTurn('agent-2', 'billing');
+		earlier.createdAt = '2026-01-01T00:00:01.000Z';
+
+		// Authored newest-first; chronologically agent-1 is the most recent target.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [later, earlier]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
+	});
+
+	it('keeps array order when timestamps are missing or unparseable', () => {
+		const first = buildAgentTurn('agent-1', 'triage');
+		const second = buildAgentTurn('agent-2', 'billing');
+		second.createdAt = 'yesterday';
+		first.createdAt = 'yesterday';
+
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [first, second]);
+
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
+	});
+
 	it('ignores a build-agent call whose output carries no agent id', () => {
 		// A failed call ("agent builder is not configured") records no identity.
 		const metadata = seedAgentBuilderTargetMetadata(AGENTS.slice(0, 1), [

@@ -191,7 +191,11 @@ export class EvalThreadRestoreService {
 	private remapDataTableIds(value: unknown, dataTableIdMap: Map<string, string>): unknown {
 		if (dataTableIdMap.size === 0) return value;
 		let serialized = JSON.stringify(value);
-		for (const [oldId, newId] of dataTableIdMap) {
+		// Longest source id first: if one seeded id prefixes another ("dt1234567" /
+		// "dt12345678"), rewriting the short one first would eat the long one's
+		// prefix and leave it addressing a table that does not exist.
+		const byLongest = [...dataTableIdMap].sort(([a], [b]) => b.length - a.length);
+		for (const [oldId, newId] of byLongest) {
 			serialized = serialized.replaceAll(oldId, newId);
 		}
 		return jsonParse<unknown>(serialized);

@@ -320,6 +320,41 @@ describe('EvalThreadRestoreService', () => {
 			expect(JSON.stringify(options?.schema)).not.toContain('dt-authored-01');
 		});
 
+		it('rewrites the longer id first when one table id prefixes another', async () => {
+			// "dt1234567" inside "dt12345678": replacing the short one first would eat
+			// the long one's prefix and leave it addressing a table that never existed.
+			const agent = seedAgent();
+			const config = {
+				...agent.config,
+				tools: [
+					{
+						type: 'node' as const,
+						name: 'read_leads',
+						node: {
+							nodeType: 'n8n-nodes-base.dataTable',
+							nodeTypeVersion: 1,
+							nodeParameters: { a: 'dt1234567', b: 'dt12345678' },
+						},
+					},
+				],
+			};
+
+			await service.restoreAgents(
+				[{ ...agent, config }],
+				'project-1',
+				new Map([
+					['dt1234567', 'SHORT-NEW'],
+					['dt12345678', 'LONG-NEW'],
+				]),
+			);
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			const serialized = JSON.stringify(options?.schema);
+			expect(serialized).toContain('SHORT-NEW');
+			expect(serialized).toContain('LONG-NEW');
+			expect(serialized).not.toContain('SHORT-NEW8');
+		});
+
 		it('leaves the config untouched when the seed created no data tables', async () => {
 			const agent = seedAgent();
 

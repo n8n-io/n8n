@@ -159,6 +159,14 @@ export function agentBuilderTargetMetadata(targets: AgentBuilderTarget[]): Recor
  * the history never targeted keeps its display name as the ref and sorts first,
  * so it can't displace the real active target.
  */
+/** Epoch ms of a seed message's `createdAt`, or 0 when it is missing/unparseable. */
+function stampOf(message: Record<string, unknown>): number {
+	const raw = message.createdAt;
+	if (typeof raw !== 'string') return 0;
+	const parsed = Date.parse(raw);
+	return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 export function seedAgentBuilderTargetMetadata(
 	agents: AgentBuilderTarget[],
 	seededMessages: Array<Record<string, unknown>>,
@@ -166,7 +174,12 @@ export function seedAgentBuilderTargetMetadata(
 	const refById = new Map<string, string>();
 	const lastCallIndex = new Map<string, number>();
 	let callIndex = 0;
-	for (const message of seededMessages) {
+	// By `createdAt`, not array order: the restore sorts messages that way and so
+	// does every read of the thread, so scanning the array as authored can make
+	// "most recently targeted" disagree with the history the agent actually sees.
+	// Ties and unparseable stamps keep their relative array order (sort is stable).
+	const chronological = [...seededMessages].sort((a, b) => stampOf(a) - stampOf(b));
+	for (const message of chronological) {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
 			if (!isRecord(block) || block.type !== 'tool-call') continue;

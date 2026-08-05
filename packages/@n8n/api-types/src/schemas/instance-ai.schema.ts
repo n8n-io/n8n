@@ -1876,10 +1876,19 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 			const seeded = new Set(agents.map((agent) => agent.id));
 			for (const [index, agent] of agents.entries()) {
 				for (const [subIndex, sub] of (agent.config.subAgents?.agents ?? []).entries()) {
-					if (!seeded.has(sub.agentId)) {
+					const path = [index, 'config', 'subAgents', 'agents', subIndex, 'agentId'];
+					// Self-delegation is refused by the agent config service too, and a
+					// restored config that delegates to itself either fails or recurses.
+					if (sub.agentId === agent.id) {
 						ctx.addIssue({
 							code: z.ZodIssueCode.custom,
-							path: [index, 'config', 'subAgents', 'agents', subIndex, 'agentId'],
+							path,
+							message: `Seed agent "${agent.id}" delegates to itself as a sub-agent`,
+						});
+					} else if (!seeded.has(sub.agentId)) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							path,
 							message: `Seed agent "${agent.id}" delegates to sub-agent "${sub.agentId}", which this seed does not declare`,
 						});
 					}
