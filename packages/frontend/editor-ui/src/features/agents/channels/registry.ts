@@ -7,10 +7,7 @@ import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
 import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
-import {
-	isSlackChannelRuntime,
-	useSlackChannelRuntime,
-} from './slack/useSlackChannelRuntime';
+import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
 import type {
@@ -50,9 +47,7 @@ const platforms = {
 		disconnectConfirmationComponent: AgentChannelSlackRemoveConfirmation,
 		createRuntime: useSlackChannelRuntime,
 		shouldConfirmDisconnect: (runtime, credentialId, { isPublished }) =>
-			isPublished &&
-			isSlackChannelRuntime(runtime) &&
-			runtime.isManagedCredential(credentialId),
+			isPublished && isSlackChannelRuntime(runtime) && runtime.isManagedCredential(credentialId),
 		getConnectAction: ({ text }, runtime) => {
 			const managedSetupAvailable =
 				isSlackChannelRuntime(runtime) && runtime.setup.value.managedSetupAvailable;
