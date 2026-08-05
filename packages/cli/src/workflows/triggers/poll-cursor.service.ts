@@ -44,7 +44,7 @@ export class PollCursorService {
 		const stored = await this.transactionRunner.run(
 			{},
 			async (ctx) =>
-				await this.pollerStateRepository.ensureCursor(workflowId, nodeId, nodeStaticData, ctx),
+				await this.pollerStateRepository.getOrCreateCursor(workflowId, nodeId, nodeStaticData, ctx),
 		);
 		return { migrated: true, cursor: toPollCursor(stored) };
 	}
