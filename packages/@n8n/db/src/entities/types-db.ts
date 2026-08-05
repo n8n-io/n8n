@@ -340,6 +340,14 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 	return ALL_AUTH_PROVIDERS.safeParse(value).success;
 }
 
+const ALL_AUTH_IDENTITY_STATUSES = z.enum(['active', 'suspended', 'revoked']);
+
+export type AuthIdentityStatus = z.infer<typeof ALL_AUTH_IDENTITY_STATUSES>;
+
+export function isAuthIdentityStatus(value: string): value is AuthIdentityStatus {
+	return ALL_AUTH_IDENTITY_STATUSES.safeParse(value).success;
+}
+
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: boolean;
 	subFolderCount?: number;

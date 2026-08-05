@@ -7,6 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | providerId | varchar(255) |  | false |  |  |  |
 | providerType | varchar(32) |  | false |  |  |  |
+| status | varchar(32) | 'active'::character varying | false |  |  | Live authority gate for this binding: a non-active row resolves no principal |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userId | uuid |  | true |  | [public.user](public.user.md) |  |
 
@@ -14,10 +15,12 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_auth_identity_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'suspended'::character varying, 'revoked'::character varying])::text[]))) |
 | auth_identity_createdAt_not_null | n | NOT NULL "createdAt" |
 | auth_identity_pkey | PRIMARY KEY | PRIMARY KEY ("providerId", "providerType") |
 | auth_identity_providerId_not_null | n | NOT NULL "providerId" |
 | auth_identity_providerType_not_null | n | NOT NULL "providerType" |
+| auth_identity_status_not_null | n | NOT NULL status |
 | auth_identity_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | auth_identity_userId_fkey | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) |
 
@@ -38,6 +41,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_255_ providerId
   varchar_32_ providerType
+  varchar_32_ status
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }

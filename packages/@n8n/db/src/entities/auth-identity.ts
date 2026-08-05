@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, PrimaryColumn, Unique } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
-import { AuthProviderType } from './types-db';
+import { AuthIdentityStatus, AuthProviderType } from './types-db';
 import { User } from './user';
 
 @Entity()
@@ -22,6 +22,9 @@ export class AuthIdentity extends WithTimestamps {
 	@PrimaryColumn()
 	providerType: AuthProviderType;
 
+	@Column({ default: 'active' })
+	status: AuthIdentityStatus;
+
 	static create(
 		user: User,
 		providerId: string,
@@ -32,6 +35,7 @@ export class AuthIdentity extends WithTimestamps {
 		identity.userId = user.id;
 		identity.providerId = providerId;
 		identity.providerType = providerType;
+		identity.status = 'active';
 		return identity;
 	}
 }

@@ -571,4 +571,41 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(identities[0].providerId).toBe('legacy-multi-sub');
 		});
 	});
+
+	describe('allowProvisioning: false (per-access resolution)', () => {
+		it('resolves an active binding to its user', async () => {
+			const user = await createUser({ email: 'active-binding@example.com' });
+			await authIdentityRepository.save(
+				AuthIdentity.create(user, providerIdFor('ext-active'), 'token-exchange'),
+			);
+
+			const result = await service.resolve(
+				{ ...baseClaims, sub: 'ext-active' },
+				undefined,
+				ctx(),
+				false,
+			);
+
+			expect(result?.id).toBe(user.id);
+		});
+
+		it('revoking the binding makes the next resolution fail closed', async () => {
+			const user = await createUser({ email: 'revoked-binding@example.com' });
+			await authIdentityRepository.save(
+				AuthIdentity.create(user, providerIdFor('ext-revoked'), 'token-exchange'),
+			);
+			const claims = { ...baseClaims, sub: 'ext-revoked' };
+
+			await expect(service.resolve(claims, undefined, ctx(), false)).resolves.toMatchObject({
+				id: user.id,
+			});
+
+			await authIdentityRepository.update(
+				{ providerId: providerIdFor('ext-revoked'), providerType: 'token-exchange' },
+				{ status: 'revoked' },
+			);
+
+			await expect(service.resolve(claims, undefined, ctx(), false)).resolves.toBeNull();
+		});
+	});
 });

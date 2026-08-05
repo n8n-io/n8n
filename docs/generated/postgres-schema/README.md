@@ -35,7 +35,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_threads](public.agents_threads.md) | 6 |  | BASE TABLE |
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
-| [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
+| [public.auth_identity](public.auth_identity.md) | 6 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
 | [public.chat_hub_agent_tools](public.chat_hub_agent_tools.md) | 2 |  | BASE TABLE |
@@ -634,6 +634,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_255_ providerId
   varchar_32_ providerType
+  varchar_32_ status
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }

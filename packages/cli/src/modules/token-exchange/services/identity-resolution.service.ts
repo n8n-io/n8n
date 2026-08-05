@@ -213,13 +213,12 @@ export class IdentityResolutionService implements IdentityResolver {
 	}
 
 	/**
-	 * TODO(IAM-1171): gate on `identity.status === 'active'` once the column lands.
 	 * Deliberately does not consult the claim's `expiresAt` — binding status is
 	 * the access gate, not token freshness; an execution outliving the token's
 	 * `exp` must still resolve.
 	 */
-	private isBindingActive(_identity: AuthIdentity): boolean {
-		return true;
+	private isBindingActive(identity: AuthIdentity): boolean {
+		return identity.status === 'active';
 	}
 
 	/** Path 1: resolve an already-linked identity and sync profile/role. */
