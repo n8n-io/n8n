@@ -2092,6 +2092,54 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		expect(response.body.data.id).toBe(request.id);
 	});
 
+	describe('viewer decision eligibility', () => {
+		test('tells a non-author with publish access that they can decide', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, owner);
+
+			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(true);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
+		});
+
+		test('tells an author why they cannot decide their own review', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, member);
+
+			const response = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(false);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBe('author');
+		});
+
+		test('lets an instance admin decide a review they authored', async () => {
+			const workflow = await createWorkflow({}, teamProject);
+			const request = await seedRequest(workflow.id, null, owner);
+
+			const response = await ownerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(true);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBeNull();
+		});
+
+		test('reports missing publish permission once the workflow moved out of the requester reach', async () => {
+			// Same transfer scenario the read filter covers: the requester keeps the
+			// record, but could no longer decide — and the reason says why.
+			const destinationProject = await createTeamProject('Out Of Reach', owner);
+			const workflow = await createWorkflow({}, destinationProject);
+			await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
+			const request = await seedRequest(workflow.id, 'version-pinned', viewer, teamProject.id);
+
+			const response = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
+
+			expect(response.body.data.viewerCanDecide).toBe(false);
+			expect(response.body.data.viewerDecisionIneligibilityReason).toBe(
+				'missing_publish_permission',
+			);
+		});
+	});
+
 	test('reports a review that does not exist as not found', async () => {
 		await ownerAgent.get('/workflow-review-requests/unknown-request').expect(404);
 	});

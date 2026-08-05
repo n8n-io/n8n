@@ -12,7 +12,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
 import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 type Item = UsersList['items'][number];
 

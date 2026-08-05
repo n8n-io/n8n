@@ -49,6 +49,7 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 function setup(
 	workflowNameLookup?: (id: string) => string | undefined,
 	agentBuilderTarget?: () => { agentId: string; projectId: string; name?: string } | undefined,
+	pendingAgentTarget?: () => { agentId: string; projectId: string; name: string } | undefined,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
@@ -56,6 +57,7 @@ function setup(
 		workflowNameLookup,
 		undefined,
 		agentBuilderTarget,
+		pendingAgentTarget,
 	);
 	return { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
@@ -907,6 +909,37 @@ describe('useResourceRegistry', () => {
 			];
 			return result;
 		}
+
+		test('surfaces an unsaved new-agent artifact from the pending marker', async () => {
+			const { producedArtifacts } = setup(undefined, undefined, () => ({
+				agentId: 'aBcDeFgHiJkLmNoP',
+				projectId: 'project-1',
+				name: 'New agent',
+			}));
+			await nextTick();
+
+			expect(producedArtifacts.get('aBcDeFgHiJkLmNoP')).toEqual({
+				type: 'agent',
+				id: 'aBcDeFgHiJkLmNoP',
+				name: 'New agent',
+				projectId: 'project-1',
+				pending: true,
+			});
+		});
+
+		test('drops the pending flag once the agent is bound to the thread', async () => {
+			const { producedArtifacts } = setup(
+				undefined,
+				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' }),
+				() => ({ agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'New agent' }),
+			);
+			await nextTick();
+
+			const entry = producedArtifacts.get('aBcDeFgHiJkLmNoP');
+			expect(entry?.pending).toBeUndefined();
+			expect(entry?.name).toBe('Support Triage');
+			expect(producedArtifacts.size).toBe(1);
+		});
 
 		test('entry objects keep their identity across rebuilds', async () => {
 			const { messages, producedArtifacts } = setupWithArtifact();

@@ -45,6 +45,7 @@ import {
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
+	TRIAL_INTRO_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
 } from '@/app/constants';
 import {
@@ -94,7 +95,7 @@ import type {
 	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
@@ -178,6 +179,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 				AI_GATEWAY_TOP_UP_MODAL_KEY,
 				AGENT_CONFIRMATION_MODAL_KEY,
+				TRIAL_INTRO_MODAL_KEY,
 				MIGRATE_WORKFLOW_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),

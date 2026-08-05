@@ -930,7 +930,9 @@ export interface BuilderOpenSuspension {
  * builder's questions survive a process restart.
  */
 export interface InstanceAiBuilderDelegate {
-	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
+	/** `id` creates the agent under an id the frontend already minted for its
+	 *  unsaved artifact, so the chat and the editor converge on one agent. */
+	createAgent(name: string, id?: string): Promise<{ agentId: string; projectId: string }>;
 	streamBuild(
 		agentId: string,
 		message: string,

@@ -85,13 +85,13 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves; create-stub creates each missing variable with an empty value (see variable-parent-policy) and needs an API key with the variable:create scope',
-			options: ['do-nothing', 'must-preexist', 'create-stub'],
+				'What to do when a referenced variable is absent from the target project and global scope (default: create-with-value). create-with-value uses the package value, or an empty stub when the package carries no value for it; create-stub always creates an empty value; do-nothing reports unresolved names; must-preexist rejects the import. Creating modes use variable-parent-policy, and an import that creates a variable needs a variables-enabled license plus variable:create',
+			options: ['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'],
 			aliases: ['variable-missing-mode'],
 		}),
 		variableParentPolicy: Flags.string({
 			description:
-				'Where create-stub creates missing variables for workflow/folder packages (default: project): project creates them in the target project; global creates them at global scope. Both placements need an API key with the variable:create scope when the package has variable requirements. Ignored for project packages, where placement follows the package layout',
+				'Where creating variable modes place missing variables for workflow/folder packages: project (the behaviour when omitted) uses the target project; global uses global scope. Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout',
 			options: ['project', 'global'],
 			aliases: ['variable-parent-policy'],
 		}),
