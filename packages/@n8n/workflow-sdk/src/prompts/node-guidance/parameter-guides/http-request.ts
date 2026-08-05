@@ -65,6 +65,23 @@ Instead, ALWAYS use n8n's built-in credential system:
   }
 }
 
+#### Body Structure (Raw XML/SOAP/Text)
+For XML, SOAP, CSV, or plain-text payloads, do not use JSON body parameters.
+{
+  "sendBody": true,
+  "contentType": "raw",
+  "body": "<?xml version='1.0'?><soap:Envelope>...</soap:Envelope>",
+  "rawContentType": "text/xml"
+}
+
+Rules:
+- Use \`contentType: "raw"\` for XML, SOAP, CSV, or plain-text request bodies
+- Put the payload directly in \`body\`
+- Set \`rawContentType\` to the actual media type, for example \`"text/xml"\` or \`"application/xml"\`
+- Do NOT set \`specifyBody\`, \`jsonBody\`, or \`bodyParameters\` for raw payloads
+- Never put XML or SOAP strings in \`jsonBody\`; \`jsonBody\` must contain valid JSON only
+- If a previous Code or Set node creates a field like \`soapBody\` or \`xmlBody\`, reference it from the HTTP Request \`body\` field with \`contentType: "raw"\`; do not use \`jsonBody: "={{ $json.soapBody }}"\`
+
 #### Authentication Options
 - **none**: No authentication
 - **genericCredentialType**: Use stored credentials
@@ -78,8 +95,9 @@ Instead, ALWAYS use n8n's built-in credential system:
 
 2. **Setting Request Body**:
    - Enable sendBody
-   - Set contentType (usually "json")
-   - Add parameters to bodyParameters.parameters array
+   - Set contentType to "json" for JSON payloads, or "raw" for XML/SOAP/text payloads
+   - For JSON, add parameters to bodyParameters.parameters array
+   - For raw XML/SOAP/text, put the payload in body and set rawContentType
 
 3. **Dynamic URLs**:
    - Can use expressions: "=https://api.example.com/{{ $('Set').item.json.endpoint }}"

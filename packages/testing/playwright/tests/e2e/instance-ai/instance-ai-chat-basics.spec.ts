@@ -1,19 +1,22 @@
-import { test, expect, instanceAiTestConfig } from './fixtures';
+import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 test.describe(
 	'Instance AI chat basics @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
-		test('should display empty state for new conversation', async ({ n8n }) => {
-			await n8n.navigate.toInstanceAi();
+		test(
+			'should display empty state for new conversation',
+			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
+			async ({ n8n }) => {
+				await n8n.navigate.toInstanceAi();
 
-			await expect(n8n.instanceAi.getChatInput()).toBeVisible();
-			await expect(n8n.instanceAi.getSendButton()).toBeVisible();
-		});
+				await expect(n8n.instanceAi.getChatInput()).toBeVisible();
+				await expect(n8n.instanceAi.getSendButton()).toBeVisible();
+			},
+		);
 
 		test('should send message and receive assistant response', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
@@ -39,8 +42,8 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 
 			await n8n.instanceAi.sendMessage('Remember this persistence message');
-			await n8n.instanceAi.waitForAssistantResponse(120_000);
-			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			await n8n.instanceAi.waitForResponseComplete(120_000);
+			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 
 			await n8n.page.reload();
 			await expect(n8n.instanceAi.getChatInput()).toBeVisible({ timeout: 30_000 });

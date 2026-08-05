@@ -8,6 +8,7 @@ import {
 	createAgentWithMixedTools,
 	createAgentWithParallelInterruptibleCalls,
 } from './helpers';
+import { createCancellation } from '../../index';
 import type { StreamChunk } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -86,6 +87,34 @@ describe('tool interrupt integration', () => {
 		const resumedTypes = resumedChunks.map((c) => c.type);
 
 		expect(resumedTypes).toContain('text-delta');
+	});
+
+	it('cancels a suspended delete_file tool call and continues', async () => {
+		const agent = createAgentWithInterruptibleTool('anthropic');
+
+		const first = await agent.generate('Delete the file /tmp/cancel-me.txt');
+		expect(first.finishReason).toBe('tool-calls');
+		expect(first.pendingSuspend).toHaveLength(1);
+
+		const { runId, toolCallId } = first.pendingSuspend![0];
+		const resumed = await agent.resume(
+			'generate',
+			createCancellation('Do not delete the file. Tell me the deletion was cancelled.'),
+			{ runId, toolCallId },
+		);
+
+		expect(resumed.finishReason).toBe('stop');
+		expect(resumed.pendingSuspend).toBeUndefined();
+		expect(resumed.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					tool: 'delete_file',
+					output:
+						'[Tool call cancelled. User said: "Do not delete the file. Tell me the deletion was cancelled."]',
+					canceled: true,
+				}),
+			]),
+		);
 	});
 
 	it('resumes each pending tool call one by one when multiple tool calls are suspended', async () => {

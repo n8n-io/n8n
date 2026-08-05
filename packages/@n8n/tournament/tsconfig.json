@@ -1,9 +1,8 @@
 {
 	"compilerOptions": {
-		"ignoreDeprecations": "6.0",
 		"strict": true,
-		"module": "commonjs",
-		"moduleResolution": "node",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
 		"target": "es2019",
 		"lib": ["es2019", "es2020", "es2022.error"],
 		"removeComments": true,
@@ -20,7 +19,11 @@
 		"declaration": true,
 		"sourceMap": true,
 		"skipLibCheck": true,
-		"types": ["node", "vitest/globals"]
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"types": ["node", "vitest/globals", "vite/client"],
+		"paths": {
+			"esprima-next": ["./node_modules/esprima-next/dist/esm/esprima"]
+		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]

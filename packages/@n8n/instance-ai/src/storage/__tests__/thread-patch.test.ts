@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import {
 	getThread,
 	patchThread,
@@ -15,23 +17,23 @@ const baseThread: ThreadRecord = {
 };
 
 type TestMemory = PatchableThreadMemory & {
-	getThread: jest.Mock;
-	saveThread: jest.Mock;
+	getThread: Mock;
+	saveThread: Mock;
 };
 
 function makeMemory(overrides: Partial<TestMemory> = {}): TestMemory {
 	return {
 		...overrides,
-		getThread: overrides.getThread ?? jest.fn().mockResolvedValue({ ...baseThread }),
+		getThread: overrides.getThread ?? vi.fn().mockResolvedValue({ ...baseThread }),
 		saveThread:
-			overrides.saveThread ?? jest.fn().mockImplementation((thread: ThreadRecord) => thread),
+			overrides.saveThread ?? vi.fn().mockImplementation((thread: ThreadRecord) => thread),
 	};
 }
 
 describe('getThread', () => {
 	it('uses native getThread when available', async () => {
 		const memory = makeMemory({
-			getThread: jest.fn().mockResolvedValue({ ...baseThread, title: 'Native' }),
+			getThread: vi.fn().mockResolvedValue({ ...baseThread, title: 'Native' }),
 		});
 
 		const result = await getThread(memory, 'thread-1');
@@ -50,9 +52,9 @@ describe('getThread', () => {
 describe('patchThread', () => {
 	describe('when memory has patchThread method', () => {
 		it('calls memory.patchThread directly', async () => {
-			const patchFn = jest.fn().mockResolvedValue({ ...baseThread, title: 'Patched' });
+			const patchFn = vi.fn().mockResolvedValue({ ...baseThread, title: 'Patched' });
 			const memory = makeMemory({ patchThread: patchFn });
-			const update = jest.fn().mockReturnValue({ title: 'Patched' });
+			const update = vi.fn().mockReturnValue({ title: 'Patched' });
 
 			const result = await patchThread(memory, { threadId: 'thread-1', update });
 
@@ -64,10 +66,10 @@ describe('patchThread', () => {
 	describe('native getThread + saveThread fallback', () => {
 		it('reads thread, calls update, then saves', async () => {
 			const memory = makeMemory({
-				getThread: jest.fn().mockResolvedValue({ ...baseThread }),
-				saveThread: jest.fn(),
+				getThread: vi.fn().mockResolvedValue({ ...baseThread }),
+				saveThread: vi.fn(),
 			});
-			const update = jest.fn().mockReturnValue({ title: 'Updated Title' });
+			const update = vi.fn().mockReturnValue({ title: 'Updated Title' });
 
 			const result = await patchThread(memory, { threadId: 'thread-1', update });
 
@@ -87,7 +89,7 @@ describe('patchThread', () => {
 
 		it('returns unchanged thread when update returns null', async () => {
 			const memory = makeMemory();
-			const update = jest.fn().mockReturnValue(null);
+			const update = vi.fn().mockReturnValue(null);
 
 			const result = await patchThread(memory, { threadId: 'thread-1', update });
 
@@ -97,9 +99,9 @@ describe('patchThread', () => {
 
 		it('returns null when thread does not exist', async () => {
 			const memory = makeMemory({
-				getThread: jest.fn().mockResolvedValue(null),
+				getThread: vi.fn().mockResolvedValue(null),
 			});
-			const update = jest.fn();
+			const update = vi.fn();
 
 			const result = await patchThread(memory, { threadId: 'unknown', update });
 
@@ -109,12 +111,12 @@ describe('patchThread', () => {
 
 		it('uses threadId as title fallback when thread has no title', async () => {
 			const memory = makeMemory({
-				getThread: jest.fn().mockResolvedValue({
+				getThread: vi.fn().mockResolvedValue({
 					...baseThread,
 					title: undefined,
 				}),
 			});
-			const update = jest.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
+			const update = vi.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
 
 			await patchThread(memory, { threadId: 'thread-1', update });
 
@@ -125,7 +127,7 @@ describe('patchThread', () => {
 
 		it('applies metadata from patch when provided', async () => {
 			const memory = makeMemory();
-			const update = jest.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
+			const update = vi.fn().mockReturnValue({ metadata: { newKey: 'newVal' } });
 
 			await patchThread(memory, { threadId: 'thread-1', update });
 
@@ -136,7 +138,7 @@ describe('patchThread', () => {
 
 		it('passes a defensive copy of metadata to update function', async () => {
 			const memory = makeMemory();
-			const update = jest.fn().mockImplementation((thread: ThreadRecord) => {
+			const update = vi.fn().mockImplementation((thread: ThreadRecord) => {
 				thread.metadata = { ...(thread.metadata ?? {}), mutated: true };
 				return { title: 'Updated' };
 			});

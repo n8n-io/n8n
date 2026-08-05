@@ -5,8 +5,9 @@ import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
+import type { Mock } from 'vitest';
+import { mock, anyObject } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
@@ -22,12 +23,12 @@ import { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { badPasswords } from '@test/test-data';
 
-jest.mock('@/sso.ee/sso-helpers', () => ({
-	...jest.requireActual('@/sso.ee/sso-helpers'),
-	getCurrentAuthenticationMethod: jest.fn(),
+vi.mock('@/sso.ee/sso-helpers', async () => ({
+	...(await vi.importActual<typeof import('@/sso.ee/sso-helpers')>('@/sso.ee/sso-helpers')),
+	getCurrentAuthenticationMethod: vi.fn(),
 }));
 
-const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as jest.Mock;
+const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as Mock;
 
 const browserId = 'test-browser-id';
 
@@ -65,7 +66,7 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(req, res, payload);
@@ -115,13 +116,13 @@ describe('MeController', () => {
 				}
 			});
 
-			await expect(
-				controller.updateCurrentUser(
-					req,
-					mock(),
-					mock({ email: user.email, firstName: 'John', lastName: 'Potato' }),
-				),
-			).rejects.toThrowError(new BadRequestError('Invalid email address'));
+			const execution = controller.updateCurrentUser(
+				req,
+				mock(),
+				mock({ email: user.email, firstName: 'John', lastName: 'Potato' }),
+			);
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Invalid email address');
 		});
 
 		describe('when user is authenticated via LDAP or OIDC', () => {
@@ -143,18 +144,19 @@ describe('MeController', () => {
 				} as unknown as AuthIdentity);
 				getCurrentAuthenticationMethodMock.mockReturnValue('ldap');
 
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						new UserUpdateRequestDto({
-							email: 'ldap@email.com',
-							firstName: 'Jane',
-							lastName: 'Doe',
-						}),
-					),
-				).rejects.toThrowError(
-					new BadRequestError('LDAP user may not change their profile information'),
+				const execution = controller.updateCurrentUser(
+					req,
+					mock(),
+					new UserUpdateRequestDto({
+						email: 'ldap@email.com',
+						firstName: 'Jane',
+						lastName: 'Doe',
+					}),
+				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow(
+					'LDAP user may not change their profile information',
 				);
 			});
 
@@ -176,18 +178,19 @@ describe('MeController', () => {
 				} as unknown as AuthIdentity);
 				getCurrentAuthenticationMethodMock.mockReturnValue('oidc');
 
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						new UserUpdateRequestDto({
-							email: 'new-oidc@email.com',
-							firstName: 'John',
-							lastName: 'Doe',
-						}),
-					),
-				).rejects.toThrowError(
-					new BadRequestError('OIDC user may not change their profile information'),
+				const execution = controller.updateCurrentUser(
+					req,
+					mock(),
+					new UserUpdateRequestDto({
+						email: 'new-oidc@email.com',
+						firstName: 'John',
+						lastName: 'Doe',
+					}),
+				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow(
+					'OIDC user may not change their profile information',
 				);
 			});
 
@@ -210,7 +213,7 @@ describe('MeController', () => {
 
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 				await controller.updateCurrentUser(req, res, payload);
@@ -237,18 +240,19 @@ describe('MeController', () => {
 				} as unknown as AuthIdentity);
 				getCurrentAuthenticationMethodMock.mockReturnValue('ldap');
 
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						new UserUpdateRequestDto({
-							email: 'multi@email.com',
-							firstName: 'Jane',
-							lastName: 'Doe',
-						}),
-					),
-				).rejects.toThrowError(
-					new BadRequestError('LDAP user may not change their profile information'),
+				const execution = controller.updateCurrentUser(
+					req,
+					mock(),
+					new UserUpdateRequestDto({
+						email: 'multi@email.com',
+						firstName: 'Jane',
+						lastName: 'Doe',
+					}),
+				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow(
+					'LDAP user may not change their profile information',
 				);
 			});
 		});
@@ -259,7 +263,7 @@ describe('MeController', () => {
 			const setUpdateMocks = (user: User) => {
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 			};
 
@@ -281,18 +285,19 @@ describe('MeController', () => {
 				} as unknown as AuthIdentity);
 				getCurrentAuthenticationMethodMock.mockReturnValue('saml');
 
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						new UserUpdateRequestDto({
-							email: 'saml@email.com',
-							firstName: 'Jane',
-							lastName: 'Doe',
-						}),
-					),
-				).rejects.toThrowError(
-					new BadRequestError('SAML user may not change their profile information'),
+				const execution = controller.updateCurrentUser(
+					req,
+					mock(),
+					new UserUpdateRequestDto({
+						email: 'saml@email.com',
+						firstName: 'Jane',
+						lastName: 'Doe',
+					}),
+				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow(
+					'SAML user may not change their profile information',
 				);
 			});
 
@@ -504,17 +509,18 @@ describe('MeController', () => {
 				} as unknown as User;
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						new UserUpdateRequestDto({
-							email: 'new@email.com',
-							firstName: 'John',
-							lastName: 'Potato',
-						}),
-					),
-				).rejects.toThrowError(new BadRequestError('Two-factor code is required to change email'));
+				const execution = controller.updateCurrentUser(
+					req,
+					mock(),
+					new UserUpdateRequestDto({
+						email: 'new@email.com',
+						firstName: 'John',
+						lastName: 'Potato',
+					}),
+				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('Two-factor code is required to change email');
 			});
 
 			it('should throw InvalidMfaCodeError if mfa code is invalid', async () => {
@@ -557,7 +563,7 @@ describe('MeController', () => {
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
@@ -589,17 +595,18 @@ describe('MeController', () => {
 				} as unknown as User;
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						new UserUpdateRequestDto({
-							email: 'michel-new@email.com',
-							firstName: 'Michel',
-							lastName: 'n8n',
-						}),
-					),
-				).rejects.toThrowError(new BadRequestError('Current password is required to change email'));
+				const execution = controller.updateCurrentUser(
+					req,
+					mock(),
+					new UserUpdateRequestDto({
+						email: 'michel-new@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+					}),
+				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('Current password is required to change email');
 			});
 
 			it('should throw BadRequestError if currentPassword is not a string', async () => {
@@ -611,14 +618,15 @@ describe('MeController', () => {
 				} as unknown as User;
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
-				await expect(
-					controller.updateCurrentUser(req, mock(), {
-						email: 'michel-new@email.com',
-						firstName: 'Michel',
-						lastName: 'n8n',
-						currentPassword: 123 as any,
-					} as any),
-				).rejects.toThrowError(new BadRequestError('Current password is required to change email'));
+				const execution = controller.updateCurrentUser(req, mock(), {
+					email: 'michel-new@email.com',
+					firstName: 'Michel',
+					lastName: 'n8n',
+					currentPassword: 123 as any,
+				} as any);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('Current password is required to change email');
 			});
 
 			it('should throw BadRequestError if currentPassword is incorrect', async () => {
@@ -629,21 +637,20 @@ describe('MeController', () => {
 				} as unknown as User;
 				const req = { user, browserId } as unknown as AuthenticatedRequest;
 
-				await expect(
-					controller.updateCurrentUser(
-						req,
-						mock(),
-						mock({
-							email: 'michel-new@email.com',
-							firstName: 'Michel',
-							lastName: 'n8n',
-							currentPassword: 'wrong-password',
-						}),
-					),
-				).rejects.toThrowError(
-					new BadRequestError(
-						'Unable to update profile. Please check your credentials and try again.',
-					),
+				const execution = controller.updateCurrentUser(
+					req,
+					mock(),
+					mock({
+						email: 'michel-new@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+						currentPassword: 'wrong-password',
+					}),
+				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow(
+					'Unable to update profile. Please check your credentials and try again.',
 				);
 			});
 
@@ -658,7 +665,7 @@ describe('MeController', () => {
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 				const result = await controller.updateCurrentUser(
@@ -687,7 +694,7 @@ describe('MeController', () => {
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 				const result = await controller.updateCurrentUser(
@@ -728,16 +735,15 @@ describe('MeController', () => {
 			} as unknown as User;
 			const req = { user, browserId } as unknown as AuthenticatedRequest;
 
-			await expect(
-				controller.updateCurrentUser(
-					req,
-					mock(),
-					mock({ email: user.email, firstName: 'John', lastName: 'Doe' }),
-				),
-			).rejects.toThrowError(
-				new ForbiddenError(
-					'This account is managed via environment variables and cannot be modified through the API',
-				),
+			const execution = controller.updateCurrentUser(
+				req,
+				mock(),
+				mock({ email: user.email, firstName: 'John', lastName: 'Doe' }),
+			);
+
+			await expect(execution).rejects.toThrow(ForbiddenError);
+			await expect(execution).rejects.toThrow(
+				'This account is managed via environment variables and cannot be modified through the API',
 			);
 		});
 
@@ -749,16 +755,15 @@ describe('MeController', () => {
 				} as unknown as User,
 			} as unknown as AuthenticatedRequest;
 
-			await expect(
-				controller.updatePassword(
-					req,
-					mock(),
-					mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
-				),
-			).rejects.toThrowError(
-				new ForbiddenError(
-					'This account is managed via environment variables and cannot be modified through the API',
-				),
+			const execution = controller.updatePassword(
+				req,
+				mock(),
+				mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
+			);
+
+			await expect(execution).rejects.toThrow(ForbiddenError);
+			await expect(execution).rejects.toThrow(
+				'This account is managed via environment variables and cannot be modified through the API',
 			);
 		});
 
@@ -775,7 +780,7 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userService.findUserWithAuthIdentities.mockResolvedValue(user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(
@@ -795,22 +800,30 @@ describe('MeController', () => {
 			const req = {
 				user: mock({ password: undefined }),
 			} as unknown as AuthenticatedRequest;
-			await expect(
-				controller.updatePassword(req, mock(), mock({ currentPassword: '', newPassword: '' })),
-			).rejects.toThrowError(new BadRequestError('Requesting user not set up.'));
+
+			const execution = controller.updatePassword(
+				req,
+				mock(),
+				mock({ currentPassword: '', newPassword: '' }),
+			);
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Requesting user not set up.');
 		});
 
 		it("should throw if currentPassword does not match the user's password", async () => {
 			const req = {
 				user: mock({ password: passwordHash }),
 			} as unknown as AuthenticatedRequest;
-			await expect(
-				controller.updatePassword(
-					req,
-					mock(),
-					mock({ currentPassword: 'not_old_password', newPassword: '' }),
-				),
-			).rejects.toThrowError(new BadRequestError('Provided current password is incorrect.'));
+
+			const execution = controller.updatePassword(
+				req,
+				mock(),
+				mock({ currentPassword: 'not_old_password', newPassword: '' }),
+			);
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Provided current password is incorrect.');
 		});
 
 		describe('should throw if newPassword is not valid', () => {
@@ -820,13 +833,15 @@ describe('MeController', () => {
 						user: mock({ password: passwordHash }),
 						browserId,
 					} as unknown as AuthenticatedRequest;
-					await expect(
-						controller.updatePassword(
-							req,
-							mock(),
-							mock({ currentPassword: 'old_password', newPassword }),
-						),
-					).rejects.toThrowError(new BadRequestError(errorMessage));
+
+					const execution = controller.updatePassword(
+						req,
+						mock(),
+						mock({ currentPassword: 'old_password', newPassword }),
+					);
+
+					await expect(execution).rejects.toThrow(BadRequestError);
+					await expect(execution).rejects.toThrow(errorMessage);
 				});
 			});
 		});
@@ -838,7 +853,7 @@ describe('MeController', () => {
 			} as unknown as AuthenticatedRequest;
 			const res = mock<Response>();
 			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
-			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+			vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(
 				req,
@@ -876,15 +891,14 @@ describe('MeController', () => {
 					user: mock({ password: passwordHash, mfaEnabled: true }),
 				} as unknown as AuthenticatedRequest;
 
-				await expect(
-					controller.updatePassword(
-						req,
-						mock(),
-						mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
-					),
-				).rejects.toThrowError(
-					new BadRequestError('Two-factor code is required to change password.'),
+				const execution = controller.updatePassword(
+					req,
+					mock(),
+					mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
 				);
+
+				await expect(execution).rejects.toThrow(BadRequestError);
+				await expect(execution).rejects.toThrow('Two-factor code is required to change password.');
 			});
 
 			it('should throw InvalidMfaCodeError if invalid mfa code is given', async () => {
@@ -913,7 +927,7 @@ describe('MeController', () => {
 				} as unknown as AuthenticatedRequest;
 				const res = mock<Response>();
 				userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
-				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 				mockMfaService.validateMfa.mockResolvedValue(true);
 
 				const result = await controller.updatePassword(
@@ -937,9 +951,11 @@ describe('MeController', () => {
 			const req = mock<MeRequest.SurveyAnswers>({
 				body: undefined,
 			});
-			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(
-				new BadRequestError('Personalization answers are mandatory'),
-			);
+
+			const execution = controller.storeSurveyAnswers(req);
+
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Personalization answers are mandatory');
 		});
 
 		it('should not flag XSS attempt for `<` sign in company size', async () => {
@@ -977,7 +993,7 @@ describe('MeController', () => {
 				[fieldName]: ['<script>alert("XSS")</script>'],
 			};
 
-			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrow(BadRequestError);
 		});
 
 		test.each([
@@ -997,7 +1013,7 @@ describe('MeController', () => {
 				[fieldName]: '<script>alert("XSS")</script>',
 			};
 
-			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrow(BadRequestError);
 		});
 	});
 });

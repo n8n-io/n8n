@@ -1,12 +1,11 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
 	"compilerOptions": {
 		"rootDir": ".",
-		"types": ["node", "jest"],
+		"types": ["node", "vitest/globals"],
 		"lib": ["es2021", "dom"],
 		"moduleResolution": "nodenext",
-		"module": "nodenext",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"module": "nodenext"
 	},
 	"include": ["src/**/*.ts"]
 }

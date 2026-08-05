@@ -167,6 +167,129 @@ describe('httpRequestValidator', () => {
 		});
 	});
 
+	describe('validateNode - raw body content type', () => {
+		it('returns INVALID_PARAMETER when a SOAP payload is configured as jsonBody', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'json',
+					specifyBody: 'json',
+					jsonBody: '={{ \'<?xml version="1.0"?><soap:Envelope></soap:Envelope>\' }}',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					severity: 'error',
+					parameterPath: 'jsonBody',
+				}),
+			);
+			expect(issues[0].message).toContain("contentType='raw'");
+			expect(issues[0].message).toContain('rawContentType');
+			expect(issues[0].message).toContain('omit specifyBody/jsonBody/bodyParameters');
+		});
+
+		it('returns INVALID_PARAMETER when jsonBody references an XML payload field', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'json',
+					specifyBody: 'json',
+					jsonBody: '={{ $json.soapBody }}',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					severity: 'error',
+					parameterPath: 'jsonBody',
+				}),
+			);
+		});
+
+		it.each(['={{ JSON.stringify($json.xmlData) }}', '={{ $json.soapVersion }}'])(
+			'allows JSON bodies that reference non-payload XML/SOAP fields: %s',
+			(jsonBody) => {
+				const node = createMockNode('n8n-nodes-base.httpRequest', {
+					parameters: {
+						sendBody: true,
+						contentType: 'json',
+						specifyBody: 'json',
+						jsonBody,
+					},
+				});
+				const ctx = createMockPluginContext();
+
+				const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+				expect(issues.filter((i) => i.code === 'INVALID_PARAMETER')).toHaveLength(0);
+			},
+		);
+
+		it('allows valid JSON bodies that contain XML as a field value', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'json',
+					specifyBody: 'json',
+					jsonBody: JSON.stringify({ payload: '<?xml version="1.0"?><root />' }),
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues.filter((i) => i.code === 'INVALID_PARAMETER')).toHaveLength(0);
+		});
+
+		it('returns INVALID_PARAMETER when raw XML content type has no body', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'raw',
+					rawContentType: 'text/xml',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'INVALID_PARAMETER',
+					severity: 'error',
+					parameterPath: 'body',
+				}),
+			);
+			expect(issues[0].message).toContain("contentType='raw'");
+			expect(issues[0].message).toContain("expr('{{ $json.soapBody }}')");
+		});
+
+		it('allows raw XML content type with a body expression', () => {
+			const node = createMockNode('n8n-nodes-base.httpRequest', {
+				parameters: {
+					sendBody: true,
+					contentType: 'raw',
+					rawContentType: 'application/soap+xml',
+					body: '={{ $json.soapBody }}',
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues.filter((i) => i.code === 'INVALID_PARAMETER')).toHaveLength(0);
+		});
+	});
+
 	describe('validateNode - edge cases', () => {
 		it('returns no issues when parameters is undefined', () => {
 			const node = createMockNode('n8n-nodes-base.httpRequest', {});

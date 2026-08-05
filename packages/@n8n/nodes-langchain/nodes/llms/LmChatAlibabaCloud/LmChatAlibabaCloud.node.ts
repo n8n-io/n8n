@@ -19,7 +19,7 @@ import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-h
 
 export class LmChatAlibabaCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Alibaba Cloud Chat Model',
+		displayName: 'Qwen Cloud Chat Model',
 
 		name: 'lmChatAlibabaCloud',
 		icon: 'file:alibaba.svg',
@@ -27,7 +27,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		version: [1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'Alibaba Cloud Chat Model',
+			name: 'Qwen Cloud Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -78,7 +78,7 @@ export class LmChatAlibabaCloud implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will generate the completion. <a href="https://www.alibabacloud.com/help/en/model-studio/getting-started/models">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://www.qwencloud.com/models">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {

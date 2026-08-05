@@ -1,10 +1,24 @@
-import vm from 'vm';
-
 import { loadClassInIsolation } from '../load-class-in-isolation';
 
-jest.mock('@n8n/backend-common', () => {
+class TestClass {
+	getValue(): string {
+		return 'test value';
+	}
+}
+
+const { runInContext, ScriptCtor } = vi.hoisted(() => ({
+	runInContext: vi.fn(),
+	ScriptCtor: vi.fn(),
+}));
+
+vi.mock('vm', () => ({
+	createContext: vi.fn().mockReturnValue({}),
+	Script: ScriptCtor,
+}));
+
+vi.mock('@n8n/backend-common', async (importActual) => {
 	return {
-		...jest.requireActual('@n8n/backend-common'),
+		...(await importActual()),
 		inTest: false,
 	};
 });
@@ -13,28 +27,18 @@ describe('loadClassInIsolation', () => {
 	const filePath = '/path/to/TestClass.js';
 	const className = 'TestClass';
 
-	class TestClass {
-		getValue(): string {
-			return 'test value';
-		}
-	}
-
-	const runInContext = jest.fn().mockImplementation(() => new TestClass());
-	let scriptSpy: jest.SpyInstance;
-
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(vm, 'createContext').mockReturnValue({});
-		scriptSpy = jest.spyOn(vm, 'Script').mockImplementation(function (this: vm.Script) {
+		vi.clearAllMocks();
+		runInContext.mockImplementation(() => new TestClass());
+		ScriptCtor.mockImplementation(function (this: { runInContext: typeof runInContext }) {
 			this.runInContext = runInContext;
-			return this;
 		});
 	});
 
 	it('should create script with correct require statement', () => {
 		const instance = loadClassInIsolation<TestClass>(filePath, className);
 
-		expect(scriptSpy).toHaveBeenCalledWith(`new (require('${filePath}').${className})()`);
+		expect(ScriptCtor).toHaveBeenCalledWith(`new (require('${filePath}').${className})()`);
 		expect(instance.getValue()).toBe('test value');
 	});
 
@@ -44,7 +48,7 @@ describe('loadClassInIsolation', () => {
 
 		loadClassInIsolation('/path\\to\\TestClass.js', 'TestClass');
 
-		expect(scriptSpy).toHaveBeenCalledWith(`new (require('${filePath}').${className})()`);
+		expect(ScriptCtor).toHaveBeenCalledWith(`new (require('${filePath}').${className})()`);
 
 		Object.defineProperty(process, 'platform', { value: originalPlatform });
 	});

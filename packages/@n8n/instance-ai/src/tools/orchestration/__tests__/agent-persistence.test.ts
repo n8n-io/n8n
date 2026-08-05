@@ -19,7 +19,7 @@ function createContext(memory?: BuiltMemory): OrchestrationContext {
 
 describe('sub-agent persistence', () => {
 	it('creates hidden parent-scoped persistence and saves the child thread', async () => {
-		const saveThread = jest.fn();
+		const saveThread = vi.fn();
 		const context = createContext({ saveThread } as unknown as BuiltMemory);
 
 		const persistence = await createSubAgentPersistence(context, {
@@ -47,7 +47,7 @@ describe('sub-agent persistence', () => {
 	});
 
 	it('respects caller-provided thread and resource IDs', async () => {
-		const saveThread = jest.fn();
+		const saveThread = vi.fn();
 		const context = createContext({ saveThread } as unknown as BuiltMemory);
 		const threadId = '00000000-0000-4000-8000-000000000002';
 		const resourceId = createSubAgentResourceId(PARENT_THREAD_ID, 'workflow-builder');

@@ -16,8 +16,11 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	usageScope?: 'project' | 'instance';
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
+	/** Total number of users connected to this credential. Set on resolvable credentials only. */
+	connectedUserCount?: number;
 }
 
 export interface IUsedCredential {
@@ -39,6 +42,8 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICreden
 	isResolvable?: boolean;
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
+	/** Total number of users connected to this credential. Set on resolvable credentials only. */
+	connectedUserCount?: number;
 }
 
 export interface ICredentialTypeMap {

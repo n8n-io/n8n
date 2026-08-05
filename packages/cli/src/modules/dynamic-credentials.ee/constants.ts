@@ -2,8 +2,10 @@
  * Stable, well-known id of the system-managed N8N self-connect credential resolver
  * seeded by `N8nResolverSeeder` during module init. Downstream tickets (IAM-660 etc.)
  * reference this id from workflow settings and OAuth callbacks.
+ *
+ * Re-exported from `@n8n/api-types` so the frontend and backend share a single source.
  */
-export const SYSTEM_RESOLVER_ID = 'system-n8n';
+export { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 
 /**
  * Human-readable name persisted on the seeded row and shown in the workflow-settings

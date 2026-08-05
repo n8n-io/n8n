@@ -16,7 +16,7 @@ import type { INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Int
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const NESTED_PARAM_TYPES = new Set([
@@ -52,7 +52,7 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
@@ -114,7 +114,7 @@ const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 const openNdv = () => {
-	ndvStore.setActiveNodeName(props.state.node.name, 'other');
+	ndvStore.value.setActiveNodeName(props.state.node.name, 'other');
 };
 
 // Hide parameter issues until the user interacts with a parameter.

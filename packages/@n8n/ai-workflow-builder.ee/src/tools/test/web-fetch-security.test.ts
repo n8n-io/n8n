@@ -11,18 +11,18 @@ import {
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockGetCurrentTaskInput = jest.fn();
-jest.mock('@langchain/langgraph', () => ({
+const mockGetCurrentTaskInput = vi.fn();
+vi.mock('@langchain/langgraph', () => ({
 	getCurrentTaskInput: (...args: unknown[]) => mockGetCurrentTaskInput(...args) as unknown,
 }));
 
-const mockIsAllowedDomain = jest.fn();
-jest.mock('@/tools/utils/allowed-domains', () => ({
+const mockIsAllowedDomain = vi.fn();
+vi.mock('@/tools/utils/allowed-domains', () => ({
 	isAllowedDomain: (...args: unknown[]) => mockIsAllowedDomain(...args) as boolean,
 }));
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	mockIsAllowedDomain.mockReturnValue(false);
 });
 

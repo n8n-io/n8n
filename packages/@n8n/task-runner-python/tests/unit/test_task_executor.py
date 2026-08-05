@@ -1,11 +1,27 @@
+import ast
 import pytest
 import json
 from unittest.mock import MagicMock, patch
 
-from src.task_executor import TaskExecutor
+from src.task_executor import (
+    TaskExecutor,
+    FormatGuardTransformer,
+    _safe_format,
+    _validate_format_template,
+)
 from src.pipe_reader import PipeReader
-from src.errors import TaskCancelledError, TaskKilledError, TaskSubprocessFailedError
-from src.constants import SIGTERM_EXIT_CODE, SIGKILL_EXIT_CODE, PIPE_MSG_PREFIX_LENGTH
+from src.errors import (
+    SecurityViolationError,
+    TaskCancelledError,
+    TaskKilledError,
+    TaskSubprocessFailedError,
+)
+from src.constants import (
+    EXECUTOR_SAFE_FORMAT_KEY,
+    PIPE_MSG_PREFIX_LENGTH,
+    SIGKILL_EXIT_CODE,
+    SIGTERM_EXIT_CODE,
+)
 from src.config.security_config import SecurityConfig
 from src.message_types.pipe import (
     PipeResultMessage,
@@ -275,3 +291,237 @@ class TestFilterBuiltins:
         assert "eval" not in result
         assert "len" in result
         assert result["__import__"] is not None
+
+
+def _run_with_guard(code: str, namespace: dict | None = None) -> dict:
+    tree = ast.parse(code)
+    transformed = FormatGuardTransformer().visit(tree)
+    ast.fix_missing_locations(transformed)
+    ns: dict = {EXECUTOR_SAFE_FORMAT_KEY: _safe_format}
+    if namespace:
+        ns.update(namespace)
+    exec(compile(transformed, "<test>", "exec"), ns)
+    return ns
+
+
+class TestValidateFormatTemplate:
+    def test_safe_templates_pass(self):
+        safe = [
+            "",
+            "no fields here",
+            "{}",
+            "{0}",
+            "{name}",
+            "{0.value}",
+            "{0[key]}",
+            "{:.2f}",
+            "{{not a field}}",
+            "{0!r:>10}",
+        ]
+        for template in safe:
+            _validate_format_template(template)  # should not raise
+
+    @pytest.mark.parametrize(
+        "template,token",
+        [
+            ("{0.__class__}", "__class__"),
+            ("{0.__globals__}", "__globals__"),
+            ("{0.__class__.__bases__}", "__class__"),
+            ("{0.__globals__[__builtins__]}", "__globals__"),
+            ("{0[__builtins__]}", "__builtins__"),
+            ("{0['__builtins__']}", "__builtins__"),
+            ('{0["__import__"]}', "__import__"),
+        ],
+    )
+    def test_blocked_tokens_rejected(self, template, token):
+        with pytest.raises(SecurityViolationError) as exc_info:
+            _validate_format_template(template)
+        assert token in exc_info.value.description
+
+
+class TestSafeFormatGuard:
+    def test_str_receiver_safe_template(self):
+        result = _safe_format("format", "Hello {}", "world")
+        assert result == "Hello world"
+
+    def test_str_receiver_blocked_template(self):
+        with pytest.raises(SecurityViolationError):
+            _safe_format("format", "{0.__globals__}", lambda: None)
+
+    def test_format_map_blocked_template(self):
+        with pytest.raises(SecurityViolationError):
+            _safe_format("format_map", "{0.__class__}", {0: object()})
+
+    def test_nested_format_spec_blocked_template(self):
+        with pytest.raises(SecurityViolationError):
+            _safe_format("format", "{x:{y.__class__}}", x="a", y=object())
+
+    def test_nested_format_spec_blocked_subscript_template(self):
+        with pytest.raises(SecurityViolationError):
+            _safe_format(
+                "format",
+                "{x:{y[__globals__]}}",
+                x="a",
+                y={"__globals__": ""},
+            )
+
+    def test_str_class_unbound_method_form(self):
+        with pytest.raises(SecurityViolationError):
+            _safe_format("format", str, "{0.__globals__}", lambda: None)
+
+    def test_str_class_unbound_method_form_safe(self):
+        result = _safe_format("format", str, "Hello {}", "world")
+        assert result == "Hello world"
+
+    def test_non_string_receiver_passes_through(self):
+        class Custom:
+            def format(self, *args):
+                return ("custom", args)
+
+        result = _safe_format("format", Custom(), "anything")
+        assert result == ("custom", ("anything",))
+
+    def test_kwarg_named_like_internal_param_passes_through(self):
+        assert _safe_format("format", "{method_name}", method_name="ok") == "ok"
+        assert _safe_format("format", "{receiver}", receiver="ok") == "ok"
+
+
+class TestFormatGuardTransformer:
+    def test_rewrites_format_method_call(self):
+        tree = ast.parse('"hi {}".format(name)')
+        FormatGuardTransformer().visit(tree)
+        ast.fix_missing_locations(tree)
+        rendered = ast.unparse(tree)
+        assert EXECUTOR_SAFE_FORMAT_KEY in rendered
+        assert ".format(" not in rendered
+
+    def test_rewrites_format_map_method_call(self):
+        tree = ast.parse('"hi {a}".format_map({"a": 1})')
+        FormatGuardTransformer().visit(tree)
+        ast.fix_missing_locations(tree)
+        rendered = ast.unparse(tree)
+        assert EXECUTOR_SAFE_FORMAT_KEY in rendered
+        assert ".format_map(" not in rendered
+
+    def test_leaves_unrelated_calls_untouched(self):
+        tree = ast.parse('"abc".upper()')
+        FormatGuardTransformer().visit(tree)
+        ast.fix_missing_locations(tree)
+        assert EXECUTOR_SAFE_FORMAT_KEY not in ast.unparse(tree)
+
+
+class TestFormatGuardEndToEnd:
+    def test_dynamic_template_with_blocked_token_rejected(self):
+        code = """
+d = chr(95) * 2
+template = "{0." + d + "globals" + d + "}"
+result = template.format(_target)
+"""
+        with pytest.raises(SecurityViolationError) as exc_info:
+            _run_with_guard(code, {"_target": lambda: None})
+        assert "__globals__" in exc_info.value.description
+
+    def test_dynamic_template_using_join_rejected(self):
+        code = """
+parts = ["{0.", "_" * 2, "class", "_" * 2, "}"]
+template = "".join(parts)
+result = template.format(_target)
+"""
+        with pytest.raises(SecurityViolationError) as exc_info:
+            _run_with_guard(code, {"_target": object()})
+        assert "__class__" in exc_info.value.description
+
+    def test_dynamic_template_subscript_form_rejected(self):
+        code = """
+d = chr(95) * 2
+template = "{0." + d + "globals" + d + "[" + d + "builtins" + d + "]}"
+result = template.format(_target)
+"""
+        with pytest.raises(SecurityViolationError) as exc_info:
+            _run_with_guard(code, {"_target": lambda: None})
+        # Either token reveals the rejection — both are in BLOCKED_NAMES.
+        assert (
+            "__globals__" in exc_info.value.description
+            or "__builtins__" in exc_info.value.description
+        )
+
+    def test_dynamic_nested_format_spec_template_rejected(self):
+        code = """
+d = chr(95) * 2
+template = "{x:{y." + d + "class" + d + "}}"
+result = template.format(x="a", y=object())
+"""
+        with pytest.raises(SecurityViolationError) as exc_info:
+            _run_with_guard(code)
+        assert "__class__" in exc_info.value.description
+
+    def test_str_class_unbound_form_rejected(self):
+        code = """
+d = chr(95) * 2
+template = "{0." + d + "globals" + d + "}"
+result = str.format(template, _target)
+"""
+        with pytest.raises(SecurityViolationError):
+            _run_with_guard(code, {"_target": lambda: None})
+
+    def test_safe_dynamic_template_still_works(self):
+        code = """
+template = "Hello, " + "{}!"
+result = template.format("world")
+"""
+        ns = _run_with_guard(code)
+        assert ns["result"] == "Hello, world!"
+
+    def test_safe_inline_format_still_works(self):
+        code = 'result = "{:.2f}".format(3.14159)'
+        ns = _run_with_guard(code)
+        assert ns["result"] == "3.14"
+
+    def test_safe_format_map_still_works(self):
+        code = 'result = "{a}-{b}".format_map({"a": 1, "b": 2})'
+        ns = _run_with_guard(code)
+        assert ns["result"] == "1-2"
+
+    def test_user_kwarg_named_like_internal_param_works(self):
+        code = (
+            'result = "{method_name}-{receiver}".format(method_name="a", receiver="b")'
+        )
+        ns = _run_with_guard(code)
+        assert ns["result"] == "a-b"
+
+    def test_custom_format_method_passes_through(self):
+        code = """
+class Money:
+    def __init__(self, value):
+        self.value = value
+    def format(self):
+        return "$" + str(self.value)
+
+result = Money(42).format()
+"""
+        ns = _run_with_guard(code)
+        assert ns["result"] == "$42"
+
+
+class TestCompileUserCode:
+    def test_compiles_and_injects_guard(self):
+        compiled = TaskExecutor._compile_user_code(
+            'return "{}".format("ok")', "<inline>"
+        )
+
+        ns = {"__builtins__": __builtins__, EXECUTOR_SAFE_FORMAT_KEY: _safe_format}
+        exec(compiled, ns)
+        from src.constants import EXECUTOR_USER_OUTPUT_KEY
+
+        assert ns[EXECUTOR_USER_OUTPUT_KEY] == "ok"
+
+    def test_compiled_code_rejects_dynamic_blocked_template(self):
+        raw = """
+d = chr(95) * 2
+template = "{0." + d + "globals" + d + "}"
+return template.format(lambda: None)
+"""
+        compiled = TaskExecutor._compile_user_code(raw, "<inline>")
+        ns = {"__builtins__": __builtins__, EXECUTOR_SAFE_FORMAT_KEY: _safe_format}
+        with pytest.raises(SecurityViolationError):
+            exec(compiled, ns)

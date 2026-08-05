@@ -14,7 +14,7 @@ ruleTester.run('no-forbidden-lifecycle-scripts', NoForbiddenLifecycleScriptsRule
 		{
 			name: 'only safe scripts',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "scripts": { "build": "tsc", "test": "jest", "dev": "nodemon" } }',
+			code: '{ "name": "n8n-nodes-example", "scripts": { "build": "tsc", "test": "vitest", "dev": "nodemon" } }',
 		},
 		{
 			name: 'non-package.json file is ignored',
@@ -82,7 +82,7 @@ ruleTester.run('no-forbidden-lifecycle-scripts', NoForbiddenLifecycleScriptsRule
 		{
 			name: 'mix of allowed and forbidden scripts — only forbidden reported',
 			filename: 'package.json',
-			code: '{ "name": "n8n-nodes-example", "scripts": { "build": "tsc", "prepare": "npm run build", "test": "jest" } }',
+			code: '{ "name": "n8n-nodes-example", "scripts": { "build": "tsc", "prepare": "npm run build", "test": "vitest" } }',
 			errors: [{ messageId: 'forbiddenScript', data: { scriptName: 'prepare' } }],
 		},
 		{

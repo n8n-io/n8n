@@ -12,6 +12,13 @@ import type {
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
+const mockLogger = {
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
+} as never;
+
 // Vendor-SDK traffic enters the wire server through the rewritten URL, the
 // wire server calls the mock handler with the inbound messages array, the
 // handler's content reaches the OpenAI envelope, and each turn is attributed
@@ -30,15 +37,16 @@ describe('Mock-handler integration with the LLM wire server', () => {
 
 	function makeInnerHelper(credentials: ICredentialDataDecryptedObject): ICredentialsHelper {
 		return {
-			getParentTypes: jest.fn().mockReturnValue([]),
-			authenticate: jest.fn(),
-			preAuthentication: jest.fn(),
-			runPreAuthentication: jest.fn(),
-			getCredentials: jest.fn(),
-			getDecrypted: jest.fn().mockResolvedValue(credentials),
-			updateCredentials: jest.fn(),
-			updateCredentialsOauthTokenData: jest.fn(),
-			getCredentialsProperties: jest.fn().mockReturnValue([]),
+			getParentTypes: vi.fn().mockReturnValue([]),
+			authenticate: vi.fn(),
+			preAuthentication: vi.fn(),
+			runPreAuthentication: vi.fn(),
+			getCredentials: vi.fn(),
+			getDecrypted: vi.fn().mockResolvedValue(credentials),
+			updateCredentials: vi.fn(),
+			updateCredentialsOauthTokenData: vi.fn(),
+			getCredentialsProperties: vi.fn().mockReturnValue([]),
+			isCredentialUsableByNode: vi.fn().mockReturnValue(true),
 		} as ICredentialsHelper;
 	}
 
@@ -71,8 +79,8 @@ describe('Mock-handler integration with the LLM wire server', () => {
 	}
 
 	it('chain output reflects mock-handler-generated content (not the no-handler stub)', async () => {
-		const mockHandler = jest
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+		const mockHandler = vi
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockResolvedValue({
 				body: { content: 'Hello, Jane — your order #ORD-42 ships today.' },
 				headers: { 'content-type': 'application/json' },
@@ -81,6 +89,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 		const intercepts: InterceptedTurn[] = [];
 
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([[rootName, subNode]]),
 			onIntercept: (t) => intercepts.push(t),
@@ -91,7 +100,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([['OpenAI Chat Model', rootName]]),
 			);
 
@@ -120,8 +129,8 @@ describe('Mock-handler integration with the LLM wire server', () => {
 
 	it('mock handler receives the full conversation on every turn (multi-turn awareness)', async () => {
 		const receivedMessagesPerCall: unknown[] = [];
-		const mockHandler = jest
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+		const mockHandler = vi
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockImplementation(async (req: IHttpRequestOptions) => {
 				const body = req.body as { messages?: unknown[] };
 				receivedMessagesPerCall.push(body.messages);
@@ -137,6 +146,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			});
 
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([[rootName, subNode]]),
 		});
@@ -146,7 +156,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([['OpenAI Chat Model', rootName]]),
 			);
 
@@ -195,8 +205,8 @@ describe('Mock-handler integration with the LLM wire server', () => {
 	});
 
 	it('attributes every turn to the AI root regardless of how many turns it generates', async () => {
-		const mockHandler = jest
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+		const mockHandler = vi
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockResolvedValue({
 				body: { content: 'ok' },
 				headers: { 'content-type': 'application/json' },
@@ -205,6 +215,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 		const intercepts: InterceptedTurn[] = [];
 
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([[rootName, subNode]]),
 			onIntercept: (t) => intercepts.push(t),
@@ -215,7 +226,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([['OpenAI Chat Model', rootName]]),
 			);
 
@@ -244,8 +255,8 @@ describe('Mock-handler integration with the LLM wire server', () => {
 		const subNodeA: INode = { ...subNode, id: 'a', name: 'OpenAI A' };
 		const subNodeB: INode = { ...subNode, id: 'b', name: 'OpenAI B' };
 
-		const mockHandler = jest
-			.fn<Promise<EvalMockHttpResponse>, Parameters<EvalLlmMockHandler>>()
+		const mockHandler = vi
+			.fn<(...args: Parameters<EvalLlmMockHandler>) => Promise<EvalMockHttpResponse>>()
 			.mockResolvedValue({
 				body: { content: 'ok' },
 				headers: { 'content-type': 'application/json' },
@@ -254,6 +265,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 
 		const intercepts: InterceptedTurn[] = [];
 		const server = new LlmWireServer({
+			logger: mockLogger,
 			mockHandler,
 			rootToSubNode: new Map([
 				['Agent A', subNodeA],
@@ -267,7 +279,7 @@ describe('Mock-handler integration with the LLM wire server', () => {
 			const helper = new EvalMockedCredentialsHelper(
 				makeInnerHelper({ apiKey: 'sk-real', url: 'https://api.openai.com/v1' }),
 				server.url,
-				undefined,
+				mockLogger,
 				new Map([
 					['OpenAI A', 'Agent A'],
 					['OpenAI B', 'Agent B'],

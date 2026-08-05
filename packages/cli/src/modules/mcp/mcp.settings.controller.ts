@@ -5,10 +5,12 @@ import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decora
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
@@ -23,20 +25,18 @@ export class McpSettingsController {
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
 		private readonly workflowService: WorkflowService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	@GlobalScope('mcp:manage')
 	@Patch('/settings')
-	async updateSettings(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Body dto: UpdateMcpSettingsDto,
-	) {
+	async updateSettings(req: AuthenticatedRequest, _res: Response, @Body dto: UpdateMcpSettingsDto) {
 		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
+		this.eventService.emit('mcp-access-updated', { user: req.user, enabled });
 		try {
 			await this.moduleRegistry.refreshModuleSettings('mcp');
 		} catch (error) {
@@ -57,6 +57,24 @@ export class McpSettingsController {
 	@Post('/api-key/rotate')
 	async rotateApiKeyForMcpServer(req: AuthenticatedRequest) {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
+	}
+
+	@GlobalScope('mcp:manage')
+	@Get('/oauth/allowed-redirect-uris')
+	async getAllowedRedirectUris() {
+		const uris = await this.mcpSettingsService.getAllowedRedirectUris();
+		return { uris };
+	}
+
+	@GlobalScope('mcp:manage')
+	@Patch('/oauth/allowed-redirect-uris')
+	async updateAllowedRedirectUris(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: UpdateAllowedRedirectUrisDto,
+	) {
+		await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
+		return { success: true };
 	}
 
 	@Get('/workflows', { middlewares: listQueryMiddleware })

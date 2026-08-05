@@ -2,7 +2,7 @@ import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-type
 import { Service } from '@n8n/di';
 import { Not, IsNull } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { sanitizeFilename } from '@n8n/utils';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';

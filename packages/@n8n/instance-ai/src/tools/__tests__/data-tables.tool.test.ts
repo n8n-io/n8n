@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
@@ -18,24 +19,24 @@ function createMockContext(
 		nodeService: {} as InstanceAiContext['nodeService'],
 		credentialService: {} as InstanceAiContext['credentialService'],
 		dataTableService: {
-			list: jest.fn().mockResolvedValue([]),
-			getSchema: jest.fn().mockResolvedValue([]),
-			queryRows: jest.fn().mockResolvedValue({ count: 0, data: [] }),
-			create: jest.fn().mockResolvedValue({}),
-			delete: jest.fn().mockResolvedValue(undefined),
-			addColumn: jest.fn().mockResolvedValue({}),
-			deleteColumn: jest.fn().mockResolvedValue(undefined),
-			renameColumn: jest.fn().mockResolvedValue(undefined),
-			insertRows: jest.fn().mockResolvedValue({ insertedCount: 0 }),
-			updateRows: jest.fn().mockResolvedValue({ updatedCount: 0 }),
-			deleteRows: jest.fn().mockResolvedValue({ deletedCount: 0 }),
+			list: vi.fn().mockResolvedValue([]),
+			getSchema: vi.fn().mockResolvedValue([]),
+			queryRows: vi.fn().mockResolvedValue({ count: 0, data: [] }),
+			create: vi.fn().mockResolvedValue({}),
+			delete: vi.fn().mockResolvedValue(undefined),
+			addColumn: vi.fn().mockResolvedValue({}),
+			deleteColumn: vi.fn().mockResolvedValue(undefined),
+			renameColumn: vi.fn().mockResolvedValue(undefined),
+			insertRows: vi.fn().mockResolvedValue({ insertedCount: 0 }),
+			updateRows: vi.fn().mockResolvedValue({ updatedCount: 0 }),
+			deleteRows: vi.fn().mockResolvedValue({ deletedCount: 0 }),
 		},
 		permissions: {},
 		...overrides,
 	} as unknown as InstanceAiContext;
 }
 
-function suspendCtx(suspendFn: jest.Mock) {
+function suspendCtx(suspendFn: Mock) {
 	return { resumeData: undefined, suspend: suspendFn } as never;
 }
 
@@ -50,36 +51,17 @@ function noSuspendCtx() {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('data-tables tool', () => {
-	// ── Surface filtering ──────────────────────────────────────────────────
+	// ── Tool construction ──────────────────────────────────────────────────
 
-	describe('surface filtering', () => {
-		it('should support read-only actions on orchestrator surface', async () => {
-			const context = createMockContext();
-			const tables = [{ id: 'dt-1', name: 'Users', columns: [] }];
-			context.dataTableService.list = jest.fn().mockResolvedValue(tables);
-			const tool = createDataTablesTool(context, 'orchestrator');
-
-			const result = await executeTool(
-				tool,
-				{ action: 'list', projectId: 'p1' } as never,
-				{} as never,
-			);
-
-			expect(result).toEqual({ tables });
-		});
-
-		it('should have a concise description for full surface', () => {
-			const context = createMockContext();
-			const tool = createDataTablesTool(context, 'full');
-
-			expect(tool.description).toContain('data tables');
-		});
-
-		it('should default to full surface when not specified', () => {
+	describe('tool construction', () => {
+		it('should require loading data-table-manager before use', () => {
 			const context = createMockContext();
 			const tool = createDataTablesTool(context);
 
 			expect(tool.description).toContain('data tables');
+			expect(tool.description).toContain('data-table-manager');
+			expect(tool.description).toContain('load_skill');
+			expect(tool.description).toContain('what data tables do I have?');
 		});
 	});
 
@@ -97,7 +79,7 @@ describe('data-tables tool', () => {
 				},
 			];
 			const context = createMockContext();
-			(context.dataTableService.list as jest.Mock).mockResolvedValue(tables);
+			(context.dataTableService.list as Mock).mockResolvedValue(tables);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
@@ -108,23 +90,12 @@ describe('data-tables tool', () => {
 
 		it('should pass projectId when provided', async () => {
 			const context = createMockContext();
-			(context.dataTableService.list as jest.Mock).mockResolvedValue([]);
+			(context.dataTableService.list as Mock).mockResolvedValue([]);
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, { action: 'list' as const, projectId: 'proj-1' }, noSuspendCtx());
 
 			expect(context.dataTableService.list).toHaveBeenCalledWith({ projectId: 'proj-1' });
-		});
-
-		it('should work on orchestrator surface', async () => {
-			const tables = [{ id: 'dt-1', name: 'Users' }];
-			const context = createMockContext();
-			(context.dataTableService.list as jest.Mock).mockResolvedValue(tables);
-
-			const tool = createDataTablesTool(context, 'orchestrator');
-			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
-
-			expect(result).toEqual({ tables });
 		});
 	});
 
@@ -137,7 +108,7 @@ describe('data-tables tool', () => {
 				{ id: 'col-2', name: 'age', type: 'number', index: 1 },
 			];
 			const context = createMockContext();
-			(context.dataTableService.getSchema as jest.Mock).mockResolvedValue(columns);
+			(context.dataTableService.getSchema as Mock).mockResolvedValue(columns);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(
@@ -149,7 +120,40 @@ describe('data-tables tool', () => {
 			expect(context.dataTableService.getSchema).toHaveBeenCalledWith('dt-1', {
 				projectId: undefined,
 			});
-			expect(result).toEqual({ columns });
+			expect(result).toEqual({ dataTableId: 'dt-1', columns });
+		});
+
+		it('should include resolved table metadata when available', async () => {
+			const columns = [{ id: 'col-1', name: 'email', type: 'string', index: 0 }];
+			const context = createMockContext({
+				dataTableService: {
+					...createMockContext().dataTableService,
+					resolveTableReference: vi.fn().mockResolvedValue({
+						id: 'dt-resolved',
+						name: 'Signups',
+						projectId: 'proj-1',
+					}),
+				},
+			});
+			(context.dataTableService.getSchema as Mock).mockResolvedValue(columns);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'schema' as const, dataTableId: 'Signups', projectId: 'proj-1' },
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.resolveTableReference).toHaveBeenCalledWith('Signups', {
+				projectId: 'proj-1',
+				permission: 'read',
+			});
+			expect(result).toEqual({
+				dataTableId: 'dt-resolved',
+				dataTableName: 'Signups',
+				projectId: 'proj-1',
+				columns,
+			});
 		});
 	});
 
@@ -159,7 +163,7 @@ describe('data-tables tool', () => {
 		it('should call dataTableService.queryRows with filter, limit, and offset', async () => {
 			const queryResult = { count: 1, data: [{ email: 'a@b.com' }] };
 			const context = createMockContext();
-			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
 			const filter = {
 				type: 'and' as const,
@@ -179,13 +183,13 @@ describe('data-tables tool', () => {
 				offset: 0,
 				projectId: undefined,
 			});
-			expect(result).toEqual(queryResult);
+			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
 		});
 
 		it('should include hint when more rows are available', async () => {
 			const queryResult = { count: 100, data: Array.from({ length: 50 }, (_, i) => ({ id: i })) };
 			const context = createMockContext();
-			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(
@@ -195,15 +199,16 @@ describe('data-tables tool', () => {
 			);
 
 			expect(result).toEqual({
+				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '50 more rows available. Use plan with a manage-data-tables task for bulk operations.',
+				hint: '50 more rows available. Use additional paginated data-tables queries for bulk operations.',
 			});
 		});
 
 		it('should include hint with correct remaining count when offset is provided', async () => {
 			const queryResult = { count: 100, data: Array.from({ length: 10 }, (_, i) => ({ id: i })) };
 			const context = createMockContext();
-			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(
@@ -213,15 +218,16 @@ describe('data-tables tool', () => {
 			);
 
 			expect(result).toEqual({
+				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '70 more rows available. Use plan with a manage-data-tables task for bulk operations.',
+				hint: '70 more rows available. Use additional paginated data-tables queries for bulk operations.',
 			});
 		});
 
 		it('should not include hint when all rows are returned', async () => {
 			const queryResult = { count: 3, data: [{ id: 1 }, { id: 2 }, { id: 3 }] };
 			const context = createMockContext();
-			(context.dataTableService.queryRows as jest.Mock).mockResolvedValue(queryResult);
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(
@@ -230,8 +236,46 @@ describe('data-tables tool', () => {
 				noSuspendCtx(),
 			);
 
-			expect(result).toEqual(queryResult);
+			expect(result).toEqual({ dataTableId: 'dt-1', ...queryResult });
 			expect(result).not.toHaveProperty('hint');
+		});
+
+		it('should include resolved table metadata when available', async () => {
+			const queryResult = { count: 1, data: [{ email: 'a@b.com' }] };
+			const context = createMockContext({
+				dataTableService: {
+					...createMockContext().dataTableService,
+					resolveTableReference: vi.fn().mockResolvedValue({
+						id: 'dt-resolved',
+						name: 'Signups',
+						projectId: 'proj-1',
+					}),
+				},
+			});
+			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'query' as const,
+					dataTableId: 'Signups',
+					dataTableName: 'Fallback Name',
+					projectId: 'proj-1',
+				},
+				noSuspendCtx(),
+			);
+
+			expect(context.dataTableService.resolveTableReference).toHaveBeenCalledWith('Signups', {
+				projectId: 'proj-1',
+				permission: 'readRow',
+			});
+			expect(result).toEqual({
+				dataTableId: 'dt-resolved',
+				dataTableName: 'Signups',
+				projectId: 'proj-1',
+				...queryResult,
+			});
 		});
 	});
 
@@ -256,13 +300,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend for confirmation when permission is not set', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, createInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Create Contacts',
 					severity: 'info',
@@ -275,17 +319,15 @@ describe('data-tables tool', () => {
 			const context = createMockContext({
 				permissions: {},
 				workspaceService: {
-					getProject: jest
-						.fn()
-						.mockResolvedValue({ id: 'proj-1', name: 'My Project', type: 'team' }),
-					listProjects: jest.fn(),
-					tagWorkflow: jest.fn(),
-					listTags: jest.fn(),
-					createTag: jest.fn(),
-					cleanupTestExecutions: jest.fn(),
+					getProject: vi.fn().mockResolvedValue({ id: 'proj-1', name: 'My Project', type: 'team' }),
+					listProjects: vi.fn(),
+					tagWorkflow: vi.fn(),
+					listTags: vi.fn(),
+					createTag: vi.fn(),
+					cleanupTestExecutions: vi.fn(),
 				},
 			});
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(
@@ -295,7 +337,7 @@ describe('data-tables tool', () => {
 			);
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Create Contacts in project My Project',
 				}),
@@ -305,7 +347,7 @@ describe('data-tables tool', () => {
 		it('should execute immediately when permission is always_allow', async () => {
 			const table = { id: 'dt-new', name: 'Contacts' };
 			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });
-			(context.dataTableService.create as jest.Mock).mockResolvedValue(table);
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, createInput as never, noSuspendCtx());
@@ -321,7 +363,7 @@ describe('data-tables tool', () => {
 		it('should create after user approves on resume', async () => {
 			const table = { id: 'dt-new', name: 'Contacts' };
 			const context = createMockContext({ permissions: {} });
-			(context.dataTableService.create as jest.Mock).mockResolvedValue(table);
+			(context.dataTableService.create as Mock).mockResolvedValue(table);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, createInput as never, resumeCtx(true));
@@ -351,7 +393,7 @@ describe('data-tables tool', () => {
 			(wrappedError as Error & { cause: Error }).cause = conflictError;
 
 			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });
-			(context.dataTableService.create as jest.Mock).mockRejectedValue(wrappedError);
+			(context.dataTableService.create as Mock).mockRejectedValue(wrappedError);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, createInput as never, noSuspendCtx());
@@ -362,7 +404,7 @@ describe('data-tables tool', () => {
 
 		it('should throw non-conflict errors normally', async () => {
 			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });
-			(context.dataTableService.create as jest.Mock).mockRejectedValue(
+			(context.dataTableService.create as Mock).mockRejectedValue(
 				new Error('Database connection failed'),
 			);
 
@@ -391,13 +433,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, deleteInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete dt-1',
 					severity: 'destructive',
@@ -408,7 +450,7 @@ describe('data-tables tool', () => {
 
 		it('should include the table name in the suspend message when provided', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(
@@ -417,7 +459,7 @@ describe('data-tables tool', () => {
 				suspendCtx(suspendFn),
 			);
 
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete Customer data (ID: dt-1)',
 				}),
@@ -481,13 +523,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, addColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Add age (number) to dt-1',
 					severity: 'warning',
@@ -499,7 +541,7 @@ describe('data-tables tool', () => {
 		it('should execute immediately when permission is always_allow', async () => {
 			const column = { id: 'col-new', name: 'age', type: 'number', index: 2 };
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'always_allow' } });
-			(context.dataTableService.addColumn as jest.Mock).mockResolvedValue(column);
+			(context.dataTableService.addColumn as Mock).mockResolvedValue(column);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, addColumnInput as never, noSuspendCtx());
@@ -515,7 +557,7 @@ describe('data-tables tool', () => {
 		it('should add column after user approves on resume', async () => {
 			const column = { id: 'col-new', name: 'age', type: 'number', index: 2 };
 			const context = createMockContext({ permissions: {} });
-			(context.dataTableService.addColumn as jest.Mock).mockResolvedValue(column);
+			(context.dataTableService.addColumn as Mock).mockResolvedValue(column);
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, addColumnInput as never, resumeCtx(true));
@@ -556,13 +598,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, deleteColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete col-1 from dt-1',
 					severity: 'destructive',
@@ -628,13 +670,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, renameColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Rename col-1 to full_name in dt-1',
 					severity: 'warning',
@@ -705,13 +747,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, insertRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Insert 2 row(s) into dt-1',
 					severity: 'warning',
@@ -722,7 +764,7 @@ describe('data-tables tool', () => {
 
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
-			(context.dataTableService.insertRows as jest.Mock).mockResolvedValue({ insertedCount: 2 });
+			(context.dataTableService.insertRows as Mock).mockResolvedValue({ insertedCount: 2 });
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, insertRowsInput as never, noSuspendCtx());
@@ -737,7 +779,7 @@ describe('data-tables tool', () => {
 
 		it('should insert rows after user approves on resume', async () => {
 			const context = createMockContext({ permissions: {} });
-			(context.dataTableService.insertRows as jest.Mock).mockResolvedValue({ insertedCount: 2 });
+			(context.dataTableService.insertRows as Mock).mockResolvedValue({ insertedCount: 2 });
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, insertRowsInput as never, resumeCtx(true));
@@ -762,7 +804,7 @@ describe('data-tables tool', () => {
 
 		it('should return artifact metadata (dataTableId, tableName, projectId) in result', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
-			(context.dataTableService.insertRows as jest.Mock).mockResolvedValue({
+			(context.dataTableService.insertRows as Mock).mockResolvedValue({
 				insertedCount: 3,
 				dataTableId: 'dt-1',
 				tableName: 'Orders',
@@ -806,13 +848,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend for confirmation when permission needs approval', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, updateRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Update rows in dt-1',
 					severity: 'warning',
@@ -823,7 +865,7 @@ describe('data-tables tool', () => {
 
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
-			(context.dataTableService.updateRows as jest.Mock).mockResolvedValue({ updatedCount: 5 });
+			(context.dataTableService.updateRows as Mock).mockResolvedValue({ updatedCount: 5 });
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, updateRowsInput as never, noSuspendCtx());
@@ -839,7 +881,7 @@ describe('data-tables tool', () => {
 
 		it('should update rows after user approves on resume', async () => {
 			const context = createMockContext({ permissions: {} });
-			(context.dataTableService.updateRows as jest.Mock).mockResolvedValue({ updatedCount: 3 });
+			(context.dataTableService.updateRows as Mock).mockResolvedValue({ updatedCount: 3 });
 
 			const tool = createDataTablesTool(context);
 			const result = await executeTool(tool, updateRowsInput as never, resumeCtx(true));
@@ -888,13 +930,13 @@ describe('data-tables tool', () => {
 
 		it('should suspend with destructive confirmation including filter description', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createDataTablesTool(context);
 			await executeTool(tool, deleteRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete rows from dt-1 where status eq inactive',
 					severity: 'destructive',
@@ -905,7 +947,7 @@ describe('data-tables tool', () => {
 
 		it('should format filter description with multiple conditions joined by filter type', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const multiFilterInput = {
 				action: 'delete-rows' as const,
@@ -923,7 +965,7 @@ describe('data-tables tool', () => {
 			await executeTool(tool, multiFilterInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0]![0]).toEqual(
+			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					message: 'Delete rows from dt-1 where status eq inactive or age lt 18',
 				}),
@@ -932,7 +974,7 @@ describe('data-tables tool', () => {
 
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
-			(context.dataTableService.deleteRows as jest.Mock).mockResolvedValue({
+			(context.dataTableService.deleteRows as Mock).mockResolvedValue({
 				deletedCount: 10,
 				dataTableId: 'dt-1',
 				tableName: 'Users',
@@ -958,7 +1000,7 @@ describe('data-tables tool', () => {
 
 		it('should delete rows after user approves on resume', async () => {
 			const context = createMockContext({ permissions: {} });
-			(context.dataTableService.deleteRows as jest.Mock).mockResolvedValue({
+			(context.dataTableService.deleteRows as Mock).mockResolvedValue({
 				deletedCount: 7,
 				dataTableId: 'dt-1',
 				tableName: 'Users',

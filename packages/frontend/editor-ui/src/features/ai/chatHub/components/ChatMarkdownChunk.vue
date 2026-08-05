@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import VueMarkdown from 'vue-markdown-render';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import { ref, useCssModule } from 'vue';
+import { ref } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
 import ChatButtons from './ChatButtons.vue';
 
@@ -19,11 +19,14 @@ const {
 
 const emit = defineEmits<{ openArtifact: [title: string] }>();
 
-const styles = useCssModule();
+const codeBlockActionsClassName = 'n8n-markdown-code-block-actions';
+const tableContainerClassName = 'n8n-markdown-table-container';
+const footnoteRefClassName = footnoteStyle === 'pill' ? 'n8n-markdown-footnote-ref' : null;
+
 const markdown = useChatHubMarkdownOptions(
-	styles.codeBlockActions,
-	styles.tableContainer,
-	footnoteStyle === 'pill' ? styles.footnoteRef : null,
+	codeBlockActionsClassName,
+	tableContainerClassName,
+	footnoteRefClassName,
 );
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 
@@ -35,7 +38,7 @@ function getHoveredCodeBlockContent() {
 function handleMouseMove(e: MouseEvent | FocusEvent) {
 	const container =
 		e.target instanceof HTMLElement || e.target instanceof SVGElement
-			? e.target.closest('pre')?.querySelector(`.${styles.codeBlockActions}`)
+			? e.target.closest('pre')?.querySelector(`.${codeBlockActionsClassName}`)
 			: null;
 
 	hoveredCodeBlockActions.value = container instanceof HTMLElement ? container : null;
@@ -56,7 +59,7 @@ defineExpose({
 		v-if="source.type === 'text'"
 		:key="markdown.forceReRenderKey.value"
 		:source="source.content"
-		:class="[$style.chatMessageMarkdown, { [$style.singlePre]: singlePre }]"
+		:class="['n8n-markdown', { 'n8n-markdown--single-pre': singlePre }]"
 		:options="markdown.options"
 		:plugins="markdown.plugins.value"
 		@mousemove="handleMouseMove"
@@ -66,7 +69,7 @@ defineExpose({
 		<VueMarkdown
 			:key="markdown.forceReRenderKey.value"
 			:source="source.content"
-			:class="$style.chatMessageMarkdown"
+			class="n8n-markdown"
 			:options="markdown.options"
 			:plugins="markdown.plugins.value"
 			@mousemove="handleMouseMove"
@@ -91,62 +94,17 @@ defineExpose({
 	</button>
 </template>
 
-<style lang="scss" module>
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+<style lang="scss">
+@use '@n8n/design-system/css/markdown.scss';
+</style>
 
+<style lang="scss" module>
 .container {
 	display: flex;
 	flex-direction: column;
 
 	> *:first-child > *:first-child {
 		margin-top: 0;
-	}
-}
-
-.chatMessageMarkdown {
-	@include ds-mixins.markdown-content;
-
-	pre {
-		& .codeBlockActions {
-			position: sticky;
-			top: var(--markdown--spacing);
-			right: var(--markdown--spacing);
-			height: 0;
-			display: flex;
-			justify-content: flex-end;
-			pointer-events: none;
-			z-index: 1;
-
-			& > * {
-				pointer-events: auto;
-			}
-		}
-	}
-
-	&.singlePre pre {
-		background: transparent;
-		margin: 0;
-		border-radius: 0;
-	}
-	// Footnote pill
-	.footnoteRef {
-		display: inline-block;
-		font-size: var(--font-size--3xs);
-		line-height: 1;
-		color: var(--color--text);
-		background: var(--color--foreground--tint-1);
-		border-radius: var(--radius--xl);
-		padding: var(--spacing--4xs) var(--spacing--2xs);
-		margin-inline: var(--spacing--5xs);
-		vertical-align: middle;
-		white-space: nowrap;
-		font-weight: var(--font-weight--regular);
-	}
-
-	// Tables
-	.tableContainer {
-		width: 100%;
-		overflow-x: auto;
 	}
 }
 

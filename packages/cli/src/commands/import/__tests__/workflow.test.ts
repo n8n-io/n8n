@@ -7,7 +7,7 @@ import { ImportService } from '@/services/import.service';
 
 import { ImportWorkflowsCommand } from '../workflow';
 
-jest.mock('@/services/import.service');
+vi.mock('@/services/import.service');
 
 describe('ImportWorkflowsCommand', () => {
 	mockInstance(ImportService);
@@ -23,8 +23,8 @@ describe('ImportWorkflowsCommand', () => {
 		const command = new ImportWorkflowsCommand();
 		// @ts-expect-error Protected property
 		command.logger = {
-			info: jest.fn(),
-			error: jest.fn(),
+			info: vi.fn(),
+			error: vi.fn(),
 		};
 		return command;
 	};

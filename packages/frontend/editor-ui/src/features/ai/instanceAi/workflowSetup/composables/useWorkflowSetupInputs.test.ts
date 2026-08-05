@@ -1,5 +1,6 @@
 import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
@@ -96,6 +97,55 @@ describe('useWorkflowSetupInputs', () => {
 		nodeTypesStore.getNodeType.mockReturnValue(null);
 	});
 
+	it('completes a section once a tested credential is selected and the resource is picked', () => {
+		nodeTypesStore.getNodeType.mockReturnValue({
+			name: 'n8n-nodes-base.slack',
+			properties: [
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'resourceLocator',
+					required: true,
+					default: { mode: 'list', value: '' },
+				},
+			],
+		});
+		credentialTest.testableTypes.add('slackApi');
+		addCredential({ id: 'cred-1', type: 'slackApi', name: 'johannes-bot-token' });
+		const section = makeWorkflowSetupSection({
+			id: 'Get Channel History:slackApi',
+			targetNodeName: 'Get Channel History',
+			credentialType: 'slackApi',
+			parameterNames: ['channelId'],
+			node: {
+				id: 'slack',
+				name: 'Get Channel History',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.5,
+				parameters: { channelId: { __rl: true, mode: 'list', value: '' } },
+			},
+		});
+		const h = setupHarness([section]);
+
+		expect(h.inputs.isSectionComplete(section)).toBe(false);
+
+		// Selecting a credential alone must not complete the section: the
+		// required channel is still unset (the INS-855 stuck state).
+		h.inputs.setCredential(section, 'cred-1');
+		credentialsStore.credentialTestResults.set('cred-1', 'success');
+		expect(h.inputs.isSectionComplete(section)).toBe(false);
+
+		// Picking from the list emits a full resource locator value.
+		h.inputs.setParameterValue(section, 'channelId', {
+			__rl: true,
+			mode: 'list',
+			value: 'C078Q83RKPZ',
+			cachedResultName: 'mission-competitor-automatic-changelog',
+		});
+
+		expect(h.inputs.isSectionComplete(section)).toBe(true);
+	});
+
 	it('sets a selection, tests it in the background, and clears a previous skip', () => {
 		addCredential({ id: 'cred-1', type: 'httpBasicAuth', name: 'HTTP credential' });
 		const h = setupHarness();
@@ -137,6 +187,23 @@ describe('useWorkflowSetupInputs', () => {
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
 		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(true);
+	});
+
+	it('treats AI Gateway-managed credentials as complete without testing them', () => {
+		credentialTest.testableTypes.add('httpBasicAuth');
+		const h = setupHarness();
+		h.inputs.markSectionSkipped(h.sectionA);
+
+		h.inputs.setCredential(h.sectionA, AI_GATEWAY_MANAGED_TAG);
+
+		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(true);
+		expect(credentialTest.testCredentialInBackground).not.toHaveBeenCalled();
+		expect(h.inputs.isSectionSkipped(h.sectionA)).toBe(false);
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: {
+				'HTTP Request': { httpBasicAuth: AI_GATEWAY_MANAGED_TAG },
+			},
+		});
 	});
 
 	it('reports credential test failures only for selected testable credentials', () => {
@@ -207,6 +274,22 @@ describe('useWorkflowSetupInputs', () => {
 			'Current credential',
 			'httpBasicAuth',
 		);
+	});
+
+	it('seeds AI Gateway-managed credentials without testing them', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'HTTP Request',
+			credentialType: 'httpBasicAuth',
+			currentCredentialId: AI_GATEWAY_MANAGED_TAG,
+		});
+
+		const h = setupHarness([section]);
+		await nextTick();
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			'HTTP Request': { httpBasicAuth: AI_GATEWAY_MANAGED_TAG },
+		});
+		expect(credentialTest.testCredentialInBackground).not.toHaveBeenCalled();
 	});
 
 	it('does not overwrite an existing user selection when sections refresh', async () => {

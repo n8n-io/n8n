@@ -37,6 +37,24 @@ ruleTester.run('no-template-placeholders', NoTemplatePlaceholdersRule, {
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "private": false, "engines": { "node": ">=18" } }',
 		},
+		{
+			name: 'npm person string with email in author is not flagged',
+			filename: 'package.json',
+			code: '{ "author": "Jane Doe <jane@example.com>" }',
+		},
+		{
+			name: 'npm person string with email and url in author is not flagged',
+			filename: 'package.json',
+			code: '{ "author": "Jane Doe <jane@example.com> (https://example.com)" }',
+		},
+		{
+			name: 'npm person strings in contributors and maintainers are not flagged',
+			filename: 'package.json',
+			code: `{
+				"contributors": ["Jane Doe <jane@example.com> (https://example.com)"],
+				"maintainers": ["John Roe <john.roe+n8n@example.org>"]
+			}`,
+		},
 	],
 	invalid: [
 		{

@@ -1,4 +1,5 @@
 import { DynamicTool } from '@langchain/classic/tools';
+import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
 import {
 	type IExecuteFunctions,
 	type INode,
@@ -8,6 +9,8 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import { ToolCode } from './ToolCode.node';
+
+vi.mock('n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox');
 
 describe('ToolCode', () => {
 	describe('supplyData', () => {
@@ -206,6 +209,87 @@ describe('ToolCode', () => {
 				],
 			]);
 			expect(DynamicTool.prototype.invoke).toHaveBeenCalledTimes(2);
+		});
+
+		it('should throw when the code throws so the engine records the tool failure', async () => {
+			const node = new ToolCode();
+			const inputData: INodeExecutionData[] = [{ json: { query: 'test query' } }];
+
+			vi.mocked(JsTaskRunnerSandbox).mockImplementation(
+				() =>
+					({
+						runCodeForTool: vi.fn().mockRejectedValue(new Error('boom')),
+					}) as unknown as JsTaskRunnerSandbox,
+			);
+
+			const mockExecute = mock<IExecuteFunctions>({
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName) => {
+					switch (paramName) {
+						case 'description':
+							return 'description text';
+						case 'name':
+							return 'wrong_field';
+						case 'specifyInputSchema':
+							return false;
+						case 'language':
+							return 'javaScript';
+						case 'jsCode':
+							return 'throw new Error("boom");';
+						default:
+							return;
+					}
+				}),
+				// @ts-expect-error - Mocking
+				getMode: vi.fn(() => 'manual'),
+			});
+
+			DynamicTool.prototype.invoke = vi.fn(async function (this: DynamicTool, args: unknown) {
+				return await this.func(args as string);
+			});
+
+			// @ts-expect-error - Mocking
+			await expect(node.execute.call(mockExecute)).rejects.toThrow(/boom/);
+		});
+
+		it('should keep returning error string when invoked via supplyData (legacy path)', async () => {
+			const node = new ToolCode();
+
+			vi.mocked(JsTaskRunnerSandbox).mockImplementation(
+				() =>
+					({
+						runCodeForTool: vi.fn().mockRejectedValue(new Error('boom')),
+					}) as unknown as JsTaskRunnerSandbox,
+			);
+
+			const supplyDataResult = await node.supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
+					getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
+						switch (paramName) {
+							case 'description':
+								return 'description text';
+							case 'name':
+								return 'wrong_field';
+							case 'specifyInputSchema':
+								return false;
+							case 'language':
+								return 'javaScript';
+							case 'jsCode':
+								return 'throw new Error("boom");';
+							default:
+								return;
+						}
+					}),
+					addInputData: vi.fn(() => ({ index: 0 })),
+					addOutputData: vi.fn(),
+				}),
+				0,
+			);
+			const tool = supplyDataResult.response as DynamicTool;
+
+			await expect(tool.func('query')).resolves.toMatch(/There was an error/);
 		});
 	});
 });

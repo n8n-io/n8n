@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import type { Mock, Mocked } from 'vitest';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -11,29 +12,40 @@ import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-n
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 import { ProjectService } from '@/services/project.service.ee';
+import { GLOBAL_MEMBER_SCOPES, type Scope } from '@n8n/permissions';
 
 // Mock middleware before requiring handler
-const mockMiddleware = jest.fn(async (_req, _res, next) => next()) as any;
-jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
-jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
-jest.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
+const mockMiddleware = vi.fn(async (_req, _res, next) => next()) as any;
+vi.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
+vi.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
+vi.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
-const mainHandler = require('../data-tables.handler');
-const handler = require('../data-tables.rows.handler');
+// Loaded after the middleware spies above are installed; typed loosely so the
+// suite can invoke individual route entries by index.
+let mainHandler: Record<string, Array<(...args: unknown[]) => unknown>>;
+let handler: Record<string, Array<(...args: unknown[]) => unknown>>;
+
+beforeAll(async () => {
+	mainHandler = (await import('../data-tables.handler.js')) as unknown as typeof mainHandler;
+	handler = (await import('../data-tables.rows.handler.js')) as unknown as typeof handler;
+});
 
 describe('DataTable Handler', () => {
-	let mockDataTableService: jest.Mocked<DataTableService>;
-	let mockDataTableRepository: jest.Mocked<DataTableRepository>;
-	let mockProjectRepository: jest.Mocked<ProjectRepository>;
-	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
-	let mockProjectService: jest.Mocked<ProjectService>;
+	let mockDataTableService: Mocked<DataTableService>;
+	let mockDataTableRepository: Mocked<DataTableRepository>;
+	let mockProjectRepository: Mocked<ProjectRepository>;
+	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
+	let mockProjectService: Mocked<ProjectService>;
 	let mockResponse: Partial<Response>;
 
 	const projectId = 'test-project-id';
 	const dataTableId = 'test-data-table-id';
 	const userId = 'test-user-id';
 
-	const makeUser = (role = 'global:member') => ({ id: userId, role: { slug: role } });
+	const makeUser = (scopeSlugs: Scope[] = GLOBAL_MEMBER_SCOPES) => ({
+		id: userId,
+		role: { slug: 'global:member', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
 
 	beforeEach(() => {
 		mockDataTableService = mockInstance(DataTableService);
@@ -42,7 +54,7 @@ describe('DataTable Handler', () => {
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockProjectService = mockInstance(ProjectService);
 
-		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
+		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === DataTableService) {
 				return mockDataTableService;
 			}
@@ -65,14 +77,14 @@ describe('DataTable Handler', () => {
 		mockProjectRelationRepository.find.mockResolvedValue([]);
 
 		mockResponse = {
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createDataTable', () => {
@@ -115,6 +127,20 @@ describe('DataTable Handler', () => {
 			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
 			expect(callArgs.filter?.projectId).toContain(projectId);
 		});
+
+		it('should list across all projects for user with dataTable:listProject', async () => {
+			const req = {
+				query: {},
+				user: makeUser(['dataTable:listProject']),
+			} as unknown as DataTableRequest.List;
+			mockDataTableService.getManyAndCount.mockResolvedValue({ data: [], count: 0 } as never);
+
+			await mainHandler.listDataTables[2](req, mockResponse as Response);
+
+			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
+			expect(callArgs.filter?.projectId).toBeUndefined();
+			expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getDataTableRows', () => {
@@ -146,7 +172,7 @@ describe('DataTable Handler', () => {
 				projectId,
 				{ skip: 0, take: 100, filter: undefined, sortBy: undefined, search: undefined },
 			);
-			const callArg = (mockResponse.json as jest.Mock).mock.calls[0][0];
+			const callArg = (mockResponse.json as Mock).mock.calls[0][0];
 			expect(callArg).toHaveProperty('data', mockRows);
 			expect(callArg).toHaveProperty('nextCursor');
 		});

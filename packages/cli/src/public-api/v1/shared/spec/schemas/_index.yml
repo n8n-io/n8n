@@ -6,6 +6,8 @@ Execution:
   $ref: './../../../handlers/executions/spec/schemas/execution.yml'
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
+WorkflowNodeGroup:
+  $ref: './../../../handlers/workflows/spec/schemas/workflowNodeGroup.yml'
 Tag:
   $ref: './../../../handlers/tags/spec/schemas/tag.yml'
 Workflow:
@@ -24,8 +26,10 @@ Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
 Pull:
   $ref: './../../../handlers/source-control/spec/schemas/pull.yml'
-ImportResult:
-  $ref: './../../../handlers/source-control/spec/schemas/importResult.yml'
+PullResult:
+  $ref: './../../../handlers/source-control/spec/schemas/pullResult.yml'
+SourceControlledFile:
+  $ref: './../../../handlers/source-control/spec/schemas/sourceControlledFile.yml'
 UserList:
   $ref: './../../../handlers/users/spec/schemas/userList.yml'
 User:

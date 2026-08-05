@@ -36,12 +36,21 @@ jobs:
   evals:
     name: Run ${{ inputs.suite }} Evaluations
     runs-on: blacksmith-2vcpu-ubuntu-2204
-    env:
-      N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
-      LANGSMITH_TRACING: true
-      LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
-      LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
     steps:
+      - name: Validate branch input
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          # Allowlist of refs permitted to run on this job. The job exposes
+          # secrets to code checked out from `BRANCH`, so anything outside the
+          # allowlist is rejected to prevent arbitrary refs from accessing them.
+          if [[ "$BRANCH" =~ ^(master|ai/.+|ai-.+)$ ]]; then
+            echo "Branch '$BRANCH' is allowed."
+          else
+            echo "::error::Branch '$BRANCH' is not in the allowlist. Permitted patterns: master, ai/*, ai-*"
+            exit 1
+          fi
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.branch }}
@@ -97,6 +106,10 @@ jobs:
       - name: Run Evaluations
         working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
         env:
+          N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          LANGSMITH_TRACING: true
+          LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+          LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
           SUITE: ${{ inputs.suite }}
           DATASET: ${{ inputs.dataset }}
           REPETITIONS: ${{ inputs.repetitions }}

@@ -4,9 +4,16 @@ import type { IWebhookFunctions } from 'n8n-workflow';
 import { verifySignature as verifySignatureGeneric } from '../../utils/webhook-signature-verification';
 
 export async function verifySignature(this: IWebhookFunctions): Promise<boolean> {
-	const credential = await this.getCredentials('trelloApi');
+	const authentication = this.getNodeParameter('authentication', 'apiKey') as 'apiKey' | 'oAuth1';
+	const credential =
+		authentication === 'oAuth1'
+			? await this.getCredentials('trelloOAuth1Api')
+			: await this.getCredentials('trelloApi');
 	const req = this.getRequestObject();
-	const secret = credential.oauthSecret;
+	// Trello signs webhooks with the consumer (application) secret. For the
+	// OAuth1 credential that is `consumerSecret`; for the API-key credential the
+	// user pastes the same value into `oauthSecret`.
+	const secret = authentication === 'oAuth1' ? credential.consumerSecret : credential.oauthSecret;
 
 	return verifySignatureGeneric({
 		getExpectedSignature: () => {

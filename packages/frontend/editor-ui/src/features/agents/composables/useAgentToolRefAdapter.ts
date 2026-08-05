@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
-import type { AgentJsonToolRef, NodeToolConfig } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef, NodeToolConfig } from '../types';
 
 /**
  * Two-way adapter between the agent's persisted tool shape (`AgentJsonToolRef`
@@ -145,10 +145,17 @@ export function getExistingToolNames(
 		.map((t) => (t as Extract<AgentJsonToolRef, { type: 'workflow' | 'node' }>).name!);
 }
 
+export function getExistingMcpServerNames(
+	mcpServers: AgentJsonMcpServerConfig[],
+	exclude?: AgentJsonMcpServerConfig,
+): string[] {
+	return mcpServers.filter((s) => s.name !== exclude?.name && Boolean(s.name)).map((s) => s.name);
+}
+
 /** Merge edits from the workflow config form back into the ref. */
 export function updateWorkflowToolRef(
 	original: AgentJsonToolRef,
-	edits: { name: string; description: string; allOutputs: boolean },
+	edits: { name: string; description: string; allOutputs: boolean; workflow: string },
 ): AgentJsonToolRef {
 	if (original.type !== 'workflow') return original;
 	return {
@@ -156,5 +163,6 @@ export function updateWorkflowToolRef(
 		name: edits.name,
 		description: edits.description,
 		allOutputs: edits.allOutputs,
+		workflow: edits.workflow,
 	};
 }

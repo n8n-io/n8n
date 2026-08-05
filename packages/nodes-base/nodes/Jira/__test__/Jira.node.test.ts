@@ -1,25 +1,26 @@
-import type { DeepMockProxy } from 'jest-mock-extended';
-import { mockDeep } from 'jest-mock-extended';
+import type { DeepMockProxy } from 'vitest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Jira } from '../Jira.node';
+import type { Mock } from 'vitest';
 
-jest.mock('../GenericFunctions', () => ({
-	jiraSoftwareCloudApiRequest: jest.fn().mockResolvedValue({ issues: [] }),
-	jiraSoftwareCloudApiRequestAllItems: jest.fn().mockResolvedValue([]),
+vi.mock('../GenericFunctions', () => ({
+	jiraSoftwareCloudApiRequest: vi.fn().mockResolvedValue({ issues: [] }),
+	jiraSoftwareCloudApiRequestAllItems: vi.fn().mockResolvedValue([]),
 }));
 
-const jiraSoftwareCloudApiRequestMock = GenericFunctions.jiraSoftwareCloudApiRequest as jest.Mock;
+const jiraSoftwareCloudApiRequestMock = GenericFunctions.jiraSoftwareCloudApiRequest as Mock;
 const jiraSoftwareCloudApiRequestAllItems =
-	GenericFunctions.jiraSoftwareCloudApiRequestAllItems as jest.Mock;
+	GenericFunctions.jiraSoftwareCloudApiRequestAllItems as Mock;
 
 describe('Jira Node', () => {
 	let jiraNode: Jira;
 	let executeFunctionsMock: DeepMockProxy<IExecuteFunctions>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		jiraNode = new Jira();
 		executeFunctionsMock = mockDeep<IExecuteFunctions>();
 		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);

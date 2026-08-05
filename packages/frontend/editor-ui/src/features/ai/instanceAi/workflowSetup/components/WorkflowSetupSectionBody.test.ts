@@ -3,6 +3,7 @@ import { computed, nextTick, ref } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
 import WorkflowSetupSectionBody from './WorkflowSetupSectionBody.vue';
@@ -27,6 +28,13 @@ const renderedCredentials = vi.hoisted(() => [] as unknown[]);
 const workflowDocumentStoreRef = vi.hoisted(() => ({
 	current: null as WorkflowDocumentStore | null,
 }));
+const nodeCredentialsMock = vi.hoisted(() => ({
+	emitCredentialSelected: null as ((update: unknown) => void) | null,
+	lastNodeProp: null as unknown,
+}));
+const parameterListMock = vi.hoisted(() => ({
+	lastHiddenIssuesInputs: undefined as string[] | undefined,
+}));
 
 vi.mock('../composables/useWorkflowSetupContext', () => ({
 	useWorkflowSetupContext: () => workflowSetupContext.current,
@@ -40,12 +48,20 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => nodeTypesStore,
 }));
 
-vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
-	default: {
-		props: ['node'],
-		template: '<div data-test-id="node-credentials"><slot name="label-postfix" /></div>',
-	},
-}));
+vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return {
+		default: defineComponent({
+			props: ['node'],
+			emits: ['credentialSelected'],
+			setup(props, { emit, slots }) {
+				nodeCredentialsMock.emitCredentialSelected = (update) => emit('credentialSelected', update);
+				nodeCredentialsMock.lastNodeProp = props.node;
+				return () => h('div', { 'data-test-id': 'node-credentials' }, slots['label-postfix']?.());
+			},
+		}),
+	};
+});
 
 vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
 	default: { template: '<div />' },
@@ -57,7 +73,7 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 
 	return {
 		default: defineComponent({
-			props: ['node'],
+			props: ['node', 'hiddenIssuesInputs'],
 			emits: ['valueChanged', 'parameterBlur'],
 			setup(props, { emit }) {
 				const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
@@ -65,6 +81,7 @@ vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', async () 
 
 				return () => {
 					renderedCredentials.push((props.node as INodeUi | undefined)?.credentials);
+					parameterListMock.lastHiddenIssuesInputs = props.hiddenIssuesInputs as string[];
 
 					return h(
 						'button',
@@ -134,6 +151,9 @@ describe('WorkflowSetupSectionBody', () => {
 		vi.clearAllMocks();
 		renderedCredentials.length = 0;
 		workflowDocumentStoreRef.current = null;
+		nodeCredentialsMock.emitCredentialSelected = null;
+		nodeCredentialsMock.lastNodeProp = null;
+		parameterListMock.lastHiddenIssuesInputs = undefined;
 		credentialsStore.getCredentialById.mockReturnValue({ id: 'cred-1', name: 'Typeform account' });
 		nodeTypesStore.getNodeType.mockReturnValue({
 			name: 'n8n-nodes-base.typeformTrigger',
@@ -177,6 +197,73 @@ describe('WorkflowSetupSectionBody', () => {
 		await nextTick();
 
 		expect(renderedCredentials.at(-1)).toBe(credentialsBeforeParameterChange);
+	});
+
+	it('reveals validation for setup parameters on mount so required fields show immediately', async () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Typeform Trigger:typeformApi',
+			targetNodeName: 'Typeform Trigger',
+			credentialType: 'typeformApi',
+			parameterNames: ['formId'],
+			node: {
+				id: 'typeform-trigger',
+				name: 'Typeform Trigger',
+				type: 'n8n-nodes-base.typeformTrigger',
+				typeVersion: 1,
+				parameters: { formId: '' },
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		// Empty => nothing hidden => the "required" issue is shown without interaction.
+		expect(parameterListMock.lastHiddenIssuesInputs).toEqual([]);
+	});
+
+	it('stores the AI Gateway-managed tag when selected in NodeCredentials', async () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Gemini:googlePalmApi',
+			targetNodeName: 'Gemini',
+			credentialType: 'googlePalmApi',
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		nodeCredentialsMock.emitCredentialSelected?.({
+			name: 'Gemini',
+			properties: {
+				credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+			},
+		});
+
+		expect(workflowSetupContext.current.setCredential).toHaveBeenCalledWith(
+			section,
+			AI_GATEWAY_MANAGED_TAG,
+		);
+	});
+
+	it('passes AI Gateway-managed credentials back to NodeCredentials from the setup tag', async () => {
+		const section = makeWorkflowSetupSection({
+			id: 'Gemini:googlePalmApi',
+			targetNodeName: 'Gemini',
+			credentialType: 'googlePalmApi',
+		});
+		const context = makeContext(section);
+		context.credentialSelections = ref({
+			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
+		});
+		workflowSetupContext.current = context;
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect((nodeCredentialsMock.lastNodeProp as INodeUi).credentials).toEqual({
+			googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+		});
 	});
 
 	it('provides a scoped workflow document store with the display node', async () => {

@@ -30,6 +30,9 @@
                 "comment": {
                     "type": "string"
                 },
+                "reviewReplyState": {
+                    "type": "string"
+                },
                 "updateTime": {
                     "type": "string"
                 }
@@ -42,5 +45,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

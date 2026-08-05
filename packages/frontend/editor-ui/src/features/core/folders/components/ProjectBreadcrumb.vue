@@ -10,12 +10,14 @@ type Props = {
 	currentProject?: Project;
 	isDragging?: boolean;
 	isShared?: boolean;
+	icon?: IconOrEmoji;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	currentProject: undefined,
 	isDragging: false,
 	isShared: false,
+	icon: undefined,
 });
 
 const emit = defineEmits<{
@@ -26,6 +28,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const projectIcon = computed((): IconOrEmoji => {
+	if (props.icon) {
+		return props.icon;
+	}
+
 	if (props.isShared) {
 		return { type: 'icon', value: 'share' };
 	}

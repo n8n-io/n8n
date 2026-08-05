@@ -24,7 +24,7 @@ describe('KeyManagerService', () => {
 	const cipher = mockInstance(Cipher);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getActiveKey()', () => {

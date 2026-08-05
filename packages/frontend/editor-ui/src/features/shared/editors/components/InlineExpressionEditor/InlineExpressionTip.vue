@@ -31,16 +31,16 @@ const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
 
 const canDragToFocusedInput = computed(
-	() => !ndvStore.isInputPanelEmpty && ndvStore.focusedMappableInput,
+	() => !ndvStore.value.isInputPanelEmpty && ndvStore.value.focusedMappableInput,
 );
 
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
 
 const tip = computed<TipId>(() => {
 	if (
-		!ndvStore.hasInputData &&
-		ndvStore.isInputParentOfActiveNode &&
-		ndvStore.focusedMappableInput
+		!ndvStore.value.hasInputData &&
+		ndvStore.value.isInputParentOfActiveNode &&
+		ndvStore.value.focusedMappableInput
 	) {
 		return 'executePrevious';
 	}
@@ -81,13 +81,13 @@ async function getCompletionsWithDot(): Promise<readonly Completion[]> {
 }
 
 onBeforeUnmount(() => {
-	ndvStore.setHighlightDraggables(false);
+	ndvStore.value.setHighlightDraggables(false);
 });
 
 watch(
 	tip,
 	(newTip) => {
-		ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
+		ndvStore.value.setHighlightDraggables(!ndvStore.value.isMappingOnboarded && newTip === 'drag');
 	},
 	{ immediate: true },
 );

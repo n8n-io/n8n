@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryRaw } from 'vue-router';
 

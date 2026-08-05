@@ -18,6 +18,7 @@
 				"updateFields": {
 					"subject": "Updated call",
 					"done": true,
+					"user_id": 25455458,
 					"due_date": "2026-04-02T00:00:00.000Z"
 				}
 			},

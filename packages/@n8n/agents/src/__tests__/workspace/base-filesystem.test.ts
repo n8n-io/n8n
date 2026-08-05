@@ -1,9 +1,12 @@
 import { BaseFilesystem } from '../../workspace/filesystem/base-filesystem';
 import type { BaseFilesystemOptions } from '../../workspace/filesystem/base-filesystem';
 import type {
+	AbortableOptions,
+	AppendOptions,
 	FileContent,
 	FileStat,
 	FileEntry,
+	MkdirOptions,
 	ReadOptions,
 	WriteOptions,
 	ListOptions,
@@ -18,8 +21,8 @@ class TestFilesystem extends BaseFilesystem {
 	readonly provider = 'test';
 	status: ProviderStatus = 'pending';
 
-	initFn = jest.fn().mockResolvedValue(undefined);
-	destroyFn = jest.fn().mockResolvedValue(undefined);
+	initFn = vi.fn().mockResolvedValue(undefined);
+	destroyFn = vi.fn().mockResolvedValue(undefined);
 
 	constructor(id: string, options?: BaseFilesystemOptions) {
 		super(options);
@@ -43,7 +46,7 @@ class TestFilesystem extends BaseFilesystem {
 		await this.ensureReady();
 	}
 
-	async appendFile(_path: string, _content: FileContent): Promise<void> {
+	async appendFile(_path: string, _content: FileContent, _options?: AppendOptions): Promise<void> {
 		await this.ensureReady();
 	}
 
@@ -59,7 +62,7 @@ class TestFilesystem extends BaseFilesystem {
 		await this.ensureReady();
 	}
 
-	async mkdir(_path: string, _options?: { recursive?: boolean }): Promise<void> {
+	async mkdir(_path: string, _options?: MkdirOptions): Promise<void> {
 		await this.ensureReady();
 	}
 
@@ -72,12 +75,12 @@ class TestFilesystem extends BaseFilesystem {
 		return [];
 	}
 
-	async exists(_path: string): Promise<boolean> {
+	async exists(_path: string, _options?: AbortableOptions): Promise<boolean> {
 		await this.ensureReady();
 		return false;
 	}
 
-	async stat(_path: string): Promise<FileStat> {
+	async stat(_path: string, _options?: AbortableOptions): Promise<FileStat> {
 		await this.ensureReady();
 		return {
 			name: 'test',
@@ -176,7 +179,7 @@ describe('BaseFilesystem', () => {
 
 	describe('lifecycle hooks', () => {
 		it('calls onInit hook after successful init', async () => {
-			const onInit = jest.fn();
+			const onInit = vi.fn();
 			const fs = new TestFilesystem('1', { onInit });
 
 			await fs._init();
@@ -185,7 +188,7 @@ describe('BaseFilesystem', () => {
 		});
 
 		it('does not fail when onInit hook throws', async () => {
-			const onInit = jest.fn().mockRejectedValue(new Error('hook err'));
+			const onInit = vi.fn().mockRejectedValue(new Error('hook err'));
 			const fs = new TestFilesystem('1', { onInit });
 
 			await fs._init();
@@ -194,7 +197,7 @@ describe('BaseFilesystem', () => {
 		});
 
 		it('calls onDestroy hook during destroy', async () => {
-			const onDestroy = jest.fn();
+			const onDestroy = vi.fn();
 			const fs = new TestFilesystem('1', { onDestroy });
 			await fs._init();
 

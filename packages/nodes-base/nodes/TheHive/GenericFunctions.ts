@@ -7,7 +7,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { Eq } from './QueryFunctions';
 
@@ -67,6 +67,25 @@ export function splitTags(tags: string): string[] {
 	return tags.split(',').filter((tag) => tag !== ' ' && tag);
 }
 
+// The "Analyzers" field is a multiOptions parameter, so it normally resolves to
+// an array of "analyzerId::cortexId" entries. When its value comes from an
+// expression wrapped in surrounding text/whitespace, n8n switches to string
+// interpolation and the array is coerced to a comma-joined string. Normalize
+// both shapes so the operation does not throw "(...).map is not a function".
+export function parseAnalyzers(value: string | string[]) {
+	const entries = Array.isArray(value)
+		? value
+		: value
+				.split(',')
+				.map((entry) => entry.trim())
+				.filter((entry) => entry);
+
+	return entries.map((analyzer) => {
+		const [analyzerId, cortexId] = analyzer.split('::');
+		return { analyzerId, cortexId };
+	});
+}
+
 export function prepareOptional(optionals: IDataObject): IDataObject {
 	const response: IDataObject = {};
 	for (const key in optionals) {
@@ -79,7 +98,7 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 				try {
 					response[key] = jsonParse(optionals[key] as string);
 				} catch (error) {
-					throw new ApplicationError('Invalid JSON for artifacts', { level: 'warning' });
+					throw new UserError('Invalid JSON for artifacts', { level: 'warning' });
 				}
 			} else if (key === 'tags') {
 				response[key] = splitTags(optionals[key] as string);
@@ -107,7 +126,7 @@ export async function prepareCustomFields(
 			try {
 				customFieldsJson = jsonParse(customFieldsJson);
 			} catch (error) {
-				throw new ApplicationError('Invalid JSON for customFields', { level: 'warning' });
+				throw new UserError('Invalid JSON for customFields', { level: 'warning' });
 			}
 		}
 
@@ -119,7 +138,7 @@ export async function prepareCustomFields(
 
 			return customFields;
 		} else if (customFieldsJson) {
-			throw new ApplicationError('customFieldsJson value is invalid', { level: 'warning' });
+			throw new UserError('customFieldsJson value is invalid', { level: 'warning' });
 		}
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive

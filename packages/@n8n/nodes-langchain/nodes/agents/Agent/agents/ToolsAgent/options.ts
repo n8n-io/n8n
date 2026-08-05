@@ -40,6 +40,14 @@ export const commonOptions: INodeProperties[] = [
 			'Whether or not binary images should be automatically passed through to the agent as image type messages',
 	},
 	{
+		displayName: 'Automatically Passthrough Binary PDFs',
+		name: 'passthroughBinaryPdfs',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether or not binary PDF documents should be automatically passed through to the agent. Useful for models that natively support PDF input (e.g. Google Gemini).',
+	},
+	{
 		displayName: 'Tracing Metadata',
 		name: 'tracingMetadata',
 		type: 'fixedCollection',

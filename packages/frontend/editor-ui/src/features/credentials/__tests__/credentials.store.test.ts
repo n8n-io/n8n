@@ -23,7 +23,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isEnterpriseFeatureEnabled: {
 			sharing: true,
@@ -38,6 +38,19 @@ describe('credentials.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('testCredential', () => {
+		it('marks the credential test as failed when the test request rejects', async () => {
+			const store = useCredentialsStore();
+			vi.mocked(credentialsApi.testCredential).mockRejectedValue(new Error('network error'));
+
+			await expect(
+				store.testCredential({ id: 'cred-1', name: 'My credential', type: 'slackApi' }),
+			).rejects.toThrow('network error');
+
+			expect(store.credentialTestResults.get('cred-1')).toBe('error');
+		});
 	});
 
 	describe('fetchAllCredentials', () => {
@@ -329,6 +342,40 @@ describe('credentials.store', () => {
 			});
 
 			expect(store.state.credentials['cred-1']?.sharedWithProjects).toEqual(newSharing);
+		});
+	});
+
+	describe('disconnectMyConnection', () => {
+		it('calls the API and flips connectedByMe to false locally', async () => {
+			const store = useCredentialsStore();
+			store.state.credentials = {
+				'cred-1': mock<ICredentialsResponse>({
+					id: 'cred-1',
+					name: 'My OAuth',
+					type: 'oAuth2Api',
+					isResolvable: true,
+					connectedByMe: true,
+				}),
+			};
+			vi.spyOn(credentialsApi, 'disconnectMyConnection').mockResolvedValue(undefined);
+
+			await store.disconnectMyConnection({ id: 'cred-1' });
+
+			expect(credentialsApi.disconnectMyConnection).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				'cred-1',
+			);
+			expect(store.state.credentials['cred-1']?.connectedByMe).toBe(false);
+		});
+
+		it('leaves state untouched when the credential is not in the store', async () => {
+			const store = useCredentialsStore();
+			store.state.credentials = {};
+			vi.spyOn(credentialsApi, 'disconnectMyConnection').mockResolvedValue(undefined);
+
+			await store.disconnectMyConnection({ id: 'missing' });
+
+			expect(store.state.credentials).toEqual({});
 		});
 	});
 });

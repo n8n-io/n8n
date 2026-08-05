@@ -32,7 +32,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mockTelemetryTrack }),
 }));
 
@@ -79,7 +79,7 @@ vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
 		props: ['requestId', 'credentialRequests', 'message', 'projectId', 'credentialFlow'],
 	},
 }));
-vi.mock('../components/InstanceAiWorkflowSetup.vue', () => ({
+vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 	default: {
 		template: '<div />',
 		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],
@@ -242,12 +242,17 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				},
 				{ action: 'run' },
 			);
-			vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
 			const addKeySpy = vi.spyOn(thread, 'addAlwaysAllowKey');
 
 			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
 			await userEvent.click(getByTestId('instance-ai-panel-confirm-always-allow'));
 
+			expect(confirmSpy).toHaveBeenCalledWith('req-always', {
+				kind: 'approval',
+				approved: true,
+				scope: 'session',
+			});
 			expect(addKeySpy).toHaveBeenCalledWith('test-tool', { action: 'run' });
 			expect(mockTelemetryTrack).toHaveBeenCalledWith(
 				'User finished providing input',

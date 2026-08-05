@@ -130,7 +130,29 @@ export const splitInBatchesHandler: CompositeHandlerPlugin<SplitInBatchesBuilder
 			processingSibBuilders.delete(input);
 		}
 	},
+
+	handleThen(
+		input: SplitInBatchesBuilderShape,
+		currentNode: string,
+	): {
+		currentNode: string;
+		currentOutput: number;
+	} {
+		return {
+			currentNode,
+			currentOutput: hasConfiguredTargets(input) ? 0 : 1,
+		};
+	},
 };
+
+function hasConfiguredTargets(input: SplitInBatchesBuilderShape): boolean {
+	return (
+		'_doneTarget' in input ||
+		'_eachTarget' in input ||
+		(input._doneBatches !== undefined && input._doneBatches.length > 0) ||
+		(input._eachBatches !== undefined && input._eachBatches.length > 0)
+	);
+}
 
 /**
  * Process named syntax: splitInBatches(sibNode, { done: ..., each: ... })

@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';
-import { slackApiRequestAllItems } from './V2/GenericFunctions';
+import { formatUserLabel, slackApiRequestAllItems } from './V2/GenericFunctions';
 
 export class SlackTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -296,19 +296,20 @@ export class SlackTrigger implements INodeType {
 					'members',
 					'GET',
 					'/users.list',
-				)) as Array<{ id: string; name: string }>;
+				)) as Array<{ id: string; name: string; real_name?: string }>;
 				for (const user of users) {
 					returnData.push({
-						name: user.name,
+						name: formatUserLabel(user),
 						value: user.id,
 					});
 				}
 
+				// case-insensitive, so lowercase handle fallbacks aren't sorted below every real name
 				returnData.sort((a, b) => {
-					if (a.name < b.name) {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
 					}
-					if (a.name > b.name) {
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
 						return 1;
 					}
 					return 0;

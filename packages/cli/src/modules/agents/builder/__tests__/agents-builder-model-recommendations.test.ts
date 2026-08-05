@@ -1,7 +1,7 @@
 import type { ProviderCatalog } from '@n8n/agents';
 
-import { buildBuilderPrompt } from '../agents-builder-prompts';
 import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
+import { PREREQUISITES_SECTION, buildBuilderPrompt } from '../agents-builder-prompts';
 import { getBuilderRuntimeSkills } from '../skills';
 
 const catalog: ProviderCatalog = {
@@ -85,10 +85,6 @@ const catalog: ProviderCatalog = {
 
 function buildPrompt(modelRecommendationsSection: string | null) {
 	return buildBuilderPrompt({
-		configJson: '(no config yet)',
-		configHash: null,
-		configUpdatedAt: null,
-		toolList: '(none)',
 		agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
 		modelRecommendationsSection,
 	});
@@ -114,38 +110,143 @@ describe('builder model recommendations', () => {
 		const prompt = buildPrompt(null);
 
 		expect(prompt).toContain('## Config Mutation Guidance');
+		expect(prompt).toContain('## Prerequisites you cannot create');
+		expect(PREREQUISITES_SECTION).toContain('cannot create n8n workflows or data tables');
+		expect(PREREQUISITES_SECTION).toContain('Do not ask the user to create them in this chat');
+		expect(prompt.indexOf('## Prerequisites you cannot create')).toBeLessThan(
+			prompt.indexOf('## When To Build vs When To Converse'),
+		);
 		expect(prompt).toContain('## LLM Selection Guidance');
 		expect(prompt).toContain('## Memory Guidance');
 		expect(prompt).toContain('## Tool Guidance');
-		expect(prompt).toContain('Additional specialized builder guidance is available');
+		expect(prompt).toContain('## Interactive tools');
+		expect(prompt).toContain('## Config Freshness');
+		expect(prompt).toContain('## Workflow');
+		expect(prompt).toContain('## Example flows');
+		expect(prompt).toContain('## Response Style');
+		expect(prompt).not.toContain('## Builder runtime skills');
+		expect(prompt).toContain('agent-builder-external-services');
+		expect(prompt).toContain('agent-builder-memory');
+		expect(prompt).toContain('agent-builder-custom-tools');
 		expect(prompt).not.toContain('agent-builder-config-mutation');
 		expect(prompt).not.toContain('agent-builder-llm-selection');
-		expect(prompt).not.toContain('agent-builder-memory');
-		expect(prompt).not.toContain('agent-builder-tools');
+
+		const externalServicesSkill = getBuilderRuntimeSkills().find(
+			(s) => s.id === 'agent-builder-external-services',
+		);
+		expect(externalServicesSkill?.instructions).toContain('agent-builder-resource-locators');
 	});
 
-	it('injects custom tool builder guidance into the base builder prompt', () => {
+	it('routes subagent delegation to the sub-agent builder skill', () => {
+		const prompt = buildPrompt(null);
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-sub-agents');
+
+		expect(prompt).not.toContain('`delegate_subagent`');
+		expect(prompt).not.toContain('Use `list_sub_agents` to discover published same-project agents');
+		expect(skill).toBeDefined();
+		expect(skill?.instructions).toContain('`delegate_subagent`');
+	});
+
+	it('tells the builder to preserve fallback web search on model switches', () => {
 		const prompt = buildPrompt(null);
 
-		expect(prompt).toContain("import { Tool } from '@n8n/agents';");
-		expect(prompt).toContain("export default new Tool('tool_name')");
-		expect(prompt).toContain('Custom handlers run in a V8 isolate');
-		expect(prompt).toContain('No network, filesystem, process, Buffer, fetch, timers');
-		expect(prompt).toContain('ctx.suspend(payload)');
-		expect(prompt).toContain('Execution is capped at 5 seconds and about 32 MB memory');
+		expect(prompt).toContain(
+			'When changing models, preserve existing Brave or SearXNG\n  `config.webSearch` unchanged',
+		);
+		expect(prompt).toContain(
+			'Only OpenAI and Anthropic models support native web search. Use native web\n  search by default for those providers only',
+		);
+		expect(prompt).toContain('For every provider other than OpenAI or Anthropic');
+		expect(prompt).toContain(
+			'Model-only changes must preserve existing Brave or SearXNG `config.webSearch`.',
+		);
+	});
+
+	it('defers custom tool builder guidance to the agent-builder-custom-tools skill', () => {
+		const prompt = buildPrompt(null);
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-custom-tools');
+
+		expect(prompt).not.toContain("import { Tool } from '@n8n/agents';");
+		expect(prompt).not.toContain('Custom handlers run in a V8 isolate');
+		expect(prompt).toContain('agent-builder-custom-tools');
+
+		expect(skill).toBeDefined();
+		expect(skill?.instructions).toContain("import { Tool } from '@n8n/agents';");
+		expect(skill?.instructions).toContain("export default new Tool('tool_name')");
+		expect(skill?.instructions).toContain('Custom handlers run in a V8 isolate');
+		expect(skill?.instructions).toContain('No network, filesystem, process, Buffer, fetch, timers');
+		expect(skill?.instructions).toContain('ctx.suspend(payload)');
+		expect(skill?.instructions).toContain(
+			'Execution is capped at 5 seconds and about 32 MB memory',
+		);
 	});
 
 	it('injects the recommendation section only into the LLM selection prompt', () => {
 		const section = buildModelRecommendationsSection(catalog);
 
 		expect(buildPrompt(section)).toContain('### Recommended LLM Models');
+		expect(buildPrompt(section)).toContain('`openai/gpt-5` GPT-5');
 		expect(buildPrompt(null)).not.toContain('### Recommended LLM Models');
+		expect(buildPrompt(null)).toContain('do not recommend or name');
+	});
+
+	it('keeps always-on interaction and workflow guidance in the main prompt, deferring expressions to a skill', () => {
+		const prompt = buildPrompt('### Recommended LLM Models\n\n- OpenAI: `openai/gpt-5` GPT-5');
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-external-services');
+
+		expect(prompt).toContain('### Recommended LLM Models');
+		expect(prompt).toContain('Never call two interactive tools in parallel');
+		expect(prompt).not.toContain('$now.toISO()');
+		expect(prompt).not.toContain('$today');
+		expect(prompt).toContain('## Workflow');
+		expect(prompt).toContain(
+			'Always call `read_config` first whenever a request touches the config',
+		);
+		expect(prompt).toContain('## Example flows');
+
+		expect(skill).toBeDefined();
+		expect(skill?.instructions).toContain('$fromAI');
+		expect(skill?.instructions).toContain('$now.toISO()');
+		expect(skill?.instructions).toContain('$today');
+		expect(skill?.instructions).toContain('sendAndWait');
+		expect(skill?.instructions).toContain('dispatchAndWait');
+		expect(skill?.instructions).toContain('requireApproval: true');
 	});
 
 	it('registers only optional builder runtime skills', () => {
-		expect(getBuilderRuntimeSkills().map((skill) => skill.id)).toEqual([
-			'agent-builder-integrations',
+		const skills = getBuilderRuntimeSkills();
+		const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+
+		expect(skills.map((skill) => skill.id)).toEqual([
+			'agent-builder-custom-tools',
+			'agent-builder-external-services',
+			'agent-builder-memory',
+			'agent-builder-resource-locators',
+			'agent-builder-sub-agents',
 			'agent-builder-target-skills',
+			'agent-builder-target-tasks',
 		]);
+		expect(skillsById.has('agent-builder-research')).toBe(false);
+
+		const externalServices = skillsById.get('agent-builder-external-services');
+		expect(externalServices?.description).toContain(
+			'chat integration/trigger versus an MCP, node, or workflow tool',
+		);
+		expect(externalServices?.instructions).toContain('Integration vs Callable Tool Decision');
+		expect(externalServices?.instructions).toContain('Linear callable tools');
+
+		const resourceLocators = skillsById.get('agent-builder-resource-locators');
+		expect(resourceLocators?.description).toContain('stable dynamic selector fields');
+		expect(resourceLocators?.instructions).toContain('Linear `teamId`');
+		expect(resourceLocators?.instructions).toContain('Do not use `$fromAI`');
+	});
+
+	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
+		const externalServicesSkill = getBuilderRuntimeSkills().find(
+			(skill) => skill.id === 'agent-builder-external-services',
+		);
+
+		expect(externalServicesSkill?.instructions).not.toContain('slackOAuth2Api');
+		expect(externalServicesSkill?.instructions).not.toContain('prefer the OAuth variant');
 	});
 });

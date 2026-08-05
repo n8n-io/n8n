@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { PROVIDER_CAPABILITIES, REASONING_EFFORT_OPTIONS } from '../provider-capabilities';
+import {
+	PROVIDER_CAPABILITIES,
+	REASONING_EFFORT_OPTIONS,
+	ANTHROPIC_CACHE_TTL_OPTIONS,
+} from '../provider-capabilities';
 
 describe('provider-capabilities', () => {
 	it('keeps the canonical reasoning-effort order', () => {
@@ -12,6 +16,32 @@ describe('provider-capabilities', () => {
 	it('uses budget-tokens for Anthropic and reasoning-effort for OpenAI', () => {
 		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('budgetTokens');
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
+	});
+
+	it('keeps the canonical Anthropic cache-ttl order', () => {
+		// AgentAdvancedPanel renders this as a select in this exact order.
+		expect([...ANTHROPIC_CACHE_TTL_OPTIONS]).toEqual(['5m', '1h']);
+	});
+
+	it('enables native web search for Anthropic and OpenAI', () => {
+		expect(PROVIDER_CAPABILITIES.anthropic.webSearch).toBe('anthropic.web_search');
+		expect(PROVIDER_CAPABILITIES.openai.webSearch).toBe('openai.web_search');
+	});
+
+	it('marks providers without native web search support as `false`', () => {
+		const noWebSearch = [
+			'google',
+			'xai',
+			'groq',
+			'deepseek',
+			'mistral',
+			'openrouter',
+			'cohere',
+			'ollama',
+		];
+		for (const provider of noWebSearch) {
+			expect(PROVIDER_CAPABILITIES[provider]?.webSearch).toBe(false);
+		}
 	});
 
 	it('marks providers without thinking support as `false`', () => {

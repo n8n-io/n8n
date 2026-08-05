@@ -5,18 +5,18 @@
  * Replaces the Playwright `--list` + regex approach used by distribute-tests.mjs.
  */
 
+import type { DiscoveredSpec } from '@n8n/test-impact';
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
 
 import { getConfig } from '../config.js';
 import { getSourceFiles } from './project-loader.js';
 import { getRelativePath } from '../utils/paths.js';
 
-export interface DiscoveredSpec {
-	/** Spec file path relative to rootDir */
-	path: string;
-	/** Capabilities extracted from tags matching capabilityPrefix */
-	capabilities: string[];
-}
+// DiscoveredSpec is owned by @n8n/test-impact (the framework-free orchestrator
+// consumes it); re-exported here so this module's DiscoveryReport + existing
+// importers keep their API.
+
+export type { DiscoveredSpec };
 
 export interface DiscoveryReport {
 	/** Active specs (specs with all tests skipped are excluded) */
