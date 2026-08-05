@@ -617,6 +617,12 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			setWorkflowReviewGates();
 			setupEnabledPublishButton();
 			seedOpenReview();
+			// The dialog prefills its version-name field from the current version.
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: 'Release 3',
+				description: null,
+			});
 
 			const { getByTestId, findByRole } = renderComponent();
 			await waitFor(() =>
@@ -634,7 +640,11 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(updateWorkflowReviewRequestVersion).toHaveBeenCalledWith(
 					expect.any(Object),
 					'req-1',
-					{ workflowId: defaultWorkflowProps.id, workflowVersionId: 'version-1' },
+					{
+						workflowId: defaultWorkflowProps.id,
+						workflowVersionId: 'version-1',
+						workflowVersionName: 'Release 3',
+					},
 				);
 			});
 			expect(mockShowMessage).toHaveBeenCalledWith({
@@ -1245,6 +1255,40 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(
 				await findByRole('dialog', { name: 'Submit latest changes to existing review' }),
 			).toBeInTheDocument();
+		});
+
+		it('saves a dirty workflow before opening the update-review dialog', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedLatestReview();
+			uiStore.markStateDirty();
+
+			const { pill, getByTestId, findByRole } = await renderWithBanner();
+
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-submit-changes-button'));
+
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
+			expect(
+				await findByRole('dialog', { name: 'Submit latest changes to existing review' }),
+			).toBeInTheDocument();
+		});
+
+		it('keeps the update-review dialog closed when saving a dirty workflow fails', async () => {
+			setWorkflowReviewGates();
+			setupEnabledPublishButton();
+			seedLatestReview();
+			uiStore.markStateDirty();
+			mockSaveCurrentWorkflow.mockResolvedValue(false);
+
+			const { pill, getByTestId, queryByRole } = await renderWithBanner();
+
+			await userEvent.click(pill);
+			await userEvent.click(getByTestId('workflow-review-submit-changes-button'));
+
+			expect(
+				queryByRole('dialog', { name: 'Submit latest changes to existing review' }),
+			).not.toBeInTheDocument();
 		});
 
 		it.each([
