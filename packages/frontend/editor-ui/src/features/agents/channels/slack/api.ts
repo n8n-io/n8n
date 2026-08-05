@@ -64,6 +64,18 @@ export const createSlackManagerCredential = async (
 		`${integrationPath(projectId, agentId)}/managed/credentials`,
 	);
 
+export const finalizeSlackManagerCredential = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+): Promise<void> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/managed/credentials/${credentialId}/finalize`,
+	);
+
 export const installSlackManagedApp = async (
 	context: IRestApiContext,
 	projectId: string,

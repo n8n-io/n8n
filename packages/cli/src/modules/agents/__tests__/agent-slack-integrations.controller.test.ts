@@ -21,6 +21,7 @@ describe('AgentSlackIntegrationsController', () => {
 		['getSlackAppManifest', 'agent:read'],
 		['getManagedSlackSetup', 'agent:read'],
 		['createManagedSlackCredential', 'agent:update'],
+		['finalizeManagedSlackCredential', 'agent:update'],
 		['installManagedSlackApp', 'agent:update'],
 		['getManagedSlackAppSettings', 'agent:read'],
 		['updateManagedSlackAppSettings', 'agent:update'],
@@ -32,6 +33,7 @@ describe('AgentSlackIntegrationsController', () => {
 		expect([...routes.values()].map((route) => route.path).sort()).toEqual([
 			'/:agentId/integrations/slack/app',
 			'/:agentId/integrations/slack/managed/credentials',
+			'/:agentId/integrations/slack/managed/credentials/:credentialId/finalize',
 			'/:agentId/integrations/slack/managed/install',
 			'/:agentId/integrations/slack/managed/settings',
 			'/:agentId/integrations/slack/managed/settings/:credentialId',

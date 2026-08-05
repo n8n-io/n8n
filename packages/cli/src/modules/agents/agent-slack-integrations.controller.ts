@@ -77,6 +77,22 @@ export class AgentSlackIntegrationsController {
 		});
 	}
 
+	@Post('/:agentId/integrations/slack/managed/credentials/:credentialId/finalize')
+	@ProjectScope('agent:update')
+	async finalizeManagedSlackCredential(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('credentialId') credentialId: string,
+	): Promise<void> {
+		await this.managedSetup.finalizeManagerCredential({
+			projectId: req.params.projectId,
+			agentId,
+			credentialId,
+			user: req.user,
+		});
+	}
+
 	@Post('/:agentId/integrations/slack/managed/install')
 	@ProjectScope('agent:update')
 	async installManagedSlackApp(

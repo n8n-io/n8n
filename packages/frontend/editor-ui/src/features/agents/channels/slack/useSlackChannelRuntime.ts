@@ -18,6 +18,7 @@ import type { AgentChannelRuntime, AgentChannelRuntimeContext } from '../types';
 import {
 	createSlackAgentApp,
 	createSlackManagerCredential,
+	finalizeSlackManagerCredential,
 	getSlackApiErrorCode,
 	getSlackManagedAppSettings,
 	getSlackManagedSetup,
@@ -173,6 +174,21 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		return true;
 	}
 
+	async function finalizeConnectedManagerCredential(
+		credentialId: string,
+		connected: boolean,
+	): Promise<boolean> {
+		if (!connected) return false;
+		await finalizeSlackManagerCredential(
+			rootStore.restApiContext,
+			context.projectId.value,
+			context.agentId.value,
+			credentialId,
+		).catch(() => {});
+		await load();
+		return true;
+	}
+
 	async function connectManagerCredential(credentialId?: string): Promise<boolean> {
 		await context.ensureAgentPersisted?.();
 		let id = credentialId;
@@ -200,12 +216,10 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 			if (createdCredentialId) {
 				authorizationStarted = true;
 				const connected = await credentialOAuth.authorizeNewCredential(credential);
-				if (connected) await load();
-				return connected;
+				return await finalizeConnectedManagerCredential(id, connected);
 			}
 			const connected = await credentialOAuth.authorize(credential);
-			if (connected) await load();
-			return connected;
+			return await finalizeConnectedManagerCredential(id, connected);
 		} finally {
 			if (createdCredentialId && !authorizationStarted) {
 				await credentialsStore.deleteCredential({ id: createdCredentialId });

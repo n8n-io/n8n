@@ -11,6 +11,10 @@ const mocks = vi.hoisted(() => ({
 	updateSettings: vi.fn(),
 	install: vi.fn(),
 	fetchCredentials: vi.fn(),
+	createManager: vi.fn(),
+	finalizeManager: vi.fn(),
+	authorize: vi.fn(),
+	authorizeNewCredential: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -31,15 +35,16 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => ({
-		authorize: vi.fn(),
-		authorizeNewCredential: vi.fn(),
+		authorize: mocks.authorize,
+		authorizeNewCredential: mocks.authorizeNewCredential,
 	}),
 }));
 
 vi.mock('./api', async (importOriginal) => ({
 	...(await importOriginal<typeof import('./api')>()),
 	createSlackAgentApp: vi.fn(),
-	createSlackManagerCredential: vi.fn(),
+	createSlackManagerCredential: mocks.createManager,
+	finalizeSlackManagerCredential: mocks.finalizeManager,
 	getSlackManagedSetup: mocks.getSetup,
 	getSlackManagedAppSettings: mocks.getSettings,
 	updateSlackManagedAppSettings: mocks.updateSettings,
@@ -99,6 +104,22 @@ describe('useSlackChannelRuntime', () => {
 			appId: 'A1',
 			credentialId: 'bot',
 		});
+		mocks.createManager.mockResolvedValue({
+			id: 'manager',
+			name: 'Slack workspace manager',
+			type: 'slackManagerOAuth2Api',
+			isResolvable: false,
+		});
+		mocks.fetchCredentials.mockResolvedValue([
+			{
+				id: 'manager',
+				name: 'Slack workspace manager',
+				type: 'slackManagerOAuth2Api',
+			},
+		]);
+		mocks.authorize.mockResolvedValue(true);
+		mocks.authorizeNewCredential.mockResolvedValue(true);
+		mocks.finalizeManager.mockResolvedValue(undefined);
 	});
 
 	it('loads managed setup and settings for the selected managed credential', async () => {
@@ -110,6 +131,21 @@ describe('useSlackChannelRuntime', () => {
 		expect(runtime.settings.value?.credentialId).toBe('bot');
 		expect(runtime.isManagedCredential('bot')).toBe(true);
 	});
+
+	it.each([
+		['new', undefined, mocks.authorizeNewCredential],
+		['existing', 'manager', mocks.authorize],
+	])(
+		'finalizes a %s manager credential after OAuth',
+		async (_scenario, credentialId, authorize) => {
+			const runtime = createRuntime();
+
+			await expect(runtime.connectManagerCredential(credentialId)).resolves.toBe(true);
+
+			expect(authorize).toHaveBeenCalled();
+			expect(mocks.finalizeManager).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'manager');
+		},
+	);
 
 	it('saves managed app settings locally through the Slack API', async () => {
 		const runtime = createRuntime('bot');

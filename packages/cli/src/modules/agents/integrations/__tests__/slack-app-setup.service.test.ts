@@ -19,6 +19,7 @@ import type { ChatIntegrationService } from '../chat-integration.service';
 import {
 	SlackManagedSetupService,
 	type DeleteManagedSlackAppOptions,
+	type FinalizeSlackManagerCredentialOptions,
 	type GetManagedSetupStateOptions,
 	type GetManagedSlackAppSettingsOptions,
 	type InstallManagedSlackAppOptions,
@@ -112,6 +113,9 @@ describe('Slack setup services', () => {
 		createManagerCredential: (
 			options: GetManagedSetupStateOptions,
 		) => ReturnType<SlackManagedSetupService['createManagerCredential']>;
+		finalizeManagerCredential: (
+			options: FinalizeSlackManagerCredentialOptions,
+		) => ReturnType<SlackManagedSetupService['finalizeManagerCredential']>;
 		getManagedSetupState: (
 			options: GetManagedSetupStateOptions,
 		) => ReturnType<SlackManagedSetupService['getSetupState']>;
@@ -221,6 +225,8 @@ describe('Slack setup services', () => {
 			isManagedSetupAvailable: () => managedService.isSetupAvailable(),
 			createManagerCredential: async (options) =>
 				await managedService.createManagerCredential(options),
+			finalizeManagerCredential: async (options) =>
+				await managedService.finalizeManagerCredential(options),
 			getManagedSetupState: async (options) => await managedService.getSetupState(options),
 			installManagedApp: async (options) => await managedService.installApp(options),
 			getManagedAppSettings: async (options) => await managedService.getAppSettings(options),
@@ -627,6 +633,80 @@ describe('Slack setup services', () => {
 			},
 			user,
 		);
+	});
+
+	it.each([
+		{
+			scenario: 'generated manager credential name',
+			name: 'Slack workspace manager',
+			expectedName: 'Slack workspace manager - jane @ Acme',
+		},
+		{
+			scenario: 'custom manager credential name',
+			name: 'Custom manager name',
+			expectedName: undefined,
+		},
+	])('handles the $scenario after OAuth', async ({ name, expectedName }) => {
+		credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'manager', type: 'slackManagerOAuth2Api' },
+		] as never);
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'manager',
+			name,
+			type: 'slackManagerOAuth2Api',
+			data: 'encrypted',
+		} as CredentialsEntity);
+		const rawData = {
+			oauthTokenData: {
+				authed_user: {
+					access_token: 'xoxp-manager',
+					scope: 'app_configurations:read app_configurations:write managed_apps:install',
+				},
+			},
+		};
+		credentialsService.decrypt.mockResolvedValue(rawData);
+		credentialsService.createEncryptedData.mockResolvedValue({
+			name: expectedName,
+			type: 'slackManagerOAuth2Api',
+			data: 're-encrypted',
+		} as never);
+		requestMock.mockResolvedValueOnce(
+			slackResponse({
+				ok: true,
+				user: 'jane',
+				team: 'Acme',
+			}),
+		);
+
+		await service.finalizeManagerCredential({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			credentialId: 'manager',
+			user,
+		});
+
+		if (expectedName) {
+			expect(credentialsService.createEncryptedData).toHaveBeenCalledWith({
+				id: 'manager',
+				name: expectedName,
+				type: 'slackManagerOAuth2Api',
+				data: rawData,
+			});
+			expect(credentialsService.update).toHaveBeenCalledWith(
+				'manager',
+				{
+					name: expectedName,
+					type: 'slackManagerOAuth2Api',
+					data: 're-encrypted',
+				},
+				rawData,
+			);
+		} else {
+			expect(credentialsService.createEncryptedData).not.toHaveBeenCalled();
+			expect(credentialsService.update).not.toHaveBeenCalled();
+			expect(requestMock).not.toHaveBeenCalled();
+		}
 	});
 
 	it('returns managed Slack setup before the agent is persisted', async () => {

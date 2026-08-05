@@ -34,6 +34,7 @@ const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
 const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
 const SLACK_CREDENTIAL_TYPE = 'slackApi';
 const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackManagerOAuth2Api';
+const DEFAULT_SLACK_MANAGER_CREDENTIAL_NAME = 'Workspace credentials';
 const REQUIRED_MANAGER_SCOPES = [
 	'app_configurations:read',
 	'app_configurations:write',
@@ -54,6 +55,10 @@ export interface GetManagedSetupStateOptions {
 export interface InstallManagedSlackAppOptions extends GetManagedSetupStateOptions {
 	managerCredentialId: string;
 	workspaceId: string;
+}
+
+export interface FinalizeSlackManagerCredentialOptions extends GetManagedSetupStateOptions {
+	credentialId: string;
 }
 
 export interface GetManagedSlackAppSettingsOptions extends GetManagedSetupStateOptions {
@@ -227,7 +232,7 @@ export class SlackManagedSetupService {
 		await this.methods.getAgent(options.agentId, options.projectId);
 		const credential = await this.credentialsService.createUnmanagedCredential(
 			{
-				name: 'Slack workspace manager',
+				name: DEFAULT_SLACK_MANAGER_CREDENTIAL_NAME,
 				type: SLACK_MANAGER_CREDENTIAL_TYPE,
 				data: {},
 				projectId: options.projectId,
@@ -240,6 +245,35 @@ export class SlackManagedSetupService {
 			type: SLACK_MANAGER_CREDENTIAL_TYPE,
 			isResolvable: false,
 		};
+	}
+
+	async finalizeManagerCredential(options: FinalizeSlackManagerCredentialOptions): Promise<void> {
+		await this.methods.getAgent(options.agentId, options.projectId);
+		const manager = await this.getManagerCredentialContext(
+			options.credentialId,
+			options.projectId,
+			options.user,
+		);
+		if (manager.credential.name !== DEFAULT_SLACK_MANAGER_CREDENTIAL_NAME) return;
+
+		const response = await this.callManagerSlackApi(manager, 'auth.test', {});
+		if (response.ok !== true) return;
+		const userName = stringProperty(response, 'user');
+		if (!userName) return;
+		const teamName = stringProperty(response, 'team');
+		const name = [
+			DEFAULT_SLACK_MANAGER_CREDENTIAL_NAME,
+			teamName ? `${userName} @ ${teamName}` : userName,
+		]
+			.join(' - ')
+			.slice(0, 128);
+		const encrypted = await this.credentialsService.createEncryptedData({
+			id: manager.credential.id,
+			name,
+			type: manager.credential.type,
+			data: manager.rawData,
+		});
+		await this.credentialsService.update(options.credentialId, encrypted, manager.rawData);
 	}
 
 	async installApp(

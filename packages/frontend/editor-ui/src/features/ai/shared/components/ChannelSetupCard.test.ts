@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => {
 		getAgent: vi.fn(),
 		createSlackAgentApp: vi.fn(),
 		createSlackManagerCredential: vi.fn(),
+		finalizeSlackManagerCredential: vi.fn(),
 		getSlackManagedSetup: vi.fn(),
 		installSlackManagedApp: vi.fn(),
 		authorizeNewCredential: vi.fn(),
@@ -98,6 +99,7 @@ vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 vi.mock('@/features/agents/channels/slack/api', () => ({
 	createSlackAgentApp: mocks.createSlackAgentApp,
 	createSlackManagerCredential: mocks.createSlackManagerCredential,
+	finalizeSlackManagerCredential: mocks.finalizeSlackManagerCredential,
 	getSlackManagedSetup: mocks.getSlackManagedSetup,
 	installSlackManagedApp: mocks.installSlackManagedApp,
 }));
@@ -224,6 +226,7 @@ describe('ChannelSetupCard', () => {
 			},
 		]);
 		mocks.authorizeNewCredential.mockResolvedValue(true);
+		mocks.finalizeSlackManagerCredential.mockResolvedValue(undefined);
 		mocks.getSlackManagedSetup.mockResolvedValue({
 			managedSetupAvailable: false,
 			managerCredentials: [],
