@@ -427,6 +427,8 @@ export class ScheduleTrigger implements INodeType {
 				],
 			},
 			{
+				// Read straight off the stored parameters when the workflow activates,
+				// outside any execution, so an expression here would never be resolved.
 				displayName: 'If Execution Is Missed',
 				name: 'misfirePolicy',
 				type: 'options',
