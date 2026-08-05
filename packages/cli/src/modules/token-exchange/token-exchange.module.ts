@@ -52,6 +52,14 @@ export class TokenExchangeModule implements ModuleInterface {
 		const { TokenExchangeService } = await import('./services/token-exchange.service.js');
 		Container.get(ExternalTokenVerifierProxy).registerProvider(Container.get(TokenExchangeService));
 
+		const { IdentityResolutionProxy } = await import(
+			'@/services/identity-resolution-proxy.service.js'
+		);
+		const { IdentityResolutionService } = await import('./services/identity-resolution.service.js');
+		Container.get(IdentityResolutionProxy).registerProvider(
+			Container.get(IdentityResolutionService),
+		);
+
 		await import('./controllers/token-exchange.controller.js');
 		await import('./controllers/embed-auth.controller.js');
 

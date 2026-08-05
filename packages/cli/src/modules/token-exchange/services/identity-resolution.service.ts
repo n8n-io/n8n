@@ -11,6 +11,7 @@ import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
+import type { IdentityResolver } from '@/services/identity-resolution-proxy.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 
@@ -39,7 +40,7 @@ export function qualifiedProviderId(issuer: string, sub: string): string {
 }
 
 @Service()
-export class IdentityResolutionService {
+export class IdentityResolutionService implements IdentityResolver {
 	private readonly logger: Logger;
 
 	constructor(
@@ -83,12 +84,19 @@ export class IdentityResolutionService {
 	}
 
 	/**
-	 * Map external identity claims to a local n8n user, creating one if necessary.
+	 * Map external identity claims to a local n8n user.
 	 *
-	 * Resolution order:
-	 * 1. AuthIdentity lookup by sub + token-exchange provider
+	 * `allowProvisioning: true` (login/exchange flows) — creates a user if
+	 * necessary. Resolution order:
+	 * 1. AuthIdentity lookup by sub + token-exchange provider (incl. the SSO bridge)
 	 * 2. Email fallback — link existing user to this sub
 	 * 3. JIT provision — create user + personal project + identity in a transaction
+	 *
+	 * `allowProvisioning: false` (per-access resolution) — a cheap, read-only,
+	 * indexed lookup only: no email fallback, no provisioning, no profile/role
+	 * sync, no writes. Returns `null` (never throws in a way that stops the
+	 * caller) when there is no active binding — a trigger must never create a
+	 * user, and an unbound identity must not block execution.
 	 *
 	 * Role handling: the role claim is only applied when it is both valid and
 	 * permitted by the key's allowedRoles. A disallowed role claim throws —
@@ -98,41 +106,35 @@ export class IdentityResolutionService {
 		claims: ExternalTokenClaims,
 		allowedRoles: string[] | undefined,
 		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-	): Promise<User> {
-		const email = claims.email?.toLowerCase();
-
-		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
-
-		// Path 1: known sub
-		let identity = await this.authIdentityRepository.findOne({
-			where: { providerId: qualifiedSub, providerType: 'token-exchange' },
-			relations: { user: { role: true } },
-		});
+		allowProvisioning: true,
+	): Promise<User>;
+	async resolve(
+		claims: ExternalTokenClaims,
+		allowedRoles: string[] | undefined,
+		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
+		allowProvisioning: boolean,
+	): Promise<User | null>;
+	async resolve(
+		claims: ExternalTokenClaims,
+		allowedRoles: string[] | undefined,
+		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
+		allowProvisioning: boolean,
+	): Promise<User | null> {
+		const identity = await this.findBoundIdentity(claims, allowProvisioning, tokenContext);
 
 		if (identity) {
+			if (!allowProvisioning) {
+				return this.isBindingActive(identity) ? identity.user : null;
+			}
 			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
 		}
 
-		identity = await this.authIdentityRepository.findOne({
-			where: { providerId: claims.sub, providerType: 'token-exchange' },
-			relations: { user: { role: true } },
-		});
-
-		if (identity && (await this.trustedKeyService.hasSingleTrustedIssuer())) {
-			await this.authIdentityRepository.update(
-				{ providerId: claims.sub, providerType: 'token-exchange' },
-				{ providerId: qualifiedSub },
-			);
-			this.eventService.emit('token-exchange-identity-rebound', {
-				userId: identity.user.id,
-				sub: claims.sub,
-				kid: tokenContext.kid,
-				issuer: tokenContext.issuer,
-			});
-			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
+		if (!allowProvisioning) {
+			return null;
 		}
 
 		// Path 2: email fallback
+		const email = claims.email?.toLowerCase();
 		if (email) {
 			const existingUser = await this.userRepository.findOne({
 				where: { email },
@@ -153,6 +155,71 @@ export class IdentityResolutionService {
 		}
 
 		return await this.provisionUser(claims, email, allowedRoles, tokenContext);
+	}
+
+	/**
+	 * Read-only lookup of an existing binding. Tries, in order: the qualified
+	 * token-exchange sub, the legacy unqualified token-exchange sub, then the
+	 * OIDC SSO bridge (Change 1) — same human, different login surface, whose
+	 * AuthIdentity row already exists for anyone who has logged in via SSO.
+	 * The bridge is tried last so it never shadows an existing token-exchange
+	 * binding for the same claim.
+	 */
+	private async findBoundIdentity(
+		claims: ExternalTokenClaims,
+		allowProvisioning: boolean,
+		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
+	): Promise<AuthIdentity | null> {
+		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
+
+		let identity = await this.authIdentityRepository.findOne({
+			where: { providerId: qualifiedSub, providerType: 'token-exchange' },
+			relations: { user: { role: true } },
+		});
+		if (identity) return identity;
+
+		identity = await this.authIdentityRepository.findOne({
+			where: { providerId: claims.sub, providerType: 'token-exchange' },
+			relations: { user: { role: true } },
+		});
+		// An unqualified sub is only unambiguous when there's a single trusted
+		// issuer; with more than one, treat it as not found, same as before.
+		if (identity && (await this.trustedKeyService.hasSingleTrustedIssuer())) {
+			// Rebind is a write; keep the per-access (read-only) path free of it.
+			if (allowProvisioning) {
+				await this.authIdentityRepository.update(
+					{ providerId: claims.sub, providerType: 'token-exchange' },
+					{ providerId: qualifiedSub },
+				);
+				this.eventService.emit('token-exchange-identity-rebound', {
+					userId: identity.user.id,
+					sub: claims.sub,
+					kid: tokenContext.kid,
+					issuer: tokenContext.issuer,
+				});
+			}
+			return identity;
+		}
+
+		if (await this.trustedKeyService.isSsoIssuer(claims.iss)) {
+			identity = await this.authIdentityRepository.findOne({
+				where: { providerId: claims.sub, providerType: 'oidc' },
+				relations: { user: { role: true } },
+			});
+			if (identity) return identity;
+		}
+
+		return null;
+	}
+
+	/**
+	 * TODO(IAM-1171): gate on `identity.status === 'active'` once the column lands.
+	 * Deliberately does not consult the claim's `expiresAt` — binding status is
+	 * the access gate, not token freshness; an execution outliving the token's
+	 * `exp` must still resolve.
+	 */
+	private isBindingActive(_identity: AuthIdentity): boolean {
+		return true;
 	}
 
 	/** Path 1: resolve an already-linked identity and sync profile/role. */

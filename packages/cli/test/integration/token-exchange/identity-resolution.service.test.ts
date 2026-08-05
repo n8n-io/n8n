@@ -1,4 +1,4 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
@@ -27,6 +27,7 @@ let trustedKeyService: TrustedKeyService;
 let eventService: EventService;
 
 beforeAll(async () => {
+	await testModules.loadModules(['token-exchange']);
 	await testDb.init();
 
 	service = Container.get(IdentityResolutionService);
@@ -85,6 +86,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				undefined,
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(user.id);
@@ -114,6 +116,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				undefined,
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(user.id);
@@ -134,12 +137,12 @@ describe('IdentityResolutionService (integration)', () => {
 			};
 
 			// First call: email fallback creates the identity link
-			const result = await service.resolve(claims, undefined, ctx());
+			const result = await service.resolve(claims, undefined, ctx(), true);
 			expect(result.id).toBe(user.id);
 
 			// Second call: should now resolve via Path 1 (known sub),
 			// proving the identity was correctly linked to the user
-			const secondResult = await service.resolve(claims, undefined, ctx());
+			const secondResult = await service.resolve(claims, undefined, ctx(), true);
 			expect(secondResult.id).toBe(user.id);
 			expect(secondResult.role).toBeDefined();
 			expect(secondResult.role.slug).toBe('global:member');
@@ -157,6 +160,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				['global:member', 'global:admin'],
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(user.id);
@@ -180,6 +184,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				undefined,
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(user.id);
@@ -202,7 +207,7 @@ describe('IdentityResolutionService (integration)', () => {
 				family_name: 'Tee',
 			};
 
-			const result = await service.resolve(claims, undefined, ctx());
+			const result = await service.resolve(claims, undefined, ctx(), true);
 
 			expect(result.email).toBe('jit@example.com');
 			expect(result.firstName).toBe('Jay');
@@ -245,6 +250,7 @@ describe('IdentityResolutionService (integration)', () => {
 					{ ...baseClaims, sub: 'ext-rejected', email: 'rejected@example.com', role },
 					allowedRoles,
 					ctx(),
+					true,
 				),
 			).rejects.toThrow(errorMsg);
 		});
@@ -252,7 +258,7 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should throw when email is missing and no identity match exists', async () => {
 			const claimsWithoutEmail = { ...baseClaims, sub: 'ext-no-email', email: undefined };
 
-			await expect(service.resolve(claimsWithoutEmail, undefined, ctx())).rejects.toThrow(
+			await expect(service.resolve(claimsWithoutEmail, undefined, ctx(), true)).rejects.toThrow(
 				'Email claim is required for user provisioning',
 			);
 		});
@@ -268,6 +274,7 @@ describe('IdentityResolutionService (integration)', () => {
 					},
 					undefined,
 					ctx(),
+					true,
 				),
 			).rejects.toThrow("Unrecognized role 'global:nonsense' cannot be assigned to new user");
 		});
@@ -282,6 +289,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				['global:admin', 'global:member'],
 				ctx(),
+				true,
 			);
 
 			expect(result.role.slug).toBe('global:admin');
@@ -312,6 +320,7 @@ describe('IdentityResolutionService (integration)', () => {
 					},
 					undefined,
 					ctx(),
+					true,
 				),
 			).rejects.toThrow('User role is not allowed for this key');
 		});
@@ -332,6 +341,7 @@ describe('IdentityResolutionService (integration)', () => {
 					},
 					['global:member'],
 					ctx(),
+					true,
 				),
 			).rejects.toThrow("Role 'global:admin' is not allowed for this token exchange key");
 		});
@@ -349,6 +359,7 @@ describe('IdentityResolutionService (integration)', () => {
 					},
 					['global:member'],
 					ctx(),
+					true,
 				),
 			).rejects.toThrow("Role 'global:admin' is not allowed for this token exchange key");
 
@@ -374,6 +385,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				undefined,
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(user.id);
@@ -395,6 +407,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				undefined,
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(user.id);
@@ -419,6 +432,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				['global:admin', 'global:member'],
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(admin.id);
@@ -452,6 +466,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				['global:member', 'global:admin'],
 				ctx(),
+				true,
 			);
 
 			expect(result.firstName).toBe('New');
@@ -484,6 +499,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				undefined,
 				ctx(),
+				true,
 			);
 			const userB = await service.resolve(
 				{
@@ -494,6 +510,7 @@ describe('IdentityResolutionService (integration)', () => {
 				},
 				undefined,
 				ctx(),
+				true,
 			);
 
 			expect(userB.id).not.toBe(userA.id);
@@ -517,6 +534,7 @@ describe('IdentityResolutionService (integration)', () => {
 				{ ...baseClaims, sub: 'legacy-sub', email: undefined },
 				undefined,
 				ctx(),
+				true,
 			);
 
 			expect(result.id).toBe(user.id);
@@ -544,6 +562,7 @@ describe('IdentityResolutionService (integration)', () => {
 					{ ...baseClaims, sub: 'legacy-multi-sub', email: undefined },
 					undefined,
 					ctx(),
+					true,
 				),
 			).rejects.toThrow('Email claim is required for user provisioning');
 
