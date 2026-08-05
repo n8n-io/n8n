@@ -410,6 +410,81 @@ describe('NodeResourceExplorerService', () => {
 			expect(result[0]?.currentValue).toBe('gpt-4o');
 		});
 
+		test('probes only the locator visible for the current resource/operation', async () => {
+			// The OpenAI node's modelRLC yields one `modelId` locator per operation, each with a
+			// different search method. Without a visibility filter all of them get probed, and
+			// the active value is judged against another branch's list.
+			mockNodeDescription({
+				name: '@n8n/n8n-nodes.openAi',
+				properties: [
+					{ displayName: 'Resource', name: 'resource', type: 'options', default: 'text' },
+					{ displayName: 'Operation', name: 'operation', type: 'options', default: 'message' },
+					{
+						...modelLocator,
+						name: 'modelId',
+						modes: [
+							{ name: 'list', type: 'list', typeOptions: { searchListMethod: 'modelSearch' } },
+						],
+						displayOptions: { show: { resource: ['text'], operation: ['message'] } },
+					},
+					{
+						...modelLocator,
+						name: 'modelId',
+						modes: [
+							{ name: 'list', type: 'list', typeOptions: { searchListMethod: 'videoModelSearch' } },
+						],
+						displayOptions: { show: { resource: ['video'], operation: ['generate'] } },
+					},
+				] as INodeTypeDescription['properties'],
+			});
+			mockAvailableModels(['gpt-4.1-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				nodeType: '@n8n/n8n-nodes.openAi',
+				version: 2.2,
+				credentialType: 'openAiApi',
+				credentialId: 'cred-1',
+				parameters: {
+					resource: 'text',
+					operation: 'message',
+					modelId: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+				},
+			});
+
+			expect(result).toEqual([]);
+			expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledTimes(1);
+			expect(dynamicNodeParametersService.getResourceLocatorResults.mock.calls[0]?.[0]).toBe(
+				'modelSearch',
+			);
+		});
+
+		test('ignores a stale value left behind by an inactive operation', async () => {
+			mockNodeDescription({
+				name: '@n8n/n8n-nodes.openAi',
+				properties: [
+					{ displayName: 'Resource', name: 'resource', type: 'options', default: 'text' },
+					{
+						...modelLocator,
+						name: 'imageModel',
+						displayOptions: { show: { resource: ['image'] } },
+					},
+				] as INodeTypeDescription['properties'],
+			});
+			mockAvailableModels(['gpt-image-2']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				nodeType: '@n8n/n8n-nodes.openAi',
+				version: 2.2,
+				credentialType: 'openAiApi',
+				credentialId: 'cred-1',
+				// Left over from when this node was configured for images.
+				parameters: { resource: 'text', imageModel: { __rl: true, mode: 'id', value: 'dall-e-3' } },
+			});
+
+			expect(result).toEqual([]);
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+
 		test('covers non-AI nodes too, e.g. a channel the account cannot reach', async () => {
 			mockCredentialOwned({ type: 'slackApi', name: 'My Slack' });
 			mockNodeDescription({

@@ -12,6 +12,7 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
@@ -177,7 +178,11 @@ export class NodeResourceExplorerService {
 		const nodeDescription = this.getNodeDescription(params.nodeType, params.version);
 		if (!nodeDescription) return [];
 
-		const candidates = collectListBackedLocators(nodeDescription.properties, params.parameters);
+		const candidates = collectListBackedLocators(
+			nodeDescription,
+			params.parameters,
+			params.version,
+		);
 		if (candidates.length === 0) return [];
 
 		const unavailable: UnavailableResourceLocatorValue[] = [];
@@ -301,18 +306,44 @@ function readLocatorValue(raw: unknown): string | undefined {
 }
 
 /**
- * Resource-locator properties that resolve their `list` mode through a search
- * method and currently hold a concrete value — the only ones whose value can be
- * checked against a credential.
+ * Resource-locator properties that resolve their `list` mode through a search method,
+ * are visible for the node's current parameters, and hold a concrete value — the only
+ * ones whose value can be checked against a credential.
+ *
+ * The visibility filter is essential, not tidiness. A node can declare the same locator
+ * many times over, once per resource/operation branch, each pointing at a different
+ * search method: the OpenAI node's `modelRLC` yields five `modelId` locators backed by
+ * `modelSearch`, `imageModelSearch`, `imageGenerateModelSearch` and `videoModelSearch`.
+ * Probing all of them would spend a provider call apiece and, worse, judge the active
+ * value against another branch's list — a chat model is legitimately absent from the
+ * video-model list, so it would be reported as unusable.
+ *
+ * Values are resolved through `getNodeParameters` first so branch discriminators left at
+ * their defaults (n8n strips those on save) still resolve, and so hidden parameters are
+ * dropped the same way execution drops them.
  */
 function collectListBackedLocators(
-	properties: INodeProperties[],
+	nodeDescription: INodeTypeDescription,
 	parameters: Record<string, unknown>,
+	typeVersion: number,
 ): Array<CandidateLocator> {
-	const candidates: CandidateLocator[] = [];
+	const node = { typeVersion };
+	const resolved =
+		NodeHelpers.getNodeParameters(
+			nodeDescription.properties,
+			parameters as INodeParameters,
+			true,
+			false,
+			node,
+			nodeDescription,
+		) ?? (parameters as INodeParameters);
 
-	for (const property of properties) {
+	const candidates: CandidateLocator[] = [];
+	const seen = new Set<string>();
+
+	for (const property of nodeDescription.properties) {
 		if (property.type !== 'resourceLocator') continue;
+		if (seen.has(property.name)) continue;
 
 		const methodName = property.modes?.reduce<string | undefined>(
 			(found, mode: INodePropertyMode) =>
@@ -321,9 +352,12 @@ function collectListBackedLocators(
 		);
 		if (!methodName) continue;
 
-		const currentValue = readLocatorValue(parameters[property.name]);
+		if (!NodeHelpers.displayParameter(resolved, property, node, nodeDescription)) continue;
+
+		const currentValue = readLocatorValue(resolved[property.name]);
 		if (currentValue === undefined) continue;
 
+		seen.add(property.name);
 		candidates.push({
 			name: property.name,
 			displayName: property.displayName,
