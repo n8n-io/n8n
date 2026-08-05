@@ -88,6 +88,8 @@ export {
 } from './workflow-review-request-workflow.repository';
 export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
 export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';
+export { WorkflowReviewActivityRepository } from './workflow-review-activity.repository';
+export { WorkflowReviewActivityCommentRepository } from './workflow-review-activity-comment.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
