@@ -39,6 +39,8 @@ export interface ICredentialResolutionProvider {
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
 	 * @param additionalData Additional workflow execution data for context and settings
+	 * @param workflowId The workflow being executed, needed to unseal a claim carried
+	 *                   by the execution context (a claim is sealed per workflow)
 	 * @returns Resolved credential data and a flag indicating whether dynamic resolution occurred
 	 */
 	resolveIfNeeded(
@@ -46,6 +48,7 @@ export interface ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		workflowId?: string,
 	): Promise<CredentialResolutionResult>;
 
 	/**

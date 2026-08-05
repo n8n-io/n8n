@@ -2,7 +2,12 @@ import { CredentialsEntity, CredentialsRepository, In, User, WorkflowRepository 
 import { ICredentialResolver } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { ICredentialContext, INode, isNodeWithWorkflowSelector, jsonParse } from 'n8n-workflow';
+import {
+	ICredentialResolutionContext,
+	INode,
+	isNodeWithWorkflowSelector,
+	jsonParse,
+} from 'n8n-workflow';
 
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -92,7 +97,7 @@ export class CredentialResolverWorkflowService {
 	 */
 	async getWorkflowStatus(
 		workflowId: string,
-		credentialContext: ICredentialContext,
+		credentialContext: ICredentialResolutionContext,
 		user?: User,
 	): Promise<CredentialStatus[]> {
 		const visited = new Set<string>();
@@ -268,7 +273,7 @@ export class CredentialResolverWorkflowService {
 		credential: CredentialsEntity,
 		options: {
 			fallbackResolverId: string | null;
-			credentialContext: ICredentialContext;
+			credentialContext: ICredentialResolutionContext;
 			resolverCache: Map<string, ResolvedResolver>;
 		},
 	): Promise<CredentialStatus> {

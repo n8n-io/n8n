@@ -561,6 +561,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedDataOriginal,
 				additionalData.executionContext,
 				additionalData.workflowSettings,
+				additionalData.workflowId,
 			);
 			decryptedDataOriginal = resolveResult.data;
 			if (resolveResult.isDynamic) {

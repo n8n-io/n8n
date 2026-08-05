@@ -1167,12 +1167,20 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * The encrypted execution-context fields a credential-status check needs: a
+ * captured credential context and/or the caller's sealed claim (both stay
+ * encrypted until the check unseals them).
+ */
+export type CheckableExecutionContext = {
+	credentials?: string;
+	claims?: string;
+};
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
-		executionContext: {
-			credentials?: string;
-		},
+		executionContext: CheckableExecutionContext,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1180,9 +1188,7 @@ export type CredentialCheckProxyFunctions = {
 	// Optional to account for situations where the dynamic-credentials module is disabled
 	checkCredentialStatus?(
 		workflowId: string,
-		executionContext: {
-			credentials?: string;
-		},
+		executionContext: CheckableExecutionContext,
 	): Promise<CredentialCheckResult>;
 };
 

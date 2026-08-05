@@ -89,6 +89,7 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				undefined,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -113,6 +114,7 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				executionContext,
 				workflowSettings,
+				'workflow-1',
 			);
 
 			expect(mockResolverProvider.resolveIfNeeded).toHaveBeenCalledWith(
@@ -120,6 +122,7 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				executionContext,
 				workflowSettings,
+				'workflow-1',
 			);
 		});
 	});

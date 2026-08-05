@@ -1,7 +1,7 @@
 import type { Constructable } from '@n8n/di';
 import type {
-	ICredentialContext,
 	ICredentialDataDecryptedObject,
+	ICredentialResolutionContext,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -48,7 +48,7 @@ export interface ICredentialResolver {
 	 */
 	getSecret(
 		credentialId: string,
-		context: ICredentialContext,
+		context: ICredentialResolutionContext,
 		handle: CredentialResolverHandle,
 	): Promise<ICredentialDataDecryptedObject>;
 
@@ -58,7 +58,7 @@ export interface ICredentialResolver {
 	 */
 	setSecret(
 		credentialId: string,
-		context: ICredentialContext,
+		context: ICredentialResolutionContext,
 		data: ICredentialDataDecryptedObject,
 		handle: CredentialResolverHandle,
 	): Promise<void>;
@@ -70,7 +70,7 @@ export interface ICredentialResolver {
 	 */
 	deleteSecret?(
 		credentialId: string,
-		context: ICredentialContext,
+		context: ICredentialResolutionContext,
 		handle: CredentialResolverHandle,
 	): Promise<void>;
 
@@ -94,7 +94,10 @@ export interface ICredentialResolver {
 	 * @param context - The identity of the entity to validate access for
 	 * @throws {CredentialResolverAccessValidationError} When access is invalid
 	 */
-	validateIdentity?(context: ICredentialContext, handle: CredentialResolverHandle): Promise<void>;
+	validateIdentity?(
+		context: ICredentialResolutionContext,
+		handle: CredentialResolverHandle,
+	): Promise<void>;
 
 	/**
 	 * Returns the n8n user id the resolved credentials belong to, when this
@@ -107,7 +110,7 @@ export interface ICredentialResolver {
 	 * Optional - not all resolvers map to n8n users.
 	 */
 	resolveOwningUserId?(
-		context: ICredentialContext,
+		context: ICredentialResolutionContext,
 		handle: CredentialResolverHandle,
 	): Promise<string | undefined>;
 
