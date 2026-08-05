@@ -381,17 +381,12 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
 		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
 		expect(loaded?.instructions).toContain('inline setup card in the AI Assistant panel');
-		expect(loaded?.instructions).toContain(
-			'ask once whether the user wants to build an error workflow for that workflow',
+		const normalizedInstructions = loaded?.instructions.replace(/\s+/g, ' ');
+		expect(normalizedInstructions).toContain(
+			'ask once whether the user wants to build an error workflow',
 		);
-		expect(loaded?.instructions).toContain(
-			'Do not replace this explicit opt-in with a generic "add\n   anything else?", publish, or test question.',
-		);
-		expect(loaded?.instructions).toMatch(
-			/ask only that question now; do not also ask about the error\s+workflow/,
-		);
-		expect(loaded?.instructions).toContain(
-			'This follow-up comes after the mocked verification live-test follow-up',
+		expect(normalizedInstructions).toMatch(
+			/Offer or build an error workflow only after .* live test .* published/,
 		);
 		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',
@@ -406,7 +401,7 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain('Mocked verification live-test follow-up');
 		expect(loaded?.instructions).toContain(
-			'This follow-up has priority over the error-workflow opt-in',
+			'This follow-up comes before publishing and the error-workflow opt-in',
 		);
 		expect(loaded?.instructions).toMatch(
 			/Do not ask whether to build now and set up\s+credentials later/,
@@ -417,7 +412,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Ask which auth type to use when a service supports more than one',
 		);
-		expect(loaded?.instructions).toContain(
+		expect(normalizedInstructions).toContain(
 			'Only call `workflows(action="publish")` when the user explicitly asks',
 		);
 

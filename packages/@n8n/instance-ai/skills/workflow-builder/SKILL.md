@@ -150,9 +150,10 @@ Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
 real workflow ID of a separate **published** workflow with an active Error
 Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
 n8n has no global error workflow setting; mention that only if the user asks
-about global behavior. Before building or attaching an error workflow, load
-this skill's `references/error-workflows.md` linked file and follow its
-build → publish → assign steps. Do not create one before the user opts in.
+about global behavior. Before offering, building, or attaching one, require the
+latest primary version to be published and pass a real, full-path live test.
+Before building or attaching an error workflow, load `references/error-workflows.md`
+and follow build → publish → assign.
 
 ## Mandatory Process
 

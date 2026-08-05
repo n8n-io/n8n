@@ -144,30 +144,23 @@ again.
    setup tool. The user chose to set things up later.
 6. After setup completes or is applied, follow
    [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
-   when the latest verification evidence used mocks or simulations. If this
-   follow-up is due, ask only that question now; do not also ask about the error
-   workflow in the same response.
-7. For a direct new primary workflow, follow
-   [Error workflow follow-up](#error-workflow-follow-up) after the mocked
-   live-test follow-up is no longer pending for this workflow. If no mocked
-   live-test follow-up is due, ask about the error workflow before any generic
-   testing prompt. Do not replace this explicit opt-in with a generic "add
-   anything else?", publish, or test question.
+   when the latest verification evidence used mocks or simulations.
+7. For a direct new primary workflow, ask about one step at a time: live test,
+   publish, then error workflow. Move to publishing only after the latest
+   version passes a real, full-path live test without mocks. Move to the error
+   workflow only after that version is published with user approval.
 8. Ask the user if they want to test the workflow (skip this if
    `verify-built-workflow` already proved it works end-to-end with full
-   coverage). If you need to ask about both generic testing and an error
-   workflow, ask the error-workflow opt-in first and leave generic testing as a
-   later follow-up unless the user already requested testing.
-9. Only call `workflows(action="publish")` when the user explicitly asks to
-   publish. Never publish automatically.
+   coverage). Only call `workflows(action="publish")` when the user explicitly
+   asks to publish. Never publish automatically.
+9. After the tested primary is published, follow
+   [Error workflow follow-up](#error-workflow-follow-up).
 
 ## Error workflow follow-up
 
-This follow-up comes after the mocked verification live-test follow-up when that
-follow-up is due, and before generic "want to test it?" prompts. For a direct
-new primary workflow, ask about the error workflow after the user answers,
-declines, or defers any pending live/no-mock testing question. If no mocked
-live-test follow-up is due, ask about the error workflow first.
+Offer or build an error workflow only after the latest primary version passes a
+real, full-path live test and that version is published. Until then, keep
+working on the primary workflow.
 
 If you just built an Error Trigger workflow because the user opted into adding
 one for a known target workflow, do not ask whether to build another error
@@ -175,10 +168,9 @@ workflow. Continue the publish-before-assign flow for the target workflow:
 ask whether to publish the error workflow and set it on that target workflow,
 then publish and assign only after the user approves.
 
-After saving and handling verification/setup for a direct new primary workflow,
-ask once whether the user wants to build an error workflow for that workflow.
-Use `ask-user` with a yes/no choice or a concise visible question. Do **not**
-create an error workflow before the user opts in.
+After the primary workflow is ready, ask once whether the user wants to build
+an error workflow for it. Use `ask-user` with a yes/no choice or a concise
+visible question. Do **not** create one before the user opts in.
 
 The opt-in must explicitly mention an error workflow and the target workflow
 name. A generic follow-up like "Want me to add anything else?", "Want me to
@@ -227,15 +219,12 @@ that workflow used mocked credentials, simulated node output, fixture overrides,
 temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Do not run the live test automatically.
 
-This follow-up has priority over the error-workflow opt-in for a direct new
-primary workflow. If both follow-ups are due, ask about the live/no-mock test
-first and ask the error-workflow question only after the user has answered,
-declined, or deferred the live/no-mock test follow-up.
+This follow-up comes before publishing and the error-workflow opt-in.
 
 If the user agrees, use the explicit live execution path (`executions(action="run")`
 for a direct live run) and report the result separately from the earlier mocked
-verification. If the user declines or defers, state what remains untested and do
-not claim live end-to-end verification.
+verification. If the user declines or defers, state what remains untested and do not
+claim live end-to-end verification.
 
 ## Claiming success
 
