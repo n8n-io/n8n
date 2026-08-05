@@ -4,7 +4,11 @@ import type { PollerFailureState, PollerStateRepository } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { MAX_BACKOFF_MS, RETRY_AFTER_MAX_MS } from '@/workflows/triggers/poll-backoff-policy';
+import {
+	computeBackoffUntil,
+	MAX_BACKOFF_MS,
+	RETRY_AFTER_MAX_MS,
+} from '@/workflows/triggers/poll-backoff-policy';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 
 describe('PollBackoffService', () => {
@@ -87,7 +91,7 @@ describe('PollBackoffService', () => {
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil: null }, now)).toBe(false);
 		});
 
-		test('is true when backoffUntil is in the future and within MAX_BACKOFF_MS', () => {
+		test('is true for a deadline in the near future', () => {
 			const backoffUntil = new Date(now.getTime() + 60_000);
 
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(true);
@@ -167,10 +171,16 @@ describe('PollBackoffService', () => {
 
 			await recordFailure(service, { state: null });
 
+			const expectedBackoffUntil = computeBackoffUntil({
+				failureClass: 'transient',
+				consecutiveErrors: 1,
+				retryAfterMs: null,
+				now,
+			});
 			expect(pollerStateRepository.recordFailure).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
-				expect.any(Date),
+				expectedBackoffUntil,
 			);
 		});
 
@@ -179,8 +189,17 @@ describe('PollBackoffService', () => {
 
 			await recordFailure(service, { state: { consecutiveErrors: 3, backoffUntil: null } });
 
-			const [, , backoffUntil] = pollerStateRepository.recordFailure.mock.calls[0];
-			expect(backoffUntil.getTime()).toBeGreaterThan(now.getTime());
+			const expectedBackoffUntil = computeBackoffUntil({
+				failureClass: 'transient',
+				consecutiveErrors: 4,
+				retryAfterMs: null,
+				now,
+			});
+			expect(pollerStateRepository.recordFailure).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				expectedBackoffUntil,
+			);
 		});
 
 		test('sends a permanent failure straight to the ceiling', async () => {

@@ -222,13 +222,19 @@ describe('retryAfterMs', () => {
 		expect(retryAfterMs(error, now)).toBeNull();
 	});
 
+	test('reads the first entry of an array-valued header', () => {
+		const error = { response: { headers: { 'retry-after': ['120', '60'] } } };
+
+		expect(retryAfterMs(error, now)).toBe(120_000);
+	});
+
 	test('trims surrounding whitespace on a delay-seconds value', () => {
 		const error = { response: { headers: { 'retry-after': '  120  ' } } };
 
 		expect(retryAfterMs(error, now)).toBe(120_000);
 	});
 
-	test('does not itself cap a very large delay-seconds value; capping is computeBackoffUntil concern', () => {
+	test('does not cap a very large delay-seconds value itself; capping is left to computeBackoffUntil', () => {
 		const error = { response: { headers: { 'retry-after': '999999999' } } };
 
 		expect(retryAfterMs(error, now)).toBe(999_999_999 * 1000);
