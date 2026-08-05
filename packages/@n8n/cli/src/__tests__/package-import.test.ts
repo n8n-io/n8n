@@ -19,6 +19,7 @@ interface ImportFlags {
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
@@ -69,6 +70,7 @@ describe('package import command', () => {
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
@@ -97,6 +99,7 @@ describe('package import command', () => {
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
@@ -200,6 +203,18 @@ describe('package import command', () => {
 			expect(importPackage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('resolves the --project-conflict-policy alias', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-conflict-policy=merge',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectConflictPolicy: 'merge' }),
 			);
 		});
 

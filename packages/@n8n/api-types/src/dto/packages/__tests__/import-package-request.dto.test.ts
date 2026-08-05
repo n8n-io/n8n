@@ -16,6 +16,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
+				projectConflictPolicy: 'merge',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -44,6 +45,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
+				projectConflictPolicy: 'merge',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -74,6 +76,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
+				projectConflictPolicy: 'merge',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -103,6 +106,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'source',
 				missingNodeTypeMode: 'fail',
+				projectConflictPolicy: 'merge',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -299,6 +303,42 @@ describe('ImportPackageRequestDto', () => {
 		});
 	});
 
+	// Both conflict policies behave identically at the DTO layer, so one table covers them.
+	describe.each([
+		{ field: 'projectConflictPolicy', values: ['merge', 'fail', 'overwrite'], expected: 'merge' },
+		{ field: 'folderConflictPolicy', values: ['merge', 'fail'], expected: 'merge' },
+	] as const)('$field', ({ field, values, expected }) => {
+		it(`defaults to ${expected ?? 'undefined'} when omitted`, () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data[field]).toBe(expected);
+		});
+
+		it('accepts every supported value', () => {
+			for (const value of values) {
+				const result = ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					[field]: value,
+				});
+				expect(result.success).toBe(true);
+				if (result.success) expect(result.data[field]).toBe(value);
+			}
+		});
+
+		it('rejects an unsupported value', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					[field]: 'not-a-policy',
+				}).success,
+			).toBe(false);
+		});
+
+		it('is accepted as a multipart form field', () => {
+			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain(field);
+		});
+	});
+
 	describe('missingNodeTypeMode', () => {
 		it('defaults to "fail" when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
@@ -400,7 +440,7 @@ describe('ImportPackageRequestDto', () => {
 			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
 			{ field: 'workflowIdPolicy', expected: 'source' },
 			{ field: 'missingNodeTypeMode', expected: 'fail' },
-			{ field: 'folderConflictPolicy', expected: 'merge' },
+			{ field: 'projectConflictPolicy', expected: 'merge' },
 			{ field: 'dataTableMatchingMode', expected: 'by-id' },
 			{ field: 'dataTableMissingMode', expected: 'create' },
 			{ field: 'dataTableSchemaConflictPolicy', expected: 'keep-existing' },
