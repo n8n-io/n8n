@@ -1,3 +1,4 @@
+import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
@@ -31,8 +32,9 @@ export class ExecutionStartHandler {
 
 		const trigger = findTriggerNode(execution.graph);
 		if (!trigger) {
-			// Malformed graph — no entry point to run.
-			await this.executionStore.transitionStatus(event.executionId, 'running', 'failed');
+			// Failsafe: the start boundary validates graphs, so no entry point here
+			// means a corrupted record.
+			await this.executionStore.finishExecution(event.executionId, 'failed');
 			return;
 		}
 
@@ -42,6 +44,11 @@ export class ExecutionStartHandler {
 		const [triggerStep] = await this.stepStore.createSteps([
 			{ executionId: event.executionId, nodeId: trigger.id, status: 'completed' },
 		]);
+		if (!triggerStep) {
+			throw new UnexpectedError(
+				`Trigger step for execution ${event.executionId} already existed despite the claim`,
+			);
+		}
 
 		// Published only after the row exists, so the consumer can always load it.
 		await this.orchestrationQueue.publish({

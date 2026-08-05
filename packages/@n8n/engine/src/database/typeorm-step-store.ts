@@ -104,15 +104,13 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async hasActiveSteps(executionId: string): Promise<boolean> {
-		// `count({ where })`, not `countBy`, for the reason given in `loadStep`.
-		const active = await this.repo.count({
+		// `exists({ where })`, not `existsBy`, for the reason given in `loadStep`.
+		return await this.repo.exists({
 			where: { executionId, status: In<StepStatus>(['queued', 'running']) },
 		});
-		return active > 0;
 	}
 
 	async hasFailedSteps(executionId: string): Promise<boolean> {
-		const failed = await this.repo.count({ where: { executionId, status: 'failed' } });
-		return failed > 0;
+		return await this.repo.exists({ where: { executionId, status: 'failed' } });
 	}
 }

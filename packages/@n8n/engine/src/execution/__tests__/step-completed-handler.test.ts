@@ -222,6 +222,27 @@ describe('StepCompletedHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
+	it('re-announces nothing and finishes nothing on duplicate delivery', async () => {
+		// Redelivered completion for 'a': its successors are already planned, so
+		// the insert's RETURNING is empty, and they're still active, so the
+		// execution must not be finished early.
+		const stepStore = makeStepStore(
+			{},
+			{
+				createSteps: vi.fn().mockResolvedValue([]),
+				hasActiveSteps: vi.fn().mockResolvedValue(true),
+			},
+		);
+		const executionStore = makeExecutionStore();
+		const queue = makeQueue();
+		const handler = new StepCompletedHandler(executionStore, stepStore, queue);
+
+		await handler.handle(event);
+
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+	});
+
 	it('finishes the execution once the last step is done', async () => {
 		// 'm' is terminal, and nothing else is left running
 		const stepStore = makeStepStore({ id: 'step-m', nodeId: 'm' });

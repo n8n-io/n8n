@@ -92,7 +92,29 @@ describe('ExecutionStartHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('fails the execution when the graph has no trigger node', async () => {
+	it('throws instead of announcing when the trigger row was not inserted', async () => {
+		// The claim makes this handler the only writer, so an existing row (empty
+		// RETURNING batch) is an invariant violation, not a case to work around.
+		const graph: WorkflowGraph = {
+			nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
+			edges: [],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+		});
+		const stepStore = makeStepStore(vi.fn().mockResolvedValue([]));
+		const queue = makeOrchestrationQueue();
+		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+
+		await expect(
+			handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' }),
+		).rejects.toMatchObject({ name: 'UnexpectedError' });
+
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	it('finishes the execution as failed when the graph has no trigger node', async () => {
+		// Unreachable when the start boundary validates graphs; kept as a failsafe.
 		const graph: WorkflowGraph = { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] };
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph)),
@@ -103,7 +125,8 @@ describe('ExecutionStartHandler', () => {
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
-		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'running', 'failed');
+		// finishExecution, not a bare status transition, so `finishedAt` is stamped
+		expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
 		expect(stepStore.createSteps).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
 	});

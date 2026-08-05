@@ -118,9 +118,13 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, steps } = await runWorkflow(executor, { body: { name: 'ada' } });
+		const { executionId, execution, steps } = await runWorkflow(executor, {
+			body: { name: 'ada' },
+		});
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
 		expect(step?.status).toBe('completed');
 		expect(step?.outputs).toEqual([[{ json: { greeting: 'hi' } }]]);
 		expect(step?.error).toBeNull();
@@ -145,9 +149,12 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { steps } = await runWorkflow(executor, {});
+		const { execution, steps } = await runWorkflow(executor, {});
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
+		// the failure is terminal for the execution too
+		expect(execution.status).toBe('failed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
 		expect(step?.status).toBe('failed');
 		expect(step?.error).toEqual({
 			name: 'TypeError',
