@@ -81,8 +81,6 @@ export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
 );
-// A/A test validating the experimentation system itself (#26387): both arms are
-// identical, so having no reader is the point. Keep it out of unread-flag cleanups.
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
