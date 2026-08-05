@@ -170,3 +170,137 @@ describe('parseWithSchema — JSON Schema', () => {
 		expect(invalid.success).toBe(false);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// parseWithSchema — JSON Schema dialects
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — JSON Schema dialects', () => {
+	it('compiles a schema declaring the 2020-12 dialect', async () => {
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'object' as const,
+			properties: { name: { type: 'string' } },
+			required: ['name'],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { name: 'Bob' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, { name: 42 });
+		expect(invalid.success).toBe(false);
+	});
+
+	it('honours 2020-12 tuple semantics via prefixItems', async () => {
+		const schema = {
+			$schema: 'https://json-schema.org/draft/2020-12/schema',
+			type: 'array' as const,
+			prefixItems: [{ type: 'string' }, { type: 'number' }],
+		} as unknown as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, ['a', 1]);
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, [1, 'a']);
+		expect(invalid.success).toBe(false);
+	});
+
+	it('compiles a schema declaring the draft-07 dialect', async () => {
+		const schema = {
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			type: 'object' as const,
+			properties: { name: { type: 'string' } },
+			required: ['name'],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, { name: 'Bob' });
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, {});
+		expect(invalid.success).toBe(false);
+	});
+
+	it('honours draft-07 tuple semantics via array-valued items', async () => {
+		const schema = {
+			$schema: 'http://json-schema.org/draft-07/schema#',
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, ['a', 1]);
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, [1, 'a']);
+		expect(invalid.success).toBe(false);
+	});
+
+	// An undeclared dialect defaults to 2020-12, whose bundle throws on a
+	// draft-07 tuple. The retry on the legacy bundle keeps it working.
+	it('falls back to the legacy bundle for an undeclared draft-07 tuple', async () => {
+		const schema = {
+			type: 'array' as const,
+			items: [{ type: 'string' }, { type: 'number' }],
+		} as JSONSchema7;
+
+		const valid = await parseWithSchema(schema, ['a', 1]);
+		expect(valid.success).toBe(true);
+
+		const invalid = await parseWithSchema(schema, [1, 'a']);
+		expect(invalid.success).toBe(false);
+	});
+
+	it('skips validation when a schema cannot be compiled on any dialect', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const schema = { type: 'objct' } as unknown as JSONSchema7;
+
+		const result = await parseWithSchema(schema, { anything: true });
+
+		expect(result.success).toBe(true);
+		expect(warn).toHaveBeenCalled();
+		warn.mockRestore();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseWithSchema — JSON Schema formats
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — JSON Schema formats', () => {
+	it.each([
+		['email', 'user@example.com', 'not-an-email'],
+		['uri', 'https://example.com/x', 'not a uri'],
+		['date-time', '2026-08-05T10:00:00Z', 'yesterday'],
+		['uuid', '123e4567-e89b-12d3-a456-426614174000', 'nope'],
+	])('enforces the %s format', async (format, valid, invalid) => {
+		const schema = {
+			type: 'object' as const,
+			properties: { value: { type: 'string', format } },
+			required: ['value'],
+		} as JSONSchema7;
+
+		expect((await parseWithSchema(schema, { value: valid })).success).toBe(true);
+		expect((await parseWithSchema(schema, { value: invalid })).success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseWithSchema — error reporting
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — error reporting', () => {
+	it('reports every violation, not just the first', async () => {
+		const schema = {
+			type: 'object' as const,
+			properties: { name: { type: 'string' }, age: { type: 'integer' } },
+			required: ['name', 'age'],
+		} as JSONSchema7;
+
+		const result = await parseWithSchema(schema, {});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error).toContain('name');
+			expect(result.error).toContain('age');
+		}
+	});
+});

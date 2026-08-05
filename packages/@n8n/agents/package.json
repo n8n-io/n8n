@@ -116,6 +116,7 @@
     "@opentelemetry/sdk-trace-node": ">=1.0.0",
     "ai": "catalog:",
     "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "langsmith": "catalog:",
     "undici": "catalog:undici-v7",
     "yaml": "catalog:",
