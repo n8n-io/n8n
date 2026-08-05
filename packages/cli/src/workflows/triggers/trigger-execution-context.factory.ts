@@ -377,7 +377,7 @@ export class TriggerExecutionContextFactory {
 				});
 				if (!committed) {
 					this.logger.debug(
-						`Poll node "${node.name}" cursor-only commit was fenced out by a reclaimed lease`,
+						`Poll node "${node.name}" cursor-only commit skipped: the poll no longer holds its lease, or its cursor row is gone`,
 						{ workflowId: workflowData.id, nodeId: node.id },
 					);
 				}

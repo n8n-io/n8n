@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { PollLeaseFence } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
@@ -19,6 +20,11 @@ import {
 	POLL_TRIGGER_TASK_TYPE,
 	type PollTriggerTaskPayload,
 } from './poll-trigger-task';
+
+const toPollLeaseFence = (task: ClaimedTask): PollLeaseFence => ({
+	taskId: task.id,
+	leaseEpoch: task.leaseEpoch,
+});
 
 /**
  * Runs a due poll occurrence's `poll()` once and dispatches only when it
@@ -56,10 +62,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const { workflow, pollFunctions } =
-			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node, {
-				taskId: task.id,
-				leaseEpoch: task.leaseEpoch,
-			});
+			await this.triggerExecutionContextFactory.createPollExecutionContext(
+				workflowData,
+				node,
+				toPollLeaseFence(task),
+			);
 
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
 		// be committed by this poll and never by a later occurrence.
