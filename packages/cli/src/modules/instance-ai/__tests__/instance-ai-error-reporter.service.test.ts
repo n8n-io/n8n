@@ -129,6 +129,7 @@ describe('InstanceAiErrorReporterService', () => {
 		service.beginRun('r');
 		service.report(error, {
 			component: 'instance-ai-stream',
+			providerStream: true,
 			threadId: 't',
 			runId: 'r',
 		});
@@ -141,12 +142,27 @@ describe('InstanceAiErrorReporterService', () => {
 		);
 	});
 
+	it('still reports a dropped connection outside the provider stream', () => {
+		const { service, errorReporter } = createService();
+		const error = Object.assign(new TypeError('terminated'), {
+			cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+		});
+
+		service.report(error, {
+			component: 'instance-ai-ensure-thread',
+			threadId: 't',
+		});
+
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+	});
+
 	it('still reports application errors that merely mention a socket code', () => {
 		const { service, errorReporter } = createService();
 
 		service.beginRun('r');
 		service.report(new Error('tool returned ECONNRESET in its output'), {
 			component: 'instance-ai-stream',
+			providerStream: true,
 			threadId: 't',
 			runId: 'r',
 		});

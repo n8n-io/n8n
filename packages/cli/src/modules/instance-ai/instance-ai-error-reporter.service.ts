@@ -14,6 +14,10 @@ export type InstanceAiErrorReportContext = {
 	component: string;
 	/** Report non-terminal, best-effort failures at warning level. */
 	severity?: 'warning';
+	/**
+	 * Set when the error terminated the model provider stream.
+	 */
+	providerStream?: boolean;
 } & InstanceAiObservabilityContext;
 
 type AgentErrorSource = NonNullable<Extract<AgentEventData, { error: unknown }>['source']>;
@@ -81,7 +85,7 @@ export class InstanceAiErrorReporterService {
 			return;
 		}
 
-		if (isStreamTransportError(error)) {
+		if (context.providerStream && isStreamTransportError(error)) {
 			this.logger.warn(`Instance AI stream transport failure in ${context.component}`, {
 				error,
 				component: context.component,
