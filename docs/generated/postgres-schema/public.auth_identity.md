@@ -7,7 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | providerId | varchar(255) |  | false |  |  |  |
 | providerType | varchar(32) |  | false |  |  |  |
-| status | varchar(32) | 'active'::character varying | false |  |  |  |
+| status | varchar(32) | 'active'::character varying | false |  |  | Live authority gate for this binding: a non-active row resolves no principal |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userId | uuid |  | true |  | [public.user](public.user.md) |  |
 
