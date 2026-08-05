@@ -2866,6 +2866,8 @@
 	"roles.action.delete.error": "Error deleting role",
 	"roles.action.delete.title": "Delete '{roleName}'?",
 	"roles.action.delete.text": "Are you sure that you want to delete '{roleName}' permanently? This action cannot be undone.",
+	"roles.action.delete.hasAssignedUsers": "This role is assigned to users and can't be deleted.",
+	"roles.action.delete.ownRole": "You can't delete your own role.",
 	"projectRoles.action.delete.warning": "Deleting a role is permanent. This can’t be undone.",
 	"projectRoles.action.delete.useWarning.before": "You can't delete this role while it's assigned in",
 	"projectRoles.action.delete.useWarning.linkText": "{count} project | {count} projects",

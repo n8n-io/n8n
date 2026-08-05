@@ -15,6 +15,7 @@ import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
 import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
+import { safeRegex } from './safe-regex';
 import type {
 	FieldType,
 	IContextObject,
@@ -392,7 +393,7 @@ export const checkConditions = (
 				if (key === 'regex') {
 					return (
 						typeof propertyValue === 'string' &&
-						new RegExp(targetValue as string).test(propertyValue)
+						safeRegex.test(targetValue as string, propertyValue)
 					);
 				}
 				if (key === 'exists') {
@@ -1326,9 +1327,8 @@ const validateResourceLocatorParameter = (
 		for (const validation of parameterMode.validation) {
 			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
 				const regexValidation = validation as INodePropertyRegexValidation;
-				const regex = new RegExp(`^${regexValidation.properties.regex}$`);
 
-				if (!regex.test(valueToValidate)) {
+				if (!safeRegex.test(`^${regexValidation.properties.regex}$`, valueToValidate)) {
 					validationErrors.push(regexValidation.properties.errorMessage);
 				}
 			}

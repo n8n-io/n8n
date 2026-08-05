@@ -12,6 +12,7 @@ export * from './execution-context';
 export * from './execution-context-establishment-hooks';
 export * from './redaction-channels';
 export * from './dynamic-credentials-helpers';
+export * from './safe-regex';
 export * from './global-state';
 export * from './interfaces';
 export * from './sub-workflow-output';
