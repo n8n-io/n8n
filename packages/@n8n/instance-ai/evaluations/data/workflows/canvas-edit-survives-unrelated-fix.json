@@ -1,0 +1,269 @@
+{
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"edit",
+		"seeded",
+		"canvas-edit-preservation",
+		"code-node",
+		"webhook",
+		"wait"
+	],
+	"executionScenarios": [
+		{
+			"name": "transcript-completes",
+			"description": "One recording is transcribed on the first poll; the fixed Code node formats it and the summary is delivered.",
+			"dataSetup": "The webhook receives a POST body { \"recordingUrl\": \"https://recordings.example.com/standup.mp3\" }. The transcription submit returns { \"jobId\": \"job_4821\" }. The poll returns { \"status\": \"completed\", \"transcript\": \"First paragraph about the roadmap.\\n\\nSecond paragraph about hiring plans.\" }. The review-hub POST returns HTTP 200 { \"ok\": true }.",
+			"successCriteria": "The run completes without a SyntaxError and the review hub receives summary blocks derived from the transcript paragraphs (two summaries, one per paragraph)."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "The 'Build Summary Blocks' node in my Meeting Transcript Processor failed with: \"Invalid or unexpected token (SyntaxError)\". Help me debug and fix it."
+		}
+	],
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "When my recorder POSTs a webhook with a recording URL, submit it to my transcription service, wait for processing and poll until it's done, then format the transcript into summary blocks and post them to my review hub."
+			},
+			{
+				"role": "assistant",
+				"text": "Built 'Meeting Transcript Processor': Webhook → Submit Transcription → Wait Before Poll (30 seconds) → Poll Transcript → ready-check that loops back to the wait → Build Summary Blocks → Deliver Summary. The wait between polls is 30 seconds."
+			},
+			{
+				"role": "user",
+				"text": "fyi i changed the wait to 5 seconds on the canvas, faster for debugging"
+			},
+			{
+				"role": "assistant",
+				"text": "Noted — the wait is 5 seconds now."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfCanvasSeed002x",
+				"name": "Meeting Transcript Processor",
+				"nodes": [
+					{
+						"id": "7c2b3d4e-0001-4b02-9e02-bbbbbbbb0001",
+						"name": "New Recording",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"httpMethod": "POST",
+							"path": "new-recording",
+							"options": {}
+						}
+					},
+					{
+						"id": "7c2b3d4e-0002-4b02-9e02-bbbbbbbb0002",
+						"name": "Submit Transcription",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"method": "POST",
+							"url": "https://api.transcribe.example.com/v1/jobs",
+							"sendBody": true,
+							"specifyBody": "json",
+							"jsonBody": "={{ JSON.stringify({ url: $json.body.recordingUrl }) }}",
+							"options": {}
+						}
+					},
+					{
+						"id": "7c2b3d4e-0003-4b02-9e02-bbbbbbbb0003",
+						"name": "Wait Before Poll",
+						"type": "n8n-nodes-base.wait",
+						"typeVersion": 1.1,
+						"position": [
+							440,
+							0
+						],
+						"parameters": {
+							"resume": "timeInterval",
+							"amount": 5,
+							"unit": "seconds"
+						}
+					},
+					{
+						"id": "7c2b3d4e-0004-4b02-9e02-bbbbbbbb0004",
+						"name": "Poll Transcript",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							660,
+							0
+						],
+						"parameters": {
+							"method": "GET",
+							"url": "=https://api.transcribe.example.com/v1/jobs/{{ $('Submit Transcription').item.json.jobId }}",
+							"options": {}
+						}
+					},
+					{
+						"id": "7c2b3d4e-0005-4b02-9e02-bbbbbbbb0005",
+						"name": "Transcript Ready?",
+						"type": "n8n-nodes-base.if",
+						"typeVersion": 2.3,
+						"position": [
+							880,
+							0
+						],
+						"parameters": {
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "loose",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c-0001",
+										"leftValue": "={{ $json.status }}",
+										"rightValue": "completed",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "7c2b3d4e-0006-4b02-9e02-bbbbbbbb0006",
+						"name": "Build Summary Blocks",
+						"type": "n8n-nodes-base.code",
+						"typeVersion": 2,
+						"position": [
+							1100,
+							-100
+						],
+						"parameters": {
+							"jsCode": "const text = $json.transcript || '';\nconst paragraphs = text.split('\\n\\n').filter((p) => p.trim().length > 0);\nconst blocks = paragraphs.map((p) => ({ summary: p.trim(), words: p.split(' ').length });\nreturn blocks.map((b) => ({ json: b }));"
+						}
+					},
+					{
+						"id": "7c2b3d4e-0007-4b02-9e02-bbbbbbbb0007",
+						"name": "Deliver Summary",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							1320,
+							-100
+						],
+						"parameters": {
+							"method": "POST",
+							"url": "https://hooks.reviewhub.example.com/summaries",
+							"sendBody": true,
+							"specifyBody": "json",
+							"jsonBody": "={{ JSON.stringify({ summary: $json.summary, words: $json.words }) }}",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"New Recording": {
+						"main": [
+							[
+								{
+									"node": "Submit Transcription",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Submit Transcription": {
+						"main": [
+							[
+								{
+									"node": "Wait Before Poll",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Wait Before Poll": {
+						"main": [
+							[
+								{
+									"node": "Poll Transcript",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Poll Transcript": {
+						"main": [
+							[
+								{
+									"node": "Transcript Ready?",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Transcript Ready?": {
+						"main": [
+							[
+								{
+									"node": "Build Summary Blocks",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Wait Before Poll",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Build Summary Blocks": {
+						"main": [
+							[
+								{
+									"node": "Deliver Summary",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		],
+		"dataTables": []
+	},
+	"description": "The user changed a Wait interval on the canvas (30s → 5s) and said so in chat. A later unrelated Code-node fix must not revert it to the 30s the conversation history remembers. The trap is built in: the seeded history says 'built with a 30-second wait' while the seeded workflow carries the user's 5 — an agent that rewrites from memory instead of fetched state reintroduces the bug. The Code node ships with a real SyntaxError (missing paren) for the live turn to fix. Sourced from thread 6fa7ed1f-6ba2-4f3d-9800-72d50738c930 (obs 4542: a one-line Code fix pushed the user's 15s Wait back to 30s — 'again you changed it to 30s'); related: obs 4950.",
+	"processExpectations": [
+		"The agent inspected the current workflow state (fetched the workflow or the failing node) before editing, rather than rewriting the workflow from what the conversation history remembers.",
+		"The agent's report claims only the Code-node fix — it does not claim to have adjusted the wait interval or other nodes."
+	],
+	"outcomeExpectations": [
+		"The 'Wait Before Poll' node's interval is still 5 seconds — the user's manual canvas change was NOT reverted to the 30 seconds mentioned earlier in the conversation.",
+		"The 'Build Summary Blocks' Code node's jsCode is now syntactically valid and still implements the same logic: split the transcript into paragraphs and emit summary blocks.",
+		"All other nodes, parameters, and connections are unchanged — same node set, same wiring, no parameter changes outside the fixed Code node."
+	],
+	"triggerType": "webhook"
+}

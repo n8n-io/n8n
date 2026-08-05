@@ -1,0 +1,311 @@
+{
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"edit",
+		"seeded",
+		"flag-preservation",
+		"webhook",
+		"http-request",
+		"ai-chain"
+	],
+	"executionScenarios": [
+		{
+			"name": "no-matching-project",
+			"description": "The project lookup finds nothing; the workflow must still produce and deliver a pitch via the defaults branch (this is what the preserved alwaysOutputData/onError flags enable at runtime).",
+			"dataSetup": "The webhook receives a POST body { \"projectId\": \"p-404\", \"premise\": \"a lighthouse keeper finds a map\" }. The project lookup GET returns HTTP 200 with an empty JSON array [] (no matching project). The review-webhook POST returns HTTP 200 { \"ok\": true }.",
+			"successCriteria": "The run completes without erroring and one POST is made to the review webhook containing a generated pitch — the empty project lookup (zero result items) does not dead-end the workflow; the defaults branch executes. This only works while the lookup node keeps alwaysOutputData: true."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "The pitches from my Story Pitch Generator all sound the same lately. Make the AI more creative and rework the prompt so the plots vary more. Don't change anything else."
+		}
+	],
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "When my app POSTs a story request to a webhook, look up the project in my project API (it may not exist yet - in that case just continue with defaults), generate a one-paragraph story pitch with AI, and POST the pitch to my review webhook."
+			},
+			{
+				"role": "assistant",
+				"text": "Built 'Story Pitch Generator': Webhook → Find Project (tolerates a missing project and continues with defaults) → Generate Pitch (AI) → Post to Review. It's saved and ready."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfFlagsSeed0001x",
+				"name": "Story Pitch Generator",
+				"nodes": [
+					{
+						"id": "6f1a2b3c-0001-4a01-9e01-aaaaaaaa0001",
+						"name": "New Story Request",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"httpMethod": "POST",
+							"path": "story-request",
+							"options": {}
+						}
+					},
+					{
+						"id": "6f1a2b3c-0002-4a01-9e01-aaaaaaaa0002",
+						"name": "Find Project",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"alwaysOutputData": true,
+						"onError": "continueRegularOutput",
+						"parameters": {
+							"method": "GET",
+							"url": "=https://api.storyhub.example.com/v1/projects?requestId={{ $json.body.projectId }}",
+							"options": {}
+						}
+					},
+					{
+						"id": "6f1a2b3c-0003-4a01-9e01-aaaaaaaa0003",
+						"name": "Project Found?",
+						"type": "n8n-nodes-base.if",
+						"typeVersion": 2.3,
+						"position": [
+							440,
+							0
+						],
+						"parameters": {
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "loose",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c-0001",
+										"leftValue": "={{ $json.id }}",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "notEmpty",
+											"singleValue": true
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "6f1a2b3c-0004-4a01-9e01-aaaaaaaa0004",
+						"name": "Use Project Context",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [
+							660,
+							-100
+						],
+						"parameters": {
+							"assignments": {
+								"assignments": [
+									{
+										"id": "s-0001",
+										"name": "genre",
+										"value": "={{ $json.genre }}",
+										"type": "string"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "6f1a2b3c-0005-4a01-9e01-aaaaaaaa0005",
+						"name": "New Project Defaults",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [
+							660,
+							100
+						],
+						"parameters": {
+							"assignments": {
+								"assignments": [
+									{
+										"id": "s-0002",
+										"name": "genre",
+										"value": "science fiction",
+										"type": "string"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "6f1a2b3c-0006-4a01-9e01-aaaaaaaa0006",
+						"name": "Generate Pitch",
+						"type": "@n8n/n8n-nodes-langchain.chainLlm",
+						"typeVersion": 1.7,
+						"position": [
+							880,
+							0
+						],
+						"parameters": {
+							"promptType": "define",
+							"text": "=Write a one-paragraph story pitch in the {{ $json.genre }} genre based on this request: {{ $('New Story Request').item.json.body.premise }}"
+						}
+					},
+					{
+						"id": "6f1a2b3c-0007-4a01-9e01-aaaaaaaa0007",
+						"name": "OpenAI Model",
+						"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+						"typeVersion": 1.2,
+						"position": [
+							880,
+							200
+						],
+						"parameters": {
+							"model": {
+								"__rl": true,
+								"mode": "list",
+								"value": "gpt-4o-mini"
+							},
+							"options": {
+								"temperature": 0.2
+							}
+						}
+					},
+					{
+						"id": "6f1a2b3c-0008-4a01-9e01-aaaaaaaa0008",
+						"name": "Post to Review",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							1100,
+							0
+						],
+						"retryOnFail": true,
+						"maxTries": 3,
+						"parameters": {
+							"method": "POST",
+							"url": "https://hooks.reviewboard.example.com/story-pitches",
+							"sendBody": true,
+							"specifyBody": "json",
+							"jsonBody": "={{ JSON.stringify({ pitch: $json.text }) }}",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"New Story Request": {
+						"main": [
+							[
+								{
+									"node": "Find Project",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Find Project": {
+						"main": [
+							[
+								{
+									"node": "Project Found?",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Project Found?": {
+						"main": [
+							[
+								{
+									"node": "Use Project Context",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "New Project Defaults",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Use Project Context": {
+						"main": [
+							[
+								{
+									"node": "Generate Pitch",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"New Project Defaults": {
+						"main": [
+							[
+								{
+									"node": "Generate Pitch",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Generate Pitch": {
+						"main": [
+							[
+								{
+									"node": "Post to Review",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"OpenAI Model": {
+						"ai_languageModel": [
+							[
+								{
+									"node": "Generate Pitch",
+									"type": "ai_languageModel",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		],
+		"dataTables": []
+	},
+	"description": "A small edit (make the AI more creative, rework the prompt) must not strip unrelated node flags. The seeded workflow has alwaysOutputData + onError on the lookup node and retryOnFail on the delivery node; the live turn only asks for the creativity change. The no-matching-project scenario checks the flags at runtime: without alwaysOutputData an empty lookup dead-ends the run. Sourced from thread 1f7dbfee-9862-4615-af57-bf13a3ef65ad, where a rebuild from a stale export silently dropped alwaysOutputData from ~18 nodes and broke routing; related: obs 1468 and 1526. If only the static flag expectations go red, check the actual workflow JSON before reading it as a builder bug — the runtime scenario guards the same thing.",
+	"processExpectations": [
+		"The agent applied the change without asking clarifying questions (the request is fully specified) and did not claim to have changed anything beyond the model options/prompt."
+	],
+	"outcomeExpectations": [
+		"The 'Find Project' HTTP node still has alwaysOutputData: true and onError: 'continueRegularOutput' — the empty-result tolerance flags survived the edit unchanged.",
+		"The 'Post to Review' HTTP node still has retryOnFail: true with its retry configuration unchanged.",
+		"The workflow's node set, node names, and connections are unchanged — no nodes dropped, added, or rewired; nodes other than the AI generation step (its model options/prompt) keep their parameters.",
+		"The AI generation step actually changed toward more variety: a higher model temperature and/or a reworked prompt that asks for varied plots."
+	],
+	"triggerType": "webhook"
+}

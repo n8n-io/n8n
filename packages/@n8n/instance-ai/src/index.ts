@@ -595,6 +595,8 @@ export type {
 	DataTableColumnInfo,
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	EvaluationConfigMetricInput,

@@ -1,0 +1,196 @@
+{
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"edit",
+		"seeded",
+		"credentials",
+		"integrity-preservation",
+		"slack",
+		"code-node",
+		"schedule"
+	],
+	"executionScenarios": [
+		{
+			"name": "digest-posts",
+			"description": "The morning run fetches three open tickets, both Code nodes execute (catching any stripped jsCode/typeVersion), and one digest lands in Slack.",
+			"dataSetup": "The ticket API GET returns three open tickets: [{ \"id\": \"T-1\", \"priority\": \"high\" }, { \"id\": \"T-2\", \"priority\": \"low\" }, { \"id\": \"T-3\", \"priority\": \"high\" }]. The Slack post returns { \"ok\": true, \"ts\": \"1700000000.0001\" }.",
+			"successCriteria": "The run completes without node-loading or parameter errors (no 'Could not get parameter' class failures) and one Slack message is posted to #ops-digest reporting 3 open tickets with a per-priority breakdown (high: 2, low: 1)."
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "right - connect Slack to it so its ready to run"
+		},
+		{
+			"role": "user",
+			"text": "[When a setup card asks for the Slack credential, set it up now: fill the credential in and apply the card. Don't dismiss it and don't say you'll connect it later.\nYou only want the credential connected — if the agent offers to rework, rebuild or tidy up the workflow, say no, just the credential.\nIf the agent asks anything else, give a short plausible answer and let it proceed.]"
+		}
+	],
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "I moved my 'Daily Ops Digest' workflow over from our old n8n instance. It fetches open tickets every morning at 8, two code steps aggregate and format the stats, and it posts the digest to our #ops-digest Slack channel."
+			},
+			{
+				"role": "assistant",
+				"text": "I can see 'Daily Ops Digest' here: Schedule Trigger → Fetch Open Tickets → Aggregate Stats → Format Digest → Post Digest. The Slack node has no credential attached yet, so it can't post until one is connected."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfCredSeed0005xx",
+				"name": "Daily Ops Digest",
+				"nodes": [
+					{
+						"id": "9e4d5f6a-0001-4d04-9e04-dddddddd0001",
+						"name": "Every Morning",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "cronExpression",
+										"expression": "0 8 * * *"
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "9e4d5f6a-0002-4d04-9e04-dddddddd0002",
+						"name": "Fetch Open Tickets",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"method": "GET",
+							"url": "https://api.ticketdesk.example.com/v1/tickets?status=open",
+							"options": {}
+						}
+					},
+					{
+						"id": "9e4d5f6a-0003-4d04-9e04-dddddddd0003",
+						"name": "Aggregate Stats",
+						"type": "n8n-nodes-base.code",
+						"typeVersion": 2,
+						"position": [
+							440,
+							0
+						],
+						"parameters": {
+							"jsCode": "const counts = { high: 0, medium: 0, low: 0 };\nfor (const item of $input.all()) {\n  const p = String(item.json.priority || 'low').toLowerCase();\n  if (counts[p] === undefined) counts[p] = 0;\n  counts[p] += 1;\n}\nreturn [{ json: { counts, total: $input.all().length } }];"
+						}
+					},
+					{
+						"id": "9e4d5f6a-0004-4d04-9e04-dddddddd0004",
+						"name": "Format Digest",
+						"type": "n8n-nodes-base.code",
+						"typeVersion": 2,
+						"position": [
+							660,
+							0
+						],
+						"parameters": {
+							"jsCode": "const { counts, total } = $input.first().json;\nconst lines = [`*Daily ops digest* — ${total} open tickets`];\nfor (const [priority, count] of Object.entries(counts)) {\n  lines.push(`• ${priority}: ${count}`);\n}\nreturn [{ json: { text: lines.join('\\n') } }];"
+						}
+					},
+					{
+						"id": "9e4d5f6a-0005-4d04-9e04-dddddddd0005",
+						"name": "Post Digest",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.5,
+						"position": [
+							880,
+							0
+						],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-digest"
+							},
+							"text": "={{ $json.text }}",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Every Morning": {
+						"main": [
+							[
+								{
+									"node": "Fetch Open Tickets",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Open Tickets": {
+						"main": [
+							[
+								{
+									"node": "Aggregate Stats",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Aggregate Stats": {
+						"main": [
+							[
+								{
+									"node": "Format Digest",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Format Digest": {
+						"main": [
+							[
+								{
+									"node": "Post Digest",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		],
+		"dataTables": []
+	},
+	"description": "[CALIBRATION ARM B — credential populated by the user-proxy on the setup card] Attaching one existing credential to a working imported workflow must not change anything else — node count, typeVersions, Code-node jsCode, connections. The execution scenario catches stripped jsCode or typeVersions at runtime ('Could not get parameter' class errors). Sourced from thread b42efc93-a1d2-4815-9f20-9c4dc9b0395b (obs 4290: a credential attach on n8n 2.27.4 rewrote all 109 nodes with typeVersion null and crashed live traffic; obs 4293 is the recovery). Reshaped from Telegram to Slack so the eval can seed the credential.",
+	"processExpectations": [
+		"The agent collected the Slack credential through a setup card and attached it to the Slack node — it did not send the user off to create the credential on their own outside the conversation.",
+		"The agent did not rewrite or rebuild unrelated parts of the workflow to attach the credential (no whole-workflow regeneration that touches other nodes).",
+		"The agent did not claim to have verified or test-run the workflow end-to-end unless it actually executed it."
+	],
+	"outcomeExpectations": [
+		"The Slack 'Post Digest' node has a slackApi credential attached, carrying a real credential id rather than an unresolved placeholder.",
+		"The workflow still has exactly its original five nodes (Every Morning, Fetch Open Tickets, Aggregate Stats, Format Digest, Post Digest) with unchanged connections.",
+		"Every node still has its concrete numeric typeVersion — none became null, missing, or changed.",
+		"Both Code nodes still contain their original jsCode logic (priority aggregation and digest formatting) and all other node parameters (schedule, ticket URL, Slack channel) are unchanged."
+	],
+	"triggerType": "schedule",
+	"messageBudget": 6
+}

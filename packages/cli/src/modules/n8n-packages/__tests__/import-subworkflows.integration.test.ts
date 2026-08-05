@@ -9,21 +9,8 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import {
-	DataTableMatchingMode,
-	DataTableMissingMode,
-	DataTableSchemaConflictPolicy,
-	FolderConflictPolicy,
-	MissingNodeTypeMode,
-	TagConflictPolicy,
-	TagMissingMode,
-	VariableConflictPolicy,
-	VariableMissingMode,
-	WorkflowConflictPolicy,
-	WorkflowIdPolicy,
-	WorkflowPublishingPolicy,
-	type ImportPackageRequest,
-} from '../n8n-packages.types';
+import { importPackageRequest } from './fixtures/import-request';
+import { WorkflowIdPolicy, type ImportPackageRequest } from '../n8n-packages.types';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
@@ -37,23 +24,7 @@ type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> 
 	Partial<Pick<ImportPackageRequest, 'workflowIdPolicy'>>;
 
 async function importPackage(params: ImportPackageParams) {
-	return await Container.get(N8nPackagesService).importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
-		workflowIdPolicy: WorkflowIdPolicy.New,
-		missingNodeTypeMode: MissingNodeTypeMode.Fail,
-		folderConflictPolicy: FolderConflictPolicy.Merge,
-		dataTableMatchingMode: DataTableMatchingMode.ById,
-		dataTableMissingMode: DataTableMissingMode.Create,
-		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
-		variableMissingMode: VariableMissingMode.DoNothing,
-		variableConflictPolicy: VariableConflictPolicy.KeepExisting,
-		tagMissingMode: TagMissingMode.Create,
-		tagConflictPolicy: TagConflictPolicy.Skip,
-		...params,
-	});
+	return await Container.get(N8nPackagesService).importPackage(importPackageRequest(params));
 }
 
 /** Builds a package where `workflows` carry Execute Sub-workflow refs + the derived requirements. */
