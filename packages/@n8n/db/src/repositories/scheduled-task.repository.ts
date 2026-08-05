@@ -255,9 +255,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * grace change reaches rows already queued under the old grace without dragging
 	 * an overdue-but-still-live row's deadline into the past. Rows with a `null`
 	 * `missedAfter` are left alone: reconciliation only adjusts an existing
-	 * deadline, never gives one to a row that never had one. A deadline already
-	 * past is left alone too, so reconciliation never revives an occurrence the
-	 * reaper has yet to settle.
+	 * deadline, never gives one to a row that never had one. A deadline already in
+	 * the past stays as it is, so an overdue occurrence is never made live again.
 	 */
 	async updateMissedAfterForJobs(
 		manager: EntityManager,

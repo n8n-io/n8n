@@ -26,9 +26,8 @@ interface CollectedSchedule {
 }
 
 /**
- * One node's collected rules with the misfire policy read off that same node
- * revision, so a single map write publishes both and a single delete consumes
- * both.
+ * One node's collected rules and the misfire policy read alongside them, so both
+ * are written and removed as one entry.
  */
 interface PendingNode {
 	misfirePolicy: ScheduledJobMisfirePolicy;
@@ -416,11 +415,10 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 }
 
 /**
- * Only the exact opt-in value selects coalescing; anything else resolves to
- * skipping, rather than failing an activation over a setting the run does not
- * need. No `typeVersion` gate despite the property being version-gated:
- * `Workflow`'s constructor drops a parameter its `displayOptions` hide, so a
- * node below the introducing version cannot arrive carrying the key.
+ * Anything other than an explicit `coalesce` resolves to skipping, so an
+ * unrecognised value does not fail the activation. No `typeVersion` check is
+ * needed: `Workflow`'s constructor drops a parameter its `displayOptions` hide,
+ * so a node older than the option cannot arrive carrying it.
  */
 function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce

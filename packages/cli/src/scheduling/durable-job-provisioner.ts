@@ -156,9 +156,9 @@ export class DurableJobProvisioner {
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
-				// Only a grace change leaves a queued task's `missedAfter` stale, since
-				// that is what it was stamped from. Recomputing on a policy change would
-				// hand an already-overdue occurrence a fresh deadline.
+				// `missedAfter` is computed from the grace, so only a grace change makes a
+				// queued task stale. Recomputing on a policy change would move an
+				// already-overdue deadline into the future.
 				const outdatedPolicyJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
