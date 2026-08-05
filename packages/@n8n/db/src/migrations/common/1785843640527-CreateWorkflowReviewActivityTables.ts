@@ -13,6 +13,7 @@ const ACTIVITY_TYPES = [
 	'review.version_updated',
 	'review.approved',
 	'workflow.published',
+	'review.closed',
 ];
 
 export class CreateWorkflowReviewActivityTables1785843640527 implements ReversibleMigration {

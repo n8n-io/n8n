@@ -13,7 +13,10 @@ export type WorkflowReviewActivityType =
 	| 'review.changes_requested'
 	| 'review.version_updated'
 	| 'review.approved'
-	| 'workflow.published';
+	| 'workflow.published'
+	/** Closed without an approval: workflow archived or deleted, or the review abandoned. An
+	 * approval writes `review.approved` instead, never both. */
+	| 'review.closed';
 
 /**
  * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` references it

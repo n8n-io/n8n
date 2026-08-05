@@ -16,7 +16,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_workflow_review_activity_type | CHECK | CHECK (((type)::text = ANY ((ARRAY['review.created'::character varying, 'comment.created'::character varying, 'review.changes_requested'::character varying, 'review.version_updated'::character varying, 'review.approved'::character varying, 'workflow.published'::character varying])::text[]))) |
+| CHK_workflow_review_activity_type | CHECK | CHECK (((type)::text = ANY ((ARRAY['review.created'::character varying, 'comment.created'::character varying, 'review.changes_requested'::character varying, 'review.version_updated'::character varying, 'review.approved'::character varying, 'workflow.published'::character varying, 'review.closed'::character varying])::text[]))) |
 | FK_61048bf6220dd354c955a9d9379 | FOREIGN KEY | FOREIGN KEY ("workflowReviewRequestId") REFERENCES workflow_review_request(id) ON DELETE CASCADE |
 | FK_fcf78b037a72fc7aa01ab237e08 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | PK_f1e66ba0b645dec566057ad21e6 | PRIMARY KEY | PRIMARY KEY (id) |
