@@ -13,18 +13,17 @@ import {
 	N8nPagination,
 	N8nText,
 	N8nTooltip,
-	type BadgeTheme,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ExecutionStatus } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
+import { VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useCatalogStore } from '@/features/catalog/catalog.store';
 import type {
 	CatalogEntry,
-	CatalogRun,
 	CatalogSubscription,
 	CatalogSubscriptionInput,
 } from '@/features/catalog/catalog.types';
@@ -35,6 +34,7 @@ import { summariseOwnSchedules } from '@/features/catalog/catalog.utils';
 
 const i18n = useI18n();
 const toast = useToast();
+const router = useRouter();
 const documentTitle = useDocumentTitle();
 const catalogStore = useCatalogStore();
 
@@ -47,7 +47,6 @@ const runningId = ref<string | null>(null);
 const scheduling = ref<{ entry: CatalogEntry; subscription?: CatalogSubscription } | null>(null);
 const savingSchedule = ref(false);
 
-const runs = computed(() => catalogStore.runs);
 const subscriptions = computed(() => catalogStore.subscriptions);
 
 const entriesById = computed(
@@ -83,11 +82,7 @@ watch(
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('catalog.heading'));
 	try {
-		await Promise.all([
-			catalogStore.fetchWorkflows(),
-			catalogStore.fetchRuns(),
-			catalogStore.fetchSubscriptions(),
-		]);
+		await Promise.all([catalogStore.fetchWorkflows(), catalogStore.fetchSubscriptions()]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('catalog.load.error'));
 	} finally {
@@ -148,25 +143,20 @@ const scheduleAction = (entry: CatalogEntry) => {
 	};
 };
 
-const RUN_STATUS_THEMES: Partial<Record<ExecutionStatus, BadgeTheme>> = {
-	success: 'success',
-	error: 'danger',
-	crashed: 'danger',
-	canceled: 'default',
-	running: 'warning',
-	waiting: 'warning',
-	new: 'warning',
-};
-
-const runTheme = (status: ExecutionStatus): BadgeTheme => RUN_STATUS_THEMES[status] ?? 'default';
-
 const displayTime = (value: string | null) => {
 	if (!value) return '';
 	const { date, time } = convertToDisplayDate(value);
 	return `${date} ${time}`;
 };
 
-const runTime = (run: CatalogRun) => displayTime(run.startedAt);
+/**
+ * The workflow's own execution list, which already answers "what happened" far
+ * better than a flat history here could — it shows every run of that workflow
+ * with its data, not just the fact that one occurred.
+ */
+const openExecutions = async (entry: CatalogEntry) => {
+	await router.push({ name: VIEWS.WORKFLOW_EXECUTIONS, params: { workflowId: entry.id } });
+};
 
 const start = async (entry: CatalogEntry, values: Record<string, unknown>) => {
 	runningId.value = entry.id;
@@ -304,6 +294,16 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 						</div>
 
 						<div :class="$style.actions">
+							<N8nTooltip :content="i18n.baseText('catalog.card.history')">
+								<N8nIconButton
+									icon="history"
+									type="tertiary"
+									size="small"
+									:aria-label="i18n.baseText('catalog.card.history')"
+									data-test-id="catalog-history-button"
+									@click="openExecutions(entry)"
+								/>
+							</N8nTooltip>
 							<N8nTooltip :content="scheduleAction(entry).label">
 								<N8nIconButton
 									icon="calendar"
@@ -389,26 +389,6 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 								/>
 							</N8nTooltip>
 						</div>
-					</li>
-				</ul>
-			</section>
-
-			<section :class="$style.section">
-				<N8nHeading tag="h2" size="medium" bold>
-					{{ i18n.baseText('catalog.runs.heading') }}
-				</N8nHeading>
-
-				<N8nText v-if="runs.length === 0" color="text-light">
-					{{ i18n.baseText('catalog.runs.empty') }}
-				</N8nText>
-
-				<ul v-else :class="$style.rowList">
-					<li v-for="item in runs" :key="item.id" :class="$style.row" data-test-id="catalog-run">
-						<N8nText size="small" :class="$style.name">
-							{{ item.workflowName ?? i18n.baseText('catalog.runs.unknownWorkflow') }}
-						</N8nText>
-						<N8nText size="small" color="text-light">{{ runTime(item) }}</N8nText>
-						<N8nBadge :theme="runTheme(item.status)">{{ item.status }}</N8nBadge>
 					</li>
 				</ul>
 			</section>

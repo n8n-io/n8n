@@ -28,7 +28,6 @@ const subscription = (id: string, workflowId: string): CatalogSubscription => ({
 describe('catalog.store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		vi.mocked(api.fetchCatalogRunsApi).mockResolvedValue({ runs: [], count: 0, estimated: false });
 	});
 
 	afterEach(() => {
@@ -88,7 +87,7 @@ describe('catalog.store', () => {
 		expect(api.fetchCatalogSubscriptionsApi).toHaveBeenCalledTimes(1);
 	});
 
-	it('should refresh history after a run so the new one is visible', async () => {
+	it('should return the execution a run started', async () => {
 		vi.mocked(api.runCatalogWorkflowApi).mockResolvedValue({ executionId: 'exec-1' });
 
 		const store = useCatalogStore();
@@ -97,7 +96,6 @@ describe('catalog.store', () => {
 		expect(api.runCatalogWorkflowApi).toHaveBeenCalledWith(expect.anything(), 'wf-1', {
 			customer: 'Acme Corp',
 		});
-		expect(api.fetchCatalogRunsApi).toHaveBeenCalled();
 		expect(result).toEqual({ executionId: 'exec-1' });
 	});
 });

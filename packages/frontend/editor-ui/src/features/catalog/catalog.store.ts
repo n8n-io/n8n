@@ -5,7 +5,6 @@ import { computed, ref } from 'vue';
 import {
 	createCatalogSubscriptionApi,
 	deleteCatalogSubscriptionApi,
-	fetchCatalogRunsApi,
 	fetchCatalogSubscriptionsApi,
 	fetchCatalogWorkflowsApi,
 	runCatalogWorkflowApi,
@@ -13,7 +12,6 @@ import {
 } from '@/features/catalog/catalog.api';
 import type {
 	CatalogEntry,
-	CatalogRun,
 	CatalogSubscription,
 	CatalogSubscriptionInput,
 } from '@/features/catalog/catalog.types';
@@ -24,7 +22,6 @@ export const useCatalogStore = defineStore(CATALOG_STORE, () => {
 
 	const workflows = ref<CatalogEntry[]>([]);
 	const truncated = ref(false);
-	const runs = ref<CatalogRun[]>([]);
 	const subscriptions = ref<CatalogSubscription[]>([]);
 
 	const isEmpty = computed(() => workflows.value.length === 0);
@@ -43,21 +40,12 @@ export const useCatalogStore = defineStore(CATALOG_STORE, () => {
 		truncated.value = listing.truncated;
 	};
 
-	const fetchRuns = async () => {
-		const listing = await fetchCatalogRunsApi(rootStore.restApiContext);
-		runs.value = listing.runs;
-	};
-
 	const fetchSubscriptions = async () => {
 		subscriptions.value = await fetchCatalogSubscriptionsApi(rootStore.restApiContext);
 	};
 
-	const run = async (workflowId: string, inputs: Record<string, unknown>) => {
-		const result = await runCatalogWorkflowApi(rootStore.restApiContext, workflowId, inputs);
-		// Refresh so the run the person just started is in their history.
-		await fetchRuns();
-		return result;
-	};
+	const run = async (workflowId: string, inputs: Record<string, unknown>) =>
+		await runCatalogWorkflowApi(rootStore.restApiContext, workflowId, inputs);
 
 	const subscribe = async (workflowId: string, input: CatalogSubscriptionInput) => {
 		const created = await createCatalogSubscriptionApi(rootStore.restApiContext, workflowId, input);
@@ -85,12 +73,10 @@ export const useCatalogStore = defineStore(CATALOG_STORE, () => {
 	return {
 		workflows,
 		truncated,
-		runs,
 		subscriptions,
 		subscriptionsByWorkflow,
 		isEmpty,
 		fetchWorkflows,
-		fetchRuns,
 		fetchSubscriptions,
 		run,
 		subscribe,
