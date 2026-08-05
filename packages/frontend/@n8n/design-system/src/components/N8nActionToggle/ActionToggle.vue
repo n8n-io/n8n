@@ -6,6 +6,8 @@ import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nLoading from '../N8nLoading';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 import type { ActionToggleItem, ActionToggleProps } from './ActionToggle.types';
 
 type ActionValue = T;
@@ -118,6 +120,32 @@ defineExpose({
 					animated
 					variant="text"
 				/>
+			</template>
+			<template #item-label="slotProps">
+				<!-- Replicates the default label so items without a tooltip are unaffected,
+					wrapping in a tooltip only when the action provides one. -->
+				<N8nTooltip
+					v-if="slotProps.item.data?.tooltip"
+					:content="slotProps.item.data.tooltip"
+					placement="left"
+				>
+					<N8nText
+						:class="slotProps.ui?.class"
+						:color="slotProps.item.disabled ? 'text-xlight' : 'text-dark'"
+						size="medium"
+					>
+						{{ slotProps.item.label }}
+					</N8nText>
+				</N8nTooltip>
+				<N8nText
+					v-else
+					:class="slotProps.ui?.class"
+					:title="slotProps.item.label.length >= 20 ? slotProps.item.label : undefined"
+					:color="slotProps.item.disabled ? 'text-xlight' : 'text-dark'"
+					size="medium"
+				>
+					{{ slotProps.item.label }}
+				</N8nText>
 			</template>
 			<template #item-trailing="slotProps">
 				<N8nIcon

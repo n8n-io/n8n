@@ -34,6 +34,34 @@ const GRAVITY_MAP: { [horizontal: string]: { [vertical: string]: string } } = {
 export function resolveGravity(horizontal: string, vertical: string): string {
 	return GRAVITY_MAP[horizontal]?.[vertical] ?? 'northwest';
 }
+const numericOperationParameters: Record<string, string[]> = {
+	blur: ['blur', 'sigma'],
+	border: ['borderWidth', 'borderHeight'],
+	composite: ['positionX', 'positionY'],
+	create: ['width', 'height'],
+	crop: ['width', 'height', 'positionX', 'positionY'],
+	draw: ['startPositionX', 'startPositionY', 'endPositionX', 'endPositionY', 'cornerRadius'],
+	resize: ['width', 'height'],
+	rotate: ['rotate'],
+	shear: ['degreesX', 'degreesY'],
+	text: ['fontSize', 'positionX', 'positionY', 'lineLength'],
+};
+
+function parseNumericParameter(value: unknown, parameterName: string, node: INode): number {
+	if (
+		(typeof value !== 'number' && typeof value !== 'string') ||
+		(typeof value === 'string' && value.trim() === '')
+	) {
+		throw new NodeOperationError(node, `The value of "${parameterName}" must be a number`);
+	}
+
+	const parsedValue = Number(value);
+	if (!Number.isFinite(parsedValue)) {
+		throw new NodeOperationError(node, `The value of "${parameterName}" must be a number`);
+	}
+
+	return parsedValue;
+}
 
 const VALID_IMAGE_FORMATS = new Set(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
 
@@ -1083,6 +1111,7 @@ export class EditImage implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
+				const node = this.getNode();
 
 				const operation = this.getNodeParameter('operation', itemIndex);
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as
@@ -1157,6 +1186,27 @@ export class EditImage implements INodeType {
 							...operationParameters,
 						},
 					];
+				}
+
+				for (const operationData of operations) {
+					const operationName = operationData.operation;
+					if (typeof operationName !== 'string') continue;
+
+					for (const parameterName of numericOperationParameters[operationName] ?? []) {
+						// 'cornerRadius' is applicable only when drawing a rectangle
+						if (parameterName === 'cornerRadius' && operationData.primitive !== 'rectangle')
+							continue;
+
+						operationData[parameterName] = parseNumericParameter(
+							operationData[parameterName],
+							parameterName,
+							node,
+						);
+					}
+				}
+
+				if (options.quality !== undefined) {
+					options.quality = parseNumericParameter(options.quality, 'quality', node);
 				}
 
 				if (operations[0].operation !== 'create') {
@@ -1331,12 +1381,13 @@ export class EditImage implements INodeType {
 						});
 
 						// Combine the lines to a single string
-						const renderText = lines.join('\n');
+						// gm escapes `"` internally, but doesn't do it for `\`
+						const renderText = lines.join('\n').replaceAll('\\', '\\\\');
 
+						const fonts = await getSystemFonts();
 						let font = (options.font || operationData.font) as string | undefined;
 						if (!font) {
-							const fonts = await getSystemFonts();
-							font = fonts.find((_font) => _font.includes('Arial.'));
+							font = fonts.find((systemFont) => systemFont.includes('Arial.'));
 						}
 
 						if (!font) {
@@ -1346,10 +1397,18 @@ export class EditImage implements INodeType {
 							);
 						}
 
-						const gravity = resolveGravity(
+						if (!fonts.includes(font)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The selected font is not available. Select a font from the options.',
+							);
+						}
+            
+            const gravity = resolveGravity(
 							operationData.horizontalAlignment as string,
 							operationData.verticalAlignment as string,
 						);
+
 
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
