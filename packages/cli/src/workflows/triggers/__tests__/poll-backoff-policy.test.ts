@@ -1,5 +1,5 @@
 import { backoff } from '@n8n/scheduler';
-import type { INode } from 'n8n-workflow';
+import type { INode, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import {
@@ -81,7 +81,7 @@ describe('retryAfterMs', () => {
 			const cause = Object.assign(new Error('rate limited'), {
 				response: { headers: { 'retry-after': '120' } },
 			});
-			const error = new NodeApiError(node, cause);
+			const error = new NodeApiError(node, cause as unknown as JsonObject);
 
 			expect(retryAfterMs(error, now)).toBe(120_000);
 		});
