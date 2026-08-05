@@ -125,9 +125,8 @@ export async function consumeTopic(
 			}
 		});
 
-	await consumer.connect();
-
 	try {
+		await consumer.connect();
 		await consumer.subscribe({ topics: [topic] });
 
 		await consumer.run({
@@ -162,7 +161,9 @@ export async function consumeTopic(
 		});
 	} catch (error) {
 		// Nothing else holds this consumer yet, so a failed start must not leave the
-		// broker connection open.
+		// broker connection open. `connect()` is inside the try for symmetry rather
+		// than because it leaks: the library marks a failed connect as disconnected
+		// before rejecting, so disconnect() is a no-op on that path today.
 		try {
 			await consumer.disconnect();
 		} catch {

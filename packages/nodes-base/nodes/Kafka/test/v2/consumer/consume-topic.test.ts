@@ -144,6 +144,7 @@ describe('consumeTopic', () => {
 	});
 
 	it.each([
+		['connect', (consumer: FakeConsumer) => consumer.connect],
 		['subscribe', (consumer: FakeConsumer) => consumer.subscribe],
 		['run', (consumer: FakeConsumer) => consumer.run],
 	])('disconnects when %s fails, leaving no open connection behind', async (_, pick) => {

@@ -159,10 +159,17 @@ async function startConsumer(
 		},
 	});
 
-	const deadline = Date.now() + 30_000;
-	while (consumer.assignment().length === 0) {
-		if (Date.now() > deadline) throw new Error(`no partition assigned for ${topic}`);
-		await new Promise((resolve) => setTimeout(resolve, 250));
+	// Release the consumer if the assignment never arrives: the caller only gets a
+	// handle to close once this function returns.
+	try {
+		const deadline = Date.now() + 30_000;
+		while (consumer.assignment().length === 0) {
+			if (Date.now() > deadline) throw new Error(`no partition assigned for ${topic}`);
+			await new Promise((resolve) => setTimeout(resolve, 250));
+		}
+	} catch (error) {
+		await handle.close();
+		throw error;
 	}
 
 	return { handle, firstItem };

@@ -22,7 +22,7 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import type { KafkaCredentials } from '../../../utils';
 import { KafkaTriggerV1 } from '../../../v1/KafkaTriggerV1.node';
-import { consumeTopic } from '../../../v2/consumer/consume-topic';
+import { consumeTopic, type KafkaConsumerHandle } from '../../../v2/consumer/consume-topic';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import { createMessageParser } from '../../../v2/consumer/message-parser';
 
@@ -103,46 +103,51 @@ describe.skipIf(!brokerUp)('version 1 and version 2 item parity', () => {
 			topic,
 		]);
 
-		// v2 first: a fresh group starts at the latest offset, so it has to hold the
-		// partition before the message is produced. v1 reads `fromBeginning`, so its
-		// join can land either side of the produce.
-		const v2Consumer = await createKafkaConsumer(credentials, { groupId: `${topic}-v2` });
 		let v2Item: INodeExecutionData | undefined;
-		const v2Handle = await consumeTopic(v2Consumer, {
-			topic,
-			parseMessage: createMessageParser(PARSER_OPTIONS, mock<Logger>(), undefined, (async () =>
-				mock<IBinaryData>()) as unknown as ITriggerFunctions['helpers']['prepareBinaryData']),
-			onBatch: ({ items, done }) => {
-				v2Item ??= items[0];
-				done();
-			},
-		});
-		await waitFor(
-			() => (v2Consumer.assignment().length > 0 ? true : undefined),
-			'the v2 partition assignment',
-		);
+		let v2Handle: KafkaConsumerHandle | undefined;
+		let v1: Awaited<ReturnType<typeof testTriggerNode>> | undefined;
 
-		const v1 = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
-			mode: 'trigger',
-			credentials: { kafka: { ...credentials } },
-			node: {
-				typeVersion: 1.3,
-				parameters: {
-					topic,
-					groupId: `${topic}-v1`,
-					useSchemaRegistry: false,
-					options: { ...PARSER_OPTIONS, fromBeginning: true },
-				},
-			},
-		});
-
+		// Everything after the first consumer exists goes in the try, so a failure
+		// setting up either side still releases whatever is already connected.
 		try {
+			// v2 first: a fresh group starts at the latest offset, so it has to hold the
+			// partition before the message is produced. v1 reads `fromBeginning`, so its
+			// join can land either side of the produce.
+			const v2Consumer = await createKafkaConsumer(credentials, { groupId: `${topic}-v2` });
+			v2Handle = await consumeTopic(v2Consumer, {
+				topic,
+				parseMessage: createMessageParser(PARSER_OPTIONS, mock<Logger>(), undefined, (async () =>
+					mock<IBinaryData>()) as unknown as ITriggerFunctions['helpers']['prepareBinaryData']),
+				onBatch: ({ items, done }) => {
+					v2Item ??= items[0];
+					done();
+				},
+			});
+			await waitFor(
+				() => (v2Consumer.assignment().length > 0 ? true : undefined),
+				'the v2 partition assignment',
+			);
+
+			v1 = await testTriggerNode(new KafkaTriggerV1(baseDescription), {
+				mode: 'trigger',
+				credentials: { kafka: { ...credentials } },
+				node: {
+					typeVersion: 1.3,
+					parameters: {
+						topic,
+						groupId: `${topic}-v1`,
+						useSchemaRegistry: false,
+						options: { ...PARSER_OPTIONS, fromBeginning: true },
+					},
+				},
+			});
+
 			await inBroker(
 				['kafka-console-producer', '--bootstrap-server', INTERNAL_BOOTSTRAP, '--topic', topic],
 				JSON.stringify({ order: 42, note: 'parity' }),
 			);
 
-			const v1Emit = await waitFor(() => v1.emit.mock.calls[0], 'the v1 emit');
+			const v1Emit = await waitFor(() => v1?.emit.mock.calls[0], 'the v1 emit');
 			const v1Item = (v1Emit[0] as INodeExecutionData[][])[0][0];
 			const received = await waitFor(() => v2Item, 'the v2 item');
 
@@ -160,8 +165,8 @@ describe.skipIf(!brokerUp)('version 1 and version 2 item parity', () => {
 				json: { headers: {}, message: { order: 42, note: 'parity' }, topic },
 			});
 		} finally {
-			await v2Handle.close();
-			await v1.close();
+			await v2Handle?.close();
+			await v1?.close();
 		}
 	});
 });
