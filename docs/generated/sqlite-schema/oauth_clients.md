@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "redirectUris" text NOT NULL, "grantTypes" text NOT NULL, "clientSecret" varchar(255), "clientSecretExpiresAt" bigint, "tokenEndpointAuthMethod" varchar(255) NOT NULL DEFAULT ('none'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isFirstParty" boolean NOT NULL DEFAULT (false))
+CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "redirectUris" text NOT NULL, "grantTypes" text NOT NULL, "clientSecret" varchar(255), "clientSecretExpiresAt" bigint, "tokenEndpointAuthMethod" varchar(255) NOT NULL DEFAULT ('none'), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isFirstParty" boolean NOT NULL DEFAULT (false), "createdBy" varchar, CONSTRAINT "oauth_clients_createdBy_foreign" FOREIGN KEY ("createdBy") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -18,6 +18,7 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 | clientSecret | varchar(255) |  | true |  |  |  |
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| createdBy | varchar |  | true |  | [user](user.md) |  |
 | grantTypes | TEXT |  | false |  |  |  |
 | id | varchar |  | false | [oauth_access_tokens](oauth_access_tokens.md) [oauth_authorization_codes](oauth_authorization_codes.md) [oauth_refresh_tokens](oauth_refresh_tokens.md) [oauth_user_consents](oauth_user_consents.md) |  |  |
 | isFirstParty | boolean | false | false |  |  |  |
@@ -30,6 +31,7 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdBy) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_oauth_clients_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -44,6 +46,7 @@ CREATE TABLE "oauth_clients" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(
 ```mermaid
 erDiagram
 
+"oauth_clients" }o--o| "user" : "FOREIGN KEY (createdBy) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "oauth_access_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_authorization_codes" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -53,12 +56,30 @@ erDiagram
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   datetime_3_ createdAt
+  varchar createdBy FK
   TEXT grantTypes
   varchar id PK
   boolean isFirstParty
   varchar_255_ name
   TEXT redirectUris
   varchar_255_ tokenEndpointAuthMethod
+  datetime_3_ updatedAt
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
   datetime_3_ updatedAt
 }
 "oauth_access_tokens" {

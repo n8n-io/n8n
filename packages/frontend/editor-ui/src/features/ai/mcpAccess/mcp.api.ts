@@ -1,10 +1,13 @@
 import type {
 	ApiKey,
+	CreateOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	ManualOAuthClientResponseDto,
 	McpClientConnectedPeriod,
 	McpClientTypeFilter,
+	RotateOAuthClientSecretResponseDto,
 } from '@n8n/api-types';
 import type { WorkflowListItem } from '@/Interface';
 import type { Agent } from '@/features/agents/agent.types';
@@ -120,6 +123,50 @@ export async function fetchInstanceMcpClientStats(
 	context: IRestApiContext,
 ): Promise<InstanceMcpClientStatsResponseDto> {
 	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients/instance-stats');
+}
+
+/** Name and callback URLs of a manually registered client, as typed by the user. */
+export type ManualOAuthClientPayload = {
+	name: string;
+	redirectUris: string[];
+	/** Issue a client secret instead of relying on PKCE alone. */
+	confidential?: boolean;
+};
+
+/**
+ * Pre-registers an OAuth client for MCP clients that can't self-register over
+ * DCR. Returns the generated client id, which the user pastes into the client.
+ */
+export async function createOAuthClient(
+	context: IRestApiContext,
+	payload: ManualOAuthClientPayload,
+): Promise<CreateOAuthClientResponseDto> {
+	return await makeRestApiRequest(context, 'POST', '/mcp/oauth-clients', payload);
+}
+
+export async function updateOAuthClient(
+	context: IRestApiContext,
+	clientId: string,
+	payload: ManualOAuthClientPayload,
+): Promise<ManualOAuthClientResponseDto> {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/mcp/oauth-clients/${encodeURIComponent(clientId)}`,
+		payload,
+	);
+}
+
+/** Replaces a confidential client's secret, returning the new one for display once. */
+export async function rotateOAuthClientSecret(
+	context: IRestApiContext,
+	clientId: string,
+): Promise<RotateOAuthClientSecretResponseDto> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/mcp/oauth-clients/${encodeURIComponent(clientId)}/rotate-secret`,
+	);
 }
 
 export async function deleteOAuthClient(

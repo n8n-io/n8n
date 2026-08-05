@@ -1,20 +1,36 @@
 import {
+	CreateOAuthClientRequestDto,
+	CreateOAuthClientResponseDto,
 	DeleteOAuthClientQueryDto,
 	DeleteOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
+	ManualOAuthClientResponseDto,
 	OAuthClientResponseDto,
+	RotateOAuthClientSecretResponseDto,
+	UpdateOAuthClientRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, GlobalScope, Param, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import type { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthServerService } from './oauth-server.service';
 
 @RestController('/mcp/oauth-clients')
@@ -57,6 +73,8 @@ export class OAuthClientsController {
 			updatedAt: client.updatedAt.toISOString(),
 			grantedAt: client.grantedAt,
 			scopes: client.scopes,
+			registration: client.registration,
+			canManage: client.canManage,
 			owner: client.owner,
 		}));
 
@@ -66,6 +84,84 @@ export class OAuthClientsController {
 			scopeTools: this.oauthServerService.getInstanceScopeTools(),
 			totals,
 			owners,
+		};
+	}
+
+	/**
+	 * Pre-register an OAuth client by hand, so MCP clients that don't implement
+	 * Dynamic Client Registration (Gemini) or that ask the user for their own
+	 * client id (ChatGPT) can connect. Self-service: registering is no more
+	 * privileged than letting a client self-register over DCR and then consenting
+	 * to it, and clients like Gemini are set up per individual user.
+	 *
+	 * The unauthenticated `/mcp-oauth/register` DCR endpoint is unaffected.
+	 */
+	@GlobalScope('mcp:oauth')
+	@Post('/')
+	async createClient(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: CreateOAuthClientRequestDto,
+	): Promise<CreateOAuthClientResponseDto> {
+		const { client, clientSecret } = await this.oauthServerService.createManualClient(
+			req.user,
+			payload,
+		);
+
+		this.logger.info('Manually registered MCP OAuth client', {
+			clientId: client.id,
+			userId: req.user.id,
+		});
+
+		// The secret is readable here and nowhere else; the clients list and the
+		// details view never return it.
+		return {
+			...this.toManualClientDto(client),
+			...(clientSecret ? { clientSecret } : {}),
+		};
+	}
+
+	/**
+	 * Issue a new secret for a confidential manual client. The old secret stops
+	 * working immediately; existing tokens are unaffected.
+	 */
+	@GlobalScope('mcp:oauth')
+	@Post('/:clientId/rotate-secret')
+	async rotateClientSecret(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('clientId') clientId: string,
+	): Promise<RotateOAuthClientSecretResponseDto> {
+		const clientSecret = await this.oauthServerService.rotateManualClientSecret(req.user, clientId);
+		return { clientSecret };
+	}
+
+	/**
+	 * Edit a manually registered client. The registrant or an instance manager may
+	 * edit; DCR registrations are not editable.
+	 */
+	@GlobalScope('mcp:oauth')
+	@Patch('/:clientId')
+	async updateClient(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('clientId') clientId: string,
+		@Body payload: UpdateOAuthClientRequestDto,
+	): Promise<ManualOAuthClientResponseDto> {
+		const client = await this.oauthServerService.updateManualClient(req.user, clientId, payload);
+		return this.toManualClientDto(client);
+	}
+
+	private toManualClientDto(client: OAuthClient): ManualOAuthClientResponseDto {
+		return {
+			id: client.id,
+			name: client.name,
+			redirectUris: client.redirectUris,
+			grantTypes: client.grantTypes,
+			tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
+			createdAt: client.createdAt.toISOString(),
+			updatedAt: client.updatedAt.toISOString(),
+			registration: 'manual',
 		};
 	}
 

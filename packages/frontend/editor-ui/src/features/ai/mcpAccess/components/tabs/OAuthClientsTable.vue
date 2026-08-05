@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
@@ -48,6 +49,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
+	editClient: [client: OAuthClientResponseDto];
 	'update:ownership': [ownership: 'mine' | 'all'];
 	'update:filters': [filters: OAuthClientFilters];
 	'update:options': [options: { page: number; itemsPerPage: number }];
@@ -197,7 +199,7 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 		title: '',
 		key: 'actions',
 		align: 'end',
-		width: 140,
+		width: 180,
 		disableSort: true,
 		value() {
 			return;
@@ -234,6 +236,18 @@ function openDetails(item: OAuthClientResponseDto) {
 
 function onRevoke(item: OAuthClientResponseDto) {
 	emit('revokeClient', item);
+}
+
+/**
+ * A manual registration is withdrawn rather than merely un-consented: its client
+ * id lives in someone's MCP client config, so the action reads as a delete.
+ */
+function actionLabel(item: OAuthClientResponseDto): string {
+	return i18n.baseText(
+		item.registration === 'manual' && item.canManage
+			? 'settings.mcp.oAuthClients.table.action.delete'
+			: 'settings.mcp.oAuthClients.table.action.revokeAccess',
+	);
 }
 </script>
 
@@ -311,9 +325,18 @@ function onRevoke(item: OAuthClientResponseDto) {
 							<N8nIcon v-else icon="mcp" :class="$style['client-icon']" />
 						</span>
 						<div :class="$style['client-name']">
-							<N8nText data-test-id="mcp-client-name" color="text-dark">
-								{{ item.name }}
-							</N8nText>
+							<div :class="$style['client-name-row']">
+								<N8nText data-test-id="mcp-client-name" color="text-dark">
+									{{ item.name }}
+								</N8nText>
+								<N8nBadge
+									v-if="item.registration === 'manual'"
+									theme="tertiary"
+									data-test-id="mcp-client-manual-badge"
+								>
+									{{ i18n.baseText('settings.mcp.oAuthClients.table.manual') }}
+								</N8nBadge>
+							</div>
 							<N8nText
 								v-if="clientTypeLabel(item)"
 								data-test-id="mcp-client-type"
@@ -339,19 +362,39 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.grantedAt`]="{ item }">
 					<N8nText data-test-id="mcp-client-created-at" color="text-base">
-						<TimeAgo :date="new Date(item.grantedAt).toISOString()" capitalize />
+						<TimeAgo
+							v-if="item.grantedAt !== null"
+							:date="new Date(item.grantedAt).toISOString()"
+							capitalize
+						/>
+						<!-- A manual registration is not connected until its owner runs the ceremony -->
+						<span v-else data-test-id="mcp-client-not-connected">
+							{{ i18n.baseText('settings.mcp.oAuthClients.table.notConnected') }}
+						</span>
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nButton
-						:class="$style['revoke-action']"
-						variant="outline"
-						size="small"
-						data-test-id="mcp-oauth-client-revoke-button"
-						@click.stop="onRevoke(item)"
-					>
-						{{ i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess') }}
-					</N8nButton>
+					<div :class="$style.actions">
+						<N8nButton
+							v-if="item.registration === 'manual' && item.canManage"
+							:class="$style['revoke-action']"
+							variant="subtle"
+							size="small"
+							iconOnly
+							icon="pencil"
+							data-test-id="mcp-oauth-client-edit-button"
+							@click.stop="emit('editClient', item)"
+						/>
+						<N8nButton
+							:class="$style['revoke-action']"
+							variant="outline"
+							size="small"
+							data-test-id="mcp-oauth-client-revoke-button"
+							@click.stop="onRevoke(item)"
+						>
+							{{ actionLabel(item) }}
+						</N8nButton>
+					</div>
 				</template>
 			</N8nDataTableServer>
 		</div>
@@ -433,6 +476,19 @@ function onRevoke(item: OAuthClientResponseDto) {
 .client-name {
 	display: flex;
 	flex-direction: column;
+}
+
+.client-name-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--3xs);
 }
 
 .empty-state {

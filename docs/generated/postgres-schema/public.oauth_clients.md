@@ -7,6 +7,7 @@
 | clientSecret | varchar(255) |  | true |  |  |  |
 | clientSecretExpiresAt | bigint |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| createdBy | uuid |  | true |  | [public.user](public.user.md) | User who manually registered this client; NULL for DCR clients |
 | grantTypes | json |  | false |  |  |  |
 | id | varchar |  | false | [public.oauth_access_tokens](public.oauth_access_tokens.md) [public.oauth_authorization_codes](public.oauth_authorization_codes.md) [public.oauth_refresh_tokens](public.oauth_refresh_tokens.md) [public.oauth_user_consents](public.oauth_user_consents.md) |  |  |
 | isFirstParty | boolean | false | false |  |  |  |
@@ -21,6 +22,7 @@
 | ---- | ---- | ---------- |
 | PK_c4759172d3431bae6f04e678e0d | PRIMARY KEY | PRIMARY KEY (id) |
 | oauth_clients_createdAt_not_null | n | NOT NULL "createdAt" |
+| oauth_clients_createdBy_foreign | FOREIGN KEY | FOREIGN KEY ("createdBy") REFERENCES "user"(id) ON DELETE SET NULL |
 | oauth_clients_grantTypes_not_null | n | NOT NULL "grantTypes" |
 | oauth_clients_id_not_null | n | NOT NULL id |
 | oauth_clients_isFirstParty_not_null | n | NOT NULL "isFirstParty" |
@@ -40,6 +42,7 @@
 ```mermaid
 erDiagram
 
+"public.oauth_clients" }o--o| "public.user" : "FOREIGN KEY (#quot;createdBy#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_refresh_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
@@ -49,12 +52,30 @@ erDiagram
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   timestamp_3__with_time_zone createdAt
+  uuid createdBy FK
   json grantTypes
   varchar id
   boolean isFirstParty
   varchar_255_ name
   json redirectUris
   varchar_255_ tokenEndpointAuthMethod
+  timestamp_3__with_time_zone updatedAt
+}
+"public.user" {
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  uuid id
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
+  varchar_255_ password
+  json personalizationAnswers
+  varchar_128_ roleSlug FK
+  json settings
   timestamp_3__with_time_zone updatedAt
 }
 "public.oauth_access_tokens" {

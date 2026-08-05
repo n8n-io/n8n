@@ -328,6 +328,49 @@ describe('OAuthClientsTable', () => {
 		});
 	});
 
+	describe('Manually registered clients', () => {
+		const manualClient = () =>
+			createOAuthClient({
+				name: 'Gemini CLI',
+				registration: 'manual',
+				canManage: true,
+				grantedAt: null,
+				scopes: [],
+			});
+
+		it('should mark the row as manual and not yet connected', () => {
+			const { getByTestId } = createComponent({
+				props: { clients: [manualClient()], loading: false },
+			});
+
+			expect(getByTestId('mcp-client-manual-badge')).toBeVisible();
+			expect(getByTestId('mcp-client-not-connected')).toBeVisible();
+		});
+
+		it('should offer edit and delete for a registration the caller manages', async () => {
+			const client = manualClient();
+			const { getByTestId, emitted } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			expect(getByTestId('mcp-oauth-client-revoke-button')).toHaveTextContent('Delete');
+
+			await userEvent.click(getByTestId('mcp-oauth-client-edit-button'));
+
+			expect(emitted('editClient')[0]).toEqual([client]);
+		});
+
+		it('should not offer edit for a DCR-registered client', () => {
+			const { queryByTestId, getByTestId } = createComponent({
+				props: { clients: [createOAuthClient({ name: 'Claude' })], loading: false },
+			});
+
+			expect(queryByTestId('mcp-oauth-client-edit-button')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-client-manual-badge')).not.toBeInTheDocument();
+			expect(getByTestId('mcp-oauth-client-revoke-button')).toHaveTextContent('Revoke access');
+		});
+	});
+
 	describe('Details modal', () => {
 		it('should open the details modal when a row is clicked', async () => {
 			const client = createOAuthClient({

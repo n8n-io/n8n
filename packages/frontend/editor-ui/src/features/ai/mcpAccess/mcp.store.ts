@@ -15,11 +15,15 @@ import {
 	rotateApiKey,
 	fetchOAuthClients,
 	fetchInstanceMcpClientStats,
+	createOAuthClient,
+	updateOAuthClient,
+	rotateOAuthClientSecret,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
 	fetchMcpAgents,
 	getAllowedRedirectUris,
 	updateAllowedRedirectUris,
+	type ManualOAuthClientPayload,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
 	type ToggleAgentsMcpAccessResponse,
@@ -35,7 +39,9 @@ import {
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type {
 	ApiKey,
+	CreateOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
+	ManualOAuthClientResponseDto,
 	OAuthClientResponseDto,
 	DeleteOAuthClientResponseDto,
 } from '@n8n/api-types';
@@ -336,6 +342,37 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 	}
 
+	/**
+	 * Pre-registers a client and refreshes the list so the new row (still
+	 * unconnected) shows up. The returned client id is what the user pastes into
+	 * their MCP client, so a failed refresh must not hide it.
+	 */
+	async function registerOAuthClient(
+		payload: ManualOAuthClientPayload,
+	): Promise<CreateOAuthClientResponseDto> {
+		const client = await createOAuthClient(rootStore.restApiContext, payload);
+		try {
+			await getAllOAuthClients();
+		} catch {
+			// Stale list/totals are acceptable; the next interaction refetches.
+		}
+		return client;
+	}
+
+	async function editOAuthClient(
+		clientId: string,
+		payload: ManualOAuthClientPayload,
+	): Promise<ManualOAuthClientResponseDto> {
+		const client = await updateOAuthClient(rootStore.restApiContext, clientId, payload);
+		await getAllOAuthClients();
+		return client;
+	}
+
+	async function rotateOAuthClientSecretForClient(clientId: string): Promise<string> {
+		const { clientSecret } = await rotateOAuthClientSecret(rootStore.restApiContext, clientId);
+		return clientSecret;
+	}
+
 	async function removeOAuthClient(
 		clientId: string,
 		userId?: string,
@@ -419,6 +456,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		getAllOAuthClients,
 		oauthClientScopeTools,
 		getInstanceClientStats,
+		registerOAuthClient,
+		editOAuthClient,
+		rotateOAuthClientSecret: rotateOAuthClientSecretForClient,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
 		getMcpEligibleAgents,

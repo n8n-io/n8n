@@ -11,9 +11,11 @@ import {
 	N8nDialogTitle,
 	N8nIcon,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useClipboard } from '@n8n/composables/useClipboard';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getClientBrand, scopeLabel } from '../clients.utils';
@@ -29,6 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { copy, copied } = useClipboard();
 
 const brand = computed(() => (props.client ? getClientBrand(props.client.name) : null));
 
@@ -85,11 +88,50 @@ function onRevoke() {
 					</N8nText>
 				</template>
 
+				<!-- A manually registered client keeps its id visible: it is what the
+					user pastes into their MCP client, and they may need it again. -->
+				<template v-if="client.registration === 'manual'">
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.mcp.registerClient.created.clientId') }}
+					</N8nText>
+					<div :class="$style['client-id']" data-test-id="mcp-client-details-client-id">
+						<span :class="$style.token">{{ client.id }}</span>
+						<N8nTooltip
+							:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+						>
+							<N8nButton
+								variant="subtle"
+								size="mini"
+								iconOnly
+								:icon="copied ? 'check' : 'copy'"
+								data-test-id="mcp-client-details-copy-client-id"
+								@click="copy(client.id)"
+							/>
+						</N8nTooltip>
+					</div>
+
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.mcp.registerClient.redirectUris') }}
+					</N8nText>
+					<div :class="$style['redirect-uris']" data-test-id="mcp-client-details-redirect-uris">
+						<span v-for="uri in client.redirectUris" :key="uri" :class="$style.token">
+							{{ uri }}
+						</span>
+					</div>
+				</template>
+
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedOn') }}
 				</N8nText>
 				<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-on">
-					<TimeAgo :date="new Date(client.grantedAt).toISOString()" capitalize />
+					<TimeAgo
+						v-if="client.grantedAt !== null"
+						:date="new Date(client.grantedAt).toISOString()"
+						capitalize
+					/>
+					<span v-else>
+						{{ i18n.baseText('settings.mcp.oAuthClients.table.notConnected') }}
+					</span>
 				</N8nText>
 
 				<N8nText color="text-light" size="small">
@@ -172,5 +214,32 @@ function onRevoke() {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	min-width: 0;
+}
+
+.client-id {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.redirect-uris {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.token {
+	display: inline-flex;
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--shade-1);
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
+	word-break: break-all;
 }
 </style>

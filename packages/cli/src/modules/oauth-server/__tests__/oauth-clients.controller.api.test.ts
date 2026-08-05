@@ -675,3 +675,354 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 		expect(response.statusCode).toBe(404);
 	});
 });
+
+describe('POST /rest/mcp/oauth-clients', () => {
+	test('should register a public client and return the id plus the endpoints', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({
+				name: 'Gemini CLI',
+				redirectUris: ['http://localhost/oauth/callback'],
+			});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			name: 'Gemini CLI',
+			redirectUris: ['http://localhost/oauth/callback'],
+			grantTypes: ['authorization_code', 'refresh_token'],
+			tokenEndpointAuthMethod: 'none',
+			registration: 'manual',
+		});
+		expect(response.body.data.id).toEqual(expect.any(String));
+		// a public client: no secret is issued, PKCE authenticates the exchange
+		expect(response.body.data.clientSecret).toBeUndefined();
+
+		const stored = await oauthClientRepository.findOneBy({ id: response.body.data.id });
+		expect(stored).toMatchObject({ createdBy: member.id, clientSecret: null });
+	});
+
+	test('should issue a secret once when registering a confidential client', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({
+				name: 'Server Side Connector',
+				redirectUris: ['https://example.com/callback'],
+				confidential: true,
+			});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.tokenEndpointAuthMethod).toBe('client_secret_post');
+		expect(response.body.data.clientSecret).toEqual(expect.any(String));
+
+		const stored = await oauthClientRepository.findOneBy({ id: response.body.data.id });
+		expect(stored?.clientSecret).toBe(response.body.data.clientSecret);
+
+		// the clients list never hands the secret back
+		const list = await testServer.authAgentFor(member).get('/mcp/oauth-clients');
+		expect(list.body.data.data[0]).not.toHaveProperty('clientSecret');
+	});
+
+	test('should reject a callback URL that is neither https nor loopback http', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({
+				name: 'Insecure Client',
+				redirectUris: ['http://example.com/callback'],
+			});
+
+		expect(response.statusCode).toBe(400);
+		expect(await oauthClientRepository.count()).toBe(0);
+	});
+
+	test('should reject a callback URL that is not a URL', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({
+				name: 'Broken Client',
+				redirectUris: ['not-a-url'],
+			});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should require at least one callback URL', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({ name: 'No Callback Client', redirectUris: [] });
+
+		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('manually registered clients in the connected-clients list', () => {
+	const registerClient = async (user: User, name: string) => {
+		const response = await testServer
+			.authAgentFor(user)
+			.post('/mcp/oauth-clients')
+			.send({ name, redirectUris: ['https://example.com/callback'] });
+		expect(response.statusCode).toBe(200);
+		return response.body.data as { id: string };
+	};
+
+	test('should list a registration with no consent as not connected', async () => {
+		const client = await registerClient(member, 'Waiting Client');
+
+		const response = await testServer.authAgentFor(member).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.totals).toEqual({ mine: 1 });
+		expect(response.body.data.data[0]).toMatchObject({
+			id: client.id,
+			grantedAt: null,
+			scopes: [],
+			registration: 'manual',
+			canManage: true,
+		});
+	});
+
+	test('should hide another user registration from a member', async () => {
+		await registerClient(owner, 'Owner Only Client');
+
+		const response = await testServer.authAgentFor(member).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(0);
+	});
+
+	test('should surface the registrant as the owner on the all view', async () => {
+		const client = await registerClient(member, 'Member Registration');
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get('/mcp/oauth-clients')
+			.query({ ownership: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.data[0]).toMatchObject({
+			id: client.id,
+			owner: { id: member.id },
+			// a manager may manage any manual registration
+			canManage: true,
+		});
+		expect(response.body.data.owners).toEqual([expect.objectContaining({ id: member.id })]);
+	});
+
+	test('should sort unconnected registrations ahead of consents and page across both', async () => {
+		const registered = await registerClient(member, 'Unconnected Client');
+		const connected = await oauthClientRepository.save({
+			id: 'connected-client',
+			name: 'Connected Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: connected.id,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+
+		const firstPage = await testServer
+			.authAgentFor(member)
+			.get('/mcp/oauth-clients')
+			.query({ take: 1, skip: 0 });
+
+		expect(firstPage.body.data.count).toBe(2);
+		expect(firstPage.body.data.data.map((row: { id: string }) => row.id)).toEqual([registered.id]);
+
+		const secondPage = await testServer
+			.authAgentFor(member)
+			.get('/mcp/oauth-clients')
+			.query({ take: 1, skip: 1 });
+
+		expect(secondPage.body.data.count).toBe(2);
+		expect(secondPage.body.data.data.map((row: { id: string }) => row.id)).toEqual([connected.id]);
+	});
+
+	test('should drop a registration from the unconnected set once it has a consent', async () => {
+		const client = await registerClient(member, 'Now Connected Client');
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+
+		const response = await testServer.authAgentFor(member).get('/mcp/oauth-clients');
+
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.data[0]).toMatchObject({
+			id: client.id,
+			registration: 'manual',
+			scopes: ['workflow:read'],
+		});
+		expect(response.body.data.data[0].grantedAt).toEqual(expect.any(Number));
+	});
+});
+
+describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
+	test('should update the name and callback URLs of an own registration', async () => {
+		const created = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({ name: 'Before', redirectUris: ['https://example.com/callback'] });
+
+		const response = await testServer
+			.authAgentFor(member)
+			.patch(`/mcp/oauth-clients/${created.body.data.id}`)
+			.send({ name: 'After', redirectUris: ['https://example.com/other'] });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			name: 'After',
+			redirectUris: ['https://example.com/other'],
+		});
+		expect(await oauthClientRepository.findOneBy({ id: created.body.data.id })).toMatchObject({
+			name: 'After',
+			redirectUris: ['https://example.com/other'],
+		});
+	});
+
+	test('should not expose a DCR-registered client as editable', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'dcr-client',
+			name: 'Self Registered',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ name: 'Renamed', redirectUris: ['https://example.com/callback'] });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test("should forbid a member from editing another user's registration", async () => {
+		const created = await testServer
+			.authAgentFor(owner)
+			.post('/mcp/oauth-clients')
+			.send({ name: 'Owner Client', redirectUris: ['https://example.com/callback'] });
+
+		const response = await testServer
+			.authAgentFor(member)
+			.patch(`/mcp/oauth-clients/${created.body.data.id}`)
+			.send({ name: 'Hijacked', redirectUris: ['https://attacker.example.com/callback'] });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test("should let a manager edit another user's registration", async () => {
+		const created = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({ name: 'Member Client', redirectUris: ['https://example.com/callback'] });
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${created.body.data.id}`)
+			.send({ name: 'Fixed By Admin', redirectUris: ['https://example.com/callback'] });
+
+		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('DELETE /rest/mcp/oauth-clients/:clientId for a manual registration', () => {
+	test('should deregister a client the caller registered but never connected with', async () => {
+		const created = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({ name: 'Unused Client', redirectUris: ['https://example.com/callback'] });
+
+		const response = await testServer
+			.authAgentFor(member)
+			.delete(`/mcp/oauth-clients/${created.body.data.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(await oauthClientRepository.findOneBy({ id: created.body.data.id })).toBeNull();
+	});
+
+	test('should keep the registration when a different user revokes their own grant', async () => {
+		const created = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({ name: 'Shared Registration', redirectUris: ['https://example.com/callback'] });
+		const clientId = created.body.data.id as string;
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+
+		const response = await testServer.authAgentFor(owner).delete(`/mcp/oauth-clients/${clientId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(await userConsentRepository.findOneBy({ userId: owner.id, clientId })).toBeNull();
+		expect(await oauthClientRepository.findOneBy({ id: clientId })).not.toBeNull();
+	});
+});
+
+describe('POST /rest/mcp/oauth-clients/:clientId/rotate-secret', () => {
+	const registerConfidential = async (user: User) => {
+		const response = await testServer
+			.authAgentFor(user)
+			.post('/mcp/oauth-clients')
+			.send({
+				name: 'Confidential Client',
+				redirectUris: ['https://example.com/callback'],
+				confidential: true,
+			});
+		expect(response.statusCode).toBe(200);
+		return response.body.data as { id: string; clientSecret: string };
+	};
+
+	test('should replace the secret of an own confidential registration', async () => {
+		const created = await registerConfidential(member);
+
+		const response = await testServer
+			.authAgentFor(member)
+			.post(`/mcp/oauth-clients/${created.id}/rotate-secret`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.clientSecret).toEqual(expect.any(String));
+		expect(response.body.data.clientSecret).not.toBe(created.clientSecret);
+
+		const stored = await oauthClientRepository.findOneBy({ id: created.id });
+		expect(stored?.clientSecret).toBe(response.body.data.clientSecret);
+	});
+
+	test('should reject rotating a public client that has no secret', async () => {
+		const created = await testServer
+			.authAgentFor(member)
+			.post('/mcp/oauth-clients')
+			.send({ name: 'Public Client', redirectUris: ['https://example.com/callback'] });
+
+		const response = await testServer
+			.authAgentFor(member)
+			.post(`/mcp/oauth-clients/${created.body.data.id}/rotate-secret`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test("should forbid rotating another user's registration", async () => {
+		const created = await registerConfidential(owner);
+
+		const response = await testServer
+			.authAgentFor(member)
+			.post(`/mcp/oauth-clients/${created.id}/rotate-secret`);
+
+		expect(response.statusCode).toBe(403);
+	});
+});

@@ -21,6 +21,7 @@ import type { AuthorizationCode } from '../database/entities/oauth-authorization
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import { withRequestedRedirectUri } from '../loopback-redirect-uri-context';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
@@ -145,6 +146,69 @@ describe('OAuthServerService', () => {
 				const result = await service.clientsStore.getClient('nonexistent');
 
 				expect(result).toBeUndefined();
+			});
+
+			it('should accept any loopback port for a manually registered client', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue({
+					id: 'manual-client',
+					name: 'Gemini CLI',
+					redirectUris: ['http://localhost/oauth/callback'],
+					grantTypes: ['authorization_code', 'refresh_token'],
+					tokenEndpointAuthMethod: 'none',
+					clientSecret: null,
+					clientSecretExpiresAt: null,
+					createdBy: 'user-1',
+				} as OAuthClient);
+
+				const result = await withRequestedRedirectUri(
+					'http://localhost:52680/oauth/callback',
+					async () => await service.clientsStore.getClient('manual-client'),
+				);
+
+				expect(result?.redirect_uris).toEqual([
+					'http://localhost/oauth/callback',
+					'http://localhost:52680/oauth/callback',
+				]);
+			});
+
+			it('should not accept a differing path for a manually registered client', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue({
+					id: 'manual-client',
+					name: 'Gemini CLI',
+					redirectUris: ['http://localhost/oauth/callback'],
+					grantTypes: ['authorization_code', 'refresh_token'],
+					tokenEndpointAuthMethod: 'none',
+					clientSecret: null,
+					clientSecretExpiresAt: null,
+					createdBy: 'user-1',
+				} as OAuthClient);
+
+				const result = await withRequestedRedirectUri(
+					'http://localhost:52680/evil',
+					async () => await service.clientsStore.getClient('manual-client'),
+				);
+
+				expect(result?.redirect_uris).toEqual(['http://localhost/oauth/callback']);
+			});
+
+			it('should not accept any loopback port for a DCR-registered client', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue({
+					id: 'dcr-client',
+					name: 'Claude',
+					redirectUris: ['http://localhost/oauth/callback'],
+					grantTypes: ['authorization_code'],
+					tokenEndpointAuthMethod: 'none',
+					clientSecret: null,
+					clientSecretExpiresAt: null,
+					createdBy: null,
+				} as OAuthClient);
+
+				const result = await withRequestedRedirectUri(
+					'http://localhost:52680/oauth/callback',
+					async () => await service.clientsStore.getClient('dcr-client'),
+				);
+
+				expect(result?.redirect_uris).toEqual(['http://localhost/oauth/callback']);
 			});
 		});
 
@@ -476,6 +540,44 @@ describe('OAuthServerService', () => {
 				error_description: 'Redirect URI not in allowed list',
 			});
 			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
+		it('should skip the allowlist for a manually registered client', async () => {
+			const client = {
+				client_id: 'manual-client',
+				client_name: 'ChatGPT',
+				redirect_uris: ['https://chatgpt.com/connector/oauth/abc123'],
+				grant_types: ['authorization_code', 'refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const res = mock<Response>();
+
+			// The user typed this URI into the registration form, which is the
+			// authorization; the admin allowlist gates DCR clients only.
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+			oauthClientRepository.findOne.mockResolvedValueOnce({
+				id: 'manual-client',
+				createdBy: 'user-1',
+			} as OAuthClient);
+
+			await service.authorize(
+				client,
+				{
+					redirectUri: 'https://chatgpt.com/connector/oauth/abc123',
+					codeChallenge: 'challenge-123',
+				},
+				res,
+			);
+
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(
+				res,
+				expect.objectContaining({ redirectUri: 'https://chatgpt.com/connector/oauth/abc123' }),
+			);
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
 		});
 
 		it('should allow a loopback redirect URI on a different port than the allowlist entry', async () => {

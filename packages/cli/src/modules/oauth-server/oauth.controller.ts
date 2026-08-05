@@ -19,6 +19,7 @@ import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
+import { withRequestedRedirectUri } from './loopback-redirect-uri-context';
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
@@ -76,6 +77,22 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 	next();
 };
 
+/**
+ * Publishes the requested `redirect_uri` for the duration of the authorization
+ * request, so a manually registered client's loopback URI can be matched
+ * ignoring its port. See `loopback-redirect-uri-context`.
+ */
+const loopbackRedirectUriContext: RequestHandler = (req, _res, next) => {
+	// The SDK's authorize handler reads params from the body on POST, the query
+	// string otherwise; mirror that so both methods are covered.
+	const params: unknown = req.method === 'POST' ? req.body : req.query;
+	const redirectUri =
+		params !== null && typeof params === 'object' && 'redirect_uri' in params
+			? params.redirect_uri
+			: undefined;
+	withRequestedRedirectUri(typeof redirectUri === 'string' ? redirectUri : undefined, next);
+};
+
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
@@ -101,7 +118,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [rfc9207IssuerParam],
+		middlewares: [rfc9207IssuerParam, loopbackRedirectUriContext],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitAuthorize,
 			5 * Time.minutes.toMilliseconds,
