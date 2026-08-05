@@ -445,7 +445,7 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing. 
+- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
@@ -533,6 +533,20 @@ import {
   expr,
 } from '@n8n/workflow-sdk';
 ```
+
+## Node Groups
+
+Organise multi-stage workflows into named node groups — visual frames on the canvas — so the
+result is readable the first time the user sees it. Group each clear stage (ingest → transform
+→ deliver); small workflows don't need groups. Give every group a one-sentence
+`description` — groups are collapsed by default, so name + description is what the user sees
+first.
+
+`.group(name, members, { description })` on the workflow builder; members are the node handles.
+Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
+one connected section, AI sub-nodes stay with their Agent) before creating groups — an invalid
+group is rejected on save. When editing an existing workflow, keep existing `.group(...)` calls
+and their descriptions intact unless the change is about grouping.
 
 ## Workflow Rules
 
