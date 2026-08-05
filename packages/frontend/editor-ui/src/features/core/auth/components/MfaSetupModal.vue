@@ -13,7 +13,7 @@ import { useToast } from '@n8n/composables/useToast';
 import QrcodeVue from 'qrcode.vue';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import router from '@/app/router';
 import { I18nT } from 'vue-i18n';
 

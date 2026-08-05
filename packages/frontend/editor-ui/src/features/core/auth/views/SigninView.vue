@@ -10,7 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
