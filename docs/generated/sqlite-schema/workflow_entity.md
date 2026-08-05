@@ -293,6 +293,7 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id PK
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

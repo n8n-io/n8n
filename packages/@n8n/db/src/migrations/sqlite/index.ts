@@ -231,6 +231,7 @@ import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/17852471943
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
 import { CreateWorkflowReviewActivityTables1785843640527 } from '../common/1785843640527-CreateWorkflowReviewActivityTables';
+import { AddBaselineVersionIdToWorkflowReviewRequestWorkflow1785923614352 } from '../common/1785923614352-AddBaselineVersionIdToWorkflowReviewRequestWorkflow';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -465,6 +466,7 @@ const sqliteMigrations: Migration[] = [
 	AddSetupCompletedAtToAgents1785500832626,
 	AddAgentExecutionRuntimeState1785828155091,
 	CreateWorkflowReviewActivityTables1785843640527,
+	AddBaselineVersionIdToWorkflowReviewRequestWorkflow1785923614352,
 ];
 
 export { sqliteMigrations };
