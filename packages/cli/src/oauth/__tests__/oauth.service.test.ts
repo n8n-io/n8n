@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
+import { AuthError as OAuth2AuthError } from '@n8n/client-oauth2';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
@@ -203,13 +204,46 @@ describe('OauthService', () => {
 		});
 	});
 
+	describe('getSsrfBridge', () => {
+		afterEach(() => {
+			ssrfProtectionConfig.enabled = false;
+		});
+
+		it('should return the protection service when the guard is enabled', () => {
+			ssrfProtectionConfig.enabled = true;
+
+			expect(service.getSsrfBridge()).toBe(ssrfProtectionService);
+		});
+
+		it('should return undefined when the guard is disabled', () => {
+			ssrfProtectionConfig.enabled = false;
+
+			expect(service.getSsrfBridge()).toBeUndefined();
+		});
+	});
+
 	describe('extractCallbackErrorReason', () => {
-		it('should return the stringified body when the error has one', () => {
-			const error = Object.assign(new Error('request failed'), {
-				body: { error: 'invalid_grant' },
+		it('should return only the error code for an OAuth2 error response', () => {
+			const error = new OAuth2AuthError('request failed', {
+				error: 'invalid_grant',
+				error_description: 'some free-form detail from the authorization server',
 			});
 
-			expect(service.extractCallbackErrorReason(error)).toBe('{"error":"invalid_grant"}');
+			expect(service.extractCallbackErrorReason(error)).toBe('invalid_grant');
+		});
+
+		it('should return undefined for an OAuth2 error response without an error code', () => {
+			const error = new OAuth2AuthError('request failed', { error_description: 'detail' });
+
+			expect(service.extractCallbackErrorReason(error)).toBeUndefined();
+		});
+
+		it('should ignore the body of a non-OAuth2 error response', () => {
+			const error = Object.assign(new Error('HTTP status 400'), {
+				body: '{"internalField":"detail"}',
+			});
+
+			expect(service.extractCallbackErrorReason(error)).toBeUndefined();
 		});
 
 		it('should surface the wrapped cause chain when there is no body', () => {
@@ -5337,6 +5371,68 @@ describe('OauthService', () => {
 
 			expect(result).toEqual({ Authorization: 'Bearer new-token' });
 			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
+		});
+
+		describe('outbound network policy', () => {
+			const captureRefreshClientOptions = async () => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				let capturedOptions: Record<string, unknown> = {};
+				const mockToken = {
+					refresh: vi.fn().mockResolvedValue({
+						data: { access_token: 'new-token', token_type: 'bearer' },
+						accessToken: 'new-token',
+					}),
+					client: {},
+				};
+				vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+					capturedOptions = options as unknown as Record<string, unknown>;
+					return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+				});
+
+				credentialsRepository.findOne.mockResolvedValue(
+					makeCredential({ isGlobal: true }) as never,
+				);
+				vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+					clientId: 'id',
+					clientSecret: 'secret',
+					accessTokenUrl: 'https://example.com/token',
+					grantType: 'authorizationCode',
+					authentication: 'header',
+					oauthTokenData: {
+						access_token: 'stale',
+						refresh_token: 'refresh-tok',
+						token_type: 'bearer',
+					},
+				} as unknown as OAuth2CredentialData);
+				vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+				const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+				return { capturedOptions, result };
+			};
+
+			afterEach(() => {
+				ssrfProtectionConfig.enabled = false;
+			});
+
+			it('should build the refresh client with the bridge when the guard is enabled', async () => {
+				ssrfProtectionConfig.enabled = true;
+
+				const { capturedOptions, result } = await captureRefreshClientOptions();
+
+				expect(capturedOptions.ssrfBridge).toBe(ssrfProtectionService);
+				expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			});
+
+			it('should build the refresh client without a bridge when the guard is disabled', async () => {
+				ssrfProtectionConfig.enabled = false;
+
+				const { capturedOptions, result } = await captureRefreshClientOptions();
+
+				expect(capturedOptions.ssrfBridge).toBeUndefined();
+				// The refresh must still succeed, so instances that leave the guard off are unaffected.
+				expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			});
 		});
 
 		it('builds the client with a certificate when certificate authentication is selected', async () => {

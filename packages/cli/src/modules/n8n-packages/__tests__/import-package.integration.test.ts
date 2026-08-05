@@ -1219,6 +1219,7 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1312,6 +1313,7 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1374,6 +1376,7 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1438,6 +1441,7 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
 					requirements: 0,
 				},
 				tags: {

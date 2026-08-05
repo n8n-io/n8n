@@ -3,15 +3,18 @@ import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
 	Role,
+	TagEntity,
 	User,
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
+import { QueryFailedError } from '@n8n/typeorm';
 import type { IConnections, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -20,6 +23,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
@@ -33,6 +37,7 @@ import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/pol
 import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
+import type { TagService } from '@/services/tag.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -2021,6 +2026,95 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 				expectedActor,
 			]);
+		});
+	});
+
+	describe('updateWorkflowTags()', () => {
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowTagMappingRepositoryMock: MockProxy<WorkflowTagMappingRepository>;
+		let tagServiceMock: MockProxy<TagService>;
+
+		const WORKFLOW_ID = 'workflow-1';
+		const user = mock<User>({ id: 'user-1' });
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowTagMappingRepositoryMock = mock<WorkflowTagMappingRepository>();
+			tagServiceMock = mock<TagService>();
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				mock(), // workflowRepository
+				workflowTagMappingRepositoryMock, // workflowTagMappingRepository
+				mock(), // ownershipService
+				tagServiceMock, // tagService
+				mock(), // workflowHistoryService
+				mock(), // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				mock(), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
+			);
+		});
+
+		test('checks workflow:update and does not overwrite tags when the user cannot access the workflow', async () => {
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(
+				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['tag-1']),
+			).rejects.toThrow(NotFoundError);
+
+			expect(workflowFinderServiceMock.findWorkflowForUser).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				user,
+				['workflow:update'],
+			);
+			expect(workflowTagMappingRepositoryMock.overwriteTaggings).not.toHaveBeenCalled();
+			expect(tagServiceMock.getAllByWorkflowId).not.toHaveBeenCalled();
+		});
+
+		test('overwrites tag mappings when the user can update the workflow', async () => {
+			const tags = [mock<TagEntity>({ id: 'tag-1' })];
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			tagServiceMock.getAllByWorkflowId.mockResolvedValue(tags);
+
+			const result = await workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['tag-1']);
+
+			expect(workflowTagMappingRepositoryMock.overwriteTaggings).toHaveBeenCalledWith(WORKFLOW_ID, [
+				'tag-1',
+			]);
+			expect(result).toBe(tags);
+		});
+
+		test('maps missing tag constraint failures to NotFoundError', async () => {
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			workflowTagMappingRepositoryMock.overwriteTaggings.mockRejectedValue(
+				new QueryFailedError('INSERT', [], new Error('FK')),
+			);
+
+			await expect(
+				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['missing-tag']),
+			).rejects.toThrow('Some tags not found');
 		});
 	});
 });

@@ -1,7 +1,10 @@
+import type { SsrfBridge } from '@n8n/backend-network';
 import axios from 'axios';
+import { Agent as HttpAgent, createServer, type Server } from 'http';
 import { Agent as HttpsAgent } from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import nock from 'nock';
+import type { AddressInfo, LookupFunction } from 'node:net';
 
 import { ClientOAuth2, ResponseError } from '@/client-oauth2';
 import { ERROR_RESPONSES } from '@/constants';
@@ -371,6 +374,200 @@ describe('ClientOAuth2', () => {
 				expect(requestConfig.proxy).toBe(false);
 			});
 		});
+
+		describe('ssrfBridge', () => {
+			const lookup = vi.fn() as unknown as LookupFunction;
+
+			const agentLookupOf = (agent: unknown) =>
+				(agent as { options: { lookup?: LookupFunction } }).options.lookup;
+
+			const makeSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({
+				validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+				validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+				validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn().mockReturnValue(lookup),
+				...overrides,
+			});
+
+			const makeBridgedCall = async (ssrfBridge: SsrfBridge, ignoreSSLIssues?: boolean) =>
+				await new ClientOAuth2({
+					clientId: config.clientId,
+					clientSecret: config.clientSecret,
+					accessTokenUri: config.accessTokenUri,
+					authentication: 'header',
+					ssrfBridge,
+				}).accessTokenRequest({
+					url: config.accessTokenUri,
+					method: 'POST',
+					headers: { Authorization: authHeader, Accept: 'application/json' },
+					body: { refresh_token: 'test', grant_type: 'refresh_token' },
+					ignoreSSLIssues,
+				});
+
+			afterEach(() => {
+				nock.cleanAll();
+				vi.restoreAllMocks();
+			});
+
+			it('should reject before dispatching when the target is not allowed', async () => {
+				const blocked = new Error('Address not allowed');
+				const ssrfBridge = makeSsrfBridge({
+					validateUrl: vi.fn().mockResolvedValue({ ok: false, error: blocked }),
+				});
+				const tokenScope = mockTokenResponse({
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ access_token: config.accessToken }),
+				});
+
+				await expect(makeBridgedCall(ssrfBridge)).rejects.toBe(blocked);
+
+				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(config.accessTokenUri));
+				expect(tokenScope.isDone()).toBe(false);
+			});
+
+			it('should resolve the target through the provided lookup and guard redirects', async () => {
+				const ssrfBridge = makeSsrfBridge();
+				mockTokenResponse({
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ access_token: config.accessToken }),
+				});
+
+				const axiosSpy = vi.spyOn(axios, 'request');
+
+				await makeBridgedCall(ssrfBridge);
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				expect(requestConfig.httpAgent).toBeInstanceOf(HttpAgent);
+				expect(requestConfig.httpsAgent).toBeInstanceOf(HttpsAgent);
+				expect(agentLookupOf(requestConfig.httpAgent)).toBe(lookup);
+				expect(agentLookupOf(requestConfig.httpsAgent)).toBe(lookup);
+
+				requestConfig.beforeRedirect?.(
+					{ href: 'http://redirected.example/token' },
+					{} as never,
+					{} as never,
+				);
+				expect(ssrfBridge.validateRedirectSync).toHaveBeenCalledWith(
+					'http://redirected.example/token',
+				);
+			});
+
+			it('should keep the lookup when ignoreSSLIssues also relaxes TLS', async () => {
+				const ssrfBridge = makeSsrfBridge();
+				mockTokenResponse({
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ access_token: config.accessToken }),
+				});
+
+				const axiosSpy = vi.spyOn(axios, 'request');
+
+				await makeBridgedCall(ssrfBridge, true);
+
+				const httpsAgent = axiosSpy.mock.calls[0][0].httpsAgent as HttpsAgent;
+				expect(httpsAgent.options.rejectUnauthorized).toBe(false);
+				expect(agentLookupOf(httpsAgent)).toBe(lookup);
+			});
+
+			describe('behind an env proxy', () => {
+				const PROXY_ENV_VARS = ['HTTPS_PROXY', 'https_proxy', 'NO_PROXY', 'no_proxy'] as const;
+				let savedProxyEnv: Record<string, string | undefined>;
+
+				beforeEach(() => {
+					savedProxyEnv = {};
+					for (const key of PROXY_ENV_VARS) {
+						savedProxyEnv[key] = process.env[key];
+						delete process.env[key];
+					}
+				});
+
+				afterEach(() => {
+					for (const key of PROXY_ENV_VARS) {
+						if (savedProxyEnv[key] === undefined) {
+							delete process.env[key];
+						} else {
+							process.env[key] = savedProxyEnv[key];
+						}
+					}
+				});
+
+				const proxiedTokenResponse = () =>
+					vi.spyOn(axios, 'request').mockResolvedValue({
+						status: 200,
+						headers: {},
+						data: JSON.stringify({ access_token: config.accessToken }),
+					});
+
+				it('should leave resolution to the proxy instead of checking the proxy host', async () => {
+					process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+					const ssrfBridge = makeSsrfBridge();
+					const axiosSpy = proxiedTokenResponse();
+
+					await makeBridgedCall(ssrfBridge);
+
+					// The lookup would resolve the proxy, not the target, so the target policy
+					// must not be applied to it — the proxy reaches the target on our behalf.
+					expect(ssrfBridge.createSecureLookup).not.toHaveBeenCalled();
+					const requestConfig = axiosSpy.mock.calls[0][0];
+					expect(requestConfig.httpAgent).toBeUndefined();
+					expect(requestConfig.httpsAgent).toBeUndefined();
+					// The pre-flight check on the target still runs.
+					expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(config.accessTokenUri));
+				});
+
+				it('should relax TLS through the proxy agent without a lookup when ignoreSSLIssues is set', async () => {
+					process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+					const ssrfBridge = makeSsrfBridge();
+					const axiosSpy = proxiedTokenResponse();
+
+					await makeBridgedCall(ssrfBridge, true);
+
+					const httpsAgent = axiosSpy.mock.calls[0][0].httpsAgent as HttpsProxyAgent<string>;
+					expect(httpsAgent).toBeInstanceOf(HttpsProxyAgent);
+					expect(httpsAgent.connectOpts.rejectUnauthorized).toBe(false);
+					expect(httpsAgent.connectOpts.lookup).toBeUndefined();
+				});
+
+				it('should apply the lookup when NO_PROXY excludes the target', async () => {
+					process.env.HTTPS_PROXY = 'http://fake-proxy.example';
+					process.env.NO_PROXY = new URL(config.baseUrl).hostname;
+					const ssrfBridge = makeSsrfBridge();
+					mockTokenResponse({
+						status: 200,
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ access_token: config.accessToken }),
+					});
+
+					const axiosSpy = vi.spyOn(axios, 'request');
+
+					await makeBridgedCall(ssrfBridge);
+
+					const requestConfig = axiosSpy.mock.calls[0][0];
+					expect(agentLookupOf(requestConfig.httpAgent)).toBe(lookup);
+					expect(agentLookupOf(requestConfig.httpsAgent)).toBe(lookup);
+				});
+			});
+
+			it('should leave the request unchecked when no bridge is provided', async () => {
+				mockTokenResponse({
+					status: 200,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ access_token: config.accessToken }),
+				});
+
+				const axiosSpy = vi.spyOn(axios, 'request');
+
+				await makeTokenCall();
+
+				const requestConfig = axiosSpy.mock.calls[0][0];
+				expect(requestConfig.httpAgent).toBeUndefined();
+				expect(requestConfig.httpsAgent).toBeUndefined();
+				expect(requestConfig.beforeRedirect).toBeUndefined();
+			});
+		});
 	});
 
 	describe('RFC 8707 resource parameter', () => {
@@ -501,5 +698,89 @@ describe('ClientOAuth2', () => {
 
 			scope.done();
 		});
+	});
+});
+
+// Runs against a real loopback server rather than a nock interceptor: the secure
+// lookup lives on the request's http agent, so only an actual socket connection
+// proves it is consulted.
+describe('ClientOAuth2 over a real connection', () => {
+	let server: Server;
+	let port: number;
+	let hits: number;
+
+	beforeAll(async () => {
+		nock.cleanAll();
+		nock.enableNetConnect();
+		hits = 0;
+		server = createServer((_req, res) => {
+			hits++;
+			res.writeHead(200, { 'Content-Type': 'application/json' });
+			res.end(JSON.stringify({ access_token: 'real-token' }));
+		});
+		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+		port = (server.address() as AddressInfo).port;
+	});
+
+	afterAll(async () => {
+		await new Promise<void>((resolve, reject) =>
+			server.close((error) => (error ? reject(error) : resolve())),
+		);
+		nock.disableNetConnect();
+	});
+
+	beforeEach(() => {
+		hits = 0;
+	});
+
+	const makeCall = async (ssrfBridge?: SsrfBridge) => {
+		const url = `http://localhost:${port}/token`;
+		return await new ClientOAuth2({
+			clientId: 'id',
+			clientSecret: 'secret',
+			accessTokenUri: url,
+			authentication: 'header',
+			ssrfBridge,
+		}).accessTokenRequest({
+			url,
+			method: 'POST',
+			headers: { Accept: 'application/json' },
+			body: { grant_type: 'refresh_token', refresh_token: 'x' },
+		});
+	};
+
+	const bridgeWithLookup = (lookup: LookupFunction): SsrfBridge => ({
+		validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
+		validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+		validateConnectionHost: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+		validateRedirectSync: vi.fn(),
+		createSecureLookup: () => lookup,
+	});
+
+	it('should not open a connection when the lookup rejects the resolved address', async () => {
+		const lookup: LookupFunction = (hostname, options, onResult) => {
+			onResult(new Error(`lookup rejected ${hostname}`), options.all ? [] : '', undefined);
+		};
+
+		await expect(makeCall(bridgeWithLookup(lookup))).rejects.toThrow('lookup rejected localhost');
+		expect(hits).toBe(0);
+	});
+
+	it('should complete the request when the lookup allows the resolved address', async () => {
+		const lookup: LookupFunction = (_hostname, options, onResult) => {
+			onResult(null, options.all ? [{ address: '127.0.0.1', family: 4 }] : '127.0.0.1', 4);
+		};
+
+		const token = await makeCall(bridgeWithLookup(lookup));
+
+		expect(token.access_token).toBe('real-token');
+		expect(hits).toBe(1);
+	});
+
+	it('should complete the request when no bridge is provided', async () => {
+		const token = await makeCall();
+
+		expect(token.access_token).toBe('real-token');
+		expect(hits).toBe(1);
 	});
 });
