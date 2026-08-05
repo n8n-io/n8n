@@ -163,6 +163,18 @@ describe('WorkflowSubmitForReviewDialog', () => {
 			await waitFor(() => expect(getByTestId('workflow-review-title-input')).toBeInTheDocument());
 			expect(createWorkflowReviewRequest).not.toHaveBeenCalled();
 		});
+
+		it('advances without submitting when Enter is pressed after going back with a title filled in', async () => {
+			const { getByTestId, goToStep2 } = await renderDialog();
+			await goToStep2();
+			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			await userEvent.click(getByTestId('workflow-review-back-button'));
+
+			await userEvent.type(getByTestId('workflow-review-version-name-input'), '{Enter}');
+
+			await waitFor(() => expect(getByTestId('workflow-review-title-input')).toBeInTheDocument());
+			expect(createWorkflowReviewRequest).not.toHaveBeenCalled();
+		});
 	});
 
 	it('requires a non-empty title and cancel creates nothing', async () => {
@@ -202,7 +214,8 @@ describe('WorkflowSubmitForReviewDialog', () => {
 						workflowId: 'workflow-1',
 						workflowVersionId: SAVED_VERSION_ID,
 						workflowVersionName: GENERATED_VERSION_NAME,
-						workflowVersionDescription: '',
+						// R3 (P3): omitted while untouched — see LIGO-939_review.md.
+						workflowVersionDescription: undefined,
 					},
 				],
 			});
@@ -329,12 +342,50 @@ describe('WorkflowSubmitForReviewDialog', () => {
 								workflowId: 'workflow-1',
 								workflowVersionId: SAVED_VERSION_ID,
 								workflowVersionName: 'Validated name',
-								workflowVersionDescription: '',
+								workflowVersionDescription: undefined,
 							},
 						],
 					}),
 				);
 			});
+		});
+
+		it('sends an empty description only when the user clears it, not when it is untouched', async () => {
+			const { getByTestId, documentStore, goToStep2 } = await renderDialog(undefined, {
+				versionId: SAVED_VERSION_ID,
+				name: 'Release candidate',
+				description: 'Existing description',
+			});
+
+			await userEvent.clear(getByTestId('workflow-review-version-description-input'));
+			await goToStep2();
+			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			await userEvent.click(getByTestId('workflow-review-submit-button'));
+
+			await waitFor(() => {
+				expect(createWorkflowReviewRequest).toHaveBeenCalledWith(
+					expect.any(Object),
+					expect.objectContaining({
+						workflows: [expect.objectContaining({ workflowVersionDescription: '' })],
+					}),
+				);
+			});
+			expect(documentStore.versionData?.description).toBeNull();
+		});
+
+		it('keeps the stored description in the editor when it was left untouched', async () => {
+			const { getByTestId, documentStore, goToStep2 } = await renderDialog(undefined, {
+				versionId: SAVED_VERSION_ID,
+				name: 'Release candidate',
+				description: 'Existing description',
+			});
+
+			await goToStep2();
+			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			await userEvent.click(getByTestId('workflow-review-submit-button'));
+
+			await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
+			expect(documentStore.versionData?.description).toBe('Existing description');
 		});
 
 		it('leaves the editor version untouched when the canvas moved on to another version', async () => {

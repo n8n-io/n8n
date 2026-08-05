@@ -48,8 +48,13 @@ const rootStore = useRootStore();
 const toast = useToast();
 const reviewRequiredStore = useReviewRequiredStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
-const { versionName, versionDescription, prefillVersionName, applyVersionName } =
-	useReviewVersionName();
+const {
+	versionName,
+	versionDescription,
+	prefillVersionName,
+	submittedVersionDescription,
+	applyVersionMetadata,
+} = useReviewVersionName();
 
 const step = ref<1 | 2>(1);
 const reviewTitle = ref('');
@@ -150,7 +155,7 @@ const submit = async () => {
 	// `flushSave()` awaits a full workflow save, so reading the fields afterwards
 	// could submit values the guard never validated.
 	const trimmedVersionName = versionName.value.trim();
-	const trimmedVersionDescription = versionDescription.value.trim();
+	const trimmedVersionDescription = submittedVersionDescription();
 	const trimmedTitle = reviewTitle.value.trim();
 	const trimmedDescription = description.value.trim();
 	const reviewerId = selectedReviewerId.value;
@@ -190,7 +195,7 @@ const submit = async () => {
 		// longer targets, and writing it here would corrupt the current one's status.
 		if (props.workflowId !== workflowId) return;
 
-		applyVersionName(workflowVersionId, trimmedVersionName, trimmedVersionDescription);
+		applyVersionMetadata(workflowVersionId, trimmedVersionName, trimmedVersionDescription);
 
 		// install the response before clearing the local flag so the
 		// publish gate never opens while a refetch is in flight
@@ -251,7 +256,6 @@ const submit = async () => {
 				ref="versionForm"
 				v-model:version-name="versionName"
 				v-model:description="versionDescription"
-				:disabled="isSubmitting"
 				version-name-test-id="workflow-review-version-name-input"
 				description-test-id="workflow-review-version-description-input"
 				@submit="goToReviewStep"

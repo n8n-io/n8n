@@ -279,7 +279,7 @@ export class WorkflowReviewRequestService {
 	): Promise<WorkflowReviewRequestSummary> {
 		const { workflowId, workflowVersionId, workflowVersionName, workflowVersionDescription } =
 			dto.workflows[0];
-		const versionName = workflowVersionName?.trim();
+		const versionName = workflowVersionName.trim();
 		const versionDescription = normalizeVersionDescription(workflowVersionDescription);
 
 		await this.featureGate.assertAvailable();
@@ -362,15 +362,7 @@ export class WorkflowReviewRequestService {
 				);
 
 				// After the conflict check, so a 409 never renames or describes the version.
-				if (versionName) {
-					await this.nameVersion(
-						workflowId,
-						workflowVersionId,
-						versionName,
-						versionDescription,
-						ctx,
-					);
-				}
+				await this.nameVersion(workflowId, workflowVersionId, versionName, versionDescription, ctx);
 
 				await this.workflowReviewRequestAuthorRepository.addAuthor(
 					{ workflowReviewRequestId: created.id, userId: user.id },
@@ -441,10 +433,10 @@ export class WorkflowReviewRequestService {
 			);
 		}
 
-		const versionName = dto.workflowVersionName?.trim();
+		const versionName = dto.workflowVersionName.trim();
 		const versionDescription = normalizeVersionDescription(dto.workflowVersionDescription);
 		const metadataChanged = (current: { name: string | null; description: string | null }) =>
-			(!!versionName && versionName !== current.name) ||
+			versionName !== current.name ||
 			(versionDescription !== undefined && versionDescription !== current.description);
 
 		// Nothing new to review: skip the lock, write nothing, broadcast nothing.
@@ -452,7 +444,7 @@ export class WorkflowReviewRequestService {
 			// A rename or re-description is the one thing that can still be pending
 			// here, and a lone UPDATE is atomic, so apply it rather than silently
 			// dropping it.
-			if (versionName && metadataChanged(version)) {
+			if (metadataChanged(version)) {
 				// No transaction here: a lone UPDATE is atomic, so the root context is right.
 				await this.nameVersion(
 					dto.workflowId,
@@ -494,7 +486,7 @@ export class WorkflowReviewRequestService {
 					// A concurrent sync won the lock and already re-pinned this version
 					// but our rename or re-description can still be pending — apply it
 					// rather than dropping it, mirroring the pre-lock branch.
-					if (versionName && metadataChanged(version)) {
+					if (metadataChanged(version)) {
 						await this.nameVersion(
 							dto.workflowId,
 							dto.workflowVersionId,
@@ -516,15 +508,13 @@ export class WorkflowReviewRequestService {
 					tx,
 				);
 
-				if (versionName) {
-					await this.nameVersion(
-						dto.workflowId,
-						dto.workflowVersionId,
-						versionName,
-						versionDescription,
-						ctx,
-					);
-				}
+				await this.nameVersion(
+					dto.workflowId,
+					dto.workflowVersionId,
+					versionName,
+					versionDescription,
+					ctx,
+				);
 
 				current.decision = 'pending';
 				current.updatedById = user.id;

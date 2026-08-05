@@ -644,7 +644,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						workflowId: defaultWorkflowProps.id,
 						workflowVersionId: 'version-1',
 						workflowVersionName: 'Release 3',
-						workflowVersionDescription: '',
+						workflowVersionDescription: undefined,
 					},
 				);
 			});

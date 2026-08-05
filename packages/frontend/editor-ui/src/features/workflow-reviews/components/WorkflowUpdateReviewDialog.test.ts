@@ -146,7 +146,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 					workflowId: 'workflow-1',
 					workflowVersionId: SAVED_VERSION_ID,
 					workflowVersionName: GENERATED_VERSION_NAME,
-					workflowVersionDescription: '',
+					workflowVersionDescription: undefined,
 				},
 			);
 		});
@@ -274,7 +274,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 						workflowId: 'workflow-1',
 						workflowVersionId: SAVED_VERSION_ID,
 						workflowVersionName: 'Release 3',
-						workflowVersionDescription: '',
+						workflowVersionDescription: undefined,
 					},
 				);
 			});
@@ -355,7 +355,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 						workflowId: 'workflow-1',
 						workflowVersionId: SAVED_VERSION_ID,
 						workflowVersionName: 'Validated name',
-						workflowVersionDescription: '',
+						workflowVersionDescription: undefined,
 					},
 				);
 			});
