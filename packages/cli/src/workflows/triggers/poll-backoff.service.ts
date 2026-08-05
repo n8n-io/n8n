@@ -8,8 +8,8 @@ import { ErrorReporter } from 'n8n-core';
 import {
 	classifyPollFailure,
 	computeBackoffUntil,
-	MAX_BACKOFF_MS,
 	retryAfterMs,
+	RETRY_AFTER_MAX_MS,
 } from '@/workflows/triggers/poll-backoff-policy';
 
 @Service()
@@ -33,20 +33,19 @@ export class PollBackoffService {
 		try {
 			return await this.pollerStateRepository.findFailureState(workflowId, nodeId);
 		} catch (error) {
-			this.errorReporter.error(error, { extra: { workflowId, nodeId } });
-			this.logger.error('Failed to read poller failure state', { workflowId, nodeId, error });
+			this.reportFailure(error, workflowId, nodeId, 'Failed to read poller failure state');
 			return null;
 		}
 	}
 
 	isBackingOff(state: PollerFailureState | null, now: Date): boolean {
-		if (state === null || state.backoffUntil === null) return false;
+		if (state === null || !(state.backoffUntil instanceof Date)) return false;
 
 		const untilMs = state.backoffUntil.getTime();
 		const nowMs = now.getTime();
 
 		if (untilMs <= nowMs) return false;
-		if (untilMs - nowMs > MAX_BACKOFF_MS) return false;
+		if (untilMs - nowMs > RETRY_AFTER_MAX_MS) return false;
 
 		return true;
 	}
@@ -62,15 +61,16 @@ export class PollBackoffService {
 		if (!this.enabled) return;
 
 		const consecutiveErrors = (state?.consecutiveErrors ?? 0) + 1;
-		const failureClass = classifyPollFailure(error);
-		const backoffUntil = computeBackoffUntil({
-			failureClass,
-			consecutiveErrors,
-			retryAfterMs: retryAfterMs(error, now),
-			now,
-		});
 
 		try {
+			const failureClass = classifyPollFailure(error, now);
+			const backoffUntil = computeBackoffUntil({
+				failureClass,
+				consecutiveErrors,
+				retryAfterMs: retryAfterMs(error, now),
+				now,
+			});
+
 			const updated = await this.pollerStateRepository.recordFailure(
 				workflowId,
 				nodeId,
@@ -82,18 +82,17 @@ export class PollBackoffService {
 					workflowId,
 					nodeId,
 				});
+			} else {
+				this.logger.warn('Poll failed; backing off', {
+					workflowId,
+					nodeId,
+					failureClass,
+					consecutiveErrors,
+					backoffUntil,
+				});
 			}
-
-			this.logger.warn('Poll failed; backing off', {
-				workflowId,
-				nodeId,
-				failureClass,
-				consecutiveErrors,
-				backoffUntil,
-			});
 		} catch (writeError) {
-			this.errorReporter.error(writeError, { extra: { workflowId, nodeId } });
-			this.logger.error('Failed to record poll failure', { workflowId, nodeId, error: writeError });
+			this.reportFailure(writeError, workflowId, nodeId, 'Failed to record poll failure');
 		}
 	}
 
@@ -104,14 +103,21 @@ export class PollBackoffService {
 	}): Promise<void> {
 		const { workflowId, nodeId, state } = args;
 		if (!this.enabled) return;
-		if (state === null) return;
-		if (state.consecutiveErrors === 0 && state.backoffUntil === null) return;
+		if (state !== null && state.consecutiveErrors === 0 && state.backoffUntil === null) return;
 
 		try {
 			await this.pollerStateRepository.clearFailures(workflowId, nodeId);
 		} catch (error) {
+			this.reportFailure(error, workflowId, nodeId, 'Failed to clear poller failure state');
+		}
+	}
+
+	private reportFailure(error: unknown, workflowId: string, nodeId: string, message: string): void {
+		try {
 			this.errorReporter.error(error, { extra: { workflowId, nodeId } });
-			this.logger.error('Failed to clear poller failure state', { workflowId, nodeId, error });
+			this.logger.error(message, { workflowId, nodeId, error });
+		} catch {
+			return;
 		}
 	}
 }
