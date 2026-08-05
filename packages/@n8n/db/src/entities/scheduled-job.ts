@@ -29,6 +29,7 @@ export { ScheduledJobMisfirePolicy } from '@n8n/constants';
 	where: '"enabled" = true AND "nextRunAt" IS NOT NULL',
 })
 @Index(['workflowId'], { where: '"workflowId" IS NOT NULL' })
+@Index(['taskType', 'ownerId'], { where: '"ownerId" IS NOT NULL' })
 @Index(['name'], { unique: true })
 export class ScheduledJob extends WithTimestamps {
 	@PrimaryGeneratedColumn()
@@ -58,6 +59,15 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	nodeId: string | null;
+
+	/**
+	 * Owner of jobs that belong to no trigger node, e.g. one person's own
+	 * schedule for a workflow. Opaque to the scheduler and only ever paired with
+	 * {@link taskType}, so a feature can own jobs without this table learning
+	 * about the feature. `null` for node-owned jobs.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	ownerId: string | null;
 
 	/**
 	 * What kind of work this job runs.

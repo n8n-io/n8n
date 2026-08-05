@@ -238,6 +238,8 @@ import { AddMisfirePolicyToScheduler1785247194307 } from '../common/178524719430
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import { AddSetupCompletedAtToAgents1785500832626 } from '../common/1785500832626-AddSetupCompletedAtToAgents';
 import type { Migration } from '../migration-types';
+import { CreateWorkflowCatalogSubscriptionTables1785920849704 } from '../common/1785920849704-CreateWorkflowCatalogSubscriptionTables';
+import { AddOwnerToScheduledJob1785920873647 } from '../common/1785920873647-AddOwnerToScheduledJob';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -479,4 +481,6 @@ export const postgresMigrations: Migration[] = [
 	AddMisfirePolicyToScheduler1785247194307,
 	CreateAgentChatAttachmentsTable1785255306000,
 	AddSetupCompletedAtToAgents1785500832626,
+	CreateWorkflowCatalogSubscriptionTables1785920849704,
+	AddOwnerToScheduledJob1785920873647,
 ];

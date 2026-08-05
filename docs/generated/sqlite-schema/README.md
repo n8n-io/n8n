@@ -99,7 +99,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
-| [scheduled_job](scheduled_job.md) | 21 |  | table |
+| [scheduled_job](scheduled_job.md) | 22 |  | table |
 | [scheduled_task](scheduled_task.md) | 18 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
@@ -118,6 +118,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [variables](variables.md) | 5 |  | table |
 | [webhook_entity](webhook_entity.md) | 6 |  | table |
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
+| [workflow_credential_binding](workflow_credential_binding.md) | 6 |  | table |
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
 | [workflow_history](workflow_history.md) | 11 |  | table |
@@ -130,6 +131,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_review_request_reviewers](workflow_review_request_reviewers.md) | 2 |  | table |
 | [workflow_review_request_workflow](workflow_review_request_workflow.md) | 4 |  | table |
 | [workflow_statistics](workflow_statistics.md) | 7 |  | table |
+| [workflow_subscription](workflow_subscription.md) | 9 |  | table |
 | [workflows_tags](workflows_tags.md) | 2 |  | table |
 
 ## Relations
@@ -290,6 +292,8 @@ erDiagram
 "variables" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_builder_session" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_credential_binding" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_credential_binding" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_dependency" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_entity" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -315,6 +319,7 @@ erDiagram
 "workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_subscription" }o--|| "workflow_credential_binding" : "FOREIGN KEY (workflowId, userId) REFERENCES workflow_credential_binding (workflowId, userId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -1224,6 +1229,7 @@ erDiagram
   varchar_255_ name
   datetime_3_ nextRunAt
   varchar_36_ nodeId
+  varchar_36_ ownerId
   TEXT payload
   INT recurrenceSize
   varchar_16_ recurrenceUnit
@@ -1408,6 +1414,14 @@ erDiagram
   varchar userId FK
   varchar_36_ workflowId FK
 }
+"workflow_credential_binding" {
+  datetime_3_ consentAt
+  datetime_3_ createdAt
+  varchar_16_ status
+  datetime_3_ updatedAt
+  varchar userId PK
+  varchar_36_ workflowId PK
+}
 "workflow_dependency" {
   datetime_3_ createdAt
   TEXT dependencyInfo
@@ -1523,6 +1537,17 @@ erDiagram
   INTEGER rootCount
   VARCHAR_36_ workflowId
   VARCHAR_128_ workflowName
+}
+"workflow_subscription" {
+  datetime_3_ createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  varchar_36_ id PK
+  TEXT inputs
+  varchar_255_ timezone
+  datetime_3_ updatedAt
+  varchar userId FK
+  varchar_36_ workflowId FK
 }
 "workflows_tags" {
   INTEGER tagId PK

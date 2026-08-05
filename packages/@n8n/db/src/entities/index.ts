@@ -57,6 +57,10 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
+import {
+	WorkflowCredentialBinding,
+	type WorkflowCredentialBindingStatus,
+} from './workflow-credential-binding';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
@@ -83,6 +87,7 @@ import {
 	WorkflowReviewRequestStateList,
 } from './workflow-review-request.ee';
 import { WorkflowStatistics } from './workflow-statistics';
+import { WorkflowSubscription } from './workflow-subscription';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
@@ -133,9 +138,12 @@ export {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowCredentialBinding,
+	type WorkflowCredentialBindingStatus,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
+	WorkflowSubscription,
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
@@ -198,9 +206,11 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowCredentialBinding,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
+	WorkflowSubscription,
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,

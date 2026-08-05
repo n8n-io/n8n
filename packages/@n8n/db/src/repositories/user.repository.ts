@@ -29,6 +29,18 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
+	/**
+	 * One user with the role their scopes come from.
+	 *
+	 * For code that acts for a person who is not present, and so has no
+	 * authenticated request to take a fully-loaded user from: anything that then
+	 * checks access would otherwise fail on a user whose role was never joined.
+	 * (`Role.scopes` is eager, so the role alone is enough.)
+	 */
+	async findOneWithRole(userId: string): Promise<User | null> {
+		return await this.findOne({ where: { id: userId }, relations: ['role'] });
+	}
+
 	async findByApiKey(apiKey: string) {
 		const keyOwner = await this.createQueryBuilder('user')
 			.innerJoin(ApiKey, 'apiKey', 'apiKey.userId = user.id')

@@ -454,6 +454,7 @@ describe.runIf(runBenchmarks)('durable scheduler query benchmarks', () => {
 					name: `write-bench-job-${iter}-${i}`,
 					workflowId: null,
 					nodeId: null,
+					ownerId: null,
 					taskType: TASK_TYPE,
 					payload: {},
 					kind: 'interval' as const,

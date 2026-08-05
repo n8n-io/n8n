@@ -16,6 +16,7 @@ const newJob = (name: string): NewScheduledJob => ({
 	name,
 	workflowId: 'wf',
 	nodeId: 'node',
+	ownerId: null,
 	taskType: 'schedule-trigger',
 	payload: {},
 	kind: 'cron',

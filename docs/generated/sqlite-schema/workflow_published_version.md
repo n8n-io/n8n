@@ -104,6 +104,7 @@ erDiagram
   varchar_255_ name
   datetime_3_ nextRunAt
   varchar_36_ nodeId
+  varchar_36_ ownerId
   TEXT payload
   INT recurrenceSize
   varchar_16_ recurrenceUnit

@@ -93,20 +93,34 @@ export class CreateTable extends TableOperation {
 		return this;
 	}
 
+	/**
+	 * Declare a foreign key. Pass arrays on both sides for a composite key; the
+	 * two lists are positional, so they must be the same length and in the same
+	 * order as the referenced table's key.
+	 */
 	withForeignKey(
-		columnName: string,
+		columnName: string | string[],
 		ref: {
 			tableName: string;
-			columnName: string;
+			columnName: string | string[];
 			onDelete?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL';
 			onUpdate?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL';
 			name?: string;
 		},
 	) {
+		const columnNames = Array.isArray(columnName) ? columnName : [columnName];
+		const referencedColumnNames = Array.isArray(ref.columnName) ? ref.columnName : [ref.columnName];
+
+		if (columnNames.length !== referencedColumnNames.length) {
+			throw new UnexpectedError(
+				`Foreign key on ${this.tableName} lists ${columnNames.length} column(s) but references ${referencedColumnNames.length}`,
+			);
+		}
+
 		const foreignKey: TableForeignKeyOptions = {
-			columnNames: [columnName],
+			columnNames,
 			referencedTableName: `${this.prefix}${ref.tableName}`,
-			referencedColumnNames: [ref.columnName],
+			referencedColumnNames,
 		};
 		if (ref.onDelete) foreignKey.onDelete = ref.onDelete;
 		if (ref.onUpdate) foreignKey.onUpdate = ref.onUpdate;

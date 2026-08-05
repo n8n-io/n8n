@@ -21,19 +21,40 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { createSchedulerTracer } from './scheduler-tracer';
 
-/** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
-interface ProvisionScope {
-	workflowId: string;
-	nodeId: string;
+/**
+ * What a set of jobs belongs to.
+ *
+ * Most jobs are a workflow trigger node's, and `(workflowId, nodeId)` names them.
+ * Some belong to nothing on the canvas — one person's own schedule for a
+ * workflow, where several people hold their own schedules for the same workflow
+ * and no node distinguishes them. Those carry an `ownerId` the scheduler treats
+ * as opaque and only ever pairs with `taskType`, so a feature can own jobs
+ * without this service learning about the feature.
+ *
+ * An owner-scoped job records no `workflowId`, and cannot: the column is a
+ * foreign key onto `workflow_published_version`, so it means "this job belongs
+ * to a published trigger" — which an owner-scoped job by definition does not.
+ * The owner is responsible for knowing what its jobs run.
+ */
+type JobOwner =
+	| { ownerId?: undefined; workflowId: string; nodeId: string }
+	| { ownerId: string; workflowId?: undefined; nodeId?: undefined };
+
+/** Identifies one job set, and stamps the rows provisioning inserts. */
+type ProvisionScope = JobOwner & {
 	taskType: string;
 	payload: Record<string, unknown>;
 	misfirePolicy: ScheduledJobMisfirePolicy;
-}
+};
 
-/** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
+/**
+ * Identifies jobs for deletion: one node's jobs, one owner's jobs of a task
+ * type, or one workflow's jobs of a task type.
+ */
 type DeprovisionScope =
-	| Pick<ProvisionScope, 'workflowId' | 'nodeId'>
-	| Pick<ProvisionScope, 'workflowId' | 'taskType'>;
+	| { workflowId: string; nodeId: string }
+	| { ownerId: string; taskType: string }
+	| { workflowId: string; taskType: string };
 
 /** A job row's schedule columns: one `ScheduleDefinition` flattened for storage. */
 type ScheduleColumns = Pick<
@@ -114,9 +135,33 @@ export class DurableJobProvisioner {
 		);
 	}
 
+	/**
+	 * Provision the jobs of an owner that is not a trigger node, matched by name
+	 * within `(ownerId, taskType)`.
+	 *
+	 * Nothing in the database removes these when the thing that owns them goes:
+	 * `ownerId` carries no foreign key, and the rows record no `workflowId` to
+	 * cascade from either, so the caller must {@link deprovisionOwner} before
+	 * deleting its own row.
+	 */
+	async provisionForOwner(
+		ownerId: string,
+		taskType: string,
+		payload: Record<string, unknown>,
+		desired: DesiredJob[],
+		misfirePolicy: ScheduledJobMisfirePolicy,
+	): Promise<ProvisionSummary> {
+		return await this.provisioner.provision({ ownerId, taskType, payload, misfirePolicy }, desired);
+	}
+
 	/** Delete all of a node's jobs; their queued tasks cascade away. */
 	async deprovision(workflowId: string, nodeId: string): Promise<{ removed: number }> {
 		return await this.provisioner.deprovision({ workflowId, nodeId });
+	}
+
+	/** Delete all of one owner's jobs of a task type; their queued tasks cascade away. */
+	async deprovisionOwner(ownerId: string, taskType: string): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ ownerId, taskType });
 	}
 
 	/**
@@ -143,13 +188,8 @@ export class DurableJobProvisioner {
 		await this.jobs.deleteByWorkflowTaskType(manager, workflowId, taskType);
 	}
 
-	private provisionTransaction({
-		workflowId,
-		nodeId,
-		taskType,
-		payload,
-		misfirePolicy,
-	}: ProvisionScope): RunInProvisionTransaction {
+	private provisionTransaction(scope: ProvisionScope): RunInProvisionTransaction {
+		const { ownerId, workflowId, nodeId, taskType, payload, misfirePolicy } = scope;
 		const misfireGraceSeconds = this.globalConfig.scheduler.misfireGraceSeconds;
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
@@ -159,7 +199,10 @@ export class DurableJobProvisioner {
 				const outdatedPolicyJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
-						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
+						const rows =
+							ownerId === undefined
+								? await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId)
+								: await this.jobs.findManyByOwner(manager, ownerId, taskType);
 						for (const row of rows) {
 							if (
 								row.misfirePolicy !== misfirePolicy ||
@@ -181,8 +224,9 @@ export class DurableJobProvisioner {
 						const rows = desired.map(
 							(job): NewScheduledJob => ({
 								name: job.name,
-								workflowId,
-								nodeId,
+								workflowId: workflowId ?? null,
+								nodeId: nodeId ?? null,
+								ownerId: ownerId ?? null,
 								taskType,
 								payload,
 								...scheduleColumns(job.schedule),
@@ -296,14 +340,23 @@ export class DurableJobProvisioner {
 			await this.dataSource.transaction(
 				async (manager) =>
 					await work({
-						deleteAll: async () =>
-							'nodeId' in scope
-								? await this.jobs.deleteByWorkflowNode(manager, scope.workflowId, scope.nodeId)
-								: await this.jobs.deleteByWorkflowTaskType(
-										manager,
-										scope.workflowId,
-										scope.taskType,
-									),
+						deleteAll: async () => {
+							if ('nodeId' in scope) {
+								return await this.jobs.deleteByWorkflowNode(
+									manager,
+									scope.workflowId,
+									scope.nodeId,
+								);
+							}
+							if ('ownerId' in scope) {
+								return await this.jobs.deleteByOwner(manager, scope.ownerId, scope.taskType);
+							}
+							return await this.jobs.deleteByWorkflowTaskType(
+								manager,
+								scope.workflowId,
+								scope.taskType,
+							);
+						},
 					}),
 			);
 	}

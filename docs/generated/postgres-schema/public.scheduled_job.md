@@ -18,6 +18,7 @@
 | name | varchar(255) |  | false |  |  | Human-readable job name. A well-known scheduler key for system jobs; generated for workflow trigger jobs. |
 | nextRunAt | timestamp(3) with time zone |  | true |  |  | Next time an occurrence is due; the scheduler sweep reads this to find work. NULL once disabled or a one-off has fired. |
 | nodeId | varchar(36) |  | true |  |  | Trigger node within the workflow that owns this job; NULL for non-trigger jobs. |
+| ownerId | varchar(36) |  | true |  |  | Opaque owner of jobs that belong to no trigger node, scoped together with taskType. NULL for node-owned jobs. |
 | payload | json | '{}'::json | false |  |  | Input passed to the task handler when an occurrence runs. |
 | recurrenceSize | integer |  | true |  |  | The N in a recurring_cron schedule's every-N-periods filter, e.g. 3 for every 3 weeks; at least 2. Set only when kind is 'recurring_cron'. |
 | recurrenceUnit | varchar(16) |  | true |  |  | Calendar period counted by a recurring_cron schedule's every-N-periods filter (hours, days, weeks, months). Set only when kind is 'recurring_cron'. |
@@ -59,6 +60,7 @@
 | ---- | ---------- |
 | IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON public.scheduled_job USING btree (name) |
 | IDX_scheduled_job_nextRunAt | CREATE INDEX "IDX_scheduled_job_nextRunAt" ON public.scheduled_job USING btree ("nextRunAt") WHERE ((enabled = true) AND ("nextRunAt" IS NOT NULL)) |
+| IDX_scheduled_job_taskType_ownerId | CREATE INDEX "IDX_scheduled_job_taskType_ownerId" ON public.scheduled_job USING btree ("taskType", "ownerId") WHERE ("ownerId" IS NOT NULL) |
 | IDX_scheduled_job_workflowId | CREATE INDEX "IDX_scheduled_job_workflowId" ON public.scheduled_job USING btree ("workflowId") WHERE ("workflowId" IS NOT NULL) |
 | PK_893185383f029ca8d57bb781fa8 | CREATE UNIQUE INDEX "PK_893185383f029ca8d57bb781fa8" ON public.scheduled_job USING btree (id) |
 
@@ -85,6 +87,7 @@ erDiagram
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
+  varchar_36_ ownerId
   json payload
   integer recurrenceSize
   varchar_16_ recurrenceUnit

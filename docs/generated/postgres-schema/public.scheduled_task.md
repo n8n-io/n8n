@@ -96,6 +96,7 @@ erDiagram
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
+  varchar_36_ ownerId
   json payload
   integer recurrenceSize
   varchar_16_ recurrenceUnit

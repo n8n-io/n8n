@@ -60,8 +60,13 @@ export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
 export { TestRunRepository } from './test-run.repository.ee';
 export { VariablesRepository } from './variables.repository';
+export { WorkflowCredentialBindingRepository } from './workflow-credential-binding.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
+export {
+	WorkflowSubscriptionRepository,
+	type WorkflowSubscriptionInput,
+} from './workflow-subscription.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';

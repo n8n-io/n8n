@@ -21,6 +21,7 @@ export type NewScheduledJob = Pick<
 	| 'name'
 	| 'workflowId'
 	| 'nodeId'
+	| 'ownerId'
 	| 'taskType'
 	| 'payload'
 	| 'kind'
@@ -127,6 +128,19 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		nodeId: string,
 	): Promise<ScheduledJob[]> {
 		return await manager.findBy(ScheduledJob, { workflowId, nodeId });
+	}
+
+	/**
+	 * All jobs of one task type belonging to a standalone owner (a job set with no
+	 * trigger node behind it). Scoped by task type as well as owner, so two
+	 * features cannot collide on an id they each generated.
+	 */
+	async findManyByOwner(
+		manager: EntityManager,
+		ownerId: string,
+		taskType: string,
+	): Promise<ScheduledJob[]> {
+		return await manager.findBy(ScheduledJob, { ownerId, taskType });
 	}
 
 	/** The jobs with the given ids, read back within a transaction. */
@@ -242,6 +256,18 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		nodeId: string,
 	): Promise<number> {
 		const result = await manager.delete(ScheduledJob, { workflowId, nodeId });
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete all jobs of one task type belonging to a standalone owner; their
+	 * tasks cascade away. Nothing in the database does this on the owner's behalf:
+	 * `ownerId` is opaque and carries no foreign key, so the feature that
+	 * provisioned the jobs has to call this before its own row goes.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteByOwner(manager: EntityManager, ownerId: string, taskType: string): Promise<number> {
+		const result = await manager.delete(ScheduledJob, { ownerId, taskType });
 		return result.affected ?? 0;
 	}
 

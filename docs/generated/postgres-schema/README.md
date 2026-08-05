@@ -99,7 +99,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule](public.role_mapping_rule.md) | 7 |  | BASE TABLE |
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
-| [public.scheduled_job](public.scheduled_job.md) | 21 |  | BASE TABLE |
+| [public.scheduled_job](public.scheduled_job.md) | 22 |  | BASE TABLE |
 | [public.scheduled_task](public.scheduled_task.md) | 18 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
@@ -118,6 +118,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.variables](public.variables.md) | 5 |  | BASE TABLE |
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
+| [public.workflow_credential_binding](public.workflow_credential_binding.md) | 6 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
@@ -131,6 +132,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
+| [public.workflow_subscription](public.workflow_subscription.md) | 9 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -306,6 +308,8 @@ erDiagram
 "public.webhook_entity" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_builder_session" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_builder_session" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_credential_binding" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_credential_binding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_entity" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_entity" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE CASCADE"
@@ -328,6 +332,7 @@ erDiagram
 "public.workflow_review_request_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_subscription" }o--|| "public.workflow_credential_binding" : "FOREIGN KEY (#quot;workflowId#quot;, #quot;userId#quot;) REFERENCES workflow_credential_binding(#quot;workflowId#quot;, #quot;userId#quot;) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
@@ -1237,6 +1242,7 @@ erDiagram
   varchar_255_ name
   timestamp_3__with_time_zone nextRunAt
   varchar_36_ nodeId
+  varchar_36_ ownerId
   json payload
   integer recurrenceSize
   varchar_16_ recurrenceUnit
@@ -1419,6 +1425,14 @@ erDiagram
   uuid userId FK
   varchar_36_ workflowId FK
 }
+"public.workflow_credential_binding" {
+  timestamp_3__with_time_zone consentAt
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ status
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+  varchar_36_ workflowId FK
+}
 "public.workflow_dependency" {
   timestamp_3__with_time_zone createdAt
   json dependencyInfo
@@ -1542,6 +1556,17 @@ erDiagram
   smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
+}
+"public.workflow_subscription" {
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  varchar_36_ id
+  json inputs
+  varchar_255_ timezone
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+  varchar_36_ workflowId FK
 }
 "public.workflows_tags" {
   varchar_36_ tagId FK

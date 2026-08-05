@@ -90,6 +90,7 @@ describe('scheduled repositories', () => {
 		misfireGraceSeconds: 60,
 		workflowId: null,
 		nodeId: null,
+		ownerId: null,
 		taskType: 'scheduleTrigger',
 		payload: {},
 		kind: 'interval',
