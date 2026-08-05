@@ -708,8 +708,6 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return workflows ordered by id', async () => {
-		// Lowercase ids so the expected order holds under every DB collation: generated
-		// ids mix cases, which sqlite and postgres order differently.
 		const first = await createWorkflowWithHistory({ id: 'sortid01', name: 'First' }, member);
 		const second = await createWorkflowWithHistory({ id: 'sortid02', name: 'Second' }, member);
 		const third = await createWorkflowWithHistory({ id: 'sortid03', name: 'Third' }, member);
