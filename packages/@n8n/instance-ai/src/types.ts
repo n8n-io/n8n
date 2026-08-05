@@ -541,11 +541,11 @@ export interface InstanceAiNodeService {
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
 	/**
-	 * Report resource-locator parameters whose current value the given credential
-	 * can't reach. A credential can narrow a
-	 * parameter's value space after the value was chosen — the managed free-OpenAI-
-	 * credits credential only proxies an allowlisted subset of models — so this is
-	 * what lets setup offer a real choice instead of guessing a replacement.
+	 * Report resource-locator parameters whose current value the given credential can't
+	 * reach. A credential can narrow a parameter's value space after the value was chosen —
+	 * the managed free-OpenAI-credits credential only proxies an allowlisted subset of
+	 * models — which is otherwise invisible until the workflow runs and fails. Reports the
+	 * unusable value only; list the usable ones with `exploreResources` if needed.
 	 */
 	findUnavailableLocatorValues?(params: {
 		nodeType: string;

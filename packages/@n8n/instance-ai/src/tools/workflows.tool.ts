@@ -680,9 +680,9 @@ async function handleSetupApply(
 
 		if (pendingRequests.length > 0) {
 			// Carry the parameter issues, not just the node name: a value the connected
-			// credential can't reach (e.g. a model outside the free-credits allowlist)
-			// is only actionable if the agent can tell the user what was wrong and what
-			// the setup card is now offering instead.
+			// credential can't reach (e.g. a model outside the free-credits allowlist) is
+			// only actionable if the caller learns which value was wrong, so it can replace
+			// it and say what it changed.
 			const skippedNodes = pendingRequests.map((r) => ({
 				nodeName: r.node.name,
 				credentialType: r.credentialType,

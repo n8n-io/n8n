@@ -144,8 +144,11 @@ export class NodeResourceExplorerService {
 	 * `GET /v1/models` through a filtered allowlist, so a model the builder picked at
 	 * build time (when no credential existed) may simply not be callable. A user's own
 	 * key can be restricted the same way by their org's model access, so this isn't
-	 * limited to managed credentials. Rather than guess a replacement, we hand back the
-	 * reachable options so the caller can offer a real choice.
+	 * limited to managed credentials.
+	 *
+	 * Reports the unusable value only — not a replacement, and not the usable values.
+	 * Callers that want those can list them through `exploreResources`, which runs the
+	 * same lookup.
 	 *
 	 * Two things bound what this will claim, because a false "your value is invalid" is
 	 * worse than staying quiet:
@@ -159,7 +162,7 @@ export class NodeResourceExplorerService {
 	 *   parameter is left unvalidated rather than judged on a partial view.
 	 *
 	 * Each page costs a live provider round trip, so this is not free; it is the same
-	 * call the card's own picker makes when the user opens it.
+	 * call a resource-locator dropdown makes when it is opened.
 	 */
 	async findUnavailableResourceLocatorValues(
 		user: User,
@@ -186,8 +189,8 @@ export class NodeResourceExplorerService {
 			// can't call the value missing.
 			if (!listing.complete) continue;
 			// An empty list means the lookup told us nothing, not that the value is wrong.
-			// (It also covers the credential that can reach no value of this kind at all,
-			// where flagging the parameter would leave the user no way forward.)
+			// (It also covers a credential that can reach no value of this kind at all,
+			// where reporting the parameter gives the caller nothing to act on.)
 			if (listing.options.length === 0) continue;
 			if (listing.options.some((o) => o.value === candidate.currentValue)) continue;
 

@@ -165,7 +165,7 @@ describe('buildSetupRequests', () => {
 
 		it("leaves the configured value untouched — repair is the caller's job", async () => {
 			mockOpenAiNode();
-			mockUnavailable([{ name: 'gpt-5-mini', value: 'gpt-5-mini' }]);
+			mockUnavailable();
 
 			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
 			const result = await buildSetupRequests(context, node);
