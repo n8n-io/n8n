@@ -1,0 +1,45 @@
+packages/cli/src/oauth/dcr-managed-fields.ts
+  s_5b59468945b556::t_ba11c8f6fe0ad5 1-24
+packages/cli/src/oauth/oauth.service.ts
+  s_5b59468945b556::t_eabaa3fa0e8072 54-56
+  s_5b59468945b556::t_de21fd79f46a31 1130-1162
+  s_5b59468945b556::t_588de561824a7e 720-725
+  s_5b59468945b556::t_036b5cd21c198a 11-17,53
+packages/cli/src/credentials/credentials.service.ts
+  s_5b59468945b556::t_d9ab197887e7ac 62
+  s_5b59468945b556::t_ac8b00ff18bcbc 816-819
+  s_5b59468945b556::t_11757970380fa2 820-824
+  s_5b59468945b556::t_3688fdcbb949b5 825-826
+packages/cli/src/credentials/__tests__/credentials.service.dcr-fields.test.ts
+  s_5b59468945b556::t_c020859a01d48c 42
+  s_5b59468945b556::t_860a7d85a32a5b 23-26
+  s_5b59468945b556::t_2ad973f8139009 132-148
+  s_5b59468945b556::t_102cdc870a6437 1-22,27-41,43-131,149
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  h_44f8d1c0f2f8c4 5335-5337
+  s_5b59468945b556::t_540d1259e26a32 5339
+  s_5b59468945b556::t_15e5a2990f3dbc 13
+  s_5b59468945b556::t_cb16fb862611d4 5311-5321
+  s_5b59468945b556::t_b2c78f931d0035 5310,5322-5334,5338,5340-5341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "769b1a6e863ac1aad2e6cb1f483e376f8b507501",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b59468945b556": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52c7c7e5-459b-468a-922e-757e430c544e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
