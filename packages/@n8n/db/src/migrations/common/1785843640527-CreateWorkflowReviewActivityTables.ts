@@ -7,12 +7,12 @@ const REQUEST_TABLE = 'workflow_review_request';
 const USER_TABLE = 'user';
 
 const ACTIVITY_TYPES = [
-	'submitted',
-	'commented',
-	'changes_requested',
-	'version_synced',
-	'approved',
-	'published',
+	'review.created',
+	'comment.created',
+	'review.changes_requested',
+	'review.version_updated',
+	'review.approved',
+	'workflow.published',
 ];
 
 export class CreateWorkflowReviewActivityTables1785843640527 implements ReversibleMigration {

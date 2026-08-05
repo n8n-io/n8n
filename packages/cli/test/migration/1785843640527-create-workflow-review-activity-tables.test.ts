@@ -121,7 +121,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			 VALUES (:workflowReviewRequestId, :type, :createdById, :createdAt)`,
 			{
 				workflowReviewRequestId: fields.workflowReviewRequestId,
-				type: fields.type ?? 'submitted',
+				type: fields.type ?? 'review.created',
 				createdById: fields.createdById ?? null,
 				createdAt: new Date(),
 			},
@@ -176,10 +176,14 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			const commentData = { revisions: [{ body: 'First draft' }] };
 			const editedAt = new Date('2026-01-02T03:04:05.678Z');
 			const savedSubmission = await activityRepository.save(
-				activityRepository.create({ workflowReviewRequestId: requestId, type: 'submitted', data }),
+				activityRepository.create({
+					workflowReviewRequestId: requestId,
+					type: 'review.created',
+					data,
+				}),
 			);
 			const savedThread = await activityRepository.save(
-				activityRepository.create({ workflowReviewRequestId: requestId, type: 'commented' }),
+				activityRepository.create({ workflowReviewRequestId: requestId, type: 'comment.created' }),
 			);
 			const savedMessage = await commentRepository.save(
 				commentRepository.create({
@@ -206,7 +210,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 
 			expect(typeof submission.id).toBe('number');
 			expect(thread.id).toBeGreaterThan(submission.id);
-			expect(submission.type).toBe('submitted');
+			expect(submission.type).toBe('review.created');
 			expect(submission.typeVersion).toBe(1);
 			expect(submission.data).toEqual(data);
 			expect(submission.createdById).toBeNull();
@@ -249,7 +253,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				const requestId = await seedRequest(context);
 				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
-					type: 'commented',
+					type: 'comment.created',
 				});
 				await insertComment(context, activityId);
 
@@ -280,7 +284,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				const requestId = await seedRequest(context);
 				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
-					type: 'commented',
+					type: 'comment.created',
 				});
 				await insertComment(context, activityId);
 				await insertComment(context, activityId);
@@ -310,7 +314,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				const userId = await seedUser(context);
 				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
-					type: 'commented',
+					type: 'comment.created',
 					createdById: userId,
 				});
 				await insertComment(context, activityId, userId);

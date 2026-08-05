@@ -4,8 +4,8 @@ import type { IDataObject } from 'n8n-workflow';
 import { DateTimeColumn, JsonColumn, WithCreatedAt } from './abstract-entity';
 
 /**
- * One message in a comment thread. A `type = 'commented'` activity entry is the thread header, owning
- * these rows; replies are messages here, not further activity entries. A header with no messages
+ * One message in a comment thread. A `type = 'comment.created'` activity entry is the thread header,
+ * owning these rows; replies are messages here, not further activity entries. A header with no messages
  * cannot be rendered, having no `body` of its own, so create a thread and its first message in one
  * transaction.
  */

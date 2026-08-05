@@ -3,14 +3,17 @@ import type { IDataObject } from 'n8n-workflow';
 
 import { JsonColumn, WithCreatedAt } from './abstract-entity';
 
-/** Feed entry kinds. Constrained by a CHECK on the column, so a new kind needs a migration. */
+/**
+ * Feed entry kinds, named `<model>.<event>`: a dot separates model from event, snake_case within a
+ * multi-word event. Constrained by a CHECK on the column, so a new kind needs a migration.
+ */
 export type WorkflowReviewActivityType =
-	| 'submitted'
-	| 'commented'
-	| 'changes_requested'
-	| 'version_synced'
-	| 'approved'
-	| 'published';
+	| 'review.created'
+	| 'comment.created'
+	| 'review.changes_requested'
+	| 'review.version_updated'
+	| 'review.approved'
+	| 'workflow.published';
 
 /**
  * Altering this table on SQLite recreates it, and `workflow_review_activity_comment` references it
