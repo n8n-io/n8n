@@ -1,3 +1,4 @@
 .output/
 eval-pr-comment.md
 eval-results.json
+eval-rows.jsonl

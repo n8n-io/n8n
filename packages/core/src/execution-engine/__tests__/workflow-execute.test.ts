@@ -3370,7 +3370,7 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			// Spy on convertBinaryData
-			const convertBinaryDataModule = await import('../../utils/convert-binary-data');
+			const convertBinaryDataModule = await import('../../utils/convert-binary-data.js');
 			const convertBinaryDataSpy = vi.spyOn(convertBinaryDataModule, 'convertBinaryData');
 
 			// ACT

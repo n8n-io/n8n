@@ -12,7 +12,7 @@ import { QuickConnectConfig } from './quick-connect.config';
 import { QuickConnectError } from './quick-connect.errors';
 
 const backendHandlers = {
-	firecrawl: async () => (await import('./handlers/firecrawl.handler')).FirecrawlHandler,
+	firecrawl: async () => (await import('./handlers/firecrawl.handler.js')).FirecrawlHandler,
 };
 
 @Service()

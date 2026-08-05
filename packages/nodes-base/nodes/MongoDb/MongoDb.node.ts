@@ -22,8 +22,10 @@ import type {
 import {
 	buildParameterizedConnString,
 	connectMongoClient,
+	parseAndResolveQueryParameters,
 	prepareFields,
 	prepareItems,
+	serializeMongoItems,
 	stringifyObjectIDs,
 	validateAndResolveMongoCredentials,
 } from './GenericFunctions';
@@ -37,7 +39,7 @@ export class MongoDb implements INodeType {
 		name: 'mongoDb',
 		icon: 'file:mongodb.svg',
 		group: ['input'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Find, insert and update documents in MongoDB',
 		defaults: {
 			name: 'MongoDB',
@@ -127,8 +129,11 @@ export class MongoDb implements INodeType {
 			if (operation === 'aggregate') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const queryParameter = JSON.parse(
+						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('queryParameters', i, '[]'),
+							node,
+							i,
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {
@@ -158,9 +163,15 @@ export class MongoDb implements INodeType {
 			if (operation === 'delete') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
+						const queryParameter = parseAndResolveQueryParameters(
+							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('queryParameters', i, '[]'),
+							node,
+							i,
+						) as Document;
 						const { deletedCount } = await mdb
 							.collection(this.getNodeParameter('collection', i) as string)
-							.deleteMany(JSON.parse(this.getNodeParameter('query', i) as string) as Document);
+							.deleteMany(queryParameter);
 
 						returnData.push({
 							json: { deletedCount },
@@ -182,8 +193,11 @@ export class MongoDb implements INodeType {
 			if (operation === 'find') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const queryParameter = JSON.parse(
+						const queryParameter = parseAndResolveQueryParameters(
 							this.getNodeParameter('query', i) as string,
+							this.getNodeParameter('queryParameters', i, '[]'),
+							node,
+							i,
 						) as IDataObject;
 
 						if (queryParameter._id && typeof queryParameter._id === 'string') {
@@ -820,6 +834,10 @@ export class MongoDb implements INodeType {
 			}
 		} finally {
 			await client.close().catch(() => {});
+		}
+
+		if (nodeVersion >= 1.4) {
+			return [await serializeMongoItems.call(this, returnData)];
 		}
 
 		return [stringifyObjectIDs(returnData)];

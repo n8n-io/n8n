@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "en": {
+            "type": "number"
+        },
+        "es": {
+            "type": "number"
+        },
+        "et": {
+            "type": "number"
+        },
+        "fi": {
+            "type": "number"
+        },
+        "pt": {
+            "type": "number"
+        }
+    },
+    "version": 1
+}

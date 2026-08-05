@@ -3,9 +3,39 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { InstanceAiContext } from '../../../types';
 import {
 	ensureWebhookIds,
+	isMockableTriggerNodeType,
+	isTriggerNodeType,
+	isWaitGateNode,
+	nodeCanReachItself,
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
 } from '../workflow-json-utils';
+
+describe('trigger detection', () => {
+	it('classifies suffix-less trigger types via the canonical n8n-workflow detection', () => {
+		// These have no "Trigger" suffix — the old local heuristic missed them.
+		expect(isTriggerNodeType('n8n-nodes-base.webhook')).toBe(true);
+		expect(isTriggerNodeType('n8n-nodes-base.cron')).toBe(true);
+		expect(isTriggerNodeType('n8n-nodes-base.emailReadImap')).toBe(true);
+	});
+
+	it('classifies suffixed triggers and rejects non-triggers', () => {
+		expect(isTriggerNodeType('n8n-nodes-base.gmailTrigger')).toBe(true);
+		expect(isTriggerNodeType('@n8n/n8n-nodes-langchain.chatTrigger')).toBe(true);
+		expect(isTriggerNodeType('n8n-nodes-base.slack')).toBe(false);
+		expect(isTriggerNodeType(undefined)).toBe(false);
+	});
+
+	it('marks only the deterministic-input trigger types as mockable', () => {
+		expect(isMockableTriggerNodeType('n8n-nodes-base.manualTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.webhook')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.formTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.scheduleTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('@n8n/n8n-nodes-langchain.chatTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.gmailTrigger')).toBe(false);
+		expect(isMockableTriggerNodeType(undefined)).toBe(false);
+	});
+});
 
 describe('ensureWebhookIds', () => {
 	it('fails updates when existing webhook IDs cannot be loaded', async () => {
@@ -709,5 +739,65 @@ describe('preserveExistingSetupValues', () => {
 		await expect(preserveExistingSetupValues(workflow, 'wf-1', context)).rejects.toThrow(
 			'Failed to load existing workflow wf-1 to preserve setup values: Workflow not found',
 		);
+	});
+});
+
+describe('isWaitGateNode', () => {
+	const node = (
+		type: string,
+		parameters: Record<string, unknown> = {},
+	): WorkflowJSON['nodes'][number] =>
+		({
+			id: 'node-1',
+			name: 'Node',
+			type,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters,
+		}) as WorkflowJSON['nodes'][number];
+
+	it('detects send-and-wait operations and pausing node types', () => {
+		expect(isWaitGateNode(node('n8n-nodes-base.gmail', { operation: 'sendAndWait' }))).toBe(true);
+		expect(isWaitGateNode(node('n8n-nodes-base.slack', { operation: 'sendAndWait' }))).toBe(true);
+		expect(isWaitGateNode(node('n8n-nodes-base.wait'))).toBe(true);
+		expect(isWaitGateNode(node('n8n-nodes-base.form'))).toBe(true);
+	});
+
+	it('rejects ordinary operations and node types', () => {
+		expect(isWaitGateNode(node('n8n-nodes-base.gmail', { operation: 'send' }))).toBe(false);
+		expect(isWaitGateNode(node('n8n-nodes-base.set'))).toBe(false);
+	});
+});
+
+describe('nodeCanReachItself', () => {
+	const withConnections = (connections: Record<string, unknown>): WorkflowJSON =>
+		({ name: 'test', nodes: [], connections }) as unknown as WorkflowJSON;
+	const main = (...targets: string[]) => ({
+		main: [targets.map((target) => ({ node: target, type: 'main', index: 0 }))],
+	});
+
+	it('finds nodes on a revision loop and spares the terminal branch', () => {
+		const json = withConnections({
+			Format: main('Email'),
+			Email: main('Approved?'),
+			'Approved?': {
+				main: [
+					[{ node: 'Publish', type: 'main', index: 0 }],
+					[{ node: 'Revise', type: 'main', index: 0 }],
+				],
+			},
+			Revise: main('Format'),
+		});
+
+		expect(nodeCanReachItself(json, 'Email')).toBe(true);
+		expect(nodeCanReachItself(json, 'Revise')).toBe(true);
+		expect(nodeCanReachItself(json, 'Publish')).toBe(false);
+	});
+
+	it('returns false on acyclic graphs and unknown nodes', () => {
+		const json = withConnections({ A: main('B'), B: main('C') });
+
+		expect(nodeCanReachItself(json, 'B')).toBe(false);
+		expect(nodeCanReachItself(json, 'Missing')).toBe(false);
 	});
 });

@@ -7,7 +7,7 @@ import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/dom';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import type { SourceControlledFile } from '@n8n/api-types';
 
@@ -44,7 +44,7 @@ vi.mock('@/app/composables/useLoadingService', () => ({
 }));
 
 // Mock the toast composable to prevent Element Plus DOM errors
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

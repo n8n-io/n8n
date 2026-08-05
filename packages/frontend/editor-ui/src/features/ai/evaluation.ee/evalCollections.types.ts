@@ -1,7 +1,5 @@
-// Re-exports from @n8n/api-types for consumer convenience — co-located with
-// the other eval-collections FE files so callers don't reach across packages
-// for every type. Adding a new shared type? Export it from `@n8n/api-types`
-// first, then surface it here.
+// Re-exports from @n8n/api-types so eval-collections FE callers don't reach
+// across packages. New shared type? Export it from `@n8n/api-types` first.
 
 export type {
 	AddRunToCollectionPayload,
@@ -20,6 +18,7 @@ export type {
 	EvaluationCollectionRecord,
 	EvaluationCollectionRunSummary,
 	GenerateInsightsPayload,
+	MetricScale,
 	UpdateEvaluationCollectionPayload,
 } from '@n8n/api-types';
 

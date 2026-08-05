@@ -561,6 +561,25 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(mcpClientCloseMock).toHaveBeenCalledTimes(1);
 		});
 
+		it('returns the original MCP name for collision-suffixed tools', async () => {
+			const deps = createService();
+			const { service } = deps;
+			arrangeResolvableConnection(deps);
+			mcpClientListToolsMock.mockResolvedValue([
+				{
+					name: 'mcp_linear_read_file_12345678',
+					description: 'Read a file',
+					mcpTool: true,
+					mcpServerName: 'mcp_linear',
+					mcpToolName: 'read file',
+				},
+			] satisfies BuiltTool[]);
+
+			const result = await service.listConnectionTools(user, 'conn-1');
+
+			expect(result).toEqual([{ name: 'read file', description: 'Read a file' }]);
+		});
+
 		it('throws NotFoundError when the connection does not belong to the user', async () => {
 			const { service, connectionRepository, mcpRegistryService } = createService();
 			connectionRepository.findOneBy.mockResolvedValue(null);

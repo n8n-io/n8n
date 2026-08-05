@@ -26,6 +26,8 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
+	SLACK_NODE_TYPE,
+	TELEGRAM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -44,6 +46,14 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
+	filterTelegramHitlParameters,
+	useEnhancedHitlTelegramExperiment,
+} from '@/experiments/enhancedHitlTelegram';
+import {
+	filterSlackHitlParameters,
+	useEnhancedHitlSlackExperiment,
+} from '@/experiments/enhancedHitlSlack';
+import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
 } from '@/features/ndv/shared/ndv.utils';
@@ -59,6 +69,7 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nNotice,
+	N8nSectionHeader,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -113,6 +124,8 @@ const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
+const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
+const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -176,6 +189,7 @@ interface ParameterComputedData {
 	dependentParametersValues: string | null;
 	issues: string[];
 	isCalloutVisible: boolean;
+	indentedUnderSection: boolean;
 }
 
 const parameterItems = ref<ParameterComputedData[]>([]);
@@ -184,7 +198,14 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
+	[
+		() => props.parameters,
+		() => props.nodeValues,
+		node,
+		hasChatOrManualChatParent,
+		isEnhancedHitlTelegramEnabled,
+		isEnhancedHitlSlackEnabled,
+	],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -225,6 +246,19 @@ throttledWatch(
 			(node.value.typeVersion ?? 0) >= 3.1
 		) {
 			filteredParameters = updateAgentParameters(parameters, node.value.name);
+		} else if (
+			node.value &&
+			node.value.type === TELEGRAM_NODE_TYPE &&
+			!isEnhancedHitlTelegramEnabled.value
+		) {
+			filteredParameters = filterTelegramHitlParameters(parameters);
+		} else if (
+			node.value &&
+			// usableAsTool appends `Tool` to the node type; gate the tool variant too.
+			(node.value.type === SLACK_NODE_TYPE || node.value.type === `${SLACK_NODE_TYPE}Tool`) &&
+			!isEnhancedHitlSlackEnabled.value
+		) {
+			filteredParameters = filterSlackHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}
@@ -251,9 +285,30 @@ throttledWatch(
 					dependentParametersValues,
 					issues,
 					isCalloutVisible: calloutVisible,
+					indentedUnderSection: false,
 				};
 			}),
 		);
+
+		// Fields following a section header (a `typeOptions.sectionHeader` notice) render
+		// indented beneath it, so the section visually groups its fields. The run ends at
+		// the next section header or the next collection (e.g. the trailing "Options" block).
+		let inSection = false;
+		for (const item of items) {
+			const isSectionHeader =
+				item.parameter.type === 'notice' && item.parameter.typeOptions?.sectionHeader === true;
+			const endsSection =
+				isSectionHeader ||
+				item.parameter.type === 'collection' ||
+				item.parameter.type === 'fixedCollection';
+			item.indentedUnderSection = inSection && !endsSection;
+			if (isSectionHeader) {
+				inSection = true;
+			} else if (endsSection) {
+				inSection = false;
+			}
+		}
+
 		parameterItems.value = items;
 
 		// Get new parameter names
@@ -751,6 +806,7 @@ watch(
 				},
 			]"
 			data-test-id="parameter-item"
+			:data-section-indent="item.indentedUnderSection ? 'true' : undefined"
 		>
 			<slot v-if="indexToShowSlotAt === index" />
 
@@ -772,6 +828,13 @@ watch(
 				v-else-if="item.parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
+			/>
+
+			<N8nSectionHeader
+				v-else-if="item.parameter.type === 'notice' && item.parameter.typeOptions?.sectionHeader"
+				class="parameter-item"
+				:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
+				bordered
 			/>
 
 			<N8nNotice
@@ -1104,6 +1167,11 @@ watch(
 <style lang="scss" module>
 .parameterContainer {
 	scroll-margin: var(--spacing--xl);
+}
+
+/* Fields grouped under a section header (e.g. "Advanced Interactivity") are indented. */
+.parameterContainer[data-section-indent='true'] {
+	padding-left: var(--spacing--sm);
 }
 
 .firstParameter {

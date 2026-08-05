@@ -7,13 +7,13 @@ import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useRoute, useRouter } from 'vue-router';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useDebounce } from '@/app/composables/useDebounce';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDebounce } from '@n8n/composables/useDebounce';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { executionRetryMessage } from '../executions.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 

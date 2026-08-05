@@ -6,13 +6,13 @@ import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from './constants';
+import { INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
 import { SidebarStateKey } from './instanceAiLayout';
 
 const store = useInstanceAiStore();
@@ -56,10 +56,8 @@ provide(SidebarStateKey, {
 // Reset to collapsed when leaving the AI chat namespace, so the next entry
 // starts collapsed by default. Refreshes (which don't trigger the guard) keep
 // the user's current open/closed state.
-const CHAT_ROUTE_NAMES = new Set<string>([INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW]);
 onBeforeRouteLeave((to) => {
-	const name = typeof to.name === 'string' ? to.name : undefined;
-	if (!name || !CHAT_ROUTE_NAMES.has(name)) {
+	if (!isInstanceAiChatRoute(to.name)) {
 		sidebarCollapsed.value = true;
 	}
 });
@@ -135,8 +133,14 @@ watch(
 );
 
 onUnmounted(() => {
-	store.stopCreditsPushListener();
-	settingsStore.stopGatewayPushListener();
+	// On a transient remount the new instance mounts before this one unmounts, so
+	// only tear down when the route actually left the module (isInstanceAiChatRoute).
+	// Stopping the store-level push listeners on a remount would kill the ones the
+	// new instance relies on (its start calls no-op while the old one is registered).
+	if (!isInstanceAiChatRoute(route.name)) {
+		store.stopCreditsPushListener();
+		settingsStore.stopGatewayPushListener();
+	}
 });
 </script>
 

@@ -1,4 +1,5 @@
 name: 'Test: Instance AI Discovery Evals'
+run-name: "Test: Instance AI Discovery Evals (branch=${{ inputs.branch || 'master' }}, filter=${{ inputs.filter || 'all' }}, trials=${{ inputs.trials }})"
 
 on:
   workflow_call:

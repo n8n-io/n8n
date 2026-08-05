@@ -44,8 +44,9 @@ describe('scheduler loops racing across two mains', () => {
 			executor: { leaseSeconds: 30, lookaheadSeconds: 5, batchSize },
 		});
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 		return scheduler;

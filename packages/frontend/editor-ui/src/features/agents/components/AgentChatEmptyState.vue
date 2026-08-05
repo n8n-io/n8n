@@ -1,27 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
-const props = defineProps<{
-	endpoint: 'build' | 'chat';
-}>();
-
-const icon = computed(() => (props.endpoint === 'build' ? 'wand-sparkles' : 'message-square'));
-const title = computed(() =>
-	props.endpoint === 'build' ? 'Build your agent' : 'Chat with your agent',
-);
-const subtitle = computed(() =>
-	props.endpoint === 'build'
-		? 'Describe what you want your agent to do'
-		: 'Send a message to start a conversation',
-);
+const i18n = useI18n();
 </script>
 
 <template>
-	<div :class="[$style.emptyState, endpoint === 'build' && $style.buildEmptyState]">
-		<N8nIcon :icon="icon" :size="32" color="text-light" />
-		<N8nText tag="p" bold>{{ title }}</N8nText>
-		<N8nText size="small" color="text-light">{{ subtitle }}</N8nText>
+	<div :class="$style.emptyState">
+		<N8nIcon icon="message-square" :size="32" color="text-light" />
+		<N8nText tag="p" bold>{{ i18n.baseText('agents.chat.emptyState.title') }}</N8nText>
+		<N8nText size="small" color="text-light">
+			{{ i18n.baseText('agents.chat.emptyState.description') }}
+		</N8nText>
 	</div>
 </template>
 

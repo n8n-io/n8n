@@ -2,18 +2,18 @@
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
 } from '@/app/constants/modals';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -323,7 +323,7 @@ function goToUpgrade() {
 				/>
 			</div>
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
 			class="mt-2xl mb-l"
 			data-test-id="secrets-provider-connections-content-unlicensed"
@@ -342,7 +342,7 @@ function goToUpgrade() {
 					</template>
 				</I18nT>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 </template>
 

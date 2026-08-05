@@ -8,13 +8,18 @@ import { N8nIcon, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { getExpectedFieldsForMetrics } from '../../evaluation.constants';
 
-const props = defineProps<{
-	sliceInputs: {
-		fieldNames: readonly string[];
-		values: Record<string, string>;
-		hasExecution: boolean;
-	};
-}>();
+const props = withDefaults(
+	defineProps<{
+		sliceInputs: {
+			fieldNames: readonly string[];
+			values: Record<string, string>;
+			hasExecution: boolean;
+		};
+		/** Which parts to render. Defaults to both (wizard behavior). */
+		section?: 'all' | 'inputs' | 'expected';
+	}>(),
+	{ section: 'all' },
+);
 
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const locale = useI18n();
@@ -22,41 +27,46 @@ const locale = useI18n();
 const { inputs, expectedValues, selectedMetricKeys } = storeToRefs(wizardStore);
 
 const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetricKeys.value));
+
+const showInputs = computed(() => props.section !== 'expected');
+const showExpected = computed(() => props.section !== 'inputs');
 </script>
 
 <template>
 	<div :class="$style.formBlock">
-		<div
-			v-if="props.sliceInputs.fieldNames.length > 0"
-			:class="$style.heading"
-			data-test-id="evaluations-wizard-sidepanel-input-heading"
-		>
-			<N8nText size="xsmall" bold color="text-dark">
-				{{ locale.baseText('evaluations.wizardSidepanel.step2.input') }}
-			</N8nText>
-		</div>
+		<template v-if="showInputs">
+			<div
+				v-if="props.sliceInputs.fieldNames.length > 0"
+				:class="$style.heading"
+				data-test-id="evaluations-wizard-sidepanel-input-heading"
+			>
+				<N8nText size="xsmall" bold color="text-dark">
+					{{ locale.baseText('evaluations.wizardSidepanel.step2.input') }}
+				</N8nText>
+			</div>
+
+			<div
+				v-for="name in props.sliceInputs.fieldNames"
+				:key="`input-${name}`"
+				:class="$style.field"
+				:data-test-id="`evaluations-wizard-sidepanel-input-${name}`"
+			>
+				<N8nText size="xsmall" color="text-base">
+					{{ name }}
+				</N8nText>
+				<N8nInput
+					:model-value="inputs[name] ?? ''"
+					type="textarea"
+					:rows="3"
+					size="small"
+					:placeholder="locale.baseText('evaluations.wizardSidepanel.step2.input.placeholder')"
+					@update:model-value="wizardStore.setInputValue(name, $event)"
+				/>
+			</div>
+		</template>
 
 		<div
-			v-for="name in props.sliceInputs.fieldNames"
-			:key="`input-${name}`"
-			:class="$style.field"
-			:data-test-id="`evaluations-wizard-sidepanel-input-${name}`"
-		>
-			<N8nText size="xsmall" color="text-base">
-				{{ name }}
-			</N8nText>
-			<N8nInput
-				:model-value="inputs[name] ?? ''"
-				type="textarea"
-				:rows="3"
-				size="small"
-				:placeholder="locale.baseText('evaluations.wizardSidepanel.step2.input.placeholder')"
-				@update:model-value="wizardStore.setInputValue(name, $event)"
-			/>
-		</div>
-
-		<div
-			v-for="field in expectedFields"
+			v-for="field in showExpected ? expectedFields : []"
 			:key="`expected-${field.name}`"
 			:class="$style.field"
 			:data-test-id="`evaluations-wizard-sidepanel-expected-${field.name}`"

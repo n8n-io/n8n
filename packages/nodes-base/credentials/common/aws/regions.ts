@@ -20,6 +20,11 @@ export const regions: RegionData[] = [
 		location: 'Hong Kong',
 	},
 	{
+		name: 'ap-east-2',
+		displayName: 'Asia Pacific',
+		location: 'Taipei',
+	},
+	{
 		name: 'ap-south-1',
 		displayName: 'Asia Pacific',
 		location: 'Mumbai',
@@ -53,6 +58,11 @@ export const regions: RegionData[] = [
 		name: 'ap-southeast-5',
 		displayName: 'Asia Pacific',
 		location: 'Malaysia',
+	},
+	{
+		name: 'ap-southeast-6',
+		displayName: 'Asia Pacific',
+		location: 'New Zealand',
 	},
 	{
 		name: 'ap-southeast-7',

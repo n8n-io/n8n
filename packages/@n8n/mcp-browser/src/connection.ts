@@ -206,7 +206,7 @@ export class BrowserConnection {
 	private async createAdapter(): Promise<Adapter> {
 		if (this.config.mode === 'remote') {
 			// Remote mode is only supported by the Playwright adapter
-			const { PlaywrightAdapter } = await import('./adapters/playwright');
+			const { PlaywrightAdapter } = await import('./adapters/playwright.js');
 			return new PlaywrightAdapter(this.config, {
 				relay: this.externalRelay,
 				cdpEndpoint: this.externalCdpEndpoint,
@@ -214,10 +214,10 @@ export class BrowserConnection {
 			});
 		}
 		if (this.config.adapter === 'agent-browser') {
-			const { AgentBrowserAdapter } = await import('./adapters/agent-browser');
+			const { AgentBrowserAdapter } = await import('./adapters/agent-browser.js');
 			return new AgentBrowserAdapter(this.config);
 		}
-		const { PlaywrightAdapter } = await import('./adapters/playwright');
+		const { PlaywrightAdapter } = await import('./adapters/playwright.js');
 		return new PlaywrightAdapter(this.config);
 	}
 }

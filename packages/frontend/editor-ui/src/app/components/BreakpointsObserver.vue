@@ -8,7 +8,7 @@ import {
 } from '@/app/constants/breakpoints';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { getBannerRowHeight } from '@/app/utils/htmlUtils';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 
 /**
  * matching element.io https://element.eleme.io/#/en-US/component/layout#col-attributes

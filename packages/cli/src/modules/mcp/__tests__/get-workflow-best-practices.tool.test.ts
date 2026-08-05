@@ -28,7 +28,11 @@ describe('get-workflow-best-practices MCP tool', () => {
 		telemetry = mock<Telemetry>();
 	});
 
-	const createTool = () => createGetWorkflowBestPracticesTool(user, telemetry);
+	const createTool = (canvasGroupsEnabled = false) =>
+		createGetWorkflowBestPracticesTool(user, telemetry, { canvasGroupsEnabled });
+
+	const textOf = (result: { content: Array<{ type: string; text?: string }> }) =>
+		result.content.map((c) => c.text ?? '').join('\n');
 
 	test('exposes the expected tool name and read-only annotations', () => {
 		const tool = createTool();
@@ -98,5 +102,33 @@ describe('get-workflow-best-practices MCP tool', () => {
 		expect(result.structuredContent?.technique).toBe(WorkflowTechnique.MONITORING);
 		expect(result.structuredContent?.documentation).toBeUndefined();
 		expect(result.structuredContent?.message).toContain('does not have detailed best-practices');
+	});
+
+	describe('node grouping guidance', () => {
+		const listText = async (canvasGroupsEnabled: boolean) => {
+			const result = await createTool(canvasGroupsEnabled).handler(
+				{ technique: 'list' },
+				{} as never,
+			);
+			return textOf(result);
+		};
+
+		describe('when canvasGroupsEnabled is true', () => {
+			test('appends a grouping guidance section to the technique list', async () => {
+				const text = await listText(true);
+
+				expect(text).toContain('## Grouping');
+				expect(text).toMatch(/sub-workflow/i); // groups vs sub-workflows
+				expect(text).toMatch(/collapsed/i); // created collapsed by default
+			});
+		});
+
+		describe('when canvasGroupsEnabled is false', () => {
+			test('does not mention grouping in the technique list', async () => {
+				const text = await listText(false);
+
+				expect(text).not.toContain('## Grouping');
+			});
+		});
 	});
 });

@@ -6,6 +6,7 @@ import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
 import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
@@ -161,6 +162,8 @@ describe('PostHog', () => {
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
 				personProperties: {
 					created_at_timestamp: createdAt.getTime().toString(),
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
 				},
 				groups: { company: instanceId },
 			});
@@ -219,6 +222,8 @@ describe('PostHog', () => {
 				// Mutated per test; reset so test ordering doesn't leak override
 				// state into unrelated cases.
 				globalConfig.evaluation.collectionsEnabled = false;
+				globalConfig.evaluation.configEvalsEnabled = false;
+				globalConfig.evaluation.agentEvalsEnabled = false;
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -231,6 +236,18 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '084_eval_collections': true });
+			});
+
+			it('force-enables the config-evaluations variant when N8N_CONFIG_EVALS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.configEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
 			});
 
 			it('leaves flags untouched when no override is configured', async () => {
@@ -256,6 +273,30 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toEqual({ '084_eval_collections': true });
+			});
+
+			it('force-enables the agent-evals flag when N8N_AGENT_EVALS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.agentEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '101_agent_evals': true });
+			});
+
+			it('falls back to the agent-evals override when PostHog throws', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog down'));
+				globalConfig.evaluation.agentEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ '101_agent_evals': true });
 			});
 		});
 	});

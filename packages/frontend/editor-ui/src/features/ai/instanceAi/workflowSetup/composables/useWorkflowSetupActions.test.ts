@@ -7,7 +7,7 @@ import { makeWorkflowSetupSection } from '../__tests__/factories';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
 
 const telemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 

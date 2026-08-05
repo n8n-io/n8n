@@ -16,8 +16,7 @@ export const userTargetRLC: INodeProperties = {
 	displayName: 'User',
 	name: 'userTarget',
 	type: 'resourceLocator',
-	// Resolved once per run (from the first item) and reused for every item, so it accepts a fixed
-	// value or an expression; for per-item targeting, feed a single item or use Loop Over Items.
+	// Evaluated per input item, so an expression can target a different user for each item.
 	default: { mode: 'id', value: '' },
 	required: true,
 	modes: [
@@ -30,7 +29,7 @@ export const userTargetRLC: INodeProperties = {
 		},
 	],
 	description:
-		'The user whose To Do lists and tasks the Service Principal should act on. Applies to the whole node (every item in the execution).',
+		'The user whose To Do lists and tasks the Service Principal should act on. Evaluated per input item — an expression can target a different user for each item.',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],

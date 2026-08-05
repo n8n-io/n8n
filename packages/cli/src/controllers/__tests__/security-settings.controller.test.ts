@@ -1,11 +1,10 @@
 import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { LicenseState } from '@n8n/backend-common';
-import type { EventService } from '@/events/event.service';
-import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
@@ -15,113 +14,168 @@ describe('SecuritySettingsController', () => {
 	const securitySettingsService = mock<SecuritySettingsService>();
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const licenseState = mock<LicenseState>();
-	const eventService = mock<EventService>();
 	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 		securityPolicyManagedByEnv: false,
 	});
-	const instanceRedactionEnforcementService = mock<InstanceRedactionEnforcementService>();
 
 	const controller = new SecuritySettingsController(
 		securitySettingsService,
 		workflowReviewPolicyService,
 		licenseState,
-		eventService,
 		instanceSettingsLoaderConfig,
-		instanceRedactionEnforcementService,
 	);
 
-	const req = mock<AuthenticatedRequest>({
-		user: { id: 'user-1', email: 'admin@n8n.io', firstName: 'Admin', lastName: 'User' },
-	});
+	const req = {
+		user: {
+			id: 'user-1',
+			email: 'admin@n8n.io',
+			firstName: 'Admin',
+			lastName: 'User',
+			role: { slug: 'global:owner' },
+		},
+	} as unknown as AuthenticatedRequest;
+
+	const originalWorkflowReviewsFlag = process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
+		delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
+		licenseState.isWorkflowReviewsLicensed.mockReturnValue(false);
 	});
 
-	const redactionPolicyEvents = () =>
-		eventService.emit.mock.calls.filter(
-			([name, payload]) =>
-				name === 'instance-policies-updated' &&
-				typeof payload === 'object' &&
-				payload !== null &&
-				'settingName' in payload &&
-				String(payload.settingName).startsWith('data_redaction'),
-		);
+	afterAll(() => {
+		if (originalWorkflowReviewsFlag === undefined) {
+			delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
+		} else {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = originalWorkflowReviewsFlag;
+		}
+	});
 
-	const dto = (floor: 'off' | 'production' | 'all') =>
-		({ redactionEnforcement: { floor } }) as UpdateSecuritySettingsDto;
+	describe('getSecuritySettings', () => {
+		it('delegates to the service and adds managedByEnv', async () => {
+			securitySettingsService.getSecuritySettings.mockResolvedValue({
+				personalSpacePublishing: true,
+				personalSpaceSharing: false,
+				publishedPersonalWorkflowsCount: 5,
+				sharedPersonalWorkflowsCount: 12,
+				sharedPersonalCredentialsCount: 3,
+				redactionEnforcement: { floor: 'production' },
+			});
 
-	describe('updateSecuritySettings — redaction telemetry', () => {
-		it('emits the redaction floor when enforcement is enabled', async () => {
-			instanceRedactionEnforcementService.get.mockResolvedValue('off');
+			const result = await controller.getSecuritySettings(req, mock());
 
-			await controller.updateSecuritySettings(req, mock(), dto('all'));
+			expect(result).toEqual({
+				personalSpacePublishing: true,
+				personalSpaceSharing: false,
+				publishedPersonalWorkflowsCount: 5,
+				sharedPersonalWorkflowsCount: 12,
+				sharedPersonalCredentialsCount: 3,
+				redactionEnforcement: { floor: 'production' },
+				managedByEnv: false,
+			});
+		});
 
-			expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('all');
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'redaction-enforcement-updated',
-				expect.anything(),
+		it('reflects managedByEnv when set', async () => {
+			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
+			securitySettingsService.getSecuritySettings.mockResolvedValue({
+				personalSpacePublishing: true,
+				personalSpaceSharing: true,
+				publishedPersonalWorkflowsCount: 0,
+				sharedPersonalWorkflowsCount: 0,
+				sharedPersonalCredentialsCount: 0,
+				redactionEnforcement: { floor: 'off' },
+			});
+
+			const result = await controller.getSecuritySettings(req, mock());
+
+			expect(result.managedByEnv).toBe(true);
+		});
+
+		it('includes workflowReviews when licensed and dev flag is on', async () => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			securitySettingsService.getSecuritySettings.mockResolvedValue({
+				personalSpacePublishing: true,
+				personalSpaceSharing: true,
+				publishedPersonalWorkflowsCount: 0,
+				sharedPersonalWorkflowsCount: 0,
+				sharedPersonalCredentialsCount: 0,
+				redactionEnforcement: { floor: 'off' },
+			});
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
+
+			const result = await controller.getSecuritySettings(req, mock());
+
+			expect(result).toMatchObject({ workflowReviews: { enabled: true } });
+		});
+	});
+
+	describe('updateSecuritySettings', () => {
+		const dto = (overrides: Partial<UpdateSecuritySettingsDto> = {}) =>
+			overrides as UpdateSecuritySettingsDto;
+
+		it('delegates the writable subset to the service with the request user', async () => {
+			securitySettingsService.updateSecuritySettings.mockResolvedValue({
+				personalSpacePublishing: false,
+				redactionEnforcement: { floor: 'all' },
+			});
+
+			const result = await controller.updateSecuritySettings(
+				req,
+				mock(),
+				dto({ personalSpacePublishing: false, redactionEnforcement: { floor: 'all' } }),
 			);
-			expect(redactionPolicyEvents()).toEqual([
-				[
-					'instance-policies-updated',
-					expect.objectContaining({
-						settingName: 'data_redaction_enforcement_floor',
-						value: 'all',
-					}),
-				],
-			]);
-		});
 
-		it('reports the production-only floor as `production`', async () => {
-			instanceRedactionEnforcementService.get.mockResolvedValue('off');
-
-			await controller.updateSecuritySettings(req, mock(), dto('production'));
-
-			expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('production');
-			expect(redactionPolicyEvents().map(([, payload]) => payload)).toEqual([
-				expect.objectContaining({
-					settingName: 'data_redaction_enforcement_floor',
-					value: 'production',
-				}),
-			]);
-		});
-
-		it('reports `off` when enforcement is disabled', async () => {
-			instanceRedactionEnforcementService.get.mockResolvedValue('production');
-
-			await controller.updateSecuritySettings(req, mock(), dto('off'));
-
-			expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('off');
-			expect(redactionPolicyEvents().map(([, payload]) => payload)).toEqual([
-				expect.objectContaining({
-					settingName: 'data_redaction_enforcement_floor',
-					value: 'off',
-				}),
-			]);
-		});
-
-		it('emits nothing when the floor is unchanged', async () => {
-			instanceRedactionEnforcementService.get.mockResolvedValue('production');
-
-			await controller.updateSecuritySettings(req, mock(), dto('production'));
-
-			expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
-			expect(redactionPolicyEvents()).toHaveLength(0);
-		});
-
-		it('does not persist or emit when the redaction floor is unchanged', async () => {
-			instanceRedactionEnforcementService.get.mockResolvedValue('all');
-
-			const result = await controller.updateSecuritySettings(req, mock(), dto('all'));
-
-			expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
-			expect(eventService.emit).not.toHaveBeenCalledWith(
-				'redaction-enforcement-updated',
-				expect.anything(),
+			expect(securitySettingsService.updateSecuritySettings).toHaveBeenCalledWith(
+				{
+					personalSpacePublishing: false,
+					personalSpaceSharing: undefined,
+					redactionEnforcement: { floor: 'all' },
+				},
+				req.user,
 			);
-			expect(redactionPolicyEvents()).toHaveLength(0);
-			expect(result.redactionEnforcement).toEqual({ floor: 'all' });
+			expect(result).toEqual({
+				personalSpacePublishing: false,
+				redactionEnforcement: { floor: 'all' },
+			});
+		});
+
+		it('throws ForbiddenError when settings are managed by env', async () => {
+			instanceSettingsLoaderConfig.securityPolicyManagedByEnv = true;
+
+			await expect(
+				controller.updateSecuritySettings(req, mock(), dto({ personalSpacePublishing: false })),
+			).rejects.toThrow(ForbiddenError);
+			expect(securitySettingsService.updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('updates workflowReviews and emits its policy event when available', async () => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			securitySettingsService.updateSecuritySettings.mockResolvedValue({});
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
+			workflowReviewPolicyService.set.mockResolvedValue({ enabled: true });
+
+			const result = await controller.updateSecuritySettings(
+				req,
+				mock(),
+				dto({ workflowReviews: { enabled: true } }),
+			);
+
+			expect(workflowReviewPolicyService.set).toHaveBeenCalledWith(true);
+			expect(result).toMatchObject({ workflowReviews: { enabled: true } });
+			expect(securitySettingsService.emitInstancePolicyUpdated).toHaveBeenCalledWith(req.user, {
+				settingName: 'workflow_reviews',
+				value: true,
+			});
+		});
+
+		it('rejects workflowReviews when the feature is unavailable', async () => {
+			await expect(
+				controller.updateSecuritySettings(req, mock(), dto({ workflowReviews: { enabled: true } })),
+			).rejects.toThrow(ForbiddenError);
+			expect(workflowReviewPolicyService.set).not.toHaveBeenCalled();
 		});
 	});
 });

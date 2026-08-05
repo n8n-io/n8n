@@ -86,11 +86,46 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 				'={{$self["grantType"] === "clientCredentials" ? "" : "resource=" + $self["resource"]}}',
 		},
 		{
+			displayName: 'Custom Scopes',
+			name: 'customScopes',
+			type: 'boolean',
+			default: false,
+			description: 'Define custom scopes',
+		},
+		{
+			displayName:
+				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly. Use the <code>{resource}</code> placeholder to reference the Resource value above. With the Authorization Code grant, the default scope is empty — the resource travels as a query parameter instead.',
+			name: 'customScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Enabled Scopes',
+			name: 'enabledScopes',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+			default: '{resource}/.default',
+			description:
+				'Scopes that should be enabled. Use <code>{resource}</code> as a placeholder that will be replaced with the Resource value.',
+		},
+		{
+			// The untouched prefill counts as "use the defaults" so toggling custom
+			// scopes on without edits stays a no-op under the Authorization Code
+			// grant too, where the default scope is deliberately empty
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["grantType"] === "clientCredentials" ? $self["resource"] + "/.default" : ""}}',
+				'={{(($self["customScopes"] && $self["enabledScopes"] && $self["enabledScopes"] !== "{resource}/.default") ? $self["enabledScopes"] : ($self["grantType"] === "clientCredentials" ? "{resource}/.default" : "")).replace(/\\{resource\\}/g, $self["resource"])}}',
 		},
 		{
 			displayName: 'Authentication',

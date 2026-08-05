@@ -1,4 +1,6 @@
 interface EventBody {
+	message_id?: number;
+	text?: string;
 	photo?: [
 		{
 			file_id: string;
@@ -18,9 +20,14 @@ interface EventBody {
 	};
 }
 
-interface CallbackQuery {
+export interface CallbackQuery {
+	id?: string;
+	data?: string;
 	from?: {
 		id: number;
+		username?: string;
+		first_name?: string;
+		last_name?: string;
 	};
 	message?: EventBody;
 }
@@ -40,5 +47,6 @@ export interface IEvent {
 	inline_query?: QueryWithFrom;
 	pre_checkout_query?: QueryWithFrom;
 	shipping_query?: QueryWithFrom;
+	poll?: Record<string, unknown>;
 	download_link?: string;
 }

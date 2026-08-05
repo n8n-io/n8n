@@ -52,6 +52,29 @@ describe('prepareReturnItem', () => {
 		(mockContext.getWorkflowSettings as Mock).mockReturnValue({});
 	});
 
+	describe('when an assignment name is an inherited object member', () => {
+		// Guard the shared prototype so a regression here cannot cascade to other tests.
+		const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+		afterEach(() => {
+			if (!hadOwnCall) {
+				delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+			}
+		});
+
+		it('keeps built-in object prototypes intact', () => {
+			const value: AssignmentCollectionValue = {
+				assignments: [{ id: '1', name: 'toString.call', value: 'x', type: 'string' }],
+			};
+
+			const result = prepareReturnItem(mockContext, value, 0, baseItem, mockNode, baseOptions);
+
+			// Prototype untouched; the value lands as an own property on the item's json.
+			expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+			expect(Object.prototype.toString.call([])).toBe('[object Array]');
+			expect((result.json as { toString?: { call?: unknown } }).toString?.call).toBe('x');
+		});
+	});
+
 	describe('JSON assignments', () => {
 		it('should handle string assignments', () => {
 			const value: AssignmentCollectionValue = {

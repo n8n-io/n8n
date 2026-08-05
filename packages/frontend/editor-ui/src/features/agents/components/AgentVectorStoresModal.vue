@@ -9,13 +9,13 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { AGENT_MODEL_PROVIDER_DEFINITIONS, getProviderCredentialTypes } from '../model-providers';
+import { getProviderCredentialTypes } from '../model-providers';
 import { testAgentVectorStore } from '../composables/useAgentApi';
 import {
 	AGENT_EMBEDDING_PROVIDERS,
@@ -212,7 +212,7 @@ const storeCredentialOptions = computed(() =>
 );
 
 function embeddingCredentialTypeFor(provider: AgentEmbeddingProvider): string {
-	return AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes[0];
+	return getProviderCredentialTypes(provider)[0];
 }
 
 function onEmbeddingModelUpdate(model: string) {

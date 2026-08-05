@@ -1,7 +1,7 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { mock } from 'vitest-mock-extended';
 
-import type { FireResult, TaskHandler } from '../../core/executor';
+import type { DispatchReporter, FireResult, TaskHandler } from '../../core/executor';
 import type { ClaimedTask } from '../../core/types';
 import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../attributes';
 import { createExecutorTracing, withHandoffTracing } from '../executor-tracing';
@@ -142,12 +142,19 @@ describe('createExecutorTracing', () => {
 describe('withHandoffTracing', () => {
 	it('runs the handler inside a scheduler.handoff span carrying the task identity, ok on success', async () => {
 		const { span, tracer } = makeTracer();
-		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
+		const handler: TaskHandler = {
+			execute: vi.fn(async (_task: ClaimedTask, report: DispatchReporter) => {
+				await Promise.resolve();
+				return report.notDispatched();
+			}),
+		};
 		const task = claimedTask();
+		const report = mock<DispatchReporter>();
 
-		await withHandoffTracing(tracer, handler).execute(task);
+		await withHandoffTracing(tracer, handler).execute(task, report);
 
-		expect(handler.execute).toHaveBeenCalledWith(task);
+		// The wrapper adds a span, not semantics: the dispatch reporter flows through.
+		expect(handler.execute).toHaveBeenCalledWith(task, report);
 		const options = tracer.startSpan.mock.calls[0][0];
 		expect(options.name).toBe('Scheduler handoff');
 		expect(options.op).toBe('scheduler.handoff');
@@ -163,9 +170,9 @@ describe('withHandoffTracing', () => {
 		const { span, tracer } = makeTracer();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 
-		await expect(withHandoffTracing(tracer, handler).execute(claimedTask())).rejects.toThrow(
-			'boom',
-		);
+		await expect(
+			withHandoffTracing(tracer, handler).execute(claimedTask(), mock<DispatchReporter>()),
+		).rejects.toThrow('boom');
 
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.error, message: 'boom' });
 		expect(span.setStatus).not.toHaveBeenCalledWith({ code: SpanStatus.ok });

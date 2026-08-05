@@ -16,6 +16,7 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { readExport } from './utils/tar-support';
 import {
+	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingCredentialById,
 } from './utils/test-builders';
@@ -64,7 +65,7 @@ describe('workflow package export — with credentials', () => {
 			credential,
 		});
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.credentials).toEqual([
@@ -75,6 +76,7 @@ describe('workflow package export — with credentials', () => {
 			},
 		]);
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			credentials: [
 				{
 					id: credential.id,
@@ -122,7 +124,7 @@ describe('workflow package export — with credentials', () => {
 			credential,
 		});
 
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: owner,
 			workflowIds: [wfA.id, wfB.id],
 		});
@@ -140,6 +142,46 @@ describe('workflow package export — with credentials', () => {
 		expect(credentialFiles).toHaveLength(1);
 	});
 
+	it('bundles credential requirements from included sub-workflows', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const credential = await saveCredential(
+			{
+				name: 'Child credential',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Auth', value: 'secret' },
+			},
+			{ project, role: 'credential:owner' },
+		);
+		const child = await buildWorkflowReferencingCredential({
+			name: 'Child Workflow',
+			project,
+			credential,
+		});
+		const parent = await buildWorkflowCallingSubWorkflow({
+			name: 'Parent Workflow',
+			project,
+			subWorkflowId: child.id,
+		});
+
+		const { stream } = await service.exportPackage({
+			user: owner,
+			workflowIds: [parent.id, child.id],
+		});
+		const { manifest } = await readExport(stream);
+
+		expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
+		expect(manifest.requirements?.credentials).toEqual([
+			{
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				usedByWorkflows: [child.id],
+			},
+		]);
+		expect(manifest.requirements).not.toHaveProperty('subWorkflows');
+	});
+
 	it('lists orphan credential references in requirements without writing a file', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
@@ -152,11 +194,12 @@ describe('workflow package export — with credentials', () => {
 			credentialType: 'httpHeaderAuth',
 		});
 
-		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.credentials).toBeUndefined();
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			credentials: [
 				{
 					id: 'does-not-exist',
@@ -195,7 +238,7 @@ describe('workflow package export — with credentials', () => {
 		// credential was never shared with them. The export must still succeed,
 		// recording the credential as a requirement using the name+type carried
 		// in the workflow JSON.
-		const stream = await service.exportPackage({
+		const { stream } = await service.exportPackage({
 			user: sharee,
 			workflowIds: [workflow.id],
 		});
@@ -203,6 +246,7 @@ describe('workflow package export — with credentials', () => {
 
 		expect(manifest.credentials).toBeUndefined();
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			credentials: [
 				{
 					id: credential.id,

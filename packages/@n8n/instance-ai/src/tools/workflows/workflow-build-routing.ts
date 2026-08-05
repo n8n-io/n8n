@@ -1,4 +1,4 @@
-import { isMockableTriggerNodeType } from './workflow-json-utils';
+import { isTriggerNodeType } from './workflow-json-utils';
 import type {
 	WorkflowBuildOutcome,
 	WorkflowSetupRequirement,
@@ -40,11 +40,15 @@ function determineVerificationReadiness(
 		};
 	}
 
-	if (!outcome.triggerNodes?.some((node) => isMockableTriggerNodeType(node.nodeType))) {
+	// Any trigger type is verifiable: deterministic triggers get shaped input
+	// (getPinDataForTrigger), every other trigger gets a simulated fixture from
+	// the build outcome sidecar (planVerificationSimulation), so the trigger
+	// never really fires. Only a workflow with no trigger at all can't run.
+	if (!outcome.triggerNodes?.some((node) => isTriggerNodeType(node.nodeType))) {
 		return {
 			status: 'not_verifiable',
-			reason: 'non-mockable-trigger',
-			guidance: 'The workflow does not have a trigger the post-build verifier can exercise.',
+			reason: 'no-trigger-node',
+			guidance: 'The workflow does not have a trigger node the post-build verifier can start from.',
 		};
 	}
 

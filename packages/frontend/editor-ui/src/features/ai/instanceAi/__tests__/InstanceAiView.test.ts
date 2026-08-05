@@ -19,7 +19,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	RouterView: { template: '<div data-test-id="router-view-stub" />' },
 }));
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
