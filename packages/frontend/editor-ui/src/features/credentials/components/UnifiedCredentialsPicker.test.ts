@@ -15,6 +15,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 // real component's contract (emit item id on activation). The clickable carries
 // each item's real `testId` so unit and E2E selectors stay identical.
 const dropdownStub = {
+	inheritAttrs: false,
 	props: ['items', 'disabled'],
 	emits: ['select'],
 	template: `
@@ -108,13 +109,23 @@ describe('UnifiedCredentialsPicker', () => {
 			expect(screen.getByTestId('ucp-trigger-icon-wallet')).toBeInTheDocument();
 		});
 
-		it('shows a greyed (disabled) settings gear and no pen when n8n credits is selected', () => {
+		it('shows an enabled settings gear and no pen when n8n credits is selected', () => {
 			renderComponent({
 				props: { ...baseProps, isAiGatewayManaged: true, balance: 2.75, options: [option()] },
 			});
 
-			expect(screen.getByTestId('ucp-settings-button')).toBeDisabled();
+			expect(screen.getByTestId('ucp-settings-button')).toBeEnabled();
 			expect(screen.queryByTestId('credential-edit-button')).not.toBeInTheDocument();
+		});
+
+		it('emits "topUp" when the settings gear is clicked (n8n credits)', async () => {
+			const { emitted } = renderComponent({
+				props: { ...baseProps, isAiGatewayManaged: true, balance: 2.75, options: [option()] },
+			});
+
+			await userEvent.click(screen.getByTestId('ucp-settings-button'));
+
+			expect(emitted('topUp')).toBeTruthy();
 		});
 
 		it('shows a key icon, the name and a pen button when a standard own credential is selected', () => {
@@ -186,17 +197,15 @@ describe('UnifiedCredentialsPicker', () => {
 			expect(trigger).not.toHaveTextContent('No credits');
 		});
 
-		it('emits "topUp" when the balance pill is activated (without opening the menu)', async () => {
+		it('does not emit "topUp" from the balance pill — the gear is the only top-up affordance', async () => {
 			const { emitted } = renderComponent({
 				props: { ...baseProps, isAiGatewayManaged: true, balance: 2.75, options: [option()] },
 			});
 
-			// The pill text also appears on the n8n credits menu row; the top-up
-			// affordance is specifically the one inside the trigger.
 			const trigger = screen.getByTestId('node-credentials-select');
 			await userEvent.click(within(trigger).getByText('$2.75 remaining'));
 
-			expect(emitted('topUp')).toBeTruthy();
+			expect(emitted('topUp')).toBeFalsy();
 		});
 	});
 
@@ -305,6 +314,27 @@ describe('UnifiedCredentialsPicker', () => {
 
 		it('emits "createCredential" from the create row', async () => {
 			const { emitted } = renderComponent({ props: { ...configuredProps } });
+			await userEvent.click(screen.getByTestId(CREATE_ITEM));
+			expect(emitted('createCredential')).toBeTruthy();
+		});
+
+		it('replaces "Create a new credential" with "Use my own credential" when n8n credits is selected and no own credentials exist', async () => {
+			const { emitted } = renderComponent({
+				props: { ...baseProps, isAiGatewayManaged: true, balance: 5, options: [] },
+			});
+
+			// n8n credits row stays (checked, with the remaining pill).
+			const n8n = screen.getByTestId(`menu-item-${N8N_CREDITS_ID}`);
+			expect(n8n).toHaveTextContent('n8n credits');
+			expect(screen.getByTestId(`menu-check-${N8N_CREDITS_ID}`)).toBeInTheDocument();
+
+			// The create row reads as the invitational entry (no divider), same action.
+			const create = screen.getByTestId(`menu-item-${CREATE_ID}`);
+			expect(create).toHaveTextContent('Use my own credential');
+			expect(create).toHaveTextContent('Bring your own API key');
+			expect(create).not.toHaveTextContent('Create a new credential');
+			expect(screen.queryByTestId(`menu-divided-${CREATE_ID}`)).not.toBeInTheDocument();
+
 			await userEvent.click(screen.getByTestId(CREATE_ITEM));
 			expect(emitted('createCredential')).toBeTruthy();
 		});

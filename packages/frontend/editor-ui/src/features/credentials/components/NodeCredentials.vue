@@ -29,7 +29,11 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import {
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
+	ChatHubToolContextKey,
+	CREDENTIAL_ONLY_NODE_PREFIX,
+} from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -51,6 +55,7 @@ import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
+import UnifiedCredentialsPicker from './UnifiedCredentialsPicker.vue';
 import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
@@ -100,6 +105,8 @@ const props = withDefaults(defineProps<Props>(), {
 	skipCredentialsFetch: false,
 });
 
+const USE_UNIFIED_CREDENTIALS_PICKER = true;
+
 const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
 	valueChanged: [value: { name: string; value: NodeParameterValueType }];
@@ -148,12 +155,14 @@ const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
 	useN8nCreditsCredentialSelectionExperiment();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
-const canCreateCredentials = computed(
+const credentialPermissions = computed(
 	() =>
 		getResourcePermissions(
 			projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
-		).credential.create,
+		).credential,
 );
+const canCreateCredentials = computed(() => credentialPermissions.value.create);
+const walletBalance = computed(() => aiGateway.balance.value);
 
 const nodeHelpers = useNodeHelpers();
 const toast = useToast();
@@ -588,9 +597,14 @@ function onCredentialSelected(
 		name: selectedCredentials.name,
 	};
 
-	// if credentials has been string or neither id matched nor name matched uniquely
+	// if credentials has been string or neither id matched nor name matched uniquely.
+	// With the unified picker, switching away from n8n credits lands here with the
+	// managed slot as oldCredentials — that slot also has id: null but is a
+	// deliberate state, not an invalid credential; repairing it would sweep every
+	// other n8n-credits node.
 	if (
 		!props.standalone &&
+		!(USE_UNIFIED_CREDENTIALS_PICKER && oldCredentials?.__aiGatewayManaged) &&
 		(oldCredentials?.id === null ||
 			(oldCredentials?.id &&
 				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
@@ -809,6 +823,18 @@ function getIssues(credentialTypeName: string): string[] {
 	return node.issues.credentials[credentialTypeName];
 }
 
+function onTopUp(credentialType: string): void {
+	if (props.readonly) return;
+	telemetry.track('User clicked ai gateway top up', {
+		source: 'credential_selector',
+		credential_type: credentialType,
+	});
+	uiStore.openModalWithData({
+		name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+		data: { credentialType },
+	});
+}
+
 function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
@@ -948,173 +974,111 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<slot name="label-postfix" />
 				</template>
 				<AiGatewaySelector
-					v-if="showAiGatewaySelector(type.name)"
+					v-if="!USE_UNIFIED_CREDENTIALS_PICKER && showAiGatewaySelector(type.name)"
 					:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
 					:readonly="readonly"
 					:credential-type="type.name"
 					@toggle="onAiGatewaySelector(type.name, $event)"
 				/>
-				<div
-					v-if="readonly && !isAiGatewayManagedCredentials(type.name)"
-					:class="[
-						$style.selectContainer,
-						{
-							[$style.inputWithPrivateRow]:
-								getSelectedPrivateCredential(type.name) && isDefaultResolver,
-						},
-					]"
-				>
-					<N8nInput
-						:model-value="getSelectedName(type.name)"
-						disabled
-						size="small"
-						data-test-id="node-credentials-select"
-					/>
-					<div
-						v-if="isCredentialResolvable(type.name)"
-						:class="[$style.dynamicIndicator, $style.dynamicIndicatorReadonly]"
-					>
-						<N8nTooltip placement="top">
-							<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
-							<N8nIcon
-								icon="user-round-key"
-								size="small"
-								data-test-id="node-credential-private-icon"
-							/>
-						</N8nTooltip>
-					</div>
-				</div>
-				<div
-					v-else-if="
-						options.length === 0 &&
-						showQuickConnectEmptyState(type) &&
-						getQuickConnectCredentialType(type) &&
-						!isAiGatewayManagedCredentials(type.name)
+				<UnifiedCredentialsPicker
+					v-if="USE_UNIFIED_CREDENTIALS_PICKER && showAiGatewaySelector(type.name)"
+					:credential-type="type.name"
+					:node-display-name="getServiceName(type.name)"
+					:options="options"
+					:selected-credential-id="getSelectedId(type) ?? null"
+					:is-ai-gateway-managed="isAiGatewayManagedCredentials(type.name)"
+					:balance="walletBalance"
+					:readonly="readonly"
+					:permissions="credentialPermissions"
+					@select-n8n-credits="onAiGatewaySelector(type.name, true)"
+					@select-credential="
+						(id: string) => onCredentialSelected(type.name, id, showMixedCredentials(type))
 					"
-					:class="[$style.quickConnectContainer]"
-					data-test-id="quick-connect-empty-state"
-				>
-					<QuickConnectButton
-						size="small"
-						:disabled="quickConnectLoading"
-						:credential-type-name="getQuickConnectCredentialType(type) ?? type.name"
-						:service-name="getServiceName(getQuickConnectCredentialType(type) ?? type.name)"
-						@click="onQuickConnectSignIn(getQuickConnectCredentialType(type) ?? type.name)"
-					/>
-					<span v-if="canManuallySetUpCredential(type.name)" :class="$style.setupManuallyContainer">
-						<N8nText size="small" :class="$style.setupManuallyOr">
-							{{ i18n.baseText('nodeCredentials.quickConnect.or') }}
-						</N8nText>
-						<N8nLink
-							:class="$style.setupManuallyLink"
-							theme="secondary"
-							underline
+					@create-credential="onClickCreateCredential(type)"
+					@edit="editCredential(type.name)"
+					@top-up="onTopUp(type.name)"
+				/>
+				<template v-else>
+					<div
+						v-if="readonly && !isAiGatewayManagedCredentials(type.name)"
+						:class="[
+							$style.selectContainer,
+							{
+								[$style.inputWithPrivateRow]:
+									getSelectedPrivateCredential(type.name) && isDefaultResolver,
+							},
+						]"
+					>
+						<N8nInput
+							:model-value="getSelectedName(type.name)"
+							disabled
 							size="small"
-							data-test-id="setup-manually-link"
-							@click="createNewCredential(type.name, true, showMixedCredentials(type), true)"
+							data-test-id="node-credentials-select"
+						/>
+						<div
+							v-if="isCredentialResolvable(type.name)"
+							:class="[$style.dynamicIndicator, $style.dynamicIndicatorReadonly]"
 						>
-							{{ i18n.baseText('nodeCredentials.quickConnect.setupManually') }}
-						</N8nLink>
-					</span>
-				</div>
-
-				<div
-					v-else-if="showStandardEmptyState(type) && options.length === 0"
-					:class="$style.standardEmptyContainer"
-					data-test-id="node-credentials-empty-state"
-				>
-					<N8nSelect
-						ref="selectRefs"
-						:class="$style.emptySelect"
-						size="small"
-						:disabled="!canCreateCredentials"
-						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
-						:popper-class="$style.selectPopper"
+							<N8nTooltip placement="top">
+								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
+								<N8nIcon
+									icon="user-round-key"
+									size="small"
+									data-test-id="node-credential-private-icon"
+								/>
+							</N8nTooltip>
+						</div>
+					</div>
+					<div
+						v-else-if="
+							options.length === 0 &&
+							showQuickConnectEmptyState(type) &&
+							getQuickConnectCredentialType(type) &&
+							!isAiGatewayManagedCredentials(type.name)
+						"
+						:class="[$style.quickConnectContainer]"
+						data-test-id="quick-connect-empty-state"
 					>
-						<template #empty> </template>
-						<template #footer>
-							<button
-								type="button"
-								data-test-id="node-credentials-select-item-new"
-								:class="[$style.newCredential]"
-								:disabled="!canCreateCredentials"
-								@click="onClickCreateCredential(type)"
+						<QuickConnectButton
+							size="small"
+							:disabled="quickConnectLoading"
+							:credential-type-name="getQuickConnectCredentialType(type) ?? type.name"
+							:service-name="getServiceName(getQuickConnectCredentialType(type) ?? type.name)"
+							@click="onQuickConnectSignIn(getQuickConnectCredentialType(type) ?? type.name)"
+						/>
+						<span
+							v-if="canManuallySetUpCredential(type.name)"
+							:class="$style.setupManuallyContainer"
+						>
+							<N8nText size="small" :class="$style.setupManuallyOr">
+								{{ i18n.baseText('nodeCredentials.quickConnect.or') }}
+							</N8nText>
+							<N8nLink
+								:class="$style.setupManuallyLink"
+								theme="secondary"
+								underline
+								size="small"
+								data-test-id="setup-manually-link"
+								@click="createNewCredential(type.name, true, showMixedCredentials(type), true)"
 							>
-								<N8nIcon size="xsmall" icon="plus" />
-								{{ NEW_CREDENTIALS_TEXT }}
-							</button>
-						</template>
-					</N8nSelect>
-					<N8nButton
-						v-if="canCreateCredentials"
-						variant="subtle"
-						size="small"
-						data-test-id="setup-credential-button"
-						@click="createNewCredential(type.name, true, showMixedCredentials(type))"
+								{{ i18n.baseText('nodeCredentials.quickConnect.setupManually') }}
+							</N8nLink>
+						</span>
+					</div>
+
+					<div
+						v-else-if="showStandardEmptyState(type) && options.length === 0"
+						:class="$style.standardEmptyContainer"
+						data-test-id="node-credentials-empty-state"
 					>
-						{{ i18n.baseText('nodeCredentials.emptyState.setupCredential') }}
-					</N8nButton>
-				</div>
-				<div
-					v-else-if="!isAiGatewayManagedCredentials(type.name)"
-					:class="[
-						getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input,
-						{
-							[$style.inputWithPrivateRowEditable]:
-								getSelectedPrivateCredential(type.name) &&
-								isDefaultResolver &&
-								canEditPrivateCredential(type.name),
-							[$style.inputWithPrivateRow]:
-								getSelectedPrivateCredential(type.name) &&
-								isDefaultResolver &&
-								!canEditPrivateCredential(type.name),
-						},
-					]"
-					data-test-id="node-credentials-select"
-				>
-					<div :class="$style.selectContainer">
 						<N8nSelect
 							ref="selectRefs"
-							:model-value="getSelectedId(type)"
-							:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
+							:class="$style.emptySelect"
 							size="small"
-							filterable
-							:filter-method="setFilter"
+							:disabled="!canCreateCredentials"
+							:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
 							:popper-class="$style.selectPopper"
-							:class="{ [$style.selectWithDynamic]: isCredentialResolvable(type.name) }"
-							@update:model-value="
-								(value: string) =>
-									onCredentialSelected(type.name, value, showMixedCredentials(type))
-							"
-							@blur="emit('blur', 'credentials')"
 						>
-							<N8nOption
-								v-for="item in options.filter((o) => matches(filter, o.name))"
-								:key="item.id"
-								:data-test-id="`node-credentials-select-item-${item.id}`"
-								:label="item.name"
-								:value="item.id"
-							>
-								<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-									<div :class="$style.credentialOptionName">
-										<N8nText bold>{{ item.name }}</N8nText>
-										<N8nTooltip
-											v-if="isPrivateCredentialsEnabled && item.isResolvable"
-											placement="top"
-										>
-											<template #content>{{
-												i18n.baseText('credentials.private.tooltip')
-											}}</template>
-											<N8nIcon
-												icon="user-round-key"
-												size="small"
-												data-test-id="credential-option-private-badge"
-											/>
-										</N8nTooltip>
-									</div>
-									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
-								</div>
-							</N8nOption>
 							<template #empty> </template>
 							<template #footer>
 								<button
@@ -1129,47 +1093,132 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								</button>
 							</template>
 						</N8nSelect>
-						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
+						<N8nButton
+							v-if="canCreateCredentials"
+							variant="subtle"
+							size="small"
+							data-test-id="setup-credential-button"
+							@click="createNewCredential(type.name, true, showMixedCredentials(type))"
+						>
+							{{ i18n.baseText('nodeCredentials.emptyState.setupCredential') }}
+						</N8nButton>
+					</div>
+					<div
+						v-else-if="!isAiGatewayManagedCredentials(type.name)"
+						:class="[
+							getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input,
+							{
+								[$style.inputWithPrivateRowEditable]:
+									getSelectedPrivateCredential(type.name) &&
+									isDefaultResolver &&
+									canEditPrivateCredential(type.name),
+								[$style.inputWithPrivateRow]:
+									getSelectedPrivateCredential(type.name) &&
+									isDefaultResolver &&
+									!canEditPrivateCredential(type.name),
+							},
+						]"
+						data-test-id="node-credentials-select"
+					>
+						<div :class="$style.selectContainer">
+							<N8nSelect
+								ref="selectRefs"
+								:model-value="getSelectedId(type)"
+								:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
+								size="small"
+								filterable
+								:filter-method="setFilter"
+								:popper-class="$style.selectPopper"
+								:class="{ [$style.selectWithDynamic]: isCredentialResolvable(type.name) }"
+								@update:model-value="
+									(value: string) =>
+										onCredentialSelected(type.name, value, showMixedCredentials(type))
+								"
+								@blur="emit('blur', 'credentials')"
+							>
+								<N8nOption
+									v-for="item in options.filter((o) => matches(filter, o.name))"
+									:key="item.id"
+									:data-test-id="`node-credentials-select-item-${item.id}`"
+									:label="item.name"
+									:value="item.id"
+								>
+									<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+										<div :class="$style.credentialOptionName">
+											<N8nText bold>{{ item.name }}</N8nText>
+											<N8nTooltip
+												v-if="isPrivateCredentialsEnabled && item.isResolvable"
+												placement="top"
+											>
+												<template #content>{{
+													i18n.baseText('credentials.private.tooltip')
+												}}</template>
+												<N8nIcon
+													icon="user-round-key"
+													size="small"
+													data-test-id="credential-option-private-badge"
+												/>
+											</N8nTooltip>
+										</div>
+										<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+									</div>
+								</N8nOption>
+								<template #empty> </template>
+								<template #footer>
+									<button
+										type="button"
+										data-test-id="node-credentials-select-item-new"
+										:class="[$style.newCredential]"
+										:disabled="!canCreateCredentials"
+										@click="onClickCreateCredential(type)"
+									>
+										<N8nIcon size="xsmall" icon="plus" />
+										{{ NEW_CREDENTIALS_TEXT }}
+									</button>
+								</template>
+							</N8nSelect>
+							<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
+								<N8nTooltip placement="top">
+									<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
+									<N8nIcon
+										icon="user-round-key"
+										size="small"
+										data-test-id="node-credential-private-icon"
+									/>
+								</N8nTooltip>
+							</div>
+						</div>
+
+						<div v-if="getIssues(type.name).length && !hideIssues" :class="$style.warning">
 							<N8nTooltip placement="top">
-								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
-								<N8nIcon
-									icon="user-round-key"
-									size="small"
-									data-test-id="node-credential-private-icon"
-								/>
+								<template #content>
+									<TitledList
+										:title="`${i18n.baseText('nodeCredentials.issues')}:`"
+										:items="getIssues(type.name)"
+									/>
+								</template>
+								<N8nIcon icon="triangle-alert" />
 							</N8nTooltip>
 						</div>
-					</div>
 
-					<div v-if="getIssues(type.name).length && !hideIssues" :class="$style.warning">
-						<N8nTooltip placement="top">
-							<template #content>
-								<TitledList
-									:title="`${i18n.baseText('nodeCredentials.issues')}:`"
-									:items="getIssues(type.name)"
-								/>
-							</template>
-							<N8nIcon icon="triangle-alert" />
-						</N8nTooltip>
+						<div
+							v-if="
+								selected[type.name] &&
+								isCredentialExisting(type) &&
+								(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name))
+							"
+							:class="$style.edit"
+							data-test-id="credential-edit-button"
+						>
+							<N8nIcon
+								icon="pen"
+								class="clickable"
+								:title="i18n.baseText('nodeCredentials.updateCredential')"
+								@click="editCredential(type.name)"
+							/>
+						</div>
 					</div>
-
-					<div
-						v-if="
-							selected[type.name] &&
-							isCredentialExisting(type) &&
-							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name))
-						"
-						:class="$style.edit"
-						data-test-id="credential-edit-button"
-					>
-						<N8nIcon
-							icon="pen"
-							class="clickable"
-							:title="i18n.baseText('nodeCredentials.updateCredential')"
-							@click="editCredential(type.name)"
-						/>
-					</div>
-				</div>
+				</template>
 				<CredentialPrivateConnectionRow
 					v-if="getSelectedPrivateCredential(type.name) && isDefaultResolver"
 					:credential-type-name="type.name"

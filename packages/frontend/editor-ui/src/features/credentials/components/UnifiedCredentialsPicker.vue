@@ -61,6 +61,9 @@ const selectedOption = computed(
 // A stale/missing id (cred deleted elsewhere) reads as "nothing selected".
 const ownSelected = computed(() => !props.isAiGatewayManaged && selectedOption.value !== null);
 const isEntry = computed(() => !props.isAiGatewayManaged && !ownSelected.value);
+// Compact "Connect to {node}" button when nothing is set; full-width select once
+// n8n credits or an own credential is chosen (per the Figma).
+const isSet = computed(() => props.isAiGatewayManaged || ownSelected.value);
 // The two-choice entry menu only stands in for the true first-run state; once any
 // own credential exists the full list is shown even while nothing is selected.
 const showEntryMenu = computed(() => !props.isAiGatewayManaged && props.options.length === 0);
@@ -132,6 +135,27 @@ const items = computed<Item[]>(() => {
 		data: { kind: credentialKind(option), subtitle: credentialSubtitle(option) },
 	}));
 
+	// With no own credentials yet, the create row reads as the invitational
+	// "Use my own credential" (same action); the plain create row only appears
+	// once a credential list exists above it.
+	const createItem: Item =
+		props.options.length === 0
+			? {
+					id: CREATE,
+					testId: 'node-credentials-select-item-new',
+					label: i18n.baseText('aiGateway.picker.useOwnCredential'),
+					disabled: !props.permissions.create,
+					data: { kind: 'ownEntry', subtitle: i18n.baseText('aiGateway.picker.bringYourOwnKey') },
+				}
+			: {
+					id: CREATE,
+					testId: 'node-credentials-select-item-new',
+					label: i18n.baseText('nodeCredentials.createNewCredential'),
+					divided: true,
+					disabled: !props.permissions.create,
+					data: { kind: 'create' },
+				};
+
 	return [
 		{
 			id: N8N_CREDITS,
@@ -142,14 +166,7 @@ const items = computed<Item[]>(() => {
 			data: { kind: 'n8nCredits', pill: remainingPill.value },
 		},
 		...credentialItems,
-		{
-			id: CREATE,
-			testId: 'node-credentials-select-item-new',
-			label: i18n.baseText('nodeCredentials.createNewCredential'),
-			divided: true,
-			disabled: !props.permissions.create,
-			data: { kind: 'create' },
-		},
+		createItem,
 	];
 });
 
@@ -160,6 +177,12 @@ const triggerLabel = computed(() => {
 		interpolate: { provider: props.nodeDisplayName },
 	});
 });
+
+// Entry-menu rows stack the subtitle under the title; configured rows put the
+// type/pill on the right (space-between).
+function isEntryItem(item: Item): boolean {
+	return item.data?.kind === 'n8nCreditsEntry' || item.data?.kind === 'ownEntry';
+}
 
 function onSelect(id: string): void {
 	if (props.readonly) return;
@@ -179,107 +202,131 @@ function onTopUp(): void {
 
 <template>
 	<div :class="$style.row">
-		<N8nDropdownMenu
-			:items="items"
-			:disabled="readonly"
-			placement="bottom-start"
-			teleported
-			width="var(--reka-dropdown-menu-trigger-width)"
-			@select="onSelect"
-		>
-			<template #trigger>
-				<button
-					type="button"
-					:class="$style.trigger"
-					data-test-id="node-credentials-select"
-					:disabled="readonly"
-				>
-					<CredentialIcon
-						v-if="isEntry"
-						:credential-type-name="credentialType"
-						:class="$style.icon"
-					/>
+		<div :class="[$style.control, isSet && $style.controlFull]">
+			<N8nDropdownMenu
+				:items="items"
+				:disabled="readonly"
+				placement="bottom-start"
+				teleported
+				width="var(--reka-dropdown-menu-trigger-width)"
+				:extra-popper-class="isSet ? $style.menuFull : undefined"
+				data-test-id="ucp-trigger-wrap"
+				@select="onSelect"
+			>
+				<template #trigger>
+					<button
+						type="button"
+						:class="$style.trigger"
+						data-test-id="node-credentials-select"
+						:disabled="readonly"
+					>
+						<CredentialIcon
+							v-if="isEntry"
+							:credential-type-name="credentialType"
+							:class="$style.icon"
+						/>
+						<N8nIcon
+							v-else-if="isAiGatewayManaged"
+							icon="wallet"
+							:class="$style.icon"
+							data-test-id="ucp-trigger-icon-wallet"
+						/>
+						<N8nIcon
+							v-else-if="selectedOption?.isResolvable"
+							icon="user-round"
+							:class="$style.icon"
+							data-test-id="ucp-trigger-icon-user"
+						/>
+						<N8nIcon
+							v-else
+							icon="key-round"
+							:class="$style.icon"
+							data-test-id="ucp-trigger-icon-key"
+						/>
+
+						<span :class="$style.triggerLabel">{{ triggerLabel }}</span>
+
+						<N8nActionPill
+							v-if="isAiGatewayManaged && remainingPill"
+							size="small"
+							:type="remainingPill.type"
+							:text="remainingPill.text"
+						/>
+
+						<N8nIcon icon="chevron-down" :class="$style.chevron" size="medium" />
+					</button>
+				</template>
+
+				<template #item-leading="{ item }">
 					<N8nIcon
-						v-else-if="isAiGatewayManaged"
+						v-if="item.data?.kind === 'n8nCredits' || item.data?.kind === 'n8nCreditsEntry'"
 						icon="wallet"
-						:class="$style.icon"
-						data-test-id="ucp-trigger-icon-wallet"
+						size="medium"
+						data-test-id="ucp-row-icon-wallet"
 					/>
 					<N8nIcon
-						v-else-if="selectedOption?.isResolvable"
+						v-else-if="item.data?.kind === 'user'"
 						icon="user-round"
-						:class="$style.icon"
-						data-test-id="ucp-trigger-icon-user"
+						size="medium"
+						data-test-id="ucp-row-icon-user"
 					/>
 					<N8nIcon
-						v-else
+						v-else-if="item.data?.kind === 'key' || item.data?.kind === 'ownEntry'"
 						icon="key-round"
-						:class="$style.icon"
-						data-test-id="ucp-trigger-icon-key"
+						size="medium"
+						data-test-id="ucp-row-icon-key"
 					/>
+					<N8nIcon v-else-if="item.data?.kind === 'create'" icon="plus" size="medium" />
+				</template>
 
-					<span :class="$style.triggerLabel">{{ triggerLabel }}</span>
-
-					<N8nActionPill
-						v-if="isAiGatewayManaged && remainingPill"
-						size="small"
-						:type="remainingPill.type"
-						:text="remainingPill.text"
-						:clickable="!readonly"
-						@click.stop="onTopUp"
-					/>
-
-					<N8nIcon icon="chevron-down" :class="$style.chevron" size="medium" />
-				</button>
-			</template>
-
-			<template #item-leading="{ item }">
-				<N8nIcon
-					v-if="item.data?.kind === 'n8nCredits' || item.data?.kind === 'n8nCreditsEntry'"
-					icon="wallet"
-					size="medium"
-					data-test-id="ucp-row-icon-wallet"
-				/>
-				<N8nIcon
-					v-else-if="item.data?.kind === 'user'"
-					icon="user-round"
-					size="medium"
-					data-test-id="ucp-row-icon-user"
-				/>
-				<N8nIcon
-					v-else-if="item.data?.kind === 'key' || item.data?.kind === 'ownEntry'"
-					icon="key-round"
-					size="medium"
-					data-test-id="ucp-row-icon-key"
-				/>
-				<N8nIcon v-else-if="item.data?.kind === 'create'" icon="plus" size="medium" />
-			</template>
-
-			<template #item-label="{ item }">
-				<span :class="$style.itemLabel">
-					<N8nText size="small" color="text-dark">{{ item.label }}</N8nText>
-					<N8nText v-if="item.data?.subtitle" size="small" color="text-light">
-						{{ item.data.subtitle }}
-					</N8nText>
-				</span>
-				<N8nActionPill
-					v-if="item.data?.pill"
-					size="small"
-					:type="item.data.pill.type"
-					:text="item.data.pill.text"
-				/>
-				<N8nBadge v-if="item.data?.freeBadge" theme="success" size="small">
-					{{ item.data.freeBadge }}
-				</N8nBadge>
-			</template>
-		</N8nDropdownMenu>
+				<template #item-label="{ item }">
+					<!-- Entry rows: stacked title/subtitle with the free badge on the right. -->
+					<span v-if="isEntryItem(item)" :class="$style.entryLabel">
+						<span :class="$style.itemMain">
+							<N8nText size="small" :color="item.disabled ? 'text-light' : 'text-dark'">
+								{{ item.label }}
+							</N8nText>
+							<N8nText v-if="item.data?.subtitle" size="small" color="text-light">
+								{{ item.data.subtitle }}
+							</N8nText>
+						</span>
+						<N8nBadge v-if="item.data?.freeBadge" theme="success" size="small">
+							{{ item.data.freeBadge }}
+						</N8nBadge>
+					</span>
+					<!-- Credential rows: name + type/pill flow left as one line, ellipsized at the end. -->
+					<span v-else :class="$style.inlineLabel">
+						<N8nText size="small" :color="item.disabled ? 'text-light' : 'text-dark'">
+							{{ item.label }}
+						</N8nText>
+						<N8nText
+							v-if="item.data?.subtitle"
+							size="small"
+							color="text-light"
+							:class="$style.inlineMeta"
+						>
+							{{ item.data.subtitle }}
+						</N8nText>
+						<N8nActionPill
+							v-if="item.data?.pill"
+							size="small"
+							:type="item.data.pill.type"
+							:text="item.data.pill.text"
+							:class="$style.inlineMeta"
+						/>
+					</span>
+				</template>
+			</N8nDropdownMenu>
+		</div>
 
 		<button
 			v-if="isAiGatewayManaged"
 			type="button"
 			:class="$style.iconButton"
 			data-test-id="ucp-settings-button"
-			disabled
+			:disabled="readonly"
+			:title="i18n.baseText('aiGateway.toggle.topUp')"
+			@click="onTopUp"
 		>
 			<N8nIcon icon="settings" size="medium" />
 		</button>
@@ -302,10 +349,33 @@ function onTopUp(): void {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.control {
+	display: flex;
+	min-width: 0;
+}
+
+// Stretch the design-system trigger (an inline-flex span that hugs content) to
+// fill the row only once a credential is set; the entry "Connect to {node}"
+// button stays compact. The menu mirrors the trigger width, so this also makes
+// the menu span the row. `:deep()` is scoped-CSS only — module styles need
+// `:global()`.
+.controlFull {
+	flex: 1;
+	min-width: 0;
+
+	:global([data-test-id='ucp-trigger-wrap']) {
+		display: flex;
+		flex: 1 1 auto;
+		width: 100%;
+		min-width: 0;
+	}
 }
 
 .trigger {
-	flex: 1;
+	width: 100%;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -345,12 +415,42 @@ function onTopUp(): void {
 	color: var(--color--text--tint-1);
 }
 
-.itemLabel {
+// The design-system content box is fit-content capped at the trigger width;
+// selected states want the menu to match the trigger width exactly.
+.menuFull[data-menu-content] {
+	width: var(--n8n--dropdown-menu-width);
+}
+
+.entryLabel {
 	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--3xs);
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
 	min-width: 0;
 	flex: 1;
+	width: 100%;
+}
+
+.itemMain {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+// Name + type/pill flow left as a single line; overflow ellipsizes at the end
+// of the line (inline children inside one clipping block).
+.inlineLabel {
+	display: block;
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.inlineMeta {
+	margin-left: var(--spacing--2xs);
+	vertical-align: middle;
 }
 
 .iconButton {
