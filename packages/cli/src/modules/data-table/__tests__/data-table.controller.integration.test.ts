@@ -16,6 +16,7 @@ import type { DataTableRow } from 'n8n-workflow';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { createDataTable } from '@test-integration/db/data-tables';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -4361,6 +4362,146 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 	});
 });
 
+describe('row-content authorization on write endpoints', () => {
+	const SECRET = 'payroll-token-123';
+	const MATCH_ALL_FILTER = {
+		type: 'and' as const,
+		filters: [{ columnName: 'id', condition: 'gte' as const, value: 0 }],
+	};
+
+	let project: Project;
+	let writerAgent: SuperAgentTest;
+	let readWriterAgent: SuperAgentTest;
+
+	const createSensitiveTable = async () => {
+		const dataTable = await createDataTable(project, {
+			name: 'Sensitive Table',
+			columns: [{ name: 'secret', type: 'string' }],
+		});
+		const columns = await dataTableColumnRepository.getColumns(dataTable.id);
+		await dataTableRowsRepository.insertRows(dataTable.id, [{ secret: SECRET }], columns, 'id');
+		return dataTable;
+	};
+
+	beforeAll(async () => {
+		project = await createTeamProject('row authorization project', owner);
+
+		const writeOnlyRole = await createCustomRoleWithScopeSlugs(['dataTable:writeRow'], {
+			roleType: 'project',
+		});
+		const writeOnlyUser = await createMember();
+		await linkUserToProject(writeOnlyUser, project, writeOnlyRole.slug);
+		writerAgent = testServer.authAgentFor(writeOnlyUser);
+
+		const readWriteRole = await createCustomRoleWithScopeSlugs(
+			['dataTable:writeRow', 'dataTable:readRow'],
+			{ roleType: 'project' },
+		);
+		const readWriteUser = await createMember();
+		await linkUserToProject(readWriteUser, project, readWriteRole.slug);
+		readWriterAgent = testServer.authAgentFor(readWriteUser);
+	});
+
+	describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
+		test('rejects dryRun without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(403);
+		});
+
+		test('rejects returnData without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, returnData: true })
+				.expect(403);
+		});
+
+		test('allows a plain update without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' } })
+				.expect(200);
+		});
+
+		test('returns row contents with dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await readWriterAgent
+				.patch(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(200);
+
+			expect(JSON.stringify(response.body)).toContain(SECRET);
+		});
+	});
+
+	describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
+		test('rejects dryRun without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, dryRun: true })
+				.expect(403);
+		});
+
+		test('rejects returnData without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' }, returnData: true })
+				.expect(403);
+		});
+
+		test('allows a plain upsert without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.post(`/projects/${project.id}/data-tables/${dataTable.id}/upsert`)
+				.send({ filter: MATCH_ALL_FILTER, data: { secret: 'overwritten' } })
+				.expect(200);
+		});
+	});
+
+	describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
+		test('rejects returnData without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' })
+				.expect(403);
+		});
+
+		test('allows a plain delete without dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			await writerAgent
+				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter: JSON.stringify(MATCH_ALL_FILTER) })
+				.expect(200);
+		});
+
+		test('returns row contents with dataTable:readRow scope', async () => {
+			const dataTable = await createSensitiveTable();
+
+			const response = await readWriterAgent
+				.delete(`/projects/${project.id}/data-tables/${dataTable.id}/rows`)
+				.query({ filter: JSON.stringify(MATCH_ALL_FILTER), returnData: 'true' })
+				.expect(200);
+
+			expect(JSON.stringify(response.body)).toContain(SECRET);
+		});
+	});
+});
 describe('Source Control read-only mode', () => {
 	let sourceControlPreferencesService: SourceControlPreferencesService;
 	let testDataTable: DataTable;
