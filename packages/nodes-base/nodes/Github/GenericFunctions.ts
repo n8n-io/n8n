@@ -9,6 +9,28 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+// Maximum number of ETag entries retained in workflow static data. Bounds the
+// growth of the conditional-request cache for workflows that read many
+// different resources over their lifetime.
+const ETAG_CACHE_LIMIT = 100;
+
+interface GithubEtagEntry {
+	etag: string;
+	body: unknown;
+}
+
+function conditionalRequestKey(credentialType: string, uri: string, qs?: IDataObject): string {
+	const sortedQs = qs
+		? Object.keys(qs)
+				.sort()
+				.reduce<IDataObject>((acc, key) => {
+					acc[key] = qs[key];
+					return acc;
+				}, {})
+		: {};
+	return `${credentialType} ${uri} ${JSON.stringify(sortedQs)}`;
+}
+
 /**
  * Make an API request to Github
  *
@@ -21,6 +43,13 @@ export async function githubApiRequest(
 	query?: IDataObject,
 	option: IDataObject = {},
 ): Promise<any> {
+	// `conditionalRequest` is an internal flag (not a request option) that opts a
+	// GET into ETag / If-None-Match revalidation. It is stripped before the
+	// remaining options are forwarded to the HTTP client.
+	const useConditionalRequest = method === 'GET' && option.conditionalRequest === true;
+	const requestOption = { ...option };
+	delete requestOption.conditionalRequest;
+
 	const options: IRequestOptions = {
 		method,
 		body,
@@ -29,8 +58,8 @@ export async function githubApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
+	if (Object.keys(requestOption).length !== 0) {
+		Object.assign(options, requestOption);
 	}
 
 	try {
@@ -61,8 +90,61 @@ export async function githubApiRequest(
 			options.uri = `${baseUrl}${endpoint}`;
 		}
 
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		if (!useConditionalRequest) {
+			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		}
+
+		const staticData = this.getWorkflowStaticData('node');
+		const cache =
+			(staticData.githubEtagCache as unknown as Record<string, GithubEtagEntry>) ?? {};
+		staticData.githubEtagCache = cache as unknown as IDataObject;
+
+		const cacheKey = conditionalRequestKey(credentialType, options.uri, query);
+		const cached = cache[cacheKey];
+
+		// Ask the API to revalidate. A 304 Not Modified does not count against the
+		// primary rate limit, so an unchanged resource is served from cache below.
+		options.resolveWithFullResponse = true;
+		options.simple = false;
+		if (cached?.etag) {
+			options.headers = {
+				...(options.headers as IDataObject),
+				'If-None-Match': cached.etag,
+			};
+		}
+
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		);
+
+		if (response.statusCode === 304 && cached) {
+			return cached.body;
+		}
+
+		if (response.statusCode < 200 || response.statusCode >= 300) {
+			throw new NodeApiError(this.getNode(), {
+				statusCode: response.statusCode,
+				...(response.body as IDataObject),
+			} as JsonObject);
+		}
+
+		const etag = (response.headers?.etag as string) ?? '';
+		if (etag) {
+			delete cache[cacheKey];
+			cache[cacheKey] = { etag, body: response.body };
+			const keys = Object.keys(cache);
+			if (keys.length > ETAG_CACHE_LIMIT) {
+				delete cache[keys[0]];
+			}
+		}
+
+		return response.body;
 	} catch (error) {
+		if (error instanceof NodeApiError) {
+			throw error;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

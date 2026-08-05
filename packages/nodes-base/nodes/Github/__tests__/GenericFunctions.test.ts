@@ -25,6 +25,7 @@ const mockExecuteHookFunctions = {
 	getWebhookName: vi.fn(),
 	getWebhookDescription: vi.fn(),
 	getNodeWebhookUrl: vi.fn(),
+	getWorkflowStaticData: vi.fn().mockReturnValue({}),
 	getNode: vi.fn().mockReturnValue({
 		id: 'test-node-id',
 		name: 'test-node',
@@ -34,6 +35,8 @@ const mockExecuteHookFunctions = {
 describe('GenericFunctions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Fresh conditional-request cache per test.
+		(mockExecuteHookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 	});
 
 	describe('githubApiRequest', () => {
@@ -60,6 +63,100 @@ describe('GenericFunctions', () => {
 					json: true,
 				},
 			);
+		});
+
+		it('should send a conditional request and cache the ETag when opted in', async () => {
+			const method = 'GET';
+			const endpoint = '/repos/test-owner/test-repo/pulls/1';
+			const body = {};
+			const staticData: Record<string, unknown> = {};
+			(mockExecuteHookFunctions.getWorkflowStaticData as Mock).mockReturnValue(staticData);
+
+			const pullRequest = { number: 1, title: 'Example' };
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { etag: '"abc123"' },
+				body: pullRequest,
+			});
+
+			const result = await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				method,
+				endpoint,
+				body,
+				undefined,
+				{ conditionalRequest: true },
+			);
+
+			expect(result).toEqual(pullRequest);
+			const call = (mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mock
+				.calls[0][1];
+			// The conditionalRequest flag must not leak into the HTTP options.
+			expect(call.conditionalRequest).toBeUndefined();
+			expect(call.resolveWithFullResponse).toBe(true);
+			expect(call.simple).toBe(false);
+			// First request must not carry a conditional header.
+			expect(call.headers?.['If-None-Match']).toBeUndefined();
+		});
+
+		it('should reuse the cached response on a 304 Not Modified', async () => {
+			const method = 'GET';
+			const endpoint = '/repos/test-owner/test-repo/pulls/1';
+			const body = {};
+			const staticData: Record<string, unknown> = {};
+			(mockExecuteHookFunctions.getWorkflowStaticData as Mock).mockReturnValue(staticData);
+
+			const pullRequest = { number: 1, title: 'Example' };
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock)
+				.mockResolvedValueOnce({
+					statusCode: 200,
+					headers: { etag: '"abc123"' },
+					body: pullRequest,
+				})
+				.mockResolvedValueOnce({ statusCode: 304, headers: {}, body: '' });
+
+			const first = await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				method,
+				endpoint,
+				body,
+				undefined,
+				{ conditionalRequest: true },
+			);
+			const second = await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				method,
+				endpoint,
+				body,
+				undefined,
+				{ conditionalRequest: true },
+			);
+
+			expect(first).toEqual(pullRequest);
+			// The cached body is served on a 304 instead of the empty response body.
+			expect(second).toEqual(pullRequest);
+
+			const calls = (mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mock.calls;
+			expect(calls[0][1].headers?.['If-None-Match']).toBeUndefined();
+			expect(calls[1][1].headers?.['If-None-Match']).toBe('"abc123"');
+		});
+
+		it('should throw a NodeApiError on a non-success conditional response', async () => {
+			const method = 'GET';
+			const endpoint = '/repos/test-owner/test-repo/pulls/1';
+			(mockExecuteHookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
+
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				statusCode: 404,
+				headers: {},
+				body: { message: 'Not Found' },
+			});
+
+			await expect(
+				githubApiRequest.call(mockExecuteHookFunctions, method, endpoint, {}, undefined, {
+					conditionalRequest: true,
+				}),
+			).rejects.toThrow(NodeApiError);
 		});
 
 		it('should throw a NodeApiError on API failure', async () => {
