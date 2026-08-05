@@ -1294,9 +1294,8 @@ describe('ExecutionContextService', () => {
 	});
 });
 
-// Runs through the real Cipher rather than the mocked one used above: a passthrough
-// mock would make the "ciphertext never contains the subject" assertions below
-// vacuously true for the wrong reason.
+// Uses the real Cipher, not the mocked one above - a mock would make the
+// "ciphertext never contains the subject" checks below meaningless.
 describe('ExecutionContextService — no principal is ever persisted on the execution context', () => {
 	mockInstance(InstanceSettings, { encryptionKey: 'a'.repeat(64) });
 	const realCipher = Container.get(Cipher);
@@ -1334,8 +1333,7 @@ describe('ExecutionContextService — no principal is ever persisted on the exec
 		const encrypted = await realService.encryptExecutionContext(plaintext, 'wf-1');
 		const serialized = JSON.stringify(encrypted);
 
-		// This is the security property: no field on the persisted execution
-		// context could function as a stored principal.
+		// The security property: no field could function as a stored principal.
 		expect(encrypted).not.toHaveProperty('principalId');
 		expect(encrypted).not.toHaveProperty('principal');
 		expect(encrypted).not.toHaveProperty('userId');
@@ -1343,8 +1341,7 @@ describe('ExecutionContextService — no principal is ever persisted on the exec
 		expect(serialized).not.toContain('user-42');
 		expect(serialized).not.toContain('idp-1');
 
-		// Sanity check that the assertions above aren't vacuous: decrypting with
-		// the real cipher (and the right workflow binding) does recover the claim.
+		// Sanity check: decrypting with the right workflow id does recover the claim.
 		const decrypted = await realService.decryptExecutionContext(encrypted, 'wf-1');
 		expect(decrypted.claims).toEqual(claim);
 	});

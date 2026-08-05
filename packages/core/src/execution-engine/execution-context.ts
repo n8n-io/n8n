@@ -183,15 +183,8 @@ export const establishExecutionContext = async (
 	// We were triggered from a parent execution
 	// and can inherit context from there
 	if (startItem.metadata?.parentExecution?.executionContext) {
-		// A sealed claim is bound to the workflow it was verified for (see
-		// ExecutionContextService.sealClaims/decryptClaims). This path (error
-		// workflows) has no re-sealing step like the sub-workflow path does via
-		// `augmentSubExecutionContext`, so an inherited claim would carry the
-		// wrong binding and fail verification everywhere it's read - drop it
-		// rather than propagate a claim that will silently never validate.
-		// Whether an error workflow should inherit the triggering claim as its
-		// own attested identity at all is a product decision; this defaults to
-		// "no" until that's explicitly revisited.
+		// Drop the claim: it's sealed for the failed workflow, and unlike the
+		// sub-workflow path, error workflows have no step to re-seal it here.
 		const { claims: _droppedClaims, ...inheritedContext } =
 			startItem.metadata.parentExecution.executionContext;
 		executionData.runtimeData = {

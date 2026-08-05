@@ -40,14 +40,9 @@ export class ExecutionContextService {
 	}
 
 	/**
-	 * Decrypts and validates a sealed claim, verifying it was sealed for the
-	 * given workflow. Returns `undefined` (with a warning logged) rather than
-	 * throwing when the claim fails to parse or was sealed for a different
-	 * workflow, since this runs inside general-purpose context decryption
-	 * (e.g. hook augmentation) that must not hard-fail a legitimate execution
-	 * over a defensive check. A consumer that needs to enforce trust on the
-	 * claim itself (the future `resolve(claims, ctx)`) should treat
-	 * `undefined` as "no claim to trust", not bypass the check.
+	 * Decrypts a sealed claim and checks it was sealed for `expectedWorkflowId`.
+	 * On failure or mismatch, logs a warning and returns `undefined` instead of
+	 * throwing, so a bad claim doesn't crash an otherwise-valid execution.
 	 */
 	async decryptClaims(
 		encrypted: string,
@@ -72,22 +67,13 @@ export class ExecutionContextService {
 		return claim;
 	}
 
-	/**
-	 * Seals a claim for a specific workflow, binding the envelope to that
-	 * workflow's id so it can't be replayed against a different workflow than
-	 * the one it was verified for. See {@link decryptClaims}.
-	 */
+	/** Seals a claim for one workflow, so it can't be replayed on another. See {@link decryptClaims}. */
 	async sealClaims(claim: IVerifiedClaim, workflowId: string): Promise<string> {
 		const payload: IVerifiedClaim = { ...claim, boundWorkflowId: workflowId };
 		return await this.cipher.encryptV2(payload);
 	}
 
-	/**
-	 * @param expectedWorkflowId - Required to decrypt `claims`; omit only when
-	 * the caller doesn't need claims (e.g. it only cares about credentials).
-	 * Without it, a sealed claim is left encrypted-and-dropped rather than
-	 * decoded, since its binding can't be checked.
-	 */
+	/** @param expectedWorkflowId - Needed to decrypt `claims`; without it, claims are left encrypted. */
 	async decryptExecutionContext(
 		context: IExecutionContext,
 		expectedWorkflowId?: string,
@@ -136,11 +122,7 @@ export class ExecutionContextService {
 		return await this.cipher.encryptV2(payload);
 	}
 
-	/**
-	 * @param workflowId - Required when `context.claims` is set, to bind the
-	 * sealed claim to the workflow it's being persisted for. See
-	 * {@link sealClaims}.
-	 */
+	/** @param workflowId - Required when `context.claims` is set. See {@link sealClaims}. */
 	async encryptExecutionContext(
 		context: PlaintextExecutionContext,
 		workflowId?: string,
@@ -163,12 +145,9 @@ export class ExecutionContextService {
 	}
 
 	/**
-	 * Note for whoever wires up the first `claims` producer: `deepMerge` will
-	 * field-merge a partial `{ claims: {...} }` hook update into an existing
-	 * claims object rather than replacing it wholesale, which could combine
-	 * fields from two different verification passes. A claim should likely be
-	 * replaced atomically, not deep-merged - revisit this when a hook starts
-	 * returning `contextUpdate.claims`.
+	 * Note for later: this deep-merges `claims` field-by-field like everything
+	 * else, which could mix fields from two different verification passes. A
+	 * claim should probably be replaced whole, not merged.
 	 */
 	mergeExecutionContexts(
 		baseContext: PlaintextExecutionContext,
@@ -192,13 +171,10 @@ export class ExecutionContextService {
 	 * Returns the (re-encrypted) context, or the inherited context untouched when
 	 * no sub-execution hooks are registered and no claim needs re-binding.
 	 *
-	 * A sealed claim is bound to the workflow it was verified for (see
-	 * `sealClaims`/`decryptClaims`), so an inherited claim - still bound to the
-	 * PARENT's workflow id - would otherwise fail its binding check on every
-	 * later access to the child's context. Re-derive and re-seal it here for
-	 * THIS (child) workflow: this is expected inheritance of a legitimately
-	 * verified claim, not a replay, so this runs unconditionally whenever a
-	 * claim is present, even with zero registered sub-execution hooks.
+	 * A claim is sealed for one workflow, so an inherited claim still bound to
+	 * the parent's workflow would fail every later check. Re-seal it here for
+	 * the child workflow instead - this always runs when a claim is present,
+	 * even with no sub-execution hooks registered.
 	 */
 	async augmentSubExecutionContext(
 		workflow: Workflow,
@@ -208,8 +184,8 @@ export class ExecutionContextService {
 		const subExecutionHooks = this.executionContextHookRegistry.getSubExecutionHooks();
 		if (subExecutionHooks.length === 0 && !contextToAugment.claims) return contextToAugment;
 
-		// Decrypted without checking the claim's (still parent-bound) binding -
-		// it's about to be re-sealed for this workflow below.
+		// Skip the binding check here - the claim is still bound to the parent
+		// workflow and gets re-sealed for this one below.
 		let context = await this.decryptExecutionContext(contextToAugment);
 
 		if (contextToAugment.claims) {

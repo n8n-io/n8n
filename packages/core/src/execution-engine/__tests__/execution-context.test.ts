@@ -1014,10 +1014,8 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should strip a sealed claim rather than inherit it unre-sealed', async () => {
-			// Unlike the sub-workflow (Execute Workflow node) path, this path has no
-			// re-sealing step - a claim carried straight through would still be bound
-			// to the failed workflow's id and fail its binding check everywhere it's
-			// later read, so it's dropped instead of silently carried over.
+			// Unlike the sub-workflow path, error workflows have no re-sealing
+			// step, so an inherited claim would just carry a stale binding.
 			const parentContext: IExecutionContext = {
 				version: 1,
 				establishedAt: 3000000000,
@@ -1063,9 +1061,8 @@ describe('establishExecutionContext', () => {
 
 			const errorContext = runExecutionData.executionData!.runtimeData!;
 
-			// Credentials still inherit as before (unaffected by this change) ...
+			// Credentials still inherit as before; the claim is dropped.
 			expect(errorContext.credentials).toBe('original-workflow-credentials');
-			// ... but the claim is dropped, not carried over with a stale binding.
 			expect(errorContext.claims).toBeUndefined();
 		});
 	});
