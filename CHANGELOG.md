@@ -1,3 +1,11 @@
+## [1.123.69](https://github.com/n8n-io/n8n/compare/n8n@1.123.68...n8n@1.123.69) (2026-08-05)
+
+
+### Bug Fixes
+
+* **editor:** Improve resource locator link preview handling ([#35570](https://github.com/n8n-io/n8n/issues/35570)) ([7fd9a6e](https://github.com/n8n-io/n8n/commit/7fd9a6ef4e439294e17f0188f01b6fb81415e6b8))
+
+
 ## [1.123.68](https://github.com/n8n-io/n8n/compare/n8n@1.123.67...n8n@1.123.68) (2026-08-03)
 
 
