@@ -276,7 +276,7 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 
-			it('should roll back transaction if filesystem write fails', async () => {
+			it('propagates the error when the filesystem write fails', async () => {
 				const mockTx = mock<EntityManager>();
 				mockTx.insert.mockResolvedValue({
 					identifiers: [{ id: 'exec-3' }],
@@ -1058,7 +1058,7 @@ describe('ExecutionPersistence', () => {
 				expect(jsonStore.write).toHaveBeenCalled();
 			});
 
-			it('should roll the transaction back if the fs write fails', async () => {
+			it('propagates the error when the fs write fails', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
 				jsonStore.read.mockResolvedValue(existingBundle);
