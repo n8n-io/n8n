@@ -1,5 +1,4 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { Container } from '@n8n/di';
 import type { ProjectRepository, Role, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -26,12 +25,6 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-helpers');
 vi.mock('@/generic-helpers');
-// The service is resolved lazily (dynamic import + Container.get) so core doesn't
-// take a compile-time dependency on the MCP module. Stub the module's export as a
-// bare class so only the class token is needed to intercept Container.get.
-vi.mock('@/modules/mcp/mcp.settings.service', () => ({
-	McpSettingsService: class McpSettingsService {},
-}));
 
 describe('WorkflowCreationService', () => {
 	const userHasScopesMock = vi.mocked(userHasScopes);
@@ -71,9 +64,7 @@ describe('WorkflowCreationService', () => {
 		// Default: no active floor. Tests opt into a floor explicitly.
 		instanceRedactionEnforcementServiceMock.get.mockResolvedValue('off');
 
-		// McpSettingsService is resolved lazily (dynamic import + Container.get).
 		mcpSettingsService = mock<McpSettingsService>();
-		vi.spyOn(Container, 'get').mockReturnValue(mcpSettingsService);
 
 		workflowCreationService = new WorkflowCreationService(
 			mock(), // logger
@@ -95,6 +86,7 @@ describe('WorkflowCreationService', () => {
 			workflowValidationServiceMock,
 			instanceRedactionEnforcementServiceMock,
 			workflowHookContextServiceMock,
+			mcpSettingsService,
 		);
 	});
 

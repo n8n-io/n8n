@@ -9,7 +9,7 @@ import {
 	TagRepository,
 	WorkflowEntity,
 } from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -23,6 +23,7 @@ import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
 import { NodeTypes } from '@/node-types';
@@ -61,6 +62,7 @@ export class WorkflowCreationService {
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 		private readonly workflowHookContextService: WorkflowHookContextService,
+		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
 	async createWorkflow(
@@ -350,9 +352,7 @@ export class WorkflowCreationService {
 	private async resolveMcpExposureOnCreate(newWorkflow: WorkflowEntity): Promise<void> {
 		if (newWorkflow.settings?.availableInMCP !== undefined) return;
 
-		const { McpSettingsService } = await import('@/modules/mcp/mcp.settings.service.js');
-
-		if (!(await Container.get(McpSettingsService).getAutoExposeNewWorkflows())) return;
+		if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows())) return;
 
 		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), availableInMCP: true };
 	}
