@@ -36,11 +36,9 @@ const $style = useCssModule();
 
 		<slot name="item-trailing" :item="props" :ui="{ class: $style.itemTrailing }" />
 
-		<slot name="item-indicator" :ui="{ class: $style.itemIndicator }">
-			<ComboboxItemIndicator as-child>
-				<Icon icon="check" :class="$style.itemIndicator" />
-			</ComboboxItemIndicator>
-		</slot>
+		<ComboboxItemIndicator as-child>
+			<Icon icon="check" :class="$style.itemIndicator" />
+		</ComboboxItemIndicator>
 	</ComboboxItem>
 </template>
 
