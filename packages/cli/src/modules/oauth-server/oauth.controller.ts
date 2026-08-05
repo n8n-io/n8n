@@ -128,6 +128,9 @@ const clientCredentialsExchangeGuard: RequestHandler = async (req, res, next) =>
 			return;
 		}
 
+		// Trace: an inbound client_credentials mint was requested. Never the secret.
+		logger.debug('client_credentials token requested', { clientId, resource });
+
 		const response = await oauthServerService.exchangeClientCredentials(
 			clientId,
 			clientSecret,

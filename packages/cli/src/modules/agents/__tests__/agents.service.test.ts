@@ -5,10 +5,13 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ServiceAccountsService } from '@/modules/service-accounts/service-accounts.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { ServiceAccountCredentialService } from '@/services/service-account-credential.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -324,6 +327,130 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
 		expect(agentRepository.remove).not.toHaveBeenCalled();
+	});
+
+	describe('service account provisioning', () => {
+		const FLAG = 'N8N_ENV_FEAT_SERVICE_ACCOUNTS';
+		const originalFlag = process.env[FLAG];
+		const owner = mock<User>({ id: 'owner-1' });
+
+		let serviceAccountsService: MockProxy<ServiceAccountsService>;
+		let serviceAccountCredentialService: MockProxy<ServiceAccountCredentialService>;
+		let ownershipService: MockProxy<OwnershipService>;
+
+		beforeEach(() => {
+			serviceAccountsService = mock<ServiceAccountsService>();
+			serviceAccountCredentialService = mock<ServiceAccountCredentialService>();
+			ownershipService = mock<OwnershipService>();
+
+			ownershipService.getInstanceOwner.mockResolvedValue(owner);
+			serviceAccountsService.create.mockResolvedValue(mock<User>({ id: 'sa-1' }));
+
+			Container.set(ServiceAccountsService, serviceAccountsService);
+			Container.set(ServiceAccountCredentialService, serviceAccountCredentialService);
+			Container.set(OwnershipService, ownershipService);
+		});
+
+		afterEach(() => {
+			if (originalFlag === undefined) delete process.env[FLAG];
+			else process.env[FLAG] = originalFlag;
+		});
+
+		it('provisions an SA user and credential and records the id on create when the flag is on', async () => {
+			process.env[FLAG] = 'true';
+			const { service, agentRepository } = makeService();
+			const saved = makeAgent({ serviceAccountUserId: null });
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+
+			await service.create(projectId, 'Support Agent');
+
+			expect(serviceAccountsService.create).toHaveBeenCalledWith(
+				{ name: `agent:${agentId.slice(0, 8)}`, role: 'global:member' },
+				owner,
+			);
+			expect(serviceAccountCredentialService.createForUser).toHaveBeenCalledWith(
+				'sa-1',
+				`agent:${agentId}`,
+			);
+			expect(agentRepository.update).toHaveBeenCalledWith(
+				{ id: agentId },
+				{ serviceAccountUserId: 'sa-1' },
+			);
+			expect(saved.serviceAccountUserId).toBe('sa-1');
+		});
+
+		it('does not provision a service account on create when the flag is off', async () => {
+			const { service, agentRepository } = makeService();
+			const saved = makeAgent({ serviceAccountUserId: null });
+			agentRepository.create.mockReturnValue(saved);
+			agentRepository.save.mockResolvedValue(saved);
+
+			await service.create(projectId, 'Support Agent');
+
+			expect(serviceAccountsService.create).not.toHaveBeenCalled();
+			expect(agentRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('is idempotent: returns the existing id without minting a new service account', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({ serviceAccountUserId: 'sa-existing' });
+
+			await expect(service.getOrCreateServiceAccountUserId(agent)).resolves.toBe('sa-existing');
+
+			expect(serviceAccountsService.create).not.toHaveBeenCalled();
+			expect(agentRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('tears the service account down when its agent is deleted and the flag is on', async () => {
+			process.env[FLAG] = 'true';
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ serviceAccountUserId: 'sa-1' }),
+			);
+
+			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+
+			expect(serviceAccountsService.delete).toHaveBeenCalledWith('sa-1', owner);
+		});
+
+		it('does not tear a service account down on delete when the flag is off', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ serviceAccountUserId: 'sa-1' }),
+			);
+
+			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+
+			expect(serviceAccountsService.delete).not.toHaveBeenCalled();
+		});
+
+		describe('resolveActingServiceAccountUserId', () => {
+			it('returns undefined without provisioning when the flag is off', async () => {
+				const { service } = makeService();
+				const agent = makeAgent({ serviceAccountUserId: null });
+
+				await expect(service.resolveActingServiceAccountUserId(agent)).resolves.toBeUndefined();
+				expect(serviceAccountsService.create).not.toHaveBeenCalled();
+			});
+
+			it('returns the existing acting identity when the flag is on', async () => {
+				process.env[FLAG] = 'true';
+				const { service } = makeService();
+				const agent = makeAgent({ serviceAccountUserId: 'sa-existing' });
+
+				await expect(service.resolveActingServiceAccountUserId(agent)).resolves.toBe('sa-existing');
+			});
+
+			it('fails open (returns undefined) when provisioning throws', async () => {
+				process.env[FLAG] = 'true';
+				serviceAccountsService.create.mockRejectedValue(new Error('provisioning failed'));
+				const { service } = makeService();
+				const agent = makeAgent({ serviceAccountUserId: null });
+
+				await expect(service.resolveActingServiceAccountUserId(agent)).resolves.toBeUndefined();
+			});
+		});
 	});
 
 	describe('findByIdForUser', () => {

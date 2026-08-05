@@ -4,6 +4,7 @@ import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
+import type { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import type { OauthService } from '@/oauth/oauth.service';
 
 import {
@@ -143,6 +144,64 @@ describe('buildMcpClientForServer — header derivation', () => {
 			{ oauthTokenData: { access_token: 'oauth-token' } },
 		);
 		expect(headers.Authorization).toBe('Bearer oauth-token');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — n8nInternalOAuth2 (self-authenticated) path
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — n8nInternalOAuth2', () => {
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+	});
+
+	async function buildAndCaptureHeaders(
+		deps: Partial<Parameters<typeof buildMcpClientForServer>[1]>,
+	) {
+		await buildMcpClientForServer(makeServer({ authentication: 'n8nInternalOAuth2' }), {
+			credentialProvider: mock<CredentialProvider>(),
+			oauthService: mock<OauthService>(),
+			projectId: 'proj-1',
+			proxyFetch,
+			...deps,
+		});
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await configs[0].fetch('https://example.test/mcp');
+		const [, init] = proxyFetchMock.mock.calls[0] as [unknown, RequestInit];
+		return (init.headers ?? {}) as Record<string, string>;
+	}
+
+	it('mints a bearer token audience-locked to the server URL for the acting identity', async () => {
+		const internalOAuth2MintService = mock<InternalOAuth2MintService>();
+		internalOAuth2MintService.mintForUser.mockResolvedValue('minted-token');
+
+		const headers = await buildAndCaptureHeaders({
+			internalOAuth2MintService,
+			actingServiceAccountUserId: 'sa-user-1',
+		});
+
+		expect(internalOAuth2MintService.mintForUser).toHaveBeenCalledWith(
+			'sa-user-1',
+			'https://example.test/mcp',
+		);
+		expect(headers.Authorization).toBe('Bearer minted-token');
+	});
+
+	it('fails closed (no auth header, no mint) when there is no acting identity', async () => {
+		const internalOAuth2MintService = mock<InternalOAuth2MintService>();
+
+		const headers = await buildAndCaptureHeaders({ internalOAuth2MintService });
+
+		expect(internalOAuth2MintService.mintForUser).not.toHaveBeenCalled();
+		expect(headers.Authorization).toBeUndefined();
+	});
+
+	it('fails closed when the mint service is absent (build-time verify path)', async () => {
+		const headers = await buildAndCaptureHeaders({ actingServiceAccountUserId: 'sa-user-1' });
+		expect(headers.Authorization).toBeUndefined();
 	});
 });
 

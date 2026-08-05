@@ -62,4 +62,15 @@ export const credentials: INodeCredentialDescription[] = [
 			},
 		},
 	},
+	{
+		// Marker credential: stores no secret. The node self-authenticates as the
+		// running agent's service-account identity, minting a token server-side.
+		name: 'n8nInternalOAuth2Api',
+		required: true,
+		displayOptions: {
+			show: {
+				authentication: ['n8nInternalOAuth2'],
+			},
+		},
+	},
 ];

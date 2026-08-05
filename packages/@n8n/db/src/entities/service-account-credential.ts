@@ -24,6 +24,12 @@ export class ServiceAccountCredential extends WithTimestamps {
 	@Column({ type: String })
 	clientId: string;
 
+	/**
+	 * Client secret, reversibly encrypted with the instance `Cipher` (same AES
+	 * helper as all n8n credential encryption) so the runtime can recover it to
+	 * mint tokens. Cipher output is longer than the previous bcrypt hash but still
+	 * fits `text`, so the column type is unchanged.
+	 */
 	@Column({ type: String })
 	clientSecret: string;
 }

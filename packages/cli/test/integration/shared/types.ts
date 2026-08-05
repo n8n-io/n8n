@@ -60,6 +60,7 @@ type EndpointGroup =
 	| 'test-webhooks';
 
 type ModuleName =
+	| 'agents'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'

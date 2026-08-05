@@ -4,7 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -228,6 +228,17 @@ export class AgentRuntimeCacheService {
 			projectId,
 			user,
 		);
+
+		// Resolve the agent's acting service-account identity so outbound
+		// self-authentication (n8nInternalOAuth2 MCP servers) can mint a token as
+		// the agent. Resolved on the persisted entity (not the published snapshot)
+		// so a first-time backfill persists `serviceAccountUserId` back to the row.
+		// Lazy import avoids a service-construction cycle (AgentsService transitively
+		// depends on this cache service).
+		const { AgentsService } = await import('./agents.service.js');
+		const actingServiceAccountUserId =
+			await Container.get(AgentsService).resolveActingServiceAccountUserId(agentEntity);
+
 		const { agent: agentInstance, toolRegistry } =
 			await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 				agentData,
@@ -235,6 +246,8 @@ export class AgentRuntimeCacheService {
 				usePublishedVersion ? 'production' : 'test',
 				integrationType,
 				user,
+				undefined,
+				actingServiceAccountUserId,
 			);
 
 		return {

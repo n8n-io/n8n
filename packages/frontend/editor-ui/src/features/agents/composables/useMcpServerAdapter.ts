@@ -94,6 +94,7 @@ const AUTHENTICATION_TO_CREDENTIAL_TYPE: Record<string, string | undefined> = {
 	headerAuth: 'httpHeaderAuth',
 	multipleHeadersAuth: 'httpMultipleHeadersAuth',
 	mcpOAuth2Api: 'mcpOAuth2Api',
+	n8nInternalOAuth2: 'n8nInternalOAuth2Api',
 	none: 'none',
 } satisfies Record<McpAuthenticationSchemaType, string | undefined>;
 
@@ -102,6 +103,7 @@ const CREDENTIAL_TYPE_TO_AUTHENTICATION: Record<string, string | undefined> = {
 	httpHeaderAuth: 'headerAuth',
 	httpMultipleHeadersAuth: 'multipleHeadersAuth',
 	mcpOAuth2Api: 'mcpOAuth2Api',
+	n8nInternalOAuth2Api: 'n8nInternalOAuth2',
 	none: 'none',
 } satisfies Record<string, McpAuthenticationSchemaType | undefined>;
 

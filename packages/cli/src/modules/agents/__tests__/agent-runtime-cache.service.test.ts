@@ -3,11 +3,16 @@ import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+
+// The runtime build lazy-imports AgentsService to resolve the agent's acting
+// service-account identity; stub the module so no heavy service graph loads.
+vi.mock('../agents.service', () => ({ AgentsService: class AgentsService {} }));
 
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -17,6 +22,13 @@ import type { ToolRegistry } from '../tool-registry';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
+
+// Original DI resolver, captured before any spy wraps it, so the acting-identity
+// spy can delegate every non-AgentsService token to the real container.
+const realContainerGet = Container.get.bind(Container);
+
+// Stub for AgentsService.resolveActingServiceAccountUserId; reset per test.
+let actingIdentityResolver: Mock;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -65,6 +77,17 @@ function makeService({ multiMain = false }: { multiMain?: boolean } = {}) {
 describe('AgentRuntimeCacheService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// The runtime build lazy-resolves AgentsService from the DI container to
+		// resolve the agent's acting identity. Intercept only that token (by name,
+		// so it works whether the stub or real class is the token) and default it to
+		// "no identity"; delegate every other lookup to the real container so
+		// unrelated DI resolutions keep working.
+		actingIdentityResolver = vi.fn().mockResolvedValue(undefined);
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) =>
+			(token as { name?: string })?.name === 'AgentsService'
+				? ({ resolveActingServiceAccountUserId: actingIdentityResolver } as never)
+				: realContainerGet(token as never),
+		);
 	});
 
 	it('reconstructs a draft runtime once and reuses the cached instance', async () => {
@@ -92,7 +115,22 @@ describe('AgentRuntimeCacheService', () => {
 			'test',
 			undefined,
 			undefined,
+			undefined,
+			undefined,
 		);
+	});
+
+	it('threads the resolved acting service-account identity into reconstruction', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+		actingIdentityResolver.mockResolvedValue('sa-user-1');
+
+		await service.getRuntime({ agentId, projectId });
+
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0]?.[6]).toBe('sa-user-1');
 	});
 
 	it('keeps draft runtimes separate by integration type', async () => {
@@ -122,6 +160,8 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			'test',
 			'n8n_chat',
+			undefined,
+			undefined,
 			undefined,
 		);
 	});
@@ -154,6 +194,8 @@ describe('AgentRuntimeCacheService', () => {
 			'test',
 			undefined,
 			userA,
+			undefined,
+			undefined,
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -162,6 +204,8 @@ describe('AgentRuntimeCacheService', () => {
 			'test',
 			undefined,
 			userB,
+			undefined,
+			undefined,
 		);
 	});
 
@@ -180,7 +224,9 @@ describe('AgentRuntimeCacheService', () => {
 		const first = service.getRuntime({ agentId, projectId });
 		const second = service.getRuntime({ agentId, projectId });
 
-		await Promise.resolve();
+		// Let the async pre-step (acting-identity resolution) settle so the shared
+		// reconstruction has actually been invoked before asserting on it.
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
 
 		resolveRuntime(runtime);
@@ -229,7 +275,9 @@ describe('AgentRuntimeCacheService', () => {
 			.mockResolvedValueOnce(freshRuntime);
 
 		const staleRequest = service.getRuntime({ agentId, projectId });
-		await Promise.resolve();
+		// Let the async pre-step settle so the stale reconstruction is in-flight
+		// before it is invalidated.
+		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		service.clearRuntimes(agentId);
 
@@ -285,6 +333,8 @@ describe('AgentRuntimeCacheService', () => {
 			expect.anything(),
 			'production',
 			'slack',
+			undefined,
+			undefined,
 			undefined,
 		);
 	});

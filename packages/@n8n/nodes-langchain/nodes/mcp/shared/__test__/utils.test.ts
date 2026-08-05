@@ -5,7 +5,7 @@ import { proxyFetch } from '@n8n/ai-utilities';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IExecuteFunctions, INode, NodeEgressFilter } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
-import { mockDeep } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import { expect } from 'vitest';
 
 import type { McpAuthenticationOption } from '../types';
@@ -314,6 +314,58 @@ describe('utils', () => {
 			const result = await getAuthHeaders(ctx, 'unknown' as McpAuthenticationOption);
 
 			expect(result).toEqual({});
+		});
+
+		describe('n8nInternalOAuth2', () => {
+			// Plain object ctx (not mockDeep) so the `'mintInternalOAuth2Token' in ctx`
+			// fail-closed guard can be controlled precisely per case.
+			const makeCtx = (mint?: (targetUrl: string) => Promise<string>): IExecuteFunctions => {
+				const base = { getNode: () => mock<INode>() };
+				return (mint ? { ...base, mintInternalOAuth2Token: mint } : base) as IExecuteFunctions;
+			};
+
+			it('mints a bearer token audience-locked to the target endpoint URL', async () => {
+				const mintInternalOAuth2Token = vi.fn().mockResolvedValue('minted-token');
+				const ctx = makeCtx(mintInternalOAuth2Token);
+
+				const result = await getAuthHeaders(
+					ctx,
+					'n8nInternalOAuth2',
+					'https://mcp.example.com/mcp',
+				);
+
+				expect(result).toEqual({ headers: { Authorization: 'Bearer minted-token' } });
+				// No credential is fetched — the identity comes from the execution context.
+				expect(result.credentials).toBeUndefined();
+				expect(mintInternalOAuth2Token).toHaveBeenCalledWith('https://mcp.example.com/mcp');
+			});
+
+			it('throws when the mint hook is not bound to the execution (not inside an agent)', async () => {
+				const ctx = makeCtx();
+
+				await expect(
+					getAuthHeaders(ctx, 'n8nInternalOAuth2', 'https://mcp.example.com/mcp'),
+				).rejects.toThrow(/only available when running inside an agent/);
+			});
+
+			it('throws when no target endpoint URL is available', async () => {
+				const ctx = makeCtx(vi.fn());
+
+				await expect(getAuthHeaders(ctx, 'n8nInternalOAuth2')).rejects.toThrow(
+					/without a target endpoint URL/,
+				);
+			});
+
+			it('surfaces a mint failure to the caller', async () => {
+				const mintInternalOAuth2Token = vi
+					.fn()
+					.mockRejectedValue(new Error('no acting service-account identity'));
+				const ctx = makeCtx(mintInternalOAuth2Token);
+
+				await expect(
+					getAuthHeaders(ctx, 'n8nInternalOAuth2', 'https://mcp.example.com/mcp'),
+				).rejects.toThrow('no acting service-account identity');
+			});
 		});
 
 		it.each([

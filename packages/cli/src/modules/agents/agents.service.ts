@@ -8,11 +8,18 @@ import {
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
+import {
+	In,
+	isUniqueConstraintError,
+	ProjectRelationRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
+import { isServiceAccountsEnvFeatureFlagEnabled } from '@/constants/service-accounts';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -32,6 +39,12 @@ import {
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
 import { EventService } from '@/events/event.service';
+
+/**
+ * Global role assigned to an agent's service account. Member-tier: never an
+ * owner or chat-user role (those are rejected by the service-accounts service).
+ */
+const AGENT_SERVICE_ACCOUNT_ROLE = 'global:member';
 
 @Service()
 export class AgentsService {
@@ -115,7 +128,109 @@ export class AgentsService {
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
+		if (isServiceAccountsEnvFeatureFlagEnabled()) {
+			try {
+				await this.getOrCreateServiceAccountUserId(saved);
+			} catch (error) {
+				// Best-effort: a provisioning failure must not fail agent creation. The
+				// runtime path lazily backfills the service account on first use.
+				this.logger.warn('Failed to provision service account on agent create', {
+					agentId: saved.id,
+					error: error instanceof Error ? error.message : error,
+				});
+			}
+		}
+
 		return saved;
+	}
+
+	/**
+	 * Ensures this agent has a 1:1 service-account `User` and returns its id.
+	 *
+	 * Idempotent: returns the existing id when already provisioned. Otherwise mints
+	 * a passwordless service-account user (member-tier global role, with its own
+	 * personal project) plus a client credential, persists the id on the agent, and
+	 * returns it. If credential creation or the persist fails, the freshly minted
+	 * service account is torn down so no orphan is left behind.
+	 *
+	 * `_ctx` is accepted for forward-compatible transactional threading: the
+	 * provisioning steps delegate to services that each own their transaction, and
+	 * the single agent persist is atomic on its own, so it is not yet threaded.
+	 */
+	async getOrCreateServiceAccountUserId(
+		agent: Agent,
+		_ctx: OperationContext = {},
+	): Promise<string> {
+		if (agent.serviceAccountUserId) return agent.serviceAccountUserId;
+
+		const { ServiceAccountsService } = await import(
+			'@/modules/service-accounts/service-accounts.service.js'
+		);
+		const { ServiceAccountCredentialService } = await import(
+			'@/services/service-account-credential.service.js'
+		);
+		const { OwnershipService } = await import('@/services/ownership.service.js');
+
+		const serviceAccountsService = Container.get(ServiceAccountsService);
+		const serviceAccountCredentialService = Container.get(ServiceAccountCredentialService);
+
+		// No human is in the create/backfill call chain, so the instance owner is the
+		// actor recorded on the service-account audit trail.
+		const actor = await Container.get(OwnershipService).getInstanceOwner();
+
+		const serviceAccount = await serviceAccountsService.create(
+			{ name: `agent:${agent.id.slice(0, 8)}`, role: AGENT_SERVICE_ACCOUNT_ROLE },
+			actor,
+		);
+
+		try {
+			await serviceAccountCredentialService.createForUser(serviceAccount.id, `agent:${agent.id}`);
+			await this.agentRepository.update(
+				{ id: agent.id },
+				{ serviceAccountUserId: serviceAccount.id },
+			);
+		} catch (error) {
+			// Compensate: a failed credential creation or persist must not leave an
+			// orphan service account behind.
+			await serviceAccountsService.delete(serviceAccount.id, actor).catch(() => {});
+			throw error;
+		}
+
+		agent.serviceAccountUserId = serviceAccount.id;
+
+		// Trace: an agent was durably bound to a freshly provisioned service account.
+		this.logger.info('Provisioned service account for agent', {
+			agentId: agent.id,
+			serviceAccountUserId: serviceAccount.id,
+			projectId: agent.projectId,
+		});
+
+		return serviceAccount.id;
+	}
+
+	/**
+	 * Resolve the agent's acting service-account identity for outbound
+	 * self-authentication. Gated behind the service-accounts feature flag; a
+	 * failed lookup is logged and swallowed so the run still proceeds (mint paths
+	 * then fail closed for lack of an acting identity). Every runtime entry point
+	 * (workflow execution and the interactive/chat cache path) resolves through
+	 * here so the identity is threaded consistently.
+	 */
+	async resolveActingServiceAccountUserId(agent: Agent): Promise<string | undefined> {
+		if (!isServiceAccountsEnvFeatureFlagEnabled()) return undefined;
+
+		try {
+			return await this.getOrCreateServiceAccountUserId(agent);
+		} catch (error) {
+			this.logger.warn(
+				'Failed to resolve agent service-account identity; running without outbound mint identity',
+				{
+					agentId: agent.id,
+					error: error instanceof Error ? error.message : String(error),
+				},
+			);
+			return undefined;
+		}
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
@@ -334,6 +449,25 @@ export class AgentsService {
 				agentId,
 				error: error instanceof Error ? error.message : error,
 			});
+		}
+
+		// Best-effort teardown of the agent's service account (personal project,
+		// resource cascades, client credential). Wrapped so a failure here does not
+		// block the agent deletion the caller asked for.
+		if (isServiceAccountsEnvFeatureFlagEnabled() && agent.serviceAccountUserId) {
+			try {
+				const { ServiceAccountsService } = await import(
+					'@/modules/service-accounts/service-accounts.service.js'
+				);
+				const { OwnershipService } = await import('@/services/ownership.service.js');
+				const actor = await Container.get(OwnershipService).getInstanceOwner();
+				await Container.get(ServiceAccountsService).delete(agent.serviceAccountUserId, actor);
+			} catch (error) {
+				this.logger.warn('Failed to delete service account on agent delete', {
+					agentId,
+					error: error instanceof Error ? error.message : error,
+				});
+			}
 		}
 
 		this.logger.debug('Deleted SDK agent', { agentId, projectId });

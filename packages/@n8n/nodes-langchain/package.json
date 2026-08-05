@@ -61,6 +61,7 @@
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MicrosoftAgent365Api.credentials.js",
       "dist/credentials/McpOAuth2Api.credentials.js",
+      "dist/credentials/N8nInternalOAuth2Api.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
       "dist/credentials/MilvusApi.credentials.js",
       "dist/credentials/MistralCloudApi.credentials.js",

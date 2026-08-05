@@ -7,6 +7,7 @@ import {
 	type CredentialsEntity,
 	type SharedCredentials,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
@@ -18,6 +19,7 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import { NodeTypes } from '@/node-types';
 
 import {
@@ -814,6 +816,53 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.status).toBe('success');
 			expect(executedNodeName).toBe('Target Node');
 			expect(base.evalLlmMockHandler).toBeUndefined();
+		});
+	});
+
+	describe('acting service-account identity (outbound mint hook)', () => {
+		const runToolWith = async (
+			actingServiceAccountUserId?: string,
+		): Promise<Record<string, unknown>> => {
+			const base: Record<string, unknown> = {};
+			mockGetBase.mockResolvedValue(base);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: {} }]]),
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+				actingServiceAccountUserId,
+			});
+
+			expect(result.status).toBe('success');
+			return base;
+		};
+
+		it('binds the acting identity and a mint hook that delegates to InternalOAuth2MintService', async () => {
+			const mintForUser = vi.fn().mockResolvedValue('minted-token');
+			Container.set(InternalOAuth2MintService, { mintForUser } as never);
+
+			const additionalData = await runToolWith('sa-user-1');
+
+			expect(additionalData.actingServiceAccountUserId).toBe('sa-user-1');
+			expect(typeof additionalData.mintInternalOAuth2Token).toBe('function');
+
+			const mint = additionalData.mintInternalOAuth2Token as (url: string) => Promise<string>;
+			await expect(mint('https://mcp.example.com/mcp')).resolves.toBe('minted-token');
+			// The identity is server-set; the node never supplies it.
+			expect(mintForUser).toHaveBeenCalledWith('sa-user-1', 'https://mcp.example.com/mcp');
+		});
+
+		it('leaves both unset when no acting identity is threaded (fails closed downstream)', async () => {
+			const additionalData = await runToolWith(undefined);
+
+			expect(additionalData.actingServiceAccountUserId).toBeUndefined();
+			expect(additionalData.mintInternalOAuth2Token).toBeUndefined();
 		});
 	});
 });

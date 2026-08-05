@@ -5,7 +5,7 @@ import {
 import { Logger, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { ServiceAccountCredentialRepository } from '@n8n/db';
+import type { ServiceAccountCredential } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -15,8 +15,8 @@ import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { ServiceAccountCredentialService } from '@/services/service-account-credential.service';
 import type { UrlService } from '@/services/url.service';
-import type { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
@@ -44,8 +44,7 @@ let eventService: Mocked<EventService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
 const urlServiceMock = mock<UrlService>();
-const serviceAccountCredentialRepositoryMock = mock<ServiceAccountCredentialRepository>();
-const passwordUtilityMock = mock<PasswordUtility>();
+const serviceAccountCredentialServiceMock = mock<ServiceAccountCredentialService>();
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -84,14 +83,78 @@ describe('OAuthServerService', () => {
 			mailer,
 			urlServiceMock,
 			eventService,
-			serviceAccountCredentialRepositoryMock,
-			passwordUtilityMock,
+			serviceAccountCredentialServiceMock,
 		);
 	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getAllowedRedirectUris.mockResolvedValue([]);
+	});
+
+	describe('exchangeClientCredentials', () => {
+		const clientId = 'sa-client-1';
+		const rawSecret = 'correct-raw-secret';
+
+		beforeEach(() => {
+			// An existing oauth_clients shadow row so ensureServiceAccountClient no-ops.
+			oauthClientRepository.findOneBy.mockResolvedValue({ id: clientId } as OAuthClient);
+			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
+			tokenService.generateAccessTokenOnly.mockResolvedValue({
+				accessToken: 'minted-token',
+				jti: 'minted-jti',
+			});
+		});
+
+		it('accepts a matching client secret and mints a token', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue({
+				credential: mock<ServiceAccountCredential>({ userId: 'sa-user-1' }),
+				clientSecret: rawSecret,
+			});
+
+			const result = await service.exchangeClientCredentials(
+				clientId,
+				rawSecret,
+				TEST_RESOURCE_URL,
+			);
+
+			expect(result).toMatchObject({ access_token: 'minted-token', token_type: 'Bearer' });
+			expect(tokenService.generateAccessTokenOnly).toHaveBeenCalledWith(
+				'sa-user-1',
+				clientId,
+				TEST_RESOURCE_URL,
+				[],
+			);
+		});
+
+		it('rejects a wrong client secret without minting', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue({
+				credential: mock<ServiceAccountCredential>({ userId: 'sa-user-1' }),
+				clientSecret: rawSecret,
+			});
+
+			const result = await service.exchangeClientCredentials(
+				clientId,
+				'wrong-secret',
+				TEST_RESOURCE_URL,
+			);
+
+			expect(result).toBeNull();
+			expect(tokenService.generateAccessTokenOnly).not.toHaveBeenCalled();
+		});
+
+		it('returns null when the client id is unknown', async () => {
+			serviceAccountCredentialServiceMock.getDecryptedByClientId.mockResolvedValue(null);
+
+			const result = await service.exchangeClientCredentials(
+				clientId,
+				rawSecret,
+				TEST_RESOURCE_URL,
+			);
+
+			expect(result).toBeNull();
+			expect(tokenService.generateAccessTokenOnly).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('clientsStore', () => {
@@ -191,8 +254,7 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
-					serviceAccountCredentialRepositoryMock,
-					passwordUtilityMock,
+					serviceAccountCredentialServiceMock,
 				);
 			});
 
@@ -262,8 +324,7 @@ describe('OAuthServerService', () => {
 					mailer,
 					urlServiceMock,
 					mock<EventService>(),
-					serviceAccountCredentialRepositoryMock,
-					passwordUtilityMock,
+					serviceAccountCredentialServiceMock,
 				);
 
 				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
@@ -780,6 +841,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				jti: 'jti-789',
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -859,8 +921,7 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				eventService,
-				serviceAccountCredentialRepositoryMock,
-				passwordUtilityMock,
+				serviceAccountCredentialServiceMock,
 			);
 
 			const client = {
@@ -885,6 +946,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				jti: 'jti-789',
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
 			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
@@ -923,6 +985,7 @@ describe('OAuthServerService', () => {
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
+				jti: 'jti-789',
 			});
 
 			await service.exchangeAuthorizationCode(client, 'auth-code-123', 'verifier-123');
@@ -1414,8 +1477,7 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlServiceMock,
 				mock<EventService>(),
-				serviceAccountCredentialRepositoryMock,
-				passwordUtilityMock,
+				serviceAccountCredentialServiceMock,
 			);
 
 			expect(
@@ -1464,8 +1526,7 @@ describe('OAuthServerService', () => {
 				mailer,
 				urlService,
 				mock<EventService>(),
-				serviceAccountCredentialRepositoryMock,
-				passwordUtilityMock,
+				serviceAccountCredentialServiceMock,
 			);
 		};
 

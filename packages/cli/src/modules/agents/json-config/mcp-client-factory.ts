@@ -4,6 +4,7 @@ import type { CustomFetch } from '@n8n/backend-network';
 import { isMcpOAuth2Authentication } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import type { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import type { OauthService } from '@/oauth/oauth.service';
 import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
 
@@ -137,7 +138,23 @@ function deriveHeadersForAuthentication(
 async function deriveAuthHeaders(
 	server: AgentJsonMcpServerConfig,
 	credentialProvider: CredentialProvider,
+	internalOAuth2MintService?: InternalOAuth2MintService,
+	actingServiceAccountUserId?: string,
 ): Promise<DerivedAuth> {
+	if (server.authentication === 'n8nInternalOAuth2') {
+		// Self-authenticate as the agent's service-account identity: no credential
+		// fetch (the marker holds no secret) and the target URL is the token
+		// audience. Fails closed — without an acting identity (or the mint service,
+		// on build-time paths) there is no token, so the request goes out
+		// unauthenticated and the server rejects it.
+		if (!actingServiceAccountUserId || !internalOAuth2MintService) return { headers: {} };
+		const token = await internalOAuth2MintService.mintForUser(
+			actingServiceAccountUserId,
+			server.url,
+		);
+		return { headers: { Authorization: `Bearer ${token}` } };
+	}
+
 	if (server.authentication === 'none' || !server.credential) return { headers: {} };
 
 	const resolved = await credentialProvider.resolve(server.credential).catch(() => null);
@@ -155,6 +172,19 @@ export interface BuildMcpClientDeps {
 	 * `server.authentication` is any `*McpOAuth2Api` credential type.
 	 */
 	oauthService: OauthService;
+	/**
+	 * Mints a bearer token as the acting service account for
+	 * `n8nInternalOAuth2` servers, audience-locked to the server URL. Only the
+	 * autonomous-run path supplies it; build-time verify/list paths omit it (they
+	 * have no acting identity) so such servers fail closed there.
+	 */
+	internalOAuth2MintService?: InternalOAuth2MintService;
+	/**
+	 * Acting service-account identity for autonomous runs. Required for
+	 * `n8nInternalOAuth2` servers; absent otherwise (those go out unauthenticated
+	 * and fail closed at the server).
+	 */
+	actingServiceAccountUserId?: string;
 	projectId: string;
 	proxyFetch: CustomFetch;
 	/**
@@ -182,6 +212,8 @@ export async function buildMcpClientForServer(
 	const {
 		credentialProvider,
 		oauthService,
+		internalOAuth2MintService,
+		actingServiceAccountUserId,
 		projectId,
 		proxyFetch,
 		onConnectionFailed,
@@ -192,6 +224,8 @@ export async function buildMcpClientForServer(
 	const { headers: initialHeaders, credentialData } = await deriveAuthHeaders(
 		server,
 		credentialProvider,
+		internalOAuth2MintService,
+		actingServiceAccountUserId,
 	);
 	const allowedDomains = credentialData ? resolveAllowedDomains(credentialData) : undefined;
 

@@ -28,6 +28,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
@@ -113,6 +114,7 @@ function makeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
+		mock<InternalOAuth2MintService>(),
 		{
 			modules,
 			...(overrides.agentsConfig ?? {}),

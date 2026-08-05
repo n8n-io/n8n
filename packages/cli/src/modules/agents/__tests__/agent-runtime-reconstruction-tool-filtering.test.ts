@@ -16,6 +16,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import type { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
@@ -131,6 +132,7 @@ function makeService(overrides: {
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
+		mock<InternalOAuth2MintService>(),
 		{ modules: [] } as unknown as AgentsConfig,
 		mock<AiService>(),
 		outboundHttp,

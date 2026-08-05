@@ -75,6 +75,11 @@ export class McpClient implements INodeType {
 						value: 'multipleHeadersAuth',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'n8n Internal OAuth2',
+						value: 'n8nInternalOAuth2',
+					},
+					{
 						name: 'None',
 						value: 'none',
 					},
@@ -89,7 +94,13 @@ export class McpClient implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api', 'multipleHeadersAuth'],
+						authentication: [
+							'headerAuth',
+							'bearerAuth',
+							'mcpOAuth2Api',
+							'multipleHeadersAuth',
+							'n8nInternalOAuth2',
+						],
 					},
 				},
 			},

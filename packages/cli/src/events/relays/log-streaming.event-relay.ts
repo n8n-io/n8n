@@ -135,6 +135,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'token-exchange-identity-rebound': (event) => this.tokenExchangeIdentityRebound(event),
 			'token-exchange-user-provisioned': (event) => this.tokenExchangeUserProvisioned(event),
 			'token-exchange-role-updated': (event) => this.tokenExchangeRoleUpdated(event),
+			'service-account-token-minted': (event) => this.serviceAccountTokenMinted(event),
+			'service-account-token-verified': (event) => this.serviceAccountTokenVerified(event),
 			'embed-login': (event) => this.embedLogin(event),
 			'embed-login-failed': (event) => this.embedLoginFailed(event),
 			'expression-mapping-roles-resolved': (event) => this.expressionMappingRolesResolved(event),
@@ -1190,6 +1192,21 @@ export class LogStreamingEventRelay extends EventRelay {
 	private tokenExchangeRoleUpdated(event: RelayEventMap['token-exchange-role-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.token-exchange.role-updated',
+			payload: event,
+		});
+	}
+
+	// Emitted by WP4a's mint service.
+	private serviceAccountTokenMinted(event: RelayEventMap['service-account-token-minted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.token.minted',
+			payload: event,
+		});
+	}
+
+	private serviceAccountTokenVerified(event: RelayEventMap['service-account-token-verified']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.service-account.token.verified',
 			payload: event,
 		});
 	}

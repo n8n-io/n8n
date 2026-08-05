@@ -239,6 +239,7 @@ import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/17852553
 import { AddSetupCompletedAtToAgents1785500832626 } from '../common/1785500832626-AddSetupCompletedAtToAgents';
 import { AddServiceAccountCredentials1785500832627 } from '../common/1785500832627-AddServiceAccountCredentials';
 import { AddTypeToUser1785763124126 } from '../common/1785763124126-AddTypeToUser';
+import { AddServiceAccountUserIdToAgents1785900000000 } from '../common/1785900000000-AddServiceAccountUserIdToAgents';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -483,4 +484,5 @@ export const postgresMigrations: Migration[] = [
 	AddSetupCompletedAtToAgents1785500832626,
 	AddServiceAccountCredentials1785500832627,
 	AddTypeToUser1785763124126,
+	AddServiceAccountUserIdToAgents1785900000000,
 ];

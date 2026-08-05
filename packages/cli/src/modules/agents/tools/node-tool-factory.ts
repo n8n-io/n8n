@@ -18,6 +18,12 @@ type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 export interface NodeToolFactoryContext {
 	executor: EphemeralNodeExecutor;
 	projectId: string;
+	/**
+	 * Acting service-account user id for autonomous agent runs. Threaded into each
+	 * node-tool execution so the node's self-authentication path can mint a token as
+	 * the agent's service account. Server-set only — never from node input.
+	 */
+	actingServiceAccountUserId?: string;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
@@ -163,6 +169,7 @@ export async function resolveNodeTool(
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
 				inputData: [{ json: input as IDataObject }],
 				projectId: ctx.projectId,
+				actingServiceAccountUserId: ctx.actingServiceAccountUserId,
 				...instrumentedExecution,
 			});
 			// Throw on the executor's structured error so the agent runtime

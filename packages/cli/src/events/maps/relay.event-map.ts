@@ -1014,6 +1014,27 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// #region Service account tokens
+
+	// Emitted by WP4a's mint service (`InternalOAuth2MintService`) when a service
+	// account mints a token via client_credentials.
+	'service-account-token-minted': {
+		sub: string;
+		clientId: string;
+		aud: string;
+		outcome: 'success' | 'failure';
+	};
+
+	// Emitted by `OAuthTokenService.verifyOAuthAccessToken` when an inbound
+	// service-account token is verified against a protected resource.
+	'service-account-token-verified': {
+		sub: string | null;
+		aud: string;
+		outcome: 'success' | 'failure';
+	};
+
+	// #endregion
+
 	// #region runner
 
 	'runner-task-requested': {

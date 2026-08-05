@@ -21,12 +21,13 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
-import { ServiceAccountCredentialRepository } from '@n8n/db';
+import { timingSafeEqual } from 'node:crypto';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { INSTANCE_MCP_RESOURCE_ID } from '@/modules/mcp/mcp-protected-resource';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { ServiceAccountCredentialService } from '@/services/service-account-credential.service';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -37,7 +38,6 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
-import { PasswordUtility } from '@/services/password.utility';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -72,6 +72,20 @@ export type ListConnectedClientsOptions = {
 	type?: McpClientTypeFilter;
 	connected?: McpClientConnectedPeriod;
 };
+
+/**
+ * Constant-time string comparison. Guards the length first because
+ * `timingSafeEqual` throws on unequal-length buffers; the length check leaks
+ * only the secret's length, not its contents.
+ */
+function timingSafeEqualStrings(a: string, b: string): boolean {
+	const bufA = Buffer.from(a, 'utf8');
+	const bufB = Buffer.from(b, 'utf8');
+	if (bufA.length !== bufB.length) {
+		return false;
+	}
+	return timingSafeEqual(bufA, bufB);
+}
 
 /** Whether a client's derived brand type falls in the requested filter bucket. */
 function matchesTypeFilter(name: string, type: McpClientTypeFilter): boolean {
@@ -109,8 +123,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
-		private readonly serviceAccountCredentialRepository: ServiceAccountCredentialRepository,
-		private readonly passwordUtility: PasswordUtility,
+		private readonly serviceAccountCredentialService: ServiceAccountCredentialService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -400,14 +413,21 @@ export class OAuthServerService implements OAuthServerProvider {
 		clientSecret: string,
 		resource: string,
 	): Promise<OAuthTokens | null> {
-		const credential = await this.serviceAccountCredentialRepository.findByClientId(clientId, {});
+		const decrypted = await this.serviceAccountCredentialService.getDecryptedByClientId(clientId);
 
-		if (!credential) {
+		if (!decrypted) {
+			// Keep the precise reason (a mild client-enumeration oracle) at debug; ops
+			// still see a generic warn without the oracle.
+			this.logger.debug('client_credentials rejected', { clientId, reason: 'unknown_client' });
+			this.logger.warn('client_credentials rejected', { clientId, reason: 'invalid_client' });
 			return null;
 		}
 
-		const isValid = await this.passwordUtility.compare(clientSecret, credential.clientSecret);
-		if (!isValid) {
+		const { credential, clientSecret: storedSecret } = decrypted;
+
+		if (!timingSafeEqualStrings(clientSecret, storedSecret)) {
+			this.logger.debug('client_credentials rejected', { clientId, reason: 'bad_secret' });
+			this.logger.warn('client_credentials rejected', { clientId, reason: 'invalid_client' });
 			return null;
 		}
 
@@ -420,12 +440,21 @@ export class OAuthServerService implements OAuthServerProvider {
 		// ponytail: shadow row — the real secret/user binding stays on the credential.
 		await this.ensureServiceAccountClient(clientId);
 
-		const { accessToken } = await this.tokenService.generateAccessTokenOnly(
+		const { accessToken, jti } = await this.tokenService.generateAccessTokenOnly(
 			credential.userId,
 			clientId,
 			resource,
 			[],
 		);
+
+		// Trace: who (service-account user + client) got a token for which resource.
+		// `jti` correlates this mint to its later verify. Never log the secret or the token.
+		this.logger.info('Minted client_credentials token for service account', {
+			clientId,
+			userId: credential.userId,
+			resource,
+			jti,
+		});
 
 		return {
 			access_token: accessToken,

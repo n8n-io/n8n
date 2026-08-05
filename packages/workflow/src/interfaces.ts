@@ -1248,6 +1248,15 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		isStreaming(): boolean;
 		/** Returns true if the node is being executed as an AI Agent tool */
 		isToolExecution(): boolean;
+		/**
+		 * Outbound self-authentication for autonomous agent runs: mints a short-lived
+		 * OAuth2 bearer token as the execution's acting service-account identity,
+		 * audience-locked to `targetUrl`. The identity is set server-side by the agent
+		 * runtime (never from node input); if no acting identity is bound to the
+		 * execution the call fails closed. Backed by
+		 * `additionalData.mintInternalOAuth2Token`.
+		 */
+		mintInternalOAuth2Token(targetUrl: string): Promise<string>;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -1332,6 +1341,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'startJob'
 		| 'helpers'
 		| 'isToolExecution'
+		| 'mintInternalOAuth2Token'
 	> & {
 		getNextRunIndex(): number;
 		continueOnFail(): boolean;
@@ -3634,6 +3644,16 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<N8nOAuth2ValidationResult>;
 	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
 	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
+	/**
+	 * Outbound counterpart to the trigger-side OAuth hooks above: the execution's
+	 * acting service-account identity, and a mint hook that issues a short-lived
+	 * OAuth2 token for that identity, audience-locked to `targetUrl`. Both are wired
+	 * by the CLI agent-runtime layer only on autonomous agent runs; the identity is
+	 * server-set (never from node input), so a node auth path that calls the mint
+	 * hook without an acting identity fails closed.
+	 */
+	actingServiceAccountUserId?: string;
+	mintInternalOAuth2Token?: (targetUrl: string) => Promise<string>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;

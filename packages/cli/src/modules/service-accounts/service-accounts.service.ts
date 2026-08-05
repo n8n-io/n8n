@@ -126,6 +126,12 @@ export class ServiceAccountsService {
 				),
 		);
 
+		this.logger.info('Created service account', {
+			serviceAccountUserId: serviceAccount.id,
+			role: dto.role,
+			actorId: actor.id,
+		});
+
 		this.eventService.emit('service-account-created', {
 			userId: actor.id,
 			serviceAccountId: serviceAccount.id,

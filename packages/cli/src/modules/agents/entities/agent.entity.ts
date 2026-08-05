@@ -54,6 +54,15 @@ export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	activeVersionId: string | null;
 
+	/**
+	 * The 1:1 service-account `User` that backs this agent's runtime identity, or
+	 * null until provisioned. Set eagerly on create and lazily backfilled for
+	 * pre-existing agents. FK → `user.id` with `ON DELETE SET NULL`, so deleting
+	 * the service account clears the pointer rather than orphaning it.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	serviceAccountUserId: string | null;
+
 	@ManyToOne('AgentHistory', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'activeVersionId' })
 	activeVersion?: Relation<AgentHistory> | null;

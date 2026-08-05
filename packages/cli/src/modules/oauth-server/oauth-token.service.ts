@@ -9,6 +9,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
+import { EventService } from '@/events/event.service';
 import { JwtService } from '@/services/jwt.service';
 import type {
 	OAuthTokenVerifier,
@@ -42,6 +43,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly txRunner: TransactionRunner,
+		private readonly eventService: EventService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
@@ -53,15 +55,15 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		clientId: string,
 		resource: string | undefined,
 		scopes: string[],
-	): Promise<{ accessToken: string }> {
-		const { accessToken } = this.generateTokenPair(userId, clientId, resource, scopes);
+	): Promise<{ accessToken: string; jti: string }> {
+		const { accessToken, jti } = this.generateTokenPair(userId, clientId, resource, scopes);
 		// Persist the access token: verification checks the token row exists, so an
 		// unsaved token would be rejected. No refresh token is issued for
 		// client_credentials (RFC 6749 §4.4.3).
 		await this.txRunner.run({}, async (ctx) => {
 			await this.accessTokenRepository.insertToken({ token: accessToken, clientId, userId }, ctx);
 		});
-		return { accessToken };
+		return { accessToken, jti };
 	}
 
 	generateTokenPair(
@@ -69,7 +71,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		clientId: string,
 		resource: string | undefined,
 		scopes: string[],
-	): { accessToken: string; refreshToken: string } {
+	): { accessToken: string; refreshToken: string; jti: string } {
 		// Pre-RFC-8707 clients omit the resource indicator; fall back to the
 		// registry's default resource (the instance MCP server).
 		const audience = resource ?? this.resourceRegistry.getDefaultResource()?.getResourceUrl();
@@ -79,11 +81,15 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			);
 		}
 
+		// Surface the jti so mint/verify sites can log it as a correlation handle
+		// (grep-stitch a mint to its verify). The token itself is never logged.
+		const jti = randomUUID();
+
 		const accessToken = this.jwtService.sign({
 			sub: userId,
 			aud: audience,
 			client_id: clientId,
-			jti: randomUUID(),
+			jti,
 			iat: Math.floor(Date.now() / 1000),
 			exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
 			// RFC 9068 space-delimited scope claim. Always present on new tokens
@@ -97,7 +103,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 		const refreshToken = randomBytes(32).toString('hex');
 
-		return { accessToken, refreshToken };
+		return { accessToken, refreshToken, jti };
 	}
 
 	async saveTokenPair(
@@ -225,12 +231,16 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			throw new AccessTokenNotFoundError();
 		}
 
+		// `jti` is carried through `extra` purely as a log-correlation handle (mint↔verify).
+		const jti = this.getStringClaim(decoded, 'jti');
+
 		return {
 			token,
 			clientId,
 			scopes: this.parseScopeClaim(decoded),
 			extra: {
 				userId,
+				...(jti ? { jti } : {}),
 			},
 		};
 	}
@@ -252,6 +262,14 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return scopeClaim === '' ? [] : scopeClaim.split(' ');
 	}
 
+	private emitTokenVerified(
+		sub: string | null,
+		aud: string | undefined,
+		outcome: 'success' | 'failure',
+	) {
+		this.eventService.emit('service-account-token-verified', { sub, aud: aud ?? '', outcome });
+	}
+
 	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
 		try {
 			const resource = await this.getResourceByAudience(expectedAudience);
@@ -260,6 +278,11 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			// can't be resolved (deleted, or a transient resolver failure the registry
 			// swallows to `undefined`) must NOT bypass the authorize gate below.
 			if (expectedAudience && !resource) {
+				this.logger.debug('OAuth token verification failed', {
+					reason: 'unresolved_audience',
+					aud: expectedAudience,
+				});
+				this.emitTokenVerified(null, expectedAudience, 'failure');
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
@@ -273,6 +296,11 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					? this.getStringClaim(authInfo.extra, 'userId')
 					: null;
 			if (!userId) {
+				this.logger.debug('OAuth token verification failed', {
+					reason: 'user_id_not_in_auth_info',
+					aud: expectedAudience,
+				});
+				this.emitTokenVerified(null, expectedAudience, 'failure');
 				return { user: null, context: { reason: 'user_id_not_in_auth_info', auth_type: 'oauth' } };
 			}
 
@@ -282,6 +310,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			});
 
 			if (!user) {
+				this.logger.debug('OAuth token verification failed', {
+					reason: 'user_not_found',
+					aud: expectedAudience,
+					sub: userId,
+				});
+				this.emitTokenVerified(userId, expectedAudience, 'failure');
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
@@ -290,11 +324,27 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					userId: user.id,
 					expectedAudience,
 				});
+				this.emitTokenVerified(userId, expectedAudience, 'failure');
 				return { user: null, context: { reason: 'insufficient_scope', auth_type: 'oauth' } };
 			}
 
+			// Trace: who is acting (verified user + client) against which resource, now.
+			// `jti` correlates this verify back to the mint that issued the token.
+			const jti =
+				authInfo.extra && typeof authInfo.extra === 'object'
+					? this.getStringClaim(authInfo.extra, 'jti')
+					: null;
+			this.logger.info('Verified OAuth access token', {
+				userId,
+				clientId: authInfo.clientId,
+				aud: expectedAudience,
+				scope: authInfo.scopes.join(' '),
+				...(jti ? { jti } : {}),
+			});
+			this.emitTokenVerified(userId, expectedAudience, 'success');
 			return { user, authType: 'oauth', scopes: authInfo.scopes };
 		} catch (error) {
+			this.emitTokenVerified(null, expectedAudience, 'failure');
 			const errorForSure = ensureError(error);
 			const reason =
 				errorForSure instanceof JWTVerificationError
@@ -302,6 +352,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					: errorForSure instanceof AccessTokenNotFoundError
 						? 'token_not_found_in_db'
 						: 'unknown_error';
+			this.logger.debug('OAuth token verification failed', { reason, aud: expectedAudience });
 			return {
 				user: null,
 				context: {
@@ -389,10 +440,20 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	private async getResourceByAudience(
 		expectedAudience?: string,
 	): Promise<ProtectedResource | undefined> {
-		if (!expectedAudience) {
-			return this.resourceRegistry.getDefaultResource();
+		const resource = expectedAudience
+			? await this.resourceRegistry.getByResourceUrl(expectedAudience)
+			: this.resourceRegistry.getDefaultResource();
+
+		if (resource) {
+			// Trace: which registered resource an audience resolved to at verify time.
+			this.logger.debug('Resolved protected resource for audience', {
+				aud: expectedAudience,
+				resourceId: resource.getResourceUrl(),
+				resolver: resource.id,
+			});
 		}
-		return await this.resourceRegistry.getByResourceUrl(expectedAudience);
+
+		return resource;
 	}
 
 	// TODO: drop legacy audiences and the per-audience fallback once all legacy

@@ -601,8 +601,14 @@ export async function executeWebhook(
 		await Container.get(OAuth2FlowProxy).complete(code, state);
 
 	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
+		// Trace: a trigger is verifying an inbound bearer for this resource. Never the token.
+		Container.get(Logger).debug('Trigger validating OAuth2 bearer', { resourceUrl });
 		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
 		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
+		Container.get(Logger).debug('Trigger OAuth2 bearer validation result', {
+			resourceUrl,
+			hasUser: Boolean(result.user),
+		});
 		if (result.user) {
 			return {
 				valid: true,

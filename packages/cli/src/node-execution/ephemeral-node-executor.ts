@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
 import type {
@@ -25,6 +25,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -43,6 +44,13 @@ export type EphemeralWorkflowToolLike = {
 	credentials?: Record<string, INodeCredentialsDetails> | null;
 	/** Ephemeral node name override (defaults to 'Target Node'). */
 	nodeName?: string;
+	/**
+	 * Acting service-account user id for autonomous agent runs. When set, the
+	 * ephemeral execution's `additionalData` carries the outbound mint hook so a
+	 * node's self-authentication path can mint a token as this identity. Server-set
+	 * only — never derived from node input.
+	 */
+	actingServiceAccountUserId?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
 	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 };
@@ -61,6 +69,11 @@ export interface InlineNodeExecutionRequest {
 	projectId: string;
 	/** Ephemeral node name override (defaults to 'Target Node'). */
 	nodeName?: string;
+	/**
+	 * Acting service-account user id for autonomous agent runs (see
+	 * {@link EphemeralWorkflowToolLike.actingServiceAccountUserId}). Server-set only.
+	 */
+	actingServiceAccountUserId?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
 	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 }
@@ -305,6 +318,19 @@ export class EphemeralNodeExecutor {
 			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
 			additionalData.dataTableProjectId = tool.projectId;
 		}
+		if (tool.actingServiceAccountUserId) {
+			// Outbound self-authentication: bind the acting identity and its mint hook
+			// to this ephemeral execution so a node's auth path can mint a token as the
+			// agent's service account. Built here (rather than threaded as a closure) so
+			// the identity string is the only thing carried through the tool layers.
+			const actingServiceAccountUserId = tool.actingServiceAccountUserId;
+			additionalData.actingServiceAccountUserId = actingServiceAccountUserId;
+			additionalData.mintInternalOAuth2Token = async (targetUrl: string) =>
+				await Container.get(InternalOAuth2MintService).mintForUser(
+					actingServiceAccountUserId,
+					targetUrl,
+				);
+		}
 		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
 		const inputData: ITaskDataConnections = { main: [inputItems] };
@@ -425,6 +451,7 @@ export class EphemeralNodeExecutor {
 			nodeParameters: request.nodeParameters,
 			credentials: mergedCredentials,
 			nodeName: request.nodeName,
+			actingServiceAccountUserId: request.actingServiceAccountUserId,
 			configureAdditionalData: request.configureAdditionalData,
 		};
 

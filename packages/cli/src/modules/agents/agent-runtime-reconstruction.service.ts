@@ -39,6 +39,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
+import { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -164,6 +165,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
+		private readonly internalOAuth2MintService: InternalOAuth2MintService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
@@ -182,6 +184,7 @@ export class AgentRuntimeReconstructionService {
 		integrationType?: string,
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
+		actingServiceAccountUserId?: string,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = agentEntity.schema;
 		if (!config) {
@@ -228,6 +231,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			instrumentation,
+			actingServiceAccountUserId,
 		});
 	}
 
@@ -344,6 +348,7 @@ export class AgentRuntimeReconstructionService {
 		subAgentDelegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
+		actingServiceAccountUserId?: string;
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -361,10 +366,15 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			instrumentation,
+			actingServiceAccountUserId,
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
-		const toolResolver = this.makeToolResolver(projectId, instrumentation);
+		const toolResolver = this.makeToolResolver(
+			projectId,
+			instrumentation,
+			actingServiceAccountUserId,
+		);
 		const resolvedTools: BuiltTool[] = [];
 
 		// Transport for LLM calls
@@ -385,6 +395,8 @@ export class AgentRuntimeReconstructionService {
 			await buildMcpClientForServer(server, {
 				credentialProvider,
 				oauthService: this.oauthService,
+				internalOAuth2MintService: this.internalOAuth2MintService,
+				actingServiceAccountUserId,
 				projectId,
 				proxyFetch: aiMcpFetch,
 				onConnectionFailed: (event) => {
@@ -517,6 +529,7 @@ export class AgentRuntimeReconstructionService {
 	private makeToolResolver(
 		projectId: string,
 		instrumentation?: AgentRuntimeInstrumentation,
+		actingServiceAccountUserId?: string,
 	): ToolResolver {
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
@@ -537,6 +550,7 @@ export class AgentRuntimeReconstructionService {
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId,
+					actingServiceAccountUserId,
 					instrumentToolAdditionalData,
 				});
 			}

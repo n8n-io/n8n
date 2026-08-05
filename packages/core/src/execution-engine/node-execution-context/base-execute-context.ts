@@ -93,6 +93,24 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		return this.executeData;
 	}
 
+	/**
+	 * Mint a short-lived OAuth2 bearer token as the execution's acting
+	 * service-account identity, audience-locked to `targetUrl`. Delegates to the
+	 * hook the agent runtime wires onto `additionalData` on autonomous runs. Fails
+	 * closed when no acting identity is bound — the marker credential that reaches
+	 * this path is only usable inside an agent run with a service-account identity.
+	 */
+	async mintInternalOAuth2Token(targetUrl: string): Promise<string> {
+		if (!this.additionalData.mintInternalOAuth2Token) {
+			throw new OperationalError(
+				'This credential can only be used inside an agent run with a service-account identity',
+			);
+		}
+		// Trace: a node reached for an internal OAuth2 token for this outbound target.
+		this.logger.debug('Node requested internal OAuth2 token', { targetUrl });
+		return await this.additionalData.mintInternalOAuth2Token(targetUrl);
+	}
+
 	setMetadata(metadata: ITaskMetadata): void {
 		this.executeData.metadata = deepMerge(this.executeData.metadata ?? {}, metadata);
 	}

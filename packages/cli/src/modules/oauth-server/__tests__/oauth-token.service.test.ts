@@ -7,6 +7,8 @@ import { UserRepository } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { EventService } from '@/events/event.service';
+
 import { JwtService } from '@/services/jwt.service';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
@@ -29,6 +31,7 @@ let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
 let service: OAuthTokenService;
 let txRunner: MockProxy<TransactionRunner>;
+let eventService: MockProxy<EventService>;
 
 const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
@@ -58,6 +61,8 @@ describe('OAuthTokenService', () => {
 			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
 		);
 
+		eventService = mock<EventService>();
+
 		service = new OAuthTokenService(
 			logger,
 			jwtService,
@@ -66,6 +71,7 @@ describe('OAuthTokenService', () => {
 			refreshTokenRepository,
 			registry,
 			txRunner,
+			eventService,
 		);
 	});
 
@@ -282,7 +288,7 @@ describe('OAuthTokenService', () => {
 		it('should verify valid access token and return auth info', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
+			const { accessToken, jti } = service.generateTokenPair(userId, clientId, undefined, []);
 
 			const accessTokenRecord = mock<AccessToken>({
 				token: accessToken,
@@ -300,6 +306,7 @@ describe('OAuthTokenService', () => {
 				scopes: [],
 				extra: {
 					userId,
+					jti,
 				},
 			});
 		});
@@ -477,6 +484,76 @@ describe('OAuthTokenService', () => {
 		});
 	});
 
+	describe('verifyOAuthAccessToken audit events', () => {
+		it('emits service-account-token-verified with success and the resolved subject on the happy path', async () => {
+			const userId = 'user-123';
+			const clientId = 'client-456';
+			const { accessToken } = service.generateTokenPair(userId, clientId, TEST_RESOURCE_URL, []);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId }),
+			);
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: userId }));
+
+			await service.verifyOAuthAccessToken(accessToken, TEST_RESOURCE_URL);
+
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-verified', {
+				sub: userId,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'success',
+			});
+		});
+
+		it('emits service-account-token-verified with failure and a null subject for an invalid token', async () => {
+			await service.verifyOAuthAccessToken('invalid.jwt.token', TEST_RESOURCE_URL);
+
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-verified', {
+				sub: null,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'failure',
+			});
+		});
+
+		it('emits failure with the known subject when the user cannot be found', async () => {
+			const userId = 'user-123';
+			const clientId = 'client-456';
+			const { accessToken } = service.generateTokenPair(userId, clientId, TEST_RESOURCE_URL, []);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId }),
+			);
+			userRepository.findOne.mockResolvedValue(null);
+
+			await service.verifyOAuthAccessToken(accessToken, TEST_RESOURCE_URL);
+
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-verified', {
+				sub: userId,
+				aud: TEST_RESOURCE_URL,
+				outcome: 'failure',
+			});
+		});
+	});
+
+	describe('service-account-token-minted event registration', () => {
+		it('type-checks emitting the minted event WP4a relies on', () => {
+			// Compile-time proof that the frozen event name + payload are registered
+			// on the EventMap so WP4a's mint service can emit it type-safely.
+			eventService.emit('service-account-token-minted', {
+				sub: 'user-123',
+				clientId: 'client-456',
+				aud: TEST_RESOURCE_URL,
+				outcome: 'success',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith('service-account-token-minted', {
+				sub: 'user-123',
+				clientId: 'client-456',
+				aud: TEST_RESOURCE_URL,
+				outcome: 'success',
+			});
+		});
+	});
+
 	describe('verifyOAuthAccessToken audience resolution', () => {
 		it('should deny when a resource-scoped audience cannot be resolved', async () => {
 			// Fail closed: the token carries an audience but no resource resolves for
@@ -587,6 +664,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				multiResourceRegistry,
 				txRunner,
+				eventService,
 			);
 		});
 
@@ -669,6 +747,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				scopedRegistry,
 				txRunner,
+				eventService,
 			);
 		});
 
@@ -785,6 +864,7 @@ describe('OAuthTokenService', () => {
 				refreshTokenRepository,
 				configuredRegistry,
 				txRunner,
+				eventService,
 			);
 		});
 

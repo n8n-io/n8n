@@ -12,6 +12,7 @@
 | name | varchar(128) |  | false |  |  |  |
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
 | schema | json |  | true |  |  |  |
+| serviceAccountUserId | uuid |  | true |  | [public.user](public.user.md) |  |
 | setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
 | skills | json | '{}'::json | false |  |  |  |
 | tools | json | '{}'::json | false |  |  |  |
@@ -24,6 +25,7 @@
 | ---- | ---- | ---------- |
 | FK_940597dfe9753375309ce6aeea0 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES agent_history("versionId") ON DELETE SET NULL |
 | FK_a30d560207c4071d98aa03c179c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| FK_agents_serviceAccountUserId | FOREIGN KEY | FOREIGN KEY ("serviceAccountUserId") REFERENCES "user"(id) ON DELETE SET NULL |
 | PK_9c653f28ae19c5884d5baf6a1d9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agents_availableInMCP_not_null | n | NOT NULL "availableInMCP" |
 | agents_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -66,6 +68,7 @@ erDiagram
 "public.agents_observation_locks" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_observations" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;serviceAccountUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 
 "public.agents" {
   varchar_36_ activeVersionId FK
@@ -76,6 +79,7 @@ erDiagram
   varchar_128_ name
   varchar_255_ projectId FK
   json schema
+  uuid serviceAccountUserId FK
   timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
@@ -264,6 +268,24 @@ erDiagram
   varchar_36_ id
   varchar_255_ name
   varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.user" {
+  timestamp_3__with_time_zone createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  uuid id
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  text mfaRecoveryCodes
+  text mfaSecret
+  varchar_255_ password
+  json personalizationAnswers
+  varchar_128_ roleSlug FK
+  json settings
+  varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
 ```

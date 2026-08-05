@@ -124,6 +124,8 @@ export const eventNamesAudit = [
 	'n8n.audit.token-exchange.identity-rebound',
 	'n8n.audit.token-exchange.user-provisioned',
 	'n8n.audit.token-exchange.role-updated',
+	'n8n.audit.service-account.token.minted',
+	'n8n.audit.service-account.token.verified',
 	'n8n.audit.role-mapping.roles-resolved',
 	'n8n.audit.role-mapping.rule.created',
 	'n8n.audit.role-mapping.rule.updated',

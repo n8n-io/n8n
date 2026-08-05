@@ -366,10 +366,34 @@ function shouldRefreshOAuth2Token(credentials: McpOAuth2Credentials): boolean {
 export async function getAuthHeaders(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
+	targetUrl?: string,
 ): Promise<{
 	headers?: Record<string, string>;
 	credentials?: ICredentialDataDecryptedObject;
 }> {
+	if (authentication === 'n8nInternalOAuth2') {
+		// Self-authenticate as the running agent's service-account identity. No
+		// credential fetch: the identity comes from the execution context server-side,
+		// and the target endpoint URL becomes the token audience. Fails closed (the
+		// context method throws) when no acting identity is bound to the execution.
+		if (!targetUrl) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Cannot mint an internal OAuth2 token without a target endpoint URL',
+			);
+		}
+		// `mintInternalOAuth2Token` is exposed on the execute/supplyData contexts but
+		// not on load-options; the `in` guard both narrows the type and fails closed.
+		if (!('mintInternalOAuth2Token' in ctx)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'n8n Internal OAuth2 is only available when running inside an agent',
+			);
+		}
+		const token = await ctx.mintInternalOAuth2Token(targetUrl);
+		return { headers: { Authorization: `Bearer ${token}` } };
+	}
+
 	if (isMcpOAuth2Authentication(authentication)) {
 		const credentials = await ctx
 			.getCredentials<McpOAuth2Credentials>(authentication)
@@ -504,7 +528,12 @@ export async function connectMcpClientForCredential(
 	},
 ): Promise<Result<Client, ConnectMcpClientError>> {
 	const node = ctx.getNode();
-	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	// The endpoint URL doubles as the token audience for internal self-authentication.
+	const { headers, credentials } = await getAuthHeaders(
+		ctx,
+		config.authentication,
+		config.endpointUrl,
+	);
 
 	const allowedDomains = credentials
 		? assertCredentialAllowsUrl({

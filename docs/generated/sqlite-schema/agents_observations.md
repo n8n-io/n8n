@@ -83,6 +83,7 @@ erDiagram
   varchar_128_ name
   varchar_255_ projectId FK
   TEXT schema
+  varchar serviceAccountUserId FK
   datetime_3_ setupCompletedAt
   TEXT skills
   TEXT tools

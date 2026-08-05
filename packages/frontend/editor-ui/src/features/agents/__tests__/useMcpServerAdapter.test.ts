@@ -2,7 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { nodeTypeToNewMcpServer } from '../composables/useMcpServerAdapter';
+import {
+	mcpServerToNode,
+	nodeToMcpServer,
+	nodeTypeToNewMcpServer,
+} from '../composables/useMcpServerAdapter';
 
 vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
 
@@ -71,6 +75,45 @@ describe('useMcpServerAdapter', () => {
 			const server = nodeTypeToNewMcpServer(makeMcpNodeType(1.1));
 
 			expect(server.transport).toBe('sse');
+		});
+	});
+
+	describe('n8nInternalOAuth2 credential-type mapping', () => {
+		it('wires the marker credential type when converting a server to a node', () => {
+			const node = mcpServerToNode(
+				{
+					name: 'internal',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'n8nInternalOAuth2',
+					credential: 'marker-cred-1',
+				},
+				makeMcpNodeType(1.2),
+			);
+
+			expect(node.parameters.authentication).toBe('n8nInternalOAuth2');
+			expect(node.credentials).toEqual({
+				n8nInternalOAuth2Api: { id: 'marker-cred-1', name: 'marker-cred-1' },
+			});
+		});
+
+		it('round-trips authentication back to n8nInternalOAuth2 from the node', () => {
+			const server = nodeToMcpServer({
+				id: 'n1',
+				name: 'internal',
+				type: AI_MCP_TOOL_NODE_TYPE,
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: {
+					endpointUrl: 'https://example.com/mcp',
+					serverTransport: 'httpStreamable',
+					authentication: 'n8nInternalOAuth2',
+				},
+				credentials: { n8nInternalOAuth2Api: { id: 'marker-cred-1', name: 'marker-cred-1' } },
+			});
+
+			expect(server.authentication).toBe('n8nInternalOAuth2');
+			expect(server.credential).toBe('marker-cred-1');
 		});
 	});
 });

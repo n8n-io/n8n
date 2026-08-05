@@ -25,6 +25,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
+import type { InternalOAuth2MintService } from '@/modules/oauth-server/internal-oauth2-mint.service';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -128,6 +129,7 @@ function makeRuntimeReconstructionService(
 		mock<EphemeralNodeExecutor>(),
 		mock<N8nMemory>(),
 		mock<OauthService>(),
+		mock<InternalOAuth2MintService>(),
 		{ modules } as unknown as AgentsConfig,
 		mock<AiService>(),
 		outboundHttp,

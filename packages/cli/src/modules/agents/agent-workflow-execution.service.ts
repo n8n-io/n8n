@@ -8,7 +8,7 @@ import {
 	sanitizeAgentSkillBodies,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
 import {
@@ -118,6 +118,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
+		actingServiceAccountUserId?: string,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -136,6 +137,10 @@ export class AgentWorkflowExecutionService {
 					agentEntity,
 					credentialProvider,
 					runType,
+					undefined,
+					undefined,
+					undefined,
+					actingServiceAccountUserId,
 				);
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
@@ -144,6 +149,34 @@ export class AgentWorkflowExecutionService {
 				error: e instanceof Error ? e.message : 'Unknown compilation error',
 			};
 		}
+	}
+
+	/**
+	 * Resolve the agent's acting service-account identity for outbound
+	 * self-authentication. Gated behind the service-accounts feature flag; a
+	 * failed lookup is logged and swallowed so the run still proceeds (the node
+	 * mint path then fails closed for lack of an acting identity). Inline agents
+	 * have no persisted row and never reach this path.
+	 */
+	private async resolveActingServiceAccountUserId(agentEntity: Agent): Promise<string | undefined> {
+		// Lazy import to avoid a service-construction cycle (AgentsService's
+		// dependency graph transitively reaches the agent-runtime services).
+		const { AgentsService } = await import('./agents.service.js');
+		const serviceAccountUserId =
+			await Container.get(AgentsService).resolveActingServiceAccountUserId(agentEntity);
+
+		if (serviceAccountUserId) {
+			// Trace: this autonomous run will mint outbound tokens as this identity.
+			this.logger.debug('Resolved agent acting identity', {
+				agentId: agentEntity.id,
+				serviceAccountUserId,
+			});
+		} else {
+			// Flag off or unresolved: outbound mint paths fail closed for this run.
+			this.logger.debug('No acting identity for agent run', { agentId: agentEntity.id });
+		}
+
+		return serviceAccountUserId;
 	}
 
 	/**
@@ -393,6 +426,10 @@ export class AgentWorkflowExecutionService {
 
 		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
 
+		// Resolve on the persisted entity (not the published snapshot) so the
+		// backfill can persist `serviceAccountUserId` back to the row.
+		const actingServiceAccountUserId = await this.resolveActingServiceAccountUserId(agentEntity);
+
 		let agentData: Agent = agentEntity;
 
 		if (!useDraftVersion) {
@@ -408,6 +445,7 @@ export class AgentWorkflowExecutionService {
 			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
+			actingServiceAccountUserId,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);

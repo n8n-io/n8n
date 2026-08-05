@@ -533,6 +533,35 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
+	it('accepts an MCP server using n8nInternalOAuth2 with its marker credential', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'internal',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'n8nInternalOAuth2',
+						credential: 'internal-marker-cred',
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'internal-marker-cred', type: 'n8nInternalOAuth2Api' },
+			]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
 	it('flags channels with a missing credential or a credential type the integration does not support', async () => {
 		const { service, agentRepository, chatIntegrationRegistry } = makeService();
 		chatIntegrationRegistry.get.mockReturnValue({

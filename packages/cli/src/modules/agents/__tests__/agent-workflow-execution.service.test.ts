@@ -7,10 +7,19 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { Container } from '@n8n/di';
+
+import { isServiceAccountsEnvFeatureFlagEnabled } from '@/constants/service-accounts';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type { Telemetry } from '@/telemetry';
 
+// The acting-identity resolver lazy-imports AgentsService and resolves it from the
+// DI container; stub the module so no heavy service graph loads in this unit test.
+vi.mock('../agents.service', () => ({ AgentsService: class AgentsService {} }));
+vi.mock('@/constants/service-accounts', () => ({
+	isServiceAccountsEnvFeatureFlagEnabled: vi.fn().mockReturnValue(false),
+}));
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
@@ -137,6 +146,16 @@ function makeService() {
 describe('AgentWorkflowExecutionService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Default the service-accounts feature off so the acting-identity path stays
+		// inert for every test that does not exercise it (clearAllMocks does not
+		// reset implementations, so a prior `true` would otherwise leak).
+		(isServiceAccountsEnvFeatureFlagEnabled as unknown as Mock).mockReturnValue(false);
+		// The service now always delegates identity resolution to
+		// AgentsService.resolveActingServiceAccountUserId (which owns the flag gate);
+		// default it to "no identity" so unrelated tests don't hit the DI graph.
+		vi.spyOn(Container, 'get').mockReturnValue({
+			resolveActingServiceAccountUserId: vi.fn().mockResolvedValue(undefined),
+		} as never);
 	});
 
 	it('executes workflow runs with thread-scoped persistence and tool-call output', async () => {
@@ -234,6 +253,46 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 
 		expect(result.toolCalls).toEqual([{ toolName: 'lookup', input: null, result: { ok: true } }]);
+	});
+
+	describe('acting service-account identity resolution', () => {
+		const actingIdArg = (reconstructionService: {
+			reconstructFromAgentEntity: Mock;
+		}): unknown => reconstructionService.reconstructFromAgentEntity.mock.calls[0]?.[6];
+
+		// The flag gate and fail-open error handling now live in
+		// AgentsService.resolveActingServiceAccountUserId (covered in
+		// agents.service.test.ts). Here we only assert the resolved value — whatever
+		// it is — is threaded into reconstruction.
+		it('threads the resolved SA user id into reconstruction', async () => {
+			const { service, agentRepository, reconstructionService } = makeService();
+			const resolveActingServiceAccountUserId = vi.fn().mockResolvedValue('sa-user-1');
+			vi.spyOn(Container, 'get').mockReturnValue({
+				resolveActingServiceAccountUserId,
+			} as never);
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+			expect(resolveActingServiceAccountUserId).toHaveBeenCalledTimes(1);
+			expect(actingIdArg(reconstructionService)).toBe('sa-user-1');
+		});
+
+		it('threads an unset identity when no acting SA is resolved', async () => {
+			const { service, agentRepository, reconstructionService } = makeService();
+			vi.spyOn(Container, 'get').mockReturnValue({
+				resolveActingServiceAccountUserId: vi.fn().mockResolvedValue(undefined),
+			} as never);
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+			expect(actingIdArg(reconstructionService)).toBeUndefined();
+		});
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {

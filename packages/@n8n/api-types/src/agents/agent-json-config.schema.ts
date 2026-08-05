@@ -215,6 +215,9 @@ export const McpAuthenticationSchemaTypes = z.enum([
 	'headerAuth',
 	'multipleHeadersAuth',
 	'mcpOAuth2Api',
+	// Self-authentication as the agent's service-account identity; backed by the
+	// `n8nInternalOAuth2Api` marker credential (stores no secret).
+	'n8nInternalOAuth2',
 ]);
 
 /**
