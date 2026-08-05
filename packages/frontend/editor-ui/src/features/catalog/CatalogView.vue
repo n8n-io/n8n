@@ -161,10 +161,14 @@ const scheduleAction = (entry: CatalogEntry) => {
 	};
 };
 
+/**
+ * To the minute, not the second. A schedule fires on the minute, so the seconds
+ * are always `00` — three characters of noise on a badge that has to fit a card.
+ */
 const displayTime = (value: string | null) => {
 	if (!value) return '';
 	const { date, time } = convertToDisplayDate(value);
-	return `${date} ${time}`;
+	return `${date} ${time.slice(0, 'HH:MM'.length)}`;
 };
 
 /**
@@ -291,62 +295,69 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 					</N8nText>
 
 					<template #footer>
-						<div :class="$style.meta">
-							<N8nBadge theme="tertiary">
-								<N8nIcon
-									:icon="entry.trigger === 'manual-trigger' ? 'mouse-pointer' : 'workflow'"
-									size="xsmall"
-									:class="$style.badgeIcon"
-								/>
-								{{ triggerLabel(entry) }}
-							</N8nBadge>
-							<N8nBadge theme="default">{{ inputsLabel(entry) }}</N8nBadge>
-							<N8nBadge
-								v-if="ownSchedule(entry).state !== 'none'"
-								:theme="ownSchedule(entry).state === 'scheduled' ? 'success' : 'warning'"
-								data-test-id="catalog-own-schedule"
-							>
-								<N8nIcon icon="calendar" size="xsmall" :class="$style.badgeIcon" />
-								{{ ownScheduleLabel(entry) }}
-							</N8nBadge>
-						</div>
-
-						<div :class="$style.actions">
-							<N8nTooltip :content="i18n.baseText('catalog.card.history')">
-								<N8nIconButton
-									icon="history"
-									type="tertiary"
-									size="small"
-									:aria-label="i18n.baseText('catalog.card.history')"
-									data-test-id="catalog-history-button"
-									@click="openExecutions(entry)"
-								/>
-							</N8nTooltip>
-							<N8nTooltip :content="scheduleAction(entry).label">
-								<!-- Wrapped so the tooltip still fires when the button is disabled. -->
-								<span>
-									<N8nIconButton
-										icon="calendar"
-										type="tertiary"
-										size="small"
-										:disabled="scheduleAction(entry).disabled"
-										:aria-label="scheduleAction(entry).label"
-										data-test-id="catalog-schedule-button"
-										@click="
-											scheduling = { entry, subscription: scheduleAction(entry).subscription }
-										"
+						<!--
+							Stacked rather than side by side: a card is ~280px, and the badges
+							alone can fill that, so competing for one row is what pushed the
+							buttons off the card.
+						-->
+						<div :class="$style.footer">
+							<div :class="$style.meta">
+								<N8nBadge theme="tertiary">
+									<N8nIcon
+										:icon="entry.trigger === 'manual-trigger' ? 'mouse-pointer' : 'workflow'"
+										size="xsmall"
+										:class="$style.badgeIcon"
 									/>
-								</span>
-							</N8nTooltip>
-							<N8nButton
-								size="small"
-								icon="play"
-								:label="i18n.baseText('catalog.run')"
-								:loading="runningId === entry.id"
-								:disabled="runningId !== null && runningId !== entry.id"
-								data-test-id="catalog-run-button"
-								@click="onRunClick(entry)"
-							/>
+									{{ triggerLabel(entry) }}
+								</N8nBadge>
+								<N8nBadge theme="default">{{ inputsLabel(entry) }}</N8nBadge>
+								<N8nBadge
+									v-if="ownSchedule(entry).state !== 'none'"
+									:theme="ownSchedule(entry).state === 'scheduled' ? 'success' : 'warning'"
+									data-test-id="catalog-own-schedule"
+								>
+									<N8nIcon icon="calendar" size="xsmall" :class="$style.badgeIcon" />
+									{{ ownScheduleLabel(entry) }}
+								</N8nBadge>
+							</div>
+
+							<div :class="$style.actions">
+								<N8nTooltip :content="i18n.baseText('catalog.card.history')">
+									<N8nIconButton
+										icon="history"
+										variant="ghost"
+										size="small"
+										:aria-label="i18n.baseText('catalog.card.history')"
+										data-test-id="catalog-history-button"
+										@click="openExecutions(entry)"
+									/>
+								</N8nTooltip>
+								<N8nTooltip :content="scheduleAction(entry).label">
+									<!-- Wrapped so the tooltip still fires when the button is disabled. -->
+									<span>
+										<N8nIconButton
+											icon="calendar"
+											variant="ghost"
+											size="small"
+											:disabled="scheduleAction(entry).disabled"
+											:aria-label="scheduleAction(entry).label"
+											data-test-id="catalog-schedule-button"
+											@click="
+												scheduling = { entry, subscription: scheduleAction(entry).subscription }
+											"
+										/>
+									</span>
+								</N8nTooltip>
+								<N8nButton
+									size="small"
+									icon="play"
+									:label="i18n.baseText('catalog.run')"
+									:loading="runningId === entry.id"
+									:disabled="runningId !== null && runningId !== entry.id"
+									data-test-id="catalog-run-button"
+									@click="onRunClick(entry)"
+								/>
+							</div>
 						</div>
 					</template>
 				</N8nCard>
@@ -395,7 +406,7 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 							<N8nTooltip :content="i18n.baseText('catalog.schedules.edit')">
 								<N8nIconButton
 									icon="pen"
-									type="tertiary"
+									variant="ghost"
 									size="small"
 									:aria-label="i18n.baseText('catalog.schedules.edit')"
 									data-test-id="catalog-subscription-edit"
@@ -405,7 +416,7 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 							<N8nTooltip :content="i18n.baseText('catalog.schedules.remove')">
 								<N8nIconButton
 									icon="trash-2"
-									type="tertiary"
+									variant="ghost"
 									size="small"
 									:aria-label="i18n.baseText('catalog.schedules.remove')"
 									data-test-id="catalog-subscription-remove"
@@ -465,6 +476,17 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 
 	align-items: stretch;
 	gap: var(--spacing--2xs);
+	// A grid item defaults to min-width: auto, so a nowrap badge wider than the
+	// track pushes the card past its column instead of letting the text clip.
+	min-width: 0;
+}
+
+.footer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	min-width: 0;
 }
 
 .name {
@@ -499,6 +521,9 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 .actions {
 	display: flex;
 	align-items: center;
+	// Right-aligned so the primary action sits where the eye lands last, and the
+	// two icon buttons read as secondary to it.
+	justify-content: flex-end;
 	gap: var(--spacing--4xs);
 }
 
