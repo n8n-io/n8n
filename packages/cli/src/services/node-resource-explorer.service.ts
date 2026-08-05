@@ -154,10 +154,10 @@ export class NodeResourceExplorerService {
 	 * Two things bound what this will claim, because a false "your value is invalid" is
 	 * worse than staying quiet:
 	 *
-	 * - Only values that are **comparable to the list** are checked: a locator's `list` or
-	 *   `id` mode, both of which store the identifier. `url` mode stores a URL, not an id,
-	 *   so it would mismatch every time; a free-text parameter has no enumerable value
-	 *   space at all.
+	 * - Only values that are **comparable to the list** are checked: a literal identifier in a
+	 *   locator's `list` or `id` mode. `url` mode stores a URL and expressions resolve at
+	 *   runtime, so neither can be matched against a catalogue of ids; a free-text parameter
+	 *   has no enumerable value space at all.
 	 * - Only **exhaustive** lists are trusted. A partial result tells us what's on the
 	 *   pages we fetched, not what exists — a user with thousands of spreadsheets would
 	 *   otherwise have a perfectly good `documentId` flagged because it sorted too low.
@@ -318,6 +318,12 @@ const IDENTIFIER_LOCATOR_MODES = new Set(['list', 'id']);
  *
  * A bare string is the identifier too, and is treated the same.
  *
+ * Expressions are skipped whatever the mode: `={{ $json.model }}` resolves per item at
+ * runtime, so there is no single value to look up, and comparing the expression text to a
+ * catalogue would mismatch every time. Reporting it would invite the caller to replace a
+ * deliberate dynamic value with a static one. This mirrors `validateResourceLocatorParameter`
+ * in n8n-workflow, which returns no errors as soon as the value starts with `=`.
+ *
  * What keeps a typed-in id from being falsely reported is not the mode but the guards on
  * the list itself: a partial, empty or failed lookup never yields a verdict. The residual
  * risk is a provider whose catalogue endpoint looks complete but isn't — an
@@ -326,16 +332,23 @@ const IDENTIFIER_LOCATOR_MODES = new Set(['list', 'id']);
  * the builder invents, which is the point of the check.
  */
 function readLocatorValue(raw: unknown): string | undefined {
-	if (typeof raw === 'string') return raw === '' ? undefined : raw;
+	if (typeof raw === 'string') return staticIdentifier(raw);
 	if (typeof raw !== 'object' || raw === null) return undefined;
 
 	const mode = Reflect.get(raw, 'mode');
 	if (typeof mode === 'string' && !IDENTIFIER_LOCATOR_MODES.has(mode)) return undefined;
 
 	const value = Reflect.get(raw, 'value');
-	if (typeof value === 'string') return value === '' ? undefined : value;
+	if (typeof value === 'string') return staticIdentifier(value);
 	if (typeof value === 'number') return String(value);
 	return undefined;
+}
+
+/** A value only counts when it's a literal identifier — not empty, and not an expression. */
+function staticIdentifier(value: string): string | undefined {
+	if (value === '') return undefined;
+	if (value.startsWith('=')) return undefined;
+	return value;
 }
 
 /**

@@ -412,6 +412,48 @@ describe('NodeResourceExplorerService', () => {
 			expect(result[0]?.currentValue).toBe('gpt-6-mini');
 		});
 
+		test('skips an expression, which has no single value to look up', async () => {
+			// Mirrors validateResourceLocatorParameter: a value starting with `=` resolves per
+			// item at runtime. Reporting it would invite replacing a deliberate dynamic model
+			// with a static one.
+			mockAiNode([modelLocator]);
+			mockAvailableModels(['gpt-5-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'id', value: '={{ $json.model }}' } },
+			});
+
+			expect(result).toEqual([]);
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+
+		test('skips an expression in list mode too', async () => {
+			mockAiNode([modelLocator]);
+			mockAvailableModels(['gpt-5-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: {
+					model: { __rl: true, mode: 'list', value: '={{ $json.chosenModel }}' },
+				},
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		test('skips an expression stored as a bare string', async () => {
+			mockAiNode([modelLocator]);
+			mockAvailableModels(['gpt-5-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: '={{ $json.model }}' },
+			});
+
+			expect(result).toEqual([]);
+		});
+
 		test('skips a url-mode value, whose stored value is a URL rather than an id', async () => {
 			mockAiNode([modelLocator]);
 			mockAvailableModels(['gpt-5-mini']);
