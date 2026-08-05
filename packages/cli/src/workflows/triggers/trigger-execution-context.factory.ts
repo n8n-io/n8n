@@ -91,8 +91,10 @@ export class TriggerExecutionContextFactory {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		// TODO(CAT-3202): switches between in-memory and published-service data
-		// behind a flag; drop this parameter once the flag is removed.
+		// TODO(CAT-3202): this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		onTriggerFailure: TriggerFailureHandler,
 		// This activation attempt's rule-collection session. Owned by the caller
@@ -110,6 +112,9 @@ export class TriggerExecutionContextFactory {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
+				// TODO(CAT-3202): resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData()
 					.then(
 						async (freshWorkflowData) =>
@@ -157,7 +162,8 @@ export class TriggerExecutionContextFactory {
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {
-						// undefined means a duplicate scheduled execution was skipped; nothing to wait on.
+						// Same as above: a duplicate scheduled execution was skipped,
+						// so resolve with undefined and don't wait on a non-existent run.
 						if (executionId === undefined) {
 							donePromise.resolve(undefined);
 							return;
@@ -219,8 +225,10 @@ export class TriggerExecutionContextFactory {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		// TODO(CAT-3202): switches between in-memory and published-service data
-		// behind a flag; drop this parameter once the flag is removed.
+		// TODO(CAT-3202): this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		fence?: PollLeaseFence,
 	): IGetExecutePollFunctions {
@@ -275,6 +283,9 @@ export class TriggerExecutionContextFactory {
 				// data, or an unmigrated node's own bucket, which still doubles as its cursor.
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
+				// TODO(CAT-3202): resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) =>
 					cursor === null
 						? await this.workflowExecutionService.runWorkflow(
@@ -346,7 +357,7 @@ export class TriggerExecutionContextFactory {
 			};
 
 			// Hands a migrated node its per-poll snapshot in place of the real
-			// static-data bucket, so mutations are captured by `takeStagedCursor`.
+			// static-data bucket, so mutations are captured for `takeStagedCursor` above.
 			// An unmigrated node gets the real bucket directly.
 			const resolveNodeStaticData = () => {
 				const staged = stagedCursorStore.getStore();

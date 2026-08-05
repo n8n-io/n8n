@@ -12,11 +12,7 @@ import { TransactionRunner } from '../services/transaction';
 
 export type { PollerCursor } from '../entities/poller-state';
 
-/**
- * A fence miss can't tell a reclaimed lease apart from a cursor row that's
- * genuinely gone, so the commit methods that accept a fence report it as
- * `null`/`false`, never as an error.
- */
+/** A fence miss can't tell a reclaimed lease apart from a genuinely gone cursor row. */
 export type PollLeaseFence = { taskId: string; leaseEpoch: number };
 
 @Service()
@@ -25,6 +21,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		super(PollerState, dataSource.manager, transactionRunner);
 	}
 
+	/** The node's stored cursor, or `null` if it has never polled. */
 	async findCursor(
 		workflowId: string,
 		nodeId: string,
@@ -39,8 +36,8 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 
 	/**
 	 * Returns the node's cursor, seeding it with `initial` on first read. Reads first
-	 * so a node past its first poll costs one query, not two; on a miss, the loser of
-	 * a racing insert re-reads the winner's stored cursor.
+	 * so a node past its first poll costs one query, not two; on a miss, racing
+	 * processes both try to insert, and the loser re-reads the winner's stored cursor.
 	 */
 	async getOrCreateCursor(
 		workflowId: string,
@@ -73,10 +70,10 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 
 	/**
 	 * Call inside the transaction that also inserts the execution the poll produced, so
-	 * neither commits without the other. Without a `fence`, throws on a miss: the row
-	 * was read before `poll()` ran, so a miss means the workflow or node was removed
-	 * mid-poll. With a `fence`, a miss returns `false` instead: under at-least-once
-	 * redelivery, a lease this poll no longer holds is expected, not an error.
+	 * neither commits without the other. Without a `fence`, throws if no row matched: the
+	 * row was read before `poll()` ran, so a miss means the workflow or node was removed
+	 * mid-poll. With a `fence`, a miss returns `false` instead. The write is unconditional
+	 * otherwise, so when two polls of one node overlap, the last transaction to commit wins.
 	 */
 	async advanceCursor(
 		workflowId: string,
@@ -95,8 +92,6 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.where({ workflowId, nodeId });
 
 		if (fence) {
-			// A missing fence falls back to the unfenced write rather than blocking every
-			// call, so a wiring mistake loses the guard instead of causing data loss.
 			const fenceExists = manager
 				.createQueryBuilder()
 				.subQuery()
@@ -104,16 +99,13 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 				.from(ScheduledTask, 'fenced_task')
 				.where('fenced_task.id = :fenceTaskId')
 				.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
-				// Not `status = 'running'`: the emit-path commit is fire-and-forget and can land
-				// after the executor already marked the task succeeded, which would drop an
-				// ordinary successful poll's cursor advance. `<> 'pending'` instead: only a
-				// pending task can still have its lease reclaimed by another worker.
+				// `<> 'pending'`, not `= 'running'`: a fire-and-forget commit can land after
+				// the task already succeeded, and only a pending task's lease can be reclaimed.
 				.andWhere('fenced_task.status != :fenceExcludedStatus')
 				.getQuery();
 
-			// Binding via object criteria was tried and reverted: TypeORM's generated
-			// parameter names are per-builder, and merging the subquery's parameters into
-			// this builder overwrote its own workflowId/nodeId bindings.
+			// Binding via object criteria was reverted: TypeORM's per-builder parameter
+			// names made the subquery's binding overwrite this builder's own.
 			qb.andWhere(`EXISTS ${fenceExists}`, {
 				fenceTaskId: Number(fence.taskId),
 				fenceLeaseEpoch: fence.leaseEpoch,
@@ -127,10 +119,6 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		// single-row match counts as success.
 		if (result.affected === 1) return true;
 
-		// The EXISTS read takes no lock, so on Postgres a reclaim committing between this
-		// statement and our commit still lands (zero window on SQLite, which holds the
-		// write lock for the whole transaction). Holds only at READ COMMITTED; a fixed
-		// transaction-start snapshot would silently disable it.
 		if (fence) return false;
 
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
