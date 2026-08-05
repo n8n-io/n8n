@@ -7,6 +7,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Application } from 'express';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
@@ -44,6 +45,18 @@ export class PostHogClient {
 		const { PostHog } = await import('posthog-node');
 		this.postHog = new PostHog(posthogConfig.apiKey, {
 			host: posthogConfig.apiHost,
+		});
+	}
+
+	setupExpressSessionContext(app: Application): void {
+		const postHog = this.postHog;
+		if (!postHog || this.globalConfig.deployment.type !== 'cloud') return;
+
+		app.use((req, _res, next) => {
+			const sessionId = req.get('x-posthog-session-id');
+			if (!sessionId) return next();
+
+			postHog.withContext({ sessionId }, next);
 		});
 	}
 
