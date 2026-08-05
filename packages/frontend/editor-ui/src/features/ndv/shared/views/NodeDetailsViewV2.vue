@@ -342,7 +342,6 @@ const nodeSettingsProps = computed(() => ({
 	blockUI: blockUi.value && showTriggerPanel.value,
 	executable: !props.readOnly,
 	inputSize: inputSize.value,
-	isNdvV2: true,
 }));
 
 const currentNodePaneType = computed((): MainPanelType => {

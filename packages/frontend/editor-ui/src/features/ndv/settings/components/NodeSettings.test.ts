@@ -157,8 +157,6 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		global: {
 			provide,
 			stubs: {
-				NodeTitle: true,
-				NodeExecuteButton: true,
 				NodeCredentials: true,
 				NodeWebhooks: true,
 				NodeActionsList: true,
