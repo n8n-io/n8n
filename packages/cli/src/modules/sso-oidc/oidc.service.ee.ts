@@ -24,6 +24,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { buildOidcClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { JwtService } from '@/services/jwt.service';
+import { TrustedKeySourceRegistrationProxy } from '@/services/trusted-key-source-registration-proxy.service';
 import { UrlService } from '@/services/url.service';
 import {
 	assertAuthenticationMethodCanBeEnabled,
@@ -87,7 +88,6 @@ function safeStringify(value: unknown): string {
 export class OidcService {
 	private oidcConfig: OidcRuntimeConfig = DEFAULT_OIDC_RUNTIME_CONFIG;
 
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	private openidClient: typeof import('openid-client');
 
 	constructor(
@@ -110,6 +110,33 @@ export class OidcService {
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
 		if (this.oidcConfig.loginEnabled) {
 			await this.loadOpenIdClient();
+		}
+		await this.selfHealTrustedKeySource();
+	}
+
+	/**
+	 * Re-derive the SSO trusted key source on every startup, in case it was
+	 * lost (fresh DB restore) or never created (`token-exchange` enabled
+	 * after OIDC was already configured) — restarting alone must not require
+	 * an admin to re-save the OIDC config. No-ops when OIDC hasn't been
+	 * configured, or when `token-exchange` isn't licensed/enabled (the proxy
+	 * no-ops without a registered provider).
+	 */
+	private async selfHealTrustedKeySource(): Promise<void> {
+		const isConfigured =
+			this.oidcConfig.discoveryEndpoint.toString() !==
+			DEFAULT_OIDC_RUNTIME_CONFIG.discoveryEndpoint.toString();
+		if (!isConfigured) return;
+
+		try {
+			const discoveredMetadata = await this.createProxyAwareConfiguration(
+				this.oidcConfig.discoveryEndpoint,
+				this.oidcConfig.clientId,
+				this.oidcConfig.clientSecret,
+			);
+			await this.registerTrustedKeySource(discoveredMetadata);
+		} catch (error) {
+			this.logger.warn('Failed to self-heal SSO-derived trusted key source', { error });
 		}
 	}
 
@@ -724,8 +751,9 @@ export class OidcService {
 		if (newConfig.clientSecret === OIDC_CLIENT_SECRET_REDACTED_VALUE) {
 			newConfig.clientSecret = this.oidcConfig.clientSecret;
 		}
+		let discoveredMetadata: openidClientTypes.Configuration;
 		try {
-			const discoveredMetadata = await this.createProxyAwareConfiguration(
+			discoveredMetadata = await this.createProxyAwareConfiguration(
 				discoveryEndpoint,
 				newConfig.clientId,
 				newConfig.clientSecret,
@@ -762,6 +790,28 @@ export class OidcService {
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
 
 		await this.broadcastReloadOIDCConfigurationCommand();
+
+		await this.registerTrustedKeySource(discoveredMetadata);
+	}
+
+	/**
+	 * Register this OIDC provider as a trusted key source, reusing the
+	 * metadata already fetched for config validation above (no extra
+	 * discovery-endpoint round trip). No-ops if `token-exchange` isn't
+	 * licensed/enabled. Best-effort: a registration failure (e.g. the issuer
+	 * is already claimed by another source) must not fail the OIDC config
+	 * save — that's the primary action the admin is taking.
+	 */
+	private async registerTrustedKeySource(
+		discoveredMetadata: openidClientTypes.Configuration,
+	): Promise<void> {
+		try {
+			const { issuer, jwks_uri: jwksUri } = discoveredMetadata.serverMetadata();
+			if (!jwksUri) return;
+			await Container.get(TrustedKeySourceRegistrationProxy).registerFromDiscovery(issuer, jwksUri);
+		} catch (error) {
+			this.logger.warn('Failed to register OIDC provider as a trusted key source', { error });
+		}
 	}
 
 	private async setOidcLoginEnabled(enabled: boolean): Promise<void> {

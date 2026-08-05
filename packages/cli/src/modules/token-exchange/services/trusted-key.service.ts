@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError, jsonParse } from 'n8n-workflow';
+import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
 import { z } from 'zod';
@@ -304,6 +304,8 @@ export class TrustedKeyService {
 					type: 'static' as const,
 					config: JSON.stringify(staticSources),
 					status: 'pending' as const,
+					managedBy: 'env-config' as const,
+					issuer: null,
 				});
 			}
 
@@ -316,18 +318,57 @@ export class TrustedKeyService {
 					type: 'jwks' as const,
 					config: JSON.stringify(jwks),
 					status: 'pending' as const,
+					managedBy: 'env-config' as const,
+					issuer: jwks.issuer,
 				});
 			}
 
-			// Remove orphaned config-managed sources
+			// Remove orphaned config-managed sources. Scoped to `managedBy:
+			// 'env-config'` so this sweep never touches SSO-derived sources —
+			// those aren't part of `parseConfigSources()` and would otherwise
+			// look orphaned and be deleted on every startup.
 			if (expectedSourceIds.size > 0) {
 				await tx.delete(TrustedKeySourceEntity, {
+					managedBy: 'env-config',
 					id: Not(In([...expectedSourceIds])),
 				});
 			} else {
-				await tx.delete(TrustedKeySourceEntity, {});
+				await tx.delete(TrustedKeySourceEntity, { managedBy: 'env-config' });
 			}
 		});
+	}
+
+	/**
+	 * Upsert a `jwks` trusted key source derived from an SSO provider's
+	 * discovery document (see `TrustedKeySourceRegistrationProxy`).
+	 *
+	 * Keyed by issuer (not JWKS URI) so a JWKS-URI rotation on an existing
+	 * issuer updates the same row in place. Rejects if another source
+	 * (whether env-config or a different SSO-derived row) already claims the
+	 * same issuer — `issuer` is globally unique — rather than failing on the
+	 * DB's unique constraint with an opaque error.
+	 */
+	async registerSsoDerivedSource(issuer: string, jwksUri: string): Promise<void> {
+		const sourceId = createHash('sha256').update(issuer).digest('hex').slice(0, 36);
+		const config: JwksKeySource = { type: 'jwks', url: jwksUri, issuer };
+
+		await this.dbLockService.withLock(DbLock.TRUSTED_KEY_REFRESH, async (tx) => {
+			const existingForIssuer = await tx.findOneBy(TrustedKeySourceEntity, { issuer });
+			if (existingForIssuer && existingForIssuer.id !== sourceId) {
+				throw new UserError(`A trusted key source for issuer "${issuer}" is already registered`);
+			}
+
+			await tx.save(TrustedKeySourceEntity, {
+				id: sourceId,
+				type: 'jwks' as const,
+				config: JSON.stringify(config),
+				status: 'pending' as const,
+				managedBy: 'sso-derived' as const,
+				issuer,
+			});
+		});
+
+		await this.refreshSource(sourceId);
 	}
 
 	// ─── Private: refresh ──────────────────────────────────────────────

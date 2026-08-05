@@ -1,4 +1,3 @@
-import type { Mock, Mocked } from 'vitest';
 import type { OidcConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpTransport, SsrfProtectionService } from '@n8n/backend-network';
@@ -8,9 +7,10 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { AuthIdentityRepository, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import * as client from 'openid-client';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 vi.mock('openid-client', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('openid-client')>();
@@ -27,6 +27,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { JwtService } from '@/services/jwt.service';
+import { TrustedKeySourceRegistrationProxy } from '@/services/trusted-key-source-registration-proxy.service';
 import type { UrlService } from '@/services/url.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
@@ -384,6 +385,101 @@ describe('OidcService', () => {
 
 			// Should not attempt to import Publisher in single main setup
 			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('registerTrustedKeySource', () => {
+		const mockProxy = { registerFromDiscovery: vi.fn() };
+
+		beforeEach(() => {
+			mockInstance(TrustedKeySourceRegistrationProxy, mockProxy as any);
+		});
+
+		it('registers the discovered issuer and jwks_uri as a trusted key source', async () => {
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({
+				serverMetadata: () => ({
+					issuer: 'https://idp.example.com',
+					jwks_uri: 'https://idp.example.com/jwks.json',
+				}),
+			} as unknown as client.Configuration);
+
+			await oidcService.updateConfig(mockOidcConfig as any as OidcConfigDto);
+
+			expect(mockProxy.registerFromDiscovery).toHaveBeenCalledWith(
+				'https://idp.example.com',
+				'https://idp.example.com/jwks.json',
+			);
+		});
+
+		it('does not fail the config save when trusted key source registration fails', async () => {
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({
+				serverMetadata: () => ({
+					issuer: 'https://idp.example.com',
+					jwks_uri: 'https://idp.example.com/jwks.json',
+				}),
+			} as unknown as client.Configuration);
+			mockProxy.registerFromDiscovery.mockRejectedValue(new Error('issuer already registered'));
+
+			await expect(
+				oidcService.updateConfig(mockOidcConfig as any as OidcConfigDto),
+			).resolves.not.toThrow();
+		});
+
+		it('does not register when discovery metadata has no jwks_uri', async () => {
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({
+				serverMetadata: () => ({ issuer: 'https://idp.example.com' }),
+			} as unknown as client.Configuration);
+
+			await oidcService.updateConfig(mockOidcConfig as any as OidcConfigDto);
+
+			expect(mockProxy.registerFromDiscovery).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('selfHealTrustedKeySource (on init)', () => {
+		const mockProxy = { registerFromDiscovery: vi.fn() };
+
+		beforeEach(() => {
+			mockInstance(TrustedKeySourceRegistrationProxy, mockProxy as any);
+		});
+
+		it('registers the trusted key source on startup when OIDC is already configured', async () => {
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({
+				serverMetadata: () => ({
+					issuer: 'https://idp.example.com',
+					jwks_uri: 'https://idp.example.com/jwks.json',
+				}),
+			} as unknown as client.Configuration);
+
+			await oidcService.init();
+
+			expect(mockProxy.registerFromDiscovery).toHaveBeenCalledWith(
+				'https://idp.example.com',
+				'https://idp.example.com/jwks.json',
+			);
+		});
+
+		it('does not attempt registration when OIDC has never been configured', async () => {
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(null);
+
+			await oidcService.init();
+
+			expect(mockProxy.registerFromDiscovery).not.toHaveBeenCalled();
+		});
+
+		it('does not throw when the discovery fetch fails on startup', async () => {
+			settingsRepository.findByKey = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockRejectedValue(new Error('network error'));
+
+			await expect(oidcService.init()).resolves.not.toThrow();
+			expect(mockProxy.registerFromDiscovery).not.toHaveBeenCalled();
 		});
 	});
 
@@ -805,7 +901,7 @@ describe('OidcService', () => {
 		const clientSecret = 'test-secret';
 
 		const createConfiguration = async () =>
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 			(await (oidcService as any).createProxyAwareConfiguration(
 				discoveryUrl,
 				clientId,
