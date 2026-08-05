@@ -9,7 +9,7 @@ import {
 	TagRepository,
 	WorkflowEntity,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -208,6 +208,8 @@ export class WorkflowCreationService {
 				floor,
 			);
 
+			await this.resolveMcpExposureOnCreate(newWorkflow);
+
 			if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 				newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
 					parentFolderId,
@@ -338,5 +340,20 @@ export class WorkflowCreationService {
 		if (seed === undefined) return;
 
 		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), redactionPolicy: seed };
+	}
+
+	/**
+	 * Default-only: the instance setting seeds MCP exposure for callers that didn't
+	 * express an intent. An explicit `availableInMCP` — from the public API, an
+	 * import, or the MCP builder — always wins.
+	 */
+	private async resolveMcpExposureOnCreate(newWorkflow: WorkflowEntity): Promise<void> {
+		if (newWorkflow.settings?.availableInMCP !== undefined) return;
+
+		const { McpSettingsService } = await import('@/modules/mcp/mcp.settings.service.js');
+
+		if (!(await Container.get(McpSettingsService).getAutoExposeNewWorkflows())) return;
+
+		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), availableInMCP: true };
 	}
 }

@@ -292,6 +292,8 @@ export const createCreateWorkflowFromCodeTool = (
 				connections: workflowJson.connections,
 				// Flag off: groups keep being dropped here, exactly like before.
 				...(options.canvasGroupsEnabled ? { nodeGroups: workflowJson.nodeGroups ?? [] } : {}),
+				// Explicit `true` — a client that just built this workflow must be able to keep
+				// working on it, regardless of the `mcp.autoExposeNewWorkflows` instance setting.
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },

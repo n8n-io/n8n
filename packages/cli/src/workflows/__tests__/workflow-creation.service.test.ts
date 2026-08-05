@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import type { ProjectRepository, Role, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -9,6 +10,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import type { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -24,6 +26,12 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-helpers');
 vi.mock('@/generic-helpers');
+// The service is resolved lazily (dynamic import + Container.get) so core doesn't
+// take a compile-time dependency on the MCP module. Stub the module's export as a
+// bare class so only the class token is needed to intercept Container.get.
+vi.mock('@/modules/mcp/mcp.settings.service', () => ({
+	McpSettingsService: class McpSettingsService {},
+}));
 
 describe('WorkflowCreationService', () => {
 	const userHasScopesMock = vi.mocked(userHasScopes);
@@ -40,6 +48,7 @@ describe('WorkflowCreationService', () => {
 	let externalHooksMock: MockProxy<ExternalHooks>;
 	let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 	let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
+	let mcpSettingsService: MockProxy<McpSettingsService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -61,6 +70,10 @@ describe('WorkflowCreationService', () => {
 
 		// Default: no active floor. Tests opt into a floor explicitly.
 		instanceRedactionEnforcementServiceMock.get.mockResolvedValue('off');
+
+		// McpSettingsService is resolved lazily (dynamic import + Container.get).
+		mcpSettingsService = mock<McpSettingsService>();
+		vi.spyOn(Container, 'get').mockReturnValue(mcpSettingsService);
 
 		workflowCreationService = new WorkflowCreationService(
 			mock(), // logger
@@ -84,6 +97,15 @@ describe('WorkflowCreationService', () => {
 			workflowHookContextServiceMock,
 		);
 	});
+
+	function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
+		const workflow = new WorkflowEntity();
+		workflow.name = 'Test';
+		workflow.nodes = [];
+		workflow.connections = {};
+		Object.assign(workflow, overrides);
+		return workflow;
+	}
 
 	function setupTransactionMocks(
 		options: {
@@ -696,6 +718,67 @@ describe('WorkflowCreationService', () => {
 					publicApi: true,
 				}),
 			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+	});
+
+	describe('auto-expose new workflows', () => {
+		const user = mock<User>();
+
+		beforeEach(() => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+			const { transactionManager } = setupTransactionMocks();
+			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
+			workflowFinderServiceMock.findWorkflowForUser.mockImplementation(
+				async () => new WorkflowEntity(),
+			);
+		});
+
+		it('seeds availableInMCP when unset and the setting is on', async () => {
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
+			const workflow = makeWorkflow({ settings: {} });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expect(workflow.settings?.availableInMCP).toBe(true);
+		});
+
+		it('seeds availableInMCP when settings is entirely absent', async () => {
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
+			const workflow = makeWorkflow({ settings: undefined });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expect(workflow.settings?.availableInMCP).toBe(true);
+		});
+
+		it('respects an explicit false from the caller', async () => {
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(true);
+			const workflow = makeWorkflow({ settings: { availableInMCP: false } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expect(workflow.settings?.availableInMCP).toBe(false);
+		});
+
+		it('respects an explicit true from the caller', async () => {
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			const workflow = makeWorkflow({ settings: { availableInMCP: true } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expect(workflow.settings?.availableInMCP).toBe(true);
+		});
+
+		it('does not seed when the setting is off', async () => {
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			const workflow = makeWorkflow({ settings: {} });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expect(workflow.settings?.availableInMCP).toBeUndefined();
 		});
 	});
 });
