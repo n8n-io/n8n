@@ -4,7 +4,11 @@ const ACTIVITY_TABLE = 'workflow_review_activity';
 const COMMENT_TABLE = 'workflow_review_activity_comment';
 
 const REQUEST_TABLE = 'workflow_review_request';
+const REQUEST_WORKFLOW_TABLE = 'workflow_review_request_workflow';
+const WORKFLOW_HISTORY_TABLE = 'workflow_history';
 const USER_TABLE = 'user';
+
+const BASELINE_VERSION_COLUMN = 'baselineVersionId';
 
 const ACTIVITY_TYPES = [
 	'review.opened',
@@ -16,16 +20,20 @@ const ACTIVITY_TYPES = [
 	'review.closed',
 ];
 
-export class CreateWorkflowReviewActivityTables1785843640527 implements ReversibleMigration {
+export class CreateWorkflowReviewActivityTablesAndBaseline1785843640527
+	implements ReversibleMigration
+{
 	async up(context: MigrationContext) {
 		await this.createActivityTable(context);
 		await this.createCommentTable(context);
+		await this.addBaselineVersionColumn(context);
 	}
 
-	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
+	async down(context: MigrationContext) {
+		await this.dropBaselineVersionColumn(context);
 		// Comment table first: its FK blocks dropping the activity table on Postgres.
-		await dropTable(COMMENT_TABLE);
-		await dropTable(ACTIVITY_TABLE);
+		await context.schemaBuilder.dropTable(COMMENT_TABLE);
+		await context.schemaBuilder.dropTable(ACTIVITY_TABLE);
 	}
 
 	private async createActivityTable({
@@ -107,5 +115,42 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 			false,
 			`IDX_${tablePrefix}workflow_review_activity_comment_activity`,
 		);
+	}
+
+	/**
+	 * Rides along with the activity tables so the review feature needs a single schema change:
+	 * the feed records that a version was approved, this column pins which one.
+	 */
+	private async addBaselineVersionColumn({
+		schemaBuilder: { addColumns, addForeignKey, column },
+	}: MigrationContext) {
+		await addColumns(
+			REQUEST_WORKFLOW_TABLE,
+			[
+				column(BASELINE_VERSION_COLUMN)
+					.varchar(36)
+					.comment('Published workflow_history version captured when the review was approved'),
+			],
+			{ recreatesOnSqlite: true },
+		);
+		await addForeignKey(
+			REQUEST_WORKFLOW_TABLE,
+			BASELINE_VERSION_COLUMN,
+			[WORKFLOW_HISTORY_TABLE, 'versionId'],
+			undefined,
+			'SET NULL',
+		);
+	}
+
+	private async dropBaselineVersionColumn({
+		schemaBuilder: { dropColumns, dropForeignKey },
+	}: MigrationContext) {
+		await dropForeignKey(REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN, [
+			WORKFLOW_HISTORY_TABLE,
+			'versionId',
+		]);
+		await dropColumns(REQUEST_WORKFLOW_TABLE, [BASELINE_VERSION_COLUMN], {
+			recreatesOnSqlite: true,
+		});
 	}
 }

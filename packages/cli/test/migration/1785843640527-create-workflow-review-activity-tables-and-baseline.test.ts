@@ -11,10 +11,12 @@ import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateWorkflowReviewActivityTables1785843640527';
+const MIGRATION_NAME = 'CreateWorkflowReviewActivityTablesAndBaseline1785843640527';
 
 const ACTIVITY_TABLE = 'workflow_review_activity';
 const COMMENT_TABLE = 'workflow_review_activity_comment';
+const REQUEST_WORKFLOW_TABLE = 'workflow_review_request_workflow';
+const BASELINE_VERSION_COLUMN = 'baselineVersionId';
 
 async function tableExists(context: TestMigrationContext, table: string): Promise<boolean> {
 	const name = `${context.tablePrefix}${table}`;
@@ -32,7 +34,27 @@ async function tableExists(context: TestMigrationContext, table: string): Promis
 	return rows.length > 0;
 }
 
-describe('CreateWorkflowReviewActivityTables Migration', () => {
+async function columnMeta(
+	context: TestMigrationContext,
+	table: string,
+	columnName: string,
+): Promise<{ nullable: boolean } | undefined> {
+	if (context.isSqlite) {
+		const rows = await context.runQuery<Array<{ name: string; notnull: number }>>(
+			`PRAGMA table_info(${context.escape.tableName(table)})`,
+		);
+		const row = rows.find(({ name }) => name === columnName);
+		return row && { nullable: Number(row.notnull) === 0 };
+	}
+	const rows = await context.runQuery<Array<{ is_nullable: string }>>(
+		`SELECT is_nullable FROM information_schema.columns
+		 WHERE table_name = :tableName AND column_name = :columnName`,
+		{ tableName: `${context.tablePrefix}${table}`, columnName },
+	);
+	return rows[0] && { nullable: rows[0].is_nullable === 'YES' };
+}
+
+describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 	let dataSource: DataSource;
 
 	beforeAll(async () => {
@@ -337,12 +359,23 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				await context.queryRunner.release();
 			}
 		});
+
+		it('adds baselineVersionId as nullable so reviews closed before this migration stay valid', async () => {
+			const context = createTestMigrationContext(dataSource);
+			try {
+				expect(await columnMeta(context, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN)).toEqual({
+					nullable: true,
+				});
+			} finally {
+				await context.queryRunner.release();
+			}
+		});
 	});
 
 	describe('down', () => {
 		// The drop order only matters on Postgres: the SQLite query runner disables foreign keys
 		// for every migration run, so a wrong order would still pass on that leg.
-		it('drops both tables', async () => {
+		it('drops both tables and the baseline column', async () => {
 			// Assert the precondition inside this test, not in the `up` block: under a filtered run
 			// (`vitest -t`) the `up` hook is skipped, so without this the test would revert whatever
 			// migration preceded ours and pass by finding tables that never existed.
@@ -350,6 +383,9 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			try {
 				expect(await tableExists(before, ACTIVITY_TABLE)).toBe(true);
 				expect(await tableExists(before, COMMENT_TABLE)).toBe(true);
+				expect(
+					await columnMeta(before, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN),
+				).toBeDefined();
 			} finally {
 				// Release before reverting: holding a pooled lease across the revert exhausts the
 				// Postgres pool and the migration times out trying to connect.
@@ -362,6 +398,9 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			try {
 				expect(await tableExists(after, ACTIVITY_TABLE)).toBe(false);
 				expect(await tableExists(after, COMMENT_TABLE)).toBe(false);
+				expect(
+					await columnMeta(after, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN),
+				).toBeUndefined();
 			} finally {
 				await after.queryRunner.release();
 			}
