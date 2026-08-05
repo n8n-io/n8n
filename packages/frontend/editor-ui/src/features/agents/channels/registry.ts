@@ -1,4 +1,5 @@
 import { h, readonly, ref } from 'vue';
+import type { AgentIntegrationDisconnectWarning } from '@n8n/api-types';
 
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
@@ -22,6 +23,17 @@ function createDefaultRuntime(): AgentChannelRuntime {
 function isSlackRuntime(runtime: AgentChannelRuntime): runtime is SlackChannelRuntime {
 	return 'setup' in runtime;
 }
+
+const isSlackNotDeletedWarning = (
+	warning: AgentIntegrationDisconnectWarning,
+): warning is AgentIntegrationDisconnectWarning & { action: { url: string } } => {
+	return (
+		warning.integrationType === 'slack' &&
+		warning.code === 'app_not_deleted' &&
+		warning.action?.type === 'open_url' &&
+		!!warning.action?.url
+	);
+};
 
 const fallbackPlatform: AgentChannelPlatform = {
 	type: 'unknown',
@@ -47,11 +59,7 @@ const platforms: Record<string, AgentChannelPlatform> = {
 			};
 		},
 		presentDisconnectWarning: (warning, { text }) => {
-			if (
-				warning.integrationType !== 'slack' ||
-				warning.code !== 'app_not_deleted' ||
-				warning.action?.type !== 'open_url'
-			) {
+			if (!isSlackNotDeletedWarning(warning)) {
 				return null;
 			}
 			return {
