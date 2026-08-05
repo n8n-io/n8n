@@ -372,7 +372,7 @@ const sortedWorkflows = computed(() => {
 				<N8nButton
 					v-else
 					size="small"
-					type="secondary"
+					variant="subtle"
 					:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
 					data-test-id="migrate-workflow-button"
 					@click.stop="openMigrateModal(item)"

@@ -46,7 +46,7 @@ const onConfirm = () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					size="large"
 					:label="i18n.baseText('dataTable.download.modal.cancel')"
 					data-test-id="download-modal-cancel"

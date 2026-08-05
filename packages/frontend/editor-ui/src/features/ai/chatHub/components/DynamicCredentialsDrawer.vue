@@ -26,7 +26,7 @@ const i18n = useI18n();
 					i18n.baseText('chatHub.dynamicCredentials.drawer.title')
 				}}</N8nText>
 				<N8nIconButton
-					type="tertiary"
+					variant="subtle"
 					text
 					icon="x"
 					data-testid="dynamic-credentials-drawer-close"
@@ -70,7 +70,7 @@ const i18n = useI18n();
 							<N8nSpinner v-if="cred.isConnecting" size="small" />
 							<N8nButton
 								v-else-if="cred.credentialStatus === 'configured'"
-								type="tertiary"
+								variant="subtle"
 								size="small"
 								data-testid="dynamic-credential-disconnect"
 								@click="emit('revoke', cred.credentialId)"
@@ -79,7 +79,7 @@ const i18n = useI18n();
 							</N8nButton>
 							<N8nButton
 								v-else
-								type="secondary"
+								variant="subtle"
 								size="small"
 								data-testid="dynamic-credential-connect"
 								@click="emit('authorize', cred.credentialId)"

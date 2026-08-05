@@ -256,7 +256,7 @@ watch(hoveredSection, (section) => {
 				<N8nButton
 					v-if="showContinue"
 					data-test-id="builder-node-group-card-continue"
-					type="primary"
+					variant="solid"
 					size="small"
 					:class="$style.actionButton"
 					:label="i18n.baseText('aiAssistant.builder.setupWizard.continue' as BaseTextKey)"

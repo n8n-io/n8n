@@ -317,7 +317,7 @@ defineExpose({ showDropdown });
 						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</N8nText>
 					<N8nButton
-						type="tertiary"
+						variant="subtle"
 						size="small"
 						:label="i18n.baseText('generic.retry')"
 						data-test-id="rlc-error-retry"

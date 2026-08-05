@@ -70,7 +70,7 @@ function submit(approved: boolean) {
 			<div v-else :class="$style.actions">
 				<N8nButton
 					size="medium"
-					type="primary"
+					variant="solid"
 					:disabled="disabled"
 					data-testid="agent-approval-approve"
 					@click="submit(true)"
