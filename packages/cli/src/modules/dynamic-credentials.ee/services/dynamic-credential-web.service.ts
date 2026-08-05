@@ -1,11 +1,13 @@
 import { Z } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { Request } from 'express';
-import { ICredentialContext } from 'n8n-workflow';
+import { ICredentialContext, ICredentialResolutionContext } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+
+import { InboundClaimConnectService } from './inbound-claim-connect.service';
 
 class AuthSourceQuerySchema extends Z.class({
 	authSource: z.enum(['bearer', 'cookie']).optional(),
@@ -32,7 +34,10 @@ function getBearerToken(req: Request): string | null {
 
 @Service()
 export class DynamicCredentialWebService {
-	constructor(private readonly authService: AuthService) {}
+	constructor(
+		private readonly authService: AuthService,
+		private readonly inboundClaimConnectService: InboundClaimConnectService,
+	) {}
 
 	private buildCookieCredentialContext(req: Request): ICredentialContext {
 		const sessionCookie = this.authService.getCookieToken(req);
@@ -51,7 +56,13 @@ export class DynamicCredentialWebService {
 		};
 	}
 
-	getCredentialContextFromRequest(req: Request): ICredentialContext {
+	/**
+	 * A presented bearer token is verified here, so a caller arriving with an
+	 * external IdP token resolves as that identity. Tokens no trusted source
+	 * vouches for are returned untagged, exactly as before - they belong to a
+	 * resolver that keys on the token's own subject.
+	 */
+	async getCredentialContextFromRequest(req: Request): Promise<ICredentialResolutionContext> {
 		const parseResult = AuthSourceQuerySchema.safeParse(req.query);
 
 		if (parseResult.success && parseResult.data.authSource !== undefined) {
@@ -61,11 +72,7 @@ export class DynamicCredentialWebService {
 				if (token === null) {
 					throw new UnauthenticatedError('Bearer token is missing');
 				}
-				return {
-					identity: token,
-					version: 1,
-					metadata: {},
-				};
+				return await this.buildBearerCredentialContext(token);
 			} else if (authSource === 'cookie') {
 				return this.buildCookieCredentialContext(req);
 			} else {
@@ -75,13 +82,18 @@ export class DynamicCredentialWebService {
 
 		const token = getBearerToken(req);
 		if (token !== null) {
-			return {
-				identity: token,
-				version: 1,
-				metadata: {},
-			};
+			return await this.buildBearerCredentialContext(token);
 		}
 
 		return this.buildCookieCredentialContext(req);
+	}
+
+	private async buildBearerCredentialContext(token: string): Promise<ICredentialResolutionContext> {
+		const context: ICredentialContext = {
+			identity: token,
+			version: 1,
+			metadata: {},
+		};
+		return await this.inboundClaimConnectService.attachVerifiedClaim(context);
 	}
 }

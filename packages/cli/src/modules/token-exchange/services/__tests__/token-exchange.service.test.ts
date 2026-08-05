@@ -8,6 +8,7 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { JwtService } from '@/services/jwt.service';
 
+import type { InboundAudienceService } from '../../context-establishment-hooks/inbound-audience.service';
 import type { TokenExchangeConfig } from '../../token-exchange.config';
 import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
@@ -22,6 +23,7 @@ const jtiStore = mock<JtiStoreService>();
 const identityResolutionService = mock<IdentityResolutionService>();
 const config = mock<TokenExchangeConfig>();
 const jwtService = mock<JwtService>();
+const inboundAudienceService = mock<InboundAudienceService>();
 
 const service = new TokenExchangeService(
 	logger,
@@ -30,6 +32,7 @@ const service = new TokenExchangeService(
 	identityResolutionService,
 	config,
 	jwtService,
+	inboundAudienceService,
 );
 
 const resolvedKey: ResolvedTrustedKey = {

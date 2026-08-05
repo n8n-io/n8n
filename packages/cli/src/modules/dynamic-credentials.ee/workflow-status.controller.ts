@@ -60,7 +60,8 @@ export class WorkflowStatusController {
 	async checkWorkflowForExecution(req: Request, res: Response): Promise<WorkflowExecutionStatus> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['get', 'options']);
 		const workflowId = req.params['workflowId'];
-		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
+		const credentialContext =
+			await this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
 
 		if (!workflowId) {
 			throw new BadRequestError('Workflow ID is missing');

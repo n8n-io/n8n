@@ -17,6 +17,7 @@ import type { DynamicCredentialResolverRepository } from '../../database/reposit
 import { CredentialStorageError } from '../../errors/credential-storage.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialStorageService } from '../dynamic-credential-storage.service';
+import type { InboundClaimConnectService } from '../inbound-claim-connect.service';
 
 describe('DynamicCredentialStorageService', () => {
 	let service: DynamicCredentialStorageService;
@@ -26,6 +27,7 @@ describe('DynamicCredentialStorageService', () => {
 	let mockCipher: Mocked<Cipher>;
 	let mockLogger: Mocked<Logger>;
 	let mockDynamicCredentialsProxy: Mocked<DynamicCredentialsProxy>;
+	let mockInboundClaimConnectService: Mocked<InboundClaimConnectService>;
 
 	const createMockCredentialMetadata = (
 		overrides: Partial<CredentialStoreMetadata> = {},
@@ -103,6 +105,11 @@ describe('DynamicCredentialStorageService', () => {
 			decryptV2: vi.fn(),
 		} as unknown as Mocked<Cipher>;
 
+		mockInboundClaimConnectService = {
+			// No claim to derive in these tests: pass the context through untouched.
+			attachVerifiedClaim: vi.fn(async (context) => context),
+		} as unknown as Mocked<InboundClaimConnectService>;
+
 		mockDynamicCredentialsProxy = {
 			getSystemResolverId: vi.fn().mockReturnValue(null),
 			// Default to the real semantics with no system resolver seeded:
@@ -117,6 +124,7 @@ describe('DynamicCredentialStorageService', () => {
 			mockCipher,
 			mockLogger,
 			mockDynamicCredentialsProxy,
+			mockInboundClaimConnectService,
 		);
 	});
 
