@@ -71,6 +71,7 @@ const promptDescriptions: PromptDescription[] = [
 
 const authenticationContextClassReference = ref('');
 const additionalScopes = ref('');
+const rpInitiatedLogoutEnabled = ref(false);
 const isAdditionalScopesInvalid = computed(() =>
 	[',', ';'].some((c) => additionalScopes.value.includes(c)),
 );
@@ -85,6 +86,7 @@ const getOidcConfig = async () => {
 	authenticationContextClassReference.value =
 		config.authenticationContextClassReference?.join(',') || '';
 	additionalScopes.value = config.additionalScopes ?? '';
+	rpInitiatedLogoutEnabled.value = config.rpInitiatedLogoutEnabled ?? false;
 };
 
 const loadOidcConfig = async () => {
@@ -185,6 +187,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 			additionalScopes: additionalScopes.value,
+			rpInitiatedLogoutEnabled: rpInitiatedLogoutEnabled.value,
 		});
 		const provisioningResult = await saveProvisioningConfig(isDisablingOidcLogin);
 

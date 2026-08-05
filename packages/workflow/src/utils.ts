@@ -409,6 +409,7 @@ export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
 }
 
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const unsafeObjectPropertyTokenPattern = new RegExp(
 	`\\b(?:${[...unsafeObjectProperties]
 		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))

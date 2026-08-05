@@ -5,6 +5,7 @@
  * Schemas are loaded from `nodeDefinitionDirs` configured via `setSchemaBaseDirs()`.
  */
 
+import { realpathSync } from 'fs';
 import * as path from 'path';
 import type { ZodSchema, ZodIssue } from 'zod';
 
@@ -62,6 +63,31 @@ function nodeTypeToPathComponents(nodeType: string): { pkg: string; nodeName: st
 	const [pkg, ...rest] = normalized.split('.');
 	const nodeName = rest.join('.'); // Handle multi-part names (shouldn't happen, but be safe)
 	return { pkg, nodeName };
+}
+
+/**
+ * Whether a node-type-derived path component is a single, safe path segment.
+ * A legitimate `pkg`/`nodeName` never contains separators or parent references.
+ */
+function isSafePathComponent(component: string): boolean {
+	if (component.includes('\0')) return false;
+	if (component.includes('/') || component.includes('\\')) return false;
+	if (component === '.' || component === '..') return false;
+	return true;
+}
+
+/**
+ * Real (symlink-resolved) path of `child` if it lands on `parent` itself or
+ * somewhere beneath it, otherwise null. Comparing fully resolved paths means
+ * neither a `..` sequence nor a symlinked directory or file can point outside
+ * `parent`. Both paths must already exist. Callers should use the returned path
+ * so the resolved real file is what gets loaded.
+ */
+function realPathWithin(parent: string, child: string): string | null {
+	const realParent = realpathSync(parent);
+	const realChild = realpathSync(child);
+	const contained = realChild === realParent || realChild.startsWith(realParent + path.sep);
+	return contained ? realChild : null;
 }
 
 /**
@@ -132,13 +158,23 @@ function buildExpectedFactoryName(
 }
 
 /**
- * Try to load a schema module from a given path
- * @returns The module if found, null otherwise
+ * Try to load a schema module from a given path, but only if the file `require()`
+ * would actually open resolves inside `nodesRoot`. Resolving the module first
+ * (with its real extension, following any symlinks) and checking containment on
+ * the realpath closes both `..` traversal and symlinked directory/leaf escapes.
+ * @returns The module if found and contained, null otherwise
  */
-function tryLoadSchemaModule(schemaPath: string): Record<string, unknown> | null {
+function tryLoadSchemaModule(
+	schemaPath: string,
+	nodesRoot: string,
+): Record<string, unknown> | null {
 	try {
+		const safePath = realPathWithin(nodesRoot, require.resolve(schemaPath));
+		if (!safePath) {
+			return null;
+		}
 		// eslint-disable-next-line @typescript-eslint/no-require-imports -- Dynamic module loading requires CommonJS require
-		return require(schemaPath) as Record<string, unknown>;
+		return require(safePath) as Record<string, unknown>;
 	} catch {
 		return null;
 	}
@@ -214,15 +250,25 @@ function tryLoadSchemaForNodeType(nodeType: string, version: number): SchemaOrFa
 	const versionStr = versionToString(version);
 	const isLangchain = pkg === 'n8n-nodes-langchain';
 
-	for (const baseDir of schemaBaseDirs) {
-		// Try flat structure first: nodes/{pkg}/{nodeName}/{version}.schema.js
-		const flatSchemaPath = path.join(baseDir, 'nodes', pkg, nodeName, `${versionStr}.schema`);
-		// Try split structure: nodes/{pkg}/{nodeName}/{version}/index.schema.js
-		const splitSchemaPath = path.join(baseDir, 'nodes', pkg, nodeName, versionStr, 'index.schema');
+	// Reject node types whose path components could escape the schema directory.
+	// Only built-in nodes have generated schemas, so a rejected type would resolve
+	// to nothing anyway; returning null falls back to skip-validation.
+	if (!isSafePathComponent(pkg) || !isSafePathComponent(nodeName)) {
+		return null;
+	}
 
-		// Try flat structure first, then split structure
+	for (const baseDir of schemaBaseDirs) {
+		const nodesRoot = path.resolve(baseDir, 'nodes');
+		// Try flat structure first: nodes/{pkg}/{nodeName}/{version}.schema.js
+		const flatSchemaPath = path.join(nodesRoot, pkg, nodeName, `${versionStr}.schema`);
+		// Try split structure: nodes/{pkg}/{nodeName}/{version}/index.schema.js
+		const splitSchemaPath = path.join(nodesRoot, pkg, nodeName, versionStr, 'index.schema');
+
+		// Try flat structure first, then split structure. `tryLoadSchemaModule`
+		// refuses to require() a file that resolves outside the schema root.
 		const schemaModule =
-			tryLoadSchemaModule(flatSchemaPath) ?? tryLoadSchemaModule(splitSchemaPath);
+			tryLoadSchemaModule(flatSchemaPath, nodesRoot) ??
+			tryLoadSchemaModule(splitSchemaPath, nodesRoot);
 
 		if (!schemaModule) {
 			continue;
