@@ -39,6 +39,7 @@ import {
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
+	emitAgentSnapshotTraceEvent,
 	createInstanceAiLivenessPolicyConfig,
 	InstanceAiLivenessPolicy,
 	McpClientManager,
@@ -77,6 +78,7 @@ import {
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
+	type AgentSnapshotArtifact,
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
@@ -3497,6 +3499,12 @@ export class InstanceAiService {
 				}
 			}
 
+			// The editor can hand the agent an existing Agent as context. The builder
+			// never sees that turn, so without this nothing records what the agent
+			// looked like when the conversation opened — the state a repair-shaped
+			// eval case has to seed from.
+			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
+
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
 
@@ -5722,6 +5730,40 @@ export class InstanceAiService {
 			};
 		}
 		return { status: 'limit-reached' };
+	}
+
+	/**
+	 * Emit an `agent-snapshot` trace event for every Agent the editor attached to
+	 * this turn, capturing it as it stands before the agent acts on it.
+	 *
+	 * Best-effort throughout: no agents module (no delegate) or no trace means no
+	 * snapshot, and a read failure skips that agent. This only feeds eval-seed
+	 * authoring — it must never affect the user's turn.
+	 */
+	private async snapshotAttachedAgents(
+		attachments: InstanceAiResourceAttachment[],
+		orchestrationContext: OrchestrationContext,
+		tracing: InstanceAiTraceContext | undefined,
+	): Promise<void> {
+		const delegate = orchestrationContext.domainContext?.builderDelegate;
+		if (!delegate || !tracing) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			let artifact: AgentSnapshotArtifact | null = null;
+			try {
+				artifact = (await delegate.readAgentArtifact?.(attachment.id)) ?? null;
+			} catch {
+				continue;
+			}
+			if (!artifact) continue;
+			await emitAgentSnapshotTraceEvent(tracing, {
+				agentId: attachment.id,
+				projectId: attachment.projectId,
+				reason: 'attached',
+				artifact,
+				logger: this.logger,
+			});
+		}
 	}
 
 	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {

@@ -47,11 +47,17 @@ import {
 	type AgentBuilderTarget,
 } from './agent-target-binding';
 import { instanceAiBuilderThreadPrefix } from './builder-thread-id';
+import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 import {
 	consumeStreamCascading,
 	type ConsumeStreamCascadingResult,
 } from '../../stream/consume-with-hitl';
 import type { WorkSummary } from '../../stream/work-summary-accumulator';
+import {
+	emitAgentSnapshotTraceEvent,
+	type AgentSnapshotArtifact,
+	type AgentSnapshotReason,
+} from '../../tracing/agent-snapshot-event';
 import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
@@ -60,7 +66,6 @@ import type {
 	SessionWorkflowRef,
 } from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
-import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
 const BUILDER_SUB_AGENT_KIND = 'agent-builder';
@@ -333,6 +338,33 @@ function publishAgentBuilderCancelled(context: OrchestrationContext, builderAgen
 	});
 }
 
+/** Emit an `agent-snapshot` trace event for the builder's target. Best-effort at
+ *  both ends: a target with no config yet reads back null, and the emit itself
+ *  never throws — a missing snapshot costs authoring fidelity, not the build. */
+async function snapshotAgent(
+	context: OrchestrationContext,
+	delegate: InstanceAiBuilderDelegate,
+	target: AgentBuilderTarget,
+	reason: AgentSnapshotReason,
+): Promise<void> {
+	let artifact: AgentSnapshotArtifact | null = null;
+	try {
+		// `?? null` rather than `.catch` on the call: an optional method may be
+		// absent OR (in a mocked host) return a non-promise.
+		artifact = (await delegate.readAgentArtifact?.(target.agentId)) ?? null;
+	} catch {
+		return;
+	}
+	if (!artifact) return;
+	await emitAgentSnapshotTraceEvent(context.tracing, {
+		agentId: target.agentId,
+		projectId: target.projectId,
+		reason,
+		artifact,
+		logger: context.logger,
+	});
+}
+
 /** Publish the terminal `agent-completed` event and map the result to the tool output.
  *  A cancelled turn is intercepted by the caller, so that status never arrives here. */
 async function finishTurn(
@@ -499,6 +531,12 @@ async function runBuilderConsumeLoop(params: {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		// The state the pass left behind — the other half of what a seeded case
+		// needs. Only on a pass that mutated the config; an unchanged agent would
+		// re-emit the baseline, which the snapshot's own hash dedupe drops anyway.
+		// A suspended pass isn't snapshotted here: it resumes and settles through
+		// this same path.
+		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
 		return { ...output, ...targetIdentity(target) };
 	}
 
@@ -953,6 +991,13 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);
+
+			// Snapshot the target BEFORE the builder touches it: a repair-shaped eval
+			// case seeds from the state the turn opened on, and nothing else records
+			// it. A freshly created agent has no prior state to capture.
+			if (resolution.mode !== 'create') {
+				await snapshotAgent(context, delegate, boundTarget, 'target-resolved');
+			}
 
 			let turn: BuilderTurnStream;
 			try {

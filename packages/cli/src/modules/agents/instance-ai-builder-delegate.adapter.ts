@@ -13,11 +13,14 @@ import { Like } from '@n8n/typeorm';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AgentConfigService } from './agent-config.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
+import { getAgentConfigHash } from './utils/agent-config-hash';
 
 /** Prompt addendum for sub-agent runs; exported for tests. */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
@@ -78,6 +81,8 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentThreadRepository: AgentThreadRepository,
+		private readonly agentConfig: AgentConfigService,
+		private readonly agentSkills: AgentSkillsService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -180,6 +185,21 @@ export class InstanceAiBuilderDelegateAdapterService {
 			resolveAgentName: async (agentId) => {
 				await assertProjectScope('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
+			},
+			readAgentArtifact: async (agentId) => {
+				await assertProjectScope('agent:read');
+				// `getConfig` throws for an agent with no JSON config yet (freshly
+				// created, builder hasn't written one) — that's a snapshot with
+				// nothing in it, not an error worth surfacing.
+				const config = await this.agentConfig.getConfig(agentId, projectId).catch(() => null);
+				if (!config) return null;
+				return {
+					config,
+					skills: await this.agentSkills.listSkills(agentId, projectId),
+					// The builder's own hash, so a consumer dedupes on the same value
+					// `read_config` hands the model as `configHash`.
+					configHash: getAgentConfigHash(config),
+				};
 			},
 		};
 	}

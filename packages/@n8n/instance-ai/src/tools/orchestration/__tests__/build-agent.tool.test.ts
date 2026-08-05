@@ -577,6 +577,106 @@ describe('build-agent tool', () => {
 		});
 	});
 
+	// Seed snapshots (`agent-snapshot` trace event): what an eval case needs is the
+	// agent BEFORE the turn (the state it seeds from) and again after a pass that
+	// changed it. Nothing else in the trace records either.
+	describe('agent-snapshot', () => {
+		const ARTIFACT = {
+			config: { name: 'Support Triage' },
+			skills: {},
+			configHash: 'hash-1',
+		} as unknown as Awaited<
+			ReturnType<NonNullable<InstanceAiBuilderDelegate['readAgentArtifact']>>
+		>;
+
+		it('snapshots an adopted agent before the builder can change it', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockImplementation(async () => {
+				// Ordering is the point: the baseline has to be read before the
+				// builder runs, or it captures the state the turn produced.
+				expect(delegate.readAgentArtifact).toHaveBeenCalledWith('agent-existing');
+				return await Promise.resolve(fakeStream([], 'Editing it.'));
+			});
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(delegate.readAgentArtifact).toHaveBeenCalledWith('agent-existing');
+		});
+
+		it('takes no baseline for an agent it just created — there is no prior state', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Built it.'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(delegate.readAgentArtifact).not.toHaveBeenCalled();
+		});
+
+		it('snapshots again after a pass that changed the config', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[toolCallChunk('call-1', 'patch_config'), toolResultChunk('call-1')],
+					'Updated the config.',
+				),
+			);
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			// Baseline + outcome.
+			expect(delegate.readAgentArtifact).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not re-read after a pass that changed nothing', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Nothing to change.'));
+
+			await runTool(context, { message: 'What does it do?', agentId: 'agent-existing' });
+
+			expect(delegate.readAgentArtifact).toHaveBeenCalledTimes(1);
+		});
+
+		it('emits the event with the config, the agent id and the reason', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing } = makeTracingStub();
+			context.tracing = tracing;
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			const snapshotRuns = vi
+				.mocked(tracing.startChildRun)
+				.mock.calls.filter(([, init]) => (init as { name?: string }).name === 'agent-snapshot');
+			expect(snapshotRuns).toHaveLength(1);
+			expect(snapshotRuns[0][1]).toMatchObject({
+				runType: 'chain',
+				metadata: { agent_id: 'agent-existing', snapshot_reason: 'target-resolved' },
+			});
+		});
+
+		it('builds normally on a host whose delegate cannot read agents', async () => {
+			// The delegate crosses a package boundary: an older host simply doesn't
+			// implement the read, and that must not break agent building.
+			const delegate = mock<InstanceAiBuilderDelegate>();
+			delegate.readAgentArtifact = undefined;
+			const { context } = makeContext({ delegate });
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(result).toMatchObject({ ok: true, builderReply: 'Editing it.' });
+		});
+	});
+
 	describe('configUpdated', () => {
 		it.each(['write_config', 'patch_config', 'publish_agent', 'unpublish_agent'])(
 			'is true when the work summary has a succeeded %s call',
