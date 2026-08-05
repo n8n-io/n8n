@@ -112,7 +112,7 @@ export const resolveCondition = ({
 				resolved,
 			};
 		}
-	} catch (error) {
+	} catch {
 		return { status: 'resolve_error' };
 	}
 };

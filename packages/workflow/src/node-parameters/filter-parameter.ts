@@ -11,6 +11,7 @@ import type {
 } from '../interfaces';
 import * as LoggerProxy from '../logger-proxy';
 import type { Result } from '../result';
+import { parseRegexLiteral, safeRegex } from '../safe-regex';
 import { validateFieldType } from '../type-validation';
 
 type FilterConditionMetadata = {
@@ -193,19 +194,6 @@ function parseFilterConditionValues(
 	};
 }
 
-function parseRegexPattern(pattern: string): RegExp {
-	const regexMatch = (pattern || '').match(new RegExp('^/(.*?)/([gimusy]*)$'));
-	let regex: RegExp;
-
-	if (!regexMatch) {
-		regex = new RegExp((pattern || '').toString());
-	} else {
-		regex = new RegExp(regexMatch[1], regexMatch[2]);
-	}
-
-	return regex;
-}
-
 export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase: boolean): boolean {
 	if (ignoreCase && typeof value === 'string') {
 		return array.some((item) => {
@@ -280,10 +268,14 @@ export function executeFilterCondition(
 					return left.endsWith(right);
 				case 'notEndsWith':
 					return !left.endsWith(right);
-				case 'regex':
-					return parseRegexPattern(right).test(left);
-				case 'notRegex':
-					return !parseRegexPattern(right).test(left);
+				case 'regex': {
+					const { source, flags } = parseRegexLiteral(right);
+					return safeRegex.test(source, left, flags);
+				}
+				case 'notRegex': {
+					const { source, flags } = parseRegexLiteral(right);
+					return !safeRegex.test(source, left, flags);
+				}
 			}
 
 			break;

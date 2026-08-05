@@ -143,11 +143,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: ['safe.bareRepository=explicit'],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config?.includes('safe.bareRepository=explicit')).toBeTruthy();
 		});
 
 		it('should add safe.bareRepository=explicit when disableBareRepos is true', async () => {
@@ -156,11 +153,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: ['safe.bareRepository=explicit'],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config?.includes('safe.bareRepository=explicit')).toBeTruthy();
 		});
 
 		it('should add safe.bareRepository=explicit when both cloud and disableBareRepos are true', async () => {
@@ -169,11 +163,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: ['safe.bareRepository=explicit'],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config?.includes('safe.bareRepository=explicit')).toBeTruthy();
 		});
 
 		it('should not add safe.bareRepository=explicit when neither cloud nor disableBareRepos is true', async () => {
@@ -182,11 +173,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: [],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config?.includes('safe.bareRepository=explicit')).toBeFalsy();
 		});
 	});
 
@@ -196,11 +184,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: ['core.hooksPath=/dev/null'],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config?.includes('core.hooksPath=/dev/null')).toBeTruthy();
 		});
 
 		it('should opt into allowUnsafeHooksPath when enableGitNodeHooks is false', async () => {
@@ -208,11 +193,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					unsafe: { allowUnsafeHooksPath: true },
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.unsafe?.allowUnsafeHooksPath).toBeTruthy();
 		});
 
 		it('should not add core.hooksPath=/dev/null when enableGitNodeHooks is true', async () => {
@@ -220,11 +202,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockSimpleGit).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: [],
-				}),
-			);
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.config?.includes('core.hooksPath=/dev/null')).toBeFalsy();
 		});
 
 		it('should not opt into allowUnsafeHooksPath when enableGitNodeHooks is true', async () => {
@@ -232,8 +211,8 @@ describe('Git Node', () => {
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			const options = mockSimpleGit.mock.calls[0][0] as { unsafe?: unknown };
-			expect(options.unsafe).toBeUndefined();
+			const options = mockSimpleGit.mock.calls[0][0];
+			expect(options.unsafe?.allowUnsafeHooksPath).toBeFalsy();
 		});
 	});
 

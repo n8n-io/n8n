@@ -4,7 +4,12 @@ import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8
 import { NodeOperationError } from 'n8n-workflow';
 
 import { databasePageUrlExtractionRegexp } from '../shared/constants';
-import { extractPageId, formatBlocks, getPageId } from '../shared/GenericFunctions';
+import {
+	extractDatabaseMentionRLC,
+	extractPageId,
+	formatBlocks,
+	getPageId,
+} from '../shared/GenericFunctions';
 
 describe('Test NotionV2, formatBlocks', () => {
 	it('should format to_do block', () => {
@@ -92,6 +97,43 @@ describe('Test Notion', () => {
 				expect(result).toBe(testId);
 			}
 		});
+	});
+});
+
+describe('Test Notion, extractDatabaseMentionRLC', () => {
+	it('extracts database IDs with resource-locator regex metadata', () => {
+		const blockValues: Array<{
+			richText: boolean;
+			text: {
+				text: Array<{
+					textType: string;
+					mentionType: string;
+					database: string | { __rl: boolean; mode: string; value: string; __regex: string };
+				}>;
+			};
+		}> = [
+			{
+				richText: true,
+				text: {
+					text: [
+						{
+							textType: 'mention',
+							mentionType: 'database',
+							database: {
+								__rl: true,
+								mode: 'url',
+								value: 'https://www.notion.com/workspace/database-3ab5bc794647496dac48feca926813fd',
+								__regex: '([0-9a-f]{32})$',
+							},
+						},
+					],
+				},
+			},
+		];
+
+		extractDatabaseMentionRLC(blockValues);
+
+		expect(blockValues[0].text.text[0].database).toBe('3ab5bc794647496dac48feca926813fd');
 	});
 });
 
