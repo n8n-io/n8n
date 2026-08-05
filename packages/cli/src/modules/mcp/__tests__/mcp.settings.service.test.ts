@@ -116,13 +116,16 @@ describe('McpSettingsService', () => {
 
 		test('reads through to the database on a cache miss', async () => {
 			cacheService.get.mockResolvedValue(undefined);
-			findByKey.mockResolvedValue({
-				key: 'mcp.autoExposeNewWorkflows',
-				value: 'true',
-				loadOnStartup: true,
-			} as Settings);
+			findByKey.mockResolvedValue(
+				mock<Settings>({
+					key: 'mcp.autoExposeNewWorkflows',
+					value: 'true',
+					loadOnStartup: true,
+				}),
+			);
 
 			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
 		});
 	});
 
