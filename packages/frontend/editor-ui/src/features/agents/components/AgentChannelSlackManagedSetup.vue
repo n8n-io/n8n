@@ -3,7 +3,6 @@ import type { SlackManagedSetupState } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nIconButton,
-	N8nLink,
 	N8nOption,
 	N8nSelect,
 	N8nStepper,
@@ -20,21 +19,13 @@ import CredentialsDropdown, {
 import AgentChannelSlackServiceLimitError from '../channels/slack/AgentChannelSlackServiceLimitError.vue';
 import { getSlackApiErrorCode } from '../channels/slack/api';
 
-const props = withDefaults(
-	defineProps<{
-		setup: SlackManagedSetupState;
-		loading: boolean;
-		credentialPermissions: PermissionsRecord['credential'];
-		connectManager: (credentialId?: string) => Promise<boolean>;
-		editManager: (credentialId: string) => void;
-		installApp: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
-		showManualSetup?: boolean;
-	}>(),
-	{ showManualSetup: false },
-);
-
-const emit = defineEmits<{
-	'manual-setup': [];
+const props = defineProps<{
+	setup: SlackManagedSetupState;
+	loading: boolean;
+	credentialPermissions: PermissionsRecord['credential'];
+	connectManager: (credentialId?: string) => Promise<boolean>;
+	editManager: (credentialId: string) => void;
+	installApp: (managerCredentialId: string, workspaceId: string) => Promise<boolean>;
 }>();
 
 const i18n = useI18n();
@@ -172,24 +163,6 @@ async function install() {
 									/>
 								</N8nTooltip>
 							</div>
-							<N8nText
-								v-if="showManualSetup"
-								size="small"
-								color="text-light"
-								:class="{ [$style.manualLinkNewLine]: hasManagerCredentials }"
-							>
-								{{ i18n.baseText('agents.channels.slack.managed.manual.or') }}
-								<N8nLink
-									:class="$style.setupModeLink"
-									theme="secondary"
-									underline
-									size="small"
-									data-testid="slack-managed-manual-setup"
-									@click="emit('manual-setup')"
-								>
-									{{ i18n.baseText('agents.channels.slack.managed.manual.link') }}
-								</N8nLink>
-							</N8nText>
 						</div>
 						<N8nText v-if="error === 'connect'" size="small" :class="$style.error">
 							{{ i18n.baseText('agents.channels.slack.managed.connect.error') }}
@@ -256,22 +229,6 @@ async function install() {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
-}
-
-.manualLinkNewLine {
-	flex-basis: 100%;
-}
-
-.setupModeLink {
-	--link--color--secondary: var(--color--text);
-
-	&:hover,
-	&:focus,
-	&:active {
-		:global(span) {
-			color: var(--color--text--shade-1);
-		}
-	}
 }
 
 .actionRow {

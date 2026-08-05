@@ -78,6 +78,11 @@ export interface AgentChannelDisconnectContext {
 	isPublished: boolean;
 }
 
+export interface AgentChannelHeaderContentProps {
+	runtime: AgentChannelRuntime;
+	disabled?: boolean;
+}
+
 export interface AgentChannelPlatform {
 	type: string;
 	setupComponent: Component;
@@ -88,6 +93,7 @@ export interface AgentChannelPlatform {
 		runtime: AgentChannelRuntime,
 	) => AgentChannelConnectAction;
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
+	headerContent?: Component;
 	disconnectConfirmationComponent?: Component;
 	shouldConfirmDisconnect?: (
 		runtime: AgentChannelRuntime,

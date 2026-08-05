@@ -14,14 +14,19 @@ const mocks = vi.hoisted(() => ({
 	showError: vi.fn(),
 }));
 
-const catalog = ref([
-	{
-		type: 'example',
-		label: 'Example',
-		icon: 'zap',
-		credentialTypes: ['exampleApi'],
-	},
-]);
+const exampleIntegration = {
+	type: 'example',
+	label: 'Example',
+	icon: 'zap',
+	credentialTypes: ['exampleApi'],
+};
+const catalog = ref([exampleIntegration]);
+const slackIntegration = {
+	type: 'slack',
+	label: 'Slack',
+	icon: 'slack',
+	credentialTypes: ['slackApi'],
+};
 const statuses = ref<Record<string, 'configured' | 'connected' | 'disconnected'>>({});
 const connectedCredentials = ref<Record<string, string>>({});
 const selectedCredentials = ref<Record<string, string>>({});
@@ -35,9 +40,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: mocks.showMessage, showError: mocks.showError }),
 }));
 
-vi.mock('../channels/registry', () => {
+vi.mock('../channels/registry', async () => {
+	const { ref, defineComponent } = await import('vue');
 	const platformView = {
-		props: ['modelValue', 'mode', 'isPublished'],
+		props: ['modelValue', 'mode', 'isPublished', 'runtime'],
 		emits: ['update:modelValue', 'connect'],
 		setup: () => ({
 			currentSettings: { accessMode: 'all' },
@@ -49,6 +55,7 @@ vi.mock('../channels/registry', () => {
 				data-testid="platform-view"
 				:data-mode="mode"
 				:data-published="isPublished"
+				:data-setup-kind="runtime.setupKind?.value"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
@@ -65,8 +72,20 @@ vi.mock('../channels/registry', () => {
 			</div>
 		`,
 	};
-	const platform = {
-		type: 'example',
+	const slackHeaderContent = defineComponent({
+		props: ['runtime', 'disabled'],
+		template: `
+			<select
+				data-testid="slack-setup-kind-selector"
+				:disabled="disabled"
+				@change="runtime.setupKind.value = $event.target.value"
+			>
+				<option value="managed">agents.channels.slack.setupKind.recommended</option>
+				<option value="manual">agents.channels.slack.setupKind.manual</option>
+			</select>
+		`,
+	});
+	const basePlatform = {
 		setupComponent: platformView,
 		editComponent: platformView,
 		disconnectConfirmationComponent: disconnectConfirmation,
@@ -82,13 +101,17 @@ vi.mock('../channels/registry', () => {
 				? { title: 'Cleanup incomplete', message: 'Open provider settings' }
 				: null,
 	};
+	const examplePlatform = { ...basePlatform, type: 'example' };
+	const slackPlatform = { ...basePlatform, type: 'slack', headerContent: slackHeaderContent };
 	const runtime = {
-		loading: { value: false },
+		loading: ref(false),
 		load: vi.fn().mockResolvedValue(undefined),
+		setup: ref({ managedSetupAvailable: true, managerCredentials: [] }),
+		setupKind: ref<'managed' | 'manual'>('managed'),
 	};
 	return {
-		agentChannelPlatforms: { example: platform },
-		getAgentChannelPlatform: () => platform,
+		agentChannelPlatforms: { example: examplePlatform, slack: slackPlatform },
+		getAgentChannelPlatform: (type: string) => (type === 'slack' ? slackPlatform : examplePlatform),
 		createAgentChannelRuntime: () => runtime,
 	};
 });
@@ -186,6 +209,7 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 describe('AgentChannelModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		catalog.value = [exampleIntegration];
 		statuses.value = {};
 		connectedCredentials.value = {};
 		selectedCredentials.value = {};
@@ -214,6 +238,22 @@ describe('AgentChannelModal', () => {
 
 		const setup = mountModal();
 		expect(setup.get('[data-testid="platform-view"]').attributes('data-mode')).toBe('setup');
+	});
+
+	it('switches Slack setup kind from the modal header selector', async () => {
+		catalog.value = [exampleIntegration, slackIntegration];
+		const wrapper = mountModal('slack_setup');
+		await flushPromises();
+
+		const selector = wrapper.get('[data-testid="slack-setup-kind-selector"]');
+		expect(selector.text()).toContain('agents.channels.slack.setupKind.recommended');
+		expect(selector.text()).toContain('agents.channels.slack.setupKind.manual');
+
+		await selector.setValue('manual');
+
+		expect(wrapper.get('[data-testid="platform-view"]').attributes('data-setup-kind')).toBe(
+			'manual',
+		);
 	});
 
 	it('presents configured and connected as distinct list states', async () => {

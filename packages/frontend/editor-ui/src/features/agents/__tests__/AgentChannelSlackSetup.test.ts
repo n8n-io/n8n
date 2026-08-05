@@ -1,5 +1,4 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import AgentChannelSlackSetup from '../components/AgentChannelSlackSetup.vue';
@@ -55,17 +54,5 @@ describe('AgentChannelSlackSetup', () => {
 		});
 
 		expect(getByTestId('slack-manual-configuration')).toBeInTheDocument();
-	});
-
-	it('switches back to automatic setup from the Slack dashboard row', async () => {
-		const wrapper = mount(AgentChannelSlackSetup, {
-			props: {
-				showAutomaticSetup: true,
-			},
-		});
-
-		await wrapper.get('[data-testid="slack-automatic-setup"]').trigger('click');
-
-		expect(wrapper.emitted('automatic-setup')).toHaveLength(1);
 	});
 });

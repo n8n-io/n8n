@@ -28,9 +28,11 @@ import {
 
 const SLACK_APP_SETUP_TIMEOUT_MS = 2 * 60 * 1000;
 const SLACK_MANAGER_CREDENTIAL_TYPE = 'slackManagerOAuth2Api';
+export type SlackSetupKind = 'managed' | 'manual';
 
 export interface SlackChannelRuntime extends AgentChannelRuntime {
 	setup: Ref<SlackManagedSetupState>;
+	setupKind: Ref<SlackSetupKind>;
 	settings: Ref<SlackManagedAppSettings | null>;
 	settingsLoading: Ref<boolean>;
 	settingsError: Ref<boolean>;
@@ -71,6 +73,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		managedSetupAvailable: false,
 		managerCredentials: [],
 	});
+	const setupKind = ref<SlackSetupKind>('managed');
 	const loading = ref(true);
 	const settings = ref<SlackManagedAppSettings | null>(null);
 	const settingsLoading = ref(false);
@@ -292,6 +295,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 
 	return {
 		setup,
+		setupKind,
 		settings,
 		loading: computed(() => loading.value),
 		settingsLoading,

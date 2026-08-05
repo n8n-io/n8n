@@ -36,7 +36,6 @@ function mountSetup(workspaceCount: number, managerCredentialCount = 1, installE
 			connectManager,
 			editManager,
 			installApp,
-			showManualSetup: true,
 		},
 		global: {
 			stubs: {
@@ -63,10 +62,6 @@ function mountSetup(workspaceCount: number, managerCredentialCount = 1, installE
 				N8nIconButton: {
 					emits: ['click'],
 					template: '<button @click="$emit(\'click\')" />',
-				},
-				N8nLink: {
-					emits: ['click'],
-					template: '<a @click="$emit(\'click\')"><slot /></a>',
 				},
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: { template: '<div><slot /></div>' },
@@ -134,14 +129,6 @@ describe('AgentChannelSlackManagedSetup', () => {
 		await connectButton.trigger('click');
 
 		expect(connectManager).toHaveBeenCalledWith();
-	});
-
-	it('emits manual setup from the first step', async () => {
-		const { wrapper } = mountSetup(0, 0);
-
-		await wrapper.get('[data-testid="slack-managed-manual-setup"]').trigger('click');
-
-		expect(wrapper.emitted('manual-setup')).toHaveLength(1);
 	});
 
 	it('shows the credential selector and edit button when a manager credential exists', async () => {

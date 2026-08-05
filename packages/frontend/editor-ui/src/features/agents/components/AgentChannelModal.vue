@@ -180,6 +180,17 @@ const hasPendingCredentialReplacement = computed(() => pendingCredentialReplacem
 const isCredentialReplacementInProgress = computed(
 	() => hasPendingCredentialReplacement.value && !credentialReplacementError.value,
 );
+const headerContentDisabled = computed(
+	() =>
+		isCredentialReplacementInProgress.value ||
+		currentRuntime.value.loading.value ||
+		channelViewRef.value?.loading === true,
+);
+const canClose = computed(
+	() =>
+		!isCredentialReplacementInProgress.value &&
+		!(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
+);
 
 function clearFailedCredentialReplacement() {
 	if (!credentialReplacementError.value) return;
@@ -488,10 +499,7 @@ watch(
 		size="2xlarge"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
-		:show-close-button="
-			!isCredentialReplacementInProgress &&
-			!(selectedChannelType ? isLoading(selectedChannelType) : false)
-		"
+		:show-close-button="false"
 		@interact-outside="(e) => e.preventDefault()"
 		@update:open="handleModalOpenUpdate"
 	>
@@ -536,8 +544,27 @@ watch(
 						/>
 						<N8nDialogTitle>{{ headerText }}</N8nDialogTitle>
 					</div>
+					<div :class="$style.headerActions">
+						<component
+							:is="currentPlatform.headerContent"
+							v-if="currentPlatform.headerContent"
+							:runtime="currentRuntime"
+							:disabled="headerContentDisabled"
+						/>
+					</div>
 				</div>
 			</Transition>
+			<N8nIconButton
+				variant="ghost"
+				size="small"
+				icon-size="medium"
+				icon="x"
+				:class="$style.closeButton"
+				aria-label="Close dialog"
+				data-test-id="dialog-close-button"
+				:disabled="!canClose"
+				@click="closeModal"
+			/>
 		</N8nDialogHeader>
 
 		<div data-testid="agent-channel-modal" :class="$style.container">
@@ -705,6 +732,8 @@ body:has([data-testid='agent-channel-modal'])
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--md);
+	flex: 1;
+	min-width: 0;
 }
 
 .headerTitle {
@@ -712,6 +741,17 @@ body:has([data-testid='agent-channel-modal'])
 	align-items: center;
 	gap: var(--spacing--2xs);
 	text-transform: capitalize;
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-left: auto;
+}
+
+.closeButton {
+	flex-shrink: 0;
 }
 
 .listView {

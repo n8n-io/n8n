@@ -6,6 +6,7 @@ import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue'
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
 import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
+import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKindSelector.vue';
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
@@ -44,6 +45,7 @@ const platforms = {
 		type: 'slack',
 		setupComponent: AgentChannelSlackSetupView,
 		editComponent: AgentChannelSlackEditView,
+		headerContent: AgentChannelSlackSetupKindSelector,
 		disconnectConfirmationComponent: AgentChannelSlackRemoveConfirmation,
 		createRuntime: useSlackChannelRuntime,
 		shouldConfirmDisconnect: (runtime, credentialId, { isPublished }) =>

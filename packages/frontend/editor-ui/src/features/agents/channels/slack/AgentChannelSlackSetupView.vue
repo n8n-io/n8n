@@ -11,7 +11,6 @@ const credentialId = defineModel<string>({ default: '' });
 const props = defineProps<
 	Omit<AgentChannelViewProps, 'runtime'> & {
 		runtime: SlackChannelRuntime;
-		managedOnly?: boolean;
 	}
 >();
 const emit = defineEmits<{
@@ -21,7 +20,6 @@ const emit = defineEmits<{
 	connected: [];
 }>();
 
-const setupKind = ref<'managed' | 'manual'>('managed');
 const manualRef = ref<AgentChannelViewExpose>();
 const managedActionInFlight = ref(false);
 const validationError = computed(() => manualRef.value?.validationError ?? null);
@@ -59,8 +57,9 @@ async function installManagedApp(managerCredentialId: string, workspaceId: strin
 watch(
 	() => [props.projectId, props.agentId] as const,
 	() => {
-		setupKind.value = 'managed';
+		props.runtime.setupKind.value = 'managed';
 	},
+	{ immediate: true },
 );
 
 defineExpose({ validationError, loading });
@@ -76,15 +75,13 @@ defineExpose({ validationError, loading });
 			<N8nLoading variant="p" :rows="4" />
 		</div>
 		<AgentChannelSlackManagedSetup
-			v-else-if="runtime.setup.value.managedSetupAvailable && setupKind === 'managed'"
+			v-else-if="runtime.setup.value.managedSetupAvailable && runtime.setupKind.value === 'managed'"
 			:setup="runtime.setup.value"
 			:loading="loading"
 			:credential-permissions="credentialPermissions"
 			:connect-manager="connectManagerCredential"
 			:edit-manager="runtime.editManagerCredential"
 			:install-app="installManagedApp"
-			:show-manual-setup="!managedOnly"
-			@manual-setup="setupKind = 'manual'"
 		/>
 		<AgentChannelSlackSetup
 			v-else
@@ -105,11 +102,9 @@ defineExpose({ validationError, loading });
 			:error-is-conflict="errorIsConflict"
 			:force-new-credential="forceNewCredential"
 			:setup-mode="simpleSetup ? 'simple' : 'advanced'"
-			:show-automatic-setup="runtime.setup.value.managedSetupAvailable && setupKind === 'manual'"
 			@create="emit('create')"
 			@edit="emit('edit')"
 			@connect="emit('connect')"
-			@automatic-setup="setupKind = 'managed'"
 		/>
 	</div>
 </template>
