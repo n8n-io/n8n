@@ -2,7 +2,12 @@
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -46,6 +51,8 @@ export type Props = {
 	displayMode: IRunDataDisplayMode;
 	compact?: boolean;
 	disableDisplayModeSelection?: boolean;
+	focusedMappableInput: string;
+	isMappingOnboarded: boolean;
 	nodeNotRunMessageVariant?: 'default' | 'simple';
 	truncateLimit?: number;
 };
@@ -86,6 +93,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
+const draggableHintShown = ref(false);
 const mappedNode = ref<string | null>(null);
 const collapsingColumnName = ref<string | null>(null);
 const inputModes = [
@@ -133,6 +141,15 @@ const inputMode = ref<MappingMode>(
 );
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
+
+const showDraggableHint = computed(() => {
+	const toIgnore = [MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
+	if (!currentNode.value || toIgnore.includes(currentNode.value.type)) {
+		return false;
+	}
+
+	return !!props.focusedMappableInput && !props.isMappingOnboarded;
+});
 
 const isActiveNodeConfig = computed(() => {
 	let inputs = activeNodeType.value?.inputs ?? [];
@@ -274,6 +291,23 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The drag-from-previous hint itself only ever rendered in the legacy NDV, but the
+// "user had a mappable input focused with nothing to map from" signal is still live
+// here, so keep reporting it. Fires at most once per mount, and only if the input is
+// still focused a second later.
+watch(showDraggableHint, (isHinting, wasHinting) => {
+	if (!isHinting || wasHinting) return;
+
+	setTimeout(() => {
+		if (draggableHintShown.value || !showDraggableHint.value) return;
+
+		draggableHintShown.value = true;
+		telemetry.track('User viewed data mapping tooltip', {
+			type: 'unexecuted input pane',
+		});
+	}, 1000);
+});
 
 function filterOutConnectionType(
 	item: NodeConnectionType | INodeOutputConfiguration | INodeInputConfiguration,

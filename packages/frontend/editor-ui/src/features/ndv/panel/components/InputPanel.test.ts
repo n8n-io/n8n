@@ -112,6 +112,8 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			currentNodeName: nodes[0].name,
 			activeNodeName: nodes[1].name,
 			displayMode: 'schema',
+			focusedMappableInput: '',
+			isMappingOnboarded: false,
 		},
 		global: {
 			provide: {

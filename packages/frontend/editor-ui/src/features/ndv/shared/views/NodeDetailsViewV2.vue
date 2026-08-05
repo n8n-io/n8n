@@ -781,6 +781,8 @@ onBeforeUnmount(() => {
 							:search-shortcut="isInputPaneActive ? '/' : undefined"
 							:display-mode="inputPanelDisplayMode"
 							:class="$style.input"
+							:is-mapping-onboarded="ndvStore.isMappingOnboarded"
+							:focused-mappable-input="ndvStore.focusedMappableInput"
 							@activate-pane="activateInputPane"
 							@link-run="onLinkRunToInput"
 							@unlink-run="() => onUnlinkRun('input')"
