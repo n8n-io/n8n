@@ -17,6 +17,7 @@ import {
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
 	DynamicCredentialService,
+	InboundClaimConnectService,
 } from '@/modules/dynamic-credentials.ee/services';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
@@ -39,6 +40,7 @@ describe('DynamicCredentialsController', () => {
 	const authorizeIntentService = mockInstance(AuthorizeIntentService);
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	const dynamicCredentialService = mockInstance(DynamicCredentialService);
+	const inboundClaimConnectService = mockInstance(InboundClaimConnectService);
 	const urlService = mockInstance(UrlService);
 	const eventService = mockInstance(EventService);
 	mockInstance(CredentialConnectionStatusService);
@@ -55,7 +57,7 @@ describe('DynamicCredentialsController', () => {
 		vi.clearAllMocks();
 
 		// Configure default credential context mock
-		dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue({
+		dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue({
 			identity: 'token123',
 			version: 1 as const,
 			metadata: {},
@@ -215,6 +217,63 @@ describe('DynamicCredentialsController', () => {
 			);
 		});
 
+		it('binds an inbound claim to an n8n user before issuing the auth URI', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const req = mock<Request>({
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer idp-token' },
+			});
+			const res = mock<Response>();
+
+			const claim = {
+				version: 1 as const,
+				sourceId: 'idp-1',
+				issuer: 'https://idp.example.com',
+				subject: 'external-subject-1',
+				audience: 'https://n8n.example.com',
+				expiresAt: Date.now() + 60_000,
+				boundWorkflowId: '',
+			};
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue({
+				identity: 'idp-token',
+				version: 1,
+				metadata: { source: 'external-idp' },
+				claims: claim,
+			});
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth',
+			);
+
+			await controller.authorizeCredential(req, res);
+
+			expect(inboundClaimConnectService.ensureBinding).toHaveBeenCalledWith(claim);
+		});
+
+		it('does not attempt to bind anything when the context carries no claim', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const req = mock<Request>({
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer opaque-token' },
+			});
+			const res = mock<Response>();
+
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth',
+			);
+
+			await controller.authorizeCredential(req, res);
+
+			expect(inboundClaimConnectService.ensureBinding).not.toHaveBeenCalled();
+		});
+
 		it('should return auth URI for OAuth2 credential', async () => {
 			const mockCredential = mock<CredentialsEntity>({
 				id: '1',
@@ -320,7 +379,9 @@ describe('DynamicCredentialsController', () => {
 			};
 
 			// Set up all mocks before calling the controller
-			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue(expectedContext);
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue(
+				expectedContext,
+			);
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolverWithValidation);
@@ -875,7 +936,9 @@ describe('DynamicCredentialsController', () => {
 				metadata: {},
 			};
 
-			dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue(expectedContext);
+			dynamicCredentialWebService.getCredentialContextFromRequest.mockResolvedValue(
+				expectedContext,
+			);
 			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
 			resolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);

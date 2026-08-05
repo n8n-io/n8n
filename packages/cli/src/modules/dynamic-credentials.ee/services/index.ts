@@ -7,3 +7,5 @@ export * from './credential-check-proxy.service';
 export * from './authorize-intent.service';
 export * from './n8n-resolver-seeder.service';
 export * from './credential-connection-status.service';
+export * from './credential-resolution-context.builder';
+export * from './inbound-claim-connect.service';

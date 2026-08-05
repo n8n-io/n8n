@@ -10,6 +10,7 @@ import type {
 } from '@/services/external-token-verifier-proxy.service';
 import { JwtService } from '@/services/jwt.service';
 
+import { InboundAudienceService } from '../context-establishment-hooks/inbound-audience.service';
 import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';
 import type {
@@ -46,6 +47,7 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 		private readonly identityResolutionService: IdentityResolutionService,
 		private readonly config: TokenExchangeConfig,
 		private readonly jwtService: JwtService,
+		private readonly inboundAudienceService: InboundAudienceService,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -232,6 +234,16 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 			this.logger.warn('External token verification failed', { error: message });
 			return { claim: null, context: { reason: 'invalid_token', errorDetails: message } };
 		}
+	}
+
+	/**
+	 * Verify an inbound token against the audience this instance accepts for
+	 * inbound identity. Same decision as the context-establishment hook, so a
+	 * token that establishes a claim on a webhook also verifies on the
+	 * credential-connect routes.
+	 */
+	async verifyInboundToken(token: string): Promise<VerifiedClaimResult> {
+		return await this.verifyExternalToken(token, this.inboundAudienceService.getExpectedAudience());
 	}
 
 	async embedLogin(
