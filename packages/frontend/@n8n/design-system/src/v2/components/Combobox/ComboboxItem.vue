@@ -16,9 +16,10 @@ const $style = useCssModule();
 
 <template>
 	<ComboboxItem
+		v-if="props.value !== undefined && props.value !== null && props.value !== ''"
 		:class="$style.root"
 		:disabled="props.disabled"
-		:value="props.value ?? ''"
+		:value="props.value"
 		:text-value="props.textValue ?? props.label"
 		:data-disabled="props.disabled || undefined"
 		@mousedown.prevent

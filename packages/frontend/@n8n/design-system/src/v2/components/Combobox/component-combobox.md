@@ -105,21 +105,25 @@ Non-prop attributes (e.g. `aria-label`, `data-test-id`) fall through to `Combobo
 ```typescript
 type AcceptableValue = string | Record<string, unknown>;
 
-type ComboboxListItem = {
-  value?: AcceptableValue;
-  label?: string;
-  type?: 'label' | 'separator' | 'item'; // omit for selectable items
-  icon?: IconName;
-  disabled?: boolean;
-};
+type ComboboxListItem =
+  | { type: 'label'; label: string }
+  | { type: 'separator' }
+  | {
+      type?: 'item'; // omit for selectable items
+      value: AcceptableValue; // required — must not be ''
+      label?: string;
+      icon?: IconName;
+      disabled?: boolean;
+    };
 
-type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListItem;
+type ComboboxItem = string | ComboboxListItem;
 ```
 
 - **Primitive items** (e.g. `'Todo'`) — value and label are the same string; `modelValue` is the primitive.
-- **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores the value field; the input displays the label.
+- **Object items** (e.g. `{ label: 'Option 1', value: 'option1' }`) — `modelValue` stores the value field; the input displays the label. Selectable objects must resolve a non-empty `value` (or the field named by `valueKey`). Missing/empty values are skipped with a console warning — they are never coerced to `''` (reka forbids that and would kill the dropdown).
 - **Labels** — `{ type: 'label', label: 'Fruits' }` — non-interactive section heading.
 - **Separators** — `{ type: 'separator' }` — non-interactive divider between groups.
+- **Custom keys** — `{ id: '1', name: 'Alpha' }` with `value-key="id"` and `label-key="name"` is supported on the `items` prop without a `value` field.
 
 Object items may also include an `icon` property. When no custom `#item-leading` slot is provided, icons on items are rendered automatically. The same `#item-leading` slot (or default icon) is also used for the selected value in the trigger.
 

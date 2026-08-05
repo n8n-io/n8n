@@ -843,5 +843,53 @@ describe('v2/components/Combobox', () => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['2']);
 			});
 		});
+
+		it('should skip items with an unresolvable valueKey and keep the dropdown usable', async () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			render(Combobox, {
+				props: {
+					items: [
+						{ id: '1', name: 'Alpha' },
+						{ id: '2', name: 'Beta' },
+					],
+					valueKey: 'idd',
+					labelKey: 'name',
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('status')).toHaveTextContent('No results found.');
+			});
+			expect(within(popover).queryAllByRole('option')).toHaveLength(0);
+			expect(warnSpy).toHaveBeenCalled();
+			expect(String(warnSpy.mock.calls[0]?.[0])).toContain('idd');
+
+			warnSpy.mockRestore();
+		});
+
+		it('should skip object items missing value and still render valid options', async () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			render(Combobox, {
+				props: {
+					items: [{ label: 'Alpha' }, { label: 'Beta', value: 'beta' }],
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Beta' })).toBeVisible();
+			});
+			expect(within(popover).queryByRole('option', { name: 'Alpha' })).not.toBeInTheDocument();
+			expect(warnSpy).toHaveBeenCalledTimes(1);
+
+			warnSpy.mockRestore();
+		});
 	});
 });

@@ -18,7 +18,7 @@ export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'op
 		emptyText?: string;
 		valueKey?: string;
 		labelKey?: string;
-		items?: ComboboxItem[];
+		items?: Array<ComboboxItem | Record<string, unknown>>;
 		contentClass?: string;
 		id?: string;
 		clearable?: boolean;
@@ -28,13 +28,30 @@ export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'op
 
 export type ComboboxEmits = ComboboxRootEmits<AcceptableValue | AcceptableValue[] | undefined>;
 
-export type ComboboxListItem = ComboboxItemProps & {
+type ComboboxListItemBase = Omit<ComboboxItemProps, 'value'> & {
 	label?: string;
-	type?: 'label' | 'separator' | 'item';
 	icon?: IconName;
 };
 
-export type ComboboxItem = AcceptableValue | ComboboxListItem;
+export type ComboboxLabelItem = ComboboxListItemBase & {
+	type: 'label';
+	label: string;
+	value?: AcceptableValue;
+};
+
+export type ComboboxSeparatorItem = ComboboxListItemBase & {
+	type: 'separator';
+	value?: AcceptableValue;
+};
+
+export type ComboboxOptionItem = ComboboxListItemBase & {
+	type?: 'item';
+	value: AcceptableValue;
+};
+
+export type ComboboxListItem = ComboboxLabelItem | ComboboxSeparatorItem | ComboboxOptionItem;
+
+export type ComboboxItem = string | ComboboxListItem;
 
 export type ComboboxSizes = InputSize;
 
@@ -43,18 +60,18 @@ type ComboboxItemUi = { class: string };
 type SlotProps = (props: { item: ComboboxListItem; ui: ComboboxItemUi }) => unknown;
 
 export type ComboboxItemSlots = {
-	'item-leading'?: SlotProps;
-	'item-label'?: (props: { item: ComboboxListItem }) => unknown;
-	'item-trailing'?: SlotProps;
-	'item-indicator'?: (props: { ui: ComboboxItemUi }) => unknown;
+	['item-leading']?: SlotProps;
+	['item-label']?: (props: { item: ComboboxListItem }) => unknown;
+	['item-trailing']?: SlotProps;
+	['item-indicator']?: (props: { ui: ComboboxItemUi }) => unknown;
 };
 
 export type ComboboxSlots = {
 	item?: (props: { item: ComboboxListItem }) => unknown;
 	label?: (props: { item: ComboboxListItem }) => unknown;
-	'item-leading'?: SlotProps;
-	'item-label'?: (props: { item: ComboboxListItem }) => unknown;
-	'item-trailing'?: SlotProps;
+	['item-leading']?: SlotProps;
+	['item-label']?: (props: { item: ComboboxListItem }) => unknown;
+	['item-trailing']?: SlotProps;
 	header?: () => unknown;
 	footer?: () => unknown;
 };

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
+import { get } from '@n8n/design-system/v2/utils';
 import { isRecord } from '@n8n/utils/is-record';
 import { reactivePick } from '@vueuse/core';
 import {
@@ -16,10 +19,6 @@ import {
 	useForwardPropsEmits,
 } from 'reka-ui';
 import { computed, nextTick, useCssModule, useTemplateRef } from 'vue';
-
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import { useI18n } from '@n8n/design-system/composables/useI18n';
-import { get } from '@n8n/design-system/v2/utils';
 
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
@@ -70,8 +69,18 @@ const rootProps = useForwardPropsEmits(
 	emit,
 );
 
-function isPrimitiveComboboxValue(item: ComboboxItem): item is string {
+function isPrimitiveComboboxValue(item: ComboboxItem | Record<string, unknown>): item is string {
 	return typeof item === 'string';
+}
+
+function isStructuralItem(
+	item: ComboboxItem | Record<string, unknown>,
+): item is ComboboxListItem & { type: 'label' | 'separator' } {
+	return isRecord(item) && (item.type === 'label' || item.type === 'separator');
+}
+
+function hasResolvableValue(value: AcceptableValue | undefined | null): value is AcceptableValue {
+	return value !== undefined && value !== null && value !== '';
 }
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
@@ -95,22 +104,57 @@ const sizeClass = computed(() => sizes[props.size]);
 
 const groups = computed<ComboboxListItem[]>(() => {
 	if (!props.items?.length) return [];
-	return props.items.map((item) => {
+
+	const result: ComboboxListItem[] = [];
+
+	for (const item of props.items) {
 		if (isPrimitiveComboboxValue(item)) {
-			return {
+			result.push({
 				value: item,
 				label: item,
 				textValue: item,
-			};
+			});
+			continue;
 		}
 
-		return {
+		if (isStructuralItem(item)) {
+			if (item.type === 'label') {
+				const label = get<string>(item, props.labelKey) ?? item.label;
+				if (!label) {
+					console.warn(
+						'[N8nCombobox2] Skipping label item: "' + props.labelKey + '" is missing.',
+						item,
+					);
+					continue;
+				}
+				result.push({ ...item, type: 'label', label });
+				continue;
+			}
+
+			result.push({ ...item, type: 'separator' });
+			continue;
+		}
+
+		const value = get<AcceptableValue>(item, props.valueKey);
+		if (!hasResolvableValue(value)) {
+			console.warn(
+				'[N8nCombobox2] Skipping item: "' +
+					props.valueKey +
+					'" is missing or empty. Every selectable item needs a non-empty value (check valueKey / item shape).',
+				item,
+			);
+			continue;
+		}
+
+		result.push({
 			...item,
-			value: get<AcceptableValue>(item, props.valueKey) ?? '',
+			value,
 			label: get<string>(item, props.labelKey),
 			textValue: get<string>(item, props.labelKey),
-		};
-	});
+		});
+	}
+
+	return result;
 });
 
 type ComboboxSection = {

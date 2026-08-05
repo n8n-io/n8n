@@ -93,19 +93,16 @@ const slotItems: ComboboxItemType[] = [
 		value: 'light',
 		label: 'Light',
 		icon: 'wrench',
-		class: 'custom-class',
 	},
 	{
 		value: 'dark',
 		label: 'Dark',
 		icon: 'filled-square',
-		class: ['custom-class2', 'custom-class3'],
 	},
 	{
 		value: 'dark2',
 		label: 'Dark2',
 		icon: 'filled-square',
-		class: { ['custom-class4']: true },
 	},
 ];
 
