@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb } from '@n8n/db';
+import type { IWorkflowDb, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import cloneDeep from 'lodash/cloneDeep';
@@ -91,10 +91,8 @@ export class TriggerExecutionContextFactory {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		// TODO(CAT-3202): this callback lets us switch between reading from
-		// the in-memory workflowData (flag off) and the workflow published data
-		// service (flag on). Once the feature flag is removed, we'll call the
-		// service directly and this parameter will go away.
+		// TODO(CAT-3202): switches between in-memory and published-service data
+		// behind a flag; drop this parameter once the flag is removed.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		onTriggerFailure: TriggerFailureHandler,
 		// This activation attempt's rule-collection session. Owned by the caller
@@ -112,9 +110,6 @@ export class TriggerExecutionContextFactory {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				// TODO(CAT-3202): resolves workflow data via callback so we
-				// can feature-flag between in-memory data and the published data
-				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData()
 					.then(
 						async (freshWorkflowData) =>
@@ -162,8 +157,7 @@ export class TriggerExecutionContextFactory {
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {
-						// Same as above: a duplicate scheduled execution was skipped,
-						// so resolve with undefined and don't wait on a non-existent run.
+						// undefined means a duplicate scheduled execution was skipped; nothing to wait on.
 						if (executionId === undefined) {
 							donePromise.resolve(undefined);
 							return;
@@ -225,11 +219,10 @@ export class TriggerExecutionContextFactory {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		// TODO(CAT-3202): this callback lets us switch between reading from
-		// the in-memory workflowData (flag off) and the workflow published data
-		// service (flag on). Once the feature flag is removed, we'll call the
-		// service directly and this parameter will go away.
+		// TODO(CAT-3202): switches between in-memory and published-service data
+		// behind a flag; drop this parameter once the flag is removed.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
+		fence?: PollLeaseFence,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
@@ -282,9 +275,6 @@ export class TriggerExecutionContextFactory {
 				// data, or an unmigrated node's own bucket, which still doubles as its cursor.
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				// TODO(CAT-3202): resolves workflow data via callback so we
-				// can feature-flag between in-memory data and the published data
-				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) =>
 					cursor === null
 						? await this.workflowExecutionService.runWorkflow(
@@ -303,6 +293,7 @@ export class TriggerExecutionContextFactory {
 								mode,
 								cursor,
 								responsePromise,
+								fence,
 							),
 				);
 
@@ -340,15 +331,22 @@ export class TriggerExecutionContextFactory {
 			const __commitCursor = async () => {
 				const cursor = takeStagedCursor();
 				if (cursor === null) return;
-				await this.pollCursorService.commitCursorOnly({
+				const committed = await this.pollCursorService.commitCursorOnly({
 					workflowId: workflowData.id,
 					nodeId: node.id,
 					cursor,
+					fence,
 				});
+				if (!committed) {
+					this.logger.debug(
+						`Poll node "${node.name}" cursor-only commit skipped: the poll no longer holds its lease, or its cursor row is gone`,
+						{ workflowId: workflowData.id, nodeId: node.id },
+					);
+				}
 			};
 
 			// Hands a migrated node its per-poll snapshot in place of the real
-			// static-data bucket, so mutations are captured for `takeStagedCursor` above.
+			// static-data bucket, so mutations are captured by `takeStagedCursor`.
 			// An unmigrated node gets the real bucket directly.
 			const resolveNodeStaticData = () => {
 				const staged = stagedCursorStore.getStore();
@@ -384,6 +382,7 @@ export class TriggerExecutionContextFactory {
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
 		node: INode,
+		fence?: PollLeaseFence,
 	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
 		const workflow = new Workflow({
 			id: workflowData.id,
@@ -410,6 +409,7 @@ export class TriggerExecutionContextFactory {
 			'trigger',
 			'update',
 			resolveWorkflowData,
+			fence,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');

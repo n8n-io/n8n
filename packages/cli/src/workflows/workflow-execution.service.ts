@@ -1,6 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
+import type {
+	Project,
+	User,
+	CreateExecutionPayload,
+	WorkflowEntity,
+	PollLeaseFence,
+} from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -126,6 +132,7 @@ export class WorkflowExecutionService {
 		mode: WorkflowExecuteMode,
 		cursor: PollCursor,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		fence?: PollLeaseFence,
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -186,12 +193,24 @@ export class WorkflowExecutionService {
 			tracingContext: runData.tracingContext ?? null,
 		};
 
-		const { executionId } = await this.pollCursorService.commitWithExecution({
+		const commitResult = await this.pollCursorService.commitWithExecution({
 			workflowId: workflowData.id,
 			nodeId: node.id,
 			cursor,
 			payload,
+			fence,
 		});
+
+		if (commitResult === null) {
+			this.logger.debug(
+				'Poll cursor commit skipped: the poll no longer holds its lease, or its cursor row is gone',
+				{ workflowId: workflowData.id, nodeName: node.name },
+			);
+			// No poll call site supplies a `responsePromise`, so leaving it unsettled is fine.
+			return undefined;
+		}
+
+		const { executionId } = commitResult;
 
 		// The row was committed at `new`; `expectedStatus` claims it and moves it to
 		// running, so a concurrent starter cannot run it a second time.

@@ -538,7 +538,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		beforeEach(() => {
 			pollCursorService.resolveCursor.mockResolvedValue({ migrated: true, cursor: {} });
-			pollCursorService.commitCursorOnly.mockResolvedValue(undefined);
+			pollCursorService.commitCursorOnly.mockResolvedValue(true);
 			workflowExecutionService.runPolledWorkflow.mockResolvedValue('exec-polled');
 
 			workflow = buildWorkflow();
@@ -634,6 +634,7 @@ describe('TriggerExecutionContextFactory', () => {
 				mode,
 				{ lastItemId: 'a' },
 				responsePromise,
+				undefined,
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
@@ -764,6 +765,7 @@ describe('TriggerExecutionContextFactory', () => {
 				additionalData,
 				mode,
 				{ lastItemId: 'first-only' },
+				undefined,
 				undefined,
 			);
 		});
@@ -910,6 +912,93 @@ describe('TriggerExecutionContextFactory', () => {
 
 			expect(scopedLogger.error).toHaveBeenCalledWith(runError.message, { error: runError });
 		});
+
+		test('resolves donePromise with undefined when the polled run is fenced out', async () => {
+			workflowExecutionService.runPolledWorkflow.mockResolvedValue(undefined);
+			const donePromise = createDeferredPromise<IRun>();
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				context.__emit(pollData, undefined, donePromise);
+			});
+
+			await expect(donePromise.promise).resolves.toBeUndefined();
+			expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+		});
+
+		test('does not throw and logs when a fenced cursor-only commit is rejected', async () => {
+			pollCursorService.commitCursorOnly.mockResolvedValue(false);
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				await context.__commitCursor();
+			});
+
+			expect(scopedLogger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('the poll no longer holds its lease, or its cursor row is gone'),
+				{ workflowId: 'wf-1', nodeId: 'node-1' },
+			);
+		});
+
+		test('does not recommit a cursor on a later poll after its own commit was fenced out', async () => {
+			pollCursorService.commitCursorOnly.mockResolvedValue(false);
+
+			await context.__runPoll(async () => {
+				Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				await context.__commitCursor();
+			});
+
+			await context.__runPoll(async () => {
+				await context.__commitCursor();
+			});
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledTimes(1);
+		});
+
+		test('threads a fence through to both the polled run and the cursor-only commit', async () => {
+			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+			const getPollFunctions = factory.getExecutePollFunctions(
+				mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+				additionalData,
+				mode,
+				activation,
+				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+				fence,
+			);
+			const fencedContext = getPollFunctions(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+			) as RunnablePollFunctions;
+
+			await fencedContext.__runPoll(async () => {
+				Object.assign(fencedContext.getWorkflowStaticData('node'), { lastItemId: 'a' });
+				fencedContext.__emit(pollData);
+			});
+			await sleep(0);
+
+			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+				expect.anything(),
+				node,
+				pollData,
+				additionalData,
+				mode,
+				{ lastItemId: 'a' },
+				undefined,
+				fence,
+			);
+
+			await fencedContext.__runPoll(async () => {
+				Object.assign(fencedContext.getWorkflowStaticData('node'), { lastItemId: 'b' });
+				await fencedContext.__commitCursor();
+			});
+
+			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith(
+				expect.objectContaining({ fence }),
+			);
+		});
 	});
 
 	describe('createPollExecutionContext', () => {
@@ -955,13 +1044,15 @@ describe('TriggerExecutionContextFactory', () => {
 			});
 
 			// Built with the activation path's execution/activation modes ('trigger'/'update').
-			// Exactly five args: no per-occurrence deduplication key is threaded as a sixth.
+			// No per-occurrence deduplication key is threaded; the trailing argument is the
+			// lease fence, which this path has none of.
 			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
 				workflowData,
 				additionalData,
 				'trigger',
 				'update',
 				expect.any(Function),
+				undefined,
 			);
 
 			expect(getPollFunctions).toHaveBeenCalledWith(
@@ -970,6 +1061,30 @@ describe('TriggerExecutionContextFactory', () => {
 				additionalData,
 				'trigger',
 				'update',
+			);
+		});
+
+		test('threads a given fence through to getExecutePollFunctions', async () => {
+			const workflowData = buildWorkflowData();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const pollFunctions = mock<IPollFunctions>();
+			const getPollFunctions = vi.fn().mockReturnValue(pollFunctions);
+			const getExecutePollFunctionsSpy = vi
+				.spyOn(factory, 'getExecutePollFunctions')
+				.mockReturnValue(getPollFunctions as unknown as IGetExecutePollFunctions);
+			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+
+			await factory.createPollExecutionContext(workflowData, pollNode, fence);
+
+			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
+				workflowData,
+				additionalData,
+				'trigger',
+				'update',
+				expect.any(Function),
+				fence,
 			);
 		});
 

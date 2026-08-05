@@ -24,11 +24,10 @@ import {
  * Runs a due poll occurrence's `poll()` once and dispatches only when it
  * returns new data.
  *
- * Carries no `deduplicationKey`, so it forgoes the execution-level duplicate
- * backstop: under the scheduler's at-least-once contract, a poll occurrence
- * can run twice, with the later cursor write winning. Accepted: two polls
- * at the same instant can legitimately return different data anyway, so a
- * repeated poll is tolerable.
+ * Carries no `deduplicationKey`: under the scheduler's at-least-once contract
+ * a poll occurrence can run twice, with the later cursor write winning. Two
+ * polls at the same instant can legitimately return different data anyway,
+ * so a repeated poll is tolerable without the duplicate-execution backstop.
  */
 @Service()
 export class PollTriggerTaskHandler implements TaskHandler {
@@ -48,7 +47,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
-		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
+		// The poll cursor must be read live, not from the publish-time cache.
 		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
 			workflowId,
 			{ bypassCache: true },
@@ -56,13 +55,15 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const { workflow, pollFunctions } =
-			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node);
+			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node, {
+				taskId: task.id,
+				leaseEpoch: task.leaseEpoch,
+			});
 
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
 		// be committed by this poll and never by a later occurrence.
 		return await runPollInStagingScope(pollFunctions, async () => {
-			// Scheduled polls run outside any activation isolate window, so acquire and
-			// release one per tick; the finally releases even when poll() throws.
+			// Scheduled polls run outside any activation isolate window, so acquire one per tick.
 			await workflow.expression.acquireIsolate();
 			try {
 				const pollResponse = await this.triggersAndPollers.runPollFunction(
@@ -72,9 +73,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				);
 
 				if (pollResponse !== null) {
-					// poll() can run for a while (network I/O against the polled source), so
-					// the workflow may have been deactivated while it was in flight. There is
-					// no in-memory registration to check here, so re-read the stored active state.
+					// poll() can run for a while, so the workflow may have been deactivated while
+					// it was in flight; there is no in-memory registration to check, so re-read
+					// the stored active state.
 					if (!(await this.workflowRepository.isActive(workflowId))) {
 						this.logger.debug('Workflow deactivated during poll; discarding the result', {
 							taskId: task.id,
@@ -85,7 +86,6 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						return report.notDispatched();
 					}
 
-					// __emit saves the cursor and starts the run without waiting on it.
 					pollFunctions.__emit(pollResponse);
 					this.logger.debug('Poll returned new data; handed off to a new execution', {
 						taskId: task.id,
@@ -96,9 +96,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					return report.dispatched();
 				}
 
-				// A poll with no items may still have moved its cursor, committed here on
-				// its own. Active state is re-read first so a workflow deactivated mid-poll
-				// doesn't get its cursor moved.
+				// A poll with no items may still have moved its cursor, committed here on its own.
 				try {
 					if (await this.workflowRepository.isActive(workflowId))
 						await commitStagedCursor(pollFunctions);

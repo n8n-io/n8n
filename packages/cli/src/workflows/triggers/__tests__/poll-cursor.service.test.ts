@@ -2,6 +2,7 @@ import type { PollerConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	OperationContext,
+	PollLeaseFence,
 	PollerStateRepository,
 	TransactionRunner,
 } from '@n8n/db';
@@ -109,17 +110,18 @@ describe('PollCursorService', () => {
 	describe('commitWithExecution', () => {
 		it('advances the cursor and creates the execution in one transaction when the flag is on', async () => {
 			const service = buildService(true);
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 			executionPersistence.create.mockResolvedValue('exec-1');
 			const createPayload = payload();
 
-			const { executionId } = await service.commitWithExecution({
+			const result = await service.commitWithExecution({
 				workflowId: 'wf-1',
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
 			});
 
-			expect(executionId).toBe('exec-1');
+			expect(result).toEqual({ executionId: 'exec-1' });
 			expect(txRunner.run).toHaveBeenCalledTimes(1);
 
 			const ctx = txRunner.run.mock.calls[0][0];
@@ -128,29 +130,32 @@ describe('PollCursorService', () => {
 				'node-1',
 				{ lastItemId: 'b' },
 				ctx,
+				undefined,
 			);
 			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, ctx);
 		});
 
 		it('advances the cursor and creates the execution as two separate writes when the flag is off', async () => {
 			const service = buildService(false);
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 			executionPersistence.create.mockResolvedValue('exec-1');
 			const createPayload = payload();
 
-			const { executionId } = await service.commitWithExecution({
+			const result = await service.commitWithExecution({
 				workflowId: 'wf-1',
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
 				payload: createPayload,
 			});
 
-			expect(executionId).toBe('exec-1');
+			expect(result).toEqual({ executionId: 'exec-1' });
 			expect(txRunner.run).not.toHaveBeenCalled();
 			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
 				{ lastItemId: 'b' },
 				{},
+				undefined,
 			);
 			expect(executionPersistence.create).toHaveBeenCalledWith(createPayload, {});
 		});
@@ -183,6 +188,7 @@ describe('PollCursorService', () => {
 			{ title: 'a duplicate execution', error: new DuplicateExecutionError('dedup-key') },
 		])('propagates $title to the caller', async ({ error }) => {
 			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 			executionPersistence.create.mockRejectedValue(error);
 
 			await expect(
@@ -194,26 +200,76 @@ describe('PollCursorService', () => {
 				}),
 			).rejects.toBe(error);
 		});
+
+		it.each([
+			{ title: 'the flag is on', durableCursorsEnabled: true },
+			{ title: 'the flag is off', durableCursorsEnabled: false },
+		])(
+			'resolves null and does not create the execution when the fence rejects the advance and $title',
+			async ({ durableCursorsEnabled }) => {
+				const service = buildService(durableCursorsEnabled);
+				pollerStateRepository.advanceCursor.mockResolvedValue(false);
+				const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
+
+				const result = await service.commitWithExecution({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					cursor: { lastItemId: 'b' },
+					payload: payload(),
+					fence,
+				});
+
+				expect(result).toBeNull();
+				expect(executionPersistence.create).not.toHaveBeenCalled();
+			},
+		);
+
+		it('passes the fence through to the cursor advance', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+			executionPersistence.create.mockResolvedValue('exec-1');
+			const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
+
+			await service.commitWithExecution({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				cursor: { lastItemId: 'b' },
+				payload: payload(),
+				fence,
+			});
+
+			const ctx = txRunner.run.mock.calls[0][0];
+			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'b' },
+				ctx,
+				fence,
+			);
+		});
 	});
 
 	describe('commitCursorOnly', () => {
-		const commitCursorOnly = async (service: PollCursorService) =>
+		const commitCursorOnly = async (service: PollCursorService, fence?: PollLeaseFence) =>
 			await service.commitCursorOnly({
 				workflowId: 'wf-1',
 				nodeId: 'node-1',
 				cursor: { lastItemId: 'b' },
+				fence,
 			});
 
 		it('advances the cursor without creating an execution', async () => {
 			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
 
-			await commitCursorOnly(service);
+			await expect(commitCursorOnly(service)).resolves.toBe(true);
 
 			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
 				'wf-1',
 				'node-1',
 				{ lastItemId: 'b' },
 				{},
+				undefined,
 			);
 			expect(executionPersistence.create).not.toHaveBeenCalled();
 		});
@@ -224,6 +280,31 @@ describe('PollCursorService', () => {
 			pollerStateRepository.advanceCursor.mockRejectedValue(advanceError);
 
 			await expect(commitCursorOnly(service)).rejects.toBe(advanceError);
+		});
+
+		it('resolves false when the fence rejects the advance', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(false);
+
+			await expect(commitCursorOnly(service, { taskId: 'task-1', leaseEpoch: 3 })).resolves.toBe(
+				false,
+			);
+		});
+
+		it('passes the fence through to the cursor advance', async () => {
+			const service = buildService();
+			pollerStateRepository.advanceCursor.mockResolvedValue(true);
+			const fence: PollLeaseFence = { taskId: 'task-1', leaseEpoch: 3 };
+
+			await commitCursorOnly(service, fence);
+
+			expect(pollerStateRepository.advanceCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'b' },
+				{},
+				fence,
+			);
 		});
 	});
 });
