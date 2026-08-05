@@ -3859,7 +3859,7 @@ describe('MCP registry discovery', () => {
 		moduleActive?: boolean;
 		featureFlags?: Record<string, string>;
 		registrySearch?: Mock;
-		getRegistryMcpServers?: Mock;
+		listConnectionsForUser?: Mock;
 	}
 
 	/** Route `Container.get` by token — the adapter resolves PostHog and both MCP
@@ -3867,19 +3867,19 @@ describe('MCP registry discovery', () => {
 	function stubContainer(stubs: McpStubs = {}) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(stubs.featureFlags ?? {});
 		const search = stubs.registrySearch ?? vi.fn().mockResolvedValue([]);
-		const getRegistryMcpServers = stubs.getRegistryMcpServers ?? vi.fn().mockResolvedValue([]);
+		const listConnectionsForUser = stubs.listConnectionsForUser ?? vi.fn().mockResolvedValue([]);
 
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === PostHogClient) return { getFeatureFlags };
 			if (token === McpRegistryService) return { search };
-			if (token === InstanceAiMcpRegistryService) return { getRegistryMcpServers };
+			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
 			// Stands in for ModuleRegistry: `mcp-registry` active, `agents` not.
 			return {
 				isActive: (name: string) => (stubs.moduleActive ?? true) && name === 'mcp-registry',
 			};
 		});
 
-		return { getFeatureFlags, search, getRegistryMcpServers };
+		return { getFeatureFlags, search, listConnectionsForUser };
 	}
 
 	function createAdapter(mcpAccessEnabled = true): InstanceAiAdapterService {
@@ -3972,30 +3972,29 @@ describe('MCP registry discovery', () => {
 			]);
 		});
 
-		it('drops a server the run would actually load', async () => {
-			const { getRegistryMcpServers } = stubContainer({
+		it('drops a server the user already has a connection for', async () => {
+			const { listConnectionsForUser } = stubContainer({
 				registrySearch: vi
 					.fn()
 					.mockResolvedValue([registryHit, { ...registryHit, slug: 'notion', title: 'Notion' }]),
-				getRegistryMcpServers: vi.fn().mockResolvedValue([
-					{
-						name: 'mcp_google-drive',
-						metadata: { serverSlug: 'google-drive', userId: 'user-1' },
-					},
-				]),
+				listConnectionsForUser: vi
+					.fn()
+					.mockResolvedValue([
+						{ id: 'conn-1', userId: 'user-1', serverSlug: 'google-drive', credentialId: 'cred-1' },
+					]),
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 
 			const results = await context.mcpService!.search(['drive', 'notion']);
 
-			expect(getRegistryMcpServers).toHaveBeenCalledWith(user);
+			expect(listConnectionsForUser).toHaveBeenCalledWith(user);
 			expect(results.map((result) => result.slug)).toEqual(['notion']);
 		});
 
-		it('offers everything when connection resolution fails', async () => {
+		it('offers everything when listing connections fails', async () => {
 			stubContainer({
 				registrySearch: vi.fn().mockResolvedValue([registryHit]),
-				getRegistryMcpServers: vi.fn().mockRejectedValue(new Error('decrypt failed')),
+				listConnectionsForUser: vi.fn().mockRejectedValue(new Error('query failed')),
 			});
 			const context = createAdapter().createContext(user, { mcpConnectionsEnabled: true });
 

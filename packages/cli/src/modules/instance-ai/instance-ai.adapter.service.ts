@@ -444,7 +444,7 @@ export class InstanceAiAdapterService {
 			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
 				const [servers, connectedSlugs] = await Promise.all([
 					Container.get(McpRegistryService).search(queries),
-					this.listUsableMcpRegistrySlugs(user),
+					this.listConnectedMcpRegistrySlugs(user),
 				]);
 				return servers
 					.filter((server) => !connectedSlugs.has(server.slug))
@@ -458,18 +458,18 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private async listUsableMcpRegistrySlugs(user: User): Promise<Set<string>> {
+	/** Slugs the user already has a connection row for. Reads the rows rather than
+	 *  resolving them into loadable servers: resolving decrypts credentials per
+	 *  connection, and a row that fails to resolve still blocks connecting again
+	 *  (one connection per user+slug), so re-offering it would dead-end. */
+	private async listConnectedMcpRegistrySlugs(user: User): Promise<Set<string>> {
 		try {
-			const resolved = await Container.get(InstanceAiMcpRegistryService).getRegistryMcpServers(
+			const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
 				user,
 			);
-			return new Set(
-				resolved
-					.map((server) => server.metadata?.serverSlug)
-					.filter((slug): slug is string => typeof slug === 'string'),
-			);
+			return new Set(connections.map((connection) => connection.serverSlug));
 		} catch (error) {
-			this.logger.warn('Failed to resolve connected MCP registry servers for registry search', {
+			this.logger.warn('Failed to list connected MCP registry servers for registry search', {
 				userId: user.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
