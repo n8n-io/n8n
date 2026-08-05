@@ -132,6 +132,12 @@ change (pure UI, infra, internal refactors).
 
 ### 4b. Review findings (--review only)
 
+Sibling note: a personal-plugin variant of this skill exists
+(`cst:change-story`), maintained in parallel with this one. This step is
+their ONLY intentional divergence: the variant executes its own plugin's
+pr-review command here, while this version fans out the `n8n:autodev-*`
+reviewer agents. Edits to any other step belong in both copies.
+
 Fan out the plugin's reviewer agents from the MAIN context: sub-agents
 cannot spawn sub-agents, so never wrap the review in a single sub-agent.
 Dispatch the reviewer agents and the step 4 evidence sub-agent in the
