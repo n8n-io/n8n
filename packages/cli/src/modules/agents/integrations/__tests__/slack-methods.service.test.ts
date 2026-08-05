@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
+import type { Cipher } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
@@ -23,6 +25,8 @@ describe('SlackMethodsService', () => {
 				managementService,
 				urlService,
 				mock<OutboundHttp>(),
+				mock<CacheService>(),
+				mock<Cipher>(),
 			),
 			credentialsService,
 			managementService,

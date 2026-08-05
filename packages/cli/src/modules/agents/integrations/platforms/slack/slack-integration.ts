@@ -4,6 +4,20 @@ import type { Thread } from 'chat';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
+import {
+	createSlackBridgeExecutionContext,
+	createSlackResumeExecutionContext,
+	getSlackPlatformAgentContext,
+	getSlackReplyExpectation,
+	prepareSlackInboundText,
+} from './slack-bridge-behavior';
+import { SlackManagedSetupService } from './slack-managed-setup.service';
+import {
+	executeSlackAction,
+	executeSlackContextQuery,
+	subscribeSlackThread,
+} from './slack-operations';
+import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
@@ -25,20 +39,6 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
 import type { IntegrationActionResult, ReplyExpectation } from '../../integration-tools';
-import {
-	createSlackBridgeExecutionContext,
-	createSlackResumeExecutionContext,
-	getSlackPlatformAgentContext,
-	getSlackReplyExpectation,
-	prepareSlackInboundText,
-} from './slack-bridge-behavior';
-import {
-	executeSlackAction,
-	executeSlackContextQuery,
-	subscribeSlackThread,
-} from './slack-operations';
-import { SlackManagedSetupService } from './slack-managed-setup.service';
-import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
 
 /**
  * Slack platform integration.
@@ -47,7 +47,7 @@ import { SLACK_ACTION_TOOL_DEFINITIONS } from './slack-tool-definitions';
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
-	constructor(private readonly agentRepository?: AgentRepository) {
+	constructor(private readonly agentRepository: AgentRepository) {
 		super();
 	}
 
@@ -104,7 +104,6 @@ export class SlackIntegration extends AgentChatIntegration {
 	];
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		if (!this.agentRepository) return;
 		const others = await this.agentRepository.findByIntegrationCredential(
 			this.type,
 			ctx.credentialId,

@@ -60,8 +60,8 @@ export class SlackMethodsService {
 		private readonly integrationManagementService: AgentIntegrationManagementService,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly cacheService?: CacheService,
-		private readonly cipher?: Cipher,
+		private readonly cacheService: CacheService,
+		private readonly cipher: Cipher,
 	) {}
 
 	async callSlackApi(
@@ -173,9 +173,6 @@ export class SlackMethodsService {
 	}
 
 	async storeSession(state: string, session: SlackAppSetupSession): Promise<void> {
-		if (!this.cacheService || !this.cipher) {
-			throw new Error('Slack managed app setup dependencies are unavailable');
-		}
 		await this.cacheService.set(
 			slackSetupCacheKey(state),
 			await this.cipher.encryptV2(JSON.stringify(session)),
@@ -259,9 +256,6 @@ export class SlackMethodsService {
 
 	private async clearManagedAppSession(session: SlackAppSetupSession): Promise<void> {
 		if (session.managerCredentialId && session.teamId) {
-			if (!this.cacheService) {
-				throw new Error('Slack managed app setup dependencies are unavailable');
-			}
 			await this.cacheService.delete(
 				`${SLACK_MANAGED_APP_CACHE_PREFIX}${session.projectId}:${session.agentId}:${session.managerCredentialId}:${session.teamId}`,
 			);
