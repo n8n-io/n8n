@@ -133,6 +133,12 @@ describe('PollBackoffService', () => {
 			expect(() => service.isBackingOff(state, now)).not.toThrow();
 			expect(service.isBackingOff(state, now)).toBe(false);
 		});
+
+		test('is false when backoffUntil is an invalid Date', () => {
+			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: new Date(NaN) };
+
+			expect(service.isBackingOff(state, now)).toBe(false);
+		});
 	});
 
 	describe('recordFailure', () => {

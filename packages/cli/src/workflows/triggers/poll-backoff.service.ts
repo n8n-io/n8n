@@ -42,6 +42,8 @@ export class PollBackoffService {
 		if (state === null || !(state.backoffUntil instanceof Date)) return false;
 
 		const untilMs = state.backoffUntil.getTime();
+		if (!Number.isFinite(untilMs)) return false;
+
 		const nowMs = now.getTime();
 
 		if (untilMs <= nowMs) return false;
@@ -63,11 +65,12 @@ export class PollBackoffService {
 		const consecutiveErrors = (state?.consecutiveErrors ?? 0) + 1;
 
 		try {
-			const failureClass = classifyPollFailure(error, now);
+			const retryAfter = retryAfterMs(error, now);
+			const failureClass = classifyPollFailure(error, retryAfter);
 			const backoffUntil = computeBackoffUntil({
 				failureClass,
 				consecutiveErrors,
-				retryAfterMs: retryAfterMs(error, now),
+				retryAfterMs: retryAfter,
 				now,
 			});
 
@@ -114,10 +117,15 @@ export class PollBackoffService {
 
 	private reportFailure(error: unknown, workflowId: string, nodeId: string, message: string): void {
 		try {
-			this.errorReporter.error(error, { extra: { workflowId, nodeId } });
 			this.logger.error(message, { workflowId, nodeId, error });
-		} catch {
-			return;
+		} catch (loggingError) {
+			void loggingError;
+		}
+
+		try {
+			this.errorReporter.error(error, { extra: { workflowId, nodeId } });
+		} catch (reportingError) {
+			void reportingError;
 		}
 	}
 }

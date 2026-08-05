@@ -105,10 +105,10 @@ function parseRetryAfterValue(raw: string, now: Date): number | null {
 	return diff > 0 ? diff : null;
 }
 
-export function classifyPollFailure(error: unknown, now: Date): PollFailureClass {
+export function classifyPollFailure(error: unknown, retryAfterMs: number | null): PollFailureClass {
 	const status = httpCodeStatus(error) ?? statusFromWalk(error);
 	if (status === null || !PERMANENT_STATUS_CODES.has(status)) return 'transient';
-	return retryAfterMs(error, now) !== null ? 'transient' : 'permanent';
+	return retryAfterMs !== null ? 'transient' : 'permanent';
 }
 
 export function retryAfterMs(error: unknown, now: Date): number | null {

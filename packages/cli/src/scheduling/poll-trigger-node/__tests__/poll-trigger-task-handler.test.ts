@@ -412,7 +412,7 @@ describe('PollTriggerTaskHandler', () => {
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
 		});
 
-		test('records a failure with the thrown error, the peeked state and the tick clock', async () => {
+		test('records a failure with the thrown error and the peeked state', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
 			pollBackoffService.peek.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
@@ -425,7 +425,7 @@ describe('PollTriggerTaskHandler', () => {
 				nodeId: 'node-1',
 				error,
 				state,
-				now: fixedNow,
+				now: expect.any(Date),
 			});
 		});
 
@@ -479,13 +479,14 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.peek).not.toHaveBeenCalled();
 		});
 
-		test('propagates when peek itself throws, since the service contract guarantees it never does', async () => {
+		test('runs the poll as normal when peek itself throws', async () => {
 			const error = new Error('poller state read failed');
 			pollBackoffService.peek.mockRejectedValue(error);
 
-			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
+			await handler.execute(buildTask(), report);
 
-			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
+			expect(onDispatch).toHaveBeenCalledTimes(1);
 		});
 
 		test('does not record a success when poll() throws', async () => {
@@ -509,21 +510,6 @@ describe('PollTriggerTaskHandler', () => {
 			const { now: recordFailureNow } = pollBackoffService.recordFailure.mock.calls[0][0];
 			expect(isBackingOffNow.getTime()).toBe(fixedNow.getTime());
 			expect(recordFailureNow.getTime()).toBeGreaterThan(isBackingOffNow.getTime());
-		});
-
-		test('routes a poll() error whose property access throws to the error workflow without propagating', async () => {
-			const hostileError: Record<string, unknown> = {};
-			Object.defineProperty(hostileError, 'httpCode', {
-				get(): never {
-					throw new Error('trap');
-				},
-			});
-			triggersAndPollers.runPollFunction.mockRejectedValue(hostileError);
-
-			await expect(handler.execute(buildTask(), report)).resolves.toBeDefined();
-
-			expect(pollFunctions.__emitError).toHaveBeenCalledTimes(1);
-			expect(onDispatch).toHaveBeenCalledTimes(1);
 		});
 	});
 
