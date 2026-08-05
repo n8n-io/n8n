@@ -1,15 +1,15 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useAgentEvalsStore } from './agentEvals.store';
-import type { AgentEvalDatasetRecord } from './agentEvals.types';
+import { useAgentEvalsStore } from '../agentEvals.store';
+import type { AgentEvalDatasetRecord } from '../agentEvals.types';
 
 const { getDatasets, generateDraftCases } = vi.hoisted(() => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
 }));
 
-vi.mock('./agentEvals.api', () => ({
+vi.mock('../agentEvals.api', () => ({
 	getDatasets,
 	generateDraftCases,
 }));

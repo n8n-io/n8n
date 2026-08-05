@@ -3,15 +3,13 @@
  * Container for the agent's eval surface. Today it only renders the first-run
  * state; the case list and review views mount here as they land, which is why
  * the empty state is a branch rather than the whole component.
- *
- * Distinct from `AgentEvalsPanel.vue`, which lists the TS-source-declared evals
- * from the agents SDK — a different data source entirely.
  */
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 defineProps<{
 	disabled?: boolean;
+	generating?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,6 +37,7 @@ const i18n = useI18n();
 				type="button"
 				icon="sparkles"
 				:disabled="disabled"
+				:loading="generating"
 				data-testid="agent-evals-generate-button"
 				@click="emit('generate')"
 			>

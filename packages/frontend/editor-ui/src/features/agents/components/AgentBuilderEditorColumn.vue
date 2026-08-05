@@ -44,6 +44,7 @@ const props = defineProps<{
 	canEditAgent: boolean;
 	agentAvailableInMcp?: boolean;
 	executionsDescription: string;
+	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
@@ -262,7 +263,11 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'evals'"
 					data-testid="agent-evals-tab-content"
 				>
-					<AgentEvalsSection :disabled="childrenDisabled" @generate="emit('generate-eval-cases')" />
+					<AgentEvalsSection
+						:disabled="childrenDisabled"
+						:generating="generatingEvalCases"
+						@generate="emit('generate-eval-cases')"
+					/>
 				</AgentBuilderTabPanel>
 			</div>
 		</div>

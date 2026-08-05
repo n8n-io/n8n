@@ -53,9 +53,11 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
-	// Generation persists a new dataset server-side, so the list is re-fetched
-	// rather than patched from the response: the response carries the drafts, not
-	// the dataset row, and re-reading keeps the cache authoritative.
+	// The response carries the drafts, not the dataset row, so the list is
+	// re-read rather than patched. Best-effort: generation already succeeded
+	// server-side and cost model credits, so a transient refresh failure must not
+	// surface as a generation failure (user retries → duplicate dataset). A stale
+	// cache self-heals on the next fetch.
 	const generateDraftCases = async (
 		projectId: string,
 		agentId: string,
