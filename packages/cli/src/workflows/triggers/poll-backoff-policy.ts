@@ -18,27 +18,21 @@ function getResponse(candidate: unknown): Record<string, unknown> | undefined {
 	return isRecord(response) ? response : undefined;
 }
 
-function walkResponses(error: unknown): Array<Record<string, unknown>> {
+function candidateChain(error: unknown): Array<Record<string, unknown>> {
 	if (!isRecord(error)) return [];
 
-	const responses: Array<Record<string, unknown>> = [];
-
-	const direct = getResponse(error);
-	if (direct) responses.push(direct);
+	const candidates: Array<Record<string, unknown>> = [error];
 
 	const cause = isRecord(error.cause) ? error.cause : undefined;
-	const causeResponse = cause ? getResponse(cause) : undefined;
-	if (causeResponse) responses.push(causeResponse);
+	if (cause) candidates.push(cause);
 
 	const errorResponse = isRecord(error.errorResponse) ? error.errorResponse : undefined;
-	const errorResponseResponse = errorResponse ? getResponse(errorResponse) : undefined;
-	if (errorResponseResponse) responses.push(errorResponseResponse);
+	if (errorResponse) candidates.push(errorResponse);
 
 	const reason = errorResponse && isRecord(errorResponse.reason) ? errorResponse.reason : undefined;
-	const reasonResponse = reason ? getResponse(reason) : undefined;
-	if (reasonResponse) responses.push(reasonResponse);
+	if (reason) candidates.push(reason);
 
-	return responses;
+	return candidates;
 }
 
 function parseNumericStatus(value: unknown): number | null {
@@ -51,12 +45,18 @@ function parseNumericStatus(value: unknown): number | null {
 }
 
 function httpCodeStatus(error: unknown): number | null {
-	if (!isRecord(error) || error.httpCode === null || error.httpCode === undefined) return null;
-	return parseNumericStatus(error.httpCode);
+	for (const candidate of candidateChain(error)) {
+		if (candidate.httpCode === null || candidate.httpCode === undefined) continue;
+		const status = parseNumericStatus(candidate.httpCode);
+		if (status !== null) return status;
+	}
+	return null;
 }
 
 function statusFromWalk(error: unknown): number | null {
-	for (const response of walkResponses(error)) {
+	for (const candidate of candidateChain(error)) {
+		const response = getResponse(candidate);
+		if (!response) continue;
 		const status = parseNumericStatus(response.status);
 		if (status !== null) return status;
 	}
@@ -96,7 +96,10 @@ export function classifyPollFailure(error: unknown): PollFailureClass {
 }
 
 export function retryAfterMs(error: unknown, now: Date): number | null {
-	for (const response of walkResponses(error)) {
+	for (const candidate of candidateChain(error)) {
+		const response = getResponse(candidate);
+		if (!response) continue;
+
 		const value = findHeaderValue(response.headers, 'retry-after');
 		if (value === undefined) continue;
 
