@@ -33,7 +33,14 @@ export const DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY = 1;
 
 /** One parsed batch, handed to the caller together with its completion callback. */
 export interface KafkaBatchHandOff {
-	/** The parsed batch, in the item shape v1 produces. */
+	/**
+	 * The whole library batch parsed, in the item shape v1 produces. Up to
+	 * `js.consumer.max.batch.size` messages, 32 by default.
+	 *
+	 * The node must chunk these by its "Batch Size" option before emitting, as v1
+	 * does. That option defaults to 1, so emitting this array as one execution
+	 * would turn 32 single-item executions into one 32-item execution.
+	 */
 	items: INodeExecutionData[];
 	topic: string;
 	partition: number;
