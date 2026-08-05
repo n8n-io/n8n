@@ -1,6 +1,6 @@
 import { backoff } from '@n8n/scheduler';
 import type { INode, JsonObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	classifyPollFailure,
@@ -88,6 +88,37 @@ describe('classifyPollFailure', () => {
 		const error = { response: { status: -401 } };
 
 		expect(classifyPollFailure(error)).toBe('transient');
+	});
+
+	test.each([
+		['401', 'permanent'],
+		['429', 'transient'],
+	])(
+		'classifies a NodeOperationError wrapping a causal NodeApiError with httpCode %s as %s',
+		(httpCode, expected) => {
+			const cause = new NodeApiError(node, {}, { httpCode });
+			const error = new NodeOperationError(node, cause as Error);
+
+			expect(classifyPollFailure(error)).toBe(expected);
+		},
+	);
+
+	test('reads httpCode off error.errorResponse rather than error.cause', () => {
+		const error = { errorResponse: { httpCode: '403' } };
+
+		expect(classifyPollFailure(error)).toBe('permanent');
+	});
+
+	test('prefers an httpCode on a later candidate over a conflicting response.status on an earlier one', () => {
+		const error = { response: { status: 500 }, cause: { httpCode: '401' } };
+
+		expect(classifyPollFailure(error)).toBe('permanent');
+	});
+
+	test('prefers an httpCode on an earlier candidate over a conflicting response.status on a later one', () => {
+		const error = { httpCode: '401', cause: { response: { status: 500 } } };
+
+		expect(classifyPollFailure(error)).toBe('permanent');
 	});
 });
 
