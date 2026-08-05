@@ -181,8 +181,8 @@ export class WorkflowRunner {
 	}
 
 	/**
-	 * Prepares `data.executionData` for any caller that is about to persist it. Returns
-	 * the masking error if there was one, having already emptied the trigger-item stack.
+	 * Returns the masking error, if any, having already emptied the trigger-item stack
+	 * either way.
 	 */
 	async establishContextForPersistence(
 		data: IWorkflowExecutionDataProcess,
