@@ -188,6 +188,17 @@ describe('InstanceAiSettingsService', () => {
 			expect(persistedSettingsValue).toContain('"searchDisabled":true');
 		});
 
+		it('rejects disabling web search while configuring a search connection', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			await expect(
+				service.updateAdminSettings({
+					searchDisabled: true,
+					searchConnection: { type: 'braveSearchApi', data: { apiKey: 'key' } },
+				}),
+			).rejects.toThrow('Cannot disable web search while configuring a search connection');
+		});
+
 		it('should store service credential selections as broker assignments', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 
@@ -1844,7 +1855,195 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('verification connection resolution', () => {
+		beforeEach(() => {
+			credentialsService.unredact.mockImplementation((_data, currentData) => currentData);
+			instanceCredentialBroker.resolveForUse.mockImplementation(async (policy) => {
+				if (policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id) {
+					return {
+						id: 'model-credential',
+						name: 'Model',
+						type: 'openAiApi',
+						data: { apiKey: 'saved-model-key' },
+					} as never;
+				}
+				if (policy.id === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id) {
+					return {
+						id: 'sandbox-credential',
+						name: 'Sandbox',
+						type: 'httpHeaderAuth',
+						data: { name: 'x-api-key', value: 'saved-sandbox-key' },
+					} as never;
+				}
+				return {
+					id: 'search-credential',
+					name: 'Search',
+					type: 'braveSearchApi',
+					data: { apiKey: 'saved-search-key' },
+				} as never;
+			});
+		});
+
+		it('restores redacted model, sandbox, and search fields on the server', async () => {
+			await expect(
+				service.resolveModelConnectionForVerification({
+					type: 'openAiApi',
+					data: { apiKey: '__redacted__' },
+				}),
+			).resolves.toEqual({ type: 'openAiApi', data: { apiKey: 'saved-model-key' } });
+			await expect(
+				service.resolveSandboxConnectionForVerification({
+					type: 'httpHeaderAuth',
+					data: { name: 'x-api-key', value: '__redacted__' },
+				}),
+			).resolves.toEqual({
+				type: 'httpHeaderAuth',
+				data: { name: 'x-api-key', value: 'saved-sandbox-key' },
+			});
+			await expect(
+				service.resolveSearchConnectionForVerification({
+					type: 'braveSearchApi',
+					data: { apiKey: '__redacted__' },
+				}),
+			).resolves.toEqual({ type: 'braveSearchApi', data: { apiKey: 'saved-search-key' } });
+		});
+
+		it('rejects a missing prepared connection', async () => {
+			await expect(
+				service.resolveModelConnectionForVerification(undefined as never),
+			).rejects.toThrow('Prepared provider connection is missing');
+		});
+	});
+
+	describe('model verification config', () => {
+		it.each([
+			['openai/original', 'replacement', 'openai/replacement'],
+			['original', 'replacement', 'custom/replacement'],
+			[
+				{ id: 'anthropic/original', url: '', apiKey: 'key' },
+				'replacement',
+				{ id: 'anthropic/replacement', url: '', apiKey: 'key' },
+			],
+			[
+				{ id: 'original', url: '', apiKey: 'key' },
+				'replacement',
+				{ id: 'custom/replacement', url: '', apiKey: 'key' },
+			],
+		] as const)(
+			'replaces the selected model while keeping its provider',
+			async (config, model, expected) => {
+				vi.spyOn(service, 'resolveModelConfig').mockResolvedValue(config as never);
+
+				await expect(
+					service.resolveModelConfigForVerification(mock<User>(), model),
+				).resolves.toEqual(expected);
+			},
+		);
+
+		it('keeps the resolved config when no model is selected or the config is opaque', async () => {
+			const opaqueConfig = { provider: 'custom' };
+			const resolveModelConfig = vi
+				.spyOn(service, 'resolveModelConfig')
+				.mockResolvedValueOnce('openai/original')
+				.mockResolvedValueOnce(opaqueConfig as never);
+
+			await expect(service.resolveModelConfigForVerification(mock<User>())).resolves.toBe(
+				'openai/original',
+			);
+			await expect(
+				service.resolveModelConfigForVerification(mock<User>(), 'replacement'),
+			).resolves.toBe(opaqueConfig);
+			expect(resolveModelConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('builds and validates a model config from a draft connection', () => {
+			expect(
+				service.buildModelConfigForConnection(
+					{ type: 'openAiApi', data: { apiKey: 'key' } },
+					'gpt-5.4',
+				),
+			).toEqual({ id: 'openai/gpt-5.4', url: '', apiKey: 'key' });
+
+			expect(() =>
+				service.buildModelConfigForConnection(
+					{ type: 'braveSearchApi', data: { apiKey: 'key' } },
+					'gpt-5.4',
+				),
+			).toThrow('is not supported for the model');
+			expect(() =>
+				service.buildModelConfigForConnection({ type: 'openAiApi', data: {} }, 'gpt-5.4'),
+			).toThrow('The field "apiKey" or "url" is required');
+		});
+
+		it('builds model configs from environment URL and API key combinations', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			Object.assign(globalConfig.instanceAi, {
+				model: 'openai/gpt-4',
+				modelUrl: 'https://model.example.com/v1',
+				modelApiKey: 'model-key',
+			});
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/gpt-4',
+				url: 'https://model.example.com/v1',
+				apiKey: 'model-key',
+			});
+
+			globalConfig.instanceAi.modelUrl = '';
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				id: 'openai/gpt-4',
+				url: '',
+				apiKey: 'model-key',
+			});
+
+			globalConfig.instanceAi.modelApiKey = '';
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
+		});
+	});
+
 	describe('isSetupCompleted', () => {
+		it('is complete on managed deployments', async () => {
+			globalConfig.deployment.type = 'cloud';
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+
+			globalConfig.deployment.type = 'default';
+			aiService.isProxyEnabled.mockReturnValue(true);
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+			expect(instanceCredentialBroker.getAssignedCredentialId).not.toHaveBeenCalled();
+		});
+
+		it('accepts a setup fully configured through environment variables', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			Object.assign(globalConfig.instanceAi, {
+				modelApiKey: 'model-key',
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				daytonaApiKey: 'sandbox-key',
+				braveSearchApiKey: 'search-key',
+			});
+			service = createService();
+
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+		});
+
+		it('accepts Daytona and search credential assignments', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			persistedSettingsValue = JSON.stringify({
+				modelName: 'gpt-5.4',
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+			});
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) => {
+				if (policy.id === INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id) return 'model-credential';
+				if (policy.id === INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id) return 'sandbox-credential';
+				if (policy.id === INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id) return 'search-credential';
+				return null;
+			});
+			await service.reloadFromDb();
+
+			await expect(service.isSetupCompleted()).resolves.toBe(true);
+		});
+
 		it('requires an explicit web-search decision after model and sandbox are configured', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			persistedSettingsValue = JSON.stringify({
