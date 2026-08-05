@@ -162,6 +162,36 @@ describe('emitAgentSnapshotTraceEvent', () => {
 		).resolves.toBe('skipped');
 	});
 
+	it('retries after a skip instead of burning the hash on a trace that exported nothing', async () => {
+		const { tracing, startChildRun } = makeTracing();
+		const artifact = { config: CONFIG, configHash: 'hash-1' };
+		startChildRun.mockRejectedValueOnce(new Error('exporter down'));
+
+		expect(await emitAgentSnapshotTraceEvent(tracing, { ...BASE, artifact })).toBe('skipped');
+		expect(await emitAgentSnapshotTraceEvent(tracing, { ...BASE, artifact })).toBe('emitted');
+		expect(startChildRun).toHaveBeenCalledTimes(2);
+	});
+
+	it('retries after a failure instead of burning the hash', async () => {
+		const { tracing, startChildRun } = makeTracing();
+		const circular: Record<string, unknown> = { name: 'Looper' };
+		circular.self = circular;
+
+		expect(
+			await emitAgentSnapshotTraceEvent(tracing, {
+				...BASE,
+				artifact: { config: circular as unknown as AgentJsonConfig, configHash: 'hash-1' },
+			}),
+		).toBe('failed');
+		expect(
+			await emitAgentSnapshotTraceEvent(tracing, {
+				...BASE,
+				artifact: { config: CONFIG, configHash: 'hash-1' },
+			}),
+		).toBe('emitted');
+		expect(startChildRun).toHaveBeenCalledTimes(1);
+	});
+
 	it('reports a config it cannot serialize as failed, without throwing', async () => {
 		const { tracing } = makeTracing();
 		const circular: Record<string, unknown> = { name: 'Looper' };

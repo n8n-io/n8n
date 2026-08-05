@@ -45,6 +45,9 @@ export async function emitAgentSnapshotTraceEvent(
 	// the second is our bug.
 ): Promise<'emitted' | 'duplicate' | 'skipped' | 'failed'> {
 	const { agentId, projectId, reason, artifact } = args;
+	// Claimed before the emit so two concurrent triggers can't double-write, and
+	// released below unless it landed, so a skip or a throw stays retryable.
+	let claim: { seen: Set<string>; key: string } | undefined;
 	try {
 		const hash = artifact.configHash ?? null;
 		if (tracing && hash) {
@@ -56,6 +59,7 @@ export async function emitAgentSnapshotTraceEvent(
 			const key = `${agentId}:${hash}`;
 			if (seen.has(key)) return 'duplicate';
 			seen.add(key);
+			claim = { seen, key };
 		}
 
 		const payload = {
@@ -85,8 +89,13 @@ export async function emitAgentSnapshotTraceEvent(
 		args.logger?.debug(
 			`[agent-snapshot] ${reason} for ${agentId}: ${emittedVia}${withinSizeGate ? '' : ' (over size gate, emitted truncated marker)'}`,
 		);
-		return emittedVia === 'skipped' ? 'skipped' : 'emitted';
+		if (emittedVia === 'skipped') {
+			claim?.seen.delete(claim.key);
+			return 'skipped';
+		}
+		return 'emitted';
 	} catch (error) {
+		claim?.seen.delete(claim.key);
 		args.logger?.debug(
 			`[agent-snapshot] ${reason} for ${agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
 		);
