@@ -174,4 +174,25 @@ describe('unlockAdditionalProperties', () => {
 		unlockAdditionalProperties(input);
 		expect(input.additionalProperties).toBe(false);
 	});
+
+	it('reaches objects behind 2020-12 and conditional keywords', () => {
+		const result = unlockAdditionalProperties({
+			type: 'array',
+			prefixItems: [{ type: 'object', additionalProperties: false, properties: {} }],
+			contains: { type: 'object', additionalProperties: false, properties: {} },
+			if: { type: 'object', additionalProperties: false, properties: {} },
+			then: { type: 'object', additionalProperties: false, properties: {} },
+			patternProperties: {
+				'^x-': { type: 'object', additionalProperties: false, properties: {} },
+			},
+		} as unknown as JSONSchema7) as unknown as Record<string, JSONSchema7>;
+
+		const prefixItems = result.prefixItems as unknown as JSONSchema7[];
+		expect(prefixItems[0].additionalProperties).toBeUndefined();
+		expect(result.contains.additionalProperties).toBeUndefined();
+		expect(result.if.additionalProperties).toBeUndefined();
+		expect(result.then.additionalProperties).toBeUndefined();
+		const patternProperties = result.patternProperties as unknown as Record<string, JSONSchema7>;
+		expect(patternProperties['^x-'].additionalProperties).toBeUndefined();
+	});
 });

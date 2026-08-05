@@ -43,15 +43,11 @@ export function lockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
 
 /**
  * Recursively drop `additionalProperties: false` so a schema serialized for a
- * model can be reused to *validate* data.
+ * model can be reused to *validate* data — where a Zod object would have
+ * stripped the unknown keys its closed serialization rejects.
  *
- * The two audiences want opposite answers and only one can be stored: a Zod
- * object strips unknown keys where its closed serialization rejects them, so
- * validating against the model-facing copy fails payloads the author's schema
- * accepts. Reopening cannot tell a deliberate `.strict()` from that artefact,
- * and errs towards accepting.
- *
- * Returns a deep copy — the input schema is never mutated.
+ * Cannot tell a deliberate `.strict()` from that artefact, and errs towards
+ * accepting. Returns a deep copy — the input schema is never mutated.
  */
 export function unlockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
 	return mapObjectNodes(schema, (node) => {
@@ -86,14 +82,9 @@ function mapDefinition(
 
 	if (isObjectSchema) apply(result);
 
-	if (result.properties) {
-		result.properties = mapDefinitions(result.properties, apply);
-	}
-	if (result.$defs) {
-		result.$defs = mapDefinitions(result.$defs, apply);
-	}
-	if (result.definitions) {
-		result.definitions = mapDefinitions(result.definitions, apply);
+	for (const key of ['properties', 'patternProperties', '$defs', 'definitions'] as const) {
+		const record = result[key];
+		if (record) result[key] = mapDefinitions(record, apply);
 	}
 	if (result.items !== undefined) {
 		result.items = Array.isArray(result.items) ? result.items.map(recurse) : recurse(result.items);
@@ -107,11 +98,40 @@ function mapDefinition(
 			result[key] = branch.map(recurse);
 		}
 	}
-	if (result.not !== undefined) {
-		result.not = recurse(result.not);
+	for (const key of ['not', 'if', 'then', 'else', 'contains', 'propertyNames'] as const) {
+		if (result[key] !== undefined) result[key] = recurse(result[key]);
 	}
 
+	mapDialectExtensions(result, apply);
+
 	return result;
+}
+
+/**
+ * 2020-12 keywords `JSONSchema7` predates. They reach us from MCP servers,
+ * which default to that dialect, so skipping them would leave nested objects
+ * untouched.
+ */
+function mapDialectExtensions(node: JSONSchema7, apply: (node: JSONSchema7) => void): void {
+	const extensions = node as Record<string, unknown>;
+	const recurse = (definition: JSONSchema7Definition) => mapDefinition(definition, apply);
+
+	for (const key of ['unevaluatedProperties', 'unevaluatedItems']) {
+		const value = extensions[key];
+		if (typeof value === 'object' && value !== null)
+			extensions[key] = recurse(value as JSONSchema7);
+	}
+	const prefixItems = extensions.prefixItems;
+	if (Array.isArray(prefixItems)) {
+		extensions.prefixItems = prefixItems.map((item: JSONSchema7Definition) => recurse(item));
+	}
+	const dependentSchemas = extensions.dependentSchemas;
+	if (typeof dependentSchemas === 'object' && dependentSchemas !== null) {
+		extensions.dependentSchemas = mapDefinitions(
+			dependentSchemas as Record<string, JSONSchema7Definition>,
+			apply,
+		);
+	}
 }
 
 /**
