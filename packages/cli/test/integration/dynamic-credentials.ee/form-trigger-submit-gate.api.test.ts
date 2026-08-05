@@ -193,7 +193,7 @@ describe('form trigger submit-time credential gate', () => {
 	test('rejects the submission and creates no execution when the credential is not connected', async () => {
 		const response = await submitForm(webhookPath, token);
 
-		expect(response.statusCode).toBe(409);
+		expect(response.statusCode).toBe(428);
 		expect(response.body).toEqual({
 			status: 'credential_connections_required',
 			readyToExecute: false,
@@ -231,7 +231,7 @@ describe('form trigger submit-time credential gate', () => {
 
 		const response = await submitForm(webhookPath, token);
 
-		expect(response.statusCode).toBe(409);
+		expect(response.statusCode).toBe(428);
 		expect((response.body as CredentialConnectionsRequiredResponse).status).toBe(
 			'credential_connections_required',
 		);
