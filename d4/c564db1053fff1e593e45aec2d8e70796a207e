@@ -1,0 +1,39 @@
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 35,38-39,45,49-50,52,59-60,65,69,71,89-90,96,100,103,124,127,133,143,146,149
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 63-66,91-99,149-162,165,239-242,260-264
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 631-642,670-677,680-681,683-684
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 4-6,16,25,42-43,58-59,91,118,141,157,866-1021
+packages/cli/src/executions/execution-persistence.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 524-528,531-539,543,548-551,574,576,578,582-591
+  s_eb15a233d22df7::t_5abdb6807da905 592-593
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 1697,1714,1720,1722,1724-1726,1759
+packages/@n8n/db/src/repositories/annotation-tag-mapping.repository.ee.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 19-22
+packages/cli/src/executions/__tests__/execution-persistence.integration.test.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 423,427-429
+packages/cli/src/executions/execution.service.ts
+  s_eb15a233d22df7::t_6e3b79a02ffddd 7,22,50,161,163,166,185-188,772-916
+  s_eb15a233d22df7::t_54ae016d100612 917
+packages/cli/test/integration/public-api/executions.test.ts
+  s_eb15a233d22df7::t_df0fc018f2f9bb 301,326,344,370,392,411,919-925,972-978,1017,1043,1069,1102,1118,1141,1158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d4c564db1053fff1e593e45aec2d8e70796a207e",
+  "prompts": {},
+  "sessions": {
+    "s_eb15a233d22df7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97361c5c-f85e-47c5-9bcc-9da22843d779",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

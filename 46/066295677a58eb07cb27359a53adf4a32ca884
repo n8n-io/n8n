@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestsPanel.vue
+  s_e5c0e7c946ea00::t_f43cac0d14d24f 202,229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "46066295677a58eb07cb27359a53adf4a32ca884",
+  "prompts": {},
+  "sessions": {
+    "s_e5c0e7c946ea00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fccd0-9d73-72f3-a803-e1a2bf45ef80",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
