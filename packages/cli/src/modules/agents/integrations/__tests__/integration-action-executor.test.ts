@@ -746,6 +746,63 @@ describe('ChatIntegrationActionExecutor', () => {
 		expect(addReaction).toHaveBeenNthCalledWith(2, 'discord:@me:dm-thread', 'dm-message', '📨');
 	});
 
+	it('keeps an explicit reaction thread current when its message ID matches the reply target', async () => {
+		const addReaction = vi.fn().mockResolvedValue(undefined);
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ addReaction });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
+		const explicitThreadId = 'discord:800000000000000001:700000000000000002:600000000000000001';
+
+		const explicitReaction = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '✅', threadId: explicitThreadId, messageId: 'message-1' },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'discord:cred-discord',
+				platform: 'discord',
+				target: {
+					type: 'dm',
+					userId: 'user-1',
+					threadId: 'discord:@me:dm-thread',
+				},
+				messageId: 'dm-message',
+				replyTarget: {
+					type: 'thread',
+					threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
+					channelId: 'discord:800000000000000001:700000000000000001',
+				},
+				replyMessageId: 'message-1',
+				updatedAt: '2026-08-04T00:00:00.000Z',
+			},
+		});
+		expect(explicitReaction).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'thread', threadId: explicitThreadId },
+				messageId: 'message-1',
+			},
+		});
+
+		const nextMessageContext =
+			explicitReaction.ok && 'messageContext' in explicitReaction
+				? explicitReaction.messageContext
+				: undefined;
+		await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '📨' },
+			awaitResponse: false,
+			currentMessageContext: nextMessageContext,
+		});
+
+		expect(addReaction).toHaveBeenNthCalledWith(1, explicitThreadId, 'message-1', '✅');
+		expect(addReaction).toHaveBeenNthCalledWith(2, explicitThreadId, 'message-1', '📨');
+	});
+
 	it('returns a structured error when a Slack reaction has no message target', async () => {
 		const slackAdapter = {
 			addReaction: vi.fn().mockResolvedValue(undefined),

@@ -196,7 +196,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const input = addReactionInputSchema.parse(params.input);
 		const currentMessageContext = params.currentMessageContext;
 		const replyTargetForReaction =
-			input.messageId !== undefined && input.messageId === currentMessageContext?.replyMessageId
+			input.messageId !== undefined &&
+			input.messageId === currentMessageContext?.replyMessageId &&
+			(input.threadId === undefined ||
+				input.threadId === currentMessageContext.replyTarget?.threadId)
 				? currentMessageContext.replyTarget
 				: undefined;
 		const fallbackTarget = replyTargetForReaction ?? currentMessageContext?.target;
