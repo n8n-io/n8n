@@ -74,9 +74,7 @@ export class AgentIntegrationManagementService {
 		);
 		if (savedAgent.activeVersionId === null) return { integration, savedAgent };
 
-		await this.chatService.connect(options.agent.id, integration, options.agent.projectId, {
-			skipBeforeConnect: true,
-		});
+		await this.chatService.connect(options.agent.id, integration, options.agent.projectId);
 		await this.chatService.broadcastIntegrationChange(options.agent.id, integration, 'connect');
 		return { integration, savedAgent };
 	}

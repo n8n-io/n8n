@@ -24,9 +24,10 @@ const emit = defineEmits<{
 const setupKind = ref<'managed' | 'manual'>('managed');
 const manualRef = ref<AgentChannelViewExpose>();
 const validationError = computed(() => manualRef.value?.validationError ?? null);
-const loading = computed(() => props.runtime.loading.value);
+const loading = computed(() => props.loading || props.runtime.loading.value);
 
 async function setupApp(token: string) {
+	if (props.disabled) return false;
 	return await props.runtime.setupApp(token, () => emit('connected'));
 }
 
@@ -80,6 +81,7 @@ defineExpose({ validationError, loading });
 			:credential-permissions="credentialPermissions"
 			:credentials-loading="credentialsLoading"
 			:loading="loading"
+			:disabled="disabled"
 			:error-message="errorMessage"
 			:error-is-conflict="errorIsConflict"
 			:force-new-credential="forceNewCredential"

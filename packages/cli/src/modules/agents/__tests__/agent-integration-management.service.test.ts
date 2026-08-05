@@ -72,9 +72,7 @@ describe('AgentIntegrationManagementService', () => {
 			modifiedBy: 'user',
 			broadcast: false,
 		});
-		expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId, {
-			skipBeforeConnect: true,
-		});
+		expect(chatService.connect).toHaveBeenCalledWith(agent.id, integration, agent.projectId);
 		expect(chatService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			agent.id,
 			integration,

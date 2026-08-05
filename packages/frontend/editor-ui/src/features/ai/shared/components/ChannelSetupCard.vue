@@ -120,6 +120,9 @@ const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unkno
 });
 const currentPlatform = computed(() => getAgentChannelPlatform(props.integrationType));
 const currentRuntime = computed(() => runtimes[props.integrationType] ?? fallbackRuntime);
+const channelActionInFlight = computed(
+	() => connectionInFlight.value || currentRuntime.value.loading.value,
+);
 const channelViewRef = ref<AgentChannelViewExpose>();
 const integrationLabel = computed(() => currentIntegration.value.label);
 
@@ -169,12 +172,12 @@ function notifyAgentUpdated() {
 }
 
 function skipSetup() {
-	if (connectionInFlight.value) return;
+	if (channelActionInFlight.value) return;
 	finish(false);
 }
 
 async function saveChannelConfig() {
-	if (isBlocked() || connectionInFlight.value) return;
+	if (isBlocked() || channelActionInFlight.value) return;
 	const credentialId = currentChannelCredentialId.value;
 	if (!credentialId || channelViewRef.value?.validationError) return;
 
@@ -239,6 +242,7 @@ watch(
 				:credential-permissions="credentialPermissions"
 				:credentials-loading="credentialsLoading"
 				:loading="isLoading || connectionInFlight"
+				:disabled="isBlocked()"
 				:connected="isConfigured"
 				:connected-description="connectedDescription"
 				:error-message="errorMessage"
@@ -264,7 +268,7 @@ watch(
 			<N8nButton
 				variant="ghost"
 				size="medium"
-				:disabled="connectionInFlight"
+				:disabled="channelActionInFlight"
 				data-testid="channel-setup-card-skip"
 				@click="skipSetup"
 			>
