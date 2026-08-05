@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
 
@@ -74,35 +74,45 @@ useKeybindings({
 		data-testid="agent-preview-dock"
 	>
 		<header :class="$style.header" data-testid="agent-preview-dock-header">
-			<N8nText
+			<N8nHeading
+				tag="h2"
 				size="small"
-				:bold="true"
 				:class="$style.sessionTitle"
 				data-testid="agent-preview-session-title"
 			>
 				{{ props.sessionTitle }}
-			</N8nText>
+			</N8nHeading>
 
 			<div :class="$style.actions">
-				<N8nButton
-					variant="ghost"
-					size="small"
-					:label="i18n.baseText('agents.builder.preview.viewSession')"
-					:disabled="!props.hasSession || !props.effectiveSessionId"
-					data-testid="agent-preview-view-session-btn"
-					@click="viewTrace"
-				/>
+				<N8nTooltip
+					v-if="props.hasSession && props.effectiveSessionId"
+					:content="i18n.baseText('agents.builder.preview.viewSession')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+					data-testid="agent-preview-view-session-tooltip"
+				>
+					<N8nIconButton
+						icon="list-tree"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
+						data-testid="agent-preview-view-session-btn"
+						@click="viewTrace"
+					/>
+				</N8nTooltip>
 
 				<KeyboardShortcutTooltip
 					placement="bottom"
 					:label="i18n.baseText('agents.builder.chat.newChat.label')"
 					:shortcut="{ metaKey: true, shiftKey: true, keys: [';'] }"
 				>
-					<N8nButton
-						variant="subtle"
-						size="small"
+					<N8nIconButton
 						icon="message-circle-plus"
-						:label="i18n.baseText('agents.builder.chat.newChat.label')"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						:aria-label="i18n.baseText('agents.builder.chat.newChat.label')"
 						data-testid="agent-preview-new-chat-btn"
 						@click="createNewSession"
 					/>
@@ -117,6 +127,7 @@ useKeybindings({
 						variant="ghost"
 						icon="x"
 						size="small"
+						icon-size="large"
 						:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 						data-testid="agent-preview-close-btn"
 						@click="close"
@@ -154,20 +165,17 @@ useKeybindings({
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: color-mix(in srgb, var(--color--primary) 4%, var(--background--surface));
-	border-left: var(--border-width) var(--border-style)
-		color-mix(in srgb, var(--color--primary) 16%, var(--border-color));
+	background-color: var(--color--background--light-2);
+	border-left: var(--border);
 }
 
 .header {
-	height: var(--height--4xl);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	flex: 0 0 auto;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: color-mix(in srgb, var(--color--primary) 6%, var(--background--surface));
-	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
 }
 
 .sessionTitle {
@@ -179,10 +187,11 @@ useKeybindings({
 }
 
 .actions {
+	margin-left: auto;
 	min-width: max-content;
 	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
 }
 </style>

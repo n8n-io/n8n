@@ -18,29 +18,26 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nButton: {
-		name: 'N8nButton',
-		template:
-			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
-		props: ['variant', 'size', 'label', 'disabled'],
-		emits: ['click'],
-	},
 	N8nIconButton: {
 		name: 'N8nIconButton',
 		template:
-			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" @click="$emit(\'click\')"><i :data-icon="icon" /></button>',
-		props: ['variant', 'size', 'icon'],
+			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-size="iconSize" @click="$emit(\'click\')"><i :data-icon="icon" /></button>',
+		props: ['variant', 'size', 'icon', 'iconSize'],
 		emits: ['click'],
 	},
 	N8nKeyboardShortcut: { name: 'N8nKeyboardShortcut', template: '<span />' },
-	N8nText: {
-		name: 'N8nText',
-		template: '<span v-bind="$attrs"><slot /></span>',
+	N8nHeading: {
+		name: 'N8nHeading',
+		template: '<component :is="tag" v-bind="$attrs" :data-size="size"><slot /></component>',
+		props: ['tag', 'size'],
 	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
-		template: '<div><slot /><slot name="content" /></div>',
+		template:
+			'<div v-bind="$attrs" :data-content="content" :data-placement="placement" :data-show-after="showAfter"><slot /><slot name="content" /></div>',
+		props: ['content', 'placement', 'showAfter'],
 	},
+	TOOLTIP_DELAY_MS: 500,
 }));
 
 const AgentPreviewChatPageStub = {
@@ -95,38 +92,67 @@ describe('AgentPreviewDock', () => {
 		useKeybindingsMock.mockClear();
 	});
 
-	it('renders the compact session header in the approved order', () => {
+	it('renders the Instance AI session heading before the compact actions', () => {
 		const wrapper = mountDock();
+		const title = wrapper.get('[data-testid="agent-preview-session-title"]');
 
-		expect(wrapper.get('[data-testid="agent-preview-session-title"]').text()).toBe('Order help');
+		expect(title.text()).toBe('Order help');
+		expect(title.element.tagName).toBe('H2');
+		expect(title.attributes('data-size')).toBe('small');
 		expect(
 			wrapper
 				.get('[data-testid="agent-preview-dock-header"]')
-				.findAll('button')
-				.map((button) => button.attributes('data-testid')),
+				.findAll('[data-testid="agent-preview-session-title"], button')
+				.map((element) => element.attributes('data-testid')),
 		).toEqual([
+			'agent-preview-session-title',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
 			'agent-preview-close-btn',
 		]);
-		expect(wrapper.get('[data-testid="agent-preview-view-session-btn"]').text()).toBe(
-			'agents.builder.preview.viewSession',
-		);
-		expect(wrapper.get('[data-testid="agent-preview-new-chat-btn"]').text()).toBe(
-			'agents.builder.chat.newChat.label',
-		);
-		expect(
-			wrapper.get('[data-testid="agent-preview-view-session-btn"]').attributes('data-variant'),
-		).toBe('ghost');
-		expect(
-			wrapper.get('[data-testid="agent-preview-new-chat-btn"]').attributes('data-variant'),
-		).toBe('subtle');
-		expect(wrapper.get('[data-testid="agent-preview-close-btn"]').attributes('data-variant')).toBe(
-			'ghost',
-		);
-		expect(wrapper.find('[data-testid="agent-preview-close-btn"] [data-icon="x"]').exists()).toBe(
-			true,
-		);
+	});
+
+	it('renders accessible ghost icon actions with the Instance AI sizing', () => {
+		const wrapper = mountDock();
+		const expectedActions = [
+			{
+				testId: 'agent-preview-view-session-btn',
+				icon: 'list-tree',
+				label: 'agents.builder.preview.viewSession',
+			},
+			{
+				testId: 'agent-preview-new-chat-btn',
+				icon: 'message-circle-plus',
+				label: 'agents.builder.chat.newChat.label',
+			},
+			{
+				testId: 'agent-preview-close-btn',
+				icon: 'x',
+				label: 'agents.builder.preview.close.ariaLabel',
+			},
+		];
+
+		for (const action of expectedActions) {
+			const button = wrapper.get(`[data-testid="${action.testId}"]`);
+			expect(button.attributes()).toMatchObject({
+				'data-variant': 'ghost',
+				'data-size': 'small',
+				'data-icon-size': 'large',
+				'aria-label': action.label,
+			});
+			expect(button.find(`[data-icon="${action.icon}"]`).exists()).toBe(true);
+		}
+	});
+
+	it('shows the trace action in a delayed bottom tooltip', () => {
+		const wrapper = mountDock();
+		const tooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
+
+		expect(tooltip.attributes()).toMatchObject({
+			'data-content': 'agents.builder.preview.viewSession',
+			'data-placement': 'bottom',
+			'data-show-after': '500',
+		});
 	});
 
 	it('emits all dock header actions', async () => {
@@ -141,12 +167,11 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
-	it('does not open a trace for an effective id that has not persisted yet', async () => {
+	it('omits the trace control and tooltip until the session has persisted', () => {
 		const wrapper = mountDock({ hasSession: false });
-		const traceButton = wrapper.get('[data-testid="agent-preview-view-session-btn"]');
 
-		expect(traceButton.attributes('disabled')).toBeDefined();
-		await traceButton.trigger('click');
+		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
 		expect(wrapper.emitted('view-trace')).toBeUndefined();
 	});
 

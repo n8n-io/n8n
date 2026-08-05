@@ -713,7 +713,7 @@ onBeforeUnmount(() => {
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--background--subtle);
+	background: var(--assistant--color--background--user-bubble);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
