@@ -75,17 +75,12 @@ test.describe(
 			expect(await api.getPollerCursor(workflowId, nodeId)).toEqual({ lastItemId: 1 });
 		});
 
-		// `fireScheduledJobsNow` only backdates the job's `nextRunAt`
-		// (packages/cli/src/controllers/e2e.controller.ts) - it doesn't wait for the
-		// resulting poll to run - so firing it twice back-to-back is the closest this
-		// harness gets to racing two commits of the same node's cursor. The scheduler's
-		// `claimDue` (SKIP LOCKED / BEGIN IMMEDIATE, see
-		// packages/@n8n/db/src/repositories/scheduled-job.repository.ts) still serializes
-		// which pass actually claims and runs the job, so this doesn't force the two
-		// `advanceCursor` transactions to interleave - that would need a lower-level test
-		// against the repository/service directly. What it does prove end-to-end: neither
-		// tick's item is silently dropped, and the cursor lands on the higher of the two
-		// item ids rather than an intermediate or corrupted value.
+		// `fireScheduledJobsNow` backdates the job's `nextRunAt` without waiting for the
+		// poll to run, so firing it twice back-to-back is the closest this gets to racing
+		// two cursor commits; the scheduler still serializes which pass claims the job, so
+		// the two `advanceCursor` writes never actually interleave. What it proves: neither
+		// tick's item is dropped, and the cursor lands on the higher id, not an
+		// intermediate value.
 		test('should not lose either poll when two ticks are fired back-to-back', async ({
 			api,
 			services,
