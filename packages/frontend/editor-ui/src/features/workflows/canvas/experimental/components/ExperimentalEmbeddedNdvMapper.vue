@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import InputPanel from '@/features/ndv/panel/components/InputPanel.vue';
 import type { INodeUi } from '@/Interface';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { onBeforeUnmount, watch, computed, ref, useTemplateRef } from 'vue';
 import { useStyles } from '@n8n/composables/useStyles';
 import {
@@ -34,7 +33,6 @@ const {
 
 const state = ref<MapperState>({ isOpen: false });
 const contentRef = useTemplateRef('content');
-const ndvStore = injectNDVStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const contentElRef = computed<HTMLElement | null>(() => contentRef.value?.$el ?? null);
 const { APP_Z_INDEXES } = useStyles();
@@ -120,8 +118,6 @@ onClickOutside(contentElRef, handleReferenceFocusOut);
 				disable-display-mode-selection
 				:active-node-name="node.name"
 				:current-node-name="inputNodeName"
-				:is-mapping-onboarded="ndvStore.isMappingOnboarded"
-				:focused-mappable-input="ndvStore.focusedMappableInput"
 				node-not-run-message-variant="simple"
 				:truncate-limit="60"
 				search-shortcut="ctrl+f"

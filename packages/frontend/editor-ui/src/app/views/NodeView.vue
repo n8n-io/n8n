@@ -154,9 +154,6 @@ const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
 );
 
-const LazyNodeDetailsView = defineAsyncComponent(
-	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
-);
 const LazyNodeDetailsViewV2 = defineAsyncComponent(
 	async () => await import('@/features/ndv/shared/views/NodeDetailsViewV2.vue'),
 );
@@ -298,8 +295,6 @@ const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
-const isNDVV2 = computed(() => true);
-
 // Per-editor host overrides (AI features + read-only). The artifact host marks
 // the canvas read-only while a workflow-builder agent mutates the workflow.
 const {
@@ -2146,20 +2141,7 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 			<Suspense>
-				<LazyNodeDetailsView
-					v-if="!isNDVV2"
-					:read-only="isCanvasReadOnly"
-					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
-					:renaming="false"
-					@value-changed="onRenameNode($event.value as string)"
-					@stop-execution="onStopExecution"
-					@switch-selected-node="onSwitchActiveNode"
-					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-				/>
-			</Suspense>
-			<Suspense>
 				<LazyNodeDetailsViewV2
-					v-if="isNDVV2"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					@rename-node="onRenameNode"
