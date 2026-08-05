@@ -21,6 +21,7 @@ export interface ProjectExportRequest {
 	user: User;
 	projectIds: string[];
 	writer: PackageWriter;
+	includeTags: boolean;
 }
 
 interface ProjectExportResult {
@@ -98,13 +99,18 @@ export class ProjectExporter {
 	): Promise<FolderExportResult> {
 		const folderIds = await this.folderFinder.findFolderIdsInProject(projectId);
 		if (folderIds.length === 0) {
-			return { entries: [], workflowEntries: [], requirements: mergeRequirements() };
+			return {
+				entries: [],
+				workflowEntries: [],
+				requirements: mergeRequirements(),
+			};
 		}
 
 		return await this.folderExporter.export({
 			user: request.user,
 			folderIds,
 			writer: request.writer,
+			includeTags: request.includeTags,
 			basePrefix: target,
 		});
 	}
@@ -123,6 +129,7 @@ export class ProjectExporter {
 			user: request.user,
 			workflowIds: rootWorkflowIds,
 			writer: request.writer,
+			includeTags: request.includeTags,
 			basePrefix: target,
 		});
 	}

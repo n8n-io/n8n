@@ -13,7 +13,7 @@ import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/U
 
 import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 type Item = UsersList['items'][number];
 
 const i18n = useI18n();
@@ -43,7 +43,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.user'),
 		key: 'name',
-		width: 400,
+		width: 300,
 		value(row) {
 			return {
 				...row,

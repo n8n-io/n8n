@@ -1,15 +1,20 @@
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	isDraftAgentConfig,
+	MANAGED_CREDENTIAL_TOKEN,
+	SUB_AGENT_TASK_DIFFICULTIES,
+} from '@n8n/api-types';
 
 function clearUnknownCredentialId(
 	credentialId: unknown,
 	accessibleCredentialIds: ReadonlySet<string>,
-	allowManagedCredentialToken = false,
+	allowedManagedTokens: readonly string[] = [],
 ): unknown {
 	if (typeof credentialId !== 'string' || credentialId === '') {
 		return credentialId;
 	}
 
-	if (allowManagedCredentialToken && credentialId === MANAGED_CREDENTIAL_TOKEN) {
+	if (allowedManagedTokens.includes(credentialId)) {
 		return credentialId;
 	}
 
@@ -18,6 +23,34 @@ function clearUnknownCredentialId(
 
 function isManagedEpisodicMemoryCredentialPath(path: readonly string[]): boolean {
 	return path.join('.') === 'memory.episodicMemory.credential';
+}
+
+/**
+ * Model-credential paths where the n8n Connect managed tag is a valid value.
+ * Memory worker models are ordinary chat models, so the gateway can serve them
+ * just like the main and per-difficulty models.
+ */
+const AI_GATEWAY_MODEL_CREDENTIAL_PATHS: ReadonlySet<string> = new Set([
+	'credential',
+	...SUB_AGENT_TASK_DIFFICULTIES.map(
+		(difficulty) => `subAgents.modelsByDifficulty.${difficulty}.credential`,
+	),
+	'memory.observationalMemory.observerModel.credential',
+	'memory.observationalMemory.reflectorModel.credential',
+	'memory.episodicMemory.extractorModel.credential',
+	'memory.episodicMemory.reflectorModel.credential',
+]);
+
+function isAiGatewayModelCredentialPath(path: readonly string[]): boolean {
+	return AI_GATEWAY_MODEL_CREDENTIAL_PATHS.has(path.join('.'));
+}
+
+/** Managed credential tokens allowed to survive sanitization at the given path. */
+function allowedManagedTokensForPath(path: readonly string[]): string[] {
+	const tokens: string[] = [];
+	if (isManagedEpisodicMemoryCredentialPath(path)) tokens.push(MANAGED_CREDENTIAL_TOKEN);
+	if (isAiGatewayModelCredentialPath(path)) tokens.push(AI_GATEWAY_MANAGED_TAG);
+	return tokens;
 }
 
 function sanitizeUnknownCredentialsInValue(
@@ -44,7 +77,7 @@ function sanitizeUnknownCredentialsInValue(
 			sanitized[key] = clearUnknownCredentialId(
 				entry,
 				accessibleCredentialIds,
-				isManagedEpisodicMemoryCredentialPath(nextPath),
+				allowedManagedTokensForPath(nextPath),
 			);
 			continue;
 		}
@@ -99,6 +132,10 @@ function sanitizeUnknownCredentialsInValue(
  * Replace credential IDs that are not accessible to the agent project with `""`.
  * Walks the config recursively and only targets credential-like fields:
  * `credential`, `credentialId`, and `credentials.*.id`.
+ *
+ * A top-level credential without a model is also cleared so legacy rows
+ * converge to a clean draft instead of failing the `credential ⇒ model`
+ * schema refine.
  */
 export function sanitizeUnknownAgentCredentials(
 	raw: unknown,
@@ -108,5 +145,23 @@ export function sanitizeUnknownAgentCredentials(
 		return raw;
 	}
 
-	return sanitizeUnknownCredentialsInValue(raw, accessibleCredentialIds);
+	const sanitized = sanitizeUnknownCredentialsInValue(raw, accessibleCredentialIds);
+	if (!isRecord(sanitized)) {
+		return sanitized;
+	}
+
+	const model = typeof sanitized.model === 'string' ? sanitized.model : undefined;
+	if (
+		isDraftAgentConfig({ model }) &&
+		typeof sanitized.credential === 'string' &&
+		sanitized.credential !== ''
+	) {
+		sanitized.credential = '';
+	}
+
+	return sanitized;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

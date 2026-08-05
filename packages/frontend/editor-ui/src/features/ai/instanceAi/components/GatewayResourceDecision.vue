@@ -4,7 +4,7 @@ import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';

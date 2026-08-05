@@ -205,9 +205,17 @@ export const validateEntry = (
 		}
 	}
 
+	const newValue = validationResult.newValue;
+
+	// v3.5+ serializes values to JSON-safe form so output never carries live
+	// Luxon DateTime objects (dateTime fields) or nested dates inside objects/arrays
+	if (nodeVersion && nodeVersion >= 3.5 && newValue !== undefined && newValue !== null) {
+		return { name, value: deepCopy(newValue) };
+	}
+
 	return {
 		name,
-		value: validationResult.newValue ?? null,
+		value: newValue ?? null,
 	};
 };
 

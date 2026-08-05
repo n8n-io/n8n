@@ -342,6 +342,7 @@ describe('insights.api', () => {
 					{
 						workflowId: 'workflow-1',
 						workflowName: 'Test Workflow 1',
+						hasReadAccess: true,
 						projectId: 'project-1',
 						projectName: 'Test Project',
 						total: 50,
@@ -386,6 +387,7 @@ describe('insights.api', () => {
 					{
 						workflowId: 'workflow-1',
 						workflowName: 'Test Workflow 1',
+						hasReadAccess: true,
 						projectId: 'project-1',
 						projectName: 'Test Project 1',
 						total: 30,
@@ -399,6 +401,7 @@ describe('insights.api', () => {
 					{
 						workflowId: 'workflow-2',
 						workflowName: 'Test Workflow 2',
+						hasReadAccess: true,
 						projectId: 'project-2',
 						projectName: 'Test Project 2',
 						total: 20,

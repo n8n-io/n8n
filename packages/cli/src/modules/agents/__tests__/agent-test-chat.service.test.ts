@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
 import type { N8nMemory } from '../integrations/n8n-memory';
 
@@ -10,12 +11,14 @@ type MemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
 function makeService() {
 	const n8nMemory = mock<N8nMemory>();
 	const memory = mock<MemoryImplementation>();
+	const attachmentService = mock<AgentChatAttachmentService>();
 	n8nMemory.getImplementation.mockReturnValue(memory);
 
 	return {
-		service: new AgentTestChatService(n8nMemory),
+		service: new AgentTestChatService(n8nMemory, attachmentService),
 		n8nMemory,
 		memory,
+		attachmentService,
 	};
 }
 

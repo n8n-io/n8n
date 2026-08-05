@@ -62,13 +62,13 @@ export const createListTagsTool = (
 	tagService: TagService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'list_tags',
+	name: 'list_workflow_tags',
 	config: {
 		description: 'List all workflow tags in the instance.',
 		inputSchema,
 		outputSchema,
 		annotations: {
-			title: 'List Tags',
+			title: 'List Workflow Tags',
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -78,7 +78,7 @@ export const createListTagsTool = (
 	handler: async ({ limit = MAX_RESULTS }: ListTagsParams) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'list_tags',
+			tool_name: 'list_workflow_tags',
 			parameters: { limit },
 		};
 

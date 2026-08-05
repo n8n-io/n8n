@@ -8,9 +8,11 @@ import {
 } from 'n8n-core';
 import {
 	createRunExecutionData,
+	type IExecutionContext,
 	type INode,
 	type IRunExecutionData,
 	type IWorkflowExecuteAdditionalData,
+	type RelatedExecution,
 	type Workflow,
 	type WorkflowSettings,
 } from 'n8n-workflow';
@@ -65,6 +67,8 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 
 		const hookRegistry = mock<ExecutionContextHookRegistry>();
 		hookRegistry.getGlobalHooks.mockReturnValue([hook]);
+		// The redaction hook opts into re-running for sub-workflow executions too.
+		hookRegistry.getSubExecutionHooks.mockReturnValue([hook]);
 
 		const executionContextService = new ExecutionContextService(
 			mock(),
@@ -136,6 +140,69 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 			production: false,
 			manual: false,
 			source: 'workflow',
+		});
+	});
+
+	describe('sub-workflow execution (child re-runs the hook against the inherited snapshot)', () => {
+		const establishSubWorkflow = async (
+			floor: 'off' | 'production' | 'all',
+			childPolicy: WorkflowSettings.RedactionPolicy | undefined,
+			inheritedRedaction: IExecutionContext['redaction'],
+		) => {
+			enforcementService.get.mockResolvedValue(floor);
+
+			const parentExecution: RelatedExecution = {
+				executionId: 'parent-execution-id',
+				workflowId: 'parent-workflow-id',
+				executionContext: {
+					version: 1,
+					establishedAt: 1_000,
+					source: 'manual',
+					redaction: inheritedRedaction,
+				},
+			};
+
+			const childWorkflow = buildWorkflow(childPolicy);
+			const runExecutionData = buildRunExecutionData();
+			runExecutionData.parentExecution = parentExecution;
+
+			await establishExecutionContext(
+				childWorkflow,
+				runExecutionData,
+				additionalData,
+				'integrated',
+			);
+
+			return runExecutionData.executionData!.runtimeData!.redaction;
+		};
+
+		it("redacts the child's own record from its own policy when the parent redacts nothing", async () => {
+			// Core IAM-1049 case: policy'd child, policy-less parent, floor off.
+			expect(
+				await establishSubWorkflow('off', 'all', { version: 2, production: false, manual: false }),
+			).toEqual({ version: 2, production: true, manual: true, source: 'workflow' });
+		});
+
+		it("preserves top-down escalation: policy-less child inherits the parent's redaction", async () => {
+			expect(
+				await establishSubWorkflow('off', 'none', { version: 2, production: true, manual: true }),
+			).toEqual({ version: 2, production: true, manual: true, source: 'workflow' });
+		});
+
+		it('merges child and parent strictest-per-channel', async () => {
+			expect(
+				await establishSubWorkflow('off', 'non-manual', {
+					version: 2,
+					production: false,
+					manual: true,
+				}),
+			).toEqual({ version: 2, production: true, manual: true, source: 'workflow' });
+		});
+
+		it('still enforces the instance floor on the child record', async () => {
+			expect(
+				await establishSubWorkflow('all', 'none', { version: 2, production: false, manual: false }),
+			).toEqual({ version: 2, production: true, manual: true, source: 'instance' });
 		});
 	});
 

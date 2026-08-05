@@ -1,4 +1,5 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 export interface ExecutionResult {
 	executionId: string;
@@ -101,6 +102,37 @@ export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget
 			typeof child.targetResource.id === 'string'
 		) {
 			return { agentId: child.agentId, workflowId: child.targetResource.id };
+		}
+	}
+	return undefined;
+}
+
+export interface AgentBuilderTarget {
+	/** The builder sub-agent node id (`agent-builder:<targetAgentId>`). */
+	agentId: string;
+	targetAgentId: string;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the agentId
+ * (node id) and targetAgentId of the latest agent-builder sub-agent that was
+ * spawned with a concrete `targetResource.id`. Used to open the canvas
+ * preview at spawn time, before the first build-agent tool call returns a
+ * result — mirrors getLatestBuilderTarget for workflows.
+ */
+export function getLatestAgentBuilderTarget(
+	node: InstanceAiAgentNode,
+): AgentBuilderTarget | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const child = node.children[i];
+		const nested = getLatestAgentBuilderTarget(child);
+		if (nested) return nested;
+		if (
+			child.kind === 'agent-builder' &&
+			child.targetResource?.type === 'agent' &&
+			typeof child.targetResource.id === 'string'
+		) {
+			return { agentId: child.agentId, targetAgentId: child.targetResource.id };
 		}
 	}
 	return undefined;
@@ -244,6 +276,36 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 	return false;
 }
 
+/**
+ * Whether the AI is actively working on agent `agentId` somewhere in this
+ * agent tree — used to lock the agent artifact editor while a build is in
+ * flight so user edits can't race builder config writes (the post-build
+ * refetch would clobber them). Either signal is enough:
+ *   1. The active agent tree has already created/mutated this agent — covers
+ *      short gaps between tool calls while the run is still ongoing.
+ *   2. An active agent-builder sub-agent targeting the agent — covers the
+ *      whole build window from spawn to completion.
+ */
+export function isAgentEditingAgent(node: InstanceAiAgentNode, agentId: string): boolean {
+	if (node.status === 'active' && getLatestAgentArtifactResult(node)?.agentId === agentId) {
+		return true;
+	}
+
+	if (
+		node.kind === 'agent-builder' &&
+		node.status === 'active' &&
+		node.targetResource?.type === 'agent' &&
+		node.targetResource.id === agentId
+	) {
+		return true;
+	}
+
+	for (const child of node.children) {
+		if (isAgentEditingAgent(child, agentId)) return true;
+	}
+	return false;
+}
+
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
 	'schema',
 	'query',
@@ -344,13 +406,6 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 	return undefined;
 }
 
-const AGENT_BUILDER_MUTATING_ACTIONS = new Set([
-	'build_agent',
-	'create_skill',
-	'create_task',
-	'build_custom_tool',
-]);
-
 function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
 	if (node.targetResource?.type !== 'agent' || typeof node.targetResource.id !== 'string') {
 		return undefined;
@@ -363,53 +418,111 @@ function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefi
 	};
 }
 
+interface AgentTargetedWalk<T> {
+	result?: T;
+	/**
+	 * Most specific agent target found in this subtree: this node's own
+	 * targetResource, or one bubbled up from a child. Lets an orchestrator's
+	 * own tool call (which carries no agentId in its result) resolve identity
+	 * from the builder sub-agent it just spawned, whose targetResource
+	 * carries the agentId via the `agent-spawned` event.
+	 */
+	target?: AgentArtifactTarget;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last), threading the nearest
+ * agent target down to descendants and back up to callers, and returns the
+ * first `match` hit among a node's own tool calls (also most recent last).
+ * Shared by artifact discovery and config-mutation preview refresh so their
+ * identical target-resolution/traversal logic can't drift between the two.
+ */
+function walkAgentTargetedResult<T>(
+	node: InstanceAiAgentNode,
+	fallbackTarget: AgentArtifactTarget | undefined,
+	match: (
+		toolCall: InstanceAiToolCallState,
+		callTarget: AgentArtifactTarget | undefined,
+	) => T | undefined,
+): AgentTargetedWalk<T> {
+	const ownTarget = getAgentTarget(node);
+	const target = ownTarget ?? fallbackTarget;
+
+	let childTarget: AgentArtifactTarget | undefined;
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childWalk = walkAgentTargetedResult(node.children[i], target, match);
+		if (childWalk.result) return childWalk;
+		if (childTarget === undefined) childTarget = childWalk.target;
+	}
+
+	// Identity for this node's own tool calls: prefer its own targetResource,
+	// then one discovered on a child (e.g. a builder sub-agent it spawned),
+	// then the fallback threaded down from an ancestor.
+	const callTarget = ownTarget ?? childTarget ?? fallbackTarget;
+
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const result = match(node.toolCalls[i], callTarget);
+		if (result !== undefined) return { result, target: callTarget };
+	}
+
+	return { target: callTarget };
+}
+
+function matchAgentArtifactToolCall(
+	tc: InstanceAiToolCallState,
+	callTarget: AgentArtifactTarget | undefined,
+): AgentArtifactResult | undefined {
+	if (tc.isLoading || !tc.result || typeof tc.result !== 'object' || !callTarget) return undefined;
+	if (tc.toolName !== 'build-agent') return undefined;
+
+	const result = tc.result as Record<string, unknown>;
+	const args = tc.args as Record<string, unknown> | undefined;
+
+	if (result.ok === true && typeof args?.name === 'string') {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
+	}
+	if (result.configUpdated === true) {
+		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+	}
+	return undefined;
+}
+
 export function getLatestAgentArtifactResult(
 	node: InstanceAiAgentNode,
 	fallbackTarget?: AgentArtifactTarget,
 ): AgentArtifactResult | undefined {
-	const target = getAgentTarget(node) ?? fallbackTarget;
+	return walkAgentTargetedResult(node, fallbackTarget, matchAgentArtifactToolCall).result;
+}
 
+/** Builder tool calls whose success means the persisted agent changed in a panel-visible way. */
+export interface AgentConfigMutationResult {
+	agentId: string;
+	/** Unique per mutation — a later mutation in the same build re-fires watchers. */
+	toolCallId: string;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the latest
+ * resolved tool call stamped with `configMutated: true` by the backend.
+ */
+export function getLatestAgentConfigMutation(
+	node: InstanceAiAgentNode,
+): AgentConfigMutationResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestAgentArtifactResult(node.children[i], target);
+		const childResult = getLatestAgentConfigMutation(node.children[i]);
 		if (childResult) return childResult;
 	}
-
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
-		if (tc.isLoading || !tc.result || typeof tc.result !== 'object') continue;
-		const result = tc.result as Record<string, unknown>;
-		const args = tc.args as Record<string, unknown> | undefined;
-
 		if (
-			tc.toolName === 'agent_builder' &&
-			args?.action === 'create_agent' &&
-			result.ok === true &&
-			typeof result.agentId === 'string'
+			!tc.isLoading &&
+			isRecord(tc.result) &&
+			tc.result.configMutated === true &&
+			typeof tc.result.agentId === 'string'
 		) {
-			return {
-				agentId: result.agentId,
-				...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
-				toolCallId: tc.toolCallId,
-				kind: 'created',
-			};
-		}
-
-		if (
-			target &&
-			((tc.toolName === 'agent_builder' &&
-				typeof args?.action === 'string' &&
-				AGENT_BUILDER_MUTATING_ACTIONS.has(args.action) &&
-				result.ok === true) ||
-				(tc.toolName === 'configure_channel' && 'connected' in result))
-		) {
-			return {
-				...target,
-				toolCallId: tc.toolCallId,
-				kind: 'mutated',
-			};
+			return { agentId: tc.result.agentId, toolCallId: tc.toolCallId };
 		}
 	}
-
 	return undefined;
 }
 

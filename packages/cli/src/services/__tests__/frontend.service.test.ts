@@ -79,6 +79,8 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		aiAssistant: { baseUrl: '' },
+		aiGateway: { enabled: false },
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -155,6 +157,7 @@ describe('FrontendService', () => {
 
 	const securityConfig = mock<SecurityConfig>({
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: '',
 	});
 
 	const pushConfig = mock<PushConfig>({
@@ -225,14 +228,36 @@ describe('FrontendService', () => {
 	};
 
 	beforeEach(() => {
-		originalEnv = process.env;
+		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
+		globalConfig.aiAssistant.baseUrl = '';
+		globalConfig.aiGateway.enabled = false;
+		licenseState.isAiGatewayLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
 		process.env = originalEnv;
+	});
+
+	describe('credentials overwrite reload handler', () => {
+		it('registers a reload handler that regenerates types', async () => {
+			const { service } = createMockService();
+
+			expect(credentialsOverwrites.registerReloadHandler).toHaveBeenCalledWith(
+				expect.any(Function),
+			);
+
+			// The registered handler is what CredentialsOverwrites invokes after a
+			// reload; it must regenerate the credential types.
+			const handler = vi.mocked(credentialsOverwrites.registerReloadHandler).mock.calls[0][0];
+			const generateTypesSpy = vi.spyOn(service, 'generateTypes').mockResolvedValue();
+
+			await handler();
+
+			expect(generateTypesSpy).toHaveBeenCalled();
+		});
 	});
 
 	describe('getSettings', () => {
@@ -245,6 +270,60 @@ describe('FrontendService', () => {
 					settingsMode: 'authenticated',
 				}),
 			);
+		});
+
+		it('should enable the AI Gateway when configured and licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			licenseState.isAiGatewayLicensed.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway?.enabled).toBe(true);
+		});
+
+		it('should keep the AI Gateway disabled when configured but not licensed', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			globalConfig.aiGateway.enabled = true;
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiGateway).toBeUndefined();
+		});
+
+		it('should normalize configured postMessage origins', async () => {
+			securityConfig.postMessageAllowedOrigins =
+				'HTTPS://Example.COM/, https://app.example.com:443, http://localhost:5678/path, not a url, data:text/html;foo';
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+			expect(settings.security.postMessageAllowedOrigins).toEqual([
+				'https://example.com',
+				'https://app.example.com',
+				'http://localhost:5678',
+				'not a url',
+				'data:text/html;foo',
+			]);
+
+			securityConfig.postMessageAllowedOrigins = '';
+		});
+
+		it('should refresh the workflow reviews policy on every settings fetch', async () => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			workflowReviewPolicyService.get
+				.mockResolvedValueOnce({ enabled: true })
+				.mockResolvedValueOnce({ enabled: false });
+			const { service } = createMockService();
+
+			const initialSettings = await service.getSettings();
+			expect(initialSettings.workflowReviews).toEqual({ enabled: true });
+
+			const refreshedSettings = await service.getSettings();
+			expect(refreshedSettings.workflowReviews).toEqual({ enabled: false });
+			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(2);
 		});
 
 		it('should cache dynamic banner filters for 30 seconds', async () => {

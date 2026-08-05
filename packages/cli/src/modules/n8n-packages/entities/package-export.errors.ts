@@ -6,6 +6,9 @@ export class PackageEntityAccessDeniedError extends UserError {}
 /** A requested entity does not exist at all. */
 export class PackageEntityNotFoundError extends UserError {}
 
+/** A valid export request is blocked by package export rules. */
+export class PackageExportBlockedError extends UserError {}
+
 /**
  * Throws when the caller cannot access every requested entity, distinguishing
  * whether each missing one is genuinely deleted or the caller just has no

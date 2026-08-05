@@ -65,6 +65,11 @@ properties:
     type: string
     description: Target project to create the workflow in. Defaults to the user's personal project.
     example: VmwOO9HeTEj20kxM
+  parentFolderId:
+    type: string
+    nullable: true
+    description: ID of the folder to place the workflow in. Omit or null to place at the project root.
+    example: X8ovzm8lTQjcXRZQ
   meta:
     type: object
     nullable: true

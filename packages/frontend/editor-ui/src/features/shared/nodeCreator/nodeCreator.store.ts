@@ -19,7 +19,7 @@ import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -452,6 +452,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
+	function onAgentPanelOptionSelected(properties: { choice: 'create_new' | 'existing_agent' }) {
+		trackNodeCreatorEvent('User selected agent in node creator panel', properties);
+	}
+
 	function onNodeAddedToCanvas(properties: {
 		node_id: string;
 		node_type: string;
@@ -506,6 +510,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		onActionsCustomAPIClicked,
 		onViewActions,
 		onSubcategorySelected,
+		onAgentPanelOptionSelected,
 		onNodeAddedToCanvas,
 		openNodeCreatorWithNode,
 	};

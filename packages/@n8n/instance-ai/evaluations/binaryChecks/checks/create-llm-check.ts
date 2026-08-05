@@ -5,7 +5,8 @@ import type { WorkflowResponse } from '../../clients/n8n-client';
 import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
 import type { BinaryCheck, BinaryCheckContext, CheckDimension } from '../types';
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+// Headroom for the multi-turn honesty check, which reasons over every claim across all turns.
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 function isLlmCheckTimeout(error: unknown, checkName: string): error is Error {
 	return (
@@ -73,7 +74,7 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				.replace('{agentTextResponse}', ctx.agentTextResponse ?? '')
 				.replace(
 					'{workflowBefore}',
-					ctx.existingWorkflow ? JSON.stringify(ctx.existingWorkflow, null, 2) : '{}',
+					ctx.workflowBefore ? JSON.stringify(ctx.workflowBefore, null, 2) : '{}',
 				);
 
 			const agent = getOrCreateAgent(options.name, ctx.modelId, systemPrompt);
@@ -115,8 +116,13 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 			const parsed = parseJudgeVerdict(text);
 
 			if (!parsed) {
+				// Same class as a timeout above: the judge never returned a verdict, so
+				// there is nothing to score. Without `errored` this counts as a real
+				// failure and reads as a defect in the workflow — the raw text is often
+				// a markdown analysis that AGREED with the workflow.
 				return {
 					pass: false,
+					errored: true,
 					comment: `Failed to parse LLM response. Raw (first 500 chars): ${text.slice(0, 500)}`,
 				};
 			}

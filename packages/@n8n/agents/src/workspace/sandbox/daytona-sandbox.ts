@@ -10,7 +10,14 @@ import type {
 } from '@daytona/sdk';
 import { randomUUID } from 'node:crypto';
 
-import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import { isAbortError, raceWithAbort } from '../../sdk/abort';
+import type {
+	AbortableOptions,
+	CommandResult,
+	ExecuteCommandOptions,
+	ProviderStatus,
+	SandboxInfo,
+} from '../types';
 import { BaseSandbox } from './base-sandbox';
 import { DaytonaAuthManager } from './daytona-auth-manager';
 import { loadDaytona } from './lazy-daytona';
@@ -19,10 +26,22 @@ import type { ErrorReporter, Logger } from './logger';
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';
 const SANDBOX_STATE_ARCHIVED = 'archived';
+const SANDBOX_STATE_CREATING = 'creating';
+const SANDBOX_STATE_RESTORING = 'restoring';
+const SANDBOX_STATE_STARTING = 'starting';
+const SANDBOX_STATE_PENDING_BUILD = 'pending_build';
+const SANDBOX_STATE_PULLING_SNAPSHOT = 'pulling_snapshot';
+const SANDBOX_STATE_FORKING = 'forking';
+const SANDBOX_STATE_RESIZING = 'resizing';
+const SANDBOX_STATE_SNAPSHOTTING = 'snapshotting';
+const SANDBOX_STATE_BUILDING_SNAPSHOT = 'building_snapshot';
+const SANDBOX_STATE_STOPPING = 'stopping';
+const SANDBOX_STATE_ARCHIVING = 'archiving';
 const SANDBOX_STATE_DESTROYED = 'destroyed';
 const SANDBOX_STATE_DESTROYING = 'destroying';
 const SANDBOX_STATE_ERROR = 'error';
 const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
+const MAX_ACQUISITION_RETRY_BACKOFF_MS = 5_000;
 
 /**
  * States a failed operation may recover from by resuming the sandbox: an idle sandbox that
@@ -34,10 +53,41 @@ const SANDBOX_STATE_BUILD_FAILED = 'build_failed';
  *    we don't want to trigger off an unrelated operation failure.
  * Deletion is handled separately as a `DaytonaNotFoundError` fast-path.
  */
-const RECOVERABLE_SANDBOX_STATES: ReadonlySet<string> = new Set([
+const RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
 	SANDBOX_STATE_STOPPED,
 	SANDBOX_STATE_ARCHIVED,
 ]);
+
+const WAIT_FOR_STARTED_SANDBOX_STATES = new Set<SandboxState>([
+	SANDBOX_STATE_CREATING,
+	SANDBOX_STATE_RESTORING,
+	SANDBOX_STATE_STARTING,
+	SANDBOX_STATE_PENDING_BUILD,
+	SANDBOX_STATE_PULLING_SNAPSHOT,
+	SANDBOX_STATE_FORKING,
+	SANDBOX_STATE_RESIZING,
+	SANDBOX_STATE_SNAPSHOTTING,
+	SANDBOX_STATE_BUILDING_SNAPSHOT,
+]);
+
+const WAIT_FOR_RECOVERABLE_SANDBOX_STATES = new Set<SandboxState>([
+	SANDBOX_STATE_STOPPING,
+	SANDBOX_STATE_ARCHIVING,
+]);
+
+const FAILED_SANDBOX_STATES = new Set<SandboxState>([
+	SANDBOX_STATE_ERROR,
+	SANDBOX_STATE_BUILD_FAILED,
+]);
+
+const REMOVING_SANDBOX_STATES = new Set<SandboxState>([
+	SANDBOX_STATE_DESTROYED,
+	SANDBOX_STATE_DESTROYING,
+]);
+
+type ExistingSandboxLookup =
+	| { status: 'ready'; sandbox: Sandbox }
+	| { status: 'absent' | 'pending' };
 
 export interface DaytonaSandboxOptions {
 	id?: string;
@@ -60,6 +110,8 @@ export interface DaytonaSandboxOptions {
 	target?: string;
 	timeout?: number;
 	createTimeoutSeconds?: number;
+	/** Base backoff for sandbox acquisition retries. Defaults to 1s. */
+	createRetryBackoffBaseMs?: number;
 	language?: 'typescript' | 'javascript' | 'python';
 	resources?: Resources;
 	env?: Record<string, string>;
@@ -89,24 +141,18 @@ function toShellCommand(command: string, args: string[]): string {
 	return [command, ...args.map((arg) => shellEscape(arg))].join(' ');
 }
 
-function isDaytonaAuthError(error: unknown): boolean {
-	const { DaytonaError } = loadDaytona();
-	return error instanceof DaytonaError && (error.statusCode === 401 || error.statusCode === 403);
-}
-
 function isSandboxGone(error: unknown): boolean {
 	const { DaytonaNotFoundError } = loadDaytona();
 	return error instanceof DaytonaNotFoundError;
 }
 
+function isSandboxNameConflictError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	const { DaytonaError } = loadDaytona();
+	if (error instanceof DaytonaError && error.statusCode === 409) return true;
+	return /sandbox with name .+ already exists/i.test(error.message);
+}
 export class DaytonaSandbox extends BaseSandbox {
-	private static readonly DEAD_STATES: ReadonlySet<SandboxState> = new Set([
-		SANDBOX_STATE_DESTROYED,
-		SANDBOX_STATE_DESTROYING,
-		SANDBOX_STATE_ERROR,
-		SANDBOX_STATE_BUILD_FAILED,
-	]) as ReadonlySet<SandboxState>;
-
 	readonly id: string;
 	readonly name = 'DaytonaSandbox';
 	readonly provider = 'daytona';
@@ -157,8 +203,45 @@ export class DaytonaSandbox extends BaseSandbox {
 			return;
 		}
 
-		this.sandbox = await this.createSandbox(client);
+		this.sandbox = await this.createSandboxOrReattach(client);
 		await this.detectWorkingDirectory();
+	}
+
+	/**
+	 * Create the remote sandbox, reattaching by name on a name conflict — the sandbox
+	 * exists even though the initial lookup missed it due to a concurrent create from
+	 * another main. Deterministic names make reattach safe.
+	 */
+	private async createSandboxOrReattach(client: Daytona): Promise<Sandbox> {
+		let conflictDeadline: number | undefined;
+		let conflictError: unknown;
+		let attempt = 0;
+
+		while (conflictDeadline === undefined || Date.now() < conflictDeadline) {
+			try {
+				return await this.createSandbox(client);
+			} catch (error) {
+				if (!isSandboxNameConflictError(error)) throw error;
+				conflictError = error;
+				conflictDeadline ??= Date.now() + this.timeout;
+
+				const existing = await this.findExistingSandboxAfterConflict(client, conflictDeadline);
+				if (existing) {
+					this.options.logger?.info('Sandbox name already exists; reattached to existing sandbox', {
+						sandboxName: this.sandboxName,
+						remoteSandboxId: existing.id,
+					});
+					return existing;
+				}
+
+				if (Date.now() >= conflictDeadline) break;
+				await this.waitBeforeAcquisitionRetry(attempt++, conflictDeadline);
+			}
+		}
+
+		throw conflictError instanceof Error
+			? conflictError
+			: new Error('Failed to reconcile Daytona sandbox name conflict');
 	}
 
 	override async stop(): Promise<void> {
@@ -195,30 +278,32 @@ export class DaytonaSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		return await this.recoverAndRetry(async () => {
-			await this.ensureRunning();
-			await this.ensureAuthFresh();
-			const startedAt = Date.now();
-			const fullCommand = toShellCommand(command, args);
-			const result = await this.instance.process.executeCommand(
-				fullCommand,
-				options?.cwd,
-				this.compactEnv(options?.env),
-				Math.ceil((options?.timeout ?? this.timeout) / 1000),
-			);
-			const stdout = result.artifacts?.stdout ?? result.result ?? '';
-			if (stdout) options?.onStdout?.(stdout);
+		return await raceWithAbort(async () => {
+			return await this.recoverAndRetry(async () => {
+				await this.ensureRunning({ abortSignal: options?.abortSignal });
+				await this.ensureAuthFresh();
+				const startedAt = Date.now();
+				const fullCommand = toShellCommand(command, args);
+				const result = await this.instance.process.executeCommand(
+					fullCommand,
+					options?.cwd,
+					this.compactEnv(options?.env),
+					Math.ceil((options?.timeout ?? this.timeout) / 1000),
+				);
+				const stdout = result.artifacts?.stdout ?? result.result ?? '';
+				if (stdout) options?.onStdout?.(stdout);
 
-			return {
-				command,
-				args,
-				success: result.exitCode === 0,
-				exitCode: result.exitCode,
-				stdout,
-				stderr: '',
-				executionTimeMs: Date.now() - startedAt,
-			};
-		});
+				return {
+					command,
+					args,
+					success: result.exitCode === 0,
+					exitCode: result.exitCode,
+					stdout,
+					stderr: '',
+					executionTimeMs: Date.now() - startedAt,
+				};
+			});
+		}, options?.abortSignal);
 	}
 
 	/**
@@ -227,12 +312,17 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * stopped/deleted while idle. Lets `DaytonaFilesystem` reuse the same recovery as
 	 * `executeCommand` without reaching into private state.
 	 */
-	async withFilesystem<T>(op: (fs: Sandbox['fs']) => Promise<T>): Promise<T> {
-		return await this.recoverAndRetry(async () => {
-			await this.ensureRunning();
-			await this.ensureAuthFresh();
-			return await op(this.instance.fs);
-		});
+	async withFilesystem<T>(
+		op: (fs: Sandbox['fs']) => Promise<T>,
+		options?: AbortableOptions,
+	): Promise<T> {
+		return await raceWithAbort(async () => {
+			return await this.recoverAndRetry(async () => {
+				await this.ensureRunning({ abortSignal: options?.abortSignal });
+				await this.ensureAuthFresh();
+				return await op(this.instance.fs);
+			});
+		}, options?.abortSignal);
 	}
 
 	/**
@@ -349,6 +439,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		try {
 			return await op();
 		} catch (error) {
+			if (isAbortError(error)) throw error;
 			if (!(await this.isRecoverable(error))) throw error;
 			await this.recover();
 			return await op();
@@ -371,22 +462,52 @@ export class DaytonaSandbox extends BaseSandbox {
 	}
 
 	private async findExistingSandbox(client: Daytona): Promise<Sandbox | null> {
+		const result = await this.lookupExistingSandbox(client);
+		return result.status === 'ready' ? result.sandbox : null;
+	}
+
+	private async lookupExistingSandbox(
+		client: Daytona,
+		deadline?: number,
+	): Promise<ExistingSandboxLookup> {
 		try {
 			const sandbox = await client.get(this.sandboxName);
-			if (sandbox.state && this.isDeadState(sandbox.state)) {
-				await sandbox.delete(Math.ceil(this.timeout / 1000));
-				return null;
+			const state = sandbox.state;
+			if (state === undefined) return { status: 'pending' };
+			if (FAILED_SANDBOX_STATES.has(state)) {
+				await sandbox.delete(this.operationTimeoutSeconds(deadline));
+				return { status: 'pending' };
 			}
-			if (sandbox.state !== SANDBOX_STATE_STARTED) {
-				await sandbox.start(Math.ceil(this.timeout / 1000));
+			if (REMOVING_SANDBOX_STATES.has(state)) return { status: 'pending' };
+			if (RECOVERABLE_SANDBOX_STATES.has(state)) {
+				await sandbox.start(this.operationTimeoutSeconds(deadline));
+			} else if (WAIT_FOR_STARTED_SANDBOX_STATES.has(state)) {
+				await sandbox.waitUntilStarted(this.operationTimeoutSeconds(deadline));
+			} else if (
+				WAIT_FOR_RECOVERABLE_SANDBOX_STATES.has(state) ||
+				state !== SANDBOX_STATE_STARTED
+			) {
+				return { status: 'pending' };
 			}
-			return sandbox;
+			return { status: 'ready', sandbox };
 		} catch (error) {
 			const { DaytonaNotFoundError } = loadDaytona();
-			if (error instanceof DaytonaNotFoundError) return null;
-			if (isDaytonaAuthError(error)) throw error;
-			return null;
+			if (error instanceof DaytonaNotFoundError) return { status: 'absent' };
+			throw error;
 		}
+	}
+
+	private async findExistingSandboxAfterConflict(
+		client: Daytona,
+		deadline: number,
+	): Promise<Sandbox | null> {
+		for (let attempt = 0; Date.now() < deadline; attempt++) {
+			const result = await this.lookupExistingSandbox(client, deadline);
+			if (result.status === 'ready') return result.sandbox;
+			if (result.status === 'absent') return null;
+			await this.waitBeforeAcquisitionRetry(attempt, deadline);
+		}
+		return null;
 	}
 
 	private async createSandbox(client: Daytona): Promise<Sandbox> {
@@ -399,6 +520,8 @@ export class DaytonaSandbox extends BaseSandbox {
 					? await client.create(candidate.params, { timeout: this.options.createTimeoutSeconds })
 					: await client.create(candidate.params);
 			} catch (error) {
+				// A name conflict is strategy-independent; let the caller reattach by name.
+				if (isSandboxNameConflictError(error)) throw error;
 				lastError = error;
 				this.reportCreateError(error, candidate.strategy);
 				if (
@@ -417,6 +540,21 @@ export class DaytonaSandbox extends BaseSandbox {
 		}
 
 		throw lastError instanceof Error ? lastError : new Error('Failed to create Daytona sandbox');
+	}
+
+	private async waitBeforeAcquisitionRetry(attempt: number, deadline: number): Promise<void> {
+		const baseDelayMs = this.options.createRetryBackoffBaseMs ?? 1_000;
+		const delayMs = Math.min(
+			baseDelayMs * 2 ** attempt,
+			MAX_ACQUISITION_RETRY_BACKOFF_MS,
+			Math.max(0, deadline - Date.now()),
+		);
+		if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+	}
+
+	private operationTimeoutSeconds(deadline?: number): number {
+		if (deadline === undefined) return Math.ceil(this.timeout / 1000);
+		return Math.max(0.001, (deadline - Date.now()) / 1000);
 	}
 
 	private createSandboxParams(): Array<{
@@ -499,10 +637,6 @@ export class DaytonaSandbox extends BaseSandbox {
 		} catch {
 			this.workingDirectory = undefined;
 		}
-	}
-
-	private isDeadState(state: SandboxState): boolean {
-		return DaytonaSandbox.DEAD_STATES.has(state);
 	}
 
 	private compactEnv(env: NodeJS.ProcessEnv | undefined): Record<string, string> | undefined {

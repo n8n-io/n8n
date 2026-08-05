@@ -32,10 +32,12 @@ export type LangTracerSuiteSummary = z.infer<typeof suiteSummarySchema>;
 export type ExportedSuite = z.infer<typeof exportedSuiteSchema>;
 export type LangTracerCaseRef = z.infer<typeof caseRefSchema>;
 
-/** Fields patchable via `PATCH /cases/:id` — a create body minus what that route
- *  rejects (`suiteId`/`synthetic` handled elsewhere, `scenarios` are sidecar rows). */
+/** Fields patchable via `PATCH /cases/:id` — a create body minus the create-only
+ *  keys (`suiteId`/`synthetic`). `scenarios` are sidecar rows the server reconciles
+ *  by name on PATCH (upsert + delete missing); a server predating lang-tracer #48
+ *  strips the key silently, leaving the old scenarios in place. */
 export type LangTracerUpdateCaseBody = Partial<
-	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic' | 'scenarios'>
+	Omit<LangTracerCreateCaseBody, 'suiteId' | 'synthetic'>
 >;
 
 export class LangTracerClient {

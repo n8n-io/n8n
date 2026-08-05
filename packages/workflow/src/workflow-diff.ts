@@ -185,7 +185,11 @@ function nodeGroupChangesAreAdditive<N extends DiffableNode>(
 
 	for (const prevGroup of prev.nodeGroups ?? []) {
 		const nextGroup = nextGroupsById.get(prevGroup.id);
-		if (!nextGroup || nextGroup.name !== prevGroup.name) {
+		if (
+			!nextGroup ||
+			nextGroup.name !== prevGroup.name ||
+			nextGroup.description !== prevGroup.description
+		) {
 			return false;
 		}
 

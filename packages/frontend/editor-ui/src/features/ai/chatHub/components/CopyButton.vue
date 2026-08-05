@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 

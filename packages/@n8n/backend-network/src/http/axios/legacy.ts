@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import type { AxiosHeaders, AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import crypto from 'crypto';
 import type FormData from 'form-data';
 import { type AgentOptions } from 'https';
@@ -18,6 +18,7 @@ import {
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
 	isFormDataInstance,
+	resolveLegacyRequestTarget,
 	searchForHeader,
 	setAxiosAgents,
 } from './utils';
@@ -57,7 +58,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {
-		axiosConfig.headers = requestObject.headers as AxiosHeaders;
+		axiosConfig.headers = requestObject.headers as AxiosRequestHeaders;
 	}
 
 	// Let's start parsing the hardest part, which is the request body.
@@ -165,12 +166,9 @@ export async function buildAxiosConfigFromLegacyRequest(
 		}
 	}
 
-	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri?.toString();
-	}
-
-	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url?.toString();
+	const target = resolveLegacyRequestTarget(requestObject);
+	if (target !== undefined) {
+		axiosConfig.url = target;
 	}
 
 	if (requestObject.baseURL !== undefined) {

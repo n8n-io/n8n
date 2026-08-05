@@ -36,12 +36,12 @@ export const useConsentStore = defineStore(STORES.CONSENT, () => {
 		}
 	};
 
-	const approveConsent = async (approved: boolean) => {
+	const approveConsent = async (approved: boolean, scopes?: string[]) => {
 		isLoading.value = true;
 		error.value = null;
 
 		try {
-			const response = await consentApi.approveConsent(rootStore.restApiContext, approved);
+			const response = await consentApi.approveConsent(rootStore.restApiContext, approved, scopes);
 			return response;
 		} catch (err) {
 			error.value = err instanceof Error ? err.message : 'Failed to process consent';

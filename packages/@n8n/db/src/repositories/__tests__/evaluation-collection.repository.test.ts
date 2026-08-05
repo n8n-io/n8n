@@ -126,6 +126,25 @@ describe('EvaluationCollectionRepository', () => {
 		});
 	});
 
+	describe('removeRunsFromCollection', () => {
+		it('unlinks runs in bulk with a single update scoped to the collection', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 2, generatedMaps: [], raw: [] });
+
+			await repo.removeRunsFromCollection('col-1', ['tr-a', 'tr-b']);
+
+			expect(entityManager.update).toHaveBeenCalledTimes(1);
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[0]).toBe(TestRun);
+			expect(callArgs?.[1]).toMatchObject({ collectionId: 'col-1' });
+			expect(callArgs?.[2]).toEqual({ collectionId: null });
+		});
+
+		it('is a no-op when given an empty id list', async () => {
+			await repo.removeRunsFromCollection('col-1', []);
+			expect(entityManager.update).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('deleteByIdAndWorkflowId', () => {
 		it('counts runs before delete so callers can report runs_unlinked for telemetry', async () => {
 			entityManager.findOne.mockResolvedValueOnce({ id: 'col-1' } as EvaluationCollection);

@@ -36,6 +36,8 @@ export interface OAuthTokens {
 	token_type: string;
 	expires_in: number;
 	refresh_token: string;
+	/** Space-delimited scopes the user granted on the consent screen (RFC 6749 §5.1). */
+	scope: string;
 }
 
 export interface AuthorizationFlowResult {
@@ -142,17 +144,32 @@ export class McpOAuthApiHelper {
 		return await this.api.request.get('/rest/consent/details');
 	}
 
-	/** Requires a signed-in user and a pending OAuth session (see authorize). */
-	async approveConsent(approved: boolean): Promise<APIResponse> {
-		return await this.api.request.post('/rest/consent/approve', { data: { approved } });
+	/**
+	 * Requires a signed-in user and a pending OAuth session (see authorize).
+	 * Approvals must grant at least one scope; when none are given, everything
+	 * the consent details offer is granted — mirroring the consent UI default.
+	 */
+	async approveConsent(approved: boolean, scopes?: string[]): Promise<APIResponse> {
+		let grantedScopes = scopes;
+		if (approved && !grantedScopes) {
+			const details = await this.getConsentDetails();
+			if (details.ok()) {
+				const body = (await details.json()) as { data: { scopes?: string[] } };
+				const available = body.data.scopes ?? [];
+				if (available.length > 0) grantedScopes = available;
+			}
+		}
+		return await this.api.request.post('/rest/consent/approve', {
+			data: { approved, ...(grantedScopes && { scopes: grantedScopes }) },
+		});
 	}
 
 	/**
 	 * Approves or denies the pending consent and returns the redirect URL the
 	 * client would be sent back to (carrying either the code or the error).
 	 */
-	async submitConsentOrFail(approved: boolean): Promise<URL> {
-		const response = await this.approveConsent(approved);
+	async submitConsentOrFail(approved: boolean, scopes?: string[]): Promise<URL> {
+		const response = await this.approveConsent(approved, scopes);
 		if (!response.ok()) {
 			throw new TestError(
 				`Failed to submit consent: ${response.status()} ${await response.text()}`,

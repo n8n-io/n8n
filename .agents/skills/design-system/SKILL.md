@@ -17,7 +17,7 @@ Reference these guidelines when:
 
 ## Rules
 - Follow guidelines in `packages/frontend/@n8n/design-system/src/styleguide/*.mdx`
-- ALWAYS use CSS variables for styles from `packages/frontend/@n8n/design-system/src/css/_tokens.scss` or `packages/frontend/@n8n/design-system/src/css/_primtivies.scss`. Use hard-coded values only when no suitable tokens.
+- ALWAYS use CSS variables for styles from `packages/frontend/@n8n/design-system/src/css/_tokens.scss` or `packages/frontend/@n8n/design-system/src/css/_primitives.scss`. Use hard-coded values only when no suitable tokens.
 - ALWAYS prefer using existing components from `packages/frontend/@n8n/design-system/src/components`. Prefer components that aren't marked `@deprecated`.
 - Use `light-dark()` when alternating colors for ligh/dark mode
 - When working with animations or transitions, ALWAYS prefer using mixins from `packages/frontend/@n8n/design-system/src/css/mixins/motion.scss`

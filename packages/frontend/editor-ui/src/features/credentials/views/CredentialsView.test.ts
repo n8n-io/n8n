@@ -164,7 +164,10 @@ describe('CredentialsView', () => {
 			projectsStore.currentProject = createTestProject({ scopes: ['credential:create'] });
 			const { rerender } = renderComponent();
 			await rerender({ credentialId: 'create' });
-			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: CREDENTIAL_SELECT_MODAL_KEY,
+				data: {},
+			});
 		});
 
 		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {

@@ -24,6 +24,7 @@ import {
 	type INode,
 	type IRun,
 	type WorkflowExecuteMode,
+	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
@@ -81,8 +82,9 @@ describe('WorkflowStatisticsService', () => {
 			service: WorkflowStatisticsService,
 			workflowData: IWorkflowDb & WorkflowEntity,
 			runData: IRun,
+			source?: WorkflowExecutionSource,
 		) => {
-			await service.workflowExecutionCompleted(workflowData, runData);
+			await service.workflowExecutionCompleted(workflowData, runData, source);
 			await flushStats(service);
 		};
 
@@ -181,6 +183,113 @@ describe('WorkflowStatisticsService', () => {
 				const statistics = await workflowStatisticsRepository.find();
 				expect(statistics).toHaveLength(0);
 			}
+		});
+
+		test.each<WorkflowExecuteMode>(['trigger', 'webhook'])(
+			'should count successful instance_ai-sourced execution with mode %s as manual, not production',
+			async (mode) => {
+				// ARRANGE
+				const runData: IRun = {
+					finished: true,
+					status: 'success',
+					data: createEmptyRunExecutionData(),
+					mode,
+					startedAt: new Date(),
+					storedAt: 'db',
+				};
+
+				// ACT
+				await completeAndFlush(workflowStatisticsService, workflow, runData, 'instance_ai');
+
+				// ASSERT
+				const statistics = await workflowStatisticsRepository.find();
+				expect(statistics).toHaveLength(1);
+				expect(statistics[0]).toMatchObject({
+					count: 1,
+					rootCount: 0,
+					name: 'manual_success',
+					workflowId: workflow.id,
+				});
+			},
+		);
+
+		test('should count failing instance_ai-sourced execution as manual error and not emit instance-first-production-workflow-failed', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: false,
+				status: 'error',
+				data: createEmptyRunExecutionData(),
+				mode: 'trigger',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			// ACT
+			await completeAndFlush(workflowStatisticsService, workflow, runData, 'instance_ai');
+
+			// ASSERT
+			const statistics = await workflowStatisticsRepository.find();
+			expect(statistics).toHaveLength(1);
+			expect(statistics[0]).toMatchObject({
+				count: 1,
+				rootCount: 0,
+				name: 'manual_error',
+				workflowId: workflow.id,
+			});
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'instance-first-production-workflow-failed',
+				expect.anything(),
+			);
+		});
+
+		test('should not update user settings or emit first-production-workflow-succeeded for instance_ai-sourced executions', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: true,
+				status: 'success',
+				data: createEmptyRunExecutionData(),
+				mode: 'trigger',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = vi.spyOn(userService, 'updateSettings');
+
+			// ACT
+			await completeAndFlush(workflowStatisticsService, workflow, runData, 'instance_ai');
+
+			// ASSERT
+			expect(updateSettingsSpy).not.toHaveBeenCalled();
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'first-production-workflow-succeeded',
+				expect.anything(),
+			);
+		});
+
+		test('should count user-sourced executions as production', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: true,
+				status: 'success',
+				data: createEmptyRunExecutionData(),
+				mode: 'trigger',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+
+			// ACT
+			await completeAndFlush(workflowStatisticsService, workflow, runData, 'user');
+
+			// ASSERT
+			const statistics = await workflowStatisticsRepository.find();
+			expect(statistics).toHaveLength(1);
+			expect(statistics[0]).toMatchObject({
+				count: 1,
+				rootCount: 1,
+				name: 'production_success',
+				workflowId: workflow.id,
+			});
 		});
 
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
@@ -876,6 +985,21 @@ describe('WorkflowStatisticsService', () => {
 				nodeType: node.type,
 				nodeId: node.id,
 			});
+		});
+
+		test('should not record data-loaded statistics for instance_ai-sourced executions', async () => {
+			const workflowId = '1';
+			const node = {
+				id: 'abcde',
+				name: 'test node',
+				typeVersion: 1,
+				type: '',
+				position: [0, 0] as [number, number],
+				parameters: {},
+			};
+			await workflowStatisticsService.nodeFetchedData(workflowId, node, 'instance_ai');
+			expect(entityManager.insert).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('should emit event with no `userId` if workflow is owned by team project', async () => {

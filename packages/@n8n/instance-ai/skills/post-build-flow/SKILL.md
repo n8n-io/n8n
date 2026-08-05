@@ -20,6 +20,9 @@ especially when the build result contains `postBuildFlow.required: true`, or whe
 the current message contains `<workflow-verification-follow-up>` or
 `<workflow-setup-required>`.
 
+These instructions are in English, but user-visible text you write while
+following them stays in the user's conversation language.
+
 For trigger `inputData` shapes, read
 `knowledge-base/reference/trigger-input-data-shapes.md` in the sandbox workspace
 when available, or load this skill's `references/trigger-input-data-shapes.md`
