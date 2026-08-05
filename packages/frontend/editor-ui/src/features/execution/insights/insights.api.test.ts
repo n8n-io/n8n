@@ -1,5 +1,4 @@
 import {
-	fetchInsightsSummary,
 	fetchInsightsByTime,
 	fetchInsightsTimeSaved,
 	fetchInsightsByWorkflow,
@@ -7,7 +6,6 @@ import {
 } from '@/features/execution/insights/insights.api';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type {
-	InsightsSummary,
 	InsightsByTime,
 	InsightsByWorkflow,
 	ListInsightsWorkflowQueryDto,
@@ -106,58 +104,6 @@ describe('insights.api', () => {
 			const result = serializeInsightsFilter(filter);
 
 			expect(result).toEqual({});
-		});
-	});
-
-	describe('fetchInsightsSummary', () => {
-		it('should make GET request to /insights/summary without filter', async () => {
-			const mockSummary: InsightsSummary = {
-				total: { value: 100, deviation: null, unit: 'count' },
-				failed: { value: 20, deviation: 5, unit: 'count' },
-				failureRate: { value: 0.2, deviation: -0.05, unit: 'ratio' },
-				timeSaved: { value: 120, deviation: 30, unit: 'minute' },
-				averageRunTime: { value: 5000, deviation: 200, unit: 'millisecond' },
-			};
-
-			vi.mocked(makeRestApiRequest).mockResolvedValue(mockSummary);
-
-			const result = await fetchInsightsSummary(mockContext);
-
-			expect(makeRestApiRequest).toHaveBeenCalledWith(
-				mockContext,
-				'GET',
-				'/insights/summary',
-				undefined,
-			);
-			expect(result).toEqual(mockSummary);
-		});
-
-		it('should make GET request to /insights/summary with serialized filter', async () => {
-			const startDate = new Date('2025-01-01T00:00:00.000Z');
-			const endDate = new Date('2025-01-31T23:59:59.999Z');
-
-			const filter: InsightsDateFilterDto = {
-				startDate,
-				endDate,
-			};
-
-			const mockSummary: InsightsSummary = {
-				total: { value: 50, deviation: null, unit: 'count' },
-				failed: { value: 10, deviation: 2, unit: 'count' },
-				failureRate: { value: 0.2, deviation: -0.03, unit: 'ratio' },
-				timeSaved: { value: 60, deviation: 15, unit: 'minute' },
-				averageRunTime: { value: 3000, deviation: 100, unit: 'millisecond' },
-			};
-
-			vi.mocked(makeRestApiRequest).mockResolvedValue(mockSummary);
-
-			const result = await fetchInsightsSummary(mockContext, filter);
-
-			expect(makeRestApiRequest).toHaveBeenCalledWith(mockContext, 'GET', '/insights/summary', {
-				startDate: '2025-01-01T00:00:00.000Z',
-				endDate: '2025-01-31T23:59:59.999Z',
-			});
-			expect(result).toEqual(mockSummary);
 		});
 	});
 

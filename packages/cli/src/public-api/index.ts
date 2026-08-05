@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
+import cookieParser from 'cookie-parser';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
@@ -275,6 +276,17 @@ function createLazyValidatorMiddleware(
 
 				const globalConfig = Container.get(GlobalConfig);
 				const router = express.Router();
+				// The global cookie-parser middleware (server.ts) is registered after this
+				// router mounts, so req.cookies would otherwise be empty here — needed for
+				// SessionCookieAuthStrategy to authenticate browser sessions.
+				router.use(cookieParser());
+				// The global browser-id-extraction middleware (server.ts) is registered after
+				// this router mounts, so req.browserId would otherwise be undefined here —
+				// needed for SessionCookieAuthStrategy's browser-id binding check.
+				router.use((req: AuthenticatedRequest, _res, next) => {
+					req.browserId = req.headers['browser-id'] as string;
+					next();
+				});
 				router.use(
 					openApiValidatorMiddleware({
 						apiSpec: openApiSpecPath,
@@ -321,6 +333,7 @@ function createLazyValidatorMiddleware(
 							handlers: {
 								ApiKeyAuth: authenticate,
 								BearerAuth: authenticate,
+								CookieAuth: authenticate,
 							},
 						},
 					}),

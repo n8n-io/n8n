@@ -81,6 +81,30 @@ describe('GET /insights/summary', () => {
 		await testServer.publicApiAgentWithoutApiKey().get('/insights/summary').expect(401);
 	});
 
+	test('returns data via session cookie, without an API key', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow({}, project);
+
+		await createSummaryMetrics(workflow, {
+			success: 3,
+			failure: 1,
+			runtimeMs: 400,
+			timeSavedMin: 20,
+		});
+
+		const response = await testServer
+			.publicApiAgentWithCookie(scopedOwner)
+			.get('/insights/summary')
+			.query({
+				startDate: DateTime.utc().minus({ days: 2 }).toISO(),
+				endDate: DateTime.utc().plus({ days: 1 }).toISO(),
+			})
+			.expect(200);
+
+		expect(response.body.total.value).toBe(4);
+		expect(response.body.failed.value).toBe(1);
+	});
+
 	test('returns 403 without insights:read scope', async () => {
 		await authUnscopedAgent.get('/insights/summary').expect(403);
 	});
