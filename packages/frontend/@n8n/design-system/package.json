@@ -22,7 +22,7 @@
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache"
   },
   "devDependencies": {
-    "@iconify/json": "^2.2.488",
+    "@iconify/json": "catalog:",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",

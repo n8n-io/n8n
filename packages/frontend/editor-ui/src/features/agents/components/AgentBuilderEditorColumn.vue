@@ -12,7 +12,7 @@ import type {
 	AgentSkill,
 } from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
