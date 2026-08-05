@@ -382,6 +382,9 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			['1.3', undefined, ScheduledJobMisfirePolicy.Skip],
 			['1.3', { misfirePolicy: 'coalesce' }, ScheduledJobMisfirePolicy.Coalesce],
 			['1.4', { misfirePolicy: 'nonsense' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'Coalesce' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: ' coalesce' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'coalesce ' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
 		])(
 			'resolves misfirePolicy %s with parameters %s to %s',
 			async (typeVersionLabel, parameters, expected) => {
@@ -404,6 +407,70 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				);
 			},
 		);
+
+		it('resolves misfirePolicy to skip without throwing when the node has no parameters object at all', async () => {
+			const node = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				typeVersion: 1.4,
+				parameters: undefined,
+			});
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
+
+		it('provisions a node with no rules left as an empty desired set alongside a coalesce policy', async () => {
+			const node = makeNode({ parameters: { misfirePolicy: 'coalesce' } });
+			const session = makeRegistrar().createSession();
+			session.createCollector(workflow, node);
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				[],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+		});
+
+		it('two sessions collecting for the same workflow and node keep independent policies, and one discarding leaves the other to commit its own', async () => {
+			const registrar = makeRegistrar();
+			const attemptA = registrar.createSession();
+			const attemptB = registrar.createSession();
+			const coalescingNode = makeNode({ parameters: { misfirePolicy: 'coalesce' } });
+			const skippingNode = makeNode({ parameters: { misfirePolicy: 'skip' } });
+
+			attemptA.createCollector(workflow, coalescingNode).registerCron(dailyAtNine, vi.fn());
+			attemptB.createCollector(workflow, skippingNode).registerCron(dailyAtNine, vi.fn());
+
+			attemptA.discard(WORKFLOW_ID, NODE_ID);
+			await attemptA.commit(WORKFLOW_ID, NODE_ID);
+			await attemptB.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledTimes(1);
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
 
 		it('commits each of two nodes collected in one session with its own distinct misfire policy', async () => {
 			const session = makeRegistrar().createSession();
