@@ -1,5 +1,6 @@
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
+import { toJSONSchema as toJsonSchemaV4, type core as zodV4Core } from 'zod/v4';
 import { zodToJsonSchema as zodToJsonSchemaImpl } from 'zod-to-json-schema';
 
 /** Type guard: returns true when a value is a Zod schema (as opposed to raw JSON Schema or any other shape). */
@@ -12,65 +13,89 @@ export function isZodSchema(schema: unknown): schema is ZodType {
 }
 
 /**
- * Who the serialized schema is for. The two audiences want opposite answers on
- * unknown keys and JSON Schema can only express one of them per document, so
- * the caller has to say which — there is no safe default.
+ * Who the serialized schema is for. JSON Schema can only be open or closed to
+ * unknown keys, and the two audiences want opposite answers, so there is no
+ * safe default:
  *
- * - `model` — a provider tool definition. Strict function calling rejects open
- *   objects, so every object is closed with `additionalProperties: false`.
- * - `validation` — a contract to check data against. Each object keeps its own
- *   unknown-key policy, so a plain `z.object()` stays open and `.strict()` stays
- *   closed. Zod *strips* unknown keys rather than rejecting them and JSON Schema
- *   cannot express "strip"; of the two available approximations, accepting is
- *   the one that matches what the Zod original would have done.
+ * - `model` — strict function calling rejects open objects.
+ * - `validation` — Zod *strips* unknown keys rather than rejecting them, and
+ *   accepting is the closer of the two approximations available.
  */
 export type SchemaAudience = 'model' | 'validation';
+
+/**
+ * A property check rather than `instanceof z4.core.$ZodType`, so it survives
+ * duplicate zod copies in the store (the MCP SDK pins its own) — where a false
+ * negative would route a v4 schema to the v3 converter, which renders it as
+ * `{}`. Not `_def`: `zod/v4/mini` has none.
+ */
+function isZodV4Schema(schema: ZodType): boolean {
+	return typeof (schema as { _zod?: unknown })._zod === 'object';
+}
+
+function serializeV3(schema: ZodType, audience: SchemaAudience): JSONSchema7 {
+	// Despite the name, `strict` is the strategy that honours each object's own
+	// unknown-key policy; the library default overrides it to closed.
+	return zodToJsonSchemaImpl(
+		schema,
+		audience === 'model' ? {} : { removeAdditionalStrategy: 'strict' },
+	) as JSONSchema7;
+}
+
+function serializeV4(schema: ZodType, audience: SchemaAudience): JSONSchema7 {
+	return toJsonSchemaV4(schema as unknown as zodV4Core.$ZodType, {
+		// Tool arguments and resume payloads are both inputs. Input mode is also
+		// what leaves a plain object's `additionalProperties` unset.
+		io: 'input',
+		// Match the v3 branch so consumers only ever see one dialect.
+		target: 'draft-7',
+		// Direction is not audience: an input can still need closing.
+		...(audience === 'model'
+			? {
+					override: ({ jsonSchema }) => {
+						if (jsonSchema.type === 'object' && jsonSchema.additionalProperties === undefined) {
+							jsonSchema.additionalProperties = false;
+						}
+					},
+				}
+			: {}),
+	}) as JSONSchema7;
+}
 
 function serialize(schema: unknown, audience: SchemaAudience): JSONSchema7 | null {
 	if (!schema) return null;
 	if (isZodSchema(schema)) {
-		// Despite the name, `strict` is the strategy that honours each object's own
-		// unknown-key policy; the library default overrides it to closed.
-		return zodToJsonSchemaImpl(
-			schema,
-			audience === 'model' ? {} : { removeAdditionalStrategy: 'strict' },
-		) as JSONSchema7;
+		return isZodV4Schema(schema) ? serializeV4(schema, audience) : serializeV3(schema, audience);
 	}
 	if (typeof schema === 'object') return schema as JSONSchema7;
 	return null;
 }
 
 /**
- * Serialize a Zod schema into a provider tool definition, closing every object
- * to unknown keys. Raw JSON Schema passes through untouched.
- *
- * Throws if the schema cannot be serialized — see {@link toJsonSchemaOrNull} for
- * the forgiving variant.
+ * Serialize for a provider tool definition, closing every object to unknown
+ * keys. Raw JSON Schema passes through untouched. Throws if unserializable.
  */
 export function toModelJsonSchema(schema?: unknown): JSONSchema7 | null {
 	return serialize(schema, 'model');
 }
 
 /**
- * Serialize a Zod schema into a document to validate data against, leaving each
- * object's own unknown-key policy intact. Raw JSON Schema passes through
- * untouched.
+ * Serialize for validating data against, leaving each object's own unknown-key
+ * policy intact. Raw JSON Schema passes through untouched. Throws if
+ * unserializable.
  *
  * The result is a contract check, not a filter: unlike Zod, `parseWithSchema`
  * returns JSON Schema-branch data unchanged, so any unknown key it accepts also
  * reaches the handler.
- *
- * Throws if the schema cannot be serialized — see {@link toJsonSchemaOrNull} for
- * the forgiving variant.
  */
 export function toValidationJsonSchema(schema?: unknown): JSONSchema7 | null {
 	return serialize(schema, 'validation');
 }
 
 /**
- * As above, but returns `null` instead of throwing when serialization fails.
- * Prefer the throwing variants where a caller can report the failure — a `null`
- * here is indistinguishable from "no schema was supplied".
+ * As above, but returns `null` instead of throwing. Prefer the throwing
+ * variants where a caller can report the failure — a `null` here is
+ * indistinguishable from "no schema was supplied".
  */
 export function toJsonSchemaOrNull(schema: unknown, audience: SchemaAudience): JSONSchema7 | null {
 	try {

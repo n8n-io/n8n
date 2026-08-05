@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import * as z4 from 'zod/v4';
+import * as z4mini from 'zod/v4-mini';
 
 import { toJsonSchemaOrNull, toModelJsonSchema, toValidationJsonSchema } from '../zod';
 
@@ -49,6 +51,60 @@ describe('toValidationJsonSchema', () => {
 
 	it('returns null for a missing schema', () => {
 		expect(toValidationJsonSchema(undefined)).toBeNull();
+	});
+});
+
+describe('Zod 4 schemas', () => {
+	it('serializes a v4 schema rather than collapsing it to an empty schema', () => {
+		const result = toValidationJsonSchema(z4.object({ approved: z4.boolean() }));
+
+		expect(result).toMatchObject({
+			type: 'object',
+			properties: { approved: { type: 'boolean' } },
+			required: ['approved'],
+		});
+	});
+
+	it('serializes a v4-mini schema', () => {
+		const result = toValidationJsonSchema(z4mini.object({ approved: z4mini.boolean() }));
+
+		expect(result).toMatchObject({ properties: { approved: { type: 'boolean' } } });
+	});
+
+	it('leaves a v4 object open to unknown keys for validation', () => {
+		const result = toValidationJsonSchema(z4.object({ approved: z4.boolean() }));
+
+		expect(result?.additionalProperties).toBeUndefined();
+	});
+
+	it('closes a v4 object for the model', () => {
+		const result = toModelJsonSchema(
+			z4.object({ approved: z4.boolean(), nested: z4.object({ a: z4.string() }) }),
+		);
+
+		expect(result).toMatchObject({ additionalProperties: false });
+		expect(result?.properties?.nested).toMatchObject({ additionalProperties: false });
+	});
+
+	it('keeps a v4 strictObject closed for validation', () => {
+		const result = toValidationJsonSchema(z4.strictObject({ approved: z4.boolean() }));
+
+		expect(result).toMatchObject({ additionalProperties: false });
+	});
+
+	it('keeps a v4 looseObject open for the model', () => {
+		const result = toModelJsonSchema(z4.looseObject({ approved: z4.boolean() }));
+
+		expect(result?.additionalProperties).not.toBe(false);
+	});
+
+	it('emits the same dialect as the v3 branch', () => {
+		expect(toValidationJsonSchema(z4.object({ a: z4.string() }))).toMatchObject({
+			$schema: 'http://json-schema.org/draft-07/schema#',
+		});
+		expect(toValidationJsonSchema(z.object({ a: z.string() }))).toMatchObject({
+			$schema: 'http://json-schema.org/draft-07/schema#',
+		});
 	});
 });
 
