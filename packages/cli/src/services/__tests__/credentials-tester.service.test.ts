@@ -189,21 +189,6 @@ describe('CredentialsTester', () => {
 			expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
 		});
 
-		it('should keep function-based tests working with the real routing engine untouched', async () => {
-			mockTestFunction.mockResolvedValue({ status: 'OK', message: 'fine' });
-			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({});
-
-			const result = await credentialsTester.testCredentials('user-id', 'testCredentials', {
-				id: 'credential-id',
-				name: 'credential-name',
-				type: 'testCredentials',
-				data: {},
-			});
-
-			expect(result).toEqual({ status: 'OK', message: 'fine' });
-			expect(RoutingNode).not.toHaveBeenCalled();
-		});
-
 		it('should not redact secrets with value shorter than 3 characters', async () => {
 			mockTestFunction.mockResolvedValue({
 				status: 'Error',

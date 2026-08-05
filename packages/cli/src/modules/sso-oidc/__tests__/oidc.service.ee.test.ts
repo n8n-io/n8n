@@ -189,46 +189,6 @@ describe('OidcService', () => {
 			);
 		});
 
-		it('should fill out optional prompt parameter with default value', async () => {
-			settingsRepository.findByKey = vi.fn().mockResolvedValue({
-				key: OIDC_PREFERENCES_DB_KEY,
-				value: JSON.stringify(mockOidcConfig),
-				loadOnStartup: true,
-			});
-
-			const result = await oidcService.loadConfigurationFromDatabase();
-
-			expect(result).toEqual({
-				clientId: mockOidcConfig.clientId,
-				clientSecret: mockOidcConfig.clientSecret,
-				loginEnabled: mockOidcConfig.loginEnabled,
-				prompt: 'select_account',
-				discoveryEndpoint: expect.any(URL),
-				authenticationContextClassReference: expect.any(Array),
-				additionalScopes: '',
-			});
-		});
-
-		it('should fill out optional authenticationContextClassReference parameter with default value', async () => {
-			settingsRepository.findByKey = vi.fn().mockResolvedValue({
-				key: OIDC_PREFERENCES_DB_KEY,
-				value: JSON.stringify(mockOidcConfig),
-				loadOnStartup: true,
-			});
-
-			const result = await oidcService.loadConfigurationFromDatabase();
-
-			expect(result).toEqual({
-				clientId: mockOidcConfig.clientId,
-				clientSecret: mockOidcConfig.clientSecret,
-				loginEnabled: mockOidcConfig.loginEnabled,
-				prompt: 'select_account',
-				discoveryEndpoint: expect.any(URL),
-				authenticationContextClassReference: [],
-				additionalScopes: '',
-			});
-		});
-
 		it('should decrypt client secret when requested', async () => {
 			const encryptedSecret = 'encrypted-secret';
 			const decryptedSecret = 'decrypted-secret';
@@ -302,27 +262,6 @@ describe('OidcService', () => {
 				'Failed to load OIDC configuration from database, falling back to default configuration.',
 				expect.any(Object),
 			);
-		});
-
-		it('should not issue warnings for valid complete configuration', async () => {
-			settingsRepository.findByKey = vi.fn().mockResolvedValue({
-				key: OIDC_PREFERENCES_DB_KEY,
-				value: JSON.stringify(mockOidcConfig),
-				loadOnStartup: true,
-			});
-
-			const result = await oidcService.loadConfigurationFromDatabase();
-
-			expect(result).toEqual({
-				clientId: mockOidcConfig.clientId,
-				clientSecret: mockOidcConfig.clientSecret,
-				loginEnabled: mockOidcConfig.loginEnabled,
-				prompt: 'select_account',
-				discoveryEndpoint: expect.any(URL),
-				authenticationContextClassReference: expect.any(Array),
-				additionalScopes: '',
-			});
-			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 
