@@ -137,8 +137,9 @@ async function seedReviewInTeamProject(author: User) {
 type FeedEntry = {
 	id: string;
 	type: string;
+	data: unknown;
 	createdBy: unknown;
-	messages?: Array<{ body: string | null; createdBy: unknown }>;
+	messages?: Array<{ body: string | null; createdBy: unknown; deletedAt: string | null }>;
 };
 
 async function getActivity(agent: SuperAgentTest, requestId: string, limit?: number) {
@@ -155,8 +156,10 @@ async function getActivity(agent: SuperAgentTest, requestId: string, limit?: num
 
 describe('POST /workflow-review-requests/:id/comments', () => {
 	test('lets a non-admin author comment on the review they opened', async () => {
-		// member authors, so `viewerCanDecide` is false with reason 'author' — the only
-		// shape that exercises the author arm, since owner gets the admin override.
+		// member authors, so `viewerCanDecide` is false with reason 'author' — the only shape
+		// that exercises the *decision* author arm, since owner gets the admin override.
+		// `canComment`'s author arm is not pinned here: member is project:editor and so
+		// carries workflow:publish. The author-only case is the read-access test below.
 		const { request } = await seedReviewInTeamProject(member);
 
 		const post = await memberAgent
@@ -345,6 +348,9 @@ describe('POST /workflow-review-requests/:id/comments', () => {
 		['an empty body', '', 400],
 		['a whitespace-only body', '   \n  ', 400],
 		['a body at the length limit', 'x'.repeat(10_000), 201],
+		['a body over the length limit', 'x'.repeat(10_001), 400],
+		// A C0 control character reaches the Postgres driver as a 500 unless rejected here
+		['a body with a control character', 'oops \x00 here', 400],
 	])('returns %s -> %s', async (_label, body, status) => {
 		const { request } = await seedReviewInTeamProject(owner);
 
@@ -474,13 +480,29 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		const firstIds = await seedEntries(first.request.id, 1);
 		const secondIds = await seedEntries(second.request.id, 1);
 		firstIds.push(...(await seedEntries(first.request.id, 1)));
+		// A comment in each: the message query scopes through the activity header's review
+		// id, which only two reviews both holding messages can exercise.
+		async function comment(requestId: string, body: string) {
+			const response = await ownerAgent
+				.post(`/workflow-review-requests/${requestId}/comments`)
+				.send({ body })
+				.expect(201);
+			return response.body.data.id as string;
+		}
+		firstIds.push(await comment(first.request.id, 'First review comment'));
+		secondIds.push(await comment(second.request.id, 'Second review comment'));
 
-		expect((await getActivity(ownerAgent, first.request.id)).data.map((e) => e.id)).toEqual(
-			firstIds,
-		);
-		expect((await getActivity(ownerAgent, second.request.id)).data.map((e) => e.id)).toEqual(
-			secondIds,
-		);
+		const firstFeed = await getActivity(ownerAgent, first.request.id);
+		const secondFeed = await getActivity(ownerAgent, second.request.id);
+
+		expect(firstFeed.data.map((e) => e.id)).toEqual(firstIds);
+		expect(secondFeed.data.map((e) => e.id)).toEqual(secondIds);
+		expect(firstFeed.data.at(-1)?.messages).toEqual([
+			expect.objectContaining({ body: 'First review comment' }),
+		]);
+		expect(secondFeed.data.at(-1)?.messages).toEqual([
+			expect.objectContaining({ body: 'Second review comment' }),
+		]);
 	});
 
 	test('passes a non-comment entry through untouched and attaches no messages to it', async () => {
@@ -504,9 +526,42 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 
 		expect(feed.hasMore).toBe(false);
 		expect(feed.data).toHaveLength(2);
-		expect(feed.data[0]).toMatchObject({ type: 'review.changes_requested', data });
+		expect(feed.data[0]).toMatchObject({ type: 'review.changes_requested' });
+		// `toEqual`, not a partial match: a mapper that renamed or added a key inside `data`
+		// would still pass `toMatchObject`.
+		expect(feed.data[0].data).toEqual(data);
 		expect(feed.data[0]).not.toHaveProperty('messages');
 		expect(feed.data[1]).toMatchObject({ type: 'comment.created' });
+	});
+
+	test('keeps each comment with its own body and author', async () => {
+		const { request } = await seedReviewInTeamProject(owner);
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/comments`)
+			.send({ body: 'From the owner' })
+			.expect(201);
+		await memberAgent
+			.post(`/workflow-review-requests/${request.id}/comments`)
+			.send({ body: 'From the member' })
+			.expect(201);
+
+		const feed = await getActivity(ownerAgent, request.id);
+
+		// A grouping bug that attaches one thread's messages to every entry renders every
+		// comment with the same body, so both entries are asserted individually.
+		expect(feed.data).toHaveLength(2);
+		expect(feed.data[0].messages).toEqual([
+			expect.objectContaining({
+				body: 'From the owner',
+				createdBy: expect.objectContaining({ id: owner.id }),
+			}),
+		]);
+		expect(feed.data[1].messages).toEqual([
+			expect.objectContaining({
+				body: 'From the member',
+				createdBy: expect.objectContaining({ id: member.id }),
+			}),
+		]);
 	});
 
 	test.each([

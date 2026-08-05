@@ -1,4 +1,4 @@
-import { getRouteCases } from '@/modules/agents/__tests__/test-utils/controller-route-metadata';
+import { getRouteCases } from '@test/controller-route-metadata';
 
 import { WorkflowReviewRequestsController } from '../workflow-review-requests.controller';
 
