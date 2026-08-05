@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<InputProps>(), {
 	placeholder: '',
 	disabled: false,
 	readonly: false,
+	required: false,
 	clearable: false,
 	rows: 2,
 	masked: false,
@@ -211,6 +212,7 @@ defineExpose({ focus, blur, select });
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
+				:required="required"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:name="name"
@@ -231,6 +233,7 @@ defineExpose({ focus, blur, select });
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
+				:required="required"
 				:rows="autosize ? undefined : rows"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"

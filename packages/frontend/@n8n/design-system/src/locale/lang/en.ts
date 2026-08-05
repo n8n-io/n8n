@@ -215,6 +215,8 @@ export default {
 	'markdownEditor.linkDialogTitle': 'Add link',
 	'markdownEditor.linkUrl': 'Link URL',
 	'markdownEditor.linkPlaceholder': 'https://example.com',
+	'markdownEditor.linkRequired': 'Enter a URL to add the link',
+	'markdownEditor.linkInvalid': 'Enter a valid URL, such as https://example.com',
 	'markdownEditor.addLink': 'Add link',
 	'markdownEditor.cancel': 'Cancel',
 	'markdownEditor.slashCommandMenuLabel': 'Markdown commands',

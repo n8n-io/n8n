@@ -13,7 +13,9 @@ import N8nToggle from '../N8nToggle';
 import N8nToggleGroup from '../N8nToggleGroup';
 import N8nTooltip from '../N8nTooltip';
 import type { MarkdownEditorVariant, MarkdownEditorToolbarMode } from './MarkdownEditor.types';
+import { isUrl } from './markdownEditorUtils';
 import type { IconName } from '../N8nIcon';
+import N8nText from '../N8nText';
 
 const translate = (path: string) => t(path, undefined);
 
@@ -38,6 +40,14 @@ const emit = defineEmits<{
 
 const isLinkDialogOpen = ref(false);
 const linkUrl = ref('');
+const showLinkValidationError = ref(false);
+
+const linkValidationError = computed(() => {
+	if (!linkUrl.value.trim()) return translate('markdownEditor.linkRequired');
+	if (!isUrl(linkUrl.value.trim())) return translate('markdownEditor.linkInvalid');
+
+	return null;
+});
 
 const markControls = computed<ToolbarControl[]>(() => [
 	{
@@ -189,7 +199,8 @@ const runControl = (control: ToolbarControl) => {
 function openLinkDialog() {
 	if (props.disabled || props.isRawMode) return;
 
-	linkUrl.value = props.editor.getAttributes('link').href ?? '';
+	linkUrl.value = (props.editor.getAttributes('link').href as string) ?? '';
+	showLinkValidationError.value = false;
 	isLinkDialogOpen.value = true;
 }
 
@@ -203,13 +214,31 @@ function scrollToolbar(event: WheelEvent) {
 	event.preventDefault();
 }
 
+function handleLinkInvalid(event: Event) {
+	event.preventDefault();
+	showLinkValidationError.value = true;
+}
+
 function applyLink() {
 	const href = linkUrl.value.trim();
 
-	if (href) {
-		props.editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+	if (!isUrl(href)) {
+		showLinkValidationError.value = true;
+		return;
+	}
+
+	if (props.editor.state.selection.empty && !props.editor.isActive('link')) {
+		props.editor
+			.chain()
+			.focus()
+			.insertContent({
+				type: 'text',
+				text: href,
+				marks: [{ type: 'link', attrs: { href } }],
+			})
+			.run();
 	} else {
-		props.editor.chain().focus().extendMarkRange('link').unsetLink().run();
+		props.editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
 	}
 
 	isLinkDialogOpen.value = false;
@@ -393,11 +422,29 @@ const setTextStyle = (value: string | number) => {
 			<form @submit.prevent="applyLink">
 				<N8nInput
 					v-model="linkUrl"
-					type="text"
+					type="url"
+					required
 					autofocus
+					:class="showLinkValidationError && linkValidationError ? $style.invalidInput : undefined"
 					:placeholder="translate('markdownEditor.linkPlaceholder')"
 					:aria-label="translate('markdownEditor.linkUrl')"
+					:aria-invalid="showLinkValidationError && !!linkValidationError"
+					:aria-describedby="
+						showLinkValidationError && linkValidationError
+							? 'markdown-editor-link-error'
+							: undefined
+					"
+					@invalid="handleLinkInvalid"
 				/>
+				<N8nText
+					step="xs"
+					v-if="showLinkValidationError && linkValidationError"
+					id="markdown-editor-link-error"
+					:class="$style.validationError"
+					role="alert"
+				>
+					{{ linkValidationError }}
+				</N8nText>
 				<N8nDialogFooter>
 					<N8nButton variant="outline" @click="isLinkDialogOpen = false">
 						{{ translate('markdownEditor.cancel') }}
@@ -468,6 +515,16 @@ const setTextStyle = (value: string | number) => {
 
 .linkButton {
 	flex: 0 0 auto;
+}
+
+.invalidInput {
+	--input--border-color: var(--color--danger);
+}
+
+.validationError {
+	margin: var(--spacing--2xs) 0 0;
+	font-size: var(--font-size--2xs);
+	color: var(--color--danger);
 }
 
 .toolbarGroup {

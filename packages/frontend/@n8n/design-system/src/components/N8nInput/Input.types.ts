@@ -1,4 +1,4 @@
-export type InputType = 'text' | 'textarea' | 'password' | 'number' | 'email';
+export type InputType = 'text' | 'textarea' | 'password' | 'number' | 'email' | 'url';
 export type InputSize = 'xlarge' | 'large' | 'medium' | 'small' | 'mini';
 export type InputAutocomplete =
 	| 'off'
@@ -17,6 +17,7 @@ export interface InputProps {
 	placeholder?: string;
 	disabled?: boolean;
 	readonly?: boolean;
+	required?: boolean;
 	clearable?: boolean;
 	rows?: number;
 	// Masks a textarea's content (dots) for secrets that span multiple lines,
