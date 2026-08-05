@@ -435,7 +435,8 @@ export class ScheduleTrigger implements INodeType {
 					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce' },
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
-				hint: 'Applies once the instance has been down longer than its configured grace period',
+				hint: 'Applies once an execution is later than its configured grace period',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.4 } }],
