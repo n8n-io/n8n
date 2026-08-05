@@ -301,6 +301,113 @@ function buildEditableParameters(
 }
 
 /**
+ * Ask the host which of the node's list-backed locator parameters the connected
+ * credential can't reach, and turn each into a parameter issue the setup wizard
+ * can act on.
+ *
+ * Applies to any credential and any node, not just managed credentials or AI nodes:
+ * the free OpenAI credits credential narrows the model list via its proxy allowlist,
+ * a user's own key can be just as restricted by their org's model access, and a
+ * Sheets document or Slack channel the builder guessed at may not exist on the account
+ * that ends up connected. See `findUnavailableResourceLocatorValues` for what the host
+ * will and won't claim.
+ *
+ * `preselect` only ever carries the **node's own declared default**, when the credential
+ * can reach it. We never substitute an arbitrary reachable value: swapping one model for
+ * another is benign, but silently retargeting a node at the first spreadsheet in someone's
+ * Drive is not. Anything else is left for the user to choose, and the issue text is what
+ * keeps a pre-selection from being a silent swap.
+ */
+async function computeUnavailableLocatorIssues(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	parameters: Record<string, unknown>,
+	typeVersion: number,
+	credentialType: string,
+	credential: { id: string; name: string },
+): Promise<{
+	issues: Record<string, string[]>;
+	editableParameters: NonNullable<SetupRequest['editableParameters']>;
+	preselect: Record<string, unknown>;
+}> {
+	const empty = { issues: {}, editableParameters: [], preselect: {} };
+	if (!context.nodeService.findUnavailableLocatorValues) return empty;
+
+	const unavailable = await context.nodeService
+		.findUnavailableLocatorValues({
+			nodeType: node.type,
+			version: typeVersion,
+			credentialType,
+			credentialId: credential.id,
+			parameters,
+		})
+		.catch(() => []);
+	if (unavailable.length === 0) return empty;
+
+	const issues: Record<string, string[]> = {};
+	const editableParameters: NonNullable<SetupRequest['editableParameters']> = [];
+	const preselect: Record<string, unknown> = {};
+
+	for (const entry of unavailable) {
+		issues[entry.name] = [
+			`"${entry.currentValue}" isn't available with the connected credential "${credential.name}". Choose one of the available options.`,
+		];
+
+		// Take the shape straight from the host, which resolved it off the property it
+		// actually probed. Re-finding it here by name would be wrong: a node can declare
+		// the same parameter more than once across versions — `lmChatOpenAi` has `model`
+		// as both a legacy `options` field and a `resourceLocator` — and a name lookup
+		// picks whichever comes first, which the wizard then fails to render.
+		editableParameters.push({
+			name: entry.name,
+			displayName: entry.displayName,
+			type: entry.type,
+			options: entry.availableOptions,
+		});
+
+		// Only the node's own default — a value its author vetted — is safe to fill in
+		// on the user's behalf. See the note above on why "first reachable option" isn't.
+		const nodeDefaultValue = readLocatorValue(entry.default);
+		const reachableDefault =
+			nodeDefaultValue === undefined
+				? undefined
+				: entry.availableOptions.find((o) => o.value === nodeDefaultValue);
+		if (reachableDefault) {
+			preselect[entry.name] = rewriteLocatorValue(parameters[entry.name], reachableDefault);
+		}
+	}
+
+	return { issues, editableParameters, preselect };
+}
+
+/** The concrete value a resource-locator (or plain string) parameter holds, if any. */
+function readLocatorValue(raw: unknown): string | undefined {
+	if (typeof raw === 'string') return raw === '' ? undefined : raw;
+	if (typeof raw !== 'object' || raw === null) return undefined;
+	const value: unknown = Reflect.get(raw, 'value');
+	return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+/**
+ * Write `option` into a parameter while preserving its shape — a resource locator
+ * keeps its `__rl`/`mode` envelope (and gets a refreshed `cachedResultName`), a
+ * plain string parameter stays a plain string.
+ */
+function rewriteLocatorValue(
+	current: unknown,
+	option: { name: string; value: string },
+): string | IDataObject {
+	if (typeof current === 'object' && current !== null && Reflect.get(current, '__rl') === true) {
+		return {
+			...(current as IDataObject),
+			value: option.value,
+			cachedResultName: option.name,
+		};
+	}
+	return option.value;
+}
+
+/**
  * Resolve the credential types valid for a node: dynamic resolver first, then
  * the description's static credentials filtered by displayOptions, then the
  * dynamic types implied by `authentication: generic/predefinedCredentialType`.
@@ -374,6 +481,13 @@ interface CredentialState {
 	 */
 	autoAppliedGateway?: true;
 	credentialTestResult?: { success: boolean; message?: string };
+	/**
+	 * The stored credential this slot effectively resolves to — bound on the node,
+	 * or the sole candidate we auto-applied. Undefined for the gateway option (no
+	 * stored record) and for slots with nothing resolved yet. Used to validate
+	 * credential-scoped parameter values such as a model name.
+	 */
+	effectiveCredential?: { id: string; name: string };
 }
 
 /**
@@ -446,6 +560,9 @@ async function resolveCredentialState(
 		};
 	}
 
+	const resolvedCredential = sortedCreds.find((c) => c.id === credToTest);
+	const effectiveCredential = resolvedCredential ? { effectiveCredential: resolvedCredential } : {};
+
 	let testabilityPromise = cache?.testability.get(credentialType);
 	if (!testabilityPromise) {
 		testabilityPromise = context.credentialService.isTestable
@@ -454,7 +571,7 @@ async function resolveCredentialState(
 		cache?.testability.set(credentialType, testabilityPromise);
 	}
 	const canTest = await testabilityPromise;
-	if (!canTest) return { existingCredentials, isAutoApplied };
+	if (!canTest) return { existingCredentials, isAutoApplied, ...effectiveCredential };
 
 	let testPromise = cache?.tests.get(credToTest);
 	if (!testPromise) {
@@ -465,7 +582,7 @@ async function resolveCredentialState(
 		cache?.tests.set(credToTest, testPromise);
 	}
 	const credentialTestResult = await testPromise;
-	return { existingCredentials, isAutoApplied, credentialTestResult };
+	return { existingCredentials, isAutoApplied, credentialTestResult, ...effectiveCredential };
 }
 
 type RequestNodeCredentials = NonNullable<SetupRequest['node']['credentials']>;
@@ -544,7 +661,6 @@ interface NodeSetupContext {
 	nodeName: string;
 	isTrigger: boolean;
 	isTestable: boolean;
-	hasParamIssues: boolean;
 	parameterIssues: Record<string, string[]>;
 	editableParameters: SetupRequest['editableParameters'];
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string };
@@ -577,17 +693,47 @@ async function buildRequestForCredentialType(
 			)
 		: undefined;
 
-	const { existingCredentials, isAutoApplied, credentialTestResult, autoAppliedGateway } =
-		await resolveAppliedCredentialState(
-			context,
-			node,
-			credentialType,
-			cache,
-			workflowId,
-			nodeCredentials,
-		);
+	const {
+		existingCredentials,
+		isAutoApplied,
+		credentialTestResult,
+		autoAppliedGateway,
+		effectiveCredential,
+	} = await resolveAppliedCredentialState(
+		context,
+		node,
+		credentialType,
+		cache,
+		workflowId,
+		nodeCredentials,
+	);
 
-	const { isTrigger, isTestable, hasParamIssues } = nodeCtx;
+	// A managed credential can rule out a parameter value the builder chose before any
+	// credential existed (see computeUnavailableLocatorIssues). Merge those in as
+	// parameter issues so the wizard collects a working value in the same card.
+	const unavailable =
+		credentialType && effectiveCredential
+			? await computeUnavailableLocatorIssues(
+					context,
+					node,
+					nodeCtx.parameters,
+					nodeCtx.typeVersion,
+					credentialType,
+					effectiveCredential,
+				)
+			: { issues: {}, editableParameters: [], preselect: {} };
+
+	const parameterIssues = { ...nodeCtx.parameterIssues, ...unavailable.issues };
+	const editableParameters = [
+		...(nodeCtx.editableParameters ?? []),
+		...unavailable.editableParameters.filter(
+			(added) => !nodeCtx.editableParameters?.some((existing) => existing.name === added.name),
+		),
+	];
+	const parameters = { ...nodeCtx.parameters, ...unavailable.preselect };
+
+	const { isTrigger, isTestable } = nodeCtx;
+	const hasParamIssues = Object.keys(parameterIssues).length > 0;
 	if (!credentialType && !isTrigger && !hasParamIssues) return null;
 	if (!credentialType && isTrigger && !isTestable && !hasParamIssues) return null;
 
@@ -623,7 +769,7 @@ async function buildRequestForCredentialType(
 			name: nodeCtx.nodeName,
 			type: node.type,
 			typeVersion: nodeCtx.typeVersion,
-			parameters: nodeCtx.parameters,
+			parameters,
 			position: nodeCtx.nodePosition,
 			id: nodeCtx.nodeId,
 			...buildRequestCredentials(
@@ -641,10 +787,8 @@ async function buildRequestForCredentialType(
 		...(isAutoApplied ? { isAutoApplied } : {}),
 		...(credentialTestResult ? { credentialTestResult } : {}),
 		...(nodeCtx.triggerTestResult ? { triggerTestResult: nodeCtx.triggerTestResult } : {}),
-		...(hasParamIssues ? { parameterIssues: nodeCtx.parameterIssues } : {}),
-		...(nodeCtx.editableParameters && nodeCtx.editableParameters.length > 0
-			? { editableParameters: nodeCtx.editableParameters }
-			: {}),
+		...(hasParamIssues ? { parameterIssues } : {}),
+		...(editableParameters.length > 0 ? { editableParameters } : {}),
 		needsAction,
 	};
 }
@@ -685,7 +829,6 @@ export async function buildSetupRequests(
 
 	const nodeId = node.id ?? nanoid();
 	const nodePosition: [number, number] = node.position ?? [0, 0];
-	const hasParamIssues = Object.keys(parameterIssues).length > 0;
 
 	const requests: SetupRequest[] = [];
 	const processedCredTypes = credentialTypes.length > 0 ? credentialTypes : [undefined];
@@ -693,7 +836,6 @@ export async function buildSetupRequests(
 		nodeName: node.name,
 		isTrigger,
 		isTestable,
-		hasParamIssues,
 		parameterIssues,
 		editableParameters,
 		triggerTestResult,

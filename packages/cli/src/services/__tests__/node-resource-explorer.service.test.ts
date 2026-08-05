@@ -317,4 +317,250 @@ describe('NodeResourceExplorerService', () => {
 			expect.objectContaining({ error: 'Slack API rate-limited' }),
 		);
 	});
+	describe('findUnavailableResourceLocatorValues', () => {
+		const modelLocator = {
+			displayName: 'Model',
+			name: 'model',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: 'gpt-5-mini' },
+			modes: [{ name: 'list', type: 'list', typeOptions: { searchListMethod: 'searchModels' } }],
+		};
+
+		const openAiParams = {
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.3,
+			credentialType: 'openAiApi',
+			credentialId: 'cred-1',
+		};
+
+		function mockAiNode(properties: unknown[]) {
+			mockNodeDescription({
+				name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				properties: properties as INodeTypeDescription['properties'],
+			});
+		}
+
+		function mockAvailableModels(ids: string[], paginationToken?: string) {
+			dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+				results: ids.map((id) => ({ name: id, value: id })),
+				...(paginationToken ? { paginationToken } : {}),
+			} as never);
+		}
+
+		beforeEach(() => {
+			mockCredentialOwned({ type: 'openAiApi', name: 'n8n free OpenAI API credits' });
+		});
+
+		test("reports the probed property's own type, not a same-named sibling's", async () => {
+			// lmChatOpenAi declares `model` twice: a legacy `options` field for old type
+			// versions and the resource locator for current ones. A name lookup would pick
+			// the legacy one and the setup wizard would fail to render the field.
+			mockAiNode([
+				{ displayName: 'Model', name: 'model', type: 'options', default: 'gpt-5-mini' },
+				modelLocator,
+			]);
+			mockAvailableModels(['gpt-5-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+			});
+
+			expect(result[0]?.type).toBe('resourceLocator');
+			expect(result[0]?.default).toEqual({ mode: 'list', value: 'gpt-5-mini' });
+		});
+
+		test('reports a model the credential cannot reach, with the reachable options', async () => {
+			mockAiNode([modelLocator]);
+			mockAvailableModels(['gpt-5-mini', 'gpt-4.1-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+			});
+
+			expect(result).toEqual([
+				{
+					name: 'model',
+					displayName: 'Model',
+					type: 'resourceLocator',
+					default: { mode: 'list', value: 'gpt-5-mini' },
+					currentValue: 'gpt-5.4',
+					availableOptions: [
+						{ name: 'gpt-5-mini', value: 'gpt-5-mini' },
+						{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
+					],
+				},
+			]);
+		});
+
+		test('reports nothing when the current model is reachable', async () => {
+			mockAiNode([modelLocator]);
+			mockAvailableModels(['gpt-5-mini', 'gpt-4.1-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5-mini' } },
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		test('reads a plain string parameter as well as a resource-locator envelope', async () => {
+			mockAiNode([{ ...modelLocator, default: 'gpt-5-mini' }]);
+			mockAvailableModels(['gpt-5-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: 'gpt-4o' },
+			});
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.currentValue).toBe('gpt-4o');
+			expect(result[0]?.type).toBe('resourceLocator');
+		});
+
+		test('covers non-AI nodes too, e.g. a channel the account cannot reach', async () => {
+			mockCredentialOwned({ type: 'slackApi', name: 'My Slack' });
+			mockNodeDescription({
+				name: 'n8n-nodes-base.slack',
+				properties: [
+					{
+						displayName: 'Channel',
+						name: 'channel',
+						type: 'resourceLocator',
+						modes: [
+							{ name: 'list', type: 'list', typeOptions: { searchListMethod: 'getChannels' } },
+						],
+					},
+				] as INodeTypeDescription['properties'],
+			});
+			dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+				results: [{ name: '#random', value: '#random' }],
+			} as never);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				nodeType: 'n8n-nodes-base.slack',
+				version: 2.3,
+				credentialType: 'slackApi',
+				credentialId: 'cred-1',
+				parameters: { channel: { __rl: true, mode: 'list', value: '#general' } },
+			});
+
+			expect(result).toHaveLength(1);
+			expect(result[0]?.currentValue).toBe('#general');
+		});
+
+		/** Queue one provider response per page; the last one ends the list. */
+		function mockPages(pages: Array<{ ids: string[]; nextToken?: string }>) {
+			dynamicNodeParametersService.getResourceLocatorResults.mockReset();
+			for (const page of pages) {
+				dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValueOnce({
+					results: page.ids.map((id) => ({ name: id, value: id })),
+					...(page.nextToken ? { paginationToken: page.nextToken } : {}),
+				} as never);
+			}
+		}
+
+		test('follows pagination and reports against the full list once it ends', async () => {
+			mockAiNode([modelLocator]);
+			mockPages([
+				{ ids: ['gpt-4o-mini'], nextToken: 'p2' },
+				{ ids: ['gpt-4.1-mini'], nextToken: 'p3' },
+				{ ids: ['gpt-5-mini'] },
+			]);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+			});
+
+			expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledTimes(3);
+			expect(result[0]?.availableOptions.map((o) => o.value)).toEqual([
+				'gpt-4o-mini',
+				'gpt-4.1-mini',
+				'gpt-5-mini',
+			]);
+		});
+
+		test('finds a value on a later page rather than flagging it', async () => {
+			mockAiNode([modelLocator]);
+			mockPages([{ ids: ['gpt-4o-mini'], nextToken: 'p2' }, { ids: ['gpt-5.4'] }]);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		test('reports nothing when the list is longer than the page budget', async () => {
+			mockAiNode([modelLocator]);
+			// Never terminates — every page hands back another token.
+			mockAvailableModels(['gpt-5-mini'], 'next-page-token');
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+			});
+
+			expect(result).toEqual([]);
+			expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledTimes(5);
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Resource-locator list too long to validate against',
+				expect.objectContaining({ parameter: 'model' }),
+			);
+		});
+
+		test('reports nothing when the lookup returns an empty list', async () => {
+			mockAiNode([modelLocator]);
+			mockAvailableModels([]);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'dall-e-3' } },
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		test('reports nothing when the lookup fails, rather than flagging the value', async () => {
+			mockAiNode([modelLocator]);
+			dynamicNodeParametersService.getResourceLocatorResults.mockRejectedValue(
+				new Error('provider unreachable'),
+			);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		test('ignores parameters with no concrete value and locators with no search method', async () => {
+			mockAiNode([
+				modelLocator,
+				{
+					displayName: 'Other',
+					name: 'other',
+					type: 'resourceLocator',
+					modes: [{ name: 'id', type: 'string' }],
+				},
+			]);
+			mockAvailableModels(['gpt-5-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: {
+					model: { __rl: true, mode: 'list', value: '' },
+					other: { __rl: true, mode: 'id', value: 'anything' },
+				},
+			});
+
+			expect(result).toEqual([]);
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		});
+	});
 });

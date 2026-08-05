@@ -117,6 +117,230 @@ describe('buildSetupRequests', () => {
 		(context.credentialService.test as Mock).mockResolvedValue({ success: true });
 	});
 
+	describe('credential-scoped parameter availability', () => {
+		const modelProperty = {
+			displayName: 'Model',
+			name: 'model',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: 'gpt-5-mini' },
+		};
+
+		function mockOpenAiNode() {
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				group: [],
+				credentials: [{ name: 'openAiApi' }],
+				properties: [modelProperty],
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-free', name: 'n8n free OpenAI API credits' },
+			]);
+		}
+
+		function mockUnavailable(
+			availableOptions: Array<{ name: string; value: string }>,
+			nodeDefault: unknown = { mode: 'list', value: 'gpt-5-mini' },
+		) {
+			const findUnavailableLocatorValues = vi.fn().mockResolvedValue([
+				{
+					name: 'model',
+					displayName: 'Model',
+					type: 'resourceLocator',
+					default: nodeDefault,
+					currentValue: 'gpt-5.4',
+					availableOptions,
+				},
+			]);
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues =
+				findUnavailableLocatorValues;
+			return findUnavailableLocatorValues;
+		}
+
+		function makeOpenAiNode(modelValue: unknown) {
+			return makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: modelValue },
+				credentials: { openAiApi: { id: 'cred-free', name: 'n8n free OpenAI API credits' } },
+			} as Partial<NodeJSON>);
+		}
+
+		it('raises a parameter issue naming the credential, and offers the reachable models', async () => {
+			mockOpenAiNode();
+			mockUnavailable([
+				{ name: 'gpt-5-mini', value: 'gpt-5-mini' },
+				{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
+			]);
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'list', value: 'gpt-5.4' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].parameterIssues?.model?.[0]).toContain('gpt-5.4');
+			expect(result[0].parameterIssues?.model?.[0]).toContain('n8n free OpenAI API credits');
+			expect(result[0].editableParameters).toEqual([
+				{
+					name: 'model',
+					displayName: 'Model',
+					type: 'resourceLocator',
+					options: [
+						{ name: 'gpt-5-mini', value: 'gpt-5-mini' },
+						{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
+					],
+				},
+			]);
+			expect(result[0].needsAction).toBe(true);
+		});
+
+		it("pre-selects the node's own default when the credential can reach it", async () => {
+			mockOpenAiNode();
+			mockUnavailable([
+				{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
+				{ name: 'gpt-5-mini', value: 'gpt-5-mini' },
+			]);
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'list', value: 'gpt-5.4' });
+			const result = await buildSetupRequests(context, node);
+
+			// gpt-5-mini is the node default and is reachable, so it wins over the
+			// first option in the list.
+			expect(result[0].node.parameters.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'gpt-5-mini',
+				cachedResultName: 'gpt-5-mini',
+			});
+		});
+
+		it('leaves the value for the user to pick when the default is unreachable', async () => {
+			mockOpenAiNode();
+			mockUnavailable([{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' }]);
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'list', value: 'gpt-5.4' });
+			const result = await buildSetupRequests(context, node);
+
+			// Never substitute an arbitrary reachable value — the issue plus the options
+			// are surfaced, and the choice stays the user's.
+			expect(result[0].node.parameters.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'gpt-5.4',
+			});
+			expect(result[0].parameterIssues?.model).toBeDefined();
+			expect(result[0].editableParameters?.[0].options).toEqual([
+				{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
+			]);
+		});
+
+		it('does not pre-select a value for a node with no default, e.g. a document picker', async () => {
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				group: [],
+				credentials: [{ name: 'googleSheetsOAuth2Api' }],
+				properties: [{ displayName: 'Document', name: 'documentId', type: 'resourceLocator' }],
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-sheets', name: 'My Google account' },
+			]);
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([
+					{
+						name: 'documentId',
+						displayName: 'Document',
+						type: 'resourceLocator',
+						currentValue: 'guessed-doc-id',
+						availableOptions: [{ name: 'Budget 2026', value: 'doc-1' }],
+					},
+				]);
+
+			const node = makeNode({
+				name: 'Google Sheets',
+				type: 'n8n-nodes-base.googleSheets',
+				typeVersion: 4.5,
+				parameters: { documentId: { __rl: true, mode: 'list', value: 'guessed-doc-id' } },
+				credentials: {
+					googleSheetsOAuth2Api: { id: 'cred-sheets', name: 'My Google account' },
+				},
+			} as Partial<NodeJSON>);
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].node.parameters.documentId).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'guessed-doc-id',
+			});
+			expect(result[0].parameterIssues?.documentId?.[0]).toContain('guessed-doc-id');
+			expect(result[0].needsAction).toBe(true);
+		});
+
+		it('keeps a plain string parameter a plain string when pre-selecting', async () => {
+			(context.nodeService.getDescription as Mock).mockResolvedValue({
+				group: [],
+				credentials: [{ name: 'openAiApi' }],
+				properties: [{ ...modelProperty, default: 'gpt-5-mini' }],
+			});
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-free', name: 'n8n free OpenAI API credits' },
+			]);
+			mockUnavailable([{ name: 'gpt-5-mini', value: 'gpt-5-mini' }], 'gpt-5-mini');
+
+			const node = makeOpenAiNode('gpt-5.4');
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].node.parameters.model).toBe('gpt-5-mini');
+		});
+
+		it('leaves the node alone when the host reports nothing unavailable', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([]);
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'list', value: 'gpt-5-mini' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+			expect(result[0].node.parameters.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'gpt-5-mini',
+			});
+		});
+
+		it('degrades quietly when the availability lookup throws', async () => {
+			mockOpenAiNode();
+			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues = vi
+				.fn()
+				.mockRejectedValue(new Error('provider unreachable'));
+
+			const node = makeOpenAiNode({ __rl: true, mode: 'list', value: 'gpt-5.4' });
+			const result = await buildSetupRequests(context, node);
+
+			expect(result[0].parameterIssues).toBeUndefined();
+			expect(result[0].node.parameters.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'gpt-5.4',
+			});
+		});
+
+		it('does not probe when no credential is resolved for the slot', async () => {
+			mockOpenAiNode();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+			const probe = mockUnavailable([{ name: 'gpt-5-mini', value: 'gpt-5-mini' }]);
+
+			const node = makeNode({
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
+			} as Partial<NodeJSON>);
+			await buildSetupRequests(context, node);
+
+			expect(probe).not.toHaveBeenCalled();
+		});
+	});
+
 	it('skips disabled nodes', async () => {
 		const node = makeNode({ disabled: true });
 		const result = await buildSetupRequests(context, node);

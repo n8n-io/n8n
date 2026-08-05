@@ -512,6 +512,18 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
+/** A resource-locator value the connected credential can't reach, plus the ones it can. */
+export interface UnavailableLocatorValue {
+	name: string;
+	displayName: string;
+	/** The property's declared `type`, resolved by the host from the node description. */
+	type: string;
+	/** The property's declared default — the only value safe to fill in for the user. */
+	default?: unknown;
+	currentValue: string;
+	availableOptions: Array<{ name: string; value: string }>;
+}
+
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string; n8nConnectOnly?: boolean }): Promise<NodeSummary[]>;
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
@@ -533,6 +545,20 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	/**
+	 * Report resource-locator parameters whose current value the given credential
+	 * can't reach, together with the values it can. A credential can narrow a
+	 * parameter's value space after the value was chosen — the managed free-OpenAI-
+	 * credits credential only proxies an allowlisted subset of models — so this is
+	 * what lets setup offer a real choice instead of guessing a replacement.
+	 */
+	findUnavailableLocatorValues?(params: {
+		nodeType: string;
+		version: number;
+		credentialType: string;
+		credentialId: string;
+		parameters: Record<string, unknown>;
+	}): Promise<UnavailableLocatorValue[]>;
 	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
 	getParameterIssues?(
 		nodeType: string,
