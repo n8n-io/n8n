@@ -8,6 +8,8 @@ export type ActionToggleItem<T extends string = string> = {
 	label: string;
 	disabled?: boolean;
 	type?: 'external-link';
+	/** When set, the item's label is wrapped in a tooltip (useful to explain a disabled item). */
+	tooltip?: string;
 } & ({ id: T; value?: T } | { id?: T; value: T });
 
 export interface ActionToggleProps<T extends string = string> {
