@@ -270,6 +270,7 @@ import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
 import IconLucideVolume2 from '~icons/lucide/volume-2';
 import IconLucideVolumeX from '~icons/lucide/volume-x';
+import IconLucideWallet from '~icons/lucide/wallet';
 import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
 import IconLucideWorkflow from '~icons/lucide/workflow';
@@ -765,6 +766,7 @@ export const updatedIconSet = {
 	video: IconLucideVideo,
 	'volume-2': IconLucideVolume2,
 	'volume-x': IconLucideVolumeX,
+	wallet: IconLucideWallet,
 	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
 	workflow: IconLucideWorkflow,
