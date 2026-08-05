@@ -13,10 +13,14 @@ import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue
 import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
+// The tab round trip destroys the feed subtree, so its lifecycle lives here; the
+// feed and the composer read the store themselves.
+const activityStore = useReviewActivityStore();
 const {
 	probeSettled,
 	showSidebar,
@@ -72,8 +76,14 @@ watch(
 	selectedReviewId,
 	(id) => {
 		if (route.name !== WORKFLOW_REVIEW_REQUESTS_VIEW) return;
-		if (id) void store.fetchDetail(id).catch(handleListError);
-		else store.clearDetail();
+		if (id) {
+			void store.fetchDetail(id).catch(handleListError);
+			// Failures surface in the feed's own error row, never as a second toast.
+			void activityStore.fetchFeed(id);
+		} else {
+			store.clearDetail();
+			activityStore.reset();
+		}
 	},
 	{ immediate: true },
 );
@@ -201,6 +211,7 @@ onMounted(async () => {
 onUnmounted(() => {
 	isMounted = false;
 	store.reset();
+	activityStore.reset();
 });
 </script>
 
