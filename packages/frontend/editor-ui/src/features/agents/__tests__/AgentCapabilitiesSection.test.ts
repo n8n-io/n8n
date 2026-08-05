@@ -44,7 +44,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 }));
 
 const showErrorSpy = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy }),
 }));
 
@@ -571,6 +571,14 @@ describe('AgentCapabilitiesSection', () => {
 
 		expect(wrapper.text()).toContain('Daily summary');
 		expect(wrapper.findAll('[data-testid="agent-capabilities-task-row"]').length).toBe(1);
+	});
+
+	it('does not load tasks for an agent that has not been saved yet', async () => {
+		const wrapper = mountSection([], {}, null, [], [], { agentUnsaved: true });
+		await flushPromises();
+
+		expect(getAgentTasksSpy).not.toHaveBeenCalled();
+		expect(wrapper.text()).not.toContain('not found');
 	});
 
 	it('reloads task bodies when switching agents', async () => {

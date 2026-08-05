@@ -1005,7 +1005,11 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, payload.threadId);
-		this.evalCredentialAllowlists.set(payload.threadId, payload.credentialIds);
+		this.evalCredentialAllowlists.set(
+			payload.threadId,
+			payload.credentialIds,
+			payload.bypassCredentialTest,
+		);
 		return { ok: true };
 	}
 

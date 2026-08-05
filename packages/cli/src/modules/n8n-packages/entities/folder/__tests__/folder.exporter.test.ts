@@ -49,6 +49,7 @@ describe('FolderExporter', () => {
 			user,
 			folderIds: ['fld-1'],
 			writer: new CapturingWriter(),
+			includeTags: true,
 			basePrefix: 'projects/team-ligo',
 		});
 
@@ -71,6 +72,7 @@ describe('FolderExporter', () => {
 				],
 				dataTables: [],
 				variables: [],
+				tags: [],
 				nodeTypes: [],
 			},
 		});
@@ -79,6 +81,7 @@ describe('FolderExporter', () => {
 			user,
 			folderIds: ['fld-1'],
 			writer: new CapturingWriter(),
+			includeTags: true,
 		});
 
 		// The folder's own target is passed as basePrefix, so workflows nest under it.
@@ -106,7 +109,12 @@ describe('FolderExporter', () => {
 		);
 
 		await expect(
-			exporter.export({ user, folderIds: ['fld-1'], writer: new CapturingWriter() }),
+			exporter.export({
+				user,
+				folderIds: ['fld-1'],
+				writer: new CapturingWriter(),
+				includeTags: true,
+			}),
 		).rejects.toThrow(/not found or not accessible/);
 	});
 });

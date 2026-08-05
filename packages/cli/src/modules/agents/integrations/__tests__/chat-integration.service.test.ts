@@ -12,8 +12,10 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { UrlService } from '@/services/url.service';
 
+import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
+import { AgentChatBridge } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -109,13 +111,14 @@ function buildServiceWith(
 	const urlService = opts.urlService ?? mock<UrlService>();
 	const chatSubscriptionStateService =
 		opts.chatSubscriptionStateService ?? mock<AgentChatSubscriptionStateService>();
+	const logger = mockLogger();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: opts.isLeader ?? true });
 	const globalConfig = mock<GlobalConfig>({
 		multiMainSetup: { enabled: opts.multiMainEnabled ?? false },
 	} as Partial<GlobalConfig>);
 
 	const service = new ChatIntegrationService(
-		mockLogger(),
+		logger,
 		agentRepository,
 		credentialsService,
 		urlService,
@@ -134,6 +137,7 @@ function buildServiceWith(
 		publisher,
 		urlService,
 		chatSubscriptionStateService,
+		logger,
 	};
 }
 
@@ -455,6 +459,228 @@ describe('ChatIntegrationService', () => {
 	});
 });
 
+describe('ChatIntegrationService — outbound Preview connections', () => {
+	beforeEach(() => {
+		Container.reset();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('lazily creates and reuses a memory-only outbound connection without enabling ingress', async () => {
+		const createAdapter = vi.fn().mockResolvedValue({ name: 'slack' });
+		const onBeforeConnect = vi.fn().mockResolvedValue(undefined);
+		const onAfterConnect = vi.fn().mockResolvedValue(undefined);
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+			createAdapter;
+		(integration as unknown as { onBeforeConnect: typeof onBeforeConnect }).onBeforeConnect =
+			onBeforeConnect;
+		(integration as unknown as { onAfterConnect: typeof onAfterConnect }).onAfterConnect =
+			onAfterConnect;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [slackIntegration], activeVersionId: null }),
+		);
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+		const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+		const publisher = mock<Publisher>();
+		const memoryState = mock<StateAdapter>();
+		memoryState.disconnect.mockResolvedValue(undefined);
+		const createMemoryState = vi.fn(() => memoryState);
+		vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({ createMemoryState } as never);
+
+		const chatInstance = {
+			initialize: vi.fn().mockResolvedValue(undefined),
+			shutdown: vi.fn().mockResolvedValue(undefined),
+			webhooks: { slack: vi.fn() },
+			onNewMention: vi.fn(),
+			onSubscribedMessage: vi.fn(),
+			onAction: vi.fn(),
+			getAdapter: vi.fn(),
+			openDM: vi.fn(),
+			thread: vi.fn(),
+			channel: vi.fn(),
+			getUser: vi.fn(),
+		};
+		const Chat = vi.fn(function ChatMock() {
+			return chatInstance;
+		});
+		vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({ Chat } as never);
+		const bridgeCreateSpy = vi.spyOn(AgentChatBridge, 'create');
+
+		const { service, logger } = buildServiceWith({
+			registry,
+			agentRepository,
+			credentialsService,
+			publisher,
+			chatSubscriptionStateService,
+		});
+
+		const first = service.getChatInstanceForTools('agent-1', slackIntegration);
+		const second = service.getChatInstanceForTools('agent-1', slackIntegration);
+		const [firstChat, secondChat] = await Promise.all([first, second]);
+		const reusedChat = await service.getChatInstanceForTools('agent-1', slackIntegration);
+
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(firstChat).toBe(chatInstance);
+		expect(secondChat).toBe(chatInstance);
+		expect(reusedChat).toBe(chatInstance);
+		expect(agentRepository.findOne).toHaveBeenCalledTimes(3);
+		expect(Chat).toHaveBeenCalledTimes(1);
+		expect(Chat).toHaveBeenCalledWith(expect.objectContaining({ state: memoryState }));
+		expect(createAdapter).toHaveBeenCalledWith(expect.objectContaining({ ingressEnabled: false }));
+		expect(chatInstance.initialize).toHaveBeenCalledTimes(1);
+		expect(chatSubscriptionStateService.createStateAdapter).not.toHaveBeenCalled();
+		expect(bridgeCreateSpy).not.toHaveBeenCalled();
+		expect(onBeforeConnect).not.toHaveBeenCalled();
+		expect(onAfterConnect).not.toHaveBeenCalled();
+		expect(service.getWebhookHandler('agent-1', 'slack')).toBeUndefined();
+		expect(service.getChatInstance('agent-1', slackIntegration)).toBeUndefined();
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('does not create an outbound fallback for a published agent', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [slackIntegration], activeVersionId: 'version-1' }),
+		);
+		const { service, credentialsService } = buildServiceWith({ agentRepository });
+
+		await expect(
+			service.getChatInstanceForTools('agent-1', slackIntegration),
+		).resolves.toBeUndefined();
+
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+	});
+
+	it('disposes a stale outbound connection when the agent is published', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [slackIntegration], activeVersionId: 'version-1' }),
+		);
+		const { service } = buildServiceWith({ agentRepository });
+		const shutdown = vi.fn().mockResolvedValue(undefined);
+		const internal = service as unknown as {
+			outboundConnections: Map<string, unknown>;
+		};
+		internal.outboundConnections.set('agent-1:slack:cred-1', {
+			chat: { shutdown },
+		});
+
+		await expect(
+			service.getChatInstanceForTools('agent-1', slackIntegration),
+		).resolves.toBeUndefined();
+
+		expect(shutdown).toHaveBeenCalledTimes(1);
+		expect(internal.outboundConnections.size).toBe(0);
+	});
+
+	it('waits for stale outbound initialization before rejecting a published fallback', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findOne.mockResolvedValue(
+			makeAgent({ integrations: [slackIntegration], activeVersionId: 'version-1' }),
+		);
+		const { service } = buildServiceWith({ agentRepository });
+		const shutdown = vi.fn().mockResolvedValue(undefined);
+		const outboundChat = { shutdown };
+		let resolveInitialization: (chat: unknown) => void = () => {};
+		const initialization = new Promise<unknown>((resolve) => {
+			resolveInitialization = resolve;
+		});
+		const internal = service as unknown as {
+			outboundConnections: Map<string, unknown>;
+			outboundConnectionInitializations: Map<string, Promise<unknown>>;
+		};
+		internal.outboundConnectionInitializations.set('agent-1:slack:cred-1', initialization);
+
+		const result = service.getChatInstanceForTools('agent-1', slackIntegration);
+		internal.outboundConnections.set('agent-1:slack:cred-1', { chat: outboundChat });
+		resolveInitialization(outboundChat);
+
+		await expect(result).resolves.toBeUndefined();
+		expect(shutdown).toHaveBeenCalledTimes(1);
+		expect(internal.outboundConnections.size).toBe(0);
+	});
+
+	it('disposes a matching outbound connection before replacing it with a live connection', async () => {
+		const createAdapter = vi.fn().mockResolvedValue({ name: 'slack' });
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+			createAdapter;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+		const liveState = mock<StateAdapter>();
+		liveState.disconnect.mockResolvedValue(undefined);
+		const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+		chatSubscriptionStateService.createStateAdapter.mockReturnValue(liveState);
+		vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+			createMemoryState: vi.fn(() => mock<StateAdapter>()),
+		} as never);
+
+		const outboundChat = {
+			shutdown: vi.fn().mockResolvedValue(undefined),
+		};
+		const liveChat = {
+			initialize: vi.fn().mockResolvedValue(undefined),
+			shutdown: vi.fn().mockResolvedValue(undefined),
+			webhooks: {},
+			onNewMention: vi.fn(),
+			onSubscribedMessage: vi.fn(),
+			onAction: vi.fn(),
+			getAdapter: vi.fn(),
+			openDM: vi.fn(),
+			thread: vi.fn(),
+			channel: vi.fn(),
+			getUser: vi.fn(),
+		};
+		const Chat = vi.fn(function ChatMock() {
+			return liveChat;
+		});
+		vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({ Chat } as never);
+		const bridge = mock<AgentChatBridge>();
+		vi.spyOn(AgentChatBridge, 'create').mockReturnValue(bridge);
+		Container.set(AgentExecutionOrchestratorService, mock());
+
+		const { service } = buildServiceWith({
+			registry,
+			credentialsService,
+			chatSubscriptionStateService,
+		});
+		const internal = service as unknown as {
+			outboundConnections: Map<string, unknown>;
+		};
+		internal.outboundConnections.set('agent-1:slack:cred-1', {
+			chat: outboundChat,
+			context: {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				credentialId: 'cred-1',
+				credential: {},
+				ingressEnabled: false,
+				webhookUrlFor: () => 'https://n8n.test/webhook',
+			},
+		});
+
+		await service.connect('agent-1', slackIntegration, 'project-1');
+
+		expect(outboundChat.shutdown).toHaveBeenCalledTimes(1);
+		expect(outboundChat.shutdown.mock.invocationCallOrder[0]).toBeLessThan(
+			liveChat.initialize.mock.invocationCallOrder[0],
+		);
+		expect(service.getChatInstance('agent-1', slackIntegration)).toBe(liveChat);
+		expect(internal.outboundConnections.size).toBe(0);
+		expect(bridge.dispose).not.toHaveBeenCalled();
+	});
+});
+
 describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 	type ConnectionStub = {
 		chat: {
@@ -498,6 +724,7 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 		projectId: 'project-1',
 		credentialId: 'cred-1',
 		credential: { accessToken: 'bot-token' },
+		ingressEnabled: true,
 		webhookUrlFor: () => 'https://n8n.example.com/wh',
 		...overrides,
 	});

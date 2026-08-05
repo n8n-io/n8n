@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 
 vi.mock('@n8n/instance-ai', () => ({
 	createSandbox: vi.fn(),
@@ -49,7 +50,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		...overrides.backgroundTasks,
 	};
 	const settingsService: InstanceAiSandboxSettings = {
-		resolveDaytonaConfig: vi.fn(async () => ({})),
+		resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
 		resolveN8nSandboxConfig: vi.fn(async () => ({})),
 		...overrides.settingsService,
 	};
@@ -112,7 +113,23 @@ describe('InstanceAiSandboxService', () => {
 			});
 		});
 
-		it('forces Daytona traffic through the assistant proxy when enabled', async () => {
+		it('fails with a setup error in direct mode when no Daytona API key is configured', async () => {
+			const resolveDaytonaConfig = vi.fn(async () => ({}));
+			const { service } = createSandboxService({
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
+				settingsService: { resolveDaytonaConfig },
+				aiService: { isProxyEnabled: vi.fn(() => false) },
+			});
+
+			const resolution = service.resolveSandboxConfig(fakeUser);
+			await expect(resolution).rejects.toBeInstanceOf(OperationalError);
+			await expect(resolution).rejects.toMatchObject({
+				message: expect.stringContaining('no API key is configured'),
+				shouldReport: false,
+			});
+		});
+
+		it('routes Daytona traffic through the assistant proxy when enabled', async () => {
 			const getInstanceAiApiProxyToken = vi.fn(async () => ({ accessToken: 'token-1' }));
 			const client = {
 				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
@@ -120,7 +137,7 @@ describe('InstanceAiSandboxService', () => {
 				getInstanceAiApiProxyToken,
 			};
 			const { service } = createSandboxService({
-				config: { sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' },
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
 				aiService: {
 					isProxyEnabled: vi.fn(() => true),
 					getClient: vi.fn(async () => client),
@@ -143,6 +160,31 @@ describe('InstanceAiSandboxService', () => {
 					expect.objectContaining({ userMessageId: expect.any(String) }),
 				);
 			}
+		});
+
+		it('keeps n8n Sandbox traffic direct when the assistant proxy is enabled', async () => {
+			const getClient = vi.fn();
+			const resolveN8nSandboxConfig = vi.fn(async () => ({
+				serviceUrl: 'https://admin.sandbox',
+				apiKey: 'admin-key',
+			}));
+			const { service } = createSandboxService({
+				config: {
+					sandboxEnabled: true,
+					sandboxProvider: 'n8n-sandbox',
+					n8nSandboxServiceUrl: 'https://env.sandbox',
+				},
+				settingsService: { resolveN8nSandboxConfig },
+				aiService: { isProxyEnabled: vi.fn(() => true), getClient },
+			});
+
+			await expect(service.resolveSandboxConfig(fakeUser)).resolves.toMatchObject({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				serviceUrl: 'https://admin.sandbox',
+				apiKey: 'admin-key',
+			});
+			expect(getClient).not.toHaveBeenCalled();
 		});
 
 		it('merges admin n8n-sandbox credentials', async () => {
@@ -522,7 +564,7 @@ describe('InstanceAiSandboxService', () => {
 				getInstanceAiApiProxyToken: vi.fn(async () => ({ accessToken: 'token-1' })),
 			};
 			const { service } = createSandboxService({
-				config: { sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' },
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
 				aiService: {
 					isProxyEnabled: vi.fn(() => true),
 					getClient: vi.fn(async () => client),

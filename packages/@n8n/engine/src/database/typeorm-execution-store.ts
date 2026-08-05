@@ -9,13 +9,22 @@ import {
 } from '../execution/execution-store';
 import type { ExecutionStatus } from '../execution/execution.types';
 
+/**
+ * Insert payload accepted by the repository. Derived from the method rather than
+ * imported: TypeORM's `QueryDeepPartialEntity` has no root export.
+ */
+type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
+
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
 	constructor(private readonly repo: Repository<WorkflowExecution>) {}
 
 	async createExecution(record: NewExecutionRecord): Promise<{ id: string }> {
 		const execution = this.repo.create({ ...record, finishedAt: null });
-		await this.repo.save(execution);
+		// The cast is needed because the insert payload type recurses into the
+		// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
+		// NOTE: prefer insert to save for performance reasons.
+		await this.repo.insert(execution as InsertValues);
 		return { id: execution.id };
 	}
 

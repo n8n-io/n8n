@@ -8,7 +8,7 @@ import { VIEWS } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { fetchInstanceModelCredentials, fetchSettings } from '../instanceAi.settings.api';
@@ -853,6 +853,24 @@ describe('SettingsInstanceAiView', () => {
 			expect(store.settings?.enabled).toBe(false);
 		});
 
+		it('opens sandbox setup without requesting model setup on proxy deployments', async () => {
+			const disabledSettings = { ...store.settings!, enabled: false };
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, {
+				...defaultModuleSettings,
+				enabled: false,
+				proxyEnabled: true,
+			});
+			const { findByTestId, getByRole, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
+
+			expect(await findByTestId('n8n-agent-sandbox-provider-select')).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-provider-select')).toBeNull();
+			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
+		});
+
 		it('enables immediately when required setup is already complete', async () => {
 			const disabledSettings = {
 				...store.settings!,
@@ -1176,8 +1194,17 @@ describe('SettingsInstanceAiView', () => {
 			expect(fetchCredentialTypesSpy).toHaveBeenCalledWith(false);
 		});
 
-		it('hides credential rows on managed deployments', () => {
+		it('keeps the sandbox row visible when the assistant proxy is enabled', () => {
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, proxyEnabled: true });
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-model-row')).toBeNull();
+			expect(getByTestId('n8n-agent-sandbox-row')).toBeVisible();
+			expect(queryByTestId('n8n-agent-search-row')).toBeNull();
+		});
+
+		it('hides provider rows on cloud deployments', () => {
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, cloudManaged: true });
 
 			const { queryByTestId } = renderComponent();
 			expect(queryByTestId('n8n-agent-model-row')).toBeNull();

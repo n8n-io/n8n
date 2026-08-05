@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -24,6 +24,7 @@ import { registerMcpAppTool, registerWorkflowPreviewApp } from '@n8n/mcp-apps/se
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -45,8 +46,9 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
-import { BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
-import { McpService, type McpFeatureFlags } from '../mcp.service';
+import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import { McpService } from '../mcp.service';
+import type { McpFeatureFlags } from '../mcp.service';
 
 const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
 
@@ -70,11 +72,21 @@ describe('getAllowedToolNames', () => {
 
 	it('unions the tools of all granted scopes', () => {
 		const allowed = getAllowedToolNames(['execution:read', 'tag:read']);
-		expect(allowed).toEqual(new Set(['get_execution', 'search_executions', 'list_tags']));
+		expect(allowed).toEqual(
+			new Set(['get_workflow_execution', 'search_workflow_executions', 'list_workflow_tags']),
+		);
 	});
 
 	it('ignores unknown scopes', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
+	});
+
+	it('allows integration updates and publishing with agent:write', () => {
+		const allowed = getAllowedToolNames(['agent:write']);
+
+		expect(allowed).toContain('update_agent_integration');
+		expect(allowed).toContain('publish_agent');
+		expect(allowed).toContain('unpublish_agent');
 	});
 });
 
@@ -127,6 +139,8 @@ describe('McpService scope enforcement', () => {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
 			mockInstance(McpPostSaveMetricsService),
+			mockInstance(ModuleRegistry),
+			mockInstance(EventService),
 		);
 
 	beforeEach(() => {
@@ -146,7 +160,11 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags());
 		const registered = getRegisteredToolNames(server);
 
-		const unregistered = [...ALL_MAPPED_TOOLS].filter((name) => !registered.has(name));
+		// Agent tools require the agents module (inactive here); their own
+		// drift guard lives in agent-tools.service.test.ts.
+		const unregistered = [...ALL_MAPPED_TOOLS].filter(
+			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+		);
 		expect(unregistered).toEqual([]);
 	});
 

@@ -82,28 +82,26 @@ below, \`"node"\` -> Node Tools section below.
 
 The \`integrations\` array controls how the target agent is triggered.
 
-- These are connected external chat platforms, not built-in Preview chat.
+- These are configured external chat platforms, not built-in Preview chat.
 - Call \`list_integration_types\` first.
 - Read the returned \`capabilities\`, \`useIntegrationWhen\`, and
   \`useNodeToolWhen\` fields before deciding to add an integration.
 - Pick one returned \`type\` and pass it to \`configure_channel\` as
   \`integrationType\`. ALWAYS use \`configure_channel\` for chat-channel
   credentials — never \`ask_credential\` or a raw config write. The setup UI it
-  shows creates and persists the credential/connection itself; do not follow up
-  with \`patch_config\`/\`write_config\` to write the credential.
+  shows creates and persists the channel configuration without publishing the
+  agent; do not follow up with \`patch_config\`/\`write_config\` to write the
+  credential.
 - ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
   \`list_integration_types\` returns the matching type, \`read_config()\` then
   \`patch_config\` adding \`{ "type": "<integrationType>", "credentialId": "" }\`
   to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
   telegram) so the channel appears in the agent panel as needing setup. Pass
   the same \`integrationType\` in the trailing \`finish_setup\` call's
-  \`channels\` array — its card connects or skips the channel itself; if
+  \`channels\` array — its card configures or skips the channel itself. Do not
+  call \`configure_channel\` again after \`finish_setup\` handles the card. If
   skipped, list it in the closing setup checklist pointing at the channel
-  chip in the agent panel. If \`finish_setup\` instead reports the channel as
-  \`'blocked'\` (the agent could not be published yet), patch in the
-  credentials/model it collected first; if that resolves every reported
-  issue, call \`configure_channel\` directly for that channel as a follow-up.
-  Otherwise leave it for the closing checklist.
+  chip in the agent panel.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`read_config\` and inspect
   \`config.integrations\`.
@@ -351,8 +349,9 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 
 ## Verify
 
-- Connected chat integrations were set up through \`configure_channel\`, not
-  \`ask_credential\` or a manual config write.
+- Configured chat integrations were set up through \`configure_channel\` or the
+  initial-build \`finish_setup\` channel card, not \`ask_credential\` or a manual
+  config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
   callable capability through \`resolve_integration\` and use MCP, node, or
   workflow tools.

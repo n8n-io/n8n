@@ -4,7 +4,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLoadingService } from '@/app/composables/useLoadingService';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { SshKeyTypes, SourceControlPreferences } from '../sourceControl.types';

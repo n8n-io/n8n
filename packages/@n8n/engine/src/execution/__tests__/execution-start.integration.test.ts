@@ -67,8 +67,8 @@ describe('execution start (integration)', () => {
 			orchestrationQueue,
 		);
 
-		// Stand in for the (not yet built) step worker: consuming the step queue is
-		// both the assertion target and the signal that orchestration finished.
+		// Stand in for the step worker: consuming the step queue is both the
+		// assertion target and the signal that orchestration finished.
 		const readySteps: StepMessage[] = [];
 		let firstReady!: () => void;
 		const ready = new Promise<void>((resolve) => (firstReady = resolve));

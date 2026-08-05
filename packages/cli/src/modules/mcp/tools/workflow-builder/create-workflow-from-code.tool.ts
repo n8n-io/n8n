@@ -43,10 +43,11 @@ export type CreateWorkflowFromCodeToolOptions = {
 	 * `102_mcp_canvas_groups` rollout flag: when true, node groups authored in the
 	 * SDK code (`.group(...)`) are persisted on the created workflow. Off by
 	 * default — groups are then dropped at the entity assembly, exactly like
-	 * before groups were supported. Note that with the flag on, invalid groups
-	 * fail the creation: `WorkflowCreationService.createWorkflow` rejects them
-	 * with the same messages the `validate_workflow` tool reports as errors,
-	 * so agents can catch group problems before calling this tool.
+	 * before groups were supported. With the flag on, an invalid group does not
+	 * fail the creation: it is dropped and reported in `skippedGroups` instead,
+	 * while the rest of the workflow is still created. This tool pre-validates
+	 * with the same rules `WorkflowCreationService.createWorkflow` enforces, so
+	 * that shared service's own (fatal) group check never actually triggers here.
 	 */
 	canvasGroupsEnabled?: boolean;
 };
@@ -143,6 +144,15 @@ const outputSchema = {
 		.describe(
 			'Additional notes about the workflow creation, such as any nodes that were skipped during credential auto-assignment.',
 		),
+	skippedGroups: z
+		.array(
+			z.object({
+				groupName: z.string(),
+				reason: z.string(),
+			}),
+		)
+		.optional()
+		.describe('Node groups that were invalid and skipped instead of failing the whole creation.'),
 	hint: z
 		.string()
 		.optional()
@@ -196,7 +206,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_workflow_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -300,6 +310,17 @@ export const createCreateWorkflowFromCodeTool = (
 
 			stripNullCredentialStubs(newWorkflow.nodes);
 
+			// Structural group rules (no triggers, single connected subgraph, no
+			// non-main connection crossing the group boundary) aren't checked by the
+			// parser above. Validate them here, before the shared persistence layer's
+			// own (fatal) check, so an invalid group is dropped and reported instead
+			// of aborting the whole creation.
+			const skippedGroups = options.canvasGroupsEnabled
+				? dropInvalidNodeGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
+						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
+					)
+				: [];
+
 			landingProject = projectId
 				? await projectRepository.findOneBy({ id: projectId })
 				: await projectRepository.getPersonalProjectForUserOrFail(user.id);
@@ -384,6 +405,7 @@ export const createCreateWorkflowFromCodeTool = (
 					type: landingProject.type,
 				},
 				note: notes.length ? notes.join(' ') : undefined,
+				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
 			};
 			const output =
 				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;

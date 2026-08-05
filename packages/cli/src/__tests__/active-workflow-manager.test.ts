@@ -26,7 +26,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { sleep, Workflow, WorkflowActivationError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { Workflow, WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';

@@ -18,6 +18,7 @@ import {
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
@@ -108,10 +109,12 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 });
 
 // === Editing lock ===
-// Lock the artifact's editor while the agent is actively mutating THIS
-// workflow, so the user can't drag nodes into a mid-stream conflict.
-// `isAgentEditingWorkflow` defines the signals that trigger the lock.
+// Lock the artifact's editor while the agent is working, so the user can't
+// drag nodes into a mid-stream conflict. Thread-wide, since the per-workflow
+// signals below only fire around tool calls that name a workflowId — leaving
+// the canvas editable through workspace file edits and failed builds.
 const thread = useThread();
+const isAgentWorking = useIsAgentWorking();
 
 // The workflow + execution the editor handed off, applied once when this
 // preview first opens. Consumed (cleared) here, so it never re-applies on a
@@ -130,8 +133,8 @@ const isAgentEditingThisWorkflow = computed(() => {
 });
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
-// standalone AI helpers (`false`), forces the canvas read-only while a
-// workflow-builder agent is mutating this workflow, and suppresses workflow
+// standalone AI helpers (`false`), forces the canvas read-only while the agent
+// is working (see the editing lock above), and suppresses workflow
 // execution result toasts (success + error) — the agent surfaces run outcomes
 // in the thread UI, so the canvas would only duplicate them. The execute button
 // demotes to a secondary action — the conversation is the primary surface here.
@@ -142,7 +145,7 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
 	askAi: false,
-	readOnly: isAgentEditingThisWorkflow.value,
+	readOnly: isAgentWorking.value || isAgentEditingThisWorkflow.value,
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
 	executionButtonType: 'secondary',

@@ -52,6 +52,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { EvalTimings } from './eval-timings';
+import { snapshotLedgerBody } from './ledger-snapshot';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
 import {
@@ -886,7 +887,7 @@ export class EvalExecutionService {
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
-				mockResponse: response?.body,
+				mockResponse: snapshotLedgerBody(response?.body),
 			});
 
 			this.logger.debug(

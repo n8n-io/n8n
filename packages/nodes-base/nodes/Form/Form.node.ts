@@ -470,7 +470,7 @@ export class Form extends Node {
 
 		await context.putExecutionToWait(waitTill);
 
-		context.sendResponse({
+		await context.sendResponse({
 			headers: {
 				location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
 			},
