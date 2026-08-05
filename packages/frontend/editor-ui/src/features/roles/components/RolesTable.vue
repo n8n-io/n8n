@@ -11,7 +11,7 @@ import { computed, useCssModule } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 
-type RoleAction = { label: string; value: string; disabled?: boolean };
+type RoleAction = { label: string; value: string; disabled?: boolean; tooltip?: string };
 type RoleRow = Role & { id: string };
 
 const props = defineProps<{
