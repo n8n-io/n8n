@@ -29,7 +29,7 @@ flowchart TD
     Svc --> Store[("settings table<br/>mcp.autoExposeNewWorkflows")]
     Svc --> Cache[(CacheService)]
 
-    Store -.->|module settings\(\)| FE[settingsStore.moduleSettings.mcp]
+    Store -.->|module settings hook| FE[settingsStore.moduleSettings.mcp]
     FE --> Toggle
 
     UI[UI create] --> Create
@@ -37,7 +37,7 @@ flowchart TD
     Import[Import] --> Create
     Dup[Duplicate] --> Create
     MCPTool["MCP create_workflow_from_code"] --> Create
-    Create["WorkflowCreationService.createWorkflow\(\)"] -->|seeds availableInMCP when unset| Svc
+    Create["WorkflowCreationService.createWorkflow()"] -->|seeds availableInMCP when unset| Svc
 ```
 
 One seeding point, five callers. That is the whole design.
