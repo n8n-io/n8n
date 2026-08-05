@@ -6,6 +6,15 @@ const COMMENT_TABLE = 'workflow_review_activity_comment';
 const REQUEST_TABLE = 'workflow_review_request';
 const USER_TABLE = 'user';
 
+const ACTIVITY_TYPES = [
+	'submitted',
+	'commented',
+	'changes_requested',
+	'version_synced',
+	'approved',
+	'published',
+];
+
 export class CreateWorkflowReviewActivityTables1785843640527 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createActivityTable(context);
@@ -26,9 +35,13 @@ export class CreateWorkflowReviewActivityTables1785843640527 implements Reversib
 			.withColumns(
 				column('id').int.primary.autoGenerate2,
 				column('workflowReviewRequestId').varchar(36).notNull,
+				// Widening this list later needs a sqlite/ subclass with `withFKsDisabled = true as
+				// const`: on SQLite dropEnumCheck/addEnumCheck recreate the table, and the comment
+				// table's ON DELETE CASCADE FK would take every comment row with it.
 				column('type')
 					.varchar(64)
-					.notNull.comment('Feed entry kind; see WorkflowReviewActivityType in @n8n/db'),
+					.notNull.withEnumCheck(ACTIVITY_TYPES)
+					.comment('Feed entry kind; see WorkflowReviewActivityType in @n8n/db'),
 				column('typeVersion')
 					.int.notNull.default(1)
 					.comment('Schema version of the `data` payload for this `type`'),

@@ -179,7 +179,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				activityRepository.create({ workflowReviewRequestId: requestId, type: 'submitted', data }),
 			);
 			const savedThread = await activityRepository.save(
-				activityRepository.create({ workflowReviewRequestId: requestId, type: 'comment' }),
+				activityRepository.create({ workflowReviewRequestId: requestId, type: 'commented' }),
 			);
 			const savedMessage = await commentRepository.save(
 				commentRepository.create({
@@ -227,11 +227,17 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			expect(reply.createdById).toBe(userId);
 		});
 
-		it('rejects a comment with no activityId', async () => {
+		it('rejects a comment with no activityId and an activity with an unknown type', async () => {
 			const context = createTestMigrationContext(dataSource);
 			try {
 				// SQLite says "NOT NULL constraint failed", Postgres "violates not-null constraint".
 				await expect(insertComment(context, null)).rejects.toThrow(/not[- ]null constraint/i);
+
+				// SQLite says "CHECK constraint failed", Postgres "violates check constraint".
+				const requestId = await seedRequest(context);
+				await expect(
+					insertActivity(context, { workflowReviewRequestId: requestId, type: 'nonsense' }),
+				).rejects.toThrow(/check constraint/i);
 			} finally {
 				await context.queryRunner.release();
 			}
@@ -243,7 +249,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				const requestId = await seedRequest(context);
 				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
-					type: 'comment',
+					type: 'commented',
 				});
 				await insertComment(context, activityId);
 
@@ -274,7 +280,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				const requestId = await seedRequest(context);
 				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
-					type: 'comment',
+					type: 'commented',
 				});
 				await insertComment(context, activityId);
 				await insertComment(context, activityId);
@@ -304,7 +310,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 				const userId = await seedUser(context);
 				const activityId = await insertActivity(context, {
 					workflowReviewRequestId: requestId,
-					type: 'comment',
+					type: 'commented',
 					createdById: userId,
 				});
 				await insertComment(context, activityId, userId);

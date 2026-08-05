@@ -3,10 +3,10 @@ import type { IDataObject } from 'n8n-workflow';
 
 import { JsonColumn, WithCreatedAt } from './abstract-entity';
 
-/** Feed entry kinds. Plain varchar in the DB; new kinds ship without a migration. */
+/** Feed entry kinds. Constrained by a CHECK on the column, so a new kind needs a migration. */
 export type WorkflowReviewActivityType =
 	| 'submitted'
-	| 'comment'
+	| 'commented'
 	| 'changes_requested'
 	| 'version_synced'
 	| 'approved'
