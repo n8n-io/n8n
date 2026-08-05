@@ -12,6 +12,7 @@
  * The tool-result is inserted right after its tool-call, regardless of what
  * messages follow it in the n8n list.
  */
+import type { ModelMessage } from 'ai';
 import { describe, it, expect } from 'vitest';
 
 import type { Message } from '../../types/sdk/message';
@@ -152,6 +153,70 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(reasoningPart.providerOptions).toEqual({
 			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
 		});
+	});
+
+	it('round-trips SDK 7 reasoning files with provider replay state', () => {
+		const aiMessage: ModelMessage = {
+			role: 'assistant',
+			content: [
+				{
+					type: 'reasoning-file',
+					data: 'base64-reasoning-data',
+					mediaType: 'application/octet-stream',
+					providerOptions: { google: { thoughtSignature: 'gemini-signature' } },
+				},
+			],
+		};
+
+		const agentMessages = fromAiMessages([aiMessage]);
+
+		expect(agentMessages).toEqual([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning-file',
+						data: 'base64-reasoning-data',
+						mediaType: 'application/octet-stream',
+						providerOptions: { google: { thoughtSignature: 'gemini-signature' } },
+					},
+				],
+			},
+		]);
+		expect(toAiMessages(agentMessages as Message[])).toEqual([aiMessage]);
+	});
+
+	it('round-trips SDK 7 custom provider state', () => {
+		const aiMessage: ModelMessage = {
+			role: 'assistant',
+			content: [
+				{
+					type: 'custom',
+					kind: 'openai.compaction',
+					providerOptions: {
+						openai: { itemId: 'cmp_123', encryptedContent: 'encrypted' },
+					},
+				},
+			],
+		};
+
+		const agentMessages = fromAiMessages([aiMessage]);
+
+		expect(agentMessages).toEqual([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'custom',
+						kind: 'openai.compaction',
+						providerOptions: {
+							openai: { itemId: 'cmp_123', encryptedContent: 'encrypted' },
+						},
+					},
+				],
+			},
+		]);
+		expect(toAiMessages(agentMessages as Message[])).toEqual([aiMessage]);
 	});
 
 	it.each([

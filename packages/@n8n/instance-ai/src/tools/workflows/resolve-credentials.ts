@@ -7,11 +7,16 @@
  * picks mocked nodes up and pins them with generated fixtures at verify time.
  */
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
 import type { ResolvedCredential } from './resolved-credential.schema';
-import { getValidCredentialTypes } from './setup-workflow.service';
+import {
+	getCredentialActivationParameters,
+	getCredentialActivationState,
+	getValidCredentialTypes,
+	resolveSupportedSiblingCredentialType,
+} from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 
 export type { ResolvedCredential };
@@ -140,6 +145,41 @@ export async function resolveCredentials(
 		return supported;
 	};
 
+	const hasStoredCredential = (credType: string): boolean =>
+		(availableCredentials?.get(credType)?.length ?? 0) > 0;
+
+	// Fallback for a gateway-unsupported slot: a supported sibling credential type
+	// the node can be switched to. See resolveSupportedSiblingCredentialType.
+	const resolveSupportedSiblingType = async (
+		node: NodeJSON,
+		unsupportedType: string,
+	): Promise<string | undefined> =>
+		await resolveSupportedSiblingCredentialType(
+			ctx,
+			node,
+			unsupportedType,
+			isGatewayCredentialType,
+			hasStoredCredential,
+		);
+
+	// Switch the node's parameters so the attached credential type is the active
+	// slot (e.g. set `authentication` to match). No-op when the slot is already
+	// active (never rewrite a valid value) or no switch can reach it (version-gated).
+	const applyManagedAuth = async (node: NodeJSON, credentialType: string): Promise<void> => {
+		let nodeDesc: Awaited<ReturnType<typeof ctx.nodeService.getDescription>> | undefined;
+		try {
+			nodeDesc = await ctx.nodeService.getDescription(node.type, node.typeVersion ?? 1);
+		} catch {
+			return;
+		}
+		const credential = nodeDesc?.credentials?.find((cred) => cred.name === credentialType);
+		if (!credential || getCredentialActivationState(node, credential) !== 'activatable') return;
+		const activation = getCredentialActivationParameters(credential.displayOptions);
+		if (Object.keys(activation).length > 0) {
+			node.parameters = { ...node.parameters, ...activation };
+		}
+	};
+
 	// Build a map of existing credentials by node name (for updates)
 	const existingCredsByNode = new Map<string, Record<string, unknown>>();
 	if (workflowId) {
@@ -208,27 +248,41 @@ export async function resolveCredentials(
 			// the simulation set (`nodeMocked`) so verification pins it instead of
 			// spending gateway quota, but it is NOT added to `mockedCredentialsByNode`
 			// — that channel means "needs a real credential", which this node doesn't.
-			const attachGatewayCredential = () => {
-				creds[key] = { ...AI_GATEWAY_CREDENTIAL, name: N8N_CONNECT_DISPLAY_NAME };
+			const attachGatewayCredential = async (credentialType = key) => {
+				creds[credentialType] = { ...AI_GATEWAY_CREDENTIAL, name: N8N_CONNECT_DISPLAY_NAME };
+				await applyManagedAuth(node, credentialType);
 				nodeMocked = true;
 				if (node.name) {
 					resolvedCredentialsByNode[node.name] ??= [];
-					resolvedCredentialsByNode[node.name].push({
-						type: key,
-						id: null,
-						name: N8N_CONNECT_DISPLAY_NAME,
-						__aiGatewayManaged: true,
-					});
+					const resolved = resolvedCredentialsByNode[node.name];
+					// The type may already be recorded when the LLM wrote several slots
+					// and an earlier one attached it as its sibling — don't record twice.
+					if (!resolved.some((cred) => cred.type === credentialType && cred.id === null)) {
+						resolved.push({
+							type: credentialType,
+							id: null,
+							name: N8N_CONNECT_DISPLAY_NAME,
+							__aiGatewayManaged: true,
+						});
+					}
 				}
 			};
 
-			// Prefer n8n credits over mocking when the type is gateway-supported and
-			// the user has no stored credential of their own for it.
+			// With no stored credential for the type, prefer n8n credits over mocking:
+			// attach directly if the written type is gateway-supported, else attach to
+			// a supported sibling (switching auth to it) and drop the unusable slot.
 			const mockOrAttachGateway = async () => {
-				const hasStored = (availableCredentials?.get(key)?.length ?? 0) > 0;
-				if (!hasStored && (await isGatewayCredentialType(key))) {
-					attachGatewayCredential();
-					return;
+				if (!hasStoredCredential(key)) {
+					if (await isGatewayCredentialType(key)) {
+						await attachGatewayCredential();
+						return;
+					}
+					const siblingType = await resolveSupportedSiblingType(node, key);
+					if (siblingType) {
+						delete creds[key];
+						await attachGatewayCredential(siblingType);
+						return;
+					}
 				}
 				mockCredential();
 			};
@@ -270,14 +324,11 @@ export async function resolveCredentials(
 	}
 
 	// Second pass — required-but-omitted credentials. The first pass only visits
-	// slots the LLM actually wrote in `node.credentials`; a node built with no
-	// slot for a type it requires is skipped there, then reaches post-build setup
-	// analysis credential-less and surfaces a setup card. Here the required types
-	// come from the node description (getValidCredentialTypes), and we silently
-	// attach n8n credits when, in guard order: (1) the node has no entry for the
-	// type, (2) the user has no stored credential for it, and (3) the type is
-	// supported by n8n credits. Any guard failing leaves the node untouched so the
-	// setup card can collect a real credential.
+	// slots the LLM wrote; a node missing a slot for a type it requires reaches
+	// post-build setup credential-less and surfaces a setup card. Required types
+	// come from the node description; silently attach n8n credits when the node has
+	// no entry and no stored credential, and the type — or a supported sibling its
+	// auth is switched to — is gateway-supported. Otherwise leave it for setup.
 	for (const node of json.nodes ?? []) {
 		if (!node.name) continue;
 		const requiredTypes = await getValidCredentialTypes(ctx, node);
@@ -285,18 +336,24 @@ export async function resolveCredentials(
 			const creds = (node.credentials ?? {}) as Record<string, unknown>;
 			const existing = creds[credType];
 			if (existing !== undefined && existing !== null) continue;
-			const hasStored = (availableCredentials?.get(credType)?.length ?? 0) > 0;
-			if (hasStored) continue;
-			if (!(await isGatewayCredentialType(credType))) continue;
+			if (hasStoredCredential(credType)) continue;
+
+			let managedType = credType;
+			if (!(await isGatewayCredentialType(credType))) {
+				const siblingType = await resolveSupportedSiblingType(node, credType);
+				if (!siblingType) continue;
+				managedType = siblingType;
+			}
 
 			node.credentials ??= {};
-			(node.credentials as Record<string, unknown>)[credType] = {
+			(node.credentials as Record<string, unknown>)[managedType] = {
 				...AI_GATEWAY_CREDENTIAL,
 				name: N8N_CONNECT_DISPLAY_NAME,
 			};
+			await applyManagedAuth(node, managedType);
 			resolvedCredentialsByNode[node.name] ??= [];
 			resolvedCredentialsByNode[node.name].push({
-				type: credType,
+				type: managedType,
 				id: null,
 				name: N8N_CONNECT_DISPLAY_NAME,
 				__aiGatewayManaged: true,

@@ -55,7 +55,11 @@ export class ProjectImporter {
 				const project = await this.projectService.createTeamProject(
 					user,
 					{ name: item.name, icon: item.icon },
-					{ id: item.sourceProjectId, description: item.description ?? null },
+					{
+						id: item.sourceProjectId,
+						description: item.description ?? null,
+						customTelemetryTags: item.customTelemetryTags,
+					},
 				);
 				summaries.push({
 					sourceProjectId: item.sourceProjectId,
@@ -68,6 +72,7 @@ export class ProjectImporter {
 					name: item.name,
 					icon: item.icon,
 					description: item.description,
+					customTelemetryTags: item.customTelemetryTags,
 				});
 				summaries.push({
 					sourceProjectId: item.sourceProjectId,
@@ -99,5 +104,8 @@ function toFields(project: PreparedProject): Omit<ProjectPlanItem, 'action'> {
 		name: project.name,
 		...(project.description !== undefined ? { description: project.description } : {}),
 		...(project.icon !== undefined ? { icon: project.icon } : {}),
+		...(project.customTelemetryTags !== undefined
+			? { customTelemetryTags: project.customTelemetryTags }
+			: {}),
 	};
 }

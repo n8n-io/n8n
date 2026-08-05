@@ -31,11 +31,15 @@ export interface OAuth2CredentialData {
 	authQueryParameters?: string;
 	additionalBodyProperties?: string;
 	grantType: OAuth2GrantType;
+	/** Whether authorization-code flows should use PKCE in addition to client authentication. */
+	usePkce?: boolean;
 	ignoreSSLIssues?: boolean;
 	tokenExpiredStatusCode?: number;
 	oauthTokenData?: {
 		access_token: string;
 		refresh_token?: string;
+		expires_in?: string;
+		n8n_expires_at?: string;
 		resource?: string;
 	};
 	useDynamicClientRegistration?: boolean;

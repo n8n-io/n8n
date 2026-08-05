@@ -1,7 +1,7 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext, ModelConfig } from '../types';
+import type { InstanceAiTraceContext, ModelConfig, OrchestrationContext } from '../types';
 import type {
 	InstanceAiLivenessPolicy,
 	InstanceAiLivenessSurface,
@@ -14,6 +14,8 @@ export interface ActiveRunState {
 	runId: string;
 	threadId: string;
 	abortController: AbortController;
+	/** Prevents an older finalizer from clearing a newer executor for the same thread. */
+	executionToken?: symbol;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
 	modelId?: ModelConfig;
@@ -24,6 +26,10 @@ export interface ActiveRunState {
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	agentRunId: string;
 	agent: unknown;
+	/** The orchestration context the agent's tools closed over. Stored so a
+	 *  resume can rebind `tracing` to the new resume trace — spans emitted
+	 *  through the suspended turn's shut-down runtime export nothing. */
+	orchestrationContext?: OrchestrationContext;
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
@@ -269,7 +275,8 @@ export class RunStateRegistry<TUser = unknown> {
 		});
 	}
 
-	clearActiveRun(threadId: string): void {
+	clearActiveRun(threadId: string, executionToken?: symbol): void {
+		if (this.activeRuns.get(threadId)?.executionToken !== executionToken) return;
 		this.activeRuns.delete(threadId);
 	}
 
@@ -310,7 +317,10 @@ export class RunStateRegistry<TUser = unknown> {
 		return suspended;
 	}
 
-	activateSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+	activateSuspendedRun(
+		threadId: string,
+		executionToken?: symbol,
+	): SuspendedRunState<TUser> | undefined {
 		const suspended = this.suspendedRuns.get(threadId);
 		if (!suspended) return undefined;
 
@@ -320,6 +330,7 @@ export class RunStateRegistry<TUser = unknown> {
 			runId: suspended.runId,
 			threadId,
 			abortController: suspended.abortController,
+			executionToken,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
 			modelId: suspended.modelId,

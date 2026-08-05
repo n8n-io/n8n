@@ -101,6 +101,15 @@ describe('HttpRequestV2', () => {
 				authValue: { Token: 'secretToken' },
 			},
 			{
+				genericCredentialType: 'httpTemplatedCustomAuth',
+				credentials: {
+					template: JSON.stringify({ headers: { Authorization: 'Bearer {{api_key}}' } }),
+					placeholderValues: JSON.stringify({ api_key: 'templatedToken' }),
+				},
+				authField: 'headers',
+				authValue: { Authorization: 'Bearer templatedToken' },
+			},
+			{
 				genericCredentialType: 'oAuth1Api',
 				credentials: { oauth_token: 'token', oauth_token_secret: 'secret' },
 				authField: 'oauth',

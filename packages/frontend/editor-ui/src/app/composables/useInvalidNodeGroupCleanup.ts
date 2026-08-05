@@ -8,8 +8,8 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useTelemetry } from './useTelemetry';
-import { useToast } from './useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 
 /**
  * Removes node groups that this instance's backend would reject on save
@@ -33,6 +33,9 @@ export function useInvalidNodeGroupCleanup() {
 		group: IWorkflowGroup,
 		allGroups: IWorkflowGroup[],
 	): boolean {
+		// The backend rejects memberless groups
+		if (group.nodeIds.length === 0) return false;
+
 		const nodes: INodeUi[] = [];
 		for (const nodeId of group.nodeIds) {
 			const node = store.getNodeById(nodeId);

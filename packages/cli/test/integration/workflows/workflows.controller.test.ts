@@ -1158,7 +1158,7 @@ describe('GET /workflows', () => {
 					activeVersionId: null,
 					createdAt: any(String),
 					updatedAt: any(String),
-					tags: [{ id: any(String), name: 'A' }],
+					tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
@@ -1466,8 +1466,8 @@ describe('GET /workflows', () => {
 					objectContaining({
 						name: 'First',
 						tags: expect.arrayContaining([
-							{ id: any(String), name: 'A' },
-							{ id: any(String), name: 'B' },
+							{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) },
+							{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) },
 						]),
 					}),
 				],
@@ -2036,8 +2036,14 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 2,
 				data: arrayContaining([
-					objectContaining({ id: any(String), tags: [{ id: any(String), name: 'A' }] }),
-					objectContaining({ id: any(String), tags: [{ id: any(String), name: 'B' }] }),
+					objectContaining({
+						id: any(String),
+						tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
+					}),
+					objectContaining({
+						id: any(String),
+						tags: [{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) }],
+					}),
 				]),
 			});
 		});
@@ -2446,7 +2452,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					activeVersionId: null,
 					createdAt: any(String),
 					updatedAt: any(String),
-					tags: [{ id: any(String), name: 'A' }],
+					tags: [{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) }],
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
@@ -2846,6 +2852,7 @@ describe('GET /workflows?includeFolders=true', () => {
 				data: [
 					objectContaining({
 						name: 'First Folder',
+						// Folder tags come from FolderRepository, which selects id/name only.
 						tags: expect.arrayContaining([
 							{ id: any(String), name: 'A' },
 							{ id: any(String), name: 'B' },
@@ -2854,8 +2861,8 @@ describe('GET /workflows?includeFolders=true', () => {
 					objectContaining({
 						name: 'First',
 						tags: expect.arrayContaining([
-							{ id: any(String), name: 'A' },
-							{ id: any(String), name: 'B' },
+							{ id: any(String), name: 'A', createdAt: any(String), updatedAt: any(String) },
+							{ id: any(String), name: 'B', createdAt: any(String), updatedAt: any(String) },
 						]),
 					}),
 				],

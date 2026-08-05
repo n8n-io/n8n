@@ -18,6 +18,7 @@ import type {
 	IntegrationContextQueryDefinition,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
+	ReplyExpectation,
 } from './integration-tools';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -26,6 +27,8 @@ export interface AgentChatIntegrationContext {
 	projectId: string;
 	credentialId: string;
 	credential: Record<string, unknown>;
+	/** Whether this connection may receive events from the external platform. */
+	ingressEnabled: boolean;
 	/** Returns the inbound webhook URL this n8n instance exposes for the given platform. */
 	webhookUrlFor: (platform: string) => string;
 }
@@ -100,7 +103,23 @@ export interface BridgeMessageContextParams {
 	 * thread context that the agent has never seen.
 	 */
 	isNewMention: boolean;
+	/**
+	 * The turn's reply policy ('required' when the platform has none).
+	 * Platforms use 'optional' to skip reply-signalling side effects
+	 * like the thinking status and give the agent a `do_not_respond` action.
+	 */
+	replyExpectation: ReplyExpectation;
 }
+
+export interface ApprovalDecisionMessageParams {
+	approved: boolean;
+	raw: unknown;
+	user: Author;
+}
+
+export type ApprovalDecisionMessageFormatter = (
+	params: ApprovalDecisionMessageParams,
+) => string | undefined;
 
 /**
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
@@ -179,6 +198,9 @@ export abstract class AgentChatIntegration {
 	 * CallbackStore instead of carrying the full payload.
 	 */
 	readonly needsShortCallbackData: boolean = false;
+
+	/** Whether action messages are deleted before the agent resumes. */
+	readonly deleteActionMessageBeforeResume: boolean = true;
 
 	/**
 	 * True if the bridge should buffer streaming output and post it as a single
@@ -289,6 +311,19 @@ export abstract class AgentChatIntegration {
 
 	/** Optional text normalization before the message is handed to the agent. */
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
+
+	/**
+	 * Optional per-message reply policy (see `ReplyExpectation`).
+	 * Default (no implementation): 'required'.
+	 */
+	getReplyExpectation?(params: {
+		message: Message<unknown>;
+		isNewMention: boolean;
+		platformAgentContext: PlatformAgentContext;
+	}): ReplyExpectation;
+
+	/** Replacement text for approval cards preserved after a user responds. */
+	formatApprovalDecisionMessage?(params: ApprovalDecisionMessageParams): string | undefined;
 
 	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,

@@ -25,7 +25,7 @@ vi.mock('@/features/agents/composables/useModelCatalog', () => ({
 
 const ChipsStub = {
 	name: 'CanvasNodeAgentChips',
-	props: ['chips'],
+	props: ['chips', 'isReadOnly'],
 	template: '<div data-testid="chips-stub" />',
 };
 
@@ -70,9 +70,10 @@ function createNdvStub(
 	return { value, openBuilder };
 }
 
-function mountSummary(ndv: UseNdvAgentConfigReturn) {
+function mountSummary(ndv: UseNdvAgentConfigReturn, props: { isReadOnly?: boolean } = {}) {
 	setActivePinia(createTestingPinia());
 	return mount(AgentNdvReferencedSummary, {
+		props,
 		global: {
 			provide: { [NdvAgentConfigKey as symbol]: ndv },
 			stubs: { CanvasNodeAgentChips: ChipsStub },
@@ -117,6 +118,17 @@ describe('AgentNdvReferencedSummary', () => {
 		await wrapper.find('[data-test-id="agent-ndv-edit-in-builder"]').trigger('click');
 
 		expect(openBuilder).toHaveBeenCalled();
+	});
+
+	it('disables interactions in read-only workflows', () => {
+		const wrapper = mountSummary(
+			createNdvStub({ config: makeConfig({ tools: [{ type: 'workflow', workflow: 'Lookup' }] }) })
+				.value,
+			{ isReadOnly: true },
+		);
+
+		expect(wrapper.find('[data-test-id="agent-ndv-edit-in-builder"]').exists()).toBe(false);
+		expect(wrapper.findComponent(ChipsStub).props('isReadOnly')).toBe(true);
 	});
 
 	it('shows the terminal unavailable state without the builder link', () => {

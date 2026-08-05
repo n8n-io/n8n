@@ -63,6 +63,7 @@ describe('eligibleModules', () => {
 			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
+			'workflow-reviews',
 		]);
 	});
 
@@ -97,6 +98,7 @@ describe('eligibleModules', () => {
 			'n8n-packages',
 			'runtime-credentials',
 			'mcp-registry',
+			'workflow-reviews',
 			'instance-ai',
 		]);
 	});

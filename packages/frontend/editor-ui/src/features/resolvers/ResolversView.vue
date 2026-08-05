@@ -2,7 +2,7 @@
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import type { CredentialResolver } from '@n8n/api-types';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nActionToggle,
 	N8nButton,
 	N8nCard,
@@ -107,7 +107,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 		</div>
 		<N8nLoading2 v-if="isLoading && resolvers.length === 0" :rows="5" :shrink-last="false" />
 		<div v-else-if="resolvers.length === 0">
-			<N8nActionBox class="mt-2xl mb-l" description="yes">
+			<N8nEmptyState class="mt-2xl mb-l" description="yes">
 				<template #description>
 					<div :class="$style.iconCardContainer">
 						<div :class="$style.iconCard"><N8nIcon icon="key-round" /></div>
@@ -134,7 +134,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 						{{ i18n.baseText('credentialResolver.addNew') }}
 					</N8nButton>
 				</template>
-			</N8nActionBox>
+			</N8nEmptyState>
 		</div>
 		<div v-else>
 			<div :class="$style.actionBar">

@@ -29,6 +29,7 @@ describe('AgentsModule', () => {
 			const settings = await module.settings();
 
 			expect(settings.knowledgeBaseEnabled).toBe(true);
+			expect(settings.proxyEnabled).toBe(false);
 		});
 
 		it('exposes knowledgeBaseEnabled when the AI Assistant proxy is available without sandbox env vars', async () => {
@@ -45,6 +46,7 @@ describe('AgentsModule', () => {
 			const settings = await module.settings();
 
 			expect(settings.knowledgeBaseEnabled).toBe(true);
+			expect(settings.proxyEnabled).toBe(true);
 		});
 
 		it('disables knowledgeBaseEnabled when neither the sandbox config nor the proxy is available', async () => {
@@ -61,6 +63,7 @@ describe('AgentsModule', () => {
 			const settings = await module.settings();
 
 			expect(settings.knowledgeBaseEnabled).toBe(false);
+			expect(settings.proxyEnabled).toBe(false);
 		});
 	});
 });

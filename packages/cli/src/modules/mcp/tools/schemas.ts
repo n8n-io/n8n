@@ -1,12 +1,52 @@
-import type { IConnections, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
+import type {
+	IConnections,
+	INode,
+	IWorkflowGroup,
+	IWorkflowSettings,
+	WorkflowFEMeta,
+} from 'n8n-workflow';
 import z from 'zod';
+
+export const nodeCredentialSummarySchema = z
+	.object({
+		id: z
+			.string()
+			.describe('The credential ID, used to reference this credential in write operations'),
+		name: z.string().describe('The credential name'),
+	})
+	.describe('The credential assigned to this slot (id and name only, never secret data)');
 
 export const nodeSchema = z
 	.object({
 		name: z.string(),
 		type: z.string(),
+		credentials: z
+			.record(z.string(), nodeCredentialSummarySchema)
+			.optional()
+			.describe(
+				'Credentials assigned to the node, keyed by credential type (e.g. "slackApi"). Reuse these when adding nodes for the same service to this workflow.',
+			),
 	})
 	.passthrough();
+
+/**
+ * Reduces a node's credentials to `{ id, name }` per slot for the read path,
+ * keeping only slots a client can reference by id when reusing them. Any slot
+ * with no id is dropped; in practice those are AI Gateway synthetic sentinels
+ * (`__aiGatewayManaged`, always `id: null`), which have no id to reference and
+ * whose marker is stripped here, leaving them indistinguishable from a real
+ * credential. DB-backed managed credentials (`isManaged`) keep a real id and
+ * are retained.
+ */
+export const sanitizeNodeCredentials = ({ credentials, ...node }: INode) => {
+	const referenceable: Array<[string, { id: string; name: string }]> = [];
+	for (const [type, cred] of Object.entries(credentials ?? {})) {
+		if (!cred?.id) continue;
+		referenceable.push([type, { id: cred.id, name: cred.name }]);
+	}
+	if (referenceable.length === 0) return node;
+	return { ...node, credentials: Object.fromEntries(referenceable) };
+};
 
 export const connectionsSchema = z
 	.custom<IConnections>((_value): _value is IConnections => true)
@@ -78,10 +118,33 @@ export const nodeGroupSchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),
-		nodeIds: z.array(z.string()),
+		nodeNames: z
+			.array(z.string())
+			.describe('Names of the member nodes, matching the update_workflow group operations.'),
 		description: z.string().optional(),
 	})
 	.describe('A named visual grouping of nodes');
+
+export type NodeGroupSummary = z.infer<typeof nodeGroupSchema>;
+
+/**
+ * Maps persisted node groups (which store member node *ids*) to the read-path
+ * shape, which presents member node *names* — the same contract the
+ * update_workflow group operations accept. Stale ids that no longer resolve to
+ * a node are dropped, so echoing a group back into a write op repairs it.
+ */
+export const toNodeGroupSummary = (
+	nodeGroups: IWorkflowGroup[],
+	nodes: Array<Pick<INode, 'id' | 'name'>>,
+): NodeGroupSummary[] => {
+	const nameById = new Map(nodes.map((node) => [node.id, node.name]));
+	return nodeGroups.map(({ id, name, nodeIds, description }) => ({
+		id,
+		name,
+		nodeNames: nodeIds.flatMap((nodeId) => nameById.get(nodeId) ?? []),
+		...(description !== undefined ? { description } : {}),
+	}));
+};
 
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z

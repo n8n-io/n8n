@@ -140,11 +140,13 @@ export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 );
 export const ENHANCED_HITL_SLACK_EXPERIMENT = createExperiment('096_enhanced_hitl_slack');
 export const ENHANCED_HITL_TELEGRAM_EXPERIMENT = createExperiment('097_enhanced_hitl_telegram');
-export const ENHANCED_HITL_GMAIL_EXPERIMENT = createExperiment('098_enhanced_hitl_gmail');
 
 export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
 	'100_n8n_credits_credential_selection',
 );
+
+export const TRIAL_INTRO_MODAL_EXPERIMENT = createExperiment('101_trial_intro_modal');
+export const INLINE_AGENTS_EXPERIMENT = createExperiment('103_inline_agents');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -184,6 +186,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	ENHANCED_HITL_SLACK_EXPERIMENT.name,
 	ENHANCED_HITL_TELEGRAM_EXPERIMENT.name,
-	ENHANCED_HITL_GMAIL_EXPERIMENT.name,
 	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
+	TRIAL_INTRO_MODAL_EXPERIMENT.name,
+	INLINE_AGENTS_EXPERIMENT.name,
 ];

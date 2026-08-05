@@ -430,6 +430,7 @@ export function shouldIgnoreCanvasShortcut(el: Element): boolean {
 	return (
 		['INPUT', 'TEXTAREA'].includes(el.tagName) ||
 		el.closest('[contenteditable]') !== null ||
+		el.closest('[role="dialog"]') !== null ||
 		el.closest('.ignore-key-press-canvas') !== null
 	);
 }

@@ -51,6 +51,9 @@ describe('McpServerMiddlewareService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpProtectedResource.getResourceUrl.mockReturnValue('https://n8n.example.com/mcp-server/http');
+		mcpProtectedResource.getProtectedResourceMetadataUrl.mockReturnValue(
+			'https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+		);
 	});
 
 	describe('getUserForToken', () => {
@@ -158,7 +161,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Authorization header not sent',
@@ -185,7 +191,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Invalid authorization header format - Missing Bearer prefix',
@@ -212,7 +221,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Invalid authorization header format - Malformed Bearer token',
@@ -357,7 +369,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
 			expect(next).not.toHaveBeenCalled();
@@ -382,7 +397,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({
 				message: 'Unauthorized: Authorization header not sent',
@@ -412,7 +430,10 @@ describe('McpServerMiddlewareService', () => {
 
 			await middleware(req, res, next);
 
-			expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+			expect(res.header).toHaveBeenCalledWith(
+				'WWW-Authenticate',
+				'Bearer realm="n8n MCP Server", resource_metadata="https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http"',
+			);
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.send).toHaveBeenCalledWith({ message: 'Unauthorized' });
 			expect(next).not.toHaveBeenCalled();

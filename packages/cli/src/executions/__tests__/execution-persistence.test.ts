@@ -587,6 +587,27 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(true);
 				expect(executionRepository.update).not.toHaveBeenCalled();
 			});
+
+			it('should not overwrite startedAt', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({
+					affected: 1,
+					generatedMaps: [],
+					raw: {},
+				});
+				const startedAt = new Date();
+
+				const result = await executionPersistence.updateExistingExecution(executionId, {
+					status: 'running',
+					startedAt,
+				});
+
+				expect(result).toBe(true);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'running' },
+				);
+			});
 		});
 
 		describe('data updates on db-mode executions', () => {
@@ -1105,13 +1126,15 @@ describe('ExecutionPersistence', () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
+				const startedAt = new Date();
+
 				await executionPersistence.updateExistingExecution(executionId, {
 					id: executionId,
 					data: runData,
 					workflowId: 'other-wf',
 					workflowVersionId: 'v-new',
 					createdAt: new Date(),
-					startedAt: new Date(),
+					startedAt,
 					customData: { foo: 'bar' },
 					status: 'success',
 				});

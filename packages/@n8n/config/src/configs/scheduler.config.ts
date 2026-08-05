@@ -1,4 +1,4 @@
-import { Time } from '@n8n/constants';
+import { DEFAULT_MISFIRE_GRACE_SECONDS, Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -251,4 +251,52 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_TRIGGER_NODE_MODE', z.enum(['legacy', 'new']))
 	triggerNodeMode: 'legacy' | 'new' = 'legacy';
+
+	/**
+	 * Whether nodes that poll on a schedule (e.g. checking an inbox or API on an
+	 * interval) are scheduled by the durable scheduler instead of n8n's
+	 * in-process timer. Off by default; requires {@link enabled} to also be on.
+	 */
+	@Env('N8N_SCHEDULER_POLL_TRIGGERS_ENABLED')
+	enabledForPollTriggers: boolean = false;
+
+	/**
+	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
+	 * Off by default; intended to be removed once the durable scheduler is GA.
+	 *
+	 * When on, the Schedule Trigger node shows a "Skip Durable Scheduler" toggle; a
+	 * trigger with it checked keeps using the in-memory scheduler even while
+	 * {@link enabled} is on, so an operator can move an individual schedule back
+	 * while testing. When off, the toggle is hidden and every schedule follows
+	 * {@link enabled}.
+	 *
+	 * Named with the `N8N_ENV_FEAT_` prefix so the frontend picks it up through the
+	 * env-feature-flag channel that gates the node property's visibility. Only has
+	 * an effect while {@link enabled} is on: with the durable scheduler off, every
+	 * schedule already runs in memory.
+	 */
+	@Env('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER')
+	allowSkipDurableScheduler: boolean = false;
+
+	/**
+	 * How many times a scheduled run may be reclaimed (for example after a crash)
+	 * or retried on error before it's given up on and dead-lettered. Defaults to
+	 * 5. Raise it on infrastructure prone to instance restarts or transient
+	 * errors, so a single crash doesn't drop a run; lower it to dead-letter and
+	 * move on sooner. Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_MAX_ATTEMPTS', positiveIntSchema)
+	maxAttempts: number = 5;
+
+	/**
+	 * How late, in seconds, a scheduled run may start and still count as on time. A
+	 * run later than this counts as missed, and the schedule's misfire policy decides
+	 * whether it still runs at all. Must be greater than 0, and capped at 30 days.
+	 *
+	 * Should exceed {@link executorIntervalSeconds} and {@link materializationWindowSeconds}:
+	 * a run has to survive until the next executor tick to be offered at all. The
+	 * scheduler warns at startup if it doesn't.
+	 */
+	@Env('N8N_SCHEDULER_MISFIRE_GRACE', positiveIntSchema.max(30 * Time.days.toSeconds))
+	misfireGraceSeconds: number = DEFAULT_MISFIRE_GRACE_SECONDS;
 }

@@ -10,6 +10,7 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 	ISupplyDataFunctions,
+	NodeEgressFilter,
 } from 'n8n-workflow';
 import { assertCredentialAllowsUrl, assertUrlAllowed, NodeOperationError } from 'n8n-workflow';
 
@@ -71,6 +72,13 @@ function isForbiddenError(error: unknown): boolean {
 type OnUnauthorizedHandler = (
 	headers?: Record<string, string>,
 ) => Promise<Record<string, string> | null>;
+
+const OAUTH2_REFRESH_BUFFER_MS = 2 * 60 * 1000;
+const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
+
+type McpOAuth2Credentials = ICredentialDataDecryptedObject & {
+	oauthTokenData?: ClientOAuth2TokenData;
+};
 
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
@@ -137,6 +145,7 @@ export async function connectMcpClient({
 	onUnauthorized,
 	signal,
 	allowedDomains,
+	secureEgressFilter,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -150,6 +159,12 @@ export async function connectMcpClient({
 	 * (including redirect hops) is validated against it via `assertUrlAllowed`.
 	 */
 	allowedDomains?: string;
+	/**
+	 * Instance egress filter. When set, every request (including redirect hops)
+	 * is validated against the configured egress policy, and the connection is
+	 * pinned to the validated address.
+	 */
+	secureEgressFilter?: NodeEgressFilter;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -157,7 +172,7 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
-	const authFetch = createAuthFetch(headers, onUnauthorized, allowedDomains);
+	const authFetch = createAuthFetch(headers, onUnauthorized, allowedDomains, secureEgressFilter);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	let onAbort: (() => void) | undefined;
@@ -276,23 +291,30 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
  *   - injects auth headers into every request,
  *   - retries once on 401 after refreshing the token via onUnauthorized,
  *   - validates the initial URL and every redirect hop against `allowedDomains`
- *     so credentials are never sent to a host the credential doesn't allow.
+ *     so credentials are never sent to a host the credential doesn't allow,
+ *   - validates the initial URL and every redirect hop against the instance
+ *     `secureEgressFilter`, and pins the connection to the validated address.
  */
 function createAuthFetch(
 	initialHeaders: Record<string, string> | undefined,
 	onUnauthorized?: OnUnauthorizedHandler,
 	allowedDomains?: string,
+	secureEgressFilter?: NodeEgressFilter,
 ): typeof fetch {
 	let headers = initialHeaders;
 
+	const secureLookup = secureEgressFilter?.createSecureLookup();
+
+	const doFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+		await proxyFetch(
+			input,
+			{ ...init, headers: { ...headersToRecord(init?.headers), ...headers } },
+			undefined,
+			secureLookup,
+		);
+
 	const authedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-		const response = await proxyFetch(input, {
-			...init,
-			headers: {
-				...headersToRecord(init?.headers),
-				...headers,
-			},
-		});
+		const response = await doFetch(input, init);
 
 		if (response.status !== 401 || !onUnauthorized) {
 			return response;
@@ -304,13 +326,7 @@ function createAuthFetch(
 		}
 
 		headers = refreshedHeaders;
-		return await proxyFetch(input, {
-			...init,
-			headers: {
-				...headersToRecord(init?.headers),
-				...headers,
-			},
-		});
+		return await doFetch(input, init);
 	};
 
 	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -318,13 +334,37 @@ function createAuthFetch(
 		// unwrapped to their URL so the redirect loop can carry a stable input.
 		const startUrl = input instanceof Request ? input.url : input;
 		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: (hopUrl) => assertUrlAllowed({ url: hopUrl, allowedDomains }),
+			onBeforeHop: async (hopUrl) => {
+				assertUrlAllowed({ url: hopUrl, allowedDomains });
+				if (secureEgressFilter) {
+					const result = await secureEgressFilter.validateUrl(hopUrl);
+					if (!result.ok) throw result.error;
+				}
+			},
 		});
 	};
 }
 
+function shouldRefreshOAuth2Token(credentials: McpOAuth2Credentials): boolean {
+	const tokenData = credentials.oauthTokenData;
+	if (!tokenData?.refresh_token) return false;
+
+	const expiresAt = Number(tokenData.n8n_expires_at);
+	if (!Number.isFinite(expiresAt)) {
+		return false;
+	}
+
+	const expiresInMs = Number(tokenData.expires_in) * 1000;
+	const refreshBufferMs =
+		Number.isFinite(expiresInMs) && expiresInMs > 0
+			? Math.min(OAUTH2_REFRESH_BUFFER_MS, expiresInMs * OAUTH2_REFRESH_BUFFER_RATIO)
+			: OAUTH2_REFRESH_BUFFER_MS;
+
+	return Date.now() + refreshBufferMs >= expiresAt;
+}
+
 export async function getAuthHeaders(
-	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	authentication: McpAuthenticationOption,
 ): Promise<{
 	headers?: Record<string, string>;
@@ -332,10 +372,17 @@ export async function getAuthHeaders(
 }> {
 	if (isMcpOAuth2Authentication(authentication)) {
 		const credentials = await ctx
-			.getCredentials<{ oauthTokenData?: { access_token?: string } }>(authentication)
+			.getCredentials<McpOAuth2Credentials>(authentication)
 			.catch(() => null);
 
 		if (!credentials) return {};
+
+		if (shouldRefreshOAuth2Token(credentials)) {
+			const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
+			if (refreshedHeaders) {
+				return { headers: refreshedHeaders, credentials };
+			}
+		}
 
 		if (!credentials.oauthTokenData?.access_token) {
 			return { credentials };
@@ -473,6 +520,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: config.endpointUrl,
 		headers,
 		allowedDomains,
+		secureEgressFilter: ctx.helpers.getSecureEgressFilter?.(),
 		name: node.type,
 		version: node.typeVersion,
 		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
