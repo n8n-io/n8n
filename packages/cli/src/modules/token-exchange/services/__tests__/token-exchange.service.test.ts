@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import jwt from 'jsonwebtoken';
+import { generateKeyPairSync } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -32,6 +33,7 @@ const service = new TokenExchangeService(
 );
 
 const resolvedKey: ResolvedTrustedKey = {
+	sourceId: 'test-source',
 	kid: 'test-kid',
 	algorithms: ['RS256'],
 	key: 'test-public-key',
@@ -331,6 +333,63 @@ describe('TokenExchangeService', () => {
 
 			expect(result.claims.jti).toBeUndefined();
 			expect(jtiStore.consume).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('verifyExternalToken', () => {
+		it('verifies a Keycloak-issued token end-to-end and returns attested claims', async () => {
+			const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+			const keycloakClaims = {
+				sub: 'a1b2c3d4-keycloak-subject',
+				iss: 'https://keycloak.example.com/realms/n8n',
+				aud: 'n8n-resource-server',
+				iat: now,
+				exp: now + 300,
+				jti: 'keycloak-token-id',
+				email: 'user@example.com',
+				email_verified: true,
+				given_name: 'Ada',
+				family_name: 'Lovelace',
+			};
+			const token = jwt.sign(keycloakClaims, privateKey, {
+				algorithm: 'RS256',
+				keyid: 'keycloak-kid',
+			});
+
+			trustedKeyStore.getByKidAndIss.mockResolvedValue({
+				sourceId: 'keycloak-realm',
+				kid: 'keycloak-kid',
+				algorithms: ['RS256'],
+				key: publicKey,
+				issuer: keycloakClaims.iss,
+				requireVerifiedEmail: false,
+			});
+
+			const result = await service.verifyExternalToken(token, keycloakClaims.aud);
+
+			expect(result).toEqual({
+				claim: {
+					sourceId: 'keycloak-realm',
+					issuer: keycloakClaims.iss,
+					subject: keycloakClaims.sub,
+					audience: keycloakClaims.aud,
+					attributes: {
+						email: keycloakClaims.email,
+						email_verified: true,
+						given_name: 'Ada',
+						family_name: 'Lovelace',
+					},
+					expiresAt: new Date(keycloakClaims.exp * 1000),
+				},
+			});
+			expect(jtiStore.consume).not.toHaveBeenCalled();
+		});
+
+		it('returns a typed context instead of throwing when verification fails', async () => {
+			await expect(service.verifyExternalToken('garbage-token', 'n8n')).resolves.toEqual({
+				claim: null,
+				context: { reason: 'invalid_token', errorDetails: expect.any(String) },
+			});
 		});
 	});
 });

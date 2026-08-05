@@ -30,6 +30,13 @@ export class TokenExchangeModule implements ModuleInterface {
 		const { TrustedKeyService } = await import('./services/trusted-key.service.js');
 		await Container.get(TrustedKeyService).initialize();
 
+		// Register as the ExternalTokenVerifierProxy provider so other modules can verify without importing this one.
+		const { ExternalTokenVerifierProxy } = await import(
+			'@/services/external-token-verifier-proxy.service.js'
+		);
+		const { TokenExchangeService } = await import('./services/token-exchange.service.js');
+		Container.get(ExternalTokenVerifierProxy).registerProvider(Container.get(TokenExchangeService));
+
 		await import('./controllers/token-exchange.controller.js');
 		await import('./controllers/embed-auth.controller.js');
 
