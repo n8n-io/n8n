@@ -274,7 +274,7 @@ catalogs:
   undici-v6:
     undici: ^6.27.0
   undici-v7:
-    undici: ^7.28.0
+    undici: ^7.29.0
 
 minimumReleaseAge: 4320
 
