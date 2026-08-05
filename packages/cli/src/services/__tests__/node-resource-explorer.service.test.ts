@@ -373,7 +373,7 @@ describe('NodeResourceExplorerService', () => {
 			);
 		});
 
-		test('reports a model the credential cannot reach, with the reachable options', async () => {
+		test('reports a model the credential cannot reach', async () => {
 			mockAiNode([modelLocator]);
 			mockAvailableModels(['gpt-5-mini', 'gpt-4.1-mini']);
 
@@ -382,17 +382,7 @@ describe('NodeResourceExplorerService', () => {
 				parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
 			});
 
-			expect(result).toEqual([
-				{
-					name: 'model',
-					displayName: 'Model',
-					currentValue: 'gpt-5.4',
-					availableOptions: [
-						{ name: 'gpt-5-mini', value: 'gpt-5-mini' },
-						{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
-					],
-				},
-			]);
+			expect(result).toEqual([{ name: 'model', displayName: 'Model', currentValue: 'gpt-5.4' }]);
 		});
 
 		test('reports nothing when the current model is reachable', async () => {
@@ -476,11 +466,7 @@ describe('NodeResourceExplorerService', () => {
 			});
 
 			expect(dynamicNodeParametersService.getResourceLocatorResults).toHaveBeenCalledTimes(3);
-			expect(result[0]?.availableOptions.map((o) => o.value)).toEqual([
-				'gpt-4o-mini',
-				'gpt-4.1-mini',
-				'gpt-5-mini',
-			]);
+			expect(result).toHaveLength(1);
 		});
 
 		test('finds a value on a later page rather than flagging it', async () => {

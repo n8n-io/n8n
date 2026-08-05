@@ -310,9 +310,8 @@ function buildEditableParameters(
  * exist on the account that ends up connected. See
  * `findUnavailableResourceLocatorValues` for what the host will and won't claim.
  *
- * The message names the values the credential *can* reach, so whoever repairs it — today the
- * agent, which is told to fix the value and say what it changed — doesn't have to rediscover
- * them.
+ * Reports only the unusable value, not the usable ones: whoever repairs it can list those
+ * through the nodes tool's resource exploration, against the credential that is now bound.
  */
 async function computeUnavailableLocatorIssues(
 	context: InstanceAiContext,
@@ -338,19 +337,10 @@ async function computeUnavailableLocatorIssues(
 	for (const entry of unavailable) {
 		issues[entry.name] = [
 			`"${entry.currentValue}" isn't available with the connected credential "${credential.name}". ` +
-				`Available: ${formatAvailableValues(entry.availableOptions)}.`,
+				'Pick a value the credential offers instead.',
 		];
 	}
 	return issues;
-}
-
-/** Cap the listed values so one long list can't crowd out the rest of the setup result. */
-const MAX_LISTED_VALUES = 20;
-
-function formatAvailableValues(options: Array<{ name: string; value: string }>): string {
-	const listed = options.slice(0, MAX_LISTED_VALUES).map((o) => o.value);
-	const remaining = options.length - listed.length;
-	return remaining > 0 ? `${listed.join(', ')} (+${String(remaining)} more)` : listed.join(', ');
 }
 
 /**

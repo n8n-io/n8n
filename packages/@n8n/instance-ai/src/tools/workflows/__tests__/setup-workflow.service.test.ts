@@ -129,15 +129,10 @@ describe('buildSetupRequests', () => {
 			]);
 		}
 
-		function mockUnavailable(availableOptions: Array<{ name: string; value: string }>) {
-			const findUnavailableLocatorValues = vi.fn().mockResolvedValue([
-				{
-					name: 'model',
-					displayName: 'Model',
-					currentValue: 'gpt-6-mini',
-					availableOptions,
-				},
-			]);
+		function mockUnavailable() {
+			const findUnavailableLocatorValues = vi
+				.fn()
+				.mockResolvedValue([{ name: 'model', displayName: 'Model', currentValue: 'gpt-6-mini' }]);
 			(context.nodeService as unknown as Record<string, unknown>).findUnavailableLocatorValues =
 				findUnavailableLocatorValues;
 			return findUnavailableLocatorValues;
@@ -153,12 +148,9 @@ describe('buildSetupRequests', () => {
 			} as Partial<NodeJSON>);
 		}
 
-		it('raises an issue naming the credential and the values it can reach', async () => {
+		it('raises an issue naming the unusable value and the credential', async () => {
 			mockOpenAiNode();
-			mockUnavailable([
-				{ name: 'gpt-5-mini', value: 'gpt-5-mini' },
-				{ name: 'gpt-4.1-mini', value: 'gpt-4.1-mini' },
-			]);
+			mockUnavailable();
 
 			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
 			const result = await buildSetupRequests(context, node);
@@ -166,7 +158,7 @@ describe('buildSetupRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].parameterIssues?.model).toEqual([
 				'"gpt-6-mini" isn\'t available with the connected credential "n8n free OpenAI API credits". ' +
-					'Available: gpt-5-mini, gpt-4.1-mini.',
+					'Pick a value the credential offers instead.',
 			]);
 			expect(result[0].needsAction).toBe(true);
 		});
@@ -183,21 +175,6 @@ describe('buildSetupRequests', () => {
 				mode: 'id',
 				value: 'gpt-6-mini',
 			});
-		});
-
-		it('caps a long list of values so it cannot crowd out the setup result', async () => {
-			mockOpenAiNode();
-			mockUnavailable(
-				Array.from({ length: 25 }, (_, i) => ({ name: `model-${i}`, value: `model-${i}` })),
-			);
-
-			const node = makeOpenAiNode({ __rl: true, mode: 'id', value: 'gpt-6-mini' });
-			const result = await buildSetupRequests(context, node);
-
-			const message = result[0].parameterIssues?.model?.[0] ?? '';
-			expect(message).toContain('model-19');
-			expect(message).not.toContain('model-20');
-			expect(message).toContain('(+5 more)');
 		});
 
 		it('raises nothing when the host reports nothing unavailable', async () => {
@@ -227,7 +204,7 @@ describe('buildSetupRequests', () => {
 		it('does not probe when no credential is resolved for the slot', async () => {
 			mockOpenAiNode();
 			(context.credentialService.list as Mock).mockResolvedValue([]);
-			const probe = mockUnavailable([{ name: 'gpt-5-mini', value: 'gpt-5-mini' }]);
+			const probe = mockUnavailable();
 
 			const node = makeNode({
 				name: 'OpenAI Chat Model',

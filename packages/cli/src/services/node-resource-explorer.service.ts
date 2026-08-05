@@ -195,7 +195,6 @@ export class NodeResourceExplorerService {
 				name: candidate.name,
 				displayName: candidate.displayName,
 				currentValue: candidate.currentValue,
-				availableOptions: listing.options,
 			});
 		}
 
@@ -279,9 +278,6 @@ export interface UnavailableResourceLocatorValue {
 	name: string;
 	displayName: string;
 	currentValue: string;
-	/** Everything the credential can reach for this parameter, so callers can say what
-	 *  the usable values are instead of only that the current one isn't. */
-	availableOptions: Array<{ name: string; value: string }>;
 }
 
 interface CandidateLocator {

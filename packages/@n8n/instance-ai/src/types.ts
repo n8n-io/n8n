@@ -517,8 +517,6 @@ export interface UnavailableLocatorValue {
 	name: string;
 	displayName: string;
 	currentValue: string;
-	/** Everything the credential can reach for this parameter. */
-	availableOptions: Array<{ name: string; value: string }>;
 }
 
 export interface InstanceAiNodeService {
@@ -544,7 +542,7 @@ export interface InstanceAiNodeService {
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
 	/**
 	 * Report resource-locator parameters whose current value the given credential
-	 * can't reach, together with the values it can. A credential can narrow a
+	 * can't reach. A credential can narrow a
 	 * parameter's value space after the value was chosen — the managed free-OpenAI-
 	 * credits credential only proxies an allowlisted subset of models — so this is
 	 * what lets setup offer a real choice instead of guessing a replacement.
