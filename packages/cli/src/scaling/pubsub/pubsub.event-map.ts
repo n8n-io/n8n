@@ -3,6 +3,7 @@ import type {
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
+	PushPayload,
 	WorkerStatus,
 	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
@@ -122,6 +123,11 @@ export type PubSubCommandMap = {
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
 		asBinary: boolean;
+	};
+
+	'relay-agent-execution-update': {
+		data: PushPayload<'agentExecutionUpdated'>;
+		userIds: string[];
 	};
 
 	'clear-test-webhooks': {
