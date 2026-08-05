@@ -253,10 +253,11 @@ skill; these are illustrative, trimmed of the full calibrated wording):
 }
 ```
 
-All three omit one detail for brevity that the real, calibrated versions
-include: a `processExpectations` entry acknowledging the placeholder-token
-connection-test failure as expected (see the note right below) — a full case
-must include that or it will fail on a correct build for the wrong reason.
+All three are complete as written in one respect that earlier guidance got
+wrong: none of them asserts anything about the credential's connection test.
+Both routes a credential takes into a build now authenticate, so an expectation
+acknowledging a connection-test failure reds every correct build — see
+"Credential validity" below.
 
 The wire shapes (verified live against both tools — `credentials.tool.ts`'s
 `handleSetup` state machine and `workflows.tool.ts`'s setup-wizard equivalent):
