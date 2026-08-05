@@ -31,6 +31,8 @@ export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
+export { default as N8nButtonList } from './N8nButtonList';
+export type { ButtonListOrientation, ButtonListProps } from './N8nButtonList';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
@@ -102,6 +104,7 @@ export {
 	type ChatInputAutoFocusOptions,
 	type ChatInputAutoFocusTarget,
 } from './N8nChatInput';
+export { default as N8nChatMessage } from './N8nChatMessage';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';
@@ -111,6 +114,7 @@ export { default as N8nResizeWrapper } from './N8nResizeWrapper';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';
+export { default as N8nStepper } from './N8nStepper/Stepper.vue';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';

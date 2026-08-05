@@ -55,6 +55,8 @@ async function* asAsyncGenerator<T>(values: T[]): AsyncGenerator<T> {
 	for (const value of values) yield value;
 }
 
+const abortSignal = new AbortController().signal;
+
 describe('InstanceAiBuilderDelegateAdapterService', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -77,6 +79,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			const seen: unknown[] = [];
@@ -97,6 +100,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 				telemetry: sentinel,
 			});
 
@@ -111,6 +115,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
 				},
@@ -127,6 +132,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
@@ -143,6 +149,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
@@ -168,6 +175,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 				},
 			);
 
@@ -189,6 +197,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 				},
 			);
@@ -207,6 +216,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 						hostThreadId: 'thread-1',
 						runId: 'run-1',
 						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
 					},
 				),
 			).rejects.toThrow(ForbiddenError);
@@ -256,6 +266,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			expect(agentsBuilderService.findOpenCheckpointForThread).toHaveBeenCalledWith(
@@ -278,6 +289,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			expect(result).toEqual([]);
@@ -297,6 +309,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				hostThreadId: 'thread-1',
 				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
 			});
 
 			expect(result).toEqual([]);
@@ -312,6 +325,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					hostThreadId: 'thread-1',
 					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					abortSignal,
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.findOpenCheckpointForThread).not.toHaveBeenCalled();
@@ -347,8 +361,26 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.createAgent('New agent');
 
-			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent');
+			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent', {
+				id: undefined,
+				adoptUnconfiguredOnCollision: true,
+			});
 			expect(result).toEqual({ agentId: 'agent-9', projectId: 'project-1' });
+		});
+
+		it('creates under the id the caller minted for its unsaved artifact', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.create.mockResolvedValue(
+				mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'New agent' }),
+			);
+
+			await delegate.createAgent('New agent', 'aBcDeFgHiJkLmNoP');
+
+			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent', {
+				id: 'aBcDeFgHiJkLmNoP',
+				adoptUnconfiguredOnCollision: true,
+			});
 		});
 
 		it('rejects when the user lacks agent:create scope', async () => {

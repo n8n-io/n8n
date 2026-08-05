@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useBuilderStore, type WorkflowBuilderJourneyEventType } from '../../builder.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -38,7 +38,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';

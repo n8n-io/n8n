@@ -23,6 +23,7 @@ import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.v
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
@@ -545,8 +546,14 @@ onBeforeUnmount(() => {
 						</N8nText>
 					</template>
 
+					<AgentChatMessageAttachments
+						v-if="group.message.attachments?.length && projectId && agentId"
+						:attachments="group.message.attachments"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 					<div
-						v-if="group.message.role === 'user'"
+						v-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}

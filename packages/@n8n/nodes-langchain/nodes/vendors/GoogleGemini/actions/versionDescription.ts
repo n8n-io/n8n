@@ -17,7 +17,8 @@ export const versionDescription: INodeTypeDescription = {
 	version: [1, 1.1, 1.2],
 	defaultVersion: 1.2,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Interact with Google Gemini AI models',
+	description:
+		'Message Gemini, analyze documents and audio, generate images and video, and search files',
 	defaults: {
 		name: 'Google Gemini',
 	},

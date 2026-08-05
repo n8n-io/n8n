@@ -42,10 +42,9 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@n8n/composables/useTelemetry', async (importOriginal) => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
-		...(await importOriginal<typeof import('@n8n/composables/useTelemetry')>()),
 		useTelemetry: () => {
 			return {
 				track,
@@ -62,7 +61,7 @@ vi.mock('@/app/composables/useLoadingService', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

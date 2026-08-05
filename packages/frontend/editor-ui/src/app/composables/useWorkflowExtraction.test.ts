@@ -97,7 +97,7 @@ vi.mock('@/app/stores/history.store', () => ({
 	useHistoryStore: vi.fn().mockReturnValue(mockHistoryStore),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),

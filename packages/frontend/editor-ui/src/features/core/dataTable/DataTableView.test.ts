@@ -56,7 +56,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 const mockToast = {
 	showError: vi.fn(),
 };
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 

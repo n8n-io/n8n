@@ -24,7 +24,7 @@ import {
 import { retry } from '@n8n/utils/retry';
 import { computed, getCurrentInstance, type Ref } from 'vue';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 

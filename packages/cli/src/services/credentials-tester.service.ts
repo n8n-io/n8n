@@ -45,6 +45,10 @@ import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
+/** Auth-probe green verdict: states what a 2xx proves without claiming the
+ *  key was verified — some services answer 2xx regardless of the credential. */
+export const AUTH_PROBE_ACCEPTED_MESSAGE = 'The service accepted the credential.';
+
 const mockNodesData: INodeTypeData = {
 	mock: {
 		sourcePath: '',
@@ -189,7 +193,72 @@ export class CredentialsTester {
 		return message;
 	}
 
-	// eslint-disable-next-line complexity
+	/** Resolve overwrites/defaults onto the decrypted data; returns the secret paths for redaction. */
+	private async prepareCredentialsForTest(
+		userId: User['id'],
+		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
+	): Promise<{
+		baseAdditionalData: IWorkflowExecuteAdditionalData;
+		credentialsDataSecretKeys: string[];
+	}> {
+		const baseAdditionalData = await WorkflowExecuteAdditionalData.getBase({
+			userId,
+			projectId: credentialsDecrypted.homeProject?.id,
+		});
+
+		let credentialsDataSecretKeys: string[] = [];
+		if (credentialsDecrypted.data) {
+			// Keep all credentials data keys which have a secret value
+			credentialsDataSecretKeys = getExternalSecretExpressionPaths(credentialsDecrypted.data);
+			credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
+				baseAdditionalData,
+				credentialsDecrypted.data,
+				credentialType,
+				'internal' as WorkflowExecuteMode,
+				undefined,
+				undefined,
+			);
+		}
+
+		return { baseAdditionalData, credentialsDataSecretKeys };
+	}
+
+	/**
+	 * Test a credential against an ad-hoc URL when its type declares no test of
+	 * its own (generic auth types like httpHeaderAuth). The credential is applied
+	 * through its `authenticate` definition — the same way the HTTP Request node
+	 * sends it — and only 401/403 count as rejection: any other response means
+	 * the endpoint accepted the credential (it may still dislike the method or
+	 * path), and an unreachable service is inconclusive rather than a failure.
+	 */
+	async probeCredentialAuth(
+		userId: User['id'],
+		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
+		targetUrl: string,
+		options: { acceptedStatusCodes?: number[] } = {},
+	): Promise<INodeCredentialTestResult> {
+		try {
+			await this.prepareCredentialsForTest(userId, credentialType, credentialsDecrypted);
+		} catch (error) {
+			this.logger.debug('Credential auth probe failed', error);
+			return {
+				status: 'Error',
+				message: error.message.toString(),
+			};
+		}
+
+		return await this.runRequestTest(
+			userId,
+			credentialType,
+			credentialsDecrypted,
+			{ testRequest: { request: { url: targetUrl, method: 'GET' } } },
+			'authProbe',
+			options.acceptedStatusCodes,
+		);
+	}
+
 	async testCredentials(
 		userId: User['id'],
 		credentialType: string,
@@ -206,23 +275,11 @@ export class CredentialsTester {
 		let credentialsDataSecretKeys: string[] = [];
 		let baseAdditionalData: IWorkflowExecuteAdditionalData;
 		try {
-			baseAdditionalData = await WorkflowExecuteAdditionalData.getBase({
+			({ baseAdditionalData, credentialsDataSecretKeys } = await this.prepareCredentialsForTest(
 				userId,
-				projectId: credentialsDecrypted.homeProject?.id,
-			});
-
-			if (credentialsDecrypted.data) {
-				// Keep all credentials data keys which have a secret value
-				credentialsDataSecretKeys = getExternalSecretExpressionPaths(credentialsDecrypted.data);
-				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
-					baseAdditionalData,
-					credentialsDecrypted.data,
-					credentialType,
-					'internal' as WorkflowExecuteMode,
-					undefined,
-					undefined,
-				);
-			}
+				credentialType,
+				credentialsDecrypted,
+			));
 		} catch (error) {
 			this.logger.debug('Credential test failed', error);
 			return {
@@ -253,7 +310,87 @@ export class CredentialsTester {
 		}
 
 		// Credentials get tested via request instructions
+		return await this.runRequestTest(
+			userId,
+			credentialType,
+			credentialsDecrypted,
+			credentialTestFunction,
+			'default',
+		);
+	}
 
+	/**
+	 * Decide an auth-probe outcome from a failed probe request. The routing
+	 * engine wraps HTTP failures in NodeApiError — the status lives in the
+	 * string `httpCode` (and `context.data.status`), NOT in `cause.response`,
+	 * which only appears on raw axios errors. Verdicts: 401/403 (minus
+	 * service-declared accepted codes) is an auth rejection; any other failure
+	 * (404/405 on a wrong test URL, transport errors, …) proves nothing about
+	 * the credential, so it must never render as success — report it as
+	 * unverifiable instead of a false green check. The probe runs after the
+	 * credential is saved, so an Error verdict never blocks the save.
+	 */
+	private resolveAuthProbeVerdict(
+		error: {
+			message?: unknown;
+			httpCode?: unknown;
+			context?: { data?: { status?: unknown } };
+			cause?: { response?: { status?: unknown }; code?: unknown };
+		},
+		acceptedStatusCodes?: number[],
+	): INodeCredentialTestResult {
+		const statusCode =
+			Number(error.httpCode) ||
+			Number(error.context?.data?.status) ||
+			Number(error.cause?.response?.status) ||
+			undefined;
+
+		if (statusCode === 401 || statusCode === 403) {
+			if (!acceptedStatusCodes?.includes(statusCode)) {
+				return {
+					status: 'Error',
+					message: `The service rejected the credential (HTTP ${statusCode}). Check the key and try again.`,
+				};
+			}
+			// The service is documented to answer this code to a valid GET — the
+			// probe can't tell valid from invalid here, so don't overclaim.
+			return { status: 'OK', message: AUTH_PROBE_ACCEPTED_MESSAGE };
+		}
+
+		if (statusCode) {
+			return {
+				status: 'Error',
+				message: `The test URL answered HTTP ${statusCode}, so the credential could not be verified. The test URL may be wrong — it must be a read-only endpoint that answers an authenticated GET.`,
+			};
+		}
+
+		if (typeof error.message === 'string' && !error.cause?.code) {
+			return { status: 'Error', message: error.message };
+		}
+
+		this.logger.debug('Credential auth probe inconclusive', error);
+		return {
+			status: 'Error',
+			message: 'Could not reach the test URL to verify the credential.',
+		};
+	}
+
+	/**
+	 * Execute a request-based credential test through the declarative routing
+	 * engine. The `authProbe` verdict treats 401/403 as rejection, 2xx as
+	 * success, and everything else (wrong test URL, unreachable service) as
+	 * unverifiable — used for ad-hoc probes of generic credentials against a
+	 * known endpoint.
+	 */
+	// eslint-disable-next-line complexity
+	private async runRequestTest(
+		userId: User['id'],
+		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
+		credentialTestFunction: ICredentialTestRequestData,
+		verdict: 'default' | 'authProbe',
+		acceptedStatusCodes?: number[],
+	): Promise<INodeCredentialTestResult> {
 		// TODO: Temp workflows get created at multiple locations (for example also LoadNodeParameterOptions),
 		//       check if some of them are identical enough that it can be combined
 
@@ -356,6 +493,9 @@ export class CredentialsTester {
 			response = await routingNode.runNode();
 		} catch (error) {
 			this.errorReporter.error(error);
+			if (verdict === 'authProbe') {
+				return this.resolveAuthProbeVerdict(error, acceptedStatusCodes);
+			}
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {
@@ -363,6 +503,7 @@ export class CredentialsTester {
 					statusCode: error.cause.response.status,
 					statusMessage: error.cause.response.statusText,
 				};
+
 				if (credentialTestFunction.testRequest.rules) {
 					// Special testing rules are defined so check all in order
 					for (const rule of credentialTestFunction.testRequest.rules) {
@@ -418,6 +559,18 @@ export class CredentialsTester {
 					}
 				}
 			}
+		}
+
+		if (verdict === 'authProbe') {
+			// A 2xx proves the service accepted the request carrying the credential.
+			// For auth-enforcing test URLs that is verification; for endpoints that
+			// answer 2xx regardless (no auth required, or errors signalled in the
+			// body) it is not — the probe can't tell them apart, so the copy states
+			// what happened instead of claiming the key was verified.
+			return {
+				status: 'OK',
+				message: AUTH_PROBE_ACCEPTED_MESSAGE,
+			};
 		}
 
 		return {

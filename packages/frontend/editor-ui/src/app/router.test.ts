@@ -8,7 +8,7 @@ import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import type { MockInstance } from 'vitest';

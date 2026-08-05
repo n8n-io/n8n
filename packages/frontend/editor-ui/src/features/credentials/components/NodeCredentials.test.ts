@@ -52,6 +52,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
 		isCredentialTypeSupported: vi.fn(() => false),
+		canServeCredentialType: vi.fn(() => false),
 		balance: computed(() => undefined),
 		budget: computed(() => undefined),
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -1426,6 +1427,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => true),
 				isActionOptionVisible: vi.fn(() => true),
@@ -1502,6 +1504,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1533,6 +1536,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => false),
 					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1589,6 +1593,208 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		describe('multiple credential types (n8n credits on a non-default auth)', () => {
+			// Mirrors a node whose `authentication` defaults to an option mapping to a
+			// credential type NOT covered by n8n credits, while a sibling auth option
+			// maps to a covered type.
+			const serviceOAuth2CredType: ICredentialType = {
+				name: 'serviceOAuth2Api',
+				displayName: 'Service OAuth2 API',
+				properties: [],
+			};
+			const serviceApiKeyCredType: ICredentialType = {
+				name: 'serviceApiKey',
+				displayName: 'Service API',
+				properties: [],
+			};
+
+			const multiAuthNodeType: INodeTypeDescription = {
+				displayName: 'Service',
+				name: 'service',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Service' },
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main],
+				credentials: [
+					{
+						name: 'serviceOAuth2Api',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+					{
+						name: 'serviceApiKey',
+						required: true,
+						displayOptions: { show: { authentication: ['apiKey'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'OAuth2', value: 'oAuth2' },
+							{ name: 'API Key', value: 'apiKey' },
+						],
+						default: 'oAuth2',
+					},
+				],
+			};
+
+			const multiAuthNode: INodeUi = {
+				id: 'node-service',
+				name: 'Service',
+				type: 'service',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { authentication: 'oAuth2' },
+				credentials: {},
+			};
+
+			beforeEach(() => {
+				// Gateway covers only the API-key credential type, not the default OAuth2 one.
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'serviceApiKey'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'serviceApiKey'),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const nodeTypesStore = mockedStore(useNodeTypesStore);
+				nodeTypesStore.setNodeTypes([multiAuthNodeType]);
+				credentialsStore.state.credentialTypes = {
+					serviceOAuth2Api: serviceOAuth2CredType,
+					serviceApiKey: serviceApiKeyCredType,
+				};
+				credentialsStore.state.credentials = {};
+			});
+
+			it('shows the n8n credits toggle when a non-displayed sibling credential type is supported', () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				renderComponent({
+					// Clear the suite-wide default override — these tests model the NDV row.
+					props: { node: multiAuthNode, overrideCredType: '' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+			});
+
+			it('switches authentication to the supported credential type when n8n credits is chosen', async () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				const { emitted } = renderComponent({
+					props: { node: multiAuthNode, overrideCredType: '' },
+					global: {
+						stubs: {
+							AiGatewaySelector: {
+								template:
+									'<button data-test-id="ai-gateway-toggle-on" @click="$emit(\'toggle\', true)" />',
+								props: ['aiGatewayEnabled'],
+								emits: ['toggle'],
+							},
+						},
+					},
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+
+				// Managed credential is attached to the supported (API-key) type, not the default OAuth2 type.
+				const credPayload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(credPayload.properties.credentials.serviceApiKey).toEqual({
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				});
+				expect(credPayload.properties.credentials.serviceOAuth2Api).toBeUndefined();
+
+				// And the node's authentication is switched to the supported option.
+				const authPayload = ((emitted('valueChanged')?.[0] as unknown[]) ?? [])[0] as {
+					name: string;
+					value: string;
+				};
+				expect(authPayload).toEqual({ name: 'parameters.authentication', value: 'apiKey' });
+			});
+
+			// Mirrors the real NDV mount: `show-all` is true and the node has no
+			// explicit `authentication` (relies on the type's `oAuth2` default),
+			// exactly like a freshly inserted PDF.co node.
+			it('switches authentication when show-all is set and authentication is unset', async () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				const { emitted } = renderComponent({
+					props: { node: multiAuthNode, overrideCredType: '', showAll: true },
+					global: {
+						stubs: {
+							AiGatewaySelector: {
+								template:
+									'<button data-test-id="ai-gateway-toggle-on" @click="$emit(\'toggle\', true)" />',
+								props: ['aiGatewayEnabled'],
+								emits: ['toggle'],
+							},
+						},
+					},
+				});
+
+				await userEvent.click(screen.getByTestId('ai-gateway-toggle-on'));
+
+				const credPayload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(credPayload.properties.credentials.serviceApiKey).toEqual({
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				});
+
+				const authPayload = ((emitted('valueChanged')?.[0] as unknown[]) ?? [])[0] as {
+					name: string;
+					value: string;
+				};
+				expect(authPayload).toEqual({ name: 'parameters.authentication', value: 'apiKey' });
+			});
+
+			// Setup-flow hosts (standalone Instance AI cards, setup panel via
+			// overrideCredType) read the credentialSelected payload by this row's
+			// type and don't handle valueChanged, so the sibling fallback must not
+			// surface the toggle there.
+			it('does not offer the sibling fallback in standalone mode', () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				renderComponent({
+					props: { node: multiAuthNode, overrideCredType: '', standalone: true },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+			});
+
+			it('does not offer the sibling fallback when a credential type override is set', () => {
+				ndvStore.activeNode = multiAuthNode;
+
+				renderComponent({
+					props: { node: multiAuthNode, overrideCredType: 'serviceOAuth2Api' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+			});
+		});
+
 		describe('minNodeTypeVersion gate', () => {
 			const versionedNodeType: INodeTypeDescription = {
 				displayName: 'Some Node',
@@ -1619,6 +1825,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1654,6 +1861,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => true),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1689,6 +1897,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1729,6 +1938,7 @@ describe('NodeCredentials', () => {
 				vi.mocked(useAiGateway).mockReturnValue({
 					isEnabled: computed(() => true),
 					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'someApi'),
+					canServeCredentialType: vi.fn((credType: string) => credType === 'someApi'),
 					isNodeTypeVersionSupported: vi.fn(() => false),
 					isActionSupported: vi.fn(() => true),
 					isActionOptionVisible: vi.fn(() => true),
@@ -1817,6 +2027,32 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		it('should auto-enable gateway credential on mount for a directly-supported single-cred node in the NDV (show-all, no override)', () => {
+			// Real NDV config: show-all is true and no overrideCredType. Regression guard
+			// for the sibling-fallback change not clobbering directly-supported types.
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: '', showAll: true },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			});
+		});
+
 		it('should not auto-enable gateway credential when the credential selection experiment is enabled', () => {
 			n8nCreditsCredentialSelectionEnabled.value = true;
 			credentialsStore.state.credentials = {};
@@ -1872,6 +2108,7 @@ describe('NodeCredentials', () => {
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
 				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				canServeCredentialType: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
 				isActionSupported: vi.fn(() => false),
 				isActionOptionVisible: vi.fn(() => true),

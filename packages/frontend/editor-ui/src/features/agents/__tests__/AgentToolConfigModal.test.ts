@@ -74,13 +74,14 @@ function createToolSettingsStub(emitValid: boolean) {
 
 function createWorkflowToolConfigStub(emitValid: boolean) {
 	return defineComponent({
-		props: ['initialRef', 'showApprovalSetting', 'approvalRequired'],
+		props: ['initialRef', 'projectId', 'showApprovalSetting', 'approvalRequired'],
 		emits: ['update:valid', 'update:node-name', 'update:approvalRequired'],
 		setup(props, { emit, expose }) {
 			expose({
 				getName: () => props.initialRef?.name ?? '',
 				getDescription: () => props.initialRef?.description ?? '',
 				getAllOutputs: () => props.initialRef?.allOutputs ?? false,
+				getWorkflow: () => props.initialRef?.workflow ?? '',
 				handleChangeName: vi.fn(),
 			});
 			onMounted(() => {

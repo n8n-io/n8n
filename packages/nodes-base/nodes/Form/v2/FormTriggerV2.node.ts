@@ -147,7 +147,7 @@ const descriptionV2: INodeTypeDescription = {
 			displayName: 'Require Workflow Execute Permission',
 			name: 'requireExecuteAccess',
 			type: 'boolean',
-			default: true,
+			default: false,
 			envFeatureFlag: 'FORM_TRIGGER_OAUTH2',
 			displayOptions: {
 				show: { authentication: ['n8nUserAuth'], '@version': [{ _cnd: { gte: 2.6 } }] },

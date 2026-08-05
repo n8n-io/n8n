@@ -75,6 +75,26 @@ const mockSettings = mock<FrontendSettings>({
 	},
 });
 
+const publicSettingsResponse = {
+	settingsMode: 'public',
+	defaultLocale: 'en',
+	userManagement: {
+		authenticationMethod: 'email',
+		showSetupOnFirstLoad: false,
+		smtpSetup: false,
+		passwordMinLength: 8,
+	},
+	sso: {
+		saml: { loginEnabled: false },
+		ldap: { loginEnabled: false, loginLabel: '' },
+		oidc: { loginEnabled: false, loginUrl: '' },
+	},
+	authCookie: { secure: true },
+	previewMode: false,
+	enterprise: { saml: true, ldap: true, oidc: true },
+	communityNodesEnabled: true,
+} as unknown as FrontendSettings;
+
 describe('settings.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -219,6 +239,32 @@ describe('settings.store', () => {
 		});
 	});
 
+	describe('reading every getter at once', () => {
+		it('should not throw before settings have been fetched', () => {
+			const settingsStore = useSettingsStore();
+
+			expect(() => ({ ...settingsStore })).not.toThrow();
+		});
+
+		it('should not throw after reset', async () => {
+			getSettings.mockResolvedValueOnce(mockSettings);
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			settingsStore.reset();
+
+			expect(() => ({ ...settingsStore })).not.toThrow();
+		});
+
+		it('should not throw for public settings', async () => {
+			getSettings.mockResolvedValueOnce(publicSettingsResponse);
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(() => ({ ...settingsStore })).not.toThrow();
+		});
+	});
+
 	describe('getSettings', () => {
 		describe('telemetry', () => {
 			it('should fetch settings and call sessionStarted if telemetry is enabled', async () => {
@@ -294,6 +340,21 @@ describe('settings.store', () => {
 
 				// side effects
 				expect(sessionStarted).not.toHaveBeenCalled();
+			});
+
+			it('should expose license- and security-derived getters without throwing when the public response omits them', async () => {
+				getSettings.mockResolvedValueOnce(publicSettingsResponse);
+				const settingsStore = useSettingsStore();
+
+				await settingsStore.getSettings();
+
+				expect(settingsStore.planName).toBe('Community');
+				expect(settingsStore.isCommunityPlan).toBe(true);
+				expect(settingsStore.consumerId).toBeUndefined();
+				expect(settingsStore.security).toEqual({
+					blockFileAccessToN8nFiles: undefined,
+					secureCookie: true,
+				});
 			});
 
 			it('should store full settings if settingsMode is not "minimal"', async () => {

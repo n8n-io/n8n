@@ -51,7 +51,7 @@ export const serializedWorkflowSchema = z.object({
 	parentFolderId: z.string().nullable(),
 	isPublished: z.boolean(),
 	isArchived: z.boolean(),
-	tagIds: z.array(z.string().min(1)).min(1).optional(),
+	tagIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SerializedWorkflow = z.infer<typeof serializedWorkflowSchema>;
