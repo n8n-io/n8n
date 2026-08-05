@@ -3,6 +3,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
+import { ExpressionError, NodeApiError } from 'n8n-workflow';
 import nock from 'nock';
 
 import { GraphQL } from '../GraphQL.node';
@@ -124,6 +125,14 @@ describe('GraphQL Node', () => {
 				return get(parameters, parameter) ?? fallbackValue;
 			});
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockExecuteFunctions.getNode.mockReturnValue({
+				id: 'test-node',
+				name: 'GraphQL',
+				type: 'n8n-nodes-base.graphql',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: {},
+			});
 			mockExecuteFunctions.helpers.returnJsonArray.mockImplementation(returnJsonArray);
 			mockExecuteFunctions.helpers.constructExecutionMetaData.mockImplementation(
 				constructExecutionMetaData,
@@ -186,6 +195,39 @@ describe('GraphQL Node', () => {
 
 			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow('Unexpected error');
 		});
+
+		it('should wrap request errors without copying request options', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			const requestError = Object.assign(new Error('ECONNREFUSED'), {
+				code: 'ECONNREFUSED',
+				isAxiosError: true,
+				options: {
+					headers: { Authorization: 'credential-value' },
+				},
+			});
+			mockExecuteFunctions.helpers.request.mockRejectedValue(requestError);
+			const node = new GraphQL();
+
+			const error: unknown = await node.execute.call(mockExecuteFunctions).catch((error) => error);
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect(error).toHaveProperty('context.itemIndex', 0);
+			expect({ ...(error as NodeApiError) }).not.toHaveProperty('options');
+			expect(JSON.stringify({ ...(error as NodeApiError) })).not.toContain('credential-value');
+		});
+
+		it('should preserve execution errors', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			const executionError = new ExpressionError('Invalid expression');
+			mockExecuteFunctions.helpers.request.mockRejectedValue(executionError);
+			const node = new GraphQL();
+
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toBe(executionError);
+		});
 	});
 
 	describe('credential allowed domains', () => {
@@ -237,11 +279,26 @@ describe('GraphQL Node', () => {
 					query: '{ok}',
 				},
 				{
+					httpBasicAuth: {
+						user: 'user',
+						password: 'password',
+					},
+					httpCustomAuth: {
+						json: '{"headers":{"X-Custom":"custom"}}',
+					},
+					httpDigestAuth: {
+						user: 'digest-user',
+						password: 'digest-password',
+					},
 					httpHeaderAuth: {
 						name: 'Authorization',
 						value: 'Bearer secret',
 						allowedHttpRequestDomains: 'domains',
 						allowedDomains: 'example.com',
+					},
+					httpQueryAuth: {
+						name: 'Token',
+						value: 'query-secret',
 					},
 				},
 			);
@@ -250,11 +307,51 @@ describe('GraphQL Node', () => {
 			await node.execute.call(mockExecuteFunctions);
 
 			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledTimes(1);
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledOnce();
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('httpHeaderAuth');
 			const requestOptions = mockExecuteFunctions.helpers.request.mock.calls[0][0];
 			expect(requestOptions).toMatchObject({
 				uri: 'http://example.com/graphql',
 				allowedDomains: 'example.com',
+				headers: { Authorization: 'Bearer secret' },
 			});
+			expect(requestOptions).not.toHaveProperty('auth');
+			expect(requestOptions).not.toHaveProperty('qs.Token');
+		});
+
+		it("does not retrieve credentials when authentication is 'none'", async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				authentication: 'none',
+				requestMethod: 'POST',
+				endpoint: 'http://example.com/graphql',
+				requestFormat: 'json',
+				responseFormat: 'json',
+				query: '{ok}',
+			});
+
+			const node = new GraphQL();
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.getCredentials).not.toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledTimes(1);
+		});
+
+		it('continues without authentication when the selected credential cannot be retrieved', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				authentication: 'headerAuth',
+				requestMethod: 'POST',
+				endpoint: 'http://example.com/graphql',
+				requestFormat: 'json',
+				responseFormat: 'json',
+				query: '{ok}',
+			});
+
+			const node = new GraphQL();
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledOnce();
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('httpHeaderAuth');
+			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledTimes(1);
 		});
 
 		it('passes credential allowedDomains to OAuth2 request options', async () => {
