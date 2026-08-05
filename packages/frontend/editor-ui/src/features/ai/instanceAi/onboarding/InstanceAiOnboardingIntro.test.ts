@@ -18,9 +18,6 @@ const renderIntro = createComponentRenderer(InstanceAiOnboardingIntro, {
 		modelValue: 'Not set',
 		sandboxValue: 'Not set',
 		searchValue: 'Not set',
-		modelConfigured: false,
-		sandboxConfigured: false,
-		searchDecided: false,
 	},
 });
 
@@ -52,9 +49,6 @@ describe('InstanceAiOnboardingIntro', () => {
 				modelValue: 'anthropic/claude-opus-5',
 				sandboxValue: 'n8n Sandbox',
 				searchValue: 'Disabled',
-				modelConfigured: true,
-				sandboxConfigured: true,
-				searchDecided: true,
 			},
 		});
 

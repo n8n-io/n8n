@@ -74,10 +74,6 @@ const searchValue = computed(() => {
 });
 const composeFastPath = computed(() => sandboxEnvConfigured.value && searchEnvConfigured.value);
 const incomplete = computed(() => configuration.hasSetupProgress.value && !composeFastPath.value);
-const sandboxConfigured = computed(
-	() => configuration.sandboxConfigured.value || sandboxEnvConfigured.value,
-);
-
 function startAt(step?: Exclude<InstanceAiOnboardingStep, 'done'>): void {
 	onboarding.start(step ?? onboarding.firstUnmetStep());
 }
@@ -133,13 +129,10 @@ onMounted(async () => {
 			v-if="!store.isLoading"
 			:incomplete="incomplete"
 			:connect-model-only="composeFastPath"
-			:model-value="modelValue"
-			:sandbox-value="sandboxValue"
-			:search-value="searchValue"
-			:model-configured="configuration.modelConfigured.value"
-			:sandbox-configured="sandboxConfigured"
-			:search-decided="searchDecided"
-			@setup="startAt()"
+				:model-value="modelValue"
+				:sandbox-value="sandboxValue"
+				:search-value="searchValue"
+				@setup="startAt()"
 			@open-step="editStep"
 			@turn-off="turnOff"
 		/>
@@ -168,6 +161,5 @@ onMounted(async () => {
 	width: 100%;
 	height: 100%;
 	min-width: 0;
-	background: var(--background--surface);
 }
 </style>

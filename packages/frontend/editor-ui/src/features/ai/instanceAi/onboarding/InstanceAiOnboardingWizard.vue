@@ -474,10 +474,10 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					</N8nText>
 				</div>
 
-				<N8nCallout v-if="modelConnectionLocked" theme="info">
-					<N8nText bold>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</N8nText>
+				<N8nCallout v-if="modelConnectionLocked" theme="warning">
+					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
-					<N8nLink :to="ENV_DOCS_URL" new-window>
+					<N8nLink :to="ENV_DOCS_URL" size="small" new-window>
 						{{ i18n.baseText('instanceAi.onboarding.env.docs') }}
 					</N8nLink>
 				</N8nCallout>
@@ -610,8 +610,8 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 						{{ i18n.baseText('instanceAi.onboarding.sandbox.lede') }}
 					</N8nText>
 				</div>
-				<N8nCallout v-if="sandboxEnvManaged" theme="info">
-					<N8nText bold>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</N8nText>
+				<N8nCallout v-if="sandboxEnvManaged" theme="warning">
+					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
 				</N8nCallout>
 				<N8nRadioGroup
@@ -651,7 +651,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 									}}
 								</N8nBadge>
 							</span>
-							<N8nText color="text-light" step="sm" :class="$style.optionDescription">
+							<N8nText color="text-base" step="sm" :class="$style.optionDescription">
 								{{
 									provider.id === 'n8n-sandbox'
 										? i18n.baseText('instanceAi.onboarding.sandbox.n8nDescription')
@@ -735,8 +735,8 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 						{{ i18n.baseText('instanceAi.onboarding.search.lede') }}
 					</N8nText>
 				</div>
-				<N8nCallout v-if="searchEnvManaged" theme="info">
-					<N8nText bold>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</N8nText>
+				<N8nCallout v-if="searchEnvManaged" theme="warning">
+					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
 				</N8nCallout>
 				<N8nRadioGroup
@@ -779,7 +779,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 									{{ i18n.baseText('instanceAi.onboarding.search.free') }}
 								</N8nBadge>
 							</span>
-							<N8nText color="text-light" step="sm" :class="$style.optionDescription">
+							<N8nText color="text-base" step="sm" :class="$style.optionDescription">
 								{{
 									provider.id === 'searxng'
 										? i18n.baseText('instanceAi.onboarding.search.searxngDescription')
@@ -905,7 +905,10 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 			</Transition>
 		</div>
 
-		<N8nDialogFooter v-if="!(step === 'done' && composeFastPath)" :class="$style.footer">
+		<N8nDialogFooter
+			v-if="!(step === 'done' && composeFastPath)"
+			:class="[$style.footer, editMode && $style.editFooter]"
+		>
 			<N8nButton
 				v-if="editMode"
 				variant="outline"
@@ -1137,6 +1140,14 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 
 .footer > :last-child {
 	margin-left: auto;
+}
+
+.editFooter {
+	justify-content: flex-end;
+}
+
+.editFooter > :last-child {
+	margin-left: 0;
 }
 
 .dots {

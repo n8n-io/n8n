@@ -5,6 +5,7 @@ import {
 	N8nIcon,
 	N8nPreviewTag,
 	N8nSettingsRow,
+	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
@@ -16,9 +17,6 @@ defineProps<{
 	modelValue: string;
 	sandboxValue: string;
 	searchValue: string;
-	modelConfigured: boolean;
-	sandboxConfigured: boolean;
-	searchDecided: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -43,7 +41,7 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 			</N8nHeading>
 			<N8nPreviewTag v-if="!incomplete" :class="$style.preview" size="medium" />
 
-			<N8nText v-if="incomplete" tag="p" color="text-light" size="large" :class="$style.lede">
+			<N8nText v-if="incomplete" tag="p" color="text-base" size="large" :class="$style.lede">
 				{{ i18n.baseText('instanceAi.onboarding.incomplete.lede') }}
 			</N8nText>
 
@@ -70,24 +68,18 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 							title: i18n.baseText('instanceAi.onboarding.model.label'),
 							description: i18n.baseText('instanceAi.onboarding.model.description'),
 							value: modelValue,
-							configured: modelConfigured,
-							mono: true,
 						},
 						{
 							id: 'sandbox' as const,
 							title: i18n.baseText('instanceAi.onboarding.sandbox.label'),
 							description: i18n.baseText('instanceAi.onboarding.sandbox.description'),
 							value: sandboxValue,
-							configured: sandboxConfigured,
-							mono: false,
 						},
 						{
 							id: 'search' as const,
 							title: i18n.baseText('instanceAi.onboarding.search.label'),
 							description: i18n.baseText('instanceAi.onboarding.search.description'),
 							value: searchValue,
-							configured: searchDecided,
-							mono: false,
 						},
 					]"
 					:key="item.id"
@@ -98,16 +90,7 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 					@click="emit('openStep', item.id)"
 				>
 					<template #action>
-						<span :class="$style.rowAction">
-							<N8nText
-								step="xs"
-								:color="item.configured ? 'text-light' : 'warning'"
-								:class="item.mono && $style.mono"
-							>
-								{{ item.value }}
-							</N8nText>
-							<N8nIcon icon="chevron-right" size="small" color="text-light" />
-						</span>
+						<N8nSettingsRowConfigure :value="item.value" />
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
@@ -220,16 +203,6 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 	text-align: start;
 }
 
-.rowAction {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.mono {
-	font-family: var(--font-family--monospace);
-}
-
 .actions {
 	margin-top: var(--spacing--lg);
 	display: flex;
@@ -240,7 +213,9 @@ const DOCS_URL = 'https://docs.n8n.io/build/ways-of-building-workflows/ai-assist
 }
 
 .turnOff {
-	width: 100%;
+	width: auto;
+	align-self: stretch;
+	margin-inline: var(--spacing--lg);
 	margin-top: var(--spacing--lg);
 	padding-top: var(--spacing--sm);
 	border-top: var(--border);
