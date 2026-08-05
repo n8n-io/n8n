@@ -18,6 +18,7 @@ import {
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
 	isFormDataInstance,
+	resolveLegacyRequestTarget,
 	searchForHeader,
 	setAxiosAgents,
 } from './utils';
@@ -165,12 +166,9 @@ export async function buildAxiosConfigFromLegacyRequest(
 		}
 	}
 
-	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri?.toString();
-	}
-
-	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url?.toString();
+	const target = resolveLegacyRequestTarget(requestObject);
+	if (target !== undefined) {
+		axiosConfig.url = target;
 	}
 
 	if (requestObject.baseURL !== undefined) {

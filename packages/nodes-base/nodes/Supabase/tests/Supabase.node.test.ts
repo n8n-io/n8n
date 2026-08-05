@@ -63,6 +63,81 @@ describe('Test Supabase Node', () => {
 		return fakeExecuteFunction;
 	};
 
+	describe('filter query builders', () => {
+		it('should leave plain filter components unchanged', () => {
+			expect(utils.buildOrQuery({ keyName: 'active', condition: 'is', keyValue: 'null' })).toBe(
+				'active.is.null',
+			);
+			expect(
+				utils.buildOrQuery({
+					keyName: 'description',
+					condition: 'fullText',
+					searchFunction: 'fts',
+					keyValue: 'search terms',
+				}),
+			).toBe('description.fts.search terms');
+		});
+
+		it('should quote components containing reserved characters', () => {
+			expect(
+				utils.buildOrQuery({
+					keyName: 'profile.name',
+					condition: 'eq',
+					keyValue: 'Doe,Jane',
+				}),
+			).toBe('"profile.name".eq."Doe,Jane"');
+		});
+
+		it('should escape quotes and backslashes in quoted components', () => {
+			expect(utils.buildOrQuery({ keyName: 'name', condition: 'eq', keyValue: 'a"b\\c' })).toBe(
+				'name.eq."a\\"b\\\\c"',
+			);
+		});
+
+		it('should quote query parameter names but not values', () => {
+			expect(
+				utils.buildQuery(new Map(), {
+					keyName: 'profile.name',
+					condition: 'eq',
+					keyValue: 'Doe,Jane',
+				}),
+			).toEqual(new Map([['"profile.name"', 'eq.Doe,Jane']]));
+			expect(
+				utils.buildGetQuery(new Map(), { keyName: 'profile.name', keyValue: 'Doe,Jane' }),
+			).toEqual(new Map([['"profile.name"', 'eq.Doe,Jane']]));
+		});
+
+		it.each(['&', '?', '='])('should quote query parameter names containing %s', (character) => {
+			const keyName = `column${character}name`;
+			const expectedKey = `"${keyName}"`;
+
+			expect(utils.buildQuery(new Map(), { keyName, condition: 'eq', keyValue: 'value' })).toEqual(
+				new Map([[expectedKey, 'eq.value']]),
+			);
+			expect(utils.buildGetQuery(new Map(), { keyName, keyValue: 'value' })).toEqual(
+				new Map([[expectedKey, 'eq.value']]),
+			);
+		});
+
+		it.each([
+			{
+				filter: { keyName: 'name', condition: 'contains', keyValue: 'Jane' },
+				errorType: 'filter condition',
+			},
+			{
+				filter: {
+					keyName: 'name',
+					condition: 'fullText',
+					searchFunction: 'plain',
+					keyValue: 'Jane',
+				},
+				errorType: 'search function',
+			},
+		])('should reject an unsupported $errorType', ({ filter, errorType }) => {
+			expect(() => utils.buildOrQuery(filter)).toThrow(`Unsupported ${errorType}`);
+		});
+	});
+
 	describe('getAll pagination', () => {
 		it('should make exactly one request when limit is less than 1000', async () => {
 			const supabaseApiRequest = vi
@@ -203,7 +278,7 @@ describe('Test Supabase Node', () => {
 			'/my_table',
 			{},
 			{
-				and: '(created_at.gt.2025-01-02 08:03:43.952051+00,created_at.lt.2025-01-02 08:07:36.102231+00)',
+				and: '(created_at.gt."2025-01-02 08:03:43.952051+00",created_at.lt."2025-01-02 08:07:36.102231+00")',
 				offset: 0,
 			},
 			undefined,
