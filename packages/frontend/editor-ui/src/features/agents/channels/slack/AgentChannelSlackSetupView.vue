@@ -16,9 +16,10 @@ const emit = defineEmits<{
 
 const manualRef = ref<AgentChannelViewExpose>();
 const validationError = computed(() => manualRef.value?.validationError ?? null);
-const loading = computed(() => props.runtime.loading.value);
+const loading = computed(() => props.loading || props.runtime.loading.value);
 
 async function setupApp(token: string) {
+	if (props.disabled) return false;
 	if (!isSlackChannelRuntime(props.runtime)) {
 		throw new Error('Slack channel runtime is unavailable');
 	}
@@ -41,6 +42,7 @@ defineExpose({ validationError, loading });
 		:credential-permissions="credentialPermissions"
 		:credentials-loading="credentialsLoading"
 		:loading="loading"
+		:disabled="disabled"
 		:error-message="errorMessage"
 		:error-is-conflict="errorIsConflict"
 		:force-new-credential="forceNewCredential"

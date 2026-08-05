@@ -45,6 +45,7 @@ export interface AgentChannelViewProps {
 	credentialPermissions: PermissionsRecord['credential'];
 	credentialsLoading: boolean;
 	loading: boolean;
+	disabled?: boolean;
 	connected: boolean;
 	connectedDescription: string;
 	errorMessage: string;

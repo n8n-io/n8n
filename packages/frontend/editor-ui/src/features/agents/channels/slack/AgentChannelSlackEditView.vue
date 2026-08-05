@@ -11,7 +11,7 @@ const emit = defineEmits<{
 	edit: [];
 }>();
 
-const loading = computed(() => props.runtime.loading.value);
+const loading = computed(() => props.loading || props.runtime.loading.value);
 
 defineExpose({ validationError: null, loading });
 </script>
