@@ -209,6 +209,7 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:thread-id="sessionDetailId"
+							:seamless="true"
 						>
 							<template #toolbar-start>
 								<N8nButton

@@ -123,7 +123,7 @@ vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 	default: {
 		name: 'AgentSessionTimelinePanel',
 		template: '<div data-testid="agent-session-timeline-panel"><slot name="toolbar-start" /></div>',
-		props: ['projectId', 'agentId', 'threadId'],
+		props: ['projectId', 'agentId', 'threadId', 'seamless'],
 	},
 }));
 
@@ -322,6 +322,7 @@ describe('AgentBuilderEditorColumn', () => {
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			threadId: 'thread-1',
+			seamless: true,
 		});
 
 		const back = timeline.getComponent({ name: 'N8nButton' });

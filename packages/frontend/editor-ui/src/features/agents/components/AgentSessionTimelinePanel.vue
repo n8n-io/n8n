@@ -31,6 +31,7 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	threadId: string;
+	seamless?: boolean;
 }>();
 
 // Hands the loaded thread detail up so an enclosing view (the standalone
@@ -235,10 +236,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 </script>
 
 <template>
-	<div ref="panel" :class="$style.panel">
-		<div v-if="!loading" :class="$style.subHeader">
+	<div ref="panel" :class="[$style.panel, { [$style.seamless]: props.seamless }]">
+		<div v-if="!loading || $slots['toolbar-start']" :class="$style.subHeader">
 			<slot name="toolbar-start" />
-			<div :class="$style.search">
+			<div v-if="!loading" :class="$style.search">
 				<N8nInput
 					v-model="searchQuery"
 					size="medium"
@@ -251,6 +252,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 				</N8nInput>
 			</div>
 			<SessionEventFilter
+				v-if="!loading"
 				:available="filterOptions"
 				:selected="selectedFilters"
 				@update="(next) => (selectedFilters = next)"
@@ -319,11 +321,15 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	height: 100%;
 	overflow: hidden;
 }
+.seamless {
+	--agent-session-timeline--background-color: transparent;
+}
 .subHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--md);
+	background-color: var(--agent-session-timeline--background-color, var(--background--surface));
 	border-bottom: var(--border);
 	flex-shrink: 0;
 }
@@ -335,6 +341,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	padding: var(--spacing--sm) var(--spacing--lg);
 	border-bottom: var(--border);
 	flex-shrink: 0;
+	background-color: var(--agent-session-timeline--background-color, var(--background--surface));
 }
 .panels {
 	display: flex;
@@ -355,6 +362,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 	border-left: var(--border);
+	background-color: var(--agent-session-timeline--background-color, var(--background--surface));
 }
 
 :global(.session-detail-panel-enter-active),
