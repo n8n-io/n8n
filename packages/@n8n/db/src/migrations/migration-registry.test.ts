@@ -25,25 +25,40 @@ function parseIndexFile(folder: string) {
 	const source = readFileSync(join(__dirname, folder, 'index.ts'), 'utf8');
 	const imports = [...source.matchAll(IMPORT_PATTERN)].map((match) => {
 		const { className, specifier } = match.groups!;
+		const timestamp = TIMESTAMP_PATTERN.exec(specifier)?.groups?.timestamp;
+		if (!timestamp) {
+			throw new Error(
+				`No timestamp found in import specifier '${specifier}' in ${folder}/index.ts`,
+			);
+		}
 		return {
 			className,
-			timestamp: TIMESTAMP_PATTERN.exec(specifier)?.groups?.timestamp,
+			timestamp,
 			filePath: normalize(join(__dirname, folder, `${specifier}.ts`)),
 		};
 	});
+	if (imports.length === 0) {
+		throw new Error(`No migration imports matched in ${folder}/index.ts — did its format change?`);
+	}
 	const arraySection = source.slice(source.indexOf('= ['));
 	const arrayEntries = [...arraySection.matchAll(ARRAY_ENTRY_PATTERN)].map(
 		(match) => match.groups!.className,
 	);
+	if (arrayEntries.length === 0) {
+		throw new Error(
+			`No migrations array entries matched in ${folder}/index.ts — did its format change?`,
+		);
+	}
 	return { imports, arrayEntries };
 }
 
+const parsedIndexes = new Map(INDEX_FOLDERS.map((folder) => [folder, parseIndexFile(folder)]));
+
 describe.each(INDEX_FOLDERS)('%s migrations index', (folder) => {
-	const { imports, arrayEntries } = parseIndexFile(folder);
+	const { imports, arrayEntries } = parsedIndexes.get(folder)!;
 
 	test('every imported migration is in the migrations array exactly once, and vice versa', () => {
 		const importedNames = imports.map(({ className }) => className);
-		expect(importedNames.length).toBeGreaterThan(0);
 		expect([...arrayEntries].sort()).toEqual([...importedNames].sort());
 		expect(new Set(arrayEntries).size).toBe(arrayEntries.length);
 	});
@@ -51,8 +66,7 @@ describe.each(INDEX_FOLDERS)('%s migrations index', (folder) => {
 	test('every registered migration has a unique timestamp', () => {
 		const byTimestamp = new Map<string, string[]>();
 		for (const { className, timestamp } of imports) {
-			expect(timestamp).toBeDefined();
-			byTimestamp.set(timestamp!, [...(byTimestamp.get(timestamp!) ?? []), className]);
+			byTimestamp.set(timestamp, [...(byTimestamp.get(timestamp) ?? []), className]);
 		}
 		const duplicates = [...byTimestamp.entries()].filter(
 			([timestamp, classNames]) =>
@@ -64,9 +78,7 @@ describe.each(INDEX_FOLDERS)('%s migrations index', (folder) => {
 
 test('every migration file is registered in at least one index', () => {
 	const registeredFiles = new Set(
-		INDEX_FOLDERS.flatMap((folder) =>
-			parseIndexFile(folder).imports.map(({ filePath }) => filePath),
-		),
+		[...parsedIndexes.values()].flatMap(({ imports }) => imports.map(({ filePath }) => filePath)),
 	);
 	const orphans = MIGRATION_FOLDERS.flatMap((folder) =>
 		readdirSync(join(__dirname, folder))
