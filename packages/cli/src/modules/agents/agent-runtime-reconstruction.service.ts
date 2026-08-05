@@ -43,7 +43,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
-import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -374,6 +374,13 @@ export class AgentRuntimeReconstructionService {
 			instrumentation?.mcpFetch ??
 			createAiMcpFetch(this.outboundHttp, this.ssrfConfig, this.ssrfProtectionService);
 
+		// Transport for fallback web-search calls
+		const webSearchFetch = createWebSearchFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
+
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
@@ -413,6 +420,7 @@ export class AgentRuntimeReconstructionService {
 			fallbackWebSearch: instrumentation?.webSearch,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
+			webSearchFetch,
 		});
 
 		await this.injectRuntimeDependencies({

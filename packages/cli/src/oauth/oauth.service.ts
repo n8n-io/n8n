@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
+import {
+	OutboundHttp,
+	SsrfProtectionService,
+	type HttpRequestClient,
+	type SsrfBridge,
+} from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -8,7 +13,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -25,6 +30,7 @@ import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
+	AuthError as OAuth2AuthError,
 	ClientOAuth2,
 	resolveClientAuthOptions,
 	type ClientOAuth2Options,
@@ -124,8 +130,8 @@ export class OauthService {
 		private readonly eventService: EventService,
 		private readonly cacheService: CacheService,
 		outboundHttp: OutboundHttp,
-		ssrfProtectionService: SsrfProtectionService,
-		ssrfProtectionConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly ssrfProtectionConfig: SsrfProtectionConfig,
 	) {
 		// Unlike most OutboundHttp callsites, here we opt into SSRF protection (when the environment enables it) because the attack risk is higher:
 		// these URLs can be user-, instance- or remote-server-supplied (discovery / dynamic client registration),
@@ -133,12 +139,21 @@ export class OauthService {
 		// Self-hosted users with an internal OAuth/MCP server are accommodated via the SSRF allowlist config, not by disabling the guard.
 		// In the future, enabling SSRF "per feature" could be refined through configuration.
 		this.http = outboundHttp.requests({
-			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
+			ssrf: this.getSsrfBridge() ?? 'disabled',
 			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 	}
 
 	private readonly http: HttpRequestClient;
+
+	/**
+	 * The bridge to hand to `ClientOAuth2` so token endpoint requests are subject to the
+	 * same outbound network policy as discovery / dynamic client registration.
+	 * `undefined` when the guard is disabled for this instance.
+	 */
+	getSsrfBridge(): SsrfBridge | undefined {
+		return this.ssrfProtectionConfig.enabled ? this.ssrfProtectionService : undefined;
+	}
 
 	private oauthFlowCacheKey(token: string): string {
 		return `${OAUTH_FLOW_CACHE_PREFIX}${token}`;
@@ -642,13 +657,19 @@ export class OauthService {
 
 	/**
 	 * Derive a human-readable reason for the OAuth callback error page.
-	 * Prefers a structured HTTP `body`, then falls back to the wrapped `cause`
-	 * chain so errors like {@link CredentialStorageError} surface their root
-	 * cause instead of rendering an empty "More details" section.
+	 * Surfaces the fixed OAuth2 error code when the authorization server returned one,
+	 * then falls back to the wrapped `cause` chain so errors like
+	 * {@link CredentialStorageError} surface their root cause instead of rendering an
+	 * empty "More details" section.
+	 *
+	 * The reason is rendered into a page, so it is limited to values n8n produces or a
+	 * known OAuth2 code — never free-form content read back from the token endpoint.
+	 * Callers log the full error before rendering.
 	 */
 	extractCallbackErrorReason(error: Error): string | undefined {
-		if ('body' in error && error.body) {
-			return jsonStringify(error.body, { replaceCircularRefs: true });
+		if (error instanceof OAuth2AuthError) {
+			const errorCode = (error.body as { error?: unknown } | undefined)?.error;
+			return typeof errorCode === 'string' && errorCode.length > 0 ? errorCode : undefined;
 		}
 
 		const causes: string[] = [];
@@ -720,6 +741,7 @@ export class OauthService {
 			...(resource ? { resource } : {}),
 			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
 			authentication: oauthCredentials.authentication ?? 'header',
+			ssrfBridge: this.getSsrfBridge(),
 		});
 	}
 
