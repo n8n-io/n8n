@@ -39,7 +39,6 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
-				'agentSessions.viewTrace': 'View session trace',
 				'agentSessions.origin.agent': 'Agent',
 				'agentSessions.origin.subAgent': 'Sub-agent',
 				'agentSessions.origin.task': 'Task',
@@ -62,11 +61,7 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
-	N8nIconButton: {
-		template: '<button v-bind="$attrs"><slot /></button>',
-	},
 	N8nTableBase: { template: '<table><slot /></table>' },
-	N8nTooltip: { template: '<div><slot /></div>' },
 }));
 
 vi.mock('../agentSessions.store', () => ({
@@ -207,30 +202,46 @@ describe('AgentSessionsListView', () => {
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('opens the trace timeline when the trace icon button is clicked', async () => {
-		const wrapper = await mountView();
+	it.each([
+		['Enter', false],
+		[' ', true],
+	] as const)(
+		'activates a session row with %j through both route and intent navigation',
+		async (key, preventsDefault) => {
+			const wrapper = await mountView();
+			const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
 
-		await wrapper.find('[data-test-id="agent-session-view-trace"]').trigger('click');
+			wrapper.get('[data-test-id="agent-session-list-item"]').element.dispatchEvent(event);
+			await flushPromises();
 
-		expect(routerPush).toHaveBeenCalledTimes(1);
-		expect(routerPush).toHaveBeenCalledWith({
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		});
-		expect(routerResolve).not.toHaveBeenCalled();
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
+			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+				name: 'AgentPreviewView',
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+				query: { continueSessionId: 'thread-1', section: '__executions' },
+			});
+			expect(event.defaultPrevented).toBe(preventsDefault);
 
-	it('does not trigger row navigation when the trace button is clicked', async () => {
-		const wrapper = await mountView();
+			routerPush.mockClear();
+			const intentWrapper = await mountView({
+				navigationMode: 'intent',
+				manageStoreLifecycle: false,
+			});
+			const intentEvent = new KeyboardEvent('keydown', {
+				key,
+				bubbles: true,
+				cancelable: true,
+			});
 
-		await wrapper.find('[data-test-id="agent-session-view-trace"]').trigger('click');
+			intentWrapper
+				.get('[data-test-id="agent-session-list-item"]')
+				.element.dispatchEvent(intentEvent);
+			await flushPromises();
 
-		expect(routerPush).toHaveBeenCalledTimes(1);
-		expect(routerPush).toHaveBeenCalledWith(
-			expect.objectContaining({ name: 'AgentSessionDetailView' }),
-		);
-	});
+			expect(intentWrapper.emitted('open-conversation')).toEqual([['thread-1']]);
+			expect(intentEvent.defaultPrevented).toBe(preventsDefault);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
 
 	it('opens the conversation in a new tab in new-tab navigation mode', async () => {
 		const wrapper = await mountView({ navigationMode: 'new-tab' });
@@ -247,37 +258,12 @@ describe('AgentSessionsListView', () => {
 		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
 
-	it('opens the trace in a new tab in new-tab navigation mode', async () => {
-		const wrapper = await mountView({ navigationMode: 'new-tab' });
-		const target = {
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		};
-
-		await wrapper.find('[data-test-id="agent-session-view-trace"]').trigger('click');
-
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
-		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
-	});
-
 	it('emits an open-conversation intent without navigating when a row is clicked', async () => {
 		const wrapper = await mountView({ navigationMode: 'intent', manageStoreLifecycle: false });
 
 		await wrapper.get('[data-test-id="agent-session-list-item"]').trigger('click');
 
 		expect(wrapper.emitted('open-conversation')).toEqual([['thread-1']]);
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).not.toHaveBeenCalled();
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	it('emits a view-trace intent without navigating when the trace action is clicked', async () => {
-		const wrapper = await mountView({ navigationMode: 'intent', manageStoreLifecycle: false });
-
-		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
-
-		expect(wrapper.emitted('view-trace')).toEqual([['thread-1']]);
 		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).not.toHaveBeenCalled();
 		expect(windowOpenSpy).not.toHaveBeenCalled();
@@ -406,12 +392,10 @@ describe('AgentSessionsListView', () => {
 		);
 	});
 
-	it('renders the trace button with the view-trace aria label', async () => {
+	it('does not render a redundant table trace control', async () => {
 		const wrapper = await mountView();
 
-		const traceButton = wrapper.find('[data-test-id="agent-session-view-trace"]');
-		expect(traceButton.exists()).toBe(true);
-		expect(traceButton.attributes('aria-label')).toBe('View session trace');
+		expect(wrapper.find('[data-test-id="agent-session-view-trace"]').exists()).toBe(false);
 	});
 
 	it.each([

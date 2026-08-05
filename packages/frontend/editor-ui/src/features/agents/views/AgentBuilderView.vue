@@ -515,6 +515,7 @@ function openSessionTarget(target: RouteLocationRaw) {
 }
 
 function openSession(threadId: string) {
+	sessionDetailId.value = threadId;
 	if (isArtifactMode.value) {
 		openArtifactPreview(threadId);
 		return;
@@ -532,11 +533,6 @@ function openSessionTrace(target: { agentId: string; threadId: string }) {
 			threadId: target.threadId,
 		},
 	});
-}
-
-function onViewSessionTrace(threadId: string) {
-	activeMainTab.value = 'sessions';
-	sessionDetailId.value = threadId;
 }
 
 function viewPreviewTrace() {
@@ -1442,6 +1438,24 @@ watch(
 
 watch([projectId, agentId], initialize, { immediate: true });
 
+watch(
+	[projectId, agentId, isPreviewDockOpen],
+	([, , previewOpen]) => {
+		const routeSessionId = continueSessionId.value;
+		if (
+			isArtifactMode.value ||
+			!previewOpen ||
+			activeMainTab.value !== 'sessions' ||
+			!routeSessionId
+		) {
+			return;
+		}
+
+		sessionDetailId.value = routeSessionId;
+	},
+	{ immediate: true },
+);
+
 // If another surface creates the pending artifact, reload the now-persisted
 // agent. Local Preview sends already clear `isUnsaved` before emitting
 // `persisted`; reinitializing in that path would unmount the active chat stream.
@@ -1686,7 +1700,6 @@ function onSwitchAgent(nextAgentId: string) {
 					@tasks-changed="() => onConfigUpdated()"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@open-session="openSession"
-					@view-session-trace="onViewSessionTrace"
 					@view-parent-trace="openSessionTrace"
 					@close-session-trace="closeSessionTrace"
 				/>

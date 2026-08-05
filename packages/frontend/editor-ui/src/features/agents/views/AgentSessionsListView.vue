@@ -16,14 +16,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import {
-	N8nActionDropdown,
-	N8nButton,
-	N8nIcon,
-	N8nIconButton,
-	N8nTableBase,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -49,7 +42,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'open-conversation': [threadId: string];
-	'view-trace': [threadId: string];
 	'view-parent-trace': [target: ParentTraceTarget];
 }>();
 
@@ -190,23 +182,6 @@ function openConversation(threadId: string) {
 	void router.push(target);
 }
 
-function onViewTrace(threadId: string) {
-	if (props.navigationMode === 'intent') {
-		emit('view-trace', threadId);
-		return;
-	}
-
-	const target = {
-		name: AGENT_SESSION_DETAIL_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value, threadId },
-	};
-	if (props.navigationMode === 'new-tab') {
-		window.open(router.resolve(target).href, '_blank');
-		return;
-	}
-	void router.push(target);
-}
-
 function onViewParentTrace(target: ParentTraceTarget) {
 	if (props.navigationMode === 'intent') {
 		emit('view-parent-trace', target);
@@ -281,8 +256,11 @@ async function loadMore() {
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
 						:class="$style.clickableRow"
+						tabindex="0"
 						data-test-id="agent-session-list-item"
 						@click="openConversation(thread.id)"
+						@keydown.enter.self="openConversation(thread.id)"
+						@keydown.space.self.prevent="openConversation(thread.id)"
 					>
 						<td :class="$style.titleCell">
 							<span :class="$style.sessionTitle" data-test-id="agent-session-title">
@@ -306,18 +284,6 @@ async function loadMore() {
 						</td>
 						<td :class="$style.actionCell" @click.stop>
 							<div :class="$style.actionGroup">
-								<N8nTooltip :content="i18n.baseText('agentSessions.viewTrace')">
-									<N8nIconButton
-										icon="list-tree"
-										icon-size="medium"
-										size="xsmall"
-										variant="ghost"
-										:aria-label="i18n.baseText('agentSessions.viewTrace')"
-										:title="i18n.baseText('agentSessions.viewTrace')"
-										data-test-id="agent-session-view-trace"
-										@click="onViewTrace(thread.id)"
-									/>
-								</N8nTooltip>
 								<N8nActionDropdown
 									:items="rowActions(thread)"
 									activator-icon="ellipsis"

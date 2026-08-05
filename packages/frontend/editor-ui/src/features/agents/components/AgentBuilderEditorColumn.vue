@@ -80,7 +80,6 @@ const emit = defineEmits<{
 	'tasks-changed': [];
 	'agent-changed': [];
 	'open-session': [threadId: string];
-	'view-session-trace': [threadId: string];
 	'view-parent-trace': [target: { agentId: string; threadId: string }];
 	'close-session-trace': [];
 }>();
@@ -228,7 +227,6 @@ const i18n = useI18n();
 						:manage-store-lifecycle="false"
 						data-testid="agent-executions-panel"
 						@open-conversation="emit('open-session', $event)"
-						@view-trace="emit('view-session-trace', $event)"
 						@view-parent-trace="emit('view-parent-trace', $event)"
 					/>
 				</AgentBuilderTabPanel>
