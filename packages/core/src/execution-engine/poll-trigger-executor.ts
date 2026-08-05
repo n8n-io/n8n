@@ -84,10 +84,18 @@ export class PollTriggerExecutor {
 					}
 
 					// Poll and hand-off share one staging scope, so a cursor staged here can
-					// only be committed by this poll and never by a later tick.
-					await runPollInStagingScope(pollFunctions, async () => {
-						try {
-							if (ownsIsolate) await workflow.expression.acquireIsolate();
+					// only be committed by this poll and never by a later tick. The try/catch
+					// wraps the staging scope itself, not just the callback inside it, so a
+					// cursor resolution failure (thrown by `__runPoll` before the callback
+					// ever runs) is routed the same way as any other poll failure instead of
+					// escaping as an unhandled rejection from the `void`-called scheduled tick.
+					let isolateAcquired = false;
+					try {
+						await runPollInStagingScope(pollFunctions, async () => {
+							if (ownsIsolate) {
+								await workflow.expression.acquireIsolate();
+								isolateAcquired = true;
+							}
 
 							const pollResponse = await this.triggersAndPollers.runPollFunction(
 								workflow,
@@ -134,31 +142,31 @@ export class PollTriggerExecutor {
 							}
 
 							span.setStatus({ code: SpanStatus.ok });
-						} catch (error) {
-							// If the poll trigger fails in the first activation
-							// throw the error back so we let the user know there is
-							// an issue with the trigger.
-							if (testingTrigger) {
-								span.setStatus({ code: SpanStatus.error });
-								throw error;
-							}
-
-							// Ignore poll errors that are against a superseded workflow
-							if (!isCurrent()) {
-								this.logger.debug(
-									`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
-									{ workflowId: workflow.id },
-								);
-								span.setStatus({ code: SpanStatus.ok });
-								return;
-							}
-
+						});
+					} catch (error) {
+						// If the poll trigger fails in the first activation
+						// throw the error back so we let the user know there is
+						// an issue with the trigger.
+						if (testingTrigger) {
 							span.setStatus({ code: SpanStatus.error });
-							pollFunctions.__emitError(error as Error);
-						} finally {
-							if (ownsIsolate) await workflow.expression.releaseIsolate();
+							throw error;
 						}
-					});
+
+						// Ignore poll errors that are against a superseded workflow
+						if (!isCurrent()) {
+							this.logger.debug(
+								`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
+								{ workflowId: workflow.id },
+							);
+							span.setStatus({ code: SpanStatus.ok });
+							return;
+						}
+
+						span.setStatus({ code: SpanStatus.error });
+						pollFunctions.__emitError(error as Error);
+					} finally {
+						if (isolateAcquired) await workflow.expression.releaseIsolate();
+					}
 				},
 			);
 		};
