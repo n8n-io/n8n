@@ -51,6 +51,7 @@ type WorkerFixtures = {
 	n8nUrl: string;
 	backendUrl: string;
 	frontendUrl: string;
+	internalUrl: string;
 	dbSetup: undefined;
 	n8nStackConfig: N8NConfig;
 	n8nContainer: N8NStack;
@@ -171,6 +172,18 @@ export const test = base.extend<
 		async ({ n8nContainer }, use) => {
 			const envFrontendURL = getFrontendUrl() ?? n8nContainer?.baseUrl;
 			await use(envFrontendURL);
+		},
+		{ scope: 'worker' },
+	],
+
+	// The n8n URL as seen from *inside* the stack, for specs that make n8n itself
+	// call it (an HTTP Request node, a webhook destination). Under container
+	// projects the node runs in a main or worker container, where the host-mapped
+	// `backendUrl` port does not exist - use the network alias instead. Locally
+	// there are no containers and n8n shares the host's loopback, so they match.
+	internalUrl: [
+		async ({ n8nContainer, backendUrl }, use) => {
+			await use(n8nContainer?.internalMainUrls[0] ?? backendUrl);
 		},
 		{ scope: 'worker' },
 	],

@@ -1652,6 +1652,16 @@ describe('AgentRuntime — state transitions on error', () => {
 
 		expect(runtime.getState().status).toBe('success');
 	});
+
+	it("reflects running→success on stream()'s own result.getState(), not just runtime.getState()", async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime();
+		const { stream, getState } = await runtime.stream('hi');
+		await collectChunks(stream);
+
+		expect(getState().status).toBe('success');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -6452,6 +6462,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(telemetry.isEnabled).toBe(true);
 		expect(telemetry.functionId).toBe('test-agent');
 	});
+
+	// Real parent/child span nesting (via a genuine OTel context manager, not
+	// mock-call-order heuristics) is covered by
+	// agent-runtime-memory.otel.test.ts's "memory span nesting under the root
+	// span" suite, for both generate() and stream().
 
 	it('enables smoothStream by default on streamText', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
