@@ -121,7 +121,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			 VALUES (:workflowReviewRequestId, :type, :createdById, :createdAt)`,
 			{
 				workflowReviewRequestId: fields.workflowReviewRequestId,
-				type: fields.type ?? 'review.created',
+				type: fields.type ?? 'review.opened',
 				createdById: fields.createdById ?? null,
 				createdAt: new Date(),
 			},
@@ -178,7 +178,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 			const savedSubmission = await activityRepository.save(
 				activityRepository.create({
 					workflowReviewRequestId: requestId,
-					type: 'review.created',
+					type: 'review.opened',
 					data,
 				}),
 			);
@@ -210,7 +210,7 @@ describe('CreateWorkflowReviewActivityTables Migration', () => {
 
 			expect(typeof submission.id).toBe('number');
 			expect(thread.id).toBeGreaterThan(submission.id);
-			expect(submission.type).toBe('review.created');
+			expect(submission.type).toBe('review.opened');
 			expect(submission.typeVersion).toBe(1);
 			expect(submission.data).toEqual(data);
 			expect(submission.createdById).toBeNull();

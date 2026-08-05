@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "type" varchar(64) NOT NULL, "typeVersion" integer NOT NULL DEFAULT (1), "data" text, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_review_activity_type" CHECK ("type" IN ('review.created', 'comment.created', 'review.changes_requested', 'review.version_updated', 'review.approved', 'workflow.published', 'review.closed')), CONSTRAINT "FK_61048bf6220dd354c955a9d9379" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_fcf78b037a72fc7aa01ab237e08" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "type" varchar(64) NOT NULL, "typeVersion" integer NOT NULL DEFAULT (1), "data" text, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_workflow_review_activity_type" CHECK ("type" IN ('review.opened', 'comment.created', 'review.changes_requested', 'review.version_updated', 'review.approved', 'workflow.published', 'review.closed')), CONSTRAINT "FK_61048bf6220dd354c955a9d9379" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_fcf78b037a72fc7aa01ab237e08" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -27,7 +27,7 @@ CREATE TABLE "workflow_review_activity" ("id" integer PRIMARY KEY NOT NULL, "wor
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("type" IN ('review.created', 'comment.created', 'review.changes_requested', 'review.version_updated', 'review.approved', 'workflow.published', 'review.closed')) |
+| - | CHECK | CHECK ("type" IN ('review.opened', 'comment.created', 'review.changes_requested', 'review.version_updated', 'review.approved', 'workflow.published', 'review.closed')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |

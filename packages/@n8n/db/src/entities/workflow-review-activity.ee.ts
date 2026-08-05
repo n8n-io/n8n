@@ -8,7 +8,7 @@ import { JsonColumn, WithCreatedAt } from './abstract-entity';
  * multi-word event. Constrained by a CHECK on the column, so a new kind needs a migration.
  */
 export type WorkflowReviewActivityType =
-	| 'review.created'
+	| 'review.opened'
 	| 'comment.created'
 	| 'review.changes_requested'
 	| 'review.version_updated'

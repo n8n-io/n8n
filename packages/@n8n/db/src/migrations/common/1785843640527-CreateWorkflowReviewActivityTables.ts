@@ -7,7 +7,7 @@ const REQUEST_TABLE = 'workflow_review_request';
 const USER_TABLE = 'user';
 
 const ACTIVITY_TYPES = [
-	'review.created',
+	'review.opened',
 	'comment.created',
 	'review.changes_requested',
 	'review.version_updated',
