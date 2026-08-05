@@ -121,7 +121,7 @@ export async function fetchWorkflowReviewActivity(
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`/workflow-review-requests/${workflowReviewRequestId}/activity`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/activity`,
 		params,
 	);
 }
@@ -134,7 +134,7 @@ export async function createWorkflowReviewComment(
 	return await makeRestApiRequest(
 		context,
 		'POST',
-		`/workflow-review-requests/${workflowReviewRequestId}/comments`,
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/comments`,
 		{ ...payload },
 	);
 }
