@@ -397,7 +397,36 @@ describe('NodeResourceExplorerService', () => {
 			expect(result).toEqual([]);
 		});
 
-		test('reads a plain string parameter as well as a resource-locator envelope', async () => {
+		test('leaves a value typed into the free-text id mode alone', async () => {
+			// id mode exists so someone can name a resource the picker doesn't offer — a
+			// private deployment, a model newer than the catalogue. Judging it against the
+			// list would manufacture a false "unavailable".
+			mockAiNode([modelLocator]);
+			mockAvailableModels(['gpt-5-mini', 'gpt-4.1-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: { model: { __rl: true, mode: 'id', value: 'my-private-deployment' } },
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		test('leaves a url-mode value alone as well', async () => {
+			mockAiNode([modelLocator]);
+			mockAvailableModels(['gpt-5-mini']);
+
+			const result = await service.findUnavailableResourceLocatorValues(user, {
+				...openAiParams,
+				parameters: {
+					model: { __rl: true, mode: 'url', value: 'https://example.test/models/custom' },
+				},
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		test('leaves a bare string alone, since it carries no mode to judge', async () => {
 			mockAiNode([{ ...modelLocator, default: 'gpt-5-mini' }]);
 			mockAvailableModels(['gpt-5-mini']);
 
@@ -406,8 +435,8 @@ describe('NodeResourceExplorerService', () => {
 				parameters: { model: 'gpt-4o' },
 			});
 
-			expect(result).toHaveLength(1);
-			expect(result[0]?.currentValue).toBe('gpt-4o');
+			expect(result).toEqual([]);
+			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
 		});
 
 		test('probes only the locator visible for the current resource/operation', async () => {
@@ -478,7 +507,10 @@ describe('NodeResourceExplorerService', () => {
 				credentialType: 'openAiApi',
 				credentialId: 'cred-1',
 				// Left over from when this node was configured for images.
-				parameters: { resource: 'text', imageModel: { __rl: true, mode: 'id', value: 'dall-e-3' } },
+				parameters: {
+					resource: 'text',
+					imageModel: { __rl: true, mode: 'list', value: 'dall-e-3' },
+				},
 			});
 
 			expect(result).toEqual([]);
@@ -600,7 +632,7 @@ describe('NodeResourceExplorerService', () => {
 			expect(result).toEqual([]);
 		});
 
-		test('ignores parameters with no concrete value and locators with no search method', async () => {
+		test('ignores empty list-mode values and locators with no search method', async () => {
 			mockAiNode([
 				modelLocator,
 				{

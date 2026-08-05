@@ -154,8 +154,9 @@ export class NodeResourceExplorerService {
 	 * Two things bound what this will claim, because a false "your value is invalid" is
 	 * worse than staying quiet:
 	 *
-	 * - Only **list-backed** resource locators are checked. A free-text parameter has no
-	 *   enumerable value space to validate against.
+	 * - Only **list-mode** values on list-backed locators are checked. A value typed into a
+	 *   locator's free-text `id`/`url` mode is a deliberate escape from the catalogue, and a
+	 *   free-text parameter has no enumerable value space to validate against at all.
 	 * - Only **exhaustive** lists are trusted. A partial result tells us what's on the
 	 *   pages we fetched, not what exists — a user with thousands of spreadsheets would
 	 *   otherwise have a perfectly good `documentId` flagged because it sorted too low.
@@ -302,10 +303,22 @@ interface CandidateLocator {
 	currentValue: string;
 }
 
-/** The concrete value a resource-locator parameter currently holds, if it has one. */
-function readLocatorValue(raw: unknown): string | undefined {
-	if (typeof raw === 'string') return raw === '' ? undefined : raw;
+/**
+ * The value a resource-locator holds **only when it claims to have come from the list**.
+ *
+ * The mode check is the point. `list` mode means the value was picked out of the search
+ * results, so its absence from those results is meaningful. The free-text modes (`id`,
+ * `url`) mean the opposite: they exist so someone can name a resource the picker doesn't
+ * offer — a private deployment, a model newer than the catalogue, a document the search
+ * API won't return. Validating those against the list would manufacture exactly the false
+ * "your value is invalid" this check is built to avoid. A fabricated id-mode value is a
+ * different problem, already covered by the `*-rlc-default-mode` binary checks.
+ *
+ * A bare string carries no mode, so it makes no claim either way and is left alone.
+ */
+function readListModeValue(raw: unknown): string | undefined {
 	if (typeof raw !== 'object' || raw === null) return undefined;
+	if (Reflect.get(raw, 'mode') !== 'list') return undefined;
 	const value = Reflect.get(raw, 'value');
 	if (typeof value === 'string') return value === '' ? undefined : value;
 	if (typeof value === 'number') return String(value);
@@ -361,7 +374,7 @@ function collectListBackedLocators(
 
 		if (!NodeHelpers.displayParameter(resolved, property, node, nodeDescription)) continue;
 
-		const currentValue = readLocatorValue(resolved[property.name]);
+		const currentValue = readListModeValue(resolved[property.name]);
 		if (currentValue === undefined) continue;
 
 		seen.add(property.name);
