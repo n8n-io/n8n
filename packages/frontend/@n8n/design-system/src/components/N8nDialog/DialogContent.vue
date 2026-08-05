@@ -179,8 +179,7 @@ function handleInteractOutside(e: Event) {
 }
 
 .stacked {
-	z-index: calc(var(--dialogs--z) + 2);
-}
+	z-index: 1952; // Higher than default .content z-index to ensure the dialog is always on top.
 }
 
 .content[data-state='open'] {
