@@ -1,6 +1,5 @@
 import { Time } from '@n8n/constants';
 import { backoff } from '@n8n/scheduler';
-import { NodeApiError } from 'n8n-workflow';
 
 export type PollFailureClass = 'transient' | 'permanent';
 
@@ -51,8 +50,8 @@ function parseNumericStatus(value: unknown): number | null {
 	return null;
 }
 
-function nodeApiErrorStatus(error: unknown): number | null {
-	if (!(error instanceof NodeApiError) || error.httpCode === null) return null;
+function httpCodeStatus(error: unknown): number | null {
+	if (!isRecord(error) || error.httpCode === null || error.httpCode === undefined) return null;
 	return parseNumericStatus(error.httpCode);
 }
 
@@ -92,7 +91,7 @@ function parseRetryAfterValue(raw: string, now: Date): number | null {
 }
 
 export function classifyPollFailure(error: unknown): PollFailureClass {
-	const status = nodeApiErrorStatus(error) ?? statusFromWalk(error);
+	const status = httpCodeStatus(error) ?? statusFromWalk(error);
 	return status !== null && PERMANENT_STATUS_CODES.has(status) ? 'permanent' : 'transient';
 }
 
