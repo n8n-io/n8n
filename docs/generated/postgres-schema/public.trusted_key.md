@@ -43,8 +43,10 @@ erDiagram
   text config
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  varchar_255_ issuer
   text lastError
   timestamp_3__with_time_zone lastRefreshedAt
+  varchar_32_ managedBy
   varchar_32_ status
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt

@@ -7,8 +7,10 @@
 | config | text |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | varchar(36) |  | false | [public.trusted_key](public.trusted_key.md) |  |  |
+| issuer | varchar(255) |  | true |  |  |  |
 | lastError | text |  | true |  |  |  |
 | lastRefreshedAt | timestamp(3) with time zone |  | true |  |  |  |
+| managedBy | varchar(32) | 'env-config'::character varying | false |  |  |  |
 | status | varchar(32) | 'pending'::character varying | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -21,6 +23,7 @@
 | trusted_key_source_config_not_null | n | NOT NULL config |
 | trusted_key_source_createdAt_not_null | n | NOT NULL "createdAt" |
 | trusted_key_source_id_not_null | n | NOT NULL id |
+| trusted_key_source_managedBy_not_null | n | NOT NULL "managedBy" |
 | trusted_key_source_status_not_null | n | NOT NULL status |
 | trusted_key_source_type_not_null | n | NOT NULL type |
 | trusted_key_source_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -29,6 +32,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_trusted_key_source_issuer | CREATE UNIQUE INDEX "IDX_trusted_key_source_issuer" ON public.trusted_key_source USING btree (issuer) |
 | PK_99e8908ce2c2cdccce487db7fc6 | CREATE UNIQUE INDEX "PK_99e8908ce2c2cdccce487db7fc6" ON public.trusted_key_source USING btree (id) |
 
 ## Relations
@@ -42,8 +46,10 @@ erDiagram
   text config
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  varchar_255_ issuer
   text lastError
   timestamp_3__with_time_zone lastRefreshedAt
+  varchar_32_ managedBy
   varchar_32_ status
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt

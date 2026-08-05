@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { DbLockService } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { InstanceSettings } from 'n8n-core';
+import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
@@ -58,9 +59,12 @@ function makeTrustedKeyEntity(
 	return entity;
 }
 
-function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
+function createMocks({
+	isLeader = true,
+	trustedKeys = '',
+}: { isLeader?: boolean; trustedKeys?: string } = {}) {
 	const config = mock<TokenExchangeConfig>({
-		trustedKeys: '',
+		trustedKeys,
 		keyRefreshIntervalSeconds: 300,
 	});
 	const sourceRepo = mock<TrustedKeySourceRepository>();
@@ -68,10 +72,11 @@ function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
 	const instanceSettings = mock<InstanceSettings>({ isLeader });
 	const dbLockService = mock<DbLockService>();
 	const jwksResolverService = mock<JwksResolverService>();
+	const tx = mock<EntityManager>();
 
 	dbLockService.withLock.mockImplementation(
 		async (_lockId: unknown, fn: (tx: EntityManager) => Promise<unknown>) => {
-			return await fn(mock<EntityManager>());
+			return await fn(tx);
 		},
 	);
 
@@ -87,7 +92,14 @@ function createMocks({ isLeader = true }: { isLeader?: boolean } = {}) {
 		jwksResolverService,
 	);
 
-	return { service, keyRepo, sourceRepo, dbLockService, instanceSettings };
+	return {
+		service,
+		keyRepo,
+		sourceRepo,
+		dbLockService,
+		instanceSettings,
+		tx,
+	};
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -329,6 +341,78 @@ describe('TrustedKeyService', () => {
 			service.stopRefresh();
 
 			expect(dbLockService.withLock).toHaveBeenCalled();
+		});
+	});
+
+	describe('syncSourcesToDb orphan-delete scoping', () => {
+		it('scopes the delete-all sweep to managedBy: env-config when no sources are configured', async () => {
+			const { service, tx } = createMocks({ trustedKeys: '' });
+
+			await service.initialize();
+
+			expect(tx.delete).toHaveBeenCalledWith(TrustedKeySourceEntity, { managedBy: 'env-config' });
+		});
+
+		it('scopes the orphan sweep to managedBy: env-config when sources are configured', async () => {
+			const trustedKeys = JSON.stringify([
+				{
+					type: 'static',
+					kid: 'k1',
+					algorithms: ['RS256'],
+					key: RSA_PUBLIC_KEY,
+					issuer: 'https://issuer.example.com',
+				},
+			]);
+			const { service, tx } = createMocks({ trustedKeys });
+
+			await service.initialize();
+
+			expect(tx.delete).toHaveBeenCalledWith(
+				TrustedKeySourceEntity,
+				expect.objectContaining({ managedBy: 'env-config' }),
+			);
+		});
+	});
+
+	describe('registerSsoDerivedSource', () => {
+		const issuer = 'https://idp.example.com';
+		const jwksUri = 'https://idp.example.com/.well-known/jwks.json';
+
+		it('creates a new sso-derived source when the issuer is not yet registered', async () => {
+			const { service, tx, sourceRepo } = createMocks();
+			tx.findOneBy.mockResolvedValueOnce(null);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await service.registerSsoDerivedSource(issuer, jwksUri);
+
+			expect(tx.save).toHaveBeenCalledWith(
+				TrustedKeySourceEntity,
+				expect.objectContaining({ managedBy: 'sso-derived', issuer, type: 'jwks' }),
+			);
+		});
+
+		it('rejects when another source already claims the issuer', async () => {
+			const { service, tx } = createMocks();
+			tx.findOneBy.mockResolvedValueOnce(
+				Object.assign(new TrustedKeySourceEntity(), { id: 'a-different-id', issuer }),
+			);
+
+			await expect(service.registerSsoDerivedSource(issuer, jwksUri)).rejects.toThrow(
+				/already registered/,
+			);
+			expect(tx.save).not.toHaveBeenCalled();
+		});
+
+		it('does not throw when re-registering the same issuer (idempotent upsert)', async () => {
+			const { service, tx, sourceRepo } = createMocks();
+			const sourceId = createHash('sha256').update(issuer).digest('hex').slice(0, 36);
+			tx.findOneBy.mockResolvedValueOnce(
+				Object.assign(new TrustedKeySourceEntity(), { id: sourceId, issuer }),
+			);
+			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
+
+			await expect(service.registerSsoDerivedSource(issuer, jwksUri)).resolves.not.toThrow();
+			expect(tx.save).toHaveBeenCalled();
 		});
 	});
 });

@@ -54,6 +54,9 @@ export class ModuleRegistry {
 		'source-control',
 		'dynamic-credentials',
 		'chat-hub',
+		// token-exchange precedes sso-oidc: sso-oidc registers itself as a
+		// trusted key source with token-exchange's registry on init.
+		'token-exchange',
 		'sso-oidc',
 		'sso-saml',
 		'log-streaming',
@@ -64,7 +67,6 @@ export class ModuleRegistry {
 		'redaction',
 		'instance-registry',
 		'otel',
-		'token-exchange',
 		'instance-version-history',
 		'encryption-key-manager',
 		'oauth-jwe',

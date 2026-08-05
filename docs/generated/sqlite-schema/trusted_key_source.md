@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" varchar(32) NOT NULL, "config" text NOT NULL, "status" varchar(32) NOT NULL DEFAULT ('pending'), "lastError" text, "lastRefreshedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type" varchar(32) NOT NULL, "config" text NOT NULL, "status" varchar(32) NOT NULL DEFAULT ('pending'), "lastError" text, "lastRefreshedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "managedBy" varchar(32) NOT NULL DEFAULT ('env-config'), "issuer" varchar(255))
 ```
 
 </details>
@@ -18,8 +18,10 @@ CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type"
 | config | TEXT |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | id | varchar(36) |  | false | [trusted_key](trusted_key.md) |  |  |
+| issuer | varchar(255) |  | true |  |  |  |
 | lastError | TEXT |  | true |  |  |  |
 | lastRefreshedAt | datetime(3) |  | true |  |  |  |
+| managedBy | varchar(32) | 'env-config' | false |  |  |  |
 | status | varchar(32) | 'pending' | false |  |  |  |
 | type | varchar(32) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -35,6 +37,7 @@ CREATE TABLE "trusted_key_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "type"
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_trusted_key_source_issuer | CREATE UNIQUE INDEX "IDX_trusted_key_source_issuer" ON "trusted_key_source" ("issuer")  |
 | sqlite_autoindex_trusted_key_source_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -48,8 +51,10 @@ erDiagram
   TEXT config
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar_255_ issuer
   TEXT lastError
   datetime_3_ lastRefreshedAt
+  varchar_32_ managedBy
   varchar_32_ status
   varchar_32_ type
   datetime_3_ updatedAt

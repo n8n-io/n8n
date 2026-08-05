@@ -28,7 +28,22 @@ export class TokenExchangeModule implements ModuleInterface {
 		}
 
 		const { TrustedKeyService } = await import('./services/trusted-key.service.js');
-		await Container.get(TrustedKeyService).initialize();
+		const trustedKeyService = Container.get(TrustedKeyService);
+		await trustedKeyService.initialize();
+
+		// Let `sso-oidc` register itself as a trusted key source (from its OIDC
+		// discovery document) without this module importing it. Must run before
+		// `sso-oidc`'s own init() (see `defaultModules` order in
+		// `@n8n/backend-common`'s `ModuleRegistry`), since sso-oidc self-heals
+		// its trusted key source registration on init and needs a provider
+		// already registered here.
+		const { TrustedKeySourceRegistrationProxy } = await import(
+			'@/services/trusted-key-source-registration-proxy.service.js'
+		);
+		Container.get(TrustedKeySourceRegistrationProxy).registerProvider({
+			registerFromDiscovery: async (issuer, jwksUri) =>
+				await trustedKeyService.registerSsoDerivedSource(issuer, jwksUri),
+		});
 
 		await import('./controllers/token-exchange.controller.js');
 		await import('./controllers/embed-auth.controller.js');

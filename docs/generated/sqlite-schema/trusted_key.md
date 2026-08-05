@@ -52,8 +52,10 @@ erDiagram
   TEXT config
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar_255_ issuer
   TEXT lastError
   datetime_3_ lastRefreshedAt
+  varchar_32_ managedBy
   varchar_32_ status
   varchar_32_ type
   datetime_3_ updatedAt

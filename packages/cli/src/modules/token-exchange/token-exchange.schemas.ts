@@ -94,6 +94,16 @@ export type TrustedKeySourceType = 'static' | 'jwks';
 export type TrustedKeySourceStatus = 'pending' | 'healthy' | 'error';
 
 /**
+ * Provenance of a trusted key source row:
+ *   - 'env-config': written by `TrustedKeyService.syncSourcesToDb` from the
+ *     `N8N_TRUSTED_KEYS` env var. Orphan rows of this provenance are deleted
+ *     when no longer present in config.
+ *   - 'sso-derived': written from an SSO provider's discovery document
+ *     (e.g. OIDC). Never touched by the env-config orphan sweep.
+ */
+export type TrustedKeySourceManagedBy = 'env-config' | 'sso-derived' | 'api';
+
+/**
  * Serializable representation of a trusted key stored in the `trusted_key.data`
  * JSON column. Unlike `ResolvedTrustedKey`, this holds the raw PEM string
  * instead of a live `crypto.KeyObject`.

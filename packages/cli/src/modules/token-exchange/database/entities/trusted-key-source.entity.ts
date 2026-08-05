@@ -1,7 +1,11 @@
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
-import type { TrustedKeySourceStatus, TrustedKeySourceType } from '../../token-exchange.schemas';
+import type {
+	TrustedKeySourceManagedBy,
+	TrustedKeySourceStatus,
+	TrustedKeySourceType,
+} from '../../token-exchange.schemas';
 
 @Entity('trusted_key_source')
 export class TrustedKeySourceEntity extends WithTimestamps {
@@ -22,4 +26,10 @@ export class TrustedKeySourceEntity extends WithTimestamps {
 
 	@DateTimeColumn({ nullable: true })
 	lastRefreshedAt: Date | null;
+
+	@Column({ type: 'varchar', length: 32, default: 'env-config' })
+	managedBy: TrustedKeySourceManagedBy;
+
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	issuer: string | null;
 }
