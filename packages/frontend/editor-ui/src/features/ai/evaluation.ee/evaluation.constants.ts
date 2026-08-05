@@ -1,7 +1,7 @@
 import type { ChatHubLLMProvider } from '@n8n/api-types';
 
 import type { TestRunRecord } from './evaluation.api';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import type { IconColor } from '@n8n/design-system/types/icon';
 
 import type { BaseTextKey } from '@n8n/i18n';

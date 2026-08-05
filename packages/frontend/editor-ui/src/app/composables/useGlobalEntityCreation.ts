@@ -21,7 +21,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 
 type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 

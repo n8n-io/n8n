@@ -28,7 +28,7 @@ import {
 	N8nText,
 	N8nCallout,
 } from '@n8n/design-system';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';

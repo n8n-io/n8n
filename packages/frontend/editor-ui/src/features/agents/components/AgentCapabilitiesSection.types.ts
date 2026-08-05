@@ -1,6 +1,6 @@
 import type { SimplifiedNodeType } from '@/Interface';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 import type { AgentJsonToolRef } from '../types';
 
 export type ToolRowNodeType = SimplifiedNodeType | null;
