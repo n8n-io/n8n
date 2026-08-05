@@ -83,10 +83,15 @@ export function toValidationJsonSchema(schema?: unknown): JSONSchema7 | null {
 	return serialize(schema, 'validation');
 }
 
-export function toJsonSchemaOrNull(schema: unknown, audience: SchemaAudience): JSONSchema7 | null {
+export function toJsonSchemaOrNull(
+	schema: unknown,
+	audience: SchemaAudience,
+	onError?: (error: unknown) => void,
+): JSONSchema7 | null {
 	try {
 		return serialize(schema, audience);
-	} catch {
+	} catch (error) {
+		onError?.(error);
 		return null;
 	}
 }

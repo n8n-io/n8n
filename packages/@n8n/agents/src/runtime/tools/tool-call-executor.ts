@@ -21,9 +21,8 @@ import { AgentEvent } from '../../types/runtime/event';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
-import { unlockAdditionalProperties } from '../../utils/json-schema';
 import { parseWithSchema } from '../../utils/parse';
-import { isZodSchema, toJsonSchemaOrNull } from '../../utils/zod';
+import { toJsonSchemaOrNull } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -168,15 +167,33 @@ function getDeclaredResumeSchema(
 	return resumeSchemaOverride ?? tool.resumeSchema;
 }
 
+function describeCause(error: unknown): string {
+	if (error === undefined) return 'no schema was produced';
+	if (error instanceof Error) return error.message;
+	return typeof error === 'string' ? error : 'unknown error';
+}
+
+function serializeToolResumeSchema(
+	tool: BuiltTool,
+	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
+): { declared: boolean; schema?: JsonSchema7Type; error?: unknown } {
+	const resolvedSchema = getDeclaredResumeSchema(tool, resumeSchemaOverride);
+	if (!resolvedSchema) return { declared: false };
+	let error: unknown;
+	// The checkpointed copy validates the resume payload, so it must stay open to
+	// unknown keys the authored Zod schema would have stripped.
+	const schema =
+		toJsonSchemaOrNull(resolvedSchema, 'validation', (cause) => {
+			error = cause;
+		}) ?? undefined;
+	return { declared: true, schema, error };
+}
+
 function getToolResumeJsonSchema(
 	tool: BuiltTool,
 	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
 ): JsonSchema7Type | undefined {
-	const resolvedSchema = getDeclaredResumeSchema(tool, resumeSchemaOverride);
-	if (!resolvedSchema) return undefined;
-	// The checkpointed copy validates the resume payload, so it must stay open to
-	// unknown keys the authored Zod schema would have stripped.
-	return toJsonSchemaOrNull(resolvedSchema, 'validation') ?? undefined;
+	return serializeToolResumeSchema(tool, resumeSchemaOverride).schema;
 }
 
 export interface ToolCallExecutorDeps {
@@ -925,12 +942,7 @@ export class ToolCallExecutor {
 		builtTool: BuiltTool,
 	): Promise<{ ok: true; input: JSONValue } | { ok: false; outcome: ToolCallOutcome }> {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
-		// A stored JSON Schema was serialized closed for the model; validating
-		// against that copy would reject keys the authored Zod object strips.
-		const schema = isZodSchema(builtTool.inputSchema)
-			? builtTool.inputSchema
-			: unlockAdditionalProperties(builtTool.inputSchema);
-		const result = await parseWithSchema(schema, params.input);
+		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
 			const reason = result.schemaInvalid
 				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
@@ -997,15 +1009,14 @@ export class ToolCallExecutor {
 			}
 			toolResult.payload = parseResult.data as JSONValue;
 		}
-		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.resumeSchema);
-		if (!resumeSchema) {
+		const resume = serializeToolResumeSchema(builtTool, toolResult.resumeSchema);
+		if (!resume.schema) {
 			// Only one of these two defects is the tool author's oversight.
-			const declared = getDeclaredResumeSchema(builtTool, toolResult.resumeSchema);
 			return this.toolError(
 				params,
 				new Error(
-					declared
-						? `Tool ${params.toolName} has a resume schema that could not be serialized`
+					resume.declared
+						? `Tool ${params.toolName} has a resume schema that could not be serialized: ${describeCause(resume.error)}`
 						: `Tool ${params.toolName} has no resume schema`,
 				),
 			);
@@ -1013,7 +1024,7 @@ export class ToolCallExecutor {
 		return {
 			outcome: 'suspended',
 			payload: toolResult.payload,
-			resumeSchema,
+			resumeSchema: resume.schema,
 			...(toolResult.continuation !== undefined ? { continuation: toolResult.continuation } : {}),
 		};
 	}

@@ -36,39 +36,14 @@ export const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
  * Returns a deep copy — the input schema is never mutated.
  */
 export function lockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
-	return mapObjectNodes(schema, (node) => {
-		node.additionalProperties ??= false;
-	});
-}
-
-/**
- * Recursively drop `additionalProperties: false` so a schema serialized for a
- * model can be reused to *validate* data — where a Zod object would have
- * stripped the unknown keys its closed serialization rejects.
- *
- * Cannot tell a deliberate `.strict()` from that artefact, and errs towards
- * accepting. Returns a deep copy — the input schema is never mutated.
- */
-export function unlockAdditionalProperties(schema: JSONSchema7): JSONSchema7 {
-	return mapObjectNodes(schema, (node) => {
-		if (node.additionalProperties === false) delete node.additionalProperties;
-	});
-}
-
-/** Deep-copy a schema, applying `apply` to every object-typed node. */
-function mapObjectNodes(schema: JSONSchema7, apply: (node: JSONSchema7) => void): JSONSchema7 {
-	const result = mapDefinition(schema, apply);
+	const result = lockDefinition(schema);
 	return typeof result === 'object' ? result : schema;
 }
 
-function mapDefinition(
-	schema: JSONSchema7Definition,
-	apply: (node: JSONSchema7) => void,
-): JSONSchema7Definition {
+function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
 	if (typeof schema !== 'object' || schema === null) return schema;
 
 	const result: JSONSchema7 = { ...schema };
-	const recurse = (definition: JSONSchema7Definition) => mapDefinition(definition, apply);
 
 	// Normalise objects that list properties but omit the type (mirrors fixSchema).
 	if (result.properties !== undefined && result.type === undefined) {
@@ -80,31 +55,50 @@ function mapDefinition(
 		(Array.isArray(result.type) && result.type.includes('object')) ||
 		result.properties !== undefined;
 
-	if (isObjectSchema) apply(result);
+	if (isObjectSchema && !hasPropertiesElsewhere(result)) result.additionalProperties ??= false;
 
 	for (const key of ['properties', 'patternProperties', '$defs', 'definitions'] as const) {
 		const record = result[key];
-		if (record) result[key] = mapDefinitions(record, apply);
+		if (record) result[key] = lockDefinitions(record);
 	}
 	if (result.items !== undefined) {
-		result.items = Array.isArray(result.items) ? result.items.map(recurse) : recurse(result.items);
+		result.items = Array.isArray(result.items)
+			? result.items.map(lockDefinition)
+			: lockDefinition(result.items);
 	}
 	if (typeof result.additionalProperties === 'object' && result.additionalProperties !== null) {
-		result.additionalProperties = recurse(result.additionalProperties);
+		result.additionalProperties = lockDefinition(result.additionalProperties);
 	}
 	for (const key of ['allOf', 'anyOf', 'oneOf'] as const) {
 		const branch = result[key];
 		if (Array.isArray(branch)) {
-			result[key] = branch.map(recurse);
+			result[key] = branch.map(lockDefinition);
 		}
 	}
 	for (const key of ['not', 'if', 'then', 'else', 'contains', 'propertyNames'] as const) {
-		if (result[key] !== undefined) result[key] = recurse(result[key]);
+		if (result[key] !== undefined) result[key] = lockDefinition(result[key]);
 	}
 
-	mapDialectExtensions(result, apply);
+	lockDialectExtensions(result);
 
 	return result;
+}
+
+const COMPOSITION_KEYWORDS = [
+	'allOf',
+	'anyOf',
+	'oneOf',
+	'$ref',
+	'if',
+	'then',
+	'else',
+	'dependencies',
+	'dependentSchemas',
+] as const;
+
+function hasPropertiesElsewhere(schema: JSONSchema7): boolean {
+	const node = schema as Record<string, unknown>;
+	return COMPOSITION_KEYWORDS.some((keyword) => node[keyword] !== undefined);
 }
 
 /**
@@ -112,24 +106,22 @@ function mapDefinition(
  * which default to that dialect, so skipping them would leave nested objects
  * untouched.
  */
-function mapDialectExtensions(node: JSONSchema7, apply: (node: JSONSchema7) => void): void {
+function lockDialectExtensions(node: JSONSchema7): void {
 	const extensions = node as Record<string, unknown>;
-	const recurse = (definition: JSONSchema7Definition) => mapDefinition(definition, apply);
 
 	for (const key of ['unevaluatedProperties', 'unevaluatedItems']) {
 		const value = extensions[key];
 		if (typeof value === 'object' && value !== null)
-			extensions[key] = recurse(value as JSONSchema7);
+			extensions[key] = lockDefinition(value as JSONSchema7);
 	}
 	const prefixItems = extensions.prefixItems;
 	if (Array.isArray(prefixItems)) {
-		extensions.prefixItems = prefixItems.map((item: JSONSchema7Definition) => recurse(item));
+		extensions.prefixItems = prefixItems.map((item: JSONSchema7Definition) => lockDefinition(item));
 	}
 	const dependentSchemas = extensions.dependentSchemas;
 	if (typeof dependentSchemas === 'object' && dependentSchemas !== null) {
-		extensions.dependentSchemas = mapDefinitions(
+		extensions.dependentSchemas = lockDefinitions(
 			dependentSchemas as Record<string, JSONSchema7Definition>,
-			apply,
 		);
 	}
 }
@@ -139,14 +131,13 @@ function mapDialectExtensions(node: JSONSchema7, apply: (node: JSONSchema7) => v
  * user-supplied property name like `__proto__` becomes a normal own property
  * instead of mutating the prototype chain.
  */
-function mapDefinitions(
+function lockDefinitions(
 	record: Record<string, JSONSchema7Definition>,
-	apply: (node: JSONSchema7) => void,
 ): Record<string, JSONSchema7Definition> {
 	const out: Record<string, JSONSchema7Definition> = {};
 	for (const [key, value] of Object.entries(record)) {
 		Object.defineProperty(out, key, {
-			value: mapDefinition(value, apply),
+			value: lockDefinition(value),
 			enumerable: true,
 			writable: true,
 			configurable: true,

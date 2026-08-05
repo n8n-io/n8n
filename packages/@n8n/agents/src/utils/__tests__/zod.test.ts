@@ -123,16 +123,36 @@ describe('Zod 4 schemas', () => {
 });
 
 describe('toJsonSchemaOrNull', () => {
-	it('returns null instead of throwing when serialization fails', () => {
-		const unserializable = {
-			safeParse: () => ({ success: true }),
-			_def: {
-				get typeName(): string {
-					throw new Error('boom');
-				},
+	const unserializable = {
+		safeParse: () => ({ success: true }),
+		_def: {
+			get typeName(): string {
+				throw new Error('boom');
 			},
-		};
+		},
+	};
 
+	it('returns null instead of throwing when serialization fails', () => {
 		expect(toJsonSchemaOrNull(unserializable, 'validation')).toBeNull();
+	});
+
+	it('hands the swallowed cause to onError', () => {
+		const onError = vi.fn();
+
+		expect(toJsonSchemaOrNull(unserializable, 'validation', onError)).toBeNull();
+		expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' }));
+	});
+
+	it('does not call onError when serialization succeeds', () => {
+		const onError = vi.fn();
+
+		toJsonSchemaOrNull(z.object({ a: z.string() }), 'validation', onError);
+		expect(onError).not.toHaveBeenCalled();
+	});
+
+	it('ignores the direction for a v3 schema', () => {
+		const schema = z.object({ id: z.string().default('x') });
+
+		expect(toModelJsonSchema(schema, 'output')).toEqual(toModelJsonSchema(schema, 'input'));
 	});
 });

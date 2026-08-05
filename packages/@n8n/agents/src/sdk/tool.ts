@@ -419,9 +419,8 @@ export class Tool<
 		if (!this.desc) throw new Error(`Tool "${this.name}" requires a description`);
 		if (!this.inputSchema) throw new Error(`Tool "${this.name}" requires an input schema`);
 
-		// Closed, because this descriptor is what the model is shown.
 		const inputSchema = isZodSchema(this.inputSchema)
-			? toModelJsonSchema(this.inputSchema)
+			? toValidationJsonSchema(this.inputSchema)
 			: this.inputSchema;
 		const outputSchema = this.outputSchema
 			? isZodSchema(this.outputSchema)

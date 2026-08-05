@@ -301,6 +301,43 @@ describe('parseWithSchema — JSON Schema dialects', () => {
 });
 
 // ---------------------------------------------------------------------------
+// parseWithSchema — long-lived Ajv instances
+// ---------------------------------------------------------------------------
+
+describe('parseWithSchema — long-lived Ajv instances', () => {
+	const withId = (): JSONSchema7 =>
+		({
+			$id: 'https://example.com/parse-test/tool-input',
+			type: 'object' as const,
+			properties: { q: { type: 'string' } },
+			required: ['q'],
+		}) as JSONSchema7;
+
+	it('keeps validating separate copies of a schema that declares an $id', async () => {
+		for (let i = 0; i < 8; i++) {
+			const schema = withId();
+			expect((await parseWithSchema(schema, { q: 'x' })).success).toBe(true);
+			const invalid = await parseWithSchema(schema, {});
+			expect(invalid.success).toBe(false);
+			if (!invalid.success) expect(invalid.schemaInvalid).toBeUndefined();
+		}
+	});
+
+	it('resolves internal $refs without registering the schema globally', async () => {
+		const schema = {
+			$id: 'https://example.com/parse-test/with-defs',
+			type: 'object' as const,
+			properties: { inner: { $ref: '#/$defs/Inner' } },
+			required: ['inner'],
+			$defs: { Inner: { type: 'object', properties: { n: { type: 'number' } }, required: ['n'] } },
+		} as unknown as JSONSchema7;
+
+		expect((await parseWithSchema(schema, { inner: { n: 1 } })).success).toBe(true);
+		expect((await parseWithSchema(schema, { inner: { n: 'no' } })).success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // parseWithSchema — error reporting
 // ---------------------------------------------------------------------------
 

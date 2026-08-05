@@ -157,6 +157,38 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 		expect(rawSchema).not.toHaveProperty('type');
 	});
 
+	it('closes every object for the model', () => {
+		toAiSdkTools([
+			makeJsonSchemaTool({
+				type: 'object',
+				properties: {
+					query: { type: 'string' },
+					filters: { type: 'object', properties: { since: { type: 'string' } } },
+				},
+			}),
+		]);
+
+		const received = jsonSchemaMock.mock.calls[0][0];
+		expect(received.additionalProperties).toBe(false);
+		const properties = received.properties as Record<string, JSONSchema7>;
+		expect(properties.filters.additionalProperties).toBe(false);
+	});
+
+	it('leaves an MCP tool schema as the server declared it', () => {
+		const rawSchema: JSONSchema7 = { type: 'object', properties: { query: { type: 'string' } } };
+		toAiSdkTools([makeJsonSchemaTool(rawSchema, { mcpTool: true })]);
+
+		const received = jsonSchemaMock.mock.calls[0][0];
+		expect(received.additionalProperties).toBeUndefined();
+	});
+
+	it('does not mutate the tool schema when closing it for the model', () => {
+		const rawSchema: JSONSchema7 = { type: 'object', properties: { query: { type: 'string' } } };
+		toAiSdkTools([makeJsonSchemaTool(rawSchema)]);
+
+		expect(rawSchema.additionalProperties).toBeUndefined();
+	});
+
 	it('handles multiple JSON Schema tools independently', () => {
 		const schemaWithProps: JSONSchema7 = { properties: { a: { type: 'string' } } };
 		const schemaWithType: JSONSchema7 = { type: 'object', properties: { b: { type: 'number' } } };

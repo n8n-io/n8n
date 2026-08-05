@@ -3974,7 +3974,7 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		expect(handlerFn).not.toHaveBeenCalled();
 	});
 
-	it('accepts unknown keys against a schema stored closed for the model', async () => {
+	it('rejects unknown keys against a closed JSON Schema', async () => {
 		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
 		const tool: BuiltTool = {
 			name: 'json_tool',
@@ -3982,25 +3982,14 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 			inputSchema: {
 				type: 'object',
 				additionalProperties: false,
-				properties: {
-					query: { type: 'string' },
-					filters: {
-						type: 'object',
-						additionalProperties: false,
-						properties: { since: { type: 'string' } },
-					},
-				},
+				properties: { query: { type: 'string' } },
 			},
 			handler: handlerFn,
 		};
 
 		generateText
 			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('tc-1', 'json_tool', {
-					query: 'cats',
-					extra: true,
-					filters: { since: 'today', unexpected: 1 },
-				}),
+				makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats', extra: true }),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('done'));
 
@@ -4012,7 +4001,7 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		});
 
 		await runtime.generate('go');
-		expect(handlerFn).toHaveBeenCalled();
+		expect(handlerFn).not.toHaveBeenCalled();
 	});
 
 	it('names the tool schema as the defect when it cannot be compiled', async () => {
