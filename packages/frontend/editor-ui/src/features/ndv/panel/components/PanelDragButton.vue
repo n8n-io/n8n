@@ -3,11 +3,6 @@ import { N8nIcon } from '@n8n/design-system';
 import Draggable from '@/app/components/Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
-defineProps<{
-	canMoveRight: boolean;
-	canMoveLeft: boolean;
-}>();
-
 const emit = defineEmits<{
 	drag: [e: XYPosition];
 	dragstart: [];
@@ -39,9 +34,9 @@ const onDragStart = () => {
 	>
 		<template #default="{ isDragging }">
 			<button :class="[$style.dragButton, { [$style.dragging]: isDragging }]">
-				<N8nIcon v-if="canMoveLeft" :class="$style.arrow" icon="arrow-left" />
+				<N8nIcon :class="$style.arrow" icon="arrow-left" />
 				<N8nIcon :class="$style.handle" icon="menu" />
-				<N8nIcon v-if="canMoveRight" :class="$style.arrow" icon="arrow-right" />
+				<N8nIcon :class="$style.arrow" icon="arrow-right" />
 			</button>
 		</template>
 	</Draggable>

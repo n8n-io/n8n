@@ -154,8 +154,8 @@ const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/features/shared/nodeCreator/views/NodeCreation.vue'),
 );
 
-const LazyNodeDetailsViewV2 = defineAsyncComponent(
-	async () => await import('@/features/ndv/shared/views/NodeDetailsViewV2.vue'),
+const LazyNodeDetailsView = defineAsyncComponent(
+	async () => await import('@/features/ndv/shared/views/NodeDetailsView.vue'),
 );
 
 const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
@@ -2141,7 +2141,7 @@ onBeforeUnmount(() => {
 				/>
 			</Suspense>
 			<Suspense>
-				<LazyNodeDetailsViewV2
+				<LazyNodeDetailsView
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					@rename-node="onRenameNode"

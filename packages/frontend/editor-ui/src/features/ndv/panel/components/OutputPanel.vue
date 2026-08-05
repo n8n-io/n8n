@@ -374,7 +374,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					i18n.baseText(
 						isTriggerNode
 							? 'ndv.output.noOutputData.trigger.title'
-							: 'ndv.output.noOutputData.v2.title',
+							: 'ndv.output.noOutputData.notRun.title',
 					)
 				"
 			/>
@@ -384,7 +384,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					i18n.baseText(
 						isTriggerNode
 							? 'ndv.output.noOutputData.trigger.title'
-							: 'ndv.output.noOutputData.v2.title',
+							: 'ndv.output.noOutputData.notRun.title',
 					)
 				"
 			>
@@ -406,7 +406,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						:keypath="
 							isSubNodeType
 								? 'ndv.output.runNodeHintSubNode'
-								: 'ndv.output.noOutputData.v2.description'
+								: 'ndv.output.noOutputData.notRun.description'
 						"
 						scope="global"
 					>
@@ -420,7 +420,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 									i18n.baseText(
 										isTriggerNode
 											? 'ndv.output.noOutputData.trigger.action'
-											: 'ndv.output.noOutputData.v2.action',
+											: 'ndv.output.noOutputData.notRun.action',
 									)
 								"
 								telemetry-source="inputs"
@@ -439,7 +439,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								i18n.baseText(
 									isTriggerNode
 										? 'ndv.output.noOutputData.trigger.action'
-										: 'ndv.output.noOutputData.v2.action',
+										: 'ndv.output.noOutputData.notRun.action',
 								)
 							"
 							telemetry-source="inputs"

@@ -41,7 +41,7 @@ import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import InputPanel from '../../panel/components/InputPanel.vue';
 import OutputPanel from '../../panel/components/OutputPanel.vue';
-import PanelDragButtonV2 from '../../panel/components/PanelDragButtonV2.vue';
+import PanelDragButton from '../../panel/components/PanelDragButton.vue';
 import TriggerPanel from '../../panel/components/TriggerPanel.vue';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -813,11 +813,9 @@ onBeforeUnmount(() => {
 						@resizeend="onDragEnd"
 					>
 						<div ref="mainPanelRef" :class="$style.main">
-							<PanelDragButtonV2
+							<PanelDragButton
 								v-if="hasInputPanel"
 								:class="$style.draggable"
-								:can-move-left="true"
-								:can-move-right="true"
 								@drag="onDrag"
 								@dragstart="onDragStart"
 								@dragend="onDragEnd"

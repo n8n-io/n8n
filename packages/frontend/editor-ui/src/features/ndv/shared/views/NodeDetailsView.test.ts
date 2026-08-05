@@ -3,7 +3,7 @@ import { setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import NodeDetailsViewV2 from '@/features/ndv/shared/views/NodeDetailsViewV2.vue';
+import NodeDetailsView from '@/features/ndv/shared/views/NodeDetailsView.vue';
 import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE, STICKY_NODE_TYPE, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -56,7 +56,7 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 	};
 };
 
-describe('NodeDetailsViewV2', () => {
+describe('NodeDetailsView', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 	let workflowId: string;
 	let workflowDocumentStoreRef: ReturnType<typeof setupStore>['workflowDocumentStoreRef'];
@@ -77,7 +77,7 @@ describe('NodeDetailsViewV2', () => {
 			ndvStore.unsetActiveNodeName();
 		}
 
-		const render = createComponentRenderer(NodeDetailsViewV2, {
+		const render = createComponentRenderer(NodeDetailsView, {
 			props: {
 				...componentProps,
 			},

@@ -500,24 +500,21 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				</NDVEmptyState>
 
 				<template v-else>
-					<NDVEmptyState
-						v-if="readOnly"
-						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
-					/>
+					<NDVEmptyState v-if="readOnly" :title="i18n.baseText('ndv.input.noOutputData.title')" />
 					<NDVEmptyState
 						v-else-if="isMappingEnabled || hasRootNodeRun"
-						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
+						:title="i18n.baseText('ndv.input.noOutputData.title')"
 						icon="arrow-right-to-line"
 					>
-						<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
+						<I18nT tag="span" keypath="ndv.input.noOutputData.description" scope="global">
 							<template #link>
 								<NodeExecuteButton
 									hide-icon
 									transparent
 									variant="subtle"
 									:node-name="nodeNameToExecute"
-									:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
-									:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
+									:label="i18n.baseText('ndv.input.noOutputData.action')"
+									:tooltip="i18n.baseText('ndv.input.noOutputData.tooltip')"
 									tooltip-placement="bottom"
 									telemetry-source="inputs"
 									data-test-id="execute-previous-node"
@@ -555,12 +552,12 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				</template>
 			</div>
 			<div v-else :class="$style.notConnected">
-				<NDVEmptyState :title="i18n.baseText('ndv.input.notConnected.v2.title')">
+				<NDVEmptyState :title="i18n.baseText('ndv.input.notConnected.title')">
 					<template #icon>
 						<WireMeUp />
 					</template>
 					<template #description>
-						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
+						<I18nT tag="span" keypath="ndv.input.notConnected.description" scope="global">
 							<template #link>
 								<a
 									href="https://docs.n8n.io/workflows/components/connections/"
