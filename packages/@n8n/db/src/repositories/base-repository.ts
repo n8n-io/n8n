@@ -39,9 +39,10 @@ export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repos
 	}
 
 	/**
-	 * Runs `fn` in a transaction, joining the one `ctx` already carries rather than
-	 * opening a nested one. Hands back the raw `EntityManager` so a multi-write body
-	 * can be reused as-is inside either transaction.
+	 * Runs `fn` under `TransactionRunner.run`, so it reuses the transaction `ctx` carries
+	 * instead of opening a second, independent one on another connection.
+	 *
+	 * `fn` receives the resolved `EntityManager`, so one multi-write body works either way.
 	 */
 	async runInTransaction<T>(
 		ctx: OperationContext,

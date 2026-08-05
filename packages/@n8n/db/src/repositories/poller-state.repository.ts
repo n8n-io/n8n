@@ -35,7 +35,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	 * so a node past its first poll costs one query, not two; on a miss, racing
 	 * processes both try to insert, and the loser re-reads the winner's stored cursor.
 	 */
-	async ensureCursor(
+	async getOrCreateCursor(
 		workflowId: string,
 		nodeId: string,
 		initial: PollerCursor,
