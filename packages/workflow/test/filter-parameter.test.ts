@@ -104,6 +104,78 @@ describe('FilterParameter', () => {
 				);
 				expect(result).toBe(false);
 			});
+
+			it('should evaluate regex case insensitive (options.version >= 4)', () => {
+				const result = executeFilter(
+					filterFactory({
+						combinator: 'and',
+						conditions: [
+							{
+								id: '1',
+								leftValue: 'lowercase',
+								rightValue: '[A-Z]',
+								operator: { operation: 'regex', type: 'string' },
+							},
+						],
+						options: { caseSensitive: false, version: 4 },
+					}),
+				);
+				expect(result).toBe(true);
+			});
+
+			it('should evaluate regex case sensitive (options.version >= 4)', () => {
+				const result = executeFilter(
+					filterFactory({
+						combinator: 'and',
+						conditions: [
+							{
+								id: '1',
+								leftValue: 'lowercase',
+								rightValue: '[A-Z]',
+								operator: { operation: 'regex', type: 'string' },
+							},
+						],
+						options: { caseSensitive: true, version: 4 },
+					}),
+				);
+				expect(result).toBe(false);
+			});
+
+			it('should preserve v1-v3 regex behaviour under caseSensitive: false (no i flag applied)', () => {
+				const result = executeFilter(
+					filterFactory({
+						combinator: 'and',
+						conditions: [
+							{
+								id: '1',
+								leftValue: 'lowercase',
+								rightValue: '[A-Z]',
+								operator: { operation: 'regex', type: 'string' },
+							},
+						],
+						options: { caseSensitive: false, version: 3 },
+					}),
+				);
+				expect(result).toBe(false);
+			});
+
+			it('should preserve user-supplied flags when adding i (options.version >= 4)', () => {
+				const result = executeFilter(
+					filterFactory({
+						combinator: 'and',
+						conditions: [
+							{
+								id: '1',
+								leftValue: 'FOO',
+								rightValue: '/foo/g',
+								operator: { operation: 'regex', type: 'string' },
+							},
+						],
+						options: { caseSensitive: false, version: 4 },
+					}),
+				);
+				expect(result).toBe(true);
+			});
 		});
 
 		describe('options.typeValidation', () => {
@@ -580,6 +652,73 @@ describe('FilterParameter', () => {
 						}),
 					);
 					expect(result).toBe(expected);
+				});
+
+				describe('options.version 4 (case-insensitive regex flag)', () => {
+					it.each([
+						{ left: 'lowercase', right: '[A-Z]', expected: true },
+						{ left: 'UPPER', right: '[a-z]', expected: true },
+						{ left: 'Mixed', right: '^mixed$', expected: true },
+						{ left: 'FOO', right: '/foo/g', expected: true },
+					])(
+						'string:regex("$left","$right") === $expected under caseSensitive:false',
+						({ left, right, expected }) => {
+							const result = executeFilter(
+								filterFactory({
+									conditions: [
+										{
+											id: '1',
+											leftValue: left,
+											rightValue: right,
+											operator: { operation: 'regex', type: 'string' },
+										},
+									],
+									options: { caseSensitive: false, version: 4 },
+								}),
+							);
+							expect(result).toBe(expected);
+						},
+					);
+
+					it.each([
+						{ left: 'lowercase', right: '[A-Z]', expected: false },
+						{ left: 'UPPER', right: '[a-z]', expected: false },
+					])(
+						'string:notRegex("$left","$right") === $expected under caseSensitive:false',
+						({ left, right, expected }) => {
+							const result = executeFilter(
+								filterFactory({
+									conditions: [
+										{
+											id: '1',
+											leftValue: left,
+											rightValue: right,
+											operator: { operation: 'notRegex', type: 'string' },
+										},
+									],
+									options: { caseSensitive: false, version: 4 },
+								}),
+							);
+							expect(result).toBe(expected);
+						},
+					);
+
+					it('should keep caseSensitive:true behaviour under v4', () => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: 'lowercase',
+										rightValue: '[A-Z]',
+										operator: { operation: 'regex', type: 'string' },
+									},
+								],
+								options: { caseSensitive: true, version: 4 },
+							}),
+						);
+						expect(result).toBe(false);
+					});
 				});
 			});
 
