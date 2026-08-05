@@ -5,10 +5,13 @@ import {
 	IExecuteData,
 	IExecutionContext,
 	INodeExecutionData,
+	IVerifiedClaim,
 	PlaintextExecutionContext,
+	UnexpectedError,
 	toCredentialContext,
 	toExecutionContextEstablishmentHookParameter,
 	toSecureArtifacts,
+	toVerifiedClaim,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -30,8 +33,71 @@ export class ExecutionContextService {
 		return toCredentialContext(decrypted);
 	}
 
-	async decryptExecutionContext(context: IExecutionContext): Promise<PlaintextExecutionContext> {
-		const { credentials: encCredentials, secureArtifacts: encSecureArtifacts, ...rest } = context;
+	/** Decrypts and parses a sealed claim, without checking its workflow binding. */
+	private async parseClaims(encrypted: string): Promise<IVerifiedClaim> {
+		const decrypted = await this.cipher.decryptV2(encrypted);
+		return toVerifiedClaim(decrypted);
+	}
+
+	/**
+	 * Decrypts and validates a sealed claim, verifying it was sealed for the
+	 * given workflow. Returns `undefined` (with a warning logged) rather than
+	 * throwing when the claim fails to parse or was sealed for a different
+	 * workflow, since this runs inside general-purpose context decryption
+	 * (e.g. hook augmentation) that must not hard-fail a legitimate execution
+	 * over a defensive check. A consumer that needs to enforce trust on the
+	 * claim itself (the future `resolve(claims, ctx)`) should treat
+	 * `undefined` as "no claim to trust", not bypass the check.
+	 */
+	async decryptClaims(
+		encrypted: string,
+		expectedWorkflowId: string,
+	): Promise<IVerifiedClaim | undefined> {
+		let claim: IVerifiedClaim;
+		try {
+			claim = await this.parseClaims(encrypted);
+		} catch (error) {
+			this.logger.warn('Failed to decrypt or parse sealed claim, dropping it', { error });
+			return undefined;
+		}
+
+		if (claim.boundWorkflowId !== expectedWorkflowId) {
+			this.logger.warn('Sealed claim is bound to a different workflow, dropping it', {
+				expectedWorkflowId,
+				boundWorkflowId: claim.boundWorkflowId,
+			});
+			return undefined;
+		}
+
+		return claim;
+	}
+
+	/**
+	 * Seals a claim for a specific workflow, binding the envelope to that
+	 * workflow's id so it can't be replayed against a different workflow than
+	 * the one it was verified for. See {@link decryptClaims}.
+	 */
+	async sealClaims(claim: IVerifiedClaim, workflowId: string): Promise<string> {
+		const payload: IVerifiedClaim = { ...claim, boundWorkflowId: workflowId };
+		return await this.cipher.encryptV2(payload);
+	}
+
+	/**
+	 * @param expectedWorkflowId - Required to decrypt `claims`; omit only when
+	 * the caller doesn't need claims (e.g. it only cares about credentials).
+	 * Without it, a sealed claim is left encrypted-and-dropped rather than
+	 * decoded, since its binding can't be checked.
+	 */
+	async decryptExecutionContext(
+		context: IExecutionContext,
+		expectedWorkflowId?: string,
+	): Promise<PlaintextExecutionContext> {
+		const {
+			credentials: encCredentials,
+			secureArtifacts: encSecureArtifacts,
+			claims: encClaims,
+			...rest
+		} = context;
 		const result: PlaintextExecutionContext = { ...rest };
 		if (encCredentials) {
 			result.credentials = await this.decryptCredentialContext(encCredentials);
@@ -39,6 +105,9 @@ export class ExecutionContextService {
 		if (encSecureArtifacts) {
 			const decrypted = await this.cipher.decryptV2(encSecureArtifacts);
 			result.secureArtifacts = toSecureArtifacts(decrypted);
+		}
+		if (encClaims && expectedWorkflowId) {
+			result.claims = await this.decryptClaims(encClaims, expectedWorkflowId);
 		}
 		return result;
 	}
@@ -67,8 +136,16 @@ export class ExecutionContextService {
 		return await this.cipher.encryptV2(payload);
 	}
 
-	async encryptExecutionContext(context: PlaintextExecutionContext): Promise<IExecutionContext> {
-		const { credentials, secureArtifacts, ...rest } = context;
+	/**
+	 * @param workflowId - Required when `context.claims` is set, to bind the
+	 * sealed claim to the workflow it's being persisted for. See
+	 * {@link sealClaims}.
+	 */
+	async encryptExecutionContext(
+		context: PlaintextExecutionContext,
+		workflowId?: string,
+	): Promise<IExecutionContext> {
+		const { credentials, secureArtifacts, claims, ...rest } = context;
 		const result: IExecutionContext = { ...rest };
 		if (credentials) {
 			result.credentials = await this.cipher.encryptV2(credentials);
@@ -76,9 +153,23 @@ export class ExecutionContextService {
 		if (secureArtifacts) {
 			result.secureArtifacts = await this.cipher.encryptV2(secureArtifacts);
 		}
+		if (claims) {
+			if (!workflowId) {
+				throw new UnexpectedError('Cannot seal a claim without a workflow id to bind it to');
+			}
+			result.claims = await this.sealClaims(claims, workflowId);
+		}
 		return result;
 	}
 
+	/**
+	 * Note for whoever wires up the first `claims` producer: `deepMerge` will
+	 * field-merge a partial `{ claims: {...} }` hook update into an existing
+	 * claims object rather than replacing it wholesale, which could combine
+	 * fields from two different verification passes. A claim should likely be
+	 * replaced atomically, not deep-merged - revisit this when a hook starts
+	 * returning `contextUpdate.claims`.
+	 */
 	mergeExecutionContexts(
 		baseContext: PlaintextExecutionContext,
 		contextToMerge: Partial<PlaintextExecutionContext>,
@@ -99,7 +190,15 @@ export class ExecutionContextService {
 	 * they return are ignored. Node-specific hooks are not run.
 	 *
 	 * Returns the (re-encrypted) context, or the inherited context untouched when
-	 * no sub-execution hooks are registered.
+	 * no sub-execution hooks are registered and no claim needs re-binding.
+	 *
+	 * A sealed claim is bound to the workflow it was verified for (see
+	 * `sealClaims`/`decryptClaims`), so an inherited claim - still bound to the
+	 * PARENT's workflow id - would otherwise fail its binding check on every
+	 * later access to the child's context. Re-derive and re-seal it here for
+	 * THIS (child) workflow: this is expected inheritance of a legitimately
+	 * verified claim, not a replay, so this runs unconditionally whenever a
+	 * claim is present, even with zero registered sub-execution hooks.
 	 */
 	async augmentSubExecutionContext(
 		workflow: Workflow,
@@ -107,9 +206,15 @@ export class ExecutionContextService {
 		contextToAugment: IExecutionContext,
 	): Promise<IExecutionContext> {
 		const subExecutionHooks = this.executionContextHookRegistry.getSubExecutionHooks();
-		if (subExecutionHooks.length === 0) return contextToAugment;
+		if (subExecutionHooks.length === 0 && !contextToAugment.claims) return contextToAugment;
 
+		// Decrypted without checking the claim's (still parent-bound) binding -
+		// it's about to be re-sealed for this workflow below.
 		let context = await this.decryptExecutionContext(contextToAugment);
+
+		if (contextToAugment.claims) {
+			context.claims = await this.parseClaims(contextToAugment.claims);
+		}
 
 		for (const subExecutionHook of subExecutionHooks) {
 			const result = await subExecutionHook.execute({
@@ -125,7 +230,7 @@ export class ExecutionContextService {
 			}
 		}
 
-		return await this.encryptExecutionContext(context);
+		return await this.encryptExecutionContext(context, workflow.id);
 	}
 
 	// startItem is mutated to reflect any changes to trigger items made by the hooks
@@ -149,7 +254,7 @@ export class ExecutionContextService {
 		};
 
 		// decrypt the context to work with plaintext data
-		let context = await this.decryptExecutionContext(contextToAugment);
+		let context = await this.decryptExecutionContext(contextToAugment, workflow.id);
 
 		// Run global hooks!
 		for (const globalHook of this.executionContextHookRegistry.getGlobalHooks()) {
@@ -185,7 +290,7 @@ export class ExecutionContextService {
 			}
 			// no node specific execution establishment hooks found, we return early
 			return {
-				context: await this.encryptExecutionContext(context),
+				context: await this.encryptExecutionContext(context, workflow.id),
 				triggerItems: currentTriggerItems,
 			};
 		}
@@ -238,7 +343,7 @@ export class ExecutionContextService {
 		}
 
 		return {
-			context: await this.encryptExecutionContext(context),
+			context: await this.encryptExecutionContext(context, workflow.id),
 			triggerItems: currentTriggerItems,
 		};
 	}

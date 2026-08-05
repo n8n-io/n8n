@@ -88,6 +88,77 @@ export const CredentialContextSchema = z
  */
 export type ICredentialContext = z.output<typeof CredentialContextSchema>;
 
+const ActorClaimSchemaV1 = z.object({
+	version: z.literal(1),
+	/**
+	 * The external source (IdP) that verified the actor's identity, under
+	 * On-Behalf-Of. Orthogonal to `subject`/principal: `principal` is whose
+	 * authority is used, `actor` is who is calling.
+	 */
+	sourceId: z.string(),
+	/**
+	 * The actor's verified external subject.
+	 */
+	subject: z.string(),
+});
+
+export type IActorClaimV1 = z.output<typeof ActorClaimSchemaV1>;
+
+const VerifiedClaimSchemaV1 = z.object({
+	version: z.literal(1),
+	/**
+	 * Which external source (IdP) verified this claim. Resolved against the
+	 * trusted-key-source registry to derive a principal - the context never
+	 * carries a principal id directly.
+	 */
+	sourceId: z.string(),
+	/**
+	 * The verified external subject (e.g. IdP `sub`, Slack signing identity).
+	 * Never used as a principal id directly - always re-derived at access time
+	 * via `resolve(claims, ctx)`.
+	 */
+	subject: z.string(),
+	/**
+	 * What the claim was verified for (mirrors JWT `aud`). Prevents a claim
+	 * verified for one audience from being replayed for another.
+	 */
+	audience: z.string(),
+	/**
+	 * Unix timestamp (milliseconds) after which the claim must no longer be trusted.
+	 */
+	expiresAt: z.number(),
+	/**
+	 * Who is calling, under On-Behalf-Of - orthogonal to `subject`/principal.
+	 * Present in the type even though nothing produces it yet, so adding a
+	 * producer later doesn't require re-plumbing the shape.
+	 */
+	actorClaim: ActorClaimSchemaV1.optional(),
+	/**
+	 * The id of the workflow this claim was sealed for. Verified against the
+	 * executing workflow's id on decrypt so a claim can't be replayed against
+	 * a different workflow than the one it was verified for. Seal-mechanism
+	 * metadata rather than part of the conceptual claim - rewritten whenever
+	 * the claim is inherited by a sub-workflow with a different id.
+	 */
+	boundWorkflowId: z.string(),
+});
+
+export type IVerifiedClaimV1 = z.output<typeof VerifiedClaimSchemaV1>;
+
+export const VerifiedClaimSchema = z.discriminatedUnion('version', [VerifiedClaimSchemaV1]).meta({
+	title: 'IVerifiedClaim',
+});
+
+/**
+ * Decrypted structure of the `claims` field on the execution context: attested
+ * facts about the caller, sealed rather than stored plaintext. The principal
+ * is derived from this at each access via `resolve(claims, ctx)`, never
+ * persisted on the context - a stored principal id would itself function as a
+ * bearer credential.
+ * Never stored in this form - always encrypted in IExecutionContext.
+ */
+export type IVerifiedClaim = z.output<typeof VerifiedClaimSchema>;
+
 export const WorkflowExecuteModeList = [
 	'cli',
 	'error',
@@ -195,6 +266,19 @@ const ExecutionContextSchemaV1 = z.object({
 	}),
 
 	/**
+	 * Sealed (encrypted) attested facts about the caller. Always encrypted when
+	 * stored, decrypted on-demand by ExecutionContextService. The principal is
+	 * derived from this at each access - never persisted directly on the
+	 * context, so a plaintext/writable field here would function as a bearer
+	 * credential.
+	 * @see IVerifiedClaim for the decrypted structure
+	 */
+	claims: z.string().optional().meta({
+		description:
+			'Sealed (encrypted) attested facts about the caller. Always encrypted when stored, decrypted on-demand by ExecutionContextService. @see IVerifiedClaim for decrypted structure',
+	}),
+
+	/**
 	 * Encrypted artifacts produced by context-establishment hooks
 	 * (e.g. a trigger stripper) for later consumption by node backends.
 	 * Always encrypted when stored, decrypted on demand by
@@ -285,10 +369,11 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  */
 export type PlaintextExecutionContext = Omit<
 	IExecutionContext,
-	'credentials' | 'secureArtifacts'
+	'credentials' | 'secureArtifacts' | 'claims'
 > & {
 	credentials?: ICredentialContext;
 	secureArtifacts?: ISecureArtifacts;
+	claims?: IVerifiedClaim;
 };
 
 export const safeParse = <T extends ZodType>(value: string | object, schema: T) => {
@@ -334,4 +419,17 @@ export const toCredentialContext = (value: string | object): ICredentialContext 
 export const toSecureArtifacts = (value: string | object): ISecureArtifacts => {
 	// here we could implement a migration policy for migrating old secure artifacts versions to newer ones
 	return safeParse(value, SecureArtifactsSchema);
+};
+
+/**
+ * Safely parses a verified claim from either an object or a string to an
+ * IVerifiedClaim. This can be used to safely parse a decrypted claim for
+ * example.
+ * @param value The object or string to be parsed
+ * @returns IVerifiedClaim
+ * @throws Error in case parsing fails for any reason
+ */
+export const toVerifiedClaim = (value: string | object): IVerifiedClaim => {
+	// here we could implement a migration policy for migrating old verified claim versions to newer ones
+	return safeParse(value, VerifiedClaimSchema);
 };

@@ -1,4 +1,4 @@
-import { toExecutionContext } from '../src/execution-context';
+import { toExecutionContext, toVerifiedClaim } from '../src/execution-context';
 
 describe('toExecutionContext — redaction snapshot', () => {
 	const baseContext = {
@@ -70,5 +70,90 @@ describe('toExecutionContext — redaction snapshot', () => {
 				redaction: { version: 2, production: true },
 			}),
 		).toThrow();
+	});
+});
+
+describe('toExecutionContext — claims', () => {
+	const baseContext = {
+		version: 1 as const,
+		establishedAt: 1234567890,
+		source: 'webhook' as const,
+	};
+
+	it('parses a context with a sealed (opaque, encrypted-string) claims field', () => {
+		const parsed = toExecutionContext({ ...baseContext, claims: 'encrypted-blob' });
+
+		expect(parsed.claims).toBe('encrypted-blob');
+	});
+
+	it('parses a context without a claims field without throwing (absent on old executions)', () => {
+		expect(() => toExecutionContext({ ...baseContext })).not.toThrow();
+		expect(toExecutionContext({ ...baseContext }).claims).toBeUndefined();
+	});
+});
+
+describe('toVerifiedClaim', () => {
+	const baseClaim = {
+		version: 1 as const,
+		sourceId: 'idp-1',
+		subject: 'user-42',
+		audience: 'aud-1',
+		expiresAt: 1234567890,
+		boundWorkflowId: 'wf-1',
+	};
+
+	it('parses a valid V1 claim without an actorClaim', () => {
+		const parsed = toVerifiedClaim(baseClaim);
+
+		expect(parsed).toEqual(baseClaim);
+		expect(parsed.actorClaim).toBeUndefined();
+	});
+
+	it('parses a valid V1 claim with an actorClaim (On-Behalf-Of)', () => {
+		const claim = {
+			...baseClaim,
+			actorClaim: { version: 1 as const, sourceId: 'idp-2', subject: 'service-account-1' },
+		};
+
+		const parsed = toVerifiedClaim(claim);
+
+		expect(parsed.actorClaim).toEqual({
+			version: 1,
+			sourceId: 'idp-2',
+			subject: 'service-account-1',
+		});
+	});
+
+	it('round-trips through a JSON string, as it would after decrypt', () => {
+		const parsed = toVerifiedClaim(JSON.stringify(baseClaim));
+
+		expect(parsed).toEqual(baseClaim);
+	});
+
+	it.each(['sourceId', 'subject', 'audience', 'expiresAt', 'boundWorkflowId'])(
+		'rejects a claim missing %s',
+		(field) => {
+			const invalid: Record<string, unknown> = { ...baseClaim };
+			delete invalid[field];
+
+			expect(() => toVerifiedClaim(invalid)).toThrow();
+		},
+	);
+
+	it('rejects a claim with an unknown version', () => {
+		expect(() => toVerifiedClaim({ ...baseClaim, version: 2 })).toThrow();
+	});
+
+	it('rejects a claim with a malformed actorClaim', () => {
+		expect(() =>
+			toVerifiedClaim({ ...baseClaim, actorClaim: { version: 1, sourceId: 'idp-2' } }),
+		).toThrow();
+	});
+
+	it('never carries a plaintext principal id field', () => {
+		const parsed = toVerifiedClaim(baseClaim);
+
+		expect(parsed).not.toHaveProperty('principalId');
+		expect(parsed).not.toHaveProperty('principal');
 	});
 });
