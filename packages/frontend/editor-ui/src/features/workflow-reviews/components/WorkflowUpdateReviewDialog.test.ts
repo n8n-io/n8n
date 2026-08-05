@@ -277,23 +277,39 @@ describe('WorkflowUpdateReviewDialog', () => {
 			});
 		});
 
-		it('disables the name input while submitting', async () => {
+		// The name is read before `flushSave()` is awaited, so a mid-save change can't
+		// reach the request. `fireEvent` bypasses the disabled input the way a stray
+		// programmatic write would, keeping the snapshot covered on its own.
+		it('locks the name while submitting and sends the one validated at click time', async () => {
 			let resolveSave!: (versionId: string | undefined) => void;
 			const flushSave = vi.fn().mockReturnValue(
 				new Promise<string | undefined>((resolve) => {
 					resolveSave = resolve;
 				}),
 			);
-			const { getByTestId } = await renderDialog({ flushSave });
+			const { getByTestId, documentStore } = await renderDialog({ flushSave });
 
 			const input = getByTestId('workflow-update-review-version-name-input');
-			expect(input).toBeEnabled();
-
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Validated name');
 			await userEvent.click(getByTestId('workflow-update-review-submit-button'));
 
 			await waitFor(() => expect(input).toBeDisabled());
+			await fireEvent.update(input, '');
 			resolveSave(SAVED_VERSION_ID);
-			await waitFor(() => expect(input).toBeEnabled());
+
+			await waitFor(() => {
+				expect(updateWorkflowReviewRequestVersion).toHaveBeenCalledWith(
+					expect.any(Object),
+					'review-1',
+					{
+						workflowId: 'workflow-1',
+						workflowVersionId: SAVED_VERSION_ID,
+						workflowVersionName: 'Validated name',
+					},
+				);
+			});
+			expect(documentStore.versionData).toMatchObject({ name: 'Validated name' });
 		});
 	});
 

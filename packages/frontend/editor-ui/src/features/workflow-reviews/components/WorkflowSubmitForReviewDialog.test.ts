@@ -205,7 +205,10 @@ describe('WorkflowSubmitForReviewDialog', () => {
 			});
 		});
 
-		it('disables the form fields while submitting', async () => {
+		// The fields are read before `flushSave()` is awaited, so a mid-save change can't
+		// reach the request. `fireEvent` bypasses the disabled inputs the way a stray
+		// programmatic write would, keeping the snapshot covered on its own.
+		it('locks the fields while submitting and sends the values validated at click time', async () => {
 			let resolveSave!: (versionId: string | undefined) => void;
 			const flushSave = vi.fn().mockReturnValue(
 				new Promise<string | undefined>((resolve) => {
@@ -214,16 +217,34 @@ describe('WorkflowSubmitForReviewDialog', () => {
 			);
 			const { getByTestId } = await renderDialog(flushSave);
 
-			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
 			const versionNameInput = getByTestId('workflow-review-version-name-input');
 			const titleInput = getByTestId('workflow-review-title-input');
-
+			await userEvent.type(titleInput, 'Review payments');
+			await userEvent.clear(versionNameInput);
+			await userEvent.type(versionNameInput, 'Validated name');
 			await userEvent.click(getByTestId('workflow-review-submit-button'));
 
 			await waitFor(() => expect(versionNameInput).toBeDisabled());
 			expect(titleInput).toBeDisabled();
+			await fireEvent.update(versionNameInput, '');
+			await fireEvent.update(titleInput, 'Edited late');
 			resolveSave(SAVED_VERSION_ID);
-			await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
+
+			await waitFor(() => {
+				expect(createWorkflowReviewRequest).toHaveBeenCalledWith(
+					expect.any(Object),
+					expect.objectContaining({
+						title: 'Review payments',
+						workflows: [
+							{
+								workflowId: 'workflow-1',
+								workflowVersionId: SAVED_VERSION_ID,
+								workflowVersionName: 'Validated name',
+							},
+						],
+					}),
+				);
+			});
 		});
 
 		it('leaves the editor version untouched when the canvas moved on to another version', async () => {
