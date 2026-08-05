@@ -183,8 +183,12 @@ export const establishExecutionContext = async (
 	// We were triggered from a parent execution
 	// and can inherit context from there
 	if (startItem.metadata?.parentExecution?.executionContext) {
+		// Drop the claim: it's sealed for the failed workflow, and unlike the
+		// sub-workflow path, error workflows have no step to re-seal it here.
+		const { claims: _droppedClaims, ...inheritedContext } =
+			startItem.metadata.parentExecution.executionContext;
 		executionData.runtimeData = {
-			...startItem.metadata.parentExecution.executionContext,
+			...inheritedContext,
 			...executionData.runtimeData,
 			parentExecutionId: startItem.metadata.parentExecution.executionId,
 		};

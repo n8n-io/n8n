@@ -63,6 +63,7 @@ import { ChangeInstalledNodeVersionType1785162364000 } from './1785162364000-Cha
 import { AddIsFirstPartyToOAuthClients1785162364001 } from './1785162364001-AddIsFirstPartyToOAuthClients';
 import { AddMisfirePolicyToScheduler1785247194307 } from './1785247194307-AddMisfirePolicyToScheduler';
 import { AddSetupCompletedAtToAgents1785500832626 } from './1785500832626-AddSetupCompletedAtToAgents';
+import { AddManagedByAndIssuerToTrustedKeySource1785924000000 } from './1785924000000-AddManagedByAndIssuerToTrustedKeySource';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -230,7 +231,6 @@ import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138
 import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
-import { AddManagedByAndIssuerToTrustedKeySource1785924000000 } from './1785924000000-AddManagedByAndIssuerToTrustedKeySource';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,

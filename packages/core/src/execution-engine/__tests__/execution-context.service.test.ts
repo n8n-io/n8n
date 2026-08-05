@@ -1,18 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
 import type { IContextEstablishmentHook } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type {
 	IExecuteData,
 	IExecutionContext,
 	INode,
 	INodeExecutionData,
 	ISecureArtifacts,
+	IVerifiedClaim,
 	PlaintextExecutionContext,
 	Workflow,
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Cipher } from '@/encryption';
+import { Cipher } from '@/encryption';
+import { InstanceSettings } from '@/instance-settings';
+import { mockInstance } from '@test/utils';
 
 import type { ExecutionContextHookRegistry } from '../execution-context-hook-registry.service';
 import { ExecutionContextService } from '../execution-context.service';
@@ -201,6 +205,65 @@ describe('ExecutionContextService', () => {
 				secureArtifacts: sampleArtifacts,
 			});
 		});
+
+		const sampleClaim = {
+			version: 1,
+			sourceId: 'idp-1',
+			subject: 'user-42',
+			audience: 'aud-1',
+			expiresAt: 999,
+			boundWorkflowId: 'wf-1',
+		};
+
+		it('should leave claims undefined when present but no expected workflow id is given, without logging', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				claims: 'sealed-claim-blob',
+			};
+
+			const result = await service.decryptExecutionContext(context);
+
+			expect(result.claims).toBeUndefined();
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+			expect(mockLogger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should decrypt claims when present and bound to the expected workflow', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				claims: 'sealed-claim-blob',
+			};
+
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(sampleClaim));
+
+			const result = await service.decryptExecutionContext(context, 'wf-1');
+
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('sealed-claim-blob');
+			expect(result.claims).toEqual(sampleClaim);
+		});
+
+		it('should drop claims bound to a different workflow than expected', async () => {
+			const context: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				claims: 'sealed-claim-blob',
+			};
+
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(sampleClaim));
+
+			const result = await service.decryptExecutionContext(context, 'wf-2');
+
+			expect(result.claims).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Sealed claim is bound to a different workflow, dropping it',
+				{ expectedWorkflowId: 'wf-2', boundWorkflowId: 'wf-1' },
+			);
+		});
 	});
 
 	describe('encryptExecutionContext()', () => {
@@ -304,6 +367,52 @@ describe('ExecutionContextService', () => {
 				secureArtifacts: encryptedArtifacts,
 			});
 		});
+
+		it('should seal claims for the given workflow id when present', async () => {
+			const claim: IVerifiedClaim = {
+				version: 1,
+				sourceId: 'idp-1',
+				subject: 'user-42',
+				audience: 'aud-1',
+				expiresAt: 999,
+				boundWorkflowId: 'stale-id-to-be-overwritten',
+			};
+			const context: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				claims: claim,
+			};
+
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+
+			const result = await service.encryptExecutionContext(context, 'wf-1');
+
+			expect(typeof result.claims).toBe('string');
+			expect(JSON.parse(result.claims as string)).toEqual({ ...claim, boundWorkflowId: 'wf-1' });
+		});
+
+		it('should throw when claims are present but no workflow id is given to bind them to', async () => {
+			const claim: IVerifiedClaim = {
+				version: 1,
+				sourceId: 'idp-1',
+				subject: 'user-42',
+				audience: 'aud-1',
+				expiresAt: 999,
+				boundWorkflowId: 'wf-1',
+			};
+			const context: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'webhook',
+				claims: claim,
+			};
+
+			await expect(service.encryptExecutionContext(context)).rejects.toThrow(
+				'Cannot seal a claim without a workflow id to bind it to',
+			);
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('buildManualExecutionCredentials()', () => {
@@ -355,6 +464,65 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('sealClaims() / decryptClaims()', () => {
+		const sampleClaim: IVerifiedClaim = {
+			version: 1,
+			sourceId: 'idp-1',
+			subject: 'user-42',
+			audience: 'aud-1',
+			expiresAt: Date.now() + 60_000,
+			boundWorkflowId: 'stale-id-to-be-overwritten',
+		};
+
+		it('round-trips a claim sealed for the workflow it is decrypted against', async () => {
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+
+			const sealed = await service.sealClaims(sampleClaim, 'wf-1');
+			const result = await service.decryptClaims(sealed, 'wf-1');
+
+			expect(result).toEqual({ ...sampleClaim, boundWorkflowId: 'wf-1' });
+		});
+
+		it('drops (and warns on) a claim sealed for a different workflow', async () => {
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+
+			const sealed = await service.sealClaims(sampleClaim, 'wf-1');
+			const result = await service.decryptClaims(sealed, 'wf-2');
+
+			expect(result).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Sealed claim is bound to a different workflow, dropping it',
+				{ expectedWorkflowId: 'wf-2', boundWorkflowId: 'wf-1' },
+			);
+		});
+
+		it('drops (and warns on) a claim that fails to decrypt', async () => {
+			mockCipher.decryptV2.mockRejectedValue(new Error('bad ciphertext'));
+
+			const result = await service.decryptClaims('garbage', 'wf-1');
+
+			expect(result).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to decrypt or parse sealed claim, dropping it',
+				{ error: expect.any(Error) },
+			);
+		});
+
+		it('drops (and warns on) a claim that decrypts but fails schema validation', async () => {
+			mockCipher.decryptV2.mockResolvedValue('not valid json');
+
+			const result = await service.decryptClaims('garbage', 'wf-1');
+
+			expect(result).toBeUndefined();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to decrypt or parse sealed claim, dropping it',
+				{ error: expect.any(Error) },
+			);
+		});
+	});
+
 	describe('encrypt → decrypt round-trip', () => {
 		it('should preserve secureArtifacts through a full round-trip', async () => {
 			// JSON-stringify on encrypt, identity on decrypt — simulates a symmetric cipher
@@ -379,6 +547,33 @@ describe('ExecutionContextService', () => {
 
 			const decrypted = await service.decryptExecutionContext(encrypted);
 			expect(decrypted.secureArtifacts).toEqual(sampleArtifacts);
+		});
+
+		it('should preserve claims through a full round-trip, bound to the workflow', async () => {
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data: string) => data);
+
+			const claim: IVerifiedClaim = {
+				version: 1,
+				sourceId: 'idp-1',
+				subject: 'user-42',
+				audience: 'aud-1',
+				expiresAt: 12345,
+				boundWorkflowId: 'irrelevant-pre-seal-value',
+			};
+
+			const plaintext: PlaintextExecutionContext = {
+				version: 1,
+				establishedAt: 12345,
+				source: 'webhook',
+				claims: claim,
+			};
+
+			const encrypted = await service.encryptExecutionContext(plaintext, 'wf-1');
+			expect(typeof encrypted.claims).toBe('string');
+
+			const decrypted = await service.decryptExecutionContext(encrypted, 'wf-1');
+			expect(decrypted.claims).toEqual({ ...claim, boundWorkflowId: 'wf-1' });
 		});
 	});
 
@@ -525,6 +720,74 @@ describe('ExecutionContextService', () => {
 					options: {},
 				}),
 			);
+			expect(result.redaction).toEqual({ version: 2, production: true, manual: true });
+		});
+
+		it('re-seals an inherited claim for the child workflow even with zero sub-execution hooks', async () => {
+			mockRegistry.getSubExecutionHooks.mockReturnValue([]);
+			mockWorkflow.id = 'child-wf';
+
+			const parentClaim = {
+				version: 1,
+				sourceId: 'idp-1',
+				subject: 'user-42',
+				audience: 'aud-1',
+				expiresAt: Date.now() + 60_000,
+				boundWorkflowId: 'parent-wf',
+			};
+			const inherited: IExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'trigger',
+				claims: 'sealed-for-parent',
+			};
+
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(parentClaim));
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+
+			const result = await service.augmentSubExecutionContext(mockWorkflow, startItem, inherited);
+
+			// Must not hit the early return that would skip decrypt/encrypt entirely.
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('sealed-for-parent');
+			expect(result.claims).not.toBe('sealed-for-parent');
+			expect(JSON.parse(result.claims as string)).toEqual({
+				...parentClaim,
+				boundWorkflowId: 'child-wf',
+			});
+		});
+
+		it('runs sub-execution hooks and re-seals an inherited claim for the child workflow together', async () => {
+			const subExecutionHook = mock<IContextEstablishmentHook>();
+			subExecutionHook.execute.mockResolvedValue({
+				contextUpdate: { redaction: { version: 2, production: true, manual: true } },
+			});
+			mockRegistry.getSubExecutionHooks.mockReturnValue([subExecutionHook]);
+			mockWorkflow.id = 'child-wf';
+
+			const parentClaim = {
+				version: 1,
+				sourceId: 'idp-1',
+				subject: 'user-42',
+				audience: 'aud-1',
+				expiresAt: Date.now() + 60_000,
+				boundWorkflowId: 'parent-wf',
+			};
+			const inherited: IExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'trigger',
+				claims: 'sealed-for-parent',
+			};
+
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(parentClaim));
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+
+			const result = await service.augmentSubExecutionContext(mockWorkflow, startItem, inherited);
+
+			expect(JSON.parse(result.claims as string)).toEqual({
+				...parentClaim,
+				boundWorkflowId: 'child-wf',
+			});
 			expect(result.redaction).toEqual({ version: 2, production: true, manual: true });
 		});
 	});
@@ -1028,5 +1291,58 @@ describe('ExecutionContextService', () => {
 				).rejects.toThrow('boom');
 			});
 		});
+	});
+});
+
+// Uses the real Cipher, not the mocked one above - a mock would make the
+// "ciphertext never contains the subject" checks below meaningless.
+describe('ExecutionContextService — no principal is ever persisted on the execution context', () => {
+	mockInstance(InstanceSettings, { encryptionKey: 'a'.repeat(64) });
+	const realCipher = Container.get(Cipher);
+
+	const realLogger = {
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	} as unknown as Mocked<Logger>;
+	const realRegistry = {
+		getHookByName: vi.fn(),
+		getGlobalHooks: vi.fn().mockReturnValue([]),
+		getSubExecutionHooks: vi.fn().mockReturnValue([]),
+	} as unknown as Mocked<ExecutionContextHookRegistry>;
+
+	it('never persists a plaintext principal id, and never leaks subject/sourceId outside the sealed ciphertext', async () => {
+		const realService = new ExecutionContextService(realLogger, realRegistry, realCipher);
+
+		const claim: IVerifiedClaim = {
+			version: 1,
+			sourceId: 'idp-1',
+			subject: 'user-42',
+			audience: 'aud-1',
+			expiresAt: Date.now() + 60_000,
+			boundWorkflowId: 'wf-1',
+		};
+		const plaintext: PlaintextExecutionContext = {
+			version: 1,
+			establishedAt: Date.now(),
+			source: 'webhook',
+			claims: claim,
+		};
+
+		const encrypted = await realService.encryptExecutionContext(plaintext, 'wf-1');
+		const serialized = JSON.stringify(encrypted);
+
+		// The security property: no field could function as a stored principal.
+		expect(encrypted).not.toHaveProperty('principalId');
+		expect(encrypted).not.toHaveProperty('principal');
+		expect(encrypted).not.toHaveProperty('userId');
+		expect(typeof encrypted.claims).toBe('string');
+		expect(serialized).not.toContain('user-42');
+		expect(serialized).not.toContain('idp-1');
+
+		// Sanity check: decrypting with the right workflow id does recover the claim.
+		const decrypted = await realService.decryptExecutionContext(encrypted, 'wf-1');
+		expect(decrypted.claims).toEqual(claim);
 	});
 });

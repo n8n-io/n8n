@@ -417,6 +417,36 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData!.source).toBe('trigger'); // NOT 'manual'
 		});
 
+		it('should resume a pre-existing execution with no claims field without throwing', async () => {
+			// Simulates an execution persisted before this field existed.
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1234567890,
+				source: 'webhook',
+			};
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: {
+					runData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					runtimeData: existingContext,
+				},
+			});
+
+			await expect(
+				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual'),
+			).resolves.not.toThrow();
+
+			expect(runExecutionData.executionData!.runtimeData!.claims).toBeUndefined();
+		});
+
 		it('should preserve context with parentExecutionId field', async () => {
 			const existingContext: IExecutionContext = {
 				version: 1,
@@ -981,6 +1011,59 @@ describe('establishExecutionContext', () => {
 			// Should have fresh timing
 			expect(errorContext.source).toBe('error');
 			expect(errorContext.establishedAt).toBeGreaterThan(subWorkflowContext.establishedAt);
+		});
+
+		it('should strip a sealed claim rather than inherit it unre-sealed', async () => {
+			// Unlike the sub-workflow path, error workflows have no re-sealing
+			// step, so an inherited claim would just carry a stale binding.
+			const parentContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 3000000000,
+				source: 'trigger',
+				credentials: 'original-workflow-credentials',
+				claims: 'sealed-for-failed-workflow',
+			};
+
+			const errorTriggerNode = mock<INode>({
+				name: 'ErrorTrigger',
+				type: 'n8n-nodes-base.errorTrigger',
+			});
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: {
+					runData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: errorTriggerNode,
+							data: {
+								main: [[{ json: { error: 'test error' } }]],
+							},
+							source: null,
+							metadata: {
+								parentExecution: {
+									executionId: 'failed-execution-id',
+									workflowId: 'failed-workflow-id',
+									executionContext: parentContext,
+								},
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'error');
+
+			const errorContext = runExecutionData.executionData!.runtimeData!;
+
+			// Credentials still inherit as before; the claim is dropped.
+			expect(errorContext.credentials).toBe('original-workflow-credentials');
+			expect(errorContext.claims).toBeUndefined();
 		});
 	});
 
