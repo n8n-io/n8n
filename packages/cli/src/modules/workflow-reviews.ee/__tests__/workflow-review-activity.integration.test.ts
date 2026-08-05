@@ -564,6 +564,22 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		]);
 	});
 
+	test('reports a deleted message as a tombstone without its body', async () => {
+		const { request } = await seedReviewInTeamProject(owner);
+		const post = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/comments`)
+			.send({ body: 'Written then deleted' })
+			.expect(201);
+		await activityCommentRepository.update(Number(post.body.data.messages[0].id), {
+			deletedAt: new Date(),
+		});
+
+		const [entry] = (await getActivity(ownerAgent, request.id)).data;
+
+		expect(entry.messages?.[0].body).toBeNull();
+		expect(entry.messages?.[0].deletedAt).not.toBeNull();
+	});
+
 	test.each([
 		['a limit below the minimum', { limit: 0 }],
 		['a limit above the maximum', { limit: 101 }],

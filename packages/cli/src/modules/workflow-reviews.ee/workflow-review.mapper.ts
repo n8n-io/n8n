@@ -44,7 +44,9 @@ export function toActivityEntry(
 			data: null,
 			messages: messages.map((message) => ({
 				id: String(message.id),
-				body: message.body,
+				// The tombstone is enforced on the way out too, so a deleted body cannot leak
+				// through a write path that forgot to null it.
+				body: message.deletedAt ? null : message.body,
 				createdBy: message.createdById ? (usersById.get(message.createdById) ?? null) : null,
 				createdAt: message.createdAt.toISOString(),
 				updatedAt: message.updatedAt?.toISOString() ?? null,
