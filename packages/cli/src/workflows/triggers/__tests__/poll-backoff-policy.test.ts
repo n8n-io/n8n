@@ -59,6 +59,36 @@ describe('classifyPollFailure', () => {
 			expect(classifyPollFailure(error)).toBe(expected);
 		},
 	);
+
+	test('prefers httpCode over a conflicting response.status', () => {
+		const error = { httpCode: '401', response: { status: 500 } };
+
+		expect(classifyPollFailure(error)).toBe('permanent');
+	});
+
+	test('accepts httpCode as a number rather than a string', () => {
+		const error = { httpCode: 401 };
+
+		expect(classifyPollFailure(error)).toBe('permanent');
+	});
+
+	test('prefers the direct response over a conflicting error.cause.response', () => {
+		const error = { response: { status: 500 }, cause: { response: { status: 401 } } };
+
+		expect(classifyPollFailure(error)).toBe('transient');
+	});
+
+	test('treats a non-integer status as unmatched', () => {
+		const error = { response: { status: 401.5 } };
+
+		expect(classifyPollFailure(error)).toBe('transient');
+	});
+
+	test('treats a negative status as unmatched', () => {
+		const error = { response: { status: -401 } };
+
+		expect(classifyPollFailure(error)).toBe('transient');
+	});
 });
 
 describe('retryAfterMs', () => {
@@ -137,6 +167,27 @@ describe('retryAfterMs', () => {
 
 		expect(retryAfterMs(error, now)).toBeNull();
 	});
+
+	test('trims surrounding whitespace on a delay-seconds value', () => {
+		const error = { response: { headers: { 'retry-after': '  120  ' } } };
+
+		expect(retryAfterMs(error, now)).toBe(120_000);
+	});
+
+	test('does not itself cap a very large delay-seconds value; capping is computeBackoffUntil concern', () => {
+		const error = { response: { headers: { 'retry-after': '999999999' } } };
+
+		expect(retryAfterMs(error, now)).toBe(999_999_999 * 1000);
+	});
+
+	test('prefers the direct response header over a conflicting error.cause.response one', () => {
+		const error = {
+			response: { headers: { 'retry-after': '60' } },
+			cause: { response: { headers: { 'retry-after': '999' } } },
+		};
+
+		expect(retryAfterMs(error, now)).toBe(60_000);
+	});
 });
 
 describe('computeBackoffUntil', () => {
@@ -207,6 +258,20 @@ describe('computeBackoffUntil', () => {
 			expect(until.getTime()).toBe(now.getTime() + RETRY_AFTER_MAX_MS);
 			expect(RETRY_AFTER_MAX_MS).toBeGreaterThan(MAX_BACKOFF_MS);
 		});
+
+		test.each([0, -1])(
+			'resolves to now itself when consecutiveErrors is %d and there is no Retry-After',
+			(consecutiveErrors) => {
+				const until = computeBackoffUntil({
+					failureClass: 'transient',
+					consecutiveErrors,
+					retryAfterMs: null,
+					now,
+				});
+
+				expect(until.getTime()).toBe(now.getTime());
+			},
+		);
 	});
 
 	describe('permanent', () => {
@@ -223,5 +288,16 @@ describe('computeBackoffUntil', () => {
 				expect(until.getTime()).toBe(now.getTime() + MAX_BACKOFF_MS);
 			},
 		);
+
+		test('ignores a Retry-After value even when it asks for more than MAX_BACKOFF_MS', () => {
+			const until = computeBackoffUntil({
+				failureClass: 'permanent',
+				consecutiveErrors: 1,
+				retryAfterMs: RETRY_AFTER_MAX_MS,
+				now,
+			});
+
+			expect(until.getTime()).toBe(now.getTime() + MAX_BACKOFF_MS);
+		});
 	});
 });

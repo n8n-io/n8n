@@ -204,6 +204,19 @@ describe('PollerStateRepository', () => {
 
 			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
 		});
+
+		it('does not touch the stored failure counters', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+			const backoffUntil = new Date('2026-08-05T12:30:00.000Z');
+			await repository.recordFailure(workflowId, 'node-1', backoffUntil);
+
+			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, {});
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 1,
+				backoffUntil,
+			});
+		});
 	});
 
 	describe('findFailureState', () => {
@@ -266,6 +279,29 @@ describe('PollerStateRepository', () => {
 			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
 
 			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+		});
+
+		it('accumulates the counter across sequential calls', async () => {
+			await seed('node-1', {});
+
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:35:00.000Z'));
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(2);
+		});
+
+		it('overwrites the backoff deadline set by an earlier call', async () => {
+			await seed('node-1', {});
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
+
+			const laterDeadline = new Date('2026-08-05T13:00:00.000Z');
+			await repository.recordFailure(workflowId, 'node-1', laterDeadline);
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 2,
+				backoffUntil: laterDeadline,
+			});
 		});
 
 		it('returns false without throwing for a node with no stored row', async () => {
@@ -336,6 +372,17 @@ describe('PollerStateRepository', () => {
 
 		it('returns false without throwing for a node with no stored row', async () => {
 			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(false);
+		});
+
+		it('succeeds as a no-op on a row that was never failing', async () => {
+			await seed('node-1', {});
+
+			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(true);
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
 		});
 
 		it('moves updatedAt forward', async () => {

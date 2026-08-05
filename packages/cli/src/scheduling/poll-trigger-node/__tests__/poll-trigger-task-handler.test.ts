@@ -487,6 +487,25 @@ describe('PollTriggerTaskHandler', () => {
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
 			expect(onDispatch).toHaveBeenCalledTimes(1);
 		});
+
+		test('does not record a success when poll() throws', async () => {
+			triggersAndPollers.runPollFunction.mockRejectedValue(new Error('poll source unreachable'));
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
+		});
+
+		test('passes the same tick clock to isBackingOff and to recordFailure', async () => {
+			const error = new Error('poll source unreachable');
+			triggersAndPollers.runPollFunction.mockRejectedValue(error);
+
+			await handler.execute(buildTask(), report);
+
+			const [, isBackingOffNow] = pollBackoffService.isBackingOff.mock.calls[0];
+			const { now: recordFailureNow } = pollBackoffService.recordFailure.mock.calls[0][0];
+			expect(recordFailureNow).toBe(isBackingOffNow);
+		});
 	});
 
 	describe('isPollTriggerTaskPayload', () => {
