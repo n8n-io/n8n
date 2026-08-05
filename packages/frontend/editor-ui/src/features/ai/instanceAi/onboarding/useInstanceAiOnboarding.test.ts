@@ -76,4 +76,28 @@ describe('useInstanceAiOnboarding', () => {
 		expect(onboarding.open.value).toBe(false);
 		expect(onboarding.editMode.value).toBe(false);
 	});
+
+	it('moves back through the visible setup sequence', () => {
+		const onboarding = useInstanceAiOnboarding(createConfiguration());
+
+		onboarding.start('search');
+		onboarding.back();
+		expect(onboarding.step.value).toBe('sandbox');
+
+		onboarding.back();
+		expect(onboarding.step.value).toBe('model');
+
+		onboarding.back();
+		expect(onboarding.step.value).toBe('model');
+	});
+
+	it('returns to the summary when backing out of an edit', () => {
+		const onboarding = useInstanceAiOnboarding(createConfiguration());
+
+		onboarding.start('model', true);
+		onboarding.back();
+
+		expect(onboarding.step.value).toBe('done');
+		expect(onboarding.editMode.value).toBe(false);
+	});
 });

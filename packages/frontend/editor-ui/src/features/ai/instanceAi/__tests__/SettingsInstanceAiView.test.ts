@@ -895,6 +895,30 @@ describe('SettingsInstanceAiView', () => {
 			expect(persistEnabled).toHaveBeenCalledWith(true);
 		});
 
+		it('opens search directly when it is the only missing setup decision', async () => {
+			const disabledSettings = {
+				...store.settings!,
+				enabled: false,
+				modelEnvConfigured: true,
+				sandboxEnabled: true,
+				sandboxEnvConfigured: true,
+				searchEnvConfigured: false,
+				searchDisabled: false,
+			};
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-button'));
+
+			expect(await findByTestId('n8n-agent-search-dialog-step')).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-dialog-step')).toBeNull();
+			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
+			expect(persistEnabled).not.toHaveBeenCalled();
+		});
+
 		it('retests a configured model credential before enabling', async () => {
 			const disabledSettings = {
 				...store.settings!,
@@ -1185,6 +1209,23 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-model-add')).toBeVisible();
 			expect(getByTestId('n8n-agent-sandbox-add')).toBeVisible();
 			expect(getByTestId('n8n-agent-search-setup')).toBeVisible();
+		});
+
+		it('opens search setup from the unconfigured row', async () => {
+			const { findByTestId, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-search-setup'));
+
+			expect(await findByTestId('n8n-agent-search-provider-select')).toBeVisible();
+		});
+
+		it('shows an explicit disabled search decision as configured', () => {
+			store.$patch({ settings: { ...store.settings!, searchDisabled: true } });
+
+			const { getByText, queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-search-setup')).toBeNull();
+			expect(getByText('instanceAi.onboarding.disabled')).toBeVisible();
 		});
 
 		it('shows the configured model value once a credential pair is set', () => {
