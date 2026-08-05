@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import * as api from '@/features/catalog/catalog.api';
 import { useCatalogStore } from '@/features/catalog/catalog.store';
-import type { CatalogEntry } from '@/features/catalog/catalog.types';
+import type { CatalogEntry, CatalogSubscription } from '@/features/catalog/catalog.types';
 
 vi.mock('@/features/catalog/catalog.api');
 
@@ -12,6 +12,17 @@ const entry = (id: string): CatalogEntry => ({
 	description: null,
 	trigger: 'manual-trigger',
 	fields: [],
+});
+
+const subscription = (id: string, workflowId: string): CatalogSubscription => ({
+	id,
+	workflowId,
+	workflowName: `Workflow ${workflowId}`,
+	cronExpression: '0 0 9 * * *',
+	timezone: 'Europe/Berlin',
+	inputs: {},
+	enabled: true,
+	nextRunAt: '2026-02-01T09:00:00.000Z',
 });
 
 describe('catalog.store', () => {
@@ -48,6 +59,33 @@ describe('catalog.store', () => {
 		await store.fetchWorkflows();
 
 		expect(store.isEmpty).toBe(true);
+	});
+
+	it('should group schedules by workflow so a card can show its own', async () => {
+		vi.mocked(api.fetchCatalogSubscriptionsApi).mockResolvedValue([
+			subscription('s1', 'a'),
+			subscription('s2', 'a'),
+			subscription('s3', 'b'),
+		]);
+
+		const store = useCatalogStore();
+		await store.fetchSubscriptions();
+
+		expect(store.subscriptionsByWorkflow.a).toHaveLength(2);
+		expect(store.subscriptionsByWorkflow.b).toHaveLength(1);
+		expect(store.subscriptionsByWorkflow.c).toBeUndefined();
+	});
+
+	it('should drop a removed schedule without refetching', async () => {
+		vi.mocked(api.fetchCatalogSubscriptionsApi).mockResolvedValue([subscription('s1', 'a')]);
+		vi.mocked(api.deleteCatalogSubscriptionApi).mockResolvedValue({ success: true });
+
+		const store = useCatalogStore();
+		await store.fetchSubscriptions();
+		await store.unsubscribe('s1');
+
+		expect(store.subscriptions).toEqual([]);
+		expect(api.fetchCatalogSubscriptionsApi).toHaveBeenCalledTimes(1);
 	});
 
 	it('should refresh history after a run so the new one is visible', async () => {

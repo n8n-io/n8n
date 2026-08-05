@@ -4,16 +4,14 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nCard,
-	N8nDialog,
-	N8nDialogFooter,
 	N8nEmptyState,
 	N8nHeading,
 	N8nIcon,
-	N8nInput,
-	N8nInputLabel,
+	N8nIconButton,
 	N8nLoading,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 	type BadgeTheme,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -23,7 +21,14 @@ import { computed, onMounted, ref } from 'vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useCatalogStore } from '@/features/catalog/catalog.store';
-import type { CatalogEntry, CatalogRun } from '@/features/catalog/catalog.types';
+import type {
+	CatalogEntry,
+	CatalogRun,
+	CatalogSubscription,
+	CatalogSubscriptionInput,
+} from '@/features/catalog/catalog.types';
+import CatalogRunDialog from '@/features/catalog/components/CatalogRunDialog.vue';
+import CatalogScheduleDialog from '@/features/catalog/components/CatalogScheduleDialog.vue';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -32,17 +37,28 @@ const catalogStore = useCatalogStore();
 
 const loading = ref(true);
 /** The workflow whose input form is open. Null while nothing is being filled in. */
-const selected = ref<CatalogEntry | null>(null);
-const inputs = ref<Record<string, string>>({});
+const running = ref<CatalogEntry | null>(null);
 /** Which card is mid-run, so only that card's button spins. */
 const runningId = ref<string | null>(null);
+/** The workflow being scheduled, plus the existing schedule when one is being changed. */
+const scheduling = ref<{ entry: CatalogEntry; subscription?: CatalogSubscription } | null>(null);
+const savingSchedule = ref(false);
 
 const runs = computed(() => catalogStore.runs);
+const subscriptions = computed(() => catalogStore.subscriptions);
+
+const entriesById = computed(
+	() => new Map(catalogStore.workflows.map((entry) => [entry.id, entry])),
+);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('catalog.heading'));
 	try {
-		await Promise.all([catalogStore.fetchWorkflows(), catalogStore.fetchRuns()]);
+		await Promise.all([
+			catalogStore.fetchWorkflows(),
+			catalogStore.fetchRuns(),
+			catalogStore.fetchSubscriptions(),
+		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('catalog.load.error'));
 	} finally {
@@ -63,6 +79,9 @@ const inputsLabel = (entry: CatalogEntry) =>
 				interpolate: { count: entry.fields.length },
 			});
 
+const scheduleCount = (entry: CatalogEntry) =>
+	catalogStore.subscriptionsByWorkflow[entry.id]?.length ?? 0;
+
 const RUN_STATUS_THEMES: Partial<Record<ExecutionStatus, BadgeTheme>> = {
 	success: 'success',
 	error: 'danger',
@@ -75,17 +94,19 @@ const RUN_STATUS_THEMES: Partial<Record<ExecutionStatus, BadgeTheme>> = {
 
 const runTheme = (status: ExecutionStatus): BadgeTheme => RUN_STATUS_THEMES[status] ?? 'default';
 
-const runTime = (run: CatalogRun) => {
-	if (!run.startedAt) return '';
-	const { date, time } = convertToDisplayDate(run.startedAt);
+const displayTime = (value: string | null) => {
+	if (!value) return '';
+	const { date, time } = convertToDisplayDate(value);
 	return `${date} ${time}`;
 };
+
+const runTime = (run: CatalogRun) => displayTime(run.startedAt);
 
 const start = async (entry: CatalogEntry, values: Record<string, unknown>) => {
 	runningId.value = entry.id;
 	try {
 		await catalogStore.run(entry.id, values);
-		selected.value = null;
+		running.value = null;
 		toast.showMessage({
 			title: i18n.baseText('catalog.run.started'),
 			message: i18n.baseText('catalog.run.started.message', { interpolate: { name: entry.name } }),
@@ -107,20 +128,50 @@ const onRunClick = async (entry: CatalogEntry) => {
 		await start(entry, {});
 		return;
 	}
-
-	selected.value = entry;
-	// Start each form clean rather than carrying the previous workflow's values.
-	inputs.value = Object.fromEntries(entry.fields.map((field) => [field.name, '']));
+	running.value = entry;
 };
 
-const closeDialog = () => {
-	if (runningId.value) return;
-	selected.value = null;
+const saveSchedule = async (input: CatalogSubscriptionInput) => {
+	const target = scheduling.value;
+	if (!target) return;
+
+	savingSchedule.value = true;
+	try {
+		if (target.subscription) {
+			await catalogStore.updateSubscription(target.subscription.id, input);
+		} else {
+			await catalogStore.subscribe(target.entry.id, input);
+		}
+		scheduling.value = null;
+		toast.showMessage({ title: i18n.baseText('catalog.schedule.saved'), type: 'success' });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('catalog.schedule.error'));
+	} finally {
+		savingSchedule.value = false;
+	}
 };
 
-const submit = async () => {
-	if (!selected.value) return;
-	await start(selected.value, { ...inputs.value });
+const editSchedule = (subscription: CatalogSubscription) => {
+	const entry = entriesById.value.get(subscription.workflowId);
+	// The workflow stopped being offerable, so there is no contract to render a
+	// form from; removing the schedule is all that is left to do with it.
+	if (!entry) {
+		toast.showMessage({
+			title: i18n.baseText('catalog.schedule.unavailable'),
+			type: 'warning',
+		});
+		return;
+	}
+	scheduling.value = { entry, subscription };
+};
+
+const removeSchedule = async (subscription: CatalogSubscription) => {
+	try {
+		await catalogStore.unsubscribe(subscription.id);
+		toast.showMessage({ title: i18n.baseText('catalog.schedule.removed'), type: 'success' });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('catalog.schedule.error'));
+	}
 };
 </script>
 
@@ -176,22 +227,97 @@ const submit = async () => {
 								{{ triggerLabel(entry) }}
 							</N8nBadge>
 							<N8nBadge theme="default">{{ inputsLabel(entry) }}</N8nBadge>
+							<N8nBadge v-if="scheduleCount(entry) > 0" theme="success">
+								<N8nIcon icon="calendar" size="xsmall" :class="$style.badgeIcon" />
+								{{
+									i18n.baseText('catalog.schedule.count', {
+										adjustToNumber: scheduleCount(entry),
+										interpolate: { count: scheduleCount(entry) },
+									})
+								}}
+							</N8nBadge>
 						</div>
 
-						<N8nButton
-							size="small"
-							icon="play"
-							:label="i18n.baseText('catalog.run')"
-							:loading="runningId === entry.id"
-							:disabled="runningId !== null && runningId !== entry.id"
-							data-test-id="catalog-run-button"
-							@click="onRunClick(entry)"
-						/>
+						<div :class="$style.actions">
+							<N8nTooltip :content="i18n.baseText('catalog.schedule.add')">
+								<N8nIconButton
+									icon="calendar"
+									type="tertiary"
+									size="small"
+									:aria-label="i18n.baseText('catalog.schedule.add')"
+									data-test-id="catalog-schedule-button"
+									@click="scheduling = { entry }"
+								/>
+							</N8nTooltip>
+							<N8nButton
+								size="small"
+								icon="play"
+								:label="i18n.baseText('catalog.run')"
+								:loading="runningId === entry.id"
+								:disabled="runningId !== null && runningId !== entry.id"
+								data-test-id="catalog-run-button"
+								@click="onRunClick(entry)"
+							/>
+						</div>
 					</template>
 				</N8nCard>
 			</div>
 
-			<section :class="$style.runs">
+			<section :class="$style.section">
+				<N8nHeading tag="h2" size="medium" bold>
+					{{ i18n.baseText('catalog.schedules.heading') }}
+				</N8nHeading>
+
+				<N8nText v-if="subscriptions.length === 0" color="text-light">
+					{{ i18n.baseText('catalog.schedules.empty') }}
+				</N8nText>
+
+				<ul v-else :class="$style.rowList">
+					<li
+						v-for="item in subscriptions"
+						:key="item.id"
+						:class="$style.row"
+						data-test-id="catalog-subscription"
+					>
+						<N8nText size="small" :class="$style.name">
+							{{ item.workflowName ?? i18n.baseText('catalog.runs.unknownWorkflow') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{
+								item.enabled
+									? i18n.baseText('catalog.schedules.nextRun', {
+											interpolate: { when: displayTime(item.nextRunAt) },
+										})
+									: i18n.baseText('catalog.schedules.paused')
+							}}
+						</N8nText>
+						<div :class="$style.actions">
+							<N8nTooltip :content="i18n.baseText('catalog.schedules.edit')">
+								<N8nIconButton
+									icon="pen"
+									type="tertiary"
+									size="small"
+									:aria-label="i18n.baseText('catalog.schedules.edit')"
+									data-test-id="catalog-subscription-edit"
+									@click="editSchedule(item)"
+								/>
+							</N8nTooltip>
+							<N8nTooltip :content="i18n.baseText('catalog.schedules.remove')">
+								<N8nIconButton
+									icon="trash-2"
+									type="tertiary"
+									size="small"
+									:aria-label="i18n.baseText('catalog.schedules.remove')"
+									data-test-id="catalog-subscription-remove"
+									@click="removeSchedule(item)"
+								/>
+							</N8nTooltip>
+						</div>
+					</li>
+				</ul>
+			</section>
+
+			<section :class="$style.section">
 				<N8nHeading tag="h2" size="medium" bold>
 					{{ i18n.baseText('catalog.runs.heading') }}
 				</N8nHeading>
@@ -200,8 +326,8 @@ const submit = async () => {
 					{{ i18n.baseText('catalog.runs.empty') }}
 				</N8nText>
 
-				<ul v-else :class="$style.runList">
-					<li v-for="item in runs" :key="item.id" :class="$style.run" data-test-id="catalog-run">
+				<ul v-else :class="$style.rowList">
+					<li v-for="item in runs" :key="item.id" :class="$style.row" data-test-id="catalog-run">
 						<N8nText size="small" :class="$style.name">
 							{{ item.workflowName ?? i18n.baseText('catalog.runs.unknownWorkflow') }}
 						</N8nText>
@@ -212,48 +338,22 @@ const submit = async () => {
 			</section>
 		</template>
 
-		<N8nDialog
-			v-if="selected"
-			:open="true"
-			size="medium"
-			:header="selected.name"
-			:description="i18n.baseText('catalog.form.description')"
-			@update:open="closeDialog"
-		>
-			<form :class="$style.form" data-test-id="catalog-runner" @submit.prevent="submit">
-				<N8nInputLabel
-					v-for="field in selected.fields"
-					:key="field.name"
-					:input-name="`catalog-input-${field.name}`"
-					:label="field.name"
-				>
-					<N8nInput
-						:id="`catalog-input-${field.name}`"
-						v-model="inputs[field.name]"
-						:name="field.name"
-						:placeholder="field.type"
-					/>
-				</N8nInputLabel>
+		<CatalogRunDialog
+			v-if="running"
+			:entry="running"
+			:running="runningId !== null"
+			@close="running = null"
+			@submit="(values) => running && start(running, values)"
+		/>
 
-				<N8nDialogFooter>
-					<N8nButton
-						type="button"
-						variant="outline"
-						:disabled="runningId !== null"
-						@click="closeDialog"
-					>
-						{{ i18n.baseText('generic.cancel') }}
-					</N8nButton>
-					<N8nButton
-						type="submit"
-						:loading="runningId !== null"
-						data-test-id="catalog-submit-button"
-					>
-						{{ i18n.baseText('catalog.run') }}
-					</N8nButton>
-				</N8nDialogFooter>
-			</form>
-		</N8nDialog>
+		<CatalogScheduleDialog
+			v-if="scheduling"
+			:entry="scheduling.entry"
+			:subscription="scheduling.subscription"
+			:saving="savingSchedule"
+			@close="scheduling = null"
+			@submit="saveSchedule"
+		/>
 	</div>
 </template>
 
@@ -311,14 +411,20 @@ const submit = async () => {
 	margin-right: var(--spacing--5xs);
 }
 
-.runs {
+.actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.section {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--sm);
 }
 
-.runList {
+.rowList {
 	display: flex;
 	flex-direction: column;
 	list-style: none;
@@ -329,7 +435,7 @@ const submit = async () => {
 	overflow: hidden;
 }
 
-.run {
+.row {
 	display: grid;
 	grid-template-columns: 1fr auto auto;
 	align-items: center;
@@ -340,12 +446,5 @@ const submit = async () => {
 	& + & {
 		border-top: var(--border);
 	}
-}
-
-.form {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	margin-top: var(--spacing--xs);
 }
 </style>
