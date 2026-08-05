@@ -1,6 +1,5 @@
 import {
 	expectNewTriggerExecution,
-	expectNewTriggerExecutionFails,
 	expectNoNewTriggerExecution,
 	expectPollTriggerFires,
 	programPollResponse,
@@ -33,7 +32,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should skip the tick due while backing off, then recover once the window elapses', async ({
+		test('should skip the tick that falls inside the backoff window, then recover once it elapses', async ({
 			api,
 			services,
 		}) => {
@@ -47,13 +46,15 @@ test.describe(
 			const afterSeedPoll = await triggerExecutionIds(api, workflowId);
 			const failureIssuedAt = Date.now();
 			await api.fireScheduledJobsNow(workflowId, nodeId);
-			await expectNewTriggerExecutionFails(api, workflowId, afterSeedPoll);
+			await expectNewTriggerExecution(api, workflowId, afterSeedPoll, { expectedStatus: 'error' });
 
 			const failureState = await api.getPollerFailureState(workflowId, nodeId);
 			expect(failureState.consecutiveErrors).toBe(1);
 			expect(failureState.backoffUntil).not.toBeNull();
 			const backoffUntilMs = new Date(failureState.backoffUntil as string).getTime();
 			expect(backoffUntilMs).toBeGreaterThan(Date.now());
+			// Upper-bound estimate: measured from before the poll request went out, so it
+			// includes round-trip latency on top of the server's own backoff computation.
 			const transientBackoffFloorMs = backoffUntilMs - failureIssuedAt;
 
 			const afterFailedPoll = await triggerExecutionIds(api, workflowId);

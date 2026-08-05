@@ -109,8 +109,10 @@ export async function expectNewTriggerExecution(
 	api: ApiHelpers,
 	workflowId: string,
 	known: Set<string>,
-	timeoutMs = 20_000,
+	options?: { timeoutMs?: number; expectedStatus?: 'success' | 'error' },
 ): Promise<void> {
+	const { timeoutMs = 20_000, expectedStatus = 'success' } = options ?? {};
+
 	await expect
 		.poll(async () => (await newTriggerExecutions(api, workflowId, known)).length, {
 			timeout: timeoutMs,
@@ -123,26 +125,7 @@ export async function expectNewTriggerExecution(
 	const fresh = await newTriggerExecutions(api, workflowId, known);
 
 	expect(fresh).toHaveLength(1);
-	expect(fresh[0].status).toBe('success');
-}
-
-export async function expectNewTriggerExecutionFails(
-	api: ApiHelpers,
-	workflowId: string,
-	known: Set<string>,
-	timeoutMs = 20_000,
-): Promise<void> {
-	await expect
-		.poll(async () => (await newTriggerExecutions(api, workflowId, known)).length, {
-			timeout: timeoutMs,
-		})
-		.toBeGreaterThan(0);
-
-	await new Promise((resolve) => setTimeout(resolve, 500));
-	const fresh = await newTriggerExecutions(api, workflowId, known);
-
-	expect(fresh).toHaveLength(1);
-	expect(fresh[0].status).toBe('error');
+	expect(fresh[0].status).toBe(expectedStatus);
 }
 
 export async function expectNoNewTriggerExecution(

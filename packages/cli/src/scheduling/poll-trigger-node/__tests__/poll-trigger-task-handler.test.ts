@@ -397,22 +397,16 @@ describe('PollTriggerTaskHandler', () => {
 			pollBackoffService.peek.mockResolvedValue(state);
 			pollBackoffService.isBackingOff.mockReturnValue(true);
 
-			await handler.execute(buildTask(), report);
+			const decision = await handler.execute(buildTask(), report);
 
+			expect(decision).toBe(report.notDispatched());
 			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).not.toHaveBeenCalled();
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(pollBackoffService.isBackingOff).toHaveBeenCalledWith(state, fixedNow);
 		});
 
-		test('runs the poll as normal when the peeked state is not backing off', async () => {
-			await handler.execute(buildTask(), report);
-
-			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalled();
-			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
-		});
-
-		test('records a failure with the thrown error and the peeked state', async () => {
+		test('records a failure and no success when poll() throws', async () => {
 			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
 			pollBackoffService.peek.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
@@ -426,6 +420,22 @@ describe('PollTriggerTaskHandler', () => {
 				error,
 				state,
 				now: expect.any(Date),
+			});
+			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
+		});
+
+		test('still clears the failure state when the poll succeeds but committing its cursor fails', async () => {
+			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: null };
+			pollBackoffService.peek.mockResolvedValue(state);
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+			pollFunctions.__commitCursor.mockRejectedValue(new Error('poller state write failed'));
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordSuccess).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				state,
 			});
 		});
 
@@ -461,7 +471,7 @@ describe('PollTriggerTaskHandler', () => {
 			});
 		});
 
-		test('does not touch the failure counters when a setup failure happens before the try block', async () => {
+		test('does not touch the failure counters when the published workflow is missing', async () => {
 			const error = new UnexpectedError('Published version not found for workflow');
 			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
 
@@ -471,7 +481,7 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});
 
-		test('does not peek at all when the payload itself is invalid', async () => {
+		test('does not peek when the payload is invalid', async () => {
 			const task = buildTask({ payload: { nodeId: 'node-1' } });
 
 			await expect(handler.execute(task, report)).rejects.toThrow();
@@ -479,7 +489,7 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.peek).not.toHaveBeenCalled();
 		});
 
-		test('runs the poll as normal when peek itself throws', async () => {
+		test('still runs the poll when peek throws', async () => {
 			const error = new Error('poller state read failed');
 			pollBackoffService.peek.mockRejectedValue(error);
 
@@ -487,14 +497,6 @@ describe('PollTriggerTaskHandler', () => {
 
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
 			expect(onDispatch).toHaveBeenCalledTimes(1);
-		});
-
-		test('does not record a success when poll() throws', async () => {
-			triggersAndPollers.runPollFunction.mockRejectedValue(new Error('poll source unreachable'));
-
-			await handler.execute(buildTask(), report);
-
-			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});
 
 		test('anchors the failure deadline at failure time, not at tick start', async () => {
