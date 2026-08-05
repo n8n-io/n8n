@@ -104,6 +104,18 @@ describe('PollBackoffService', () => {
 
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
 		});
+
+		test('is false exactly at the deadline', () => {
+			const backoffUntil = new Date(now.getTime());
+
+			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
+		});
+
+		test('is true exactly at the MAX_BACKOFF_MS clamp boundary', () => {
+			const backoffUntil = new Date(now.getTime() + MAX_BACKOFF_MS);
+
+			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(true);
+		});
 	});
 
 	describe('recordFailure', () => {
