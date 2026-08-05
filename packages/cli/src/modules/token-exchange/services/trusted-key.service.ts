@@ -277,6 +277,19 @@ export class TrustedKeyService {
 		return issuers.size === 1;
 	}
 
+	/**
+	 * Whether `issuer` is the instance's configured SSO provider — i.e. it
+	 * matches a `sso-derived` trusted key source (see
+	 * `registerSsoDerivedSource`). Indexed read only: no network, no crypto,
+	 * safe to call on every access.
+	 */
+	async isSsoIssuer(issuer: string): Promise<boolean> {
+		const source = await this.trustedKeySourceRepository.findOne({
+			where: { issuer, managedBy: 'sso-derived' },
+		});
+		return source !== null;
+	}
+
 	// ─── Private: source sync ──────────────────────────────────────────
 
 	private generateSourceId(source: TrustedKeySource): string {

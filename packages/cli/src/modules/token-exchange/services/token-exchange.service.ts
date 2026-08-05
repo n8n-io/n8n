@@ -240,11 +240,16 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
-		const user = await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
-			kid: resolvedKey.kid,
-			issuer: resolvedKey.issuer,
-			requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
-		});
+		const user = await this.identityResolutionService.resolve(
+			claims,
+			resolvedKey.allowedRoles,
+			{
+				kid: resolvedKey.kid,
+				issuer: resolvedKey.issuer,
+				requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
+			},
+			true,
+		);
 		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
 	}
 
@@ -259,12 +264,14 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 					actorClaims.claims,
 					actorClaims.resolvedKey.allowedRoles,
 					actorClaims.resolvedKey,
+					true,
 				)
 			: undefined;
 		const subject = await this.identityResolutionService.resolve(
 			subjectClaims.claims,
 			subjectClaims.resolvedKey.allowedRoles,
 			subjectClaims.resolvedKey,
+			true,
 		);
 
 		const now = Math.floor(Date.now() / 1000);

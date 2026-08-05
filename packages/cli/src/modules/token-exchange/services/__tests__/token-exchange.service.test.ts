@@ -103,6 +103,7 @@ describe('TokenExchangeService', () => {
 					issuer: resolvedKey.issuer,
 					requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
 				},
+				true,
 			);
 		});
 
