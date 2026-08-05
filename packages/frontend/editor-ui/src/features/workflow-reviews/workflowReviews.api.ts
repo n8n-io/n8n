@@ -4,6 +4,7 @@ import type {
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxResponse,
+	UpdateWorkflowReviewRequestVersionDto,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestDecision,
 	WorkflowReviewRequestDetail,
@@ -62,7 +63,7 @@ export async function createWorkflowReviewRequest(
 export async function updateWorkflowReviewRequestVersion(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,
-	payload: { workflowId: string; workflowVersionId: string },
+	payload: UpdateWorkflowReviewRequestVersionDto,
 ): Promise<WorkflowReviewRequestSummary> {
 	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
 		context,

@@ -52,6 +52,7 @@ function makeSnapshot(
 ): WorkflowReviewVersionSnapshot {
 	return {
 		versionId: '77b70644-0000-0000-0000-000000000000',
+		name: null,
 		nodes: [makeNode()],
 		connections: {},
 		nodeGroups: [],
@@ -87,6 +88,59 @@ describe('WorkflowReviewChangesSection', () => {
 
 		expect(getByTestId('workflow-review-changes-source-label')).toHaveTextContent('0f123890');
 		expect(getByTestId('workflow-review-changes-target-label')).toHaveTextContent('77b70644');
+	});
+
+	it('labels a named version by its name instead of its id', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				workflow: makeWorkflow({
+					pinnedVersion: makeSnapshot({ name: 'Version hotpink' }),
+					baselineVersion: makeSnapshot({
+						versionId: '0f123890-0000-0000-0000-000000000000',
+						name: 'Version teal',
+						nodes: [makeNode({ id: 'node-removed', name: 'Removed node' }), makeNode()],
+					}),
+				}),
+			},
+		});
+
+		expect(getByTestId('workflow-review-changes-source-label')).toHaveTextContent(
+			'Published: Version teal',
+		);
+		expect(getByTestId('workflow-review-changes-target-label')).toHaveTextContent(
+			'In review: Version hotpink',
+		);
+	});
+
+	// The publish endpoints accept an empty name, so a stored '' must still label.
+	it.each([
+		['null', null],
+		['empty', ''],
+	])('falls back to the short id when the name is %s', (_case, name) => {
+		const { getByTestId } = renderComponent({
+			props: { workflow: makeWorkflow({ pinnedVersion: makeSnapshot({ name }) }) },
+		});
+
+		expect(getByTestId('workflow-review-changes-target-label')).toHaveTextContent(
+			'In review: 77b70644',
+		);
+	});
+
+	it('shows a no-changes state when versions differ only by name', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				workflow: makeWorkflow({
+					pinnedVersion: makeSnapshot({ name: 'Version hotpink' }),
+					baselineVersion: makeSnapshot({
+						versionId: '0f123890-0000-0000-0000-000000000000',
+						name: 'Version teal',
+					}),
+				}),
+			},
+		});
+
+		expect(getByTestId('workflow-review-changes-no-changes')).toBeInTheDocument();
+		expect(queryByTestId('workflow-diff-view-stub')).not.toBeInTheDocument();
 	});
 
 	it('shows an unavailable state when the pinned version was pruned', () => {
