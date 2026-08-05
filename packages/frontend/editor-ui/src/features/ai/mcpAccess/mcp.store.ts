@@ -66,6 +66,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
+	const autoExposeNewWorkflows = computed(
+		() => !!settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows,
+	);
 
 	// Backend-provided canonical URL, so a configured dedicated MCP base URL is
 	// reflected; the editor-base fallback covers settings not yet loaded.
@@ -136,16 +139,30 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
-		const { mcpAccessEnabled: updated } = await updateMcpSettings(
-			rootStore.restApiContext,
-			enabled,
-		);
+		const { mcpAccessEnabled: updated } = await updateMcpSettings(rootStore.restApiContext, {
+			mcpAccessEnabled: enabled,
+		});
+		const next = updated ?? enabled;
 		settingsStore.moduleSettings.mcp = {
 			mcpManagedByEnv: false,
 			...(settingsStore.moduleSettings.mcp ?? {}),
-			mcpAccessEnabled: updated,
+			mcpAccessEnabled: next,
 		};
-		return updated;
+		return next;
+	}
+
+	async function setAutoExposeNewWorkflows(enabled: boolean): Promise<boolean> {
+		const { autoExposeNewWorkflows: updated } = await updateMcpSettings(rootStore.restApiContext, {
+			autoExposeNewWorkflows: enabled,
+		});
+		const next = updated ?? enabled;
+		settingsStore.moduleSettings.mcp = {
+			mcpAccessEnabled: false,
+			mcpManagedByEnv: false,
+			...(settingsStore.moduleSettings.mcp ?? {}),
+			autoExposeNewWorkflows: next,
+		};
+		return next;
 	}
 
 	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
@@ -390,12 +407,14 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
+		autoExposeNewWorkflows,
 		serverUrl,
 		fetchWorkflowsAvailableForMCP,
 		fetchWorkflowsAvailableForMCPPage,
 		fetchAgentsAvailableForMCP,
 		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
+		setAutoExposeNewWorkflows,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,
 		toggleAgentMcpAccess,
