@@ -271,7 +271,7 @@ watch(
 <style module lang="scss">
 .table {
 	background-color: var(--agent-session-timeline--background-color, var(--background--surface));
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--agent-session-timeline--padding-inline, var(--spacing--4xs));
 	height: 100%;
 }
 

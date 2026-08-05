@@ -323,12 +323,15 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 }
 .seamless {
 	--agent-session-timeline--background-color: transparent;
+	--agent-session-timeline--padding-inline: 0;
+	--agent-session-timeline--toolbar-padding-block-start: 0;
 }
 .subHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
+	padding: var(--agent-session-timeline--toolbar-padding-block-start, var(--spacing--xs))
+		var(--agent-session-timeline--padding-inline, var(--spacing--md)) var(--spacing--xs);
 	background-color: var(--agent-session-timeline--background-color, var(--background--surface));
 	border-bottom: var(--border);
 	flex-shrink: 0;
@@ -338,7 +341,7 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	min-width: 0;
 }
 .chartRow {
-	padding: var(--spacing--sm) var(--spacing--lg);
+	padding: var(--spacing--sm) var(--agent-session-timeline--padding-inline, var(--spacing--lg));
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	background-color: var(--agent-session-timeline--background-color, var(--background--surface));
