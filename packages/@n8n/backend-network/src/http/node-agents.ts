@@ -99,10 +99,41 @@ export function buildNodeAgents(
 	}
 
 	// Explicit proxy URL. No direct path, so no SSRF lookup is injected.
+	// Target-specific TLS options (servername, rejectUnauthorized, secureOptions)
+	// describe the connection to the final target, not to the proxy. Forwarding
+	// them to the proxy agent makes `https-proxy-agent` validate the proxy's
+	// certificate against the target hostname (ERR_TLS_CERT_ALTNAME_INVALID) and
+	// apply the target's relaxed-TLS flags to the proxy handshake. Strip them so
+	// the proxy socket is validated against the proxy URL's own hostname.
 	return {
-		httpAgent: new HttpProxyAgent(proxy as string, { ...agentOptions }),
-		httpsAgent: new HttpsProxyAgent(proxy as string, { ...agentOptions }),
+		httpAgent: new HttpProxyAgent(proxy as string, stripTargetTlsOptions(agentOptions)),
+		httpsAgent: new HttpsProxyAgent(proxy as string, stripTargetTlsOptions(agentOptions)),
 	};
+}
+
+/**
+ * Target-specific TLS options that must not be forwarded to a proxy agent.
+ * `servername` sets TLS SNI, `rejectUnauthorized`/`secureOptions` control
+ * certificate validation — all of which describe the tunnelled target session,
+ * not the connection to the proxy itself.
+ */
+const TARGET_TLS_OPTIONS = ['servername', 'rejectUnauthorized', 'secureOptions'] as const;
+
+/**
+ * Returns a shallow copy of `agentOptions` without target-specific TLS fields,
+ * so they are not applied to the proxy socket. Leaves all other options intact.
+ */
+function stripTargetTlsOptions(
+	agentOptions: NodeAgentOptions | undefined,
+): NodeAgentOptions | undefined {
+	if (!agentOptions) return undefined;
+	const stripped: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(agentOptions)) {
+		if (!TARGET_TLS_OPTIONS.includes(key as (typeof TARGET_TLS_OPTIONS)[number])) {
+			stripped[key] = value;
+		}
+	}
+	return stripped as NodeAgentOptions;
 }
 
 /** Subset of an agent's connection options we read to find the target host. */
