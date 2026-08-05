@@ -481,17 +481,16 @@ export class EnterpriseWorkflowService {
 			throw new FolderNotFoundError(folderId);
 		}
 
-		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+		const { workflows } = await this.workflowFinderService.findWorkflowsForUser(
 			user,
 			['workflow:read'],
-			folderId,
-			projectId,
+			{ filters: { folderId, projectId }, includeProjects: true },
 		);
 
 		const usedCredentials = new Map<string, CredentialUsedByWorkflow>();
 
 		for (const workflow of workflows) {
-			const workflowWithMetaData = this.addOwnerAndSharings(workflow as unknown as WorkflowEntity);
+			const workflowWithMetaData = this.addOwnerAndSharings(workflow);
 			await this.addCredentialsToWorkflow(workflowWithMetaData, user);
 			for (const credential of workflowWithMetaData?.usedCredentials ?? []) {
 				usedCredentials.set(credential.id, credential);
