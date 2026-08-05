@@ -28,7 +28,7 @@ import type { ConnectionOptions } from 'node:tls';
 
 // Default delay in milliseconds before retrying after a failed offset resolution.
 // This prevents rapid retry loops that could overwhelm the Kafka broker
-const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
+export const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
 
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;

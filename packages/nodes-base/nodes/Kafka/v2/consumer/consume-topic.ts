@@ -2,8 +2,10 @@ import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import type { INodeExecutionData } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
+
 import type { KafkaMessageParser } from './message-parser';
-import { withTimeout } from '../../utils';
+import { DEFAULT_ERROR_RETRY_DELAY_MS, withTimeout } from '../../utils';
 
 /** Bounds teardown so a hung broker request cannot block deactivation, as in v1. */
 const CLOSE_TIMEOUT_MS = 30_000;
@@ -54,6 +56,13 @@ export interface ConsumeTopicOptions {
 	onBatch: KafkaBatchHandler;
 	/** Defaults to {@link DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY}. */
 	partitionsConsumedConcurrently?: number;
+	/**
+	 * How long to wait before letting a failed batch be re-delivered. The node
+	 * maps v1's existing "Retry Delay on Error" option onto this; v1 applies it
+	 * only to failed offset resolution, so the parse path was unpaced.
+	 * Defaults to `DEFAULT_ERROR_RETRY_DELAY_MS`.
+	 */
+	errorRetryDelay?: number;
 }
 
 export interface KafkaConsumerHandle {
@@ -74,10 +83,18 @@ export async function consumeTopic(
 	options: ConsumeTopicOptions,
 ): Promise<KafkaConsumerHandle> {
 	const { topic, parseMessage, onBatch } = options;
+	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 	// Unblocks a batch still waiting on its completion callback when the caller
 	// closes, so teardown is not held up by an execution that never finishes.
 	const closeController = new AbortController();
 	const { signal } = closeController;
+
+	// Resolves (never rejects) on close, so any wait below can be cut short
+	// without risking an unhandled rejection.
+	const closed = new Promise<void>((resolve) => {
+		if (signal.aborted) return resolve();
+		signal.addEventListener('abort', () => resolve(), { once: true });
+	});
 
 	/** Resolves when the caller signals the batch is done, rejects if close wins. */
 	const handOff = async (batch: KafkaJS.Batch, items: INodeExecutionData[]) =>
@@ -124,13 +141,23 @@ export async function consumeTopic(
 				// Errors are deliberately left to propagate. `eachBatchAutoResolve` is on,
 				// so returning normally marks the batch read: swallowing a parse or
 				// hand-off failure would skip those messages instead of retrying them.
-				// The library logs and seeks back, keeping at-least-once. Pacing the
-				// retries and reporting the failure are ENT-226.
-				const items = await Promise.all(
-					batch.messages.map(async (message) => await parseMessage(message, batch.topic)),
-				);
+				// The library logs and seeks back, keeping at-least-once.
+				try {
+					const items = await Promise.all(
+						batch.messages.map(async (message) => await parseMessage(message, batch.topic)),
+					);
 
-				await handOff(batch, items);
+					await handOff(batch, items);
+				} catch (error) {
+					// Pace the re-delivery. Without this the only thing spacing out retries
+					// of a message that can never be parsed is the fetch cadence, which is
+					// a tuning setting rather than a deliberate retry policy. Teardown is
+					// never delayed. Deciding when to give up on such a message is ENT-226.
+					if (!signal.aborted) {
+						await Promise.race([sleep(errorRetryDelay), closed]);
+					}
+					throw error;
+				}
 			},
 		});
 	} catch (error) {

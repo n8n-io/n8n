@@ -41,13 +41,16 @@ const newConsumer = async (groupId = 'n8n-kafka'): Promise<FakeConsumer> => {
 describe('consumeTopic', () => {
 	const start = async (
 		onBatch: (handOff: KafkaBatchHandOff) => void,
-		options: { partitionsConsumedConcurrently?: number } = {},
+		options: { partitionsConsumedConcurrently?: number; errorRetryDelay?: number } = {},
 	) => {
 		const consumer = await newConsumer();
 		const handle = await consumeTopic(consumer as never, {
 			topic: 'orders',
 			parseMessage,
 			onBatch,
+			// Zero unless a test is specifically about the delay, so failure tests
+			// assert propagation without waiting out the real retry pacing.
+			errorRetryDelay: 0,
 			...options,
 		});
 		return { consumer, handle };
@@ -165,6 +168,37 @@ describe('consumeTopic', () => {
 		await expect(
 			consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] }),
 		).rejects.toThrow('parse failed');
+	});
+
+	it('waits the retry delay before letting a failed batch be re-delivered', async () => {
+		vi.useFakeTimers();
+		try {
+			const { consumer } = await start(({ done }) => done(), { errorRetryDelay: 5000 });
+			parseMessage.mockRejectedValueOnce(new Error('parse failed'));
+
+			const delivery = consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] });
+			const assertion = expect(delivery).rejects.toThrow('parse failed');
+
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(parseMessage).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(1);
+			await assertion;
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not wait the retry delay when the failure is close itself', async () => {
+		// Teardown must not be held up by retry pacing.
+		const { consumer, handle } = await start(() => {
+			// Never finishes, so close is what ends the batch.
+		});
+
+		const delivery = consumer.deliverBatch({ messages: [{ value: Buffer.from('a') }] });
+		await handle.close();
+
+		await expect(delivery).rejects.toThrow('closed before the batch was handed off');
 	});
 
 	it('lets a handler that throws synchronously propagate', async () => {
