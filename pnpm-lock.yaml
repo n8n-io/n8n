@@ -813,6 +813,9 @@ patchedDependencies:
   pkce-challenge@5.0.0:
     hash: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
     path: patches/pkce-challenge@5.0.0.patch
+  reka-ui@2.5.0:
+    hash: f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f
+    path: patches/reka-ui@2.5.0.patch
   v-code-diff:
     hash: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
     path: patches/v-code-diff.patch
@@ -5047,7 +5050,7 @@ importers:
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
         specifier: 'catalog:'
         version: 2.17.4
@@ -5789,7 +5792,7 @@ importers:
         version: 0.14.1
       reka-ui:
         specifier: ^2.5.0
-        version: 2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+        version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       sanitize-html:
         specifier: 'catalog:'
         version: 2.17.4
@@ -22283,8 +22286,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.3.7:
-    resolution: {integrity: sha512-Skkhw9agYSgsWqv7bxSOGJZa9SaiJbZVGdXuFWnrzKaQYHnw9qbjD630rw6RyMqDbp54nfLCLw5SZA55if7JLg==}
+  vue-component-type-helpers@3.3.9:
+    resolution: {integrity: sha512-3c/UfMe0SqyEfcGTyH7mfshHagJ9QTCbppCb0/uGpHZpFug7+If3GeGZN7I0YheKEExemx3xldQPoO7PQSOLQg==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -29180,7 +29183,7 @@ snapshots:
       storybook: 10.1.11(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(utf-8-validate@5.0.10)
       type-fest: 2.19.0
       vue: 3.5.26(typescript@6.0.2)
-      vue-component-type-helpers: 3.3.7
+      vue-component-type-helpers: 3.3.9
 
   '@stryker-mutator/api@9.6.1':
     dependencies:
@@ -39234,7 +39237,7 @@ snapshots:
 
   reinterval@1.1.0: {}
 
-  reka-ui@2.5.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)):
+  reka-ui@2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)):
     dependencies:
       '@floating-ui/dom': 1.7.0
       '@floating-ui/vue': 1.1.6(vue@3.5.26(typescript@6.0.2))
@@ -41825,7 +41828,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.3.7: {}
+  vue-component-type-helpers@3.3.9: {}
 
   vue-demi@0.14.10(vue@3.5.26(typescript@6.0.2)):
     dependencies:

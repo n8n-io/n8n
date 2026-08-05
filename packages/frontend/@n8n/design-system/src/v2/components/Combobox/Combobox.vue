@@ -4,20 +4,6 @@ import { useI18n } from '@n8n/design-system/composables/useI18n';
 import { get } from '@n8n/design-system/v2/utils';
 import { isRecord } from '@n8n/utils/is-record';
 import { reactivePick } from '@vueuse/core';
-import {
-	ComboboxAnchor,
-	ComboboxContent,
-	ComboboxEmpty,
-	ComboboxGroup,
-	ComboboxInput,
-	ComboboxLabel,
-	ComboboxPortal,
-	ComboboxRoot,
-	ComboboxSeparator,
-	ComboboxTrigger,
-	ComboboxViewport,
-	useForwardPropsEmits,
-} from 'reka-ui';
 import { computed, nextTick, useCssModule, useTemplateRef } from 'vue';
 
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
@@ -31,6 +17,20 @@ import type {
 	ComboboxSlots,
 } from './Combobox.types';
 import N8nComboboxItem from './ComboboxItem.vue';
+import {
+	ComboboxAnchor,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxGroup,
+	ComboboxInput,
+	ComboboxLabel,
+	ComboboxPortal,
+	ComboboxRoot,
+	ComboboxSeparator,
+	ComboboxTrigger,
+	ComboboxViewport,
+	useForwardPropsEmits,
+} from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 

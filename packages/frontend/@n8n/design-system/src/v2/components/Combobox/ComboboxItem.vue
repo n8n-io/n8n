@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ComboboxItem, ComboboxItemIndicator } from 'reka-ui';
 import { useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { ComboboxItemSlots, ComboboxListItem } from './Combobox.types';
+import { ComboboxItem, ComboboxItemIndicator } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 

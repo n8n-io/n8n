@@ -651,6 +651,62 @@ describe('v2/components/Combobox', () => {
 				expect(wrapper.emitted('update:open')).toBeTruthy();
 			});
 		});
+
+		it('should allow Tab to move focus out while the popup is open', async () => {
+			const user = userEvent.setup();
+			const wrapper = render({
+				components: { Combobox },
+				template: `
+					<div>
+						<button type="button">Before field</button>
+						<Combobox :items="['Option 1', 'Option 2']" :teleported="false" />
+						<button type="button">After field</button>
+					</div>
+				`,
+			});
+
+			const input = getComboboxInput(wrapper);
+			const after = wrapper.getByRole('button', { name: 'After field' });
+
+			await user.click(input);
+			await getPopoverContainer();
+			expect(input).toHaveFocus();
+
+			await user.tab();
+
+			await waitFor(() => {
+				expect(after).toHaveFocus();
+			});
+			expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
+		});
+
+		it('should allow Shift+Tab to move focus out while the popup is open', async () => {
+			const user = userEvent.setup();
+			const wrapper = render({
+				components: { Combobox },
+				template: `
+					<div>
+						<button type="button">Before field</button>
+						<Combobox :items="['Option 1', 'Option 2']" :teleported="false" />
+						<button type="button">After field</button>
+					</div>
+				`,
+			});
+
+			const input = getComboboxInput(wrapper);
+			const before = wrapper.getByRole('button', { name: 'Before field' });
+
+			await user.click(input);
+			await getPopoverContainer();
+			expect(input).toHaveFocus();
+
+			await user.tab({ shift: true });
+
+			await waitFor(() => {
+				expect(before).toHaveFocus();
+			});
+			expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
+		});
 	});
 
 	describe('slots', () => {
