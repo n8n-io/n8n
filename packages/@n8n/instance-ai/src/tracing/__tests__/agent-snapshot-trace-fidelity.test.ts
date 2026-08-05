@@ -49,7 +49,12 @@ function deepSkills() {
 			instructions:
 				'Assign every ticket exactly one severity, and never downgrade one a customer raised.',
 			references: [
-				{ path: 'rules/severity.md', content: 'Sev1 means the product is unusable for everyone.' },
+				// `agentSkillReferenceSchema` requires a markdown path under `references/`,
+				// so a fixture using anything else isn't the shape a real snapshot carries.
+				{
+					path: 'references/severity.md',
+					content: 'Sev1 means the product is unusable for everyone.',
+				},
 			],
 		},
 	} as const;
