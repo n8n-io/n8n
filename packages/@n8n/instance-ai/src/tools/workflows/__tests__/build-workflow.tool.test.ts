@@ -255,7 +255,7 @@ describe('createBuildWorkflowTool', () => {
 			/Offer or build an error workflow only after .* live test .* published/,
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
-			'then required testing and primary publication, then explicit error-workflow opt-in',
+			'run a real full-path test, ask to publish the primary workflow after it passes',
 		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source, undefined);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
