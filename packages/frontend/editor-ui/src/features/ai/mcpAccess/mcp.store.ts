@@ -145,6 +145,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		const next = updated ?? enabled;
 		settingsStore.moduleSettings.mcp = {
 			mcpManagedByEnv: false,
+			autoExposeNewWorkflows: false,
 			...(settingsStore.moduleSettings.mcp ?? {}),
 			mcpAccessEnabled: next,
 		};

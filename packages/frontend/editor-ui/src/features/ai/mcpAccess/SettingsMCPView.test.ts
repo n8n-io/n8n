@@ -84,6 +84,7 @@ const enableMcpSettings = () => {
 		mcp: {
 			mcpAccessEnabled: true,
 			mcpManagedByEnv: false,
+			autoExposeNewWorkflows: false,
 		},
 	};
 };
@@ -106,6 +107,7 @@ describe('SettingsMCPView', () => {
 			mcp: {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
 			},
 		};
 
@@ -344,6 +346,7 @@ describe('SettingsMCPView', () => {
 				mcp: {
 					mcpAccessEnabled: false,
 					mcpManagedByEnv: true,
+					autoExposeNewWorkflows: false,
 				},
 			};
 
