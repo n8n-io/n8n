@@ -28,7 +28,7 @@ import type {
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { Workflow, WorkflowActivationError } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -407,9 +407,12 @@ describe('ActiveWorkflowManager', () => {
 		let scopedLogger: Logger;
 
 		let factory: TriggerExecutionContextFactory;
+		let pollCursorService: MockProxy<PollCursorService>;
 
 		beforeEach(() => {
 			vi.clearAllMocks();
+			pollCursorService = mock<PollCursorService>({ enabled: false });
+			pollCursorService.resolveCursor.mockResolvedValue({ migrated: false });
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 			activeWorkflowTriggers.remove.mockResolvedValue(true);
