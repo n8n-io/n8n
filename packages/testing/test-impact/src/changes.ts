@@ -141,7 +141,14 @@ export function overrideTargetName(selector: string): string | null {
 		if (selector[i] !== '>') continue;
 		const prev = selector[i - 1];
 		const next = selector[i + 1] ?? '';
-		if (prev === '@' || prev === '|' || next === '=' || /\s/.test(prev) || /\s/.test(next)) {
+		if (
+			prev === '@' ||
+			prev === '|' ||
+			prev === '=' ||
+			next === '=' ||
+			/\s/.test(prev) ||
+			/\s/.test(next)
+		) {
 			continue;
 		}
 		child = selector.slice(i + 1);

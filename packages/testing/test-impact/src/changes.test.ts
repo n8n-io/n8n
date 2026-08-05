@@ -250,6 +250,8 @@ describe('overrideTargetName', () => {
 		['pkg@^1||>=2.0.0', 'pkg'],
 		['pkg@>=1||>=2', 'pkg'],
 		['a@1>b@>=2', 'b'],
+		['a@=1.2.3>b', 'b'],
+		['pkg@1=>2', 'pkg'],
 	])('%s → %s', (selector, expected) => {
 		expect(overrideTargetName(selector)).toBe(expected);
 	});
