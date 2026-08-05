@@ -289,12 +289,16 @@ if (pollUrl) {
 		console.error(`(${pollUrl} already responds — redeploy in progress; relying on the tunnel for completion.)`);
 	} else {
 		(async () => {
+			let polls = 0;
 			while (!settled) {
 				if (await up(pollUrl)) {
 					if (!settled) console.log(`\n${'─'.repeat(60)}\n✅ Instance is up: ${pollUrl}\n   Login: test@n8n.io / helloWorld7 (default test owner)\n`);
 					return finish('up');
 				}
 				await new Promise((r) => setTimeout(r, 10000));
+				// Tunnel-less runs get no replies at all — heartbeat so a long build doesn't look like a hang.
+				if (!tunnel && ++polls % 6 === 0)
+					console.error(`… still waiting for ${pollUrl} (~${polls / 6}m; builds can take 15-20m, giving up after ${Math.round(TIMEOUT_MS / 60000)}m)`);
 			}
 		})();
 	}
@@ -305,7 +309,12 @@ process.on('SIGINT', () => finish('interrupted'));
 await finished;
 clearTimeout(overall);
 
-if (doneReason === 'timeout') console.error('\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).');
+if (doneReason === 'timeout')
+	console.error(
+		tunnel
+			? '\n⏱  Timed out waiting for the final reply — the deploy may still be running (check Slack / Grafana).'
+			: `\n⏱  Timed out polling ${pollUrl} — without a reply channel a failed deploy looks the same as a slow one; check ${slackTarget} or Grafana.`,
+	);
 if (doneReason === 'interrupted') console.error('\nStopped. The command may still be running on Nathan.');
 if (doneReason === 'error') console.error('\n✖ Nathan reported an error (see the reply above).');
 await cleanup(['idle', 'up', 'local'].includes(doneReason) ? 0 : 1);
