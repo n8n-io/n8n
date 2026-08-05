@@ -201,7 +201,6 @@ watch(
 			</N8nText>
 			<N8nButton
 				size="small"
-				type="primary"
 				data-test-id="tests-panel-add-node-button"
 				@click="openNodeCreator"
 			>
@@ -225,7 +224,7 @@ watch(
 				@select="onTriggerSelect"
 			>
 				<template #activator>
-					<N8nButton size="small" type="primary">
+					<N8nButton size="small">
 						{{ locale.baseText('evaluations.tests.empty.chooseTrigger') }}
 						<N8nIcon icon="chevron-down" size="small" />
 					</N8nButton>
@@ -234,7 +233,6 @@ watch(
 			<N8nButton
 				v-else
 				size="small"
-				type="primary"
 				data-test-id="tests-panel-gate-run"
 				@click="runWorkflow"
 			>
