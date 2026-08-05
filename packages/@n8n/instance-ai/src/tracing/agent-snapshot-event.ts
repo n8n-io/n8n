@@ -4,9 +4,10 @@
  * `build-workflow`'s `compiled-workflow` event: the agents-module builder is a
  * separate service, so no tool I/O in the trace carries the config.
  *
- * Payload matches `instanceAiEvalSeedAgentSchema`, so a consumer stores a
- * seedable artifact. It carries authored prose that export scrubbing does NOT
- * remove — scrub anything built from it before it lands in a case.
+ * Payload is shaped for `instanceAiEvalSeedAgentSchema` — the consumer maps
+ * `agentId` → `id` and drops the trace-only keys. It carries authored prose that
+ * export scrubbing does NOT remove — scrub anything built from it before it
+ * lands in a case.
  */
 
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';

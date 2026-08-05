@@ -9,6 +9,7 @@ import type {
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -189,7 +190,12 @@ export class InstanceAiBuilderDelegateAdapterService {
 			readAgentArtifact: async (agentId) => {
 				await assertProjectScope('agent:read');
 				// No JSON config yet (freshly created) is an empty snapshot, not an error.
-				const config = await this.agentConfig.getConfig(agentId, projectId).catch(() => null);
+				// Anything else propagates: the callers already treat a throw as "no
+				// snapshot", and it gets logged there instead of vanishing here.
+				const config = await this.agentConfig.getConfig(agentId, projectId).catch((error) => {
+					if (error instanceof UserError) return null;
+					throw error;
+				});
 				if (!config) return null;
 				return {
 					config,

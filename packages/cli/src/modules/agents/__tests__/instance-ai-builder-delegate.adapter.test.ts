@@ -7,9 +7,11 @@ import type {
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Like } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentsService } from '../agents.service';
@@ -386,10 +388,20 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			// snapshot, and not a failure worth surfacing on a build.
 			const { delegate, agentConfig, agentSkills } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentConfig.getConfig.mockRejectedValue(new Error('Agent has no JSON config yet.'));
+			agentConfig.getConfig.mockRejectedValue(new UserError('Agent has no JSON config yet.'));
 
 			await expect(delegate.readAgentArtifact!('agent-1')).resolves.toBeNull();
 			expect(agentSkills.listSkills).not.toHaveBeenCalled();
+		});
+
+		it('propagates a read failure instead of reporting it as no config', async () => {
+			// A missing agent or a dead DB is not "nothing to snapshot" — the callers
+			// treat a throw as no snapshot and log it, so it stays diagnosable.
+			const { delegate, agentConfig } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentConfig.getConfig.mockRejectedValue(new NotFoundError('Agent not found'));
+
+			await expect(delegate.readAgentArtifact!('agent-1')).rejects.toThrow('Agent not found');
 		});
 
 		it('rejects when the user lacks agent:read scope', async () => {

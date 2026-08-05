@@ -345,11 +345,17 @@ async function snapshotAgent(
 	target: AgentBuilderTarget,
 	reason: AgentSnapshotReason,
 ): Promise<void> {
+	// No trace, no read — the delegate read costs a scope check and two queries.
+	// Matches the service-side call site, which early-returns on `!tracing`.
+	if (!context.tracing) return;
 	let artifact: AgentSnapshotArtifact | null = null;
 	try {
 		// An optional method may be absent, or return a non-promise on a mocked host.
 		artifact = (await delegate.readAgentArtifact?.(target.agentId)) ?? null;
-	} catch {
+	} catch (error) {
+		context.logger.debug(
+			`[agent-snapshot] ${reason} read for ${target.agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
 		return;
 	}
 	if (!artifact) return;
@@ -441,6 +447,15 @@ async function runBuilderConsumeLoop(params: {
 		dedupeBase,
 	} = params;
 
+	// Every settled return goes through here, so the state a pass left behind is
+	// snapshotted on the error returns too — a pass that mutated the config, then
+	// suspended and failed on resume, is exactly the post-state a repair case
+	// grades. A suspend resumes and settles through here; a cancel throws past it.
+	const settle = async (output: BuildAgentOutput): Promise<BuildAgentOutput> => {
+		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
+		return output;
+	};
+
 	const traceRun = await startSubAgentTrace(context, {
 		agentId: builderAgentId,
 		role: BUILDER_SUB_AGENT_ROLE,
@@ -474,12 +489,12 @@ async function runBuilderConsumeLoop(params: {
 		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
 		const message = publishAgentBuilderFailure(context, builderAgentId, error);
 		if (isFriendlyMappableBuilderError(error)) {
-			return {
+			return await settle({
 				ok: false,
 				error: message,
 				configUpdated: carriedConfigUpdated,
 				...targetIdentity(target),
-			};
+			});
 		}
 		throw error;
 	}
@@ -528,10 +543,7 @@ async function runBuilderConsumeLoop(params: {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
-		// The state the pass left behind. A suspended pass resumes and settles
-		// through this same path.
-		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
-		return { ...output, ...targetIdentity(target) };
+		return await settle({ ...output, ...targetIdentity(target) });
 	}
 
 	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
@@ -560,12 +572,12 @@ async function runBuilderConsumeLoop(params: {
 			result.usage?.usage ?? [],
 			'errored',
 		);
-		return {
+		return await settle({
 			ok: false,
 			error: message,
 			configUpdated: configUpdatedSoFar,
 			...targetIdentity(target),
-		};
+		});
 	}
 
 	// The builder-level requestId must not leak up: the FE confirms against the

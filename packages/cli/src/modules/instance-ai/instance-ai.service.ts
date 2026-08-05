@@ -5744,7 +5744,10 @@ export class InstanceAiService {
 			let artifact: AgentSnapshotArtifact | null = null;
 			try {
 				artifact = (await delegate.readAgentArtifact?.(attachment.id)) ?? null;
-			} catch {
+			} catch (error) {
+				this.logger.debug(
+					`[agent-snapshot] attached read for ${attachment.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
 				continue;
 			}
 			if (!artifact) continue;
