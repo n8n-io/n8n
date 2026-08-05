@@ -206,9 +206,7 @@ export class WorkflowExecutionService {
 				'Poll cursor commit skipped: the poll no longer holds its lease, or its cursor row is gone',
 				{ workflowId: workflowData.id, nodeName: node.name },
 			);
-			// A fence miss is not a failure: no poll call site supplies a `responsePromise`, and
-			// `__emit`'s `donePromise` already resolves `undefined` when no execution id comes
-			// back, so leaving the promise unsettled here is correct.
+			// No poll call site supplies a `responsePromise`, so leaving it unsettled is fine.
 			return undefined;
 		}
 

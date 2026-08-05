@@ -279,12 +279,32 @@ describe('poll cursor atomicity', () => {
 			});
 		};
 
-		it('does not commit when the fence lease epoch no longer matches the claimed task', async () => {
-			const task = await seedRunningTask();
+		it.each([
+			{
+				title: 'the fence lease epoch no longer matches the claimed task',
+				prepareFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+					await scheduledTaskRepository.update(task.id, { leaseEpoch: task.leaseEpoch + 1 });
+					return fence;
+				},
+			},
+			{
+				title: 'the fenced task row no longer exists',
+				prepareFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
+					await scheduledTaskRepository.delete(task.id);
+					return fence;
+				},
+			},
+			{
+				title: 'the fenced task id never existed',
+				prepareFence: (): PollLeaseFence => ({ taskId: '999999999', leaseEpoch: 1 }),
+			},
+		])('does not commit when $title', async ({ prepareFence }) => {
 			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-			const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
-
-			await scheduledTaskRepository.update(task.id, { leaseEpoch: task.leaseEpoch + 1 });
+			const fence = await prepareFence();
 
 			const result = await pollCursorService.commitWithExecution({
 				workflowId: workflow.id,
@@ -301,12 +321,39 @@ describe('poll cursor atomicity', () => {
 			expect(await executionRepository.find({ select: ['id'] })).toEqual([]);
 		});
 
-		it('does not commit when the fenced task row no longer exists', async () => {
-			const task = await seedRunningTask();
+		it.each([
+			{
+				title: 'the fence matches a task row still running',
+				buildFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask();
+					return { taskId: task.id, leaseEpoch: task.leaseEpoch };
+				},
+			},
+			{
+				title: 'the fenced task was already marked succeeded by its executor',
+				buildFence: async (): Promise<PollLeaseFence> => {
+					const task = await seedRunningTask({ status: ScheduledTaskStatus.Succeeded });
+					return { taskId: task.id, leaseEpoch: task.leaseEpoch };
+				},
+			},
+			{
+				title:
+					'the fence names a task unrelated to the cursor row being advanced, since the guard checks only the task id and lease epoch',
+				buildFence: async (): Promise<PollLeaseFence> => {
+					const unrelatedTask = await seedRunningTask();
+					return { taskId: unrelatedTask.id, leaseEpoch: unrelatedTask.leaseEpoch };
+				},
+			},
+			{
+				title: 'there is no fence at all, exactly as an unfenced call commits today',
+				buildFence: async (): Promise<PollLeaseFence | undefined> => {
+					await seedRunningTask();
+					return undefined;
+				},
+			},
+		])('commits when $title', async ({ buildFence }) => {
 			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-			const fence: PollLeaseFence = { taskId: task.id, leaseEpoch: task.leaseEpoch };
-
-			await scheduledTaskRepository.delete(task.id);
+			const fence = await buildFence();
 
 			const result = await pollCursorService.commitWithExecution({
 				workflowId: workflow.id,
@@ -314,47 +361,6 @@ describe('poll cursor atomicity', () => {
 				cursor: { lastItemId: 'b' },
 				payload: buildPayload(),
 				fence,
-			});
-
-			expect(result).toBeNull();
-			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
-				lastItemId: 'a',
-			});
-			expect(await executionRepository.find({ select: ['id'] })).toEqual([]);
-		});
-
-		it('commits when the fence matches a task row still running', async () => {
-			const task = await seedRunningTask();
-			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-
-			const result = await pollCursorService.commitWithExecution({
-				workflowId: workflow.id,
-				nodeId,
-				cursor: { lastItemId: 'b' },
-				payload: buildPayload(),
-				fence: { taskId: task.id, leaseEpoch: task.leaseEpoch },
-			});
-
-			expect(result).not.toBeNull();
-			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
-				lastItemId: 'b',
-			});
-			expect(await executionRepository.findOneBy({ id: result?.executionId })).toMatchObject({
-				status: 'new',
-				workflowId: workflow.id,
-			});
-		});
-
-		it('commits when the fenced task was already marked succeeded by its executor', async () => {
-			const task = await seedRunningTask({ status: ScheduledTaskStatus.Succeeded });
-			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-
-			const result = await pollCursorService.commitWithExecution({
-				workflowId: workflow.id,
-				nodeId,
-				cursor: { lastItemId: 'b' },
-				payload: buildPayload(),
-				fence: { taskId: task.id, leaseEpoch: task.leaseEpoch },
 			});
 
 			expect(result).not.toBeNull();
@@ -382,64 +388,6 @@ describe('poll cursor atomicity', () => {
 
 			expect(result).toBeNull();
 			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toBeNull();
-		});
-
-		it('does not commit when the fenced task id never existed', async () => {
-			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-			const fence: PollLeaseFence = { taskId: '999999999', leaseEpoch: 1 };
-
-			const result = await pollCursorService.commitWithExecution({
-				workflowId: workflow.id,
-				nodeId,
-				cursor: { lastItemId: 'b' },
-				payload: buildPayload(),
-				fence,
-			});
-
-			expect(result).toBeNull();
-			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
-				lastItemId: 'a',
-			});
-		});
-
-		it('commits when the fence names a task unrelated to the cursor row being advanced, since the guard checks only the task id and lease epoch', async () => {
-			const unrelatedTask = await seedRunningTask();
-			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-
-			const result = await pollCursorService.commitWithExecution({
-				workflowId: workflow.id,
-				nodeId,
-				cursor: { lastItemId: 'b' },
-				payload: buildPayload(),
-				fence: { taskId: unrelatedTask.id, leaseEpoch: unrelatedTask.leaseEpoch },
-			});
-
-			expect(result).not.toBeNull();
-			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
-				lastItemId: 'b',
-			});
-		});
-
-		it('commits exactly as an unfenced call does today', async () => {
-			await seedRunningTask();
-			await pollCursorService.resolveCursor(workflow.id, nodeId, { lastItemId: 'a' });
-
-			const result = await pollCursorService.commitWithExecution({
-				workflowId: workflow.id,
-				nodeId,
-				cursor: { lastItemId: 'b' },
-				payload: buildPayload(),
-			});
-			if (result === null) throw new Error('expected a commit result');
-			const { executionId } = result;
-
-			expect(await pollerStateRepository.findCursor(workflow.id, nodeId)).toEqual({
-				lastItemId: 'b',
-			});
-			expect(await executionRepository.findOneBy({ id: executionId })).toMatchObject({
-				status: 'new',
-				workflowId: workflow.id,
-			});
 		});
 	});
 });
