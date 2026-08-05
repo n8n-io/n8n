@@ -231,9 +231,9 @@ describe('workflow_step_execution table (integration)', () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id: aId } = await createStep(store, { executionId, nodeId: 'a', status: 'running' });
-		// completed with null outputs — indistinguishable from not-completed via
-		// loadStepOutputs, which is why readiness has its own method
-		await store.completeStep(aId, null);
+		// completed without firing its slot — readiness must not depend on what
+		// the outputs contain, which is why it has its own method
+		await store.completeStep(aId, [null]);
 		await createStep(store, { executionId, nodeId: 'b', status: 'queued' });
 		const { id: cId } = await createStep(store, { executionId, nodeId: 'c', status: 'running' });
 		await store.failStep(cId, { name: 'Error', message: 'node blew up' });
