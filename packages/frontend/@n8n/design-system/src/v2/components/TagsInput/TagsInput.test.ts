@@ -74,6 +74,16 @@ describe('v2/components/TagsInput', () => {
 
 			expect(wrapper.getByText('billing')).toBeVisible();
 		});
+
+		it('should name the remove button with the tag label', () => {
+			const wrapper = render(TagsInput, {
+				props: {
+					modelValue: ['Apple'],
+				},
+			});
+
+			expect(wrapper.getByRole('button', { name: 'Remove Apple' })).toBeVisible();
+		});
 	});
 
 	describe('sizes', () => {
@@ -105,7 +115,7 @@ describe('v2/components/TagsInput', () => {
 				},
 			});
 
-			await userEvent.click(wrapper.getByRole('button', { name: 'alpha' }));
+			await userEvent.click(wrapper.getByRole('button', { name: 'Remove alpha' }));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['beta']]);
@@ -123,7 +133,7 @@ describe('v2/components/TagsInput', () => {
 			const input = wrapper.getByRole('textbox');
 			expect(input).not.toHaveFocus();
 
-			await userEvent.click(wrapper.getByRole('button', { name: 'alpha' }));
+			await userEvent.click(wrapper.getByRole('button', { name: 'Remove alpha' }));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['beta']]);

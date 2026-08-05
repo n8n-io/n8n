@@ -369,7 +369,7 @@ export const CustomTags = {
 				:display-value="displayValue"
 				:convert-value="convertValue"
 			>
-				<template #tag="{ value: tag, disabled, ui }">
+				<template #tag="{ value: tag, displayValue, disabled, ui }">
 					<span
 						aria-hidden="true"
 						:style="{
@@ -383,8 +383,17 @@ export const CustomTags = {
 						}"
 					/>
 					<TagsInputItemText :class="ui.text" />
-					<TagsInputItemDelete :class="ui.delete" :disabled="disabled" @mousedown.prevent>
-						<N8nIcon icon="x" size="small" />
+					<TagsInputItemDelete as-child :disabled="disabled" @mousedown.prevent>
+						<button
+							type="button"
+							:class="ui.delete"
+							tabindex="-1"
+							:disabled="disabled"
+							aria-labelledby=""
+							:aria-label="\`Remove \${displayValue}\`"
+						>
+							<N8nIcon icon="x" size="small" />
+						</button>
 					</TagsInputItemDelete>
 				</template>
 			</TagsInput>

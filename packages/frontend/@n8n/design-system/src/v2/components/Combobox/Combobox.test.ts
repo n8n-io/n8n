@@ -7,12 +7,17 @@ import Combobox from './Combobox.vue';
 
 vi.mock('@n8n/design-system/composables/useI18n', () => ({
 	useI18n: () => ({
-		t: (key: string) => {
+		t: (key: string, options?: Record<string, string>) => {
 			const translations: Record<string, string> = {
 				'combobox.clearSelection': 'Clear selection',
 				'combobox.showPopup': 'Show popup',
+				'tagsInput.removeTag': 'Remove {tag}',
 			};
-			return translations[key] ?? key;
+			const template = translations[key] ?? key;
+			if (!options) {
+				return template;
+			}
+			return template.replace(/\{(\w+)\}/g, (_, name: string) => options[name] ?? '');
 		},
 	}),
 }));
@@ -551,7 +556,7 @@ describe('v2/components/Combobox', () => {
 				});
 
 				const tags = wrapper.getAllByTestId('tags-input-tag');
-				const removeButton = within(tags[0]).getByRole('button');
+				const removeButton = within(tags[0]).getByRole('button', { name: 'Remove Option 2' });
 				await userEvent.click(removeButton);
 
 				await waitFor(() => {
@@ -572,7 +577,7 @@ describe('v2/components/Combobox', () => {
 				expect(input).not.toHaveFocus();
 
 				const tags = wrapper.getAllByTestId('tags-input-tag');
-				await userEvent.click(within(tags[0]).getByRole('button'));
+				await userEvent.click(within(tags[0]).getByRole('button', { name: 'Remove Option 2' }));
 
 				await waitFor(() => {
 					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['Option 1']]);

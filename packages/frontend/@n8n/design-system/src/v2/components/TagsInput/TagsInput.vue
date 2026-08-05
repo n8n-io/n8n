@@ -3,6 +3,7 @@ import { reactivePick } from '@vueuse/core';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
 
 import {
 	TagsInputInput,
@@ -24,6 +25,7 @@ import type {
 defineOptions({ inheritAttrs: false });
 
 const $style = useCssModule();
+const { t } = useI18n();
 
 const props = withDefaults(defineProps<TagsInputOwnProps & TagsInputRootProps<TagsInputValue>>(), {
 	placeholder: 'Add a tag...',
@@ -179,12 +181,17 @@ function getInputClass(isEmpty: boolean): string {
 						:ui="{ text: $style.tagText, delete: $style.tagDelete }"
 					>
 						<TagsInputItemText :class="$style.tagText" />
-						<TagsInputItemDelete
-							:class="$style.tagDelete"
-							:disabled="props.disabled"
-							@mousedown.prevent
-						>
-							<Icon icon="x" size="small" />
+						<TagsInputItemDelete as-child :disabled="props.disabled" @mousedown.prevent>
+							<button
+								type="button"
+								:class="$style.tagDelete"
+								tabindex="-1"
+								:disabled="props.disabled"
+								aria-labelledby=""
+								:aria-label="t('tagsInput.removeTag', { tag: getDisplayValue(tag) })"
+							>
+								<Icon icon="x" size="small" />
+							</button>
 						</TagsInputItemDelete>
 					</slot>
 				</TagsInputItem>
