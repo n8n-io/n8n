@@ -507,12 +507,12 @@ describe('ChatView', () => {
 			expect(rendered.getByRole('textbox')).not.toBeDisabled();
 		});
 
-		// The other half of "not available anymore": when the agent row is deleted rather
-		// than merely absent from the model list, the session's `agentId` goes to NULL
-		// (`FK_chat_hub_sessions_agentId`, ON DELETE SET NULL). `unflattenModel` then has
-		// nothing to rebuild a model from, `selectedModel` is null and `messagingState`
-		// becomes 'missingAgent'. This is the path that reaches the `selectModel.existing`
-		// callout — ChatPrompt.test.ts covers the prop, nothing covered the path (N8N-155).
+		// The deleted-agent half of the pair above: the agent row is gone, so the session's
+		// `agentId` goes to NULL (`FK_chat_hub_sessions_agentId`, ON DELETE SET NULL).
+		// `unflattenModel` then has nothing to rebuild a model from, `selectedModel` is null
+		// and `messagingState` becomes 'missingAgent'. This is the path that reaches the
+		// `selectModel.existing` callout — ChatPrompt.test.ts covers the prop, nothing
+		// covered the path (N8N-155).
 		it('asks the user to reselect a model when the agent of the conversation was deleted', async () => {
 			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
 				createMockConversationResponse({
