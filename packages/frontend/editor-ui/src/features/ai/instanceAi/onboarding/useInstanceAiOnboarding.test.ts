@@ -32,7 +32,6 @@ describe('useInstanceAiOnboarding', () => {
 	it('omits env-configured services from the setup sequence', () => {
 		const configuration = createConfiguration();
 		configuration.sandboxEnvConfigured.value = true;
-		configuration.sandboxConfigured.value = true;
 		configuration.searchEnvConfigured.value = true;
 		configuration.searchDecided.value = true;
 		const onboarding = useInstanceAiOnboarding(configuration);

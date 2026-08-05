@@ -325,6 +325,9 @@ async function saveVerifiedModel(): Promise<boolean> {
 		store.setField('modelConnection', modelConnection());
 		store.setField('modelName', modelName.value.trim());
 	}
+	if (sandboxEnvManaged.value && store.settings?.sandboxEnabled !== true) {
+		store.setField('sandboxEnabled', true);
+	}
 	const saved = await store.save(false);
 	if (saved) await store.refreshInstanceModelCredentials();
 	return saved;

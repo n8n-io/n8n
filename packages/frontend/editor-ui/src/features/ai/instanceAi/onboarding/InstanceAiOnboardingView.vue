@@ -26,13 +26,15 @@ const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
 const configuration = useInstanceAiConfiguration();
 
+const sandboxEnvConfigured = computed(() => store.settings?.sandboxEnvConfigured === true);
+const searchEnvConfigured = computed(() => store.settings?.searchEnvConfigured === true);
 const searchDecided = computed(() => configuration.searchState.value !== 'notset');
 const onboarding = useInstanceAiOnboarding({
 	modelConfigured: configuration.modelConfigured,
 	sandboxConfigured: configuration.sandboxConfigured,
 	searchDecided,
-	sandboxEnvConfigured: computed(() => store.settings?.sandboxEnvConfigured === true),
-	searchEnvConfigured: computed(() => store.settings?.searchEnvConfigured === true),
+	sandboxEnvConfigured,
+	searchEnvConfigured,
 });
 
 const notSet = computed(() => i18n.baseText('instanceAi.onboarding.notSet'));
@@ -50,10 +52,10 @@ const modelValue = computed(() => {
 		: (store.settings?.modelName ?? notSet.value);
 });
 const sandboxValue = computed(() => {
-	if (!configuration.sandboxConfigured.value) return notSet.value;
-	if (store.settings?.sandboxEnvConfigured) {
+	if (sandboxEnvConfigured.value) {
 		return i18n.baseText('instanceAi.onboarding.foundOnServer');
 	}
+	if (!configuration.sandboxConfigured.value) return notSet.value;
 	return store.settings?.sandboxProvider === 'daytona' ? 'Daytona' : 'n8n Sandbox';
 });
 const searchValue = computed(() => {
@@ -70,12 +72,10 @@ const searchValue = computed(() => {
 			?.label ?? i18n.baseText('instanceAi.onboarding.search.label')
 	);
 });
-const incomplete = computed(() => configuration.hasSetupProgress.value);
-const composeFastPath = computed(
-	() =>
-		configuration.sandboxConfigured.value &&
-		store.settings?.sandboxEnvConfigured === true &&
-		store.settings?.searchEnvConfigured === true,
+const composeFastPath = computed(() => sandboxEnvConfigured.value && searchEnvConfigured.value);
+const incomplete = computed(() => configuration.hasSetupProgress.value && !composeFastPath.value);
+const sandboxConfigured = computed(
+	() => configuration.sandboxConfigured.value || sandboxEnvConfigured.value,
 );
 
 function startAt(step?: Exclude<InstanceAiOnboardingStep, 'done'>): void {
@@ -137,7 +137,7 @@ onMounted(async () => {
 			:sandbox-value="sandboxValue"
 			:search-value="searchValue"
 			:model-configured="configuration.modelConfigured.value"
-			:sandbox-configured="configuration.sandboxConfigured.value"
+			:sandbox-configured="sandboxConfigured"
 			:search-decided="searchDecided"
 			@setup="startAt()"
 			@open-step="startAt"
