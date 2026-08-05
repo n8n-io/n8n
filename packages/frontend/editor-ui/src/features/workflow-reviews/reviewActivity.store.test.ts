@@ -141,6 +141,72 @@ describe('useReviewActivityStore', () => {
 		expect(store.entries.map((entry) => entry.id)).toEqual(['7']);
 	});
 
+	it('keeps a comment posted while the first page was still in flight', async () => {
+		let resolveFeed!: (response: ListWorkflowReviewActivityResponse) => void;
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockImplementationOnce(
+			async () =>
+				await new Promise<ListWorkflowReviewActivityResponse>((resolve) => {
+					resolveFeed = resolve;
+				}),
+		);
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockResolvedValue(makeEntry('5'));
+		const store = useReviewActivityStore();
+
+		const pendingFeed = store.fetchFeed('req-1');
+		await store.postComment('hi');
+		// The page was snapshotted server-side before the comment was written
+		resolveFeed(makePage(['3', '4']));
+		await pendingFeed;
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['3', '4', '5']);
+	});
+
+	it('does not duplicate a comment the refetched feed already returned', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage([]));
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+
+		let resolvePost!: (entry: WorkflowReviewActivityEntry) => void;
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockImplementationOnce(
+			async () =>
+				await new Promise<WorkflowReviewActivityEntry>((resolve) => {
+					resolvePost = resolve;
+				}),
+		);
+
+		const pendingPost = store.postComment('hi');
+		await store.fetchFeed('req-2');
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['5']));
+		await store.fetchFeed('req-1');
+		resolvePost(makeEntry('5'));
+		await pendingPost;
+
+		expect(store.entries.map((entry) => entry.id)).toEqual(['5']);
+	});
+
+	it('stops paging when an older page comes back empty', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage(['3'], { nextCursor: 'cursor-1', hasMore: true }),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(
+			makePage([], { nextCursor: 'cursor-1', hasMore: true }),
+		);
+
+		await store.loadMore();
+
+		expect(store.hasMore).toBe(false);
+		expect(store.entries.map((entry) => entry.id)).toEqual(['3']);
+	});
+
+	it('rejects a post with no review selected instead of reporting success', async () => {
+		const store = useReviewActivityStore();
+
+		await expect(store.postComment('hi')).rejects.toThrow();
+		expect(workflowReviewsApi.createWorkflowReviewComment).not.toHaveBeenCalled();
+	});
+
 	it('does not load more without a cursor', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
 		const store = useReviewActivityStore();

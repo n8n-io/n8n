@@ -5,11 +5,16 @@ import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { createWorkflowReviewComment, fetchWorkflowReviewActivity } from './workflowReviews.api';
+import { toError } from './workflowReviews.utils';
 
 const DEFAULT_LIMIT = 25;
 
-function toError(error: unknown): Error {
-	return error instanceof Error ? error : new Error(String(error));
+function withoutIdsIn(
+	entries: WorkflowReviewActivityEntry[],
+	others: WorkflowReviewActivityEntry[],
+): WorkflowReviewActivityEntry[] {
+	const ids = new Set(others.map((entry) => entry.id));
+	return entries.filter((entry) => !ids.has(entry.id));
 }
 
 /**
@@ -48,7 +53,9 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			});
 			if (requestSeq !== feedRequestSeq) return;
 
-			entries.value = response.data;
+			// Merged, not assigned: a comment posted while this page was in flight is already
+			// appended, and the server snapshot predates it.
+			entries.value = [...response.data, ...withoutIdsIn(entries.value, response.data)];
 			nextCursor.value = response.nextCursor;
 			hasMore.value = response.hasMore;
 		} catch (e) {
@@ -81,7 +88,9 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			// One splice, so the older page keeps its ascending order.
 			entries.value = [...response.data, ...entries.value];
 			nextCursor.value = response.nextCursor;
-			hasMore.value = response.hasMore;
+			// A page that returns nothing ends the walk: keeping `hasMore` would re-arm the
+			// sentinel on an unchanged list and intersect forever.
+			hasMore.value = response.hasMore && response.data.length > 0;
 		} catch (e) {
 			if (requestSeq !== feedRequestSeq || currentReviewId.value !== reviewId) return;
 			error.value = toError(e);
@@ -94,14 +103,17 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 
 	async function postComment(body: string) {
 		const reviewId = currentReviewId.value;
-		if (!reviewId) return;
+		// Thrown, not swallowed: a silent return reads as success and the composer would
+		// clear the user's draft.
+		if (!reviewId) throw new Error('Cannot post a comment without a selected review');
 
 		posting.value = true;
 		try {
 			const entry = await createWorkflowReviewComment(rootStore.restApiContext, reviewId, { body });
 			if (currentReviewId.value !== reviewId) return;
 
-			entries.value = [...entries.value, entry];
+			// A feed refetch that raced this post may already carry the comment.
+			entries.value = [...withoutIdsIn(entries.value, [entry]), entry];
 		} finally {
 			posting.value = false;
 		}
