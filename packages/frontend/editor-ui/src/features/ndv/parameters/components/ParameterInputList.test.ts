@@ -1,8 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
@@ -38,6 +38,10 @@ vi.mock('@n8n/i18n', () => {
 			optionsOptionName: (parameter: { name: string }) => parameter.name,
 			optionsOptionDescription: (parameter: { description?: string }) => parameter.description,
 			collectionOptionName: (parameter: { displayName: string }) => parameter.displayName,
+			collectionOptionDisplayName: (
+				_parameter: unknown,
+				option: { displayName?: string; name: string },
+			) => option.displayName ?? option.name,
 			credentialsSelectAuthDisplayName: (parameter: { displayName: string }) =>
 				parameter.displayName,
 			credentialsSelectAuthDescription: (parameter: { description?: string }) =>
@@ -134,6 +138,21 @@ const workflowDocumentStoreMock = {
 	allNodes: [],
 };
 
+// The collection components are lazily imported. Stub them so these tests assert the
+// list's own rendering rather than racing dynamic-import resolution; the components
+// themselves are covered by CollectionParameter/FixedCollectionParameter tests.
+const collectionStub = (testId: string) => ({
+	props: ['parameter'],
+	template: `<div data-test-id="${testId}">{{ parameter.displayName }}</div>`,
+});
+
+const DELETABLE_STRING_PARAMETER: INodeProperties = {
+	displayName: 'Deletable Field',
+	name: 'deletableField',
+	type: 'string',
+	default: '',
+};
+
 const renderComponent = createComponentRenderer(ParameterInputList, {
 	props: {
 		hideDelete: true,
@@ -143,7 +162,8 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 	global: {
 		stubs: {
 			ParameterInputFull: { template: '<div data-test-id="parameter-input"></div>' },
-			Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+			LazyCollectionParameter: collectionStub('collection-parameter-stub'),
+			LazyFixedCollectionParameter: collectionStub('fixed-collection-parameter-stub'),
 		},
 	},
 });
@@ -228,41 +248,13 @@ describe('ParameterInputList', () => {
 		});
 		await flushPromises();
 
-		// Should render labels for all parameters
+		// Each fixed collection parameter renders its own component, which owns its label
 		for (const parameter of FIXED_COLLECTION_PARAMETERS) {
 			expect(await findByText(parameter.displayName)).toBeInTheDocument();
 		}
-
-		// Should render input placeholders for all fixed collection parameters
-		expect(getAllByTestId('suspense-stub')).toHaveLength(FIXED_COLLECTION_PARAMETERS.length);
-	});
-
-	it('renders fixed collection inputs correctly with issues', async () => {
-		ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-		const { findByText, getByTestId, container } = renderComponent({
-			props: {
-				parameters: TEST_PARAMETERS,
-				nodeValues: TEST_NODE_VALUES,
-			},
-		});
-		await flushPromises();
-
-		// Should render labels for all parameters
-		for (const parameter of FIXED_COLLECTION_PARAMETERS) {
-			expect(await findByText(parameter.displayName)).toBeInTheDocument();
-		}
-		// Should render error message for fixed collection parameter
-		expect(
-			getByTestId(`${FIXED_COLLECTION_PARAMETERS[0].name}-parameter-input-issues-container`),
-		).toBeInTheDocument();
-
-		// Verify issue icon is present and tooltip shows issue text on hover
-		const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
-		if (!issueIcon) throw new Error('Issue icon not found');
-		expect(issueIcon).toBeInTheDocument();
-
-		await hoverTooltipTrigger(issueIcon);
-		await waitFor(() => expect(getTooltip()).toHaveTextContent('At least 1 field is required.'));
+		expect(getAllByTestId('fixed-collection-parameter-stub')).toHaveLength(
+			FIXED_COLLECTION_PARAMETERS.length,
+		);
 	});
 
 	it('renders notice correctly', async () => {
@@ -424,15 +416,15 @@ describe('ParameterInputList', () => {
 	describe('Props', () => {
 		it('should handle hideDelete prop', async () => {
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { findByTitle } = renderComponent({
+			const { findByTestId } = renderComponent({
 				props: {
-					parameters: TEST_PARAMETERS,
+					parameters: [DELETABLE_STRING_PARAMETER],
 					nodeValues: TEST_NODE_VALUES,
 					hideDelete: false,
 				},
 			});
 
-			expect(await findByTitle('parameterInputList.delete')).toBeInTheDocument();
+			expect(await findByTestId('parameter-input')).toHaveAttribute('show-delete', 'true');
 		});
 
 		it('should apply indent class when indent prop is true', () => {
@@ -448,37 +440,34 @@ describe('ParameterInputList', () => {
 			expect(container.querySelector('.indent')).toBeInTheDocument();
 		});
 
-		it('should pass isReadOnly prop to child components', () => {
+		it('should pass isReadOnly prop to child components', async () => {
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { queryByTitle } = renderComponent({
+			const { findByTestId } = renderComponent({
 				props: {
-					parameters: TEST_PARAMETERS,
+					parameters: [DELETABLE_STRING_PARAMETER],
 					nodeValues: TEST_NODE_VALUES,
 					isReadOnly: true,
 				},
 			});
 
-			// Delete button should not be visible when read-only
-			expect(queryByTitle('parameterInputList.delete')).not.toBeInTheDocument();
+			const input = await findByTestId('parameter-input');
+			expect(input).toHaveAttribute('is-read-only', 'true');
+			// Delete is not offered when read-only
+			expect(input).toHaveAttribute('show-delete', 'false');
 		});
 
 		it('should handle hiddenIssuesInputs prop', async () => {
 			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
 			const { findByTestId } = renderComponent({
 				props: {
-					parameters: TEST_PARAMETERS,
+					parameters: [DELETABLE_STRING_PARAMETER],
 					nodeValues: TEST_NODE_VALUES,
-					hiddenIssuesInputs: [FIXED_COLLECTION_PARAMETERS[0].name],
+					hiddenIssuesInputs: [DELETABLE_STRING_PARAMETER.name],
 				},
 			});
 
-			// Issues container still exists but should be passed to child component
-			// The hiddenIssuesInputs prop is passed down to control display
-			expect(
-				await findByTestId(
-					`${FIXED_COLLECTION_PARAMETERS[0].name}-parameter-input-issues-container`,
-				),
-			).toBeInTheDocument();
+			// The prop is resolved per parameter and passed down to the input
+			expect(await findByTestId('parameter-input')).toHaveAttribute('hide-issues', 'true');
 		});
 
 		it('should handle path prop', () => {
@@ -512,7 +501,8 @@ describe('ParameterInputList', () => {
 			},
 			global: {
 				stubs: {
-					Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+					LazyCollectionParameter: collectionStub('collection-parameter-stub'),
+					LazyFixedCollectionParameter: collectionStub('fixed-collection-parameter-stub'),
 				},
 			},
 		});
@@ -1294,7 +1284,8 @@ describe('ParameterInputList', () => {
 				global: {
 					stubs: {
 						ParameterInputFull: optionsListStub,
-						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+						LazyCollectionParameter: collectionStub('collection-parameter-stub'),
+						LazyFixedCollectionParameter: collectionStub('fixed-collection-parameter-stub'),
 					},
 				},
 			});
@@ -1322,7 +1313,8 @@ describe('ParameterInputList', () => {
 				global: {
 					stubs: {
 						ParameterInputFull: optionsListStub,
-						Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+						LazyCollectionParameter: collectionStub('collection-parameter-stub'),
+						LazyFixedCollectionParameter: collectionStub('fixed-collection-parameter-stub'),
 					},
 				},
 			});
@@ -1353,7 +1345,8 @@ describe('ParameterInputList', () => {
 					global: {
 						stubs: {
 							ParameterInputFull: optionsListStub,
-							Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
+							LazyCollectionParameter: collectionStub('collection-parameter-stub'),
+							LazyFixedCollectionParameter: collectionStub('fixed-collection-parameter-stub'),
 						},
 					},
 				});
@@ -1388,62 +1381,6 @@ describe('ParameterInputList', () => {
 	 * Validates error/warning display for parameters with issues.
 	 * Tests issue icons, tooltips, and hiddenIssuesInputs functionality.
 	 */
-	describe('Issues Display', () => {
-		it('should display issues for fixedCollection parameters', async () => {
-			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { container } = renderComponent({
-				props: {
-					parameters: TEST_PARAMETERS,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			// Verify issue icon is present and tooltip shows issue text on hover
-			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
-			if (!issueIcon) throw new Error('Issue icon not found');
-			expect(issueIcon).toBeInTheDocument();
-
-			await hoverTooltipTrigger(issueIcon);
-			await waitFor(() => expect(getTooltip()).toHaveTextContent('At least 1 field is required.'));
-		});
-
-		it('should display issue icon in label for supported parameter types', async () => {
-			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { container } = renderComponent({
-				props: {
-					parameters: TEST_PARAMETERS,
-					nodeValues: TEST_NODE_VALUES,
-				},
-			});
-			await flushPromises();
-
-			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
-			expect(issueIcon).toBeInTheDocument();
-		});
-
-		it('should not display issues when parameter is in hiddenIssuesInputs', async () => {
-			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { container } = renderComponent({
-				props: {
-					parameters: TEST_PARAMETERS,
-					nodeValues: TEST_NODE_VALUES,
-					hiddenIssuesInputs: [FIXED_COLLECTION_PARAMETERS[0].name],
-				},
-			});
-			await flushPromises();
-
-			// Issue text still appears because hiddenIssuesInputs is passed to child component
-			// The actual hiding logic is in the child component (ParameterInputFull)
-			// Verify issue icon is present and tooltip shows issue text on hover
-			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
-			if (!issueIcon) throw new Error('Issue icon not found');
-			expect(issueIcon).toBeInTheDocument();
-
-			await hoverTooltipTrigger(issueIcon);
-			await waitFor(() => expect(getTooltip()).toHaveTextContent('At least 1 field is required.'));
-		});
-	});
 
 	/**
 	 * Tests dynamic slot positioning based on parameter types.
@@ -1695,7 +1632,7 @@ describe('ParameterInputList', () => {
 	describe('Async Loading Errors', () => {
 		it('should handle async loading errors gracefully', async () => {
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { container, findByText, findByTestId } = renderComponent({
+			const { container, findByText } = renderComponent({
 				props: {
 					parameters: TEST_PARAMETERS,
 					nodeValues: TEST_NODE_VALUES,
@@ -1705,8 +1642,6 @@ describe('ParameterInputList', () => {
 
 			// Component should render even if async components fail
 			expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
-			// Suspense stub should wrap async components
-			expect(await findByTestId('suspense-stub')).toBeInTheDocument();
 			// Parameter labels should still be visible
 			expect(await findByText('Test Fixed Collection')).toBeInTheDocument();
 		});
@@ -1723,15 +1658,15 @@ describe('ParameterInputList', () => {
 			];
 
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { findByTestId } = renderComponent({
+			const { findByText } = renderComponent({
 				props: {
 					parameters: collectionParameters,
 					nodeValues: { testCollection: {} },
 				},
 			});
+			await flushPromises();
 
-			// Suspense stub should be present
-			expect(await findByTestId('suspense-stub')).toBeInTheDocument();
+			expect(await findByText('Test Collection')).toBeInTheDocument();
 		});
 	});
 
@@ -1741,29 +1676,20 @@ describe('ParameterInputList', () => {
 	 */
 	describe('Delete Functionality', () => {
 		it('should show delete button when hideDelete is false and not read-only', async () => {
-			const deletableParameters: INodeProperties[] = [
-				{
-					displayName: 'Deletable Field',
-					name: 'deletableField',
-					type: 'string',
-					default: '',
-				},
-			];
-
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { findByTitle } = renderComponent({
+			const { findByTestId } = renderComponent({
 				props: {
-					parameters: deletableParameters,
+					parameters: [DELETABLE_STRING_PARAMETER],
 					nodeValues: { deletableField: 'test' },
 					hideDelete: false,
 					isReadOnly: false,
 				},
 			});
 
-			expect(await findByTitle('parameterInputList.delete')).toBeInTheDocument();
+			expect(await findByTestId('parameter-input')).toHaveAttribute('show-delete', 'true');
 		});
 
-		it('should not show delete button for node settings parameters', () => {
+		it('should not show delete button for node settings parameters', async () => {
 			const nodeSettingsParameters: INodeProperties[] = [
 				{
 					displayName: 'Node Setting',
@@ -1775,7 +1701,7 @@ describe('ParameterInputList', () => {
 			];
 
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { queryByTitle } = renderComponent({
+			const { findByTestId } = renderComponent({
 				props: {
 					parameters: nodeSettingsParameters,
 					nodeValues: { nodeSetting: 'test' },
@@ -1784,7 +1710,7 @@ describe('ParameterInputList', () => {
 				},
 			});
 
-			expect(queryByTitle('parameterInputList.delete')).not.toBeInTheDocument();
+			expect(await findByTestId('parameter-input')).toHaveAttribute('show-delete', 'false');
 		});
 
 		it('should not show delete button for collection parameters in read-only mode', () => {

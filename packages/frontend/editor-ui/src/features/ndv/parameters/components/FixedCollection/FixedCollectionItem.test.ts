@@ -12,18 +12,7 @@ import type { INodePropertyCollection } from 'n8n-workflow';
 const { mockState } = vi.hoisted(() => ({
 	mockState: {
 		resolvedExpression: '',
-		isCollectionOverhaulEnabled: false,
 	},
-}));
-
-vi.mock('@/app/composables/useCollectionOverhaul', () => ({
-	useCollectionOverhaul: () => ({
-		isEnabled: {
-			get value() {
-				return mockState.isCollectionOverhaulEnabled;
-			},
-		},
-	}),
 }));
 
 vi.mock('@/app/composables/useResolvedExpression', () => ({
@@ -95,7 +84,6 @@ describe('FixedCollectionItem.vue', () => {
 
 	beforeEach(() => {
 		mockState.resolvedExpression = '';
-		mockState.isCollectionOverhaulEnabled = false;
 
 		pinia = createTestingPinia({
 			initialState: {
@@ -292,26 +280,6 @@ describe('FixedCollectionItem.vue', () => {
 
 			expect(panel1).toBeInTheDocument();
 			expect(panel2).toBeInTheDocument();
-		});
-	});
-
-	describe('collection overhaul feature flag', () => {
-		it('respects collection overhaul feature flag', () => {
-			mockState.isCollectionOverhaulEnabled = true;
-
-			const { getByTestId } = renderComponent();
-
-			// When feature flag is enabled, the component renders correctly
-			expect(getByTestId('parameter-input-list')).toBeInTheDocument();
-		});
-
-		it('works without collection overhaul feature flag', () => {
-			mockState.isCollectionOverhaulEnabled = false;
-
-			const { getByTestId } = renderComponent();
-
-			// When feature flag is disabled, the component still renders correctly
-			expect(getByTestId('parameter-input-list')).toBeInTheDocument();
 		});
 	});
 

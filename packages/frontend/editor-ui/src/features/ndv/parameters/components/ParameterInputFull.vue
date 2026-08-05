@@ -37,7 +37,6 @@ import { inject } from 'vue';
 import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
 import { N8nInputLabel } from '@n8n/design-system';
-import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -90,7 +89,6 @@ const wrapperHovered = ref(false);
 const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const telemetry = useTelemetry();
-const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const isChatHubToolContext = inject(ChatHubToolContextKey, false);
@@ -136,8 +134,7 @@ const isDropDisabled = computed(
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 
 const useInlineSwitchLayout = computed(
-	() =>
-		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,
+	() => props.parameter.type === 'boolean' && !isExpression.value,
 );
 
 const parameterTooltipText = computed(() =>

@@ -13,11 +13,9 @@ import {
 	N8nIconButton,
 } from '@n8n/design-system';
 import ParameterInputList from '../ParameterInputList.vue';
-import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
 
 const locale = useI18n();
-const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 export type Props = {
 	itemId: string;
@@ -151,8 +149,8 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 			:node-values="nodeValues"
 			:path="propertyPath"
 			:is-read-only="isReadOnly"
-			:remove-first-parameter-margin="isCollectionOverhaulEnabled"
-			:remove-last-parameter-margin="isCollectionOverhaulEnabled"
+			remove-first-parameter-margin
+			remove-last-parameter-margin
 			@value-changed="handleValueChanged"
 		/>
 		<div

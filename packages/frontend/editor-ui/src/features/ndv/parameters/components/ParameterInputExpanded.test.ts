@@ -36,12 +36,6 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useCollectionOverhaul', () => ({
-	useCollectionOverhaul: () => ({
-		isEnabled: { value: true },
-	}),
-}));
-
 vi.mock('@n8n/i18n', () => {
 	const mockNodeText = {
 		inputLabelDisplayName: () => 'Test label',
