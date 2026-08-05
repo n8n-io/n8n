@@ -46,4 +46,13 @@ export class TokenExchangeConfig {
 	/** Maximum number of token exchanges per ip per minute. */
 	@Env('N8N_TOKEN_EXCHANGE_TOKEN_EXCHANGE_PER_MINUTE')
 	rateLimitTokenExchange: number = 20;
+
+	/**
+	 * Audience external tokens must target to be accepted at context
+	 * establishment (see `InboundAudienceService`). Defaults to the instance
+	 * base URL when unset. Instance-wide, not per-surface - see IAM-1175 for
+	 * per-surface `acceptedSources`.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE')
+	inboundAudience: string = '';
 }
