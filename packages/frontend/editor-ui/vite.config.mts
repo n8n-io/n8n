@@ -14,6 +14,7 @@ import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
+import { editorUiAliases } from './vite/aliases.mjs';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -23,84 +24,7 @@ const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
 
-const alias = [
-	{ find: '@', replacement: resolve(__dirname, 'src') },
-	{ find: 'stream', replacement: 'stream-browserify' },
-	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
-	{
-		find: '@n8n/expression-runtime',
-		replacement: resolve(__dirname, 'vite/expression-runtime-stub.ts'),
-	},
-	// Ensure bare imports resolve to sources (not dist)
-	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
-	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
-	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
-	{
-		find: /^@n8n\/chat(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
-	},
-	{
-		find: /^@n8n\/chat-hub(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src$1'),
-	},
-	{
-		find: /^@n8n\/api-requests(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'api-requests', 'src$1'),
-	},
-	{
-		find: /^@n8n\/composables(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
-	},
-	{
-		find: /^@n8n\/frontend-module-sdk$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'frontend-module-sdk', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/constants(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
-	},
-	{
-		find: /^@n8n\/design-system$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/design-system(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
-	},
-	{
-		find: /^@n8n\/i18n(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src$1'),
-	},
-	{
-		find: /^@n8n\/stores(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
-	},
-	{
-		find: /^@n8n\/telemetry$/,
-		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/telemetry(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src$1'),
-	},
-	{
-		find: /^@n8n\/utils(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
-	},
-	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
-		find: new RegExp(`^lodash.${name}$`, 'i'),
-		replacement: `lodash/${name}`,
-	})),
-	{
-		find: /^lodash\.(.+)$/,
-		replacement: 'lodash/$1',
-	},
-	{
-		// For sanitize-html
-		find: 'source-map-js',
-		replacement: resolve(__dirname, 'vite/source-map-js-shim'),
-	},
-];
+const alias = editorUiAliases(__dirname, packagesDir);
 
 const { RELEASE: release } = process.env;
 
