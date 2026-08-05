@@ -89,10 +89,21 @@ those two use — not by adapting either one.
 alongside `resolveRedactionPolicyOnCreate()` — the exact precedent for reading an
 instance-level policy and seeding it into `settings`.
 
-It is chosen because it is the single funnel for all five creation paths: UI,
+It is chosen because it is the single funnel for every creation path: UI,
 public API, import, duplicate, and MCP's own `create_workflow_from_code`.
-Seeding in the controller — or in the frontend store — leaves the other paths on
+Seeding in the controller — or in the frontend store — leaves the non-UI paths on
 the old default.
+
+Note that the frontend store is *not* a narrower funnel for UI-side creation:
+duplicate, extract-to-subworkflow, share-as-new, templates, and several
+experiment stores all reach `createNewWorkflow()` too
+([DuplicateWorkflowDialog.vue:118](../../../packages/frontend/editor-ui/src/app/components/DuplicateWorkflowDialog.vue)
+→ `saveAsNewWorkflow()` →
+[useWorkflowSaving.ts:472](../../../packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts)).
+So the store's hardcoded `false` currently suppresses exposure on *all* of those,
+not just blank-canvas creates — which is why deleting it matters more than the
+single call site suggests, and why the backend remains the only correct seeding
+point regardless.
 
 **Precedence: default-only.** Seed only when the caller did not specify
 `availableInMCP`:
@@ -181,6 +192,21 @@ success while nothing changed.
 
 Mock external dependencies; reuse hoisted `mock<T>()` fixtures. `packages/cli`
 tests use `createVitestConfigWithDecorators`.
+
+### E2E
+
+Existing MCP e2e coverage (`tests/e2e/mcp/mcp-service.spec.ts`, `mcp-oauth.spec.ts`)
+is API-level: auth, `tools/list`, and per-tool behaviour including
+"workflow not available in MCP" rejections. It asserts the *effect* of the
+per-workflow flag, but there is **no UI coverage of the MCP settings page** — no
+spec drives `mcp-access-toggle` or the workflows table.
+
+So no existing e2e test breaks when the store's hardcoded `false` is deleted, and
+none would catch a regression where a UI-created workflow stops being seeded.
+Unit coverage above is the real guard. One optional e2e is worth considering:
+toggle on → create a workflow → assert it appears in `search_workflows` with
+`availableInMCP: true`, which is the only test that exercises the full path the
+feature actually claims.
 
 ## Out of scope
 
