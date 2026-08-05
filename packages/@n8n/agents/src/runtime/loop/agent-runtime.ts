@@ -153,6 +153,30 @@ interface LoopContext {
 	pendingResume?: PendingResume;
 }
 
+/** Envelope-level fields an approval confirmation may attach to a resume
+ *  payload alongside the tool's own resume fields. */
+const APPROVAL_ENVELOPE_FIELDS = ['userInput', 'scope'] as const;
+
+/**
+ * A copy of the resume payload without the approval-envelope fields, or
+ * undefined when there is nothing to strip (not an object, or none present).
+ * Used as a fallback when a resume payload fails schema validation: tool
+ * resume schemas declare only their own fields, so envelope fields must not
+ * make an otherwise-valid approval unresumable.
+ */
+export function withoutApprovalEnvelopeFields(data: unknown): Record<string, unknown> | undefined {
+	if (typeof data !== 'object' || data === null || Array.isArray(data)) return undefined;
+	const stripped: Record<string, unknown> = { ...data };
+	let removed = false;
+	for (const field of APPROVAL_ENVELOPE_FIELDS) {
+		if (field in stripped) {
+			delete stripped[field];
+			removed = true;
+		}
+	}
+	return removed ? stripped : undefined;
+}
+
 /**
  * Core agent execution engine using the Vercel AI SDK directly.
  *
@@ -372,7 +396,18 @@ export class AgentRuntime {
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
 		if (!isCancellation(resumeData) && resumeSchema) {
-			const parseResult = await parseWithSchema(resumeSchema, data);
+			let parseResult = await parseWithSchema(resumeSchema, data);
+			if (!parseResult.success) {
+				// Approval confirmations carry envelope-level fields (`userInput`
+				// free-text commentary, `scope`) that tool resume schemas do not
+				// declare. A live resume validates against the zod schema, which
+				// strips unknown keys; a suspended resume validates against the
+				// serialized JSON schema (additionalProperties: false), which rejects
+				// them — leaving the run suspended forever. Retry without the
+				// envelope fields to restore parity.
+				const stripped = withoutApprovalEnvelopeFields(data);
+				if (stripped) parseResult = await parseWithSchema(resumeSchema, stripped);
+			}
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
