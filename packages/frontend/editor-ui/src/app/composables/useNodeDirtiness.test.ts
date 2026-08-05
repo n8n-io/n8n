@@ -460,6 +460,24 @@ describe(useNodeDirtiness, () => {
 				b: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
 			});
 		});
+
+		it('should preserve the dirtiness caused by disabling a node that is renamed afterwards', async () => {
+			setupTestWorkflow('a🚨✅ -> b✅ -> c✅ -> d✅');
+
+			canvasOperations.toggleNodesDisabled([workflowDocumentStore.nodesByName.b.id], {
+				trackHistory: true,
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+
+			await canvasOperations.renameNode('b', 'z', { trackHistory: true });
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
+			});
+		});
 	});
 
 	/**
