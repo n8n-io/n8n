@@ -35,7 +35,7 @@ const lastPointerEvent = ref<MouseEvent>();
  * (modals, keybinding wrappers). RovingFocus still moves focus; we click the
  * focused radio after nextTick to complete selection.
  */
-const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+const ARROW_KEYS = ['ArrowLeft', 'ArrowRight'];
 
 function optionKey(value: Value): string {
 	return `${typeof value}:${String(value)}`;
