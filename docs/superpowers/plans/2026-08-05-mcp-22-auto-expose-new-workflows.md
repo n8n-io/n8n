@@ -514,7 +514,15 @@ This is the whole feature. `createWorkflow()` is the single funnel for UI, publi
 
 **Precedence is default-only.** `undefined` → seed. Explicit `true` or `false` → untouched.
 
-`McpSettingsService` lives in a module, so import it lazily at point of use (matching the codebase's lazy-load guidance) rather than injecting it into this core service's constructor.
+`McpSettingsService` lives in a backend module, but inject it via the constructor
+with a normal top-level import — **not** a lazy `await import()` plus
+`Container.get`. This same file already depends on a module service exactly that
+way (`InstanceRedactionEnforcementService` from `@/modules/redaction/`, imported at
+the top and injected in the constructor), and `resolveMcpExposureOnCreate` sits
+directly beside the method that uses it. A dynamic import here would be
+inconsistent with its own neighbour and forces a token-blind
+`vi.spyOn(Container, 'get')` stub in the tests. There is no circular-import
+problem: `mcp.settings.service.ts` does not depend on `WorkflowCreationService`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -592,15 +600,17 @@ Add the private method to `WorkflowCreationService`, directly after `resolveReda
 	private async resolveMcpExposureOnCreate(newWorkflow: WorkflowEntity): Promise<void> {
 		if (newWorkflow.settings?.availableInMCP !== undefined) return;
 
-		const { McpSettingsService } = await import('@/modules/mcp/mcp.settings.service');
-
-		if (!(await Container.get(McpSettingsService).getAutoExposeNewWorkflows())) return;
+		if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows())) return;
 
 		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), availableInMCP: true };
 	}
 ```
 
-Add `import { Container } from '@n8n/di';` if the file does not already import it (it imports `Service` from `@n8n/di`, so extend that import).
+Add the top-level import `import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';`
+(extensionless, like the existing `@/modules/redaction/...` import) and
+`private readonly mcpSettingsService: McpSettingsService,` to the constructor.
+The test supplies a `mock<McpSettingsService>()` as that constructor argument —
+no `Container.get` stubbing.
 
 Call it inside the create transaction, immediately after the existing `resolveRedactionPolicyOnCreate(...)` call:
 
