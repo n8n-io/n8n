@@ -277,13 +277,20 @@ describe('agentBuilderTargetMetadata', () => {
 });
 
 describe('seedAgentBuilderTargetMetadata', () => {
-	/** One resolved `build-agent` call in a seeded assistant turn. */
+	/** One resolved `build-agent` call in a seeded assistant turn.
+	 *
+	 *  Each call stamps a LATER `createdAt` than the last, because real seeded
+	 *  messages carry distinct ascending stamps and the scan orders by them. A
+	 *  fixture that stamped them all identically would only ever be exercising the
+	 *  id tiebreak. */
+	let turnSeq = 0;
 	function buildAgentTurn(agentId: string, agentRef: string) {
+		turnSeq += 1;
 		return {
-			id: `msg-${agentId}`,
+			id: `msg-${String(turnSeq).padStart(3, '0')}-${agentId}`,
 			type: 'llm',
 			role: 'assistant',
-			createdAt: '2026-01-01T00:00:00.000Z',
+			createdAt: `2026-01-01T00:00:${String(turnSeq).padStart(2, '0')}.000Z`,
 			content: [
 				{
 					type: 'tool-call',
@@ -362,15 +369,20 @@ describe('seedAgentBuilderTargetMetadata', () => {
 		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
 	});
 
-	it('keeps array order when timestamps are missing or unparseable', () => {
-		const first = buildAgentTurn('agent-1', 'triage');
-		const second = buildAgentTurn('agent-2', 'billing');
-		second.createdAt = 'yesterday';
-		first.createdAt = 'yesterday';
+	it('tiebreaks a shared timestamp by id, like the store does', () => {
+		// `listMessages` orders by (createdAt, id), so stopping at createdAt would
+		// leave the active target undefined exactly when two turns share a stamp.
+		const a = buildAgentTurn('agent-1', 'triage');
+		const b = buildAgentTurn('agent-2', 'billing');
+		a.id = 'msg-b';
+		b.id = 'msg-a';
+		a.createdAt = '2026-01-01T00:00:00.000Z';
+		b.createdAt = '2026-01-01T00:00:00.000Z';
 
-		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [first, second]);
+		// Authored a-then-b, but by id b sorts first, so agent-1 is the last target.
+		const metadata = seedAgentBuilderTargetMetadata(AGENTS, [a, b]);
 
-		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-2' });
+		expect(metadata.instanceAiAgentBuilderTarget).toMatchObject({ agentId: 'agent-1' });
 	});
 
 	it('ignores a build-agent call whose output carries no agent id', () => {

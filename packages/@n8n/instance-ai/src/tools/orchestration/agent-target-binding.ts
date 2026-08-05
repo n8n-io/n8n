@@ -167,6 +167,11 @@ function stampOf(message: Record<string, unknown>): number {
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+/** A seed message's `id`, or '' when absent — the store's tiebreak column. */
+function idOf(message: Record<string, unknown>): string {
+	return typeof message.id === 'string' ? message.id : '';
+}
+
 export function seedAgentBuilderTargetMetadata(
 	agents: AgentBuilderTarget[],
 	seededMessages: Array<Record<string, unknown>>,
@@ -174,11 +179,14 @@ export function seedAgentBuilderTargetMetadata(
 	const refById = new Map<string, string>();
 	const lastCallIndex = new Map<string, number>();
 	let callIndex = 0;
-	// By `createdAt`, not array order: the restore sorts messages that way and so
-	// does every read of the thread, so scanning the array as authored can make
-	// "most recently targeted" disagree with the history the agent actually sees.
-	// Ties and unparseable stamps keep their relative array order (sort is stable).
-	const chronological = [...seededMessages].sort((a, b) => stampOf(a) - stampOf(b));
+	// `(createdAt, id)` — the exact ordering the store reads messages back in
+	// (`typeorm-agent-memory.listMessages`, DESC on both). Scanning the authored
+	// array instead can make "most recently targeted" disagree with the history the
+	// agent actually sees, and stopping at `createdAt` leaves the same disagreement
+	// whenever two seeded turns share a timestamp.
+	const chronological = [...seededMessages].sort(
+		(a, b) => stampOf(a) - stampOf(b) || idOf(a).localeCompare(idOf(b)),
+	);
 	for (const message of chronological) {
 		if (!Array.isArray(message.content)) continue;
 		for (const block of message.content) {
