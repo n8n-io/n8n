@@ -2236,7 +2236,6 @@
 	"aiGateway.toggle.description": "n8n credits is the easy way to manage AI model usage",
 	"aiGateway.toggle.topUp": "Top up",
 	"aiGateway.wallet.balanceRemaining": "{balance} remaining",
-	"aiGateway.wallet.balanceFree": "{balance} free",
 	"aiGateway.wallet.noCredits": "No credits",
 	"aiGateway.picker.useN8nCredits": "Use n8n credits",
 	"aiGateway.picker.readyToRun": "Ready to run",

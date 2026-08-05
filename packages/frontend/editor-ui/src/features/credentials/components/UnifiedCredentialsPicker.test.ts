@@ -225,10 +225,12 @@ describe('UnifiedCredentialsPicker', () => {
 			expect(screen.getByTestId('ucp-row-icon-key')).toBeInTheDocument();
 		});
 
-		it('shows the green "{balance} free" badge on the entry n8n credits row', () => {
+		it('shows the "{balance} remaining" pill on the entry n8n credits row', () => {
 			renderComponent({ props: { ...baseProps, balance: 5 } });
 
-			expect(screen.getByTestId(`menu-item-${N8N_CREDITS_ID}`)).toHaveTextContent('$5.00 free');
+			expect(screen.getByTestId(`menu-item-${N8N_CREDITS_ID}`)).toHaveTextContent(
+				'$5.00 remaining',
+			);
 		});
 
 		it('emits "selectN8nCredits" from the entry n8n credits row', async () => {
