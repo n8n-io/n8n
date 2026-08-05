@@ -11,9 +11,13 @@ import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exch
 import type {
 	ExternalTokenClaims,
 	ResolvedTrustedKey,
+	ResourceServerTokenClaims,
 	TokenExchangeRequest,
 } from '../token-exchange.schemas';
-import { ExternalTokenClaimsSchema } from '../token-exchange.schemas';
+import {
+	ExternalTokenClaimsSchema,
+	ResourceServerTokenClaimsSchema,
+} from '../token-exchange.schemas';
 import {
 	TOKEN_EXCHANGE_ISSUER,
 	TokenExchangeFailureReason,
@@ -48,15 +52,64 @@ export class TokenExchangeService {
 	 * Performs the full verification pipeline:
 	 * 1. Decode and extract the `kid` from the JWT header
 	 * 2. Look up the trusted key source by `kid`
-	 * 3. Cryptographically verify the signature
+	 * 3. Cryptographically verify the signature (audience: `expectedAudience`,
+	 *    falling back to the trust source's configured audience)
 	 * 4. Parse and validate the claims against the expected schema
 	 * 5. Optionally enforce maximum token lifetime (for login tokens)
-	 * 6. Consume the JTI to prevent replay attacks
+	 * 6. Consume the JTI to prevent replay attacks, unless `consumeJti` is `false`
+	 *
+	 * `consumeJti: false` is for callers that present the same token on every
+	 * request (e.g. a resource server validating a bearer token) rather than a
+	 * one-shot exchange — such callers can't use JTI-based replay protection, so
+	 * `expectedAudience` becomes mandatory instead: `jsonwebtoken` silently skips
+	 * audience validation when `audience` is `undefined`, and a caller that can't
+	 * rely on replay protection must not also silently skip audience checks.
 	 */
 	async verifyToken(
 		subjectToken: string,
-		{ maxLifetimeSeconds }: { maxLifetimeSeconds?: number } = {},
-	): Promise<{ claims: ExternalTokenClaims; resolvedKey: ResolvedTrustedKey }> {
+		options?: {
+			expectedAudience?: string;
+			consumeJti?: true;
+			requireJti?: true;
+			maxLifetimeSeconds?: number;
+		},
+	): Promise<{ claims: ExternalTokenClaims; resolvedKey: ResolvedTrustedKey }>;
+	async verifyToken(
+		subjectToken: string,
+		options: {
+			expectedAudience: string;
+			consumeJti: false;
+			requireJti?: boolean;
+			maxLifetimeSeconds?: number;
+		},
+	): Promise<{
+		claims: ExternalTokenClaims | ResourceServerTokenClaims;
+		resolvedKey: ResolvedTrustedKey;
+	}>;
+	async verifyToken(
+		subjectToken: string,
+		{
+			expectedAudience,
+			consumeJti = true,
+			requireJti = true,
+			maxLifetimeSeconds,
+		}: {
+			expectedAudience?: string;
+			consumeJti?: boolean;
+			requireJti?: boolean;
+			maxLifetimeSeconds?: number;
+		} = {},
+	): Promise<{
+		claims: ExternalTokenClaims | ResourceServerTokenClaims;
+		resolvedKey: ResolvedTrustedKey;
+	}> {
+		if (!consumeJti && !expectedAudience) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.AudienceRequired,
+				'expectedAudience is required when JTI consumption is disabled',
+			);
+		}
+
 		const decoded = jwt.decode(subjectToken, { complete: true });
 		if (!decoded || typeof decoded === 'string') {
 			throw new TokenExchangeRequestError(
@@ -96,7 +149,7 @@ export class TokenExchangeService {
 				// EdDSA is valid at runtime but missing from @types/jsonwebtoken
 				algorithms: resolvedKey.algorithms as jwt.Algorithm[],
 				issuer: resolvedKey.issuer,
-				audience: resolvedKey.expectedAudience,
+				audience: expectedAudience ?? resolvedKey.expectedAudience,
 				ignoreExpiration: false,
 				ignoreNotBefore: false,
 			});
@@ -117,7 +170,9 @@ export class TokenExchangeService {
 			);
 		}
 
-		const claims = ExternalTokenClaimsSchema.parse(payload);
+		const claims = requireJti
+			? ExternalTokenClaimsSchema.parse(payload)
+			: ResourceServerTokenClaimsSchema.parse(payload);
 
 		if (maxLifetimeSeconds !== undefined) {
 			const tokenLifetime = claims.exp - claims.iat;
@@ -129,12 +184,20 @@ export class TokenExchangeService {
 			}
 		}
 
-		const consumed = await this.jtiStore.consume(claims.jti, new Date(claims.exp * 1000));
-		if (!consumed) {
-			throw new TokenExchangeAuthError(
-				TokenExchangeFailureReason.TokenReplay,
-				'Token has already been used',
-			);
+		if (consumeJti) {
+			if (!claims.jti) {
+				throw new TokenExchangeAuthError(
+					TokenExchangeFailureReason.InvalidClaims,
+					'Token missing jti required for replay protection',
+				);
+			}
+			const consumed = await this.jtiStore.consume(claims.jti, new Date(claims.exp * 1000));
+			if (!consumed) {
+				throw new TokenExchangeAuthError(
+					TokenExchangeFailureReason.TokenReplay,
+					'Token has already been used',
+				);
+			}
 		}
 
 		return { claims, resolvedKey };

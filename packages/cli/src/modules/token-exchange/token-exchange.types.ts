@@ -9,6 +9,7 @@ export const TokenExchangeFailureReason = {
 	InvalidFormat: 'invalid_format',
 	MissingKid: 'missing_kid',
 	MissingIss: 'missing_iss',
+	AudienceRequired: 'audience_required',
 	InvalidClaims: 'invalid_claims',
 	InternalError: 'internal_error',
 	RoleNotAllowed: 'role_not_allowed',

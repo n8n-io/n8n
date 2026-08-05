@@ -47,6 +47,17 @@ export const ExternalTokenClaimsSchema = z.object({
 export type ExternalTokenClaims = z.infer<typeof ExternalTokenClaimsSchema>;
 
 /**
+ * Same claims as `ExternalTokenClaimsSchema`, but `jti` is optional.
+ * Some providers (e.g. Entra ID) don't emit `jti` on access tokens; used by
+ * callers that don't rely on JTI-based replay protection.
+ */
+export const ResourceServerTokenClaimsSchema = ExternalTokenClaimsSchema.extend({
+	jti: z.string().min(1).optional(),
+});
+
+export type ResourceServerTokenClaims = z.infer<typeof ResourceServerTokenClaimsSchema>;
+
+/**
  * Validates a trusted key source configuration.
  * Discriminated union on 'type':
  *   - 'static': inline public key with kid, algorithms, key, issuer
