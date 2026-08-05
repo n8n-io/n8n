@@ -270,7 +270,6 @@ watch(
 
 <style module lang="scss">
 .table {
-	background-color: var(--background--surface);
 	padding: var(--spacing--4xs);
 	height: 100%;
 }

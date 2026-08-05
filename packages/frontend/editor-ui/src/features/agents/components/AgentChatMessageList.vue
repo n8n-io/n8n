@@ -652,7 +652,7 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
 
-	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 
 	&::-webkit-scrollbar {
 		display: none;

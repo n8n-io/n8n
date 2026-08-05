@@ -6,7 +6,7 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) =>
 			({
-				'agentSessions.detail.backToSessions': 'Back to sessions',
+				'generic.back': 'Back',
 				'agents.builder.memory.episodicMemory.label': 'Episodic Memory',
 				'agents.builder.memory.episodicMemory.changeCredential': 'Change credential',
 				'agents.builder.editorColumn.ariaLabel': 'Agent editor',
@@ -26,7 +26,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nButton: {
 		name: 'N8nButton',
 		template: '<button v-bind="$attrs">{{ label }}<slot /><slot name="icon" /></button>',
-		props: ['label', 'icon', 'variant'],
+		props: ['label', 'icon', 'variant', 'size'],
 	},
 	N8nCard: {
 		name: 'N8nCard',
@@ -122,7 +122,7 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
 	default: {
 		name: 'AgentSessionTimelinePanel',
-		template: '<div data-testid="agent-session-timeline-panel" />',
+		template: '<div data-testid="agent-session-timeline-panel"><slot name="toolbar-start" /></div>',
 		props: ['projectId', 'agentId', 'threadId'],
 	},
 }));
@@ -324,16 +324,14 @@ describe('AgentBuilderEditorColumn', () => {
 			threadId: 'thread-1',
 		});
 
-		const back = wrapper.getComponent({ name: 'N8nButton' });
+		const back = timeline.getComponent({ name: 'N8nButton' });
 		expect(back.props()).toMatchObject({
 			icon: 'arrow-left',
-			label: 'Back to sessions',
+			label: 'Back',
 			variant: 'ghost',
+			size: 'small',
 		});
 		expect(back.attributes('data-test-id')).toBe('agent-session-detail-back');
-		expect(
-			back.element.compareDocumentPosition(timeline.element) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
 
 		await back.trigger('click');
 

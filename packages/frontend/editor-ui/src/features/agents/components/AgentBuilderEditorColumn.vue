@@ -205,18 +205,22 @@ const i18n = useI18n();
 					data-testid="agent-sessions-tab-content"
 				>
 					<template v-if="sessionDetailId">
-						<N8nButton
-							icon="arrow-left"
-							variant="ghost"
-							:label="i18n.baseText('agentSessions.detail.backToSessions')"
-							data-test-id="agent-session-detail-back"
-							@click="emit('close-session-trace')"
-						/>
 						<AgentSessionTimelinePanel
 							:project-id="projectId"
 							:agent-id="agentId"
 							:thread-id="sessionDetailId"
-						/>
+						>
+							<template #toolbar-start>
+								<N8nButton
+									icon="arrow-left"
+									:label="i18n.baseText('generic.back')"
+									variant="ghost"
+									size="small"
+									data-test-id="agent-session-detail-back"
+									@click="emit('close-session-trace')"
+								/>
+							</template>
+						</AgentSessionTimelinePanel>
 					</template>
 					<AgentSessionsListView
 						v-else

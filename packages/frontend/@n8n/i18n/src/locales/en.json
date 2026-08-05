@@ -1448,7 +1448,6 @@
 	"agentSessions.sessionId": "Session ID",
 	"agentSessions.origin.task": "Task",
 	"agentSessions.success": "Success",
-	"agentSessions.detail.backToSessions": "Back to sessions",
 	"agentSessions.detail.selectMessage": "Click an assistant message to view details",
 	"agentSessions.detail.tokenUsage": "Token Usage",
 	"agentSessions.detail.input": "Input",
