@@ -298,7 +298,7 @@ describe('POST /executions/:id/retry', () => {
 	test('should retry an execution', async () => {
 		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).retry)
+			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockResolvedValue(mockedExecutionResponse);
 
 		const workflow = await createWorkflow({}, user1);
@@ -323,7 +323,7 @@ describe('POST /executions/:id/retry', () => {
 
 	test('should return 409 when trying to retry a queued execution', async () => {
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).retry)
+			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new QueuedExecutionRetryError());
 
 		const workflow = await createWorkflow({}, user1);
@@ -341,7 +341,7 @@ describe('POST /executions/:id/retry', () => {
 
 	test('should return 409 when trying to retry an aborted execution without execution data', async () => {
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).retry)
+			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new AbortedExecutionRetryError());
 
 		const workflow = await createWorkflow({}, user1);
@@ -367,7 +367,7 @@ describe('POST /executions/:id/retry', () => {
 	test('should return 404 when user only has read access to the workflow via project viewer role', async () => {
 		testServer.license.enable('feat:sharing');
 
-		const executionServiceSpy = vi.mocked(Container.get(ExecutionService).retry);
+		const executionServiceSpy = vi.spyOn(Container.get(ExecutionService), 'retry');
 
 		const project = await createTeamProject('project with viewer', owner);
 		await linkUserToProject(user1, project, 'project:viewer');
@@ -389,7 +389,7 @@ describe('POST /executions/:id/retry', () => {
 
 		const mockedExecutionResponse = { status: 'waiting' } as any;
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).retry)
+			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockResolvedValue(mockedExecutionResponse);
 
 		const project = await createTeamProject('project with editor', owner);
@@ -408,7 +408,7 @@ describe('POST /executions/:id/retry', () => {
 
 	test('should return 409 when trying to retry a finished execution', async () => {
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).retry)
+			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new ConflictError('The execution succeeded, so it cannot be retried.'));
 
 		const workflow = await createWorkflow({}, user1);
@@ -916,11 +916,13 @@ describe('POST /executions/:id/stop', () => {
 			finished: false,
 			status: 'canceled',
 		} as any;
-		const executionServiceSpy = vi.mocked(Container.get(ExecutionService).stop).mockResolvedValue({
-			...mockedStopResponse,
-			startedAt: new Date(mockedStopResponse.startedAt),
-			stoppedAt: new Date(mockedStopResponse.stoppedAt),
-		});
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				...mockedStopResponse,
+				startedAt: new Date(mockedStopResponse.startedAt),
+				stoppedAt: new Date(mockedStopResponse.stoppedAt),
+			});
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createExecution({ status: 'running', finished: false }, workflow);
@@ -967,11 +969,13 @@ describe('POST /executions/:id/stop', () => {
 			finished: false,
 			status: 'canceled',
 		} as any;
-		const executionServiceSpy = vi.mocked(Container.get(ExecutionService).stop).mockResolvedValue({
-			...mockedStopResponse,
-			startedAt: new Date(mockedStopResponse.startedAt),
-			stoppedAt: new Date(mockedStopResponse.stoppedAt),
-		});
+		const executionServiceSpy = vi
+			.spyOn(Container.get(ExecutionService), 'stop')
+			.mockResolvedValue({
+				...mockedStopResponse,
+				startedAt: new Date(mockedStopResponse.startedAt),
+				stoppedAt: new Date(mockedStopResponse.stoppedAt),
+			});
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createExecution({ status: 'running', finished: false }, workflow);
@@ -1010,7 +1014,7 @@ describe('POST /executions/stop', () => {
 
 	test('should stop multiple running executions', async () => {
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).stopMany)
+			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(3);
 
 		await createWorkflow({}, user1);
@@ -1036,7 +1040,7 @@ describe('POST /executions/stop', () => {
 
 	test('should stop executions filtered by workflowId', async () => {
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).stopMany)
+			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(2);
 
 		const workflow = await createWorkflow({}, user1);
@@ -1062,7 +1066,7 @@ describe('POST /executions/stop', () => {
 
 	test('should stop executions with date filters', async () => {
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).stopMany)
+			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(1);
 
 		await createWorkflow({}, user1);
@@ -1095,7 +1099,7 @@ describe('POST /executions/stop', () => {
 		const workflow = await createWorkflow({}, user1);
 
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).stopMany)
+			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(1);
 
 		// User1 should be able to stop executions in their own workflow
@@ -1111,7 +1115,7 @@ describe('POST /executions/stop', () => {
 	});
 
 	test('should return 0 stopped when user has no workflows', async () => {
-		const executionServiceSpy = vi.mocked(Container.get(ExecutionService).stopMany);
+		const executionServiceSpy = vi.spyOn(Container.get(ExecutionService), 'stopMany');
 
 		// Create a new user with no workflows
 		const userWithNoWorkflows = await createMemberWithApiKey();
@@ -1134,7 +1138,7 @@ describe('POST /executions/stop', () => {
 		await createManyWorkflows(2, {}, owner);
 
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).stopMany)
+			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(5);
 
 		const response = await authOwnerAgent
@@ -1151,7 +1155,7 @@ describe('POST /executions/stop', () => {
 		testServer.license.enable('feat:sharing');
 
 		const executionServiceSpy = vi
-			.mocked(Container.get(ExecutionService).stopMany)
+			.spyOn(Container.get(ExecutionService), 'stopMany')
 			.mockResolvedValue(2);
 
 		const [workflow1, workflow2] = await createManyWorkflows(2, {}, user1);
