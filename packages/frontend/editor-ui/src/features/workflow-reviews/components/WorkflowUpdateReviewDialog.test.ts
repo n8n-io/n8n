@@ -1,7 +1,7 @@
 import { ResponseError, type WorkflowVersionData } from '@n8n/rest-api-client';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -275,6 +275,25 @@ describe('WorkflowUpdateReviewDialog', () => {
 				name: 'Release 3',
 				description: null,
 			});
+		});
+
+		it('disables the name input while submitting', async () => {
+			let resolveSave!: (versionId: string | undefined) => void;
+			const flushSave = vi.fn().mockReturnValue(
+				new Promise<string | undefined>((resolve) => {
+					resolveSave = resolve;
+				}),
+			);
+			const { getByTestId } = await renderDialog({ flushSave });
+
+			const input = getByTestId('workflow-update-review-version-name-input');
+			expect(input).toBeEnabled();
+
+			await userEvent.click(getByTestId('workflow-update-review-submit-button'));
+
+			await waitFor(() => expect(input).toBeDisabled());
+			resolveSave(SAVED_VERSION_ID);
+			await waitFor(() => expect(input).toBeEnabled());
 		});
 	});
 

@@ -1,7 +1,7 @@
 import { ResponseError, type WorkflowVersionData } from '@n8n/rest-api-client';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -203,6 +203,27 @@ describe('WorkflowSubmitForReviewDialog', () => {
 				name: 'Release 3',
 				description: null,
 			});
+		});
+
+		it('disables the form fields while submitting', async () => {
+			let resolveSave!: (versionId: string | undefined) => void;
+			const flushSave = vi.fn().mockReturnValue(
+				new Promise<string | undefined>((resolve) => {
+					resolveSave = resolve;
+				}),
+			);
+			const { getByTestId } = await renderDialog(flushSave);
+
+			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			const versionNameInput = getByTestId('workflow-review-version-name-input');
+			const titleInput = getByTestId('workflow-review-title-input');
+
+			await userEvent.click(getByTestId('workflow-review-submit-button'));
+
+			await waitFor(() => expect(versionNameInput).toBeDisabled());
+			expect(titleInput).toBeDisabled();
+			resolveSave(SAVED_VERSION_ID);
+			await waitFor(() => expect(createWorkflowReviewRequest).toHaveBeenCalledOnce());
 		});
 
 		it('leaves the editor version untouched when the canvas moved on to another version', async () => {

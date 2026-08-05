@@ -118,6 +118,12 @@ const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
 	const workflowId = props.workflowId;
+	// `flushSave()` awaits a full workflow save, so reading the fields afterwards
+	// could submit values the guard never validated.
+	const trimmedVersionName = versionName.value.trim();
+	const trimmedTitle = reviewTitle.value.trim();
+	const trimmedDescription = description.value.trim();
+	const reviewerId = selectedReviewerId.value;
 
 	isSubmitting.value = true;
 
@@ -136,13 +142,11 @@ const submit = async () => {
 			return;
 		}
 
-		const trimmedDescription = description.value.trim();
-		const trimmedVersionName = versionName.value.trim();
 		const reviewRequest = await createWorkflowReviewRequest(rootStore.restApiContext, {
-			title: reviewTitle.value.trim(),
+			title: trimmedTitle,
 			description: trimmedDescription || undefined,
 			workflows: [{ workflowId, workflowVersionId, workflowVersionName: trimmedVersionName }],
-			reviewerUserIds: selectedReviewerId.value ? [selectedReviewerId.value] : undefined,
+			reviewerUserIds: reviewerId ? [reviewerId] : undefined,
 		});
 
 		// Navigated away mid-flight: the review belongs to a workflow this dialog no
@@ -202,6 +206,7 @@ const submit = async () => {
 					id="workflow-review-version-name"
 					v-model="versionName"
 					:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
+					:disabled="isSubmitting"
 					data-test-id="workflow-review-version-name-input"
 				/>
 			</N8nInputLabel>
@@ -216,6 +221,7 @@ const submit = async () => {
 					ref="titleInput"
 					v-model="reviewTitle"
 					:maxlength="REVIEW_TITLE_MAX_LENGTH"
+					:disabled="isSubmitting"
 					data-test-id="workflow-review-title-input"
 				/>
 			</N8nInputLabel>
@@ -229,6 +235,7 @@ const submit = async () => {
 					type="textarea"
 					:rows="3"
 					:maxlength="REVIEW_DESCRIPTION_MAX_LENGTH"
+					:disabled="isSubmitting"
 					data-test-id="workflow-review-description-input"
 				/>
 			</N8nInputLabel>
@@ -243,6 +250,7 @@ const submit = async () => {
 					:loading="isLoadingReviewers"
 					:placeholder="i18n.baseText('workflowReviews.submitForReview.reviewer.placeholder')"
 					:teleported="false"
+					:disabled="isSubmitting"
 					clearable
 					data-test-id="workflow-review-reviewer-select"
 				>

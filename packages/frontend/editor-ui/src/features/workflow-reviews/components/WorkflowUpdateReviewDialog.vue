@@ -72,6 +72,9 @@ const submit = async () => {
 	if (isSubmitDisabled.value) return;
 
 	const workflowId = props.workflowId;
+	// `flushSave()` awaits a full workflow save, so reading the field afterwards
+	// could send a name the guard never validated.
+	const trimmedVersionName = versionName.value.trim();
 
 	isSubmitting.value = true;
 	try {
@@ -99,7 +102,6 @@ const submit = async () => {
 			return;
 		}
 
-		const trimmedVersionName = versionName.value.trim();
 		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, workflowReviewRequestId, {
 			workflowId,
 			workflowVersionId,
@@ -158,6 +160,7 @@ const submit = async () => {
 				id="workflow-update-review-version-name"
 				v-model="versionName"
 				:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
+				:disabled="isSubmitting"
 				data-test-id="workflow-update-review-version-name-input"
 			/>
 		</N8nInputLabel>
