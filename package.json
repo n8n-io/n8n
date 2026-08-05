@@ -55,6 +55,7 @@
     "sync:frontend-aliases": "turbo run build --filter=@n8n/vitest-config && pnpm --filter=@n8n/vitest-config sync-frontend-aliases --write",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",
+    "setup-frontend-module": "node scripts/frontend-module/setup.mjs",
     "start": "node scripts/os-normalize.mjs --dir packages/cli/bin n8n",
     "mutate": "node scripts/mutation-health/mutate.mjs",
     "test": "turbo run test",
