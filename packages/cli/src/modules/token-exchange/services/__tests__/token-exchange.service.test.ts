@@ -8,6 +8,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { JwtService } from '@/services/jwt.service';
 
 import type { TokenExchangeConfig } from '../../token-exchange.config';
+import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
 import type { IdentityResolutionService } from '../identity-resolution.service';
 import type { JtiStoreService } from '../jti-store.service';
@@ -228,6 +229,108 @@ describe('TokenExchangeService', () => {
 			identityResolutionService.resolve.mockRejectedValue(new Error('User not found'));
 
 			await expect(service.embedLogin('token')).rejects.toThrow('User not found');
+		});
+	});
+
+	describe('verifyToken', () => {
+		const mockValidToken = () => {
+			vi.spyOn(jwt, 'decode').mockReturnValue({
+				header: { alg: 'RS256', kid: 'test-kid' },
+				payload: validClaims,
+				signature: 'sig',
+			} as unknown as ReturnType<typeof jwt.decode>);
+			vi.spyOn(jwt, 'verify').mockReturnValue(
+				validClaims as unknown as ReturnType<typeof jwt.verify>,
+			);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
+		};
+
+		it('defaults consume the jti and honour the source-level audience', async () => {
+			mockValidToken();
+			jtiStore.consume.mockResolvedValue(true);
+
+			await service.verifyToken('valid-token');
+
+			expect(jwt.verify).toHaveBeenCalledWith(
+				'valid-token',
+				resolvedKey.key,
+				expect.objectContaining({ audience: resolvedKey.expectedAudience }),
+			);
+			expect(jtiStore.consume).toHaveBeenCalledWith(
+				validClaims.jti,
+				new Date(validClaims.exp * 1000),
+			);
+		});
+
+		it('rejects when consumeJti is false and no expectedAudience is supplied', async () => {
+			// The overload signatures require `expectedAudience` whenever `consumeJti: false`
+			// is passed; bypass that compile-time guard to exercise the runtime fail-closed
+			// check, since it also protects callers whose audience is only optional at runtime
+			// (e.g. sourced from config).
+			const verifyTokenUnsafe = service.verifyToken.bind(service) as (
+				token: string,
+				options?: Record<string, unknown>,
+			) => Promise<unknown>;
+
+			await expect(verifyTokenUnsafe('token', { consumeJti: false })).rejects.toThrow(
+				TokenExchangeAuthError,
+			);
+		});
+
+		it('rejects when the token audience does not match the supplied expectedAudience', async () => {
+			mockValidToken();
+			vi.spyOn(jwt, 'verify').mockImplementation(() => {
+				throw new Error('jwt audience invalid');
+			});
+
+			await expect(
+				service.verifyToken('token', {
+					expectedAudience: 'unexpected-audience',
+					consumeJti: false,
+				}),
+			).rejects.toThrow(TokenExchangeAuthError);
+			expect(jwt.verify).toHaveBeenCalledWith(
+				'token',
+				resolvedKey.key,
+				expect.objectContaining({ audience: 'unexpected-audience' }),
+			);
+		});
+
+		it('verifies the same token twice when consumeJti is false', async () => {
+			mockValidToken();
+
+			await service.verifyToken('token', {
+				expectedAudience: 'n8n',
+				consumeJti: false,
+			});
+			await service.verifyToken('token', {
+				expectedAudience: 'n8n',
+				consumeJti: false,
+			});
+
+			expect(jtiStore.consume).not.toHaveBeenCalled();
+		});
+
+		it('accepts a token without jti when requireJti is false', async () => {
+			const { jti: _, ...claimsWithoutJti } = validClaims;
+			vi.spyOn(jwt, 'decode').mockReturnValue({
+				header: { alg: 'RS256', kid: 'test-kid' },
+				payload: claimsWithoutJti,
+				signature: 'sig',
+			} as unknown as ReturnType<typeof jwt.decode>);
+			vi.spyOn(jwt, 'verify').mockReturnValue(
+				claimsWithoutJti as unknown as ReturnType<typeof jwt.verify>,
+			);
+			trustedKeyStore.getByKidAndIss.mockResolvedValue(resolvedKey);
+
+			const result = await service.verifyToken('token', {
+				expectedAudience: 'n8n',
+				consumeJti: false,
+				requireJti: false,
+			});
+
+			expect(result.claims.jti).toBeUndefined();
+			expect(jtiStore.consume).not.toHaveBeenCalled();
 		});
 	});
 });
