@@ -56,7 +56,7 @@ export const n8nOAuth2Auth = async (
 	  }
 	| 'handled'
 > => {
-	const webhookUrl = context.getNodeWebhookUrl('default');
+	const webhookUrl = context.getWebhookResourceUrl('default');
 	if (!webhookUrl) {
 		throw new UnexpectedError('Webhook URL is not available');
 	}

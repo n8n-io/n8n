@@ -13,7 +13,7 @@ export class Slack extends VersionedNodeType {
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Slack API',
-			defaultVersion: 2.6,
+			defaultVersion: 2.7,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -25,6 +25,7 @@ export class Slack extends VersionedNodeType {
 			2.4: new SlackV2(baseDescription),
 			2.5: new SlackV2(baseDescription),
 			2.6: new SlackV2(baseDescription),
+			2.7: new SlackV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

@@ -42,7 +42,7 @@ export interface AgentIntegrationStatusEntry {
 }
 
 export interface AgentIntegrationStatusResponse {
-	status: 'connected' | 'disconnected';
+	status: 'configured' | 'connected' | 'disconnected';
 	integrations: AgentIntegrationStatusEntry[];
 }
 
@@ -241,7 +241,7 @@ export interface AgentPersistedMessageDto {
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'success' | 'error';
+	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
@@ -273,6 +273,8 @@ export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
+	/** Client-visible suspend payload used to rebuild an interactive card after history reload. */
+	suspendPayload?: unknown;
 }
 
 /** Chat history envelope returned by the agent chat messages endpoints. */

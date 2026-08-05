@@ -11,8 +11,9 @@ import { useSurfaceMcpEmptyState } from '@/experiments/surfaceMcpToNewCloudUsers
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import AppSelectionPage from '@/experiments/credentialsAppSelection/components/AppSelectionPage.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import SurfaceMcpEmptyStateTile from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpEmptyStateTile.vue';
@@ -73,9 +74,13 @@ const handleReadyToRunClick = async () => {
 };
 
 const handleBuildAgentClick = () => {
-	agentTelemetry.trackClickedNewAgent('card');
+	const agentId = generateNanoId();
+	agentTelemetry.trackClickedNewAgent('card', agentId);
 	void router.push(
-		instanceAiCreateAgentRoute(builderProjectId.value ?? projectsStore.personalProject?.id ?? ''),
+		instanceAiCreateAgentRoute(
+			builderProjectId.value ?? projectsStore.personalProject?.id ?? '',
+			agentId,
+		),
 	);
 };
 

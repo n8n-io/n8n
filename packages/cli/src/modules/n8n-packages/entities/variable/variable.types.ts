@@ -1,9 +1,9 @@
 import type { User } from '@n8n/db';
 
 import type { PackageWriter } from '../../io/package-writer';
+import type { VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
-import type { VariableMissingMode } from '../../n8n-packages.types';
 
 export interface WorkflowVariableRequirement {
 	workflowId: string;
@@ -24,8 +24,9 @@ export interface VariableExportResult {
 }
 
 export type PlacedVariableRequirement = PackageVariableRequirement & {
-	/** When true a created stub lands at global scope; otherwise in the context's project. */
 	globalPlacement: boolean;
+	/** Value of the variable file the package bundles for this scope, if any. */
+	packageValue?: string;
 };
 
 export interface VariableImportRequest {
@@ -41,6 +42,7 @@ export interface VariableResolutionFailure {
 export interface VariableCreation {
 	name: string;
 	projectId?: string;
+	value?: string;
 	usedByWorkflows: string[];
 }
 
@@ -105,7 +107,7 @@ export interface VariableImportPlan {
 }
 
 export interface VariableApplyResult {
+	created: string[];
 	stubbed: string[];
 	skippedExisting: string[];
-	createdCount: number;
 }

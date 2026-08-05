@@ -13,7 +13,7 @@ import {
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
-import { isFailedDelegateOutput } from './delegateTool';
+import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import { summariseToolCall } from './interactiveSummary';
 import type {
 	ApprovalInput,
@@ -125,16 +125,20 @@ function isDeclinedToolOutput(value: unknown): boolean {
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
 export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
-	const approvalInput = parseApprovalInput(tc.input);
+	const approvalInput = parseApprovalInput(tc.suspendPayload) ?? parseApprovalInput(tc.input);
 	if (approvalInput) {
+		const resolved = tc.output !== undefined;
 		return {
 			toolCallId: tc.toolCallId,
-			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(resolved && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
 			toolName: APPROVAL_TOOL_NAME,
 			input: approvalInput,
-			...(tc.output !== undefined && {
-				resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
-			}),
+			...(resolved &&
+				tc.canceled !== true &&
+				!isDelegateSubAgentTool(tc.tool) && {
+					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
+				}),
 		};
 	}
 
@@ -147,9 +151,10 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 		return {
 			toolCallId: tc.toolCallId,
 			...(tc.output !== undefined && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
 			toolName: N8N_CHAT_ACTION_TOOL_NAME,
 			input,
-			...(resolved?.success && { resolvedValue: resolved.data }),
+			...(tc.canceled !== true && resolved?.success && { resolvedValue: resolved.data }),
 		};
 	}
 
@@ -283,7 +288,7 @@ export function applyOpenSuspensions(
 	chat: ChatMessage[],
 	suspensions: AgentBuilderOpenSuspension[],
 ): ChatMessage[] {
-	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s.runId]));
+	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s]));
 	for (const msg of chat) {
 		let hasOpenToolCall = false;
 		for (const toolCall of msg.toolCalls ?? []) {
@@ -295,10 +300,18 @@ export function applyOpenSuspensions(
 				continue;
 			}
 
-			const runId = byToolCallId.get(toolCall.toolCallId);
-			if (runId) {
+			const suspension = byToolCallId.get(toolCall.toolCallId);
+			if (suspension) {
 				toolCall.state = TOOL_CALL_STATE.SUSPENDED;
-				toolCall.runId = runId;
+				toolCall.runId = suspension.runId;
+				if (suspension.suspendPayload !== undefined) {
+					toolCall.suspendPayload = suspension.suspendPayload;
+				}
+				const rebuilt = rebuildInteractiveFromHistory(toolCall);
+				if (rebuilt) {
+					rebuilt.runId = suspension.runId;
+					upsertMessageInteractive(msg, rebuilt);
+				}
 				hasOpenToolCall = true;
 			} else if (msg.status === CHAT_MESSAGE_STATUS.ERROR) {
 				toolCall.state = TOOL_CALL_STATE.ERROR;
@@ -316,9 +329,9 @@ export function applyOpenSuspensions(
 				continue;
 			}
 
-			const runId = byToolCallId.get(interactive.toolCallId);
-			if (runId) {
-				interactive.runId = runId;
+			const suspension = byToolCallId.get(interactive.toolCallId);
+			if (suspension) {
+				interactive.runId = suspension.runId;
 				retained.push(interactive);
 			}
 		}

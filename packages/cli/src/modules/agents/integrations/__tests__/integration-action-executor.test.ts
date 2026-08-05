@@ -217,19 +217,35 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
-		await executor.execute({
+		const result = await executor.execute({
 			descriptor,
 			action: 'send_dm',
 			input: { userId: 'U123', message: { text: 'Hello' } },
 			awaitResponse: false,
 		});
 
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(thread.post).toHaveBeenCalledWith('Hello');
 		expect(thread.subscribe).toHaveBeenCalled();
+		expect(result).toEqual({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'dm',
+					userId: 'U123',
+					threadId: 'slack:D123:123.456',
+				},
+				messageId: '123.456',
+				updatedAt: expect.any(String),
+			},
+		});
 	});
 
 	it('posts generic message card buttons with their labels', async () => {
