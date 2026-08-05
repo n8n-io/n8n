@@ -39,7 +39,8 @@
 | `packages/cli/src/modules/mcp/mcp.settings.service.ts` | Setting get/set + cache | 1 |
 | `packages/cli/src/modules/mcp/dto/update-mcp-settings.dto.ts` | Both fields optional + refine | 2 |
 | `packages/cli/src/modules/mcp/mcp.settings.controller.ts` | Presence-guarded writes | 2 |
-| `packages/cli/src/modules/mcp/mcp.module.ts` | Expose setting to frontend | 3 |
+| `packages/cli/src/modules/mcp/mcp.module.ts` | Expose setting to frontend (runtime value) | 3 |
+| `packages/@n8n/api-types/src/frontend-settings.ts` | The `mcp` client-settings **type** — separate declaration from the hook above, and easy to miss | 6 |
 | `packages/cli/src/workflows/workflow-creation.service.ts` | Default-only seeding | 4 |
 | `packages/cli/src/modules/mcp/tools/workflow-builder/create-workflow-from-code.tool.ts` | Comment only | 4 |
 | `packages/frontend/editor-ui/src/app/stores/workflows.store.ts` | **Delete** hardcoded `false` | 5 |
@@ -722,9 +723,12 @@ git commit -m "fix(editor): Let the backend decide MCP exposure for new workflow
 ## Task 6: Frontend API + store
 
 **Files:**
+- Modify: `packages/@n8n/api-types/src/frontend-settings.ts` — add `autoExposeNewWorkflows: boolean` to the `mcp` client-settings type, **required**, matching its siblings (`mcpAccessEnabled`, `mcpManagedByEnv`). The backend hook returns it unconditionally, so optional would under-describe the contract. Rebuild the package afterwards, and expect the required field to break distant `moduleSettings.mcp` fixtures — fix every one typecheck flags.
 - Modify: `packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts`
 - Modify: `packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts`
 - Test: `packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.test.ts`
+
+Note the type and the runtime value are **two separate declarations**: Task 3 added the value to the module's `settings()` hook; this task adds the type. Neither implies the other.
 
 **Interfaces:**
 - Consumes: `PATCH /rest/mcp/settings` partial updates (Task 2), `moduleSettings.mcp.autoExposeNewWorkflows` (Task 3).
