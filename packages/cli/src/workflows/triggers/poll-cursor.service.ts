@@ -1,5 +1,5 @@
 import { PollerConfig } from '@n8n/config';
-import type { CreateExecutionPayload, PollerCursor } from '@n8n/db';
+import type { CreateExecutionPayload, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { PollerStateRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { PollCursor } from 'n8n-workflow';
@@ -60,18 +60,33 @@ export class PollCursorService {
 		nodeId: string;
 		cursor: PollCursor;
 		payload: CreateExecutionPayload;
-	}): Promise<{ executionId: string }> {
-		const { workflowId, nodeId, cursor, payload } = args;
+		fence?: PollLeaseFence;
+	}): Promise<{ executionId: string } | null> {
+		const { workflowId, nodeId, cursor, payload, fence } = args;
 
 		if (this.enabled) {
 			return await this.transactionRunner.run({}, async (ctx) => {
-				await this.pollerStateRepository.advanceCursor(workflowId, nodeId, cursor, ctx);
+				const advanced = await this.pollerStateRepository.advanceCursor(
+					workflowId,
+					nodeId,
+					cursor,
+					ctx,
+					fence,
+				);
+				if (!advanced) return null;
 				const executionId = await this.executionPersistence.create(payload, ctx);
 				return { executionId };
 			});
 		}
 
-		await this.pollerStateRepository.advanceCursor(workflowId, nodeId, cursor, {});
+		const advanced = await this.pollerStateRepository.advanceCursor(
+			workflowId,
+			nodeId,
+			cursor,
+			{},
+			fence,
+		);
+		if (!advanced) return null;
 		const executionId = await this.executionPersistence.create(payload, {});
 		return { executionId };
 	}
@@ -84,8 +99,9 @@ export class PollCursorService {
 		workflowId: string;
 		nodeId: string;
 		cursor: PollCursor;
-	}): Promise<void> {
-		const { workflowId, nodeId, cursor } = args;
-		await this.pollerStateRepository.advanceCursor(workflowId, nodeId, cursor, {});
+		fence?: PollLeaseFence;
+	}): Promise<boolean> {
+		const { workflowId, nodeId, cursor, fence } = args;
+		return await this.pollerStateRepository.advanceCursor(workflowId, nodeId, cursor, {}, fence);
 	}
 }
