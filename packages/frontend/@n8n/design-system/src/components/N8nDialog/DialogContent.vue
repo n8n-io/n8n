@@ -179,7 +179,8 @@ function handleInteractOutside(e: Event) {
 }
 
 .stacked {
-	z-index: 1952;
+	z-index: calc(var(--dialogs--z) + 2);
+}
 }
 
 .content[data-state='open'] {
