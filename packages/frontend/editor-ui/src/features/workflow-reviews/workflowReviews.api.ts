@@ -3,7 +3,9 @@ import type {
 	DecideWorkflowReviewRequestResponse,
 	GetWorkflowReviewEligibleReviewersQueryDto,
 	GetWorkflowReviewInboxSummaryResponse,
+	ListWorkflowReviewActivityResponse,
 	ListWorkflowReviewInboxResponse,
+	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestDecision,
 	WorkflowReviewRequestDetail,
@@ -107,5 +109,32 @@ export async function fetchWorkflowReviewRequestDetail(
 		context,
 		'GET',
 		`/workflow-review-requests/${workflowReviewRequestId}`,
+	);
+}
+
+/** Activity feed page. Pages backwards: the cursor returns entries older than it. */
+export async function fetchWorkflowReviewActivity(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	params: { limit?: number; cursor?: string },
+): Promise<ListWorkflowReviewActivityResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/workflow-review-requests/${workflowReviewRequestId}/activity`,
+		params,
+	);
+}
+
+export async function createWorkflowReviewComment(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	payload: { body: string },
+): Promise<WorkflowReviewActivityEntry> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/workflow-review-requests/${workflowReviewRequestId}/comments`,
+		{ ...payload },
 	);
 }
