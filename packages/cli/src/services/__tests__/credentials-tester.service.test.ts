@@ -1,7 +1,6 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import { RoutingNode } from 'n8n-core';
 import type {
 	ICredentialTestFunctions,
 	ICredentialType,
