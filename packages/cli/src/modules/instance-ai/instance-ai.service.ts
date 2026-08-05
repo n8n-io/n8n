@@ -3499,10 +3499,8 @@ export class InstanceAiService {
 				}
 			}
 
-			// The editor can hand the agent an existing Agent as context. The builder
-			// never sees that turn, so without this nothing records what the agent
-			// looked like when the conversation opened — the state a repair-shaped
-			// eval case has to seed from.
+			// The builder never sees an attach-only turn, so nothing else records what
+			// the attached agent looked like when the conversation opened.
 			await this.snapshotAttachedAgents(contextAttachments, orchestrationContext, tracing);
 
 			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
@@ -5732,14 +5730,8 @@ export class InstanceAiService {
 		return { status: 'limit-reached' };
 	}
 
-	/**
-	 * Emit an `agent-snapshot` trace event for every Agent the editor attached to
-	 * this turn, capturing it as it stands before the agent acts on it.
-	 *
-	 * Best-effort throughout: no agents module (no delegate) or no trace means no
-	 * snapshot, and a read failure skips that agent. This only feeds eval-seed
-	 * authoring — it must never affect the user's turn.
-	 */
+	/** Snapshot every Agent the editor attached, as it stands before this turn
+	 *  acts on it. Best-effort: it only feeds eval-seed authoring. */
 	private async snapshotAttachedAgents(
 		attachments: InstanceAiResourceAttachment[],
 		orchestrationContext: OrchestrationContext,

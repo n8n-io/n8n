@@ -23,9 +23,8 @@ export const DOMAIN_TOOL_IDS = {
  *  SDK re-parse; excluded by name from rebuilt transcripts. */
 export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
 
-/** Trace-only chain-typed child run carrying an n8n Agent's config + skill
- *  bodies at a point in the conversation — the agent counterpart of the event
- *  above, for reconstructing a seeded agent. Bookkeeping, not agent-facing. */
+/** Trace-only chain run carrying an agent's config + skills, for seed
+ *  reconstruction — the agent counterpart of the event above. */
 export const AGENT_SNAPSHOT_TRACE_RUN_NAME = 'agent-snapshot';
 
 export const ORCHESTRATION_TOOL_IDS = {

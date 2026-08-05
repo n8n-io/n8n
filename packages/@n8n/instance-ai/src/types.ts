@@ -958,14 +958,10 @@ export interface InstanceAiBuilderDelegate {
 	>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
-	/** The agent's config + skill bodies as they stand, for the `agent-snapshot`
-	 *  trace event. `null` when it has no config yet (freshly created) or is gone.
-	 *  Read-only, and the same composition the agents REST surface returns, so a
-	 *  snapshot matches what a seed restore would receive.
-	 *
-	 *  Optional because the delegate is supplied by the host across a package
-	 *  boundary: a host that hasn't wired it simply emits no snapshots, rather
-	 *  than a version skew breaking agent building. */
+	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
+	 *  has no config yet. Optional: the host supplies this delegate across a
+	 *  package boundary, so an unwired host emits no snapshots instead of
+	 *  breaking agent building. */
 	readAgentArtifact?(agentId: string): Promise<{
 		config: AgentJsonConfig;
 		skills: Record<string, AgentSkill>;

@@ -1,12 +1,5 @@
-/**
- * The `agent-snapshot` trace event — an agent's config + skills at a point in a
- * conversation, so eval seeding can reconstruct the agent a real thread worked on.
- *
- * Mirrors the `compiled-workflow` event's tests in
- * `tools/workflows/__tests__/build-workflow.tool.test.ts`: assert the child run's
- * name/type/metadata, that the payload rides `rawOutputs`, and that an oversized
- * payload degrades to a marker rather than being dropped or silently cut.
- */
+// The `agent-snapshot` trace event. Mirrors the `compiled-workflow` tests in
+// `tools/workflows/__tests__/build-workflow.tool.test.ts`.
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -97,8 +90,7 @@ describe('emitAgentSnapshotTraceEvent', () => {
 		expect(outcome).toBe('emitted');
 		expect(startChildRun).toHaveBeenCalledTimes(1);
 		const [, finishOpts] = finishRun.mock.calls[0];
-		// The marker keeps the row (a consumer learns the state exists but wasn't
-		// captured) without shipping a config that would be rejected whole.
+		// The marker records that a state existed without shipping a rejected run.
 		expect(finishOpts.outputs).toEqual({
 			agentId: BASE.agentId,
 			projectId: 'proj-1',
@@ -110,8 +102,7 @@ describe('emitAgentSnapshotTraceEvent', () => {
 	});
 
 	it('emits one event per agent+hash on a trace, so two triggers agree', async () => {
-		// The attach baseline and build-agent's target baseline both fire on a turn
-		// that attaches an agent and then edits it — same state, one row.
+		// Attach + target baselines both fire when a turn attaches then edits.
 		const { tracing, startChildRun } = makeTracing();
 		const artifact = { config: CONFIG, configHash: 'hash-1' };
 

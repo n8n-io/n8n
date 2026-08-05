@@ -338,9 +338,7 @@ function publishAgentBuilderCancelled(context: OrchestrationContext, builderAgen
 	});
 }
 
-/** Emit an `agent-snapshot` trace event for the builder's target. Best-effort at
- *  both ends: a target with no config yet reads back null, and the emit itself
- *  never throws — a missing snapshot costs authoring fidelity, not the build. */
+/** Emit an `agent-snapshot` for the builder's target. Best-effort at both ends. */
 async function snapshotAgent(
 	context: OrchestrationContext,
 	delegate: InstanceAiBuilderDelegate,
@@ -349,8 +347,7 @@ async function snapshotAgent(
 ): Promise<void> {
 	let artifact: AgentSnapshotArtifact | null = null;
 	try {
-		// `?? null` rather than `.catch` on the call: an optional method may be
-		// absent OR (in a mocked host) return a non-promise.
+		// An optional method may be absent, or return a non-promise on a mocked host.
 		artifact = (await delegate.readAgentArtifact?.(target.agentId)) ?? null;
 	} catch {
 		return;
@@ -531,11 +528,8 @@ async function runBuilderConsumeLoop(params: {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
-		// The state the pass left behind — the other half of what a seeded case
-		// needs. Only on a pass that mutated the config; an unchanged agent would
-		// re-emit the baseline, which the snapshot's own hash dedupe drops anyway.
-		// A suspended pass isn't snapshotted here: it resumes and settles through
-		// this same path.
+		// The state the pass left behind. A suspended pass resumes and settles
+		// through this same path.
 		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
 		return { ...output, ...targetIdentity(target) };
 	}
@@ -992,9 +986,8 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);
 
-			// Snapshot the target BEFORE the builder touches it: a repair-shaped eval
-			// case seeds from the state the turn opened on, and nothing else records
-			// it. A freshly created agent has no prior state to capture.
+			// Before the builder touches it: a repair-shaped eval case seeds from the
+			// state the turn opened on. A new agent has no prior state.
 			if (resolution.mode !== 'create') {
 				await snapshotAgent(context, delegate, boundTarget, 'target-resolved');
 			}

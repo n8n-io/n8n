@@ -188,16 +188,13 @@ export class InstanceAiBuilderDelegateAdapterService {
 			},
 			readAgentArtifact: async (agentId) => {
 				await assertProjectScope('agent:read');
-				// `getConfig` throws for an agent with no JSON config yet (freshly
-				// created, builder hasn't written one) — that's a snapshot with
-				// nothing in it, not an error worth surfacing.
+				// No JSON config yet (freshly created) is an empty snapshot, not an error.
 				const config = await this.agentConfig.getConfig(agentId, projectId).catch(() => null);
 				if (!config) return null;
 				return {
 					config,
 					skills: await this.agentSkills.listSkills(agentId, projectId),
-					// The builder's own hash, so a consumer dedupes on the same value
-					// `read_config` hands the model as `configHash`.
+					// The same hash `read_config` hands the model, so consumers can dedupe.
 					configHash: getAgentConfigHash(config),
 				};
 			},

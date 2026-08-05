@@ -577,8 +577,7 @@ describe('build-agent tool', () => {
 		});
 	});
 
-	// Seed snapshots (`agent-snapshot` trace event): what an eval case needs is the
-	// agent BEFORE the turn (the state it seeds from) and again after a pass that
+	// An eval case needs the agent BEFORE the turn and again after a pass that
 	// changed it. Nothing else in the trace records either.
 	describe('agent-snapshot', () => {
 		const ARTIFACT = {
@@ -593,8 +592,8 @@ describe('build-agent tool', () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
 			vi.mocked(delegate.streamBuild).mockImplementation(async () => {
-				// Ordering is the point: the baseline has to be read before the
-				// builder runs, or it captures the state the turn produced.
+				// Ordering is the point: read before the builder runs, or the
+				// "baseline" is the state the turn produced.
 				expect(delegate.readAgentArtifact).toHaveBeenCalledWith('agent-existing');
 				return await Promise.resolve(fakeStream([], 'Editing it.'));
 			});
@@ -664,8 +663,7 @@ describe('build-agent tool', () => {
 		});
 
 		it('builds normally on a host whose delegate cannot read agents', async () => {
-			// The delegate crosses a package boundary: an older host simply doesn't
-			// implement the read, and that must not break agent building.
+			// An older host doesn't implement the read; that must not break building.
 			const delegate = mock<InstanceAiBuilderDelegate>();
 			delegate.readAgentArtifact = undefined;
 			const { context } = makeContext({ delegate });
