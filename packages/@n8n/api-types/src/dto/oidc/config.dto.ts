@@ -11,4 +11,5 @@ export class OidcConfigDto extends Z.class({
 		.optional()
 		.default('select_account'),
 	authenticationContextClassReference: z.array(z.string()).default([]),
+	emailVerifiedRequired: z.boolean().optional(),
 }) {}

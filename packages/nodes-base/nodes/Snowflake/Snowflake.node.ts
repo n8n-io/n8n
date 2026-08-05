@@ -239,7 +239,7 @@ export class Snowflake implements INodeType {
 					}
 				}
 
-				const responseData = await execute(connection, query, binds);
+				const responseData = await execute(connection, query, binds, this.getNode(), i);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
@@ -261,7 +261,7 @@ export class Snowflake implements INodeType {
 			const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 			const data = this.helpers.copyInputItems(items, columns);
 			const binds = data.map((element) => [...Object.values(element)]);
-			await execute(connection, query, binds as snowflake.Binds);
+			await execute(connection, query, binds as snowflake.Binds, this.getNode());
 			data.forEach((d, i) => {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(d),
@@ -300,7 +300,7 @@ export class Snowflake implements INodeType {
 				return rowBinds;
 			});
 			for (let i = 0; i < binds.length; i++) {
-				await execute(connection, query, binds[i] as snowflake.Binds);
+				await execute(connection, query, binds[i] as snowflake.Binds, this.getNode(), i);
 			}
 			data.forEach((d, i) => {
 				const executionData = this.helpers.constructExecutionMetaData(

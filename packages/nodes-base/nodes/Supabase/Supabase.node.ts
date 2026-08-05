@@ -255,8 +255,8 @@ export class Supabase implements INodeType {
 						}
 
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-							Object.assign(qs, data);
+							const filters = keys.reduce(buildQuery, new Map<string, string>());
+							qs = Object.fromEntries(filters);
 						}
 						if (matchType === 'anyFilter') {
 							const data = keys.map((key) => buildOrQuery(key));
@@ -307,8 +307,8 @@ export class Supabase implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 					const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
-					const data = keys.reduce((obj, value) => buildGetQuery(obj, value), {});
-					Object.assign(qs, data);
+					const filters = keys.reduce(buildGetQuery, new Map<string, string>());
+					qs = Object.fromEntries(filters);
 					let rows;
 
 					if (!keys.length) {
@@ -432,8 +432,8 @@ export class Supabase implements INodeType {
 						}
 
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-							Object.assign(qs, data);
+							const filters = keys.reduce(buildQuery, new Map<string, string>());
+							qs = Object.fromEntries(filters);
 						}
 						if (matchType === 'anyFilter') {
 							const data = keys.map((key) => buildOrQuery(key));
