@@ -154,9 +154,10 @@ export class NodeResourceExplorerService {
 	 * Two things bound what this will claim, because a false "your value is invalid" is
 	 * worse than staying quiet:
 	 *
-	 * - Only **list-mode** values on list-backed locators are checked. A value typed into a
-	 *   locator's free-text `id`/`url` mode is a deliberate escape from the catalogue, and a
-	 *   free-text parameter has no enumerable value space to validate against at all.
+	 * - Only values that are **comparable to the list** are checked: a locator's `list` or
+	 *   `id` mode, both of which store the identifier. `url` mode stores a URL, not an id,
+	 *   so it would mismatch every time; a free-text parameter has no enumerable value
+	 *   space at all.
 	 * - Only **exhaustive** lists are trusted. A partial result tells us what's on the
 	 *   pages we fetched, not what exists — a user with thousands of spreadsheets would
 	 *   otherwise have a perfectly good `documentId` flagged because it sorted too low.
@@ -303,22 +304,34 @@ interface CandidateLocator {
 	currentValue: string;
 }
 
+/** Locator modes whose stored value is the resource identifier itself. */
+const IDENTIFIER_LOCATOR_MODES = new Set(['list', 'id']);
+
 /**
- * The value a resource-locator holds **only when it claims to have come from the list**.
+ * The value a resource-locator holds, when that value is comparable to the list.
  *
- * The mode check is the point. `list` mode means the value was picked out of the search
- * results, so its absence from those results is meaningful. The free-text modes (`id`,
- * `url`) mean the opposite: they exist so someone can name a resource the picker doesn't
- * offer — a private deployment, a model newer than the catalogue, a document the search
- * API won't return. Validating those against the list would manufacture exactly the false
- * "your value is invalid" this check is built to avoid. A fabricated id-mode value is a
- * different problem, already covered by the `*-rlc-default-mode` binary checks.
+ * `list` and `id` both store the identifier, so either can be checked against the
+ * catalogue: whether someone picked `gpt-6-mini` from a dropdown or typed it in, the
+ * credential still can't call it. Other modes are skipped because their value isn't an
+ * identifier at all — `url` mode stores a URL and the node extracts the id from it at
+ * runtime, so comparing it to a list of ids would mismatch every single time.
  *
- * A bare string carries no mode, so it makes no claim either way and is left alone.
+ * A bare string is the identifier too, and is treated the same.
+ *
+ * What keeps a typed-in id from being falsely reported is not the mode but the guards on
+ * the list itself: a partial, empty or failed lookup never yields a verdict. The residual
+ * risk is a provider whose catalogue endpoint looks complete but isn't — an
+ * OpenAI-compatible proxy behind a custom `baseURL`, say — where a legitimately callable
+ * model could be reported. Accepted, because the alternative is not catching the values
+ * the builder invents, which is the point of the check.
  */
-function readListModeValue(raw: unknown): string | undefined {
+function readLocatorValue(raw: unknown): string | undefined {
+	if (typeof raw === 'string') return raw === '' ? undefined : raw;
 	if (typeof raw !== 'object' || raw === null) return undefined;
-	if (Reflect.get(raw, 'mode') !== 'list') return undefined;
+
+	const mode = Reflect.get(raw, 'mode');
+	if (typeof mode === 'string' && !IDENTIFIER_LOCATOR_MODES.has(mode)) return undefined;
+
 	const value = Reflect.get(raw, 'value');
 	if (typeof value === 'string') return value === '' ? undefined : value;
 	if (typeof value === 'number') return String(value);
@@ -374,7 +387,7 @@ function collectListBackedLocators(
 
 		if (!NodeHelpers.displayParameter(resolved, property, node, nodeDescription)) continue;
 
-		const currentValue = readListModeValue(resolved[property.name]);
+		const currentValue = readLocatorValue(resolved[property.name]);
 		if (currentValue === undefined) continue;
 
 		seen.add(property.name);

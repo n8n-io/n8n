@@ -397,22 +397,22 @@ describe('NodeResourceExplorerService', () => {
 			expect(result).toEqual([]);
 		});
 
-		test('leaves a value typed into the free-text id mode alone', async () => {
-			// id mode exists so someone can name a resource the picker doesn't offer — a
-			// private deployment, a model newer than the catalogue. Judging it against the
-			// list would manufacture a false "unavailable".
+		test('reports an id-mode value too, since it stores the identifier', async () => {
+			// A model the credential can't call is unusable whether it was picked from the
+			// dropdown or typed in — this is the shape INS-966 reproduces with.
 			mockAiNode([modelLocator]);
 			mockAvailableModels(['gpt-5-mini', 'gpt-4.1-mini']);
 
 			const result = await service.findUnavailableResourceLocatorValues(user, {
 				...openAiParams,
-				parameters: { model: { __rl: true, mode: 'id', value: 'my-private-deployment' } },
+				parameters: { model: { __rl: true, mode: 'id', value: 'gpt-6-mini' } },
 			});
 
-			expect(result).toEqual([]);
+			expect(result).toHaveLength(1);
+			expect(result[0]?.currentValue).toBe('gpt-6-mini');
 		});
 
-		test('leaves a url-mode value alone as well', async () => {
+		test('skips a url-mode value, whose stored value is a URL rather than an id', async () => {
 			mockAiNode([modelLocator]);
 			mockAvailableModels(['gpt-5-mini']);
 
@@ -426,7 +426,7 @@ describe('NodeResourceExplorerService', () => {
 			expect(result).toEqual([]);
 		});
 
-		test('leaves a bare string alone, since it carries no mode to judge', async () => {
+		test('reads a bare string as the identifier as well', async () => {
 			mockAiNode([{ ...modelLocator, default: 'gpt-5-mini' }]);
 			mockAvailableModels(['gpt-5-mini']);
 
@@ -435,8 +435,8 @@ describe('NodeResourceExplorerService', () => {
 				parameters: { model: 'gpt-4o' },
 			});
 
-			expect(result).toEqual([]);
-			expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+			expect(result).toHaveLength(1);
+			expect(result[0]?.currentValue).toBe('gpt-4o');
 		});
 
 		test('probes only the locator visible for the current resource/operation', async () => {
@@ -507,10 +507,7 @@ describe('NodeResourceExplorerService', () => {
 				credentialType: 'openAiApi',
 				credentialId: 'cred-1',
 				// Left over from when this node was configured for images.
-				parameters: {
-					resource: 'text',
-					imageModel: { __rl: true, mode: 'list', value: 'dall-e-3' },
-				},
+				parameters: { resource: 'text', imageModel: { __rl: true, mode: 'id', value: 'dall-e-3' } },
 			});
 
 			expect(result).toEqual([]);
