@@ -68,7 +68,7 @@ explicitly in the service before deleting rows.
 | `0a36cf18a7d` | Input-contract reader, extracted from `nodes-base` into `n8n-workflow` |
 | `f78b151d7f2` | `POST /catalog/workflows/:id/run` |
 | `1c7cde1ae96` | `GET /catalog/workflows` |
-| `32fb2405e58` | `GET /catalog/runs` |
+| `32fb2405e58` | `GET /catalog/runs` — since removed, superseded by the workflow's own execution list |
 | `d400001ec62` | Frontend `/catalog` tab |
 | _(uncommitted)_ | Binding + subscription tables, scheduler owner scope, schedule UI |
 
@@ -89,7 +89,7 @@ explicitly in the service before deleting rows.
 - `WorkflowInputSchemaService` — answers eligibility and schema together
 - `CatalogRunService` — start node, production mode, input filtering, execution
   tagging
-- `CatalogService` — listing + own-runs history
+- `CatalogService` — listing
 - `CatalogController` at `/rest/catalog`
 
 ### Frontend

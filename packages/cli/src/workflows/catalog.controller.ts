@@ -48,16 +48,6 @@ export class CatalogController {
 		return await this.catalogService.list(req.user);
 	}
 
-	/**
-	 * Scoped to executions the person started themselves, by the marker the run
-	 * service writes — not to the workflows they can reach.
-	 */
-	@Get('/runs')
-	@GlobalScope('workflow:list')
-	async listRuns(req: AuthenticatedRequest) {
-		return await this.catalogService.listRuns(req.user);
-	}
-
 	@Post('/workflows/:workflowId/run')
 	@ProjectScope('workflow:execute')
 	async run(req: AuthenticatedRequest<WorkflowParam>, _res: unknown, @Body payload: CatalogRunDto) {
