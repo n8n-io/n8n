@@ -757,7 +757,7 @@ async function onOpenRenameNodeModal(id: string) {
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
 		}
-	} catch (e) {}
+	} catch {}
 }
 
 async function onRevertRenameNode({

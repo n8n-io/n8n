@@ -115,7 +115,7 @@ const emit = defineEmits<{
 	dblclickHeader: [MouseEvent];
 }>();
 
-const slots = defineSlots<{ actions?: {} }>();
+defineSlots<{ actions?: {} }>();
 
 const nodeValues = ref<INodeParameters>(getNodeSettingsInitialValues());
 

@@ -244,8 +244,6 @@ const allToolsWereUnusedNotice = computed(() => {
 const insertTestData = () => {
 	if (!runDataRef.value) return;
 
-	// We should be able to fix this when we migrate RunData.vue to composition API
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 	runDataRef.value.enterEditMode({
 		origin: 'insertTestDataLink',
 	});
@@ -515,7 +513,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	display: none;
 }
 .runData {
-	background-color: var(--ndvv2--run-data--color--background);
+	background-color: var(--ndv--run-data--color--background);
 }
 .outputTypeSelect {
 	margin-bottom: var(--spacing--4xs);
