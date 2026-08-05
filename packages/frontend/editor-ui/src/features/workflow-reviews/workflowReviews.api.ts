@@ -62,7 +62,7 @@ export async function createWorkflowReviewRequest(
 export async function updateWorkflowReviewRequestVersion(
 	context: IRestApiContext,
 	workflowReviewRequestId: string,
-	payload: { workflowId: string; workflowVersionId: string },
+	payload: { workflowId: string; workflowVersionId: string; workflowVersionName?: string },
 ): Promise<WorkflowReviewRequestSummary> {
 	return await makeRestApiRequest<WorkflowReviewRequestSummary>(
 		context,
