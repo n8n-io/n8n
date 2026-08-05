@@ -1,39 +1,63 @@
 import {
+	AgentEvalRunDetailQueryDto,
+	CreateAgentEvalRatingDto,
 	CreateAgentEvalRunDto,
 	GenerateDraftCasesOptionsDto,
+	PaginationDto,
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
+	type AgentEvalRatingRecord,
 	type AgentEvalRunDetail,
+	type AgentEvalRunList,
 	type AgentEvalRunRecord,
 	type AgentEvalRunSummary,
 	type GenerateDraftCasesResult,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Patch, Post, ProjectScope, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Patch,
+	Post,
+	ProjectScope,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import { AgentEvalRatingService } from './agent-eval-rating.service';
 import { AgentEvalService } from './agent-eval.service';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 
 type AgentParam = { projectId: string; agentId: string };
 type DatasetParam = AgentParam & { datasetId: string };
 type RunParam = AgentParam & { runId: string };
+type ResultParam = AgentParam & { resultId: string };
 
 /**
- * REST surface for agent evals: generation, datasets, runs and per-case results.
- * Nested under the agent so `@ProjectScope` rejects before the handler runs.
+ * REST surface for agent evals: generation, datasets, runs, per-case results and
+ * the human ratings of them. Nested under the agent so `@ProjectScope` rejects
+ * before the handler runs.
  *
- * `agent:read` for reads, `agent:execute` for running a run, `agent:update` for
+ * **This is the single enforcement point** for both the project scope and the
+ * `101_agent_evals` rollout — the services behind it check neither, so a route
+ * added here without a scope decorator and a `flagGate` call is an open one.
+ *
+ * `agent:read` for reads, `agent:execute` for starting a run, `agent:update` for
  * eval-config writes — including generation, which spends the builder's model
- * credits and so must stay closed to viewers (they hold `agent:execute`).
- * Ratings ship with the service that persists them.
+ * credits, and cancellation, which acts on a run someone else started. Both must
+ * stay closed to viewers, who hold `agent:execute`.
+ *
+ * Paged reads answer with `{ count, data }`, where `count` is the total.
  */
 @RestController('/projects/:projectId/agents/v2')
 export class AgentEvalsController {
 	constructor(
 		private readonly service: AgentEvalService,
+		private readonly ratingService: AgentEvalRatingService,
 		private readonly flagGate: AgentEvalsFlagGate,
 	) {}
 
@@ -121,20 +145,30 @@ export class AgentEvalsController {
 		return await this.service.startRun(req.user, agentId, projectId, datasetId, payload);
 	}
 
+	/** Newest first. Unbounded over a dataset's life, so the window is required. */
 	@Get('/:agentId/evals/datasets/:datasetId/runs')
 	@ProjectScope('agent:read')
-	async listRuns(req: AuthenticatedRequest<DatasetParam>): Promise<AgentEvalRunRecord[]> {
+	async listRuns(
+		req: AuthenticatedRequest<DatasetParam>,
+		_res: unknown,
+		@Query query: PaginationDto,
+	): Promise<AgentEvalRunList> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, datasetId } = req.params;
-		return await this.service.listRuns(agentId, projectId, datasetId);
+		return await this.service.listRuns(agentId, projectId, datasetId, query);
 	}
 
+	/** `take`/`skip` page the run's cases, not the run itself. */
 	@Get('/:agentId/evals/runs/:runId')
 	@ProjectScope('agent:read')
-	async getRun(req: AuthenticatedRequest<RunParam>): Promise<AgentEvalRunDetail> {
+	async getRun(
+		req: AuthenticatedRequest<RunParam>,
+		_res: unknown,
+		@Query query: AgentEvalRunDetailQueryDto,
+	): Promise<AgentEvalRunDetail> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
-		return await this.service.getRunDetail(agentId, projectId, runId);
+		return await this.service.getRunDetail(agentId, projectId, runId, query);
 	}
 
 	/** Counts only — cheap enough for the UI to poll while a run is in flight. */
@@ -146,11 +180,57 @@ export class AgentEvalsController {
 		return await this.service.getRunSummary(agentId, projectId, runId);
 	}
 
+	// Cancelling stops work someone else started, so it's a write, not an
+	// execution — and `agent:execute` is all a chat-only user holds.
 	@Post('/:agentId/evals/runs/:runId/cancel')
-	@ProjectScope('agent:execute')
+	@ProjectScope('agent:update')
 	async cancelRun(req: AuthenticatedRequest<RunParam>): Promise<AgentEvalRunRecord> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
 		return await this.service.cancelRun(agentId, projectId, runId);
+	}
+
+	// ---- ratings ----
+
+	/**
+	 * `agent:update`, not `agent:execute`: the chat-user role holds execute and
+	 * nothing else, and a rating — especially a correction, which seeds later judge
+	 * calibration — is eval config a chat-only member has no business writing.
+	 */
+	@Post('/:agentId/evals/results/:resultId/ratings')
+	@ProjectScope('agent:update')
+	async rateResult(
+		req: AuthenticatedRequest<ResultParam>,
+		_res: unknown,
+		@Body payload: CreateAgentEvalRatingDto,
+	): Promise<AgentEvalRatingRecord> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.ratingService.rateResult(req.user, agentId, projectId, resultId, payload);
+	}
+
+	/** Ratings are append-only, so this is the case's full history, newest first. */
+	@Get('/:agentId/evals/results/:resultId/ratings')
+	@ProjectScope('agent:read')
+	async listRatingsForResult(
+		req: AuthenticatedRequest<ResultParam>,
+	): Promise<AgentEvalRatingRecord[]> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.ratingService.listRatingsForResult(agentId, projectId, resultId);
+	}
+
+	/**
+	 * Newest rating per rated case — what reopening a run renders. Not every rating
+	 * in the run: superseded votes stay on record but are the per-case route's job.
+	 */
+	@Get('/:agentId/evals/runs/:runId/ratings')
+	@ProjectScope('agent:read')
+	async listLatestRatingsForRun(
+		req: AuthenticatedRequest<RunParam>,
+	): Promise<AgentEvalRatingRecord[]> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, runId } = req.params;
+		return await this.ratingService.listLatestRatingsForRun(agentId, projectId, runId);
 	}
 }
