@@ -77,11 +77,34 @@ those two use — not by adapting either one.
 
 ### Transport
 
-- `update-mcp-settings.dto.ts` — both fields optional; at least one required.
+Extend the existing `PATCH /rest/mcp/settings` rather than adding a dedicated
+endpoint. Both fields are instance-level MCP settings and the frontend already
+has a single `updateMcpSettings` call. (The rejected alternative — a separate
+endpoint mirroring `PATCH /oauth/allowed-redirect-uris` — would avoid touching
+the existing DTO contract but adds a third settings endpoint to the same
+controller.)
+
+- `update-mcp-settings.dto.ts` — make both fields optional, plus a `.refine()`
+  requiring at least one to be present.
 - `mcp.settings.controller.ts` — write each field only when present. Keep the
   existing `mcpManagedByEnv` guard and the `refreshModuleSettings('mcp')` call.
   Keep emitting `mcp-access-updated` only when `mcpAccessEnabled` was present.
 - `mcp.module.ts` `settings()` — add `autoExposeNewWorkflows`.
+
+**Why the refinement is required, not optional strictness.** `Z.class` is a plain
+`z.object` ([zod-class.ts](../../../packages/@n8n/api-types/src/zod-class.ts)) and
+`mcpAccessEnabled` is currently required, so an empty `{}` body is rejected today.
+Making both fields optional silently converts that 400 into a 200-that-does-
+nothing. Verified against zod directly:
+
+| DTO shape | `{}` |
+|---|---|
+| Today (`mcpAccessEnabled` required) | rejected |
+| Naive both-optional | accepted → silent no-op |
+| Both-optional + `.refine()` | rejected |
+
+The refinement preserves existing behaviour through a change that would otherwise
+loosen it.
 
 ### Where seeding happens
 
@@ -185,6 +208,7 @@ success while nothing changed.
 | Unit | Assertion |
 |---|---|
 | `mcp.settings.service` | get/set round-trip; cache hit path; absent row → `false` |
+| `update-mcp-settings.dto` | `{}` rejected; either field alone accepted; both together accepted |
 | `mcp.settings.controller` | patching one field leaves the other untouched (guards finding #2); env guard still rejects; `mcp-access-updated` not emitted for an auto-expose-only patch |
 | `workflow-creation.service` | seeds `true` when `availableInMCP` unset and setting on; respects explicit `false`; respects explicit `true`; no seed when setting off |
 | `mcp.module` | `settings()` includes `autoExposeNewWorkflows` |
