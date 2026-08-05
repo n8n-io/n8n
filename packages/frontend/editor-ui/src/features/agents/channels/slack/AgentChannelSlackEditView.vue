@@ -20,7 +20,9 @@ const managed = computed(() => props.runtime.isManagedCredential(credentialId.va
 const validationError = computed(() =>
 	managed.value ? (settingsRef.value?.validationError ?? null) : null,
 );
-const loading = computed(() => props.loading || props.runtime.loading.value);
+const loading = computed(
+	() => props.loading || props.runtime.loading.value || props.runtime.settingsLoading.value,
+);
 
 async function beforeSave() {
 	if (!managed.value) return;

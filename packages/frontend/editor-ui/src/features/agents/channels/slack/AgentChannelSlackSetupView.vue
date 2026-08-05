@@ -23,18 +23,37 @@ const emit = defineEmits<{
 
 const setupKind = ref<'managed' | 'manual'>('managed');
 const manualRef = ref<AgentChannelViewExpose>();
+const managedActionInFlight = ref(false);
 const validationError = computed(() => manualRef.value?.validationError ?? null);
-const loading = computed(() => props.loading || props.runtime.loading.value);
+const loading = computed(
+	() => props.loading || props.runtime.loading.value || managedActionInFlight.value,
+);
 
 async function setupApp(token: string) {
 	if (props.disabled) return false;
 	return await props.runtime.setupApp(token, () => emit('connected'));
 }
 
+async function connectManagerCredential(credentialId?: string) {
+	if (props.disabled || managedActionInFlight.value) return false;
+	managedActionInFlight.value = true;
+	try {
+		return await props.runtime.connectManagerCredential(credentialId);
+	} finally {
+		managedActionInFlight.value = false;
+	}
+}
+
 async function installManagedApp(managerCredentialId: string, workspaceId: string) {
-	return await props.runtime.installManagedApp(managerCredentialId, workspaceId, () =>
-		emit('connected'),
-	);
+	if (props.disabled || managedActionInFlight.value) return false;
+	managedActionInFlight.value = true;
+	try {
+		return await props.runtime.installManagedApp(managerCredentialId, workspaceId, () =>
+			emit('connected'),
+		);
+	} finally {
+		managedActionInFlight.value = false;
+	}
 }
 
 watch(
@@ -61,7 +80,7 @@ defineExpose({ validationError, loading });
 			:setup="runtime.setup.value"
 			:loading="loading"
 			:credential-permissions="credentialPermissions"
-			:connect-manager="runtime.connectManagerCredential"
+			:connect-manager="connectManagerCredential"
 			:edit-manager="runtime.editManagerCredential"
 			:install-app="installManagedApp"
 			:show-manual-setup="!managedOnly"
