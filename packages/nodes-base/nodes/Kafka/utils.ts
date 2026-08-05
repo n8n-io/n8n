@@ -422,7 +422,7 @@ export function disconnectEventListeners(
 // error message, which can be large, so the logged message is bounded.
 const MAX_REGISTRY_ERROR_MESSAGE_LENGTH = 500;
 
-function sanitizeRegistryError(error: unknown) {
+export function sanitizeRegistryError(error: unknown) {
 	const ensured = ensureError(error);
 	const redacted = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
 	const message =
