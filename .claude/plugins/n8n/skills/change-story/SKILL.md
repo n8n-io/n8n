@@ -180,7 +180,13 @@ Fixed section structure. Fill every section; never omit one
 4. How it works now: one mermaid diagram of the changed path only, not
    the whole system. When there is no meaningful flow (dep bump, config
    value, one-line fix), one plain sentence instead: a filler diagram is
-   decoration.
+   decoration. Mermaid text is code, not prose: a semicolon in message
+   text is a statement separator and breaks the whole diagram into the
+   "syntax error" bomb; use commas or periods, and avoid braces. If a
+   browser tool is available, verify the diagram actually rendered (an
+   svg inside pre.mermaid, no "Syntax error" text) before opening the
+   page; browser MCPs often block file://, so briefly serve the run
+   directory over localhost for the check.
 5. Evidence: per change type: screenshots, real request/response pairs,
    test output. State how each was produced. Long output goes in
    collapsible blocks whose summary line carries the verdict (e.g.

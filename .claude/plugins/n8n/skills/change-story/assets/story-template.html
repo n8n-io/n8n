@@ -32,6 +32,9 @@ Fragment markup this page already supports:
   Mermaid: put the diagram source inside {{HOW_HTML}} as
     <pre class="mermaid">sequenceDiagram ...</pre>
   If the CDN is unreachable the source stays visible as text.
+  Mermaid message text is parsed, not free prose: a semicolon acts as a
+  statement separator and kills the whole diagram; use commas/periods
+  and avoid braces in message text.
 
   Review (--review only; otherwise fill BOTH placeholders with ''):
     {{REVIEW_NAV_HTML}}     -> <a href="#review-findings">Review findings</a>
