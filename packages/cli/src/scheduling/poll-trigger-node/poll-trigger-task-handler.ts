@@ -52,6 +52,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const { workflowId, nodeId } = this.parsePayload(task);
 
 		const now = new Date();
+		// peek runs before the tick's own try/catch, so this is the one call
+		// whose throw would otherwise escape execute() uncaught; kept even
+		// though the service itself never throws.
 		const state = await this.pollBackoffService.peek(workflowId, nodeId).catch(() => null);
 		if (this.pollBackoffService.isBackingOff(state, now)) {
 			this.logger.debug('Poll is backing off; skipping this occurrence', {
@@ -90,6 +93,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					pollFunctions,
 				);
 
+				// Success means poll() returned, checked once here rather than
+				// separately on the items and empty paths below, so those branches
+				// (and a mid-poll deactivation) can't disagree about whether the
+				// backoff state cleared.
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 
 				if (pollResponse !== null) {
@@ -146,6 +153,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
+				// Read fresh here rather than reusing the tick-start `now`: a slow
+				// failing poll would otherwise have its deadline anchored before
+				// poll() ran and land already in the past.
 				await this.pollBackoffService.recordFailure({
 					workflowId,
 					nodeId,

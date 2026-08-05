@@ -20,6 +20,10 @@ function getResponse(candidate: unknown): Record<string, unknown> | undefined {
 	return isRecord(response) ? response : undefined;
 }
 
+// Breadth-first over cause/errorResponse/reason rather than fixed property
+// paths: a node that wraps its NodeApiError in a NodeOperationError puts the
+// real response at depth 2, which fixed paths missed. The visited set stops a
+// self-referential cause from looping.
 function candidateChain(error: unknown): Array<Record<string, unknown>> {
 	if (!isRecord(error)) return [];
 
@@ -105,12 +109,23 @@ function parseRetryAfterValue(raw: string, now: Date): number | null {
 	return diff > 0 ? diff : null;
 }
 
+/**
+ * A 401/403 is permanent unless it carries a Retry-After, which marks it as
+ * rate limiting instead: several APIs return those statuses for throttling
+ * (Google quota, GitHub secondary limits), and a genuinely dead credential
+ * never sends the header.
+ */
 export function classifyPollFailure(error: unknown, retryAfterMs: number | null): PollFailureClass {
 	const status = httpCodeStatus(error) ?? statusFromWalk(error);
 	if (status === null || !PERMANENT_STATUS_CODES.has(status)) return 'transient';
 	return retryAfterMs !== null ? 'transient' : 'permanent';
 }
 
+/**
+ * The `Retry-After` value on the failing response, in ms, or `null` when
+ * absent or unparseable. Resolved against `now` so an HTTP-date value can't
+ * go stale.
+ */
 export function retryAfterMs(error: unknown, now: Date): number | null {
 	for (const candidate of candidateChain(error)) {
 		const response = getResponse(candidate);
@@ -136,6 +151,9 @@ export function computeBackoffUntil(args: {
 }): Date {
 	const { failureClass, consecutiveErrors, retryAfterMs: retryAfter, now } = args;
 
+	// Starts at the ceiling rather than climbing to it: a lower plateau would
+	// let a permanent failure back off less than an escalating transient one,
+	// which the ceiling exists to bound.
 	if (failureClass === 'permanent') {
 		return new Date(now.getTime() + MAX_BACKOFF_MS);
 	}
@@ -143,5 +161,8 @@ export function computeBackoffUntil(args: {
 	const curveMs = backoff(consecutiveErrors, { maxMs: MAX_BACKOFF_MS });
 	const cappedRetryAfterMs = Math.min(retryAfter ?? 0, RETRY_AFTER_MAX_MS);
 
+	// Retry-After raises the floor rather than replacing the curve: honouring
+	// it outright would pin a persistent failure to a fixed delay forever, and
+	// ignoring it would poll again before the source said it was safe to.
 	return new Date(now.getTime() + Math.max(curveMs, cappedRetryAfterMs));
 }
