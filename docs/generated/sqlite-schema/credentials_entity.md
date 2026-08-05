@@ -79,8 +79,6 @@ erDiagram
   varchar_36_ agentId PK
   datetime_3_ createdAt
   varchar_36_ credentialId PK
-  varchar_16_ source PK
-  varchar_36_ sourceVersionId
 }
 "chat_hub_agents" {
   datetime_3_ createdAt

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_credential_dependency" ("agentId" varchar(36) NOT NULL, "source" varchar(16) NOT NULL, "credentialId" varchar(36) NOT NULL, "sourceVersionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_credential_dependency_source" CHECK ("source" IN ('draft', 'published')), CONSTRAINT "FK_6a6948884969cb4204a1975578b" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_fec7ee37062350d6a4a2979327d" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "source", "credentialId"))
+CREATE TABLE "agent_credential_dependency" ("agentId" varchar(36) NOT NULL, "credentialId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_6a6948884969cb4204a1975578b" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_fec7ee37062350d6a4a2979327d" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "credentialId"))
 ```
 
 </details>
@@ -18,27 +18,23 @@ CREATE TABLE "agent_credential_dependency" ("agentId" varchar(36) NOT NULL, "sou
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | credentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
-| source | varchar(16) |  | false |  |  |  |
-| sourceVersionId | varchar(36) |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("source" IN ('draft', 'published')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
 | credentialId | PRIMARY KEY | PRIMARY KEY (credentialId) |
-| source | PRIMARY KEY | PRIMARY KEY (source) |
-| sqlite_autoindex_agent_credential_dependency_1 | PRIMARY KEY | PRIMARY KEY (agentId, source, credentialId) |
+| sqlite_autoindex_agent_credential_dependency_1 | PRIMARY KEY | PRIMARY KEY (agentId, credentialId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_fec7ee37062350d6a4a2979327 | CREATE INDEX "IDX_fec7ee37062350d6a4a2979327" ON "agent_credential_dependency" ("credentialId")  |
-| sqlite_autoindex_agent_credential_dependency_1 | PRIMARY KEY (agentId, source, credentialId) |
+| sqlite_autoindex_agent_credential_dependency_1 | PRIMARY KEY (agentId, credentialId) |
 
 ## Relations
 
@@ -52,8 +48,6 @@ erDiagram
   varchar_36_ agentId PK
   datetime_3_ createdAt
   varchar_36_ credentialId PK
-  varchar_16_ source PK
-  varchar_36_ sourceVersionId
 }
 "agents" {
   varchar_36_ activeVersionId FK

@@ -63,24 +63,9 @@ export class AgentCredentialDependencyRepository extends BaseRepository<AgentCre
 				await manager.delete(AgentCredentialDependency, { agentId });
 			}
 
-			const rows: Array<
-				Pick<AgentCredentialDependency, 'agentId' | 'source' | 'credentialId' | 'sourceVersionId'>
-			> = [];
-			for (const credentialId of draftCredentialIds) {
-				if (existingCredentialIds.has(credentialId)) {
-					rows.push({ agentId, source: 'draft', credentialId, sourceVersionId: null });
-				}
-			}
-			for (const credentialId of publishedCredentialIds) {
-				if (existingCredentialIds.has(credentialId)) {
-					rows.push({
-						agentId,
-						source: 'published',
-						credentialId,
-						sourceVersionId: publishedVersion?.versionId ?? null,
-					});
-				}
-			}
+			const rows = [...referencedCredentialIds]
+				.filter((credentialId) => existingCredentialIds.has(credentialId))
+				.map((credentialId) => ({ agentId, credentialId }));
 
 			if (rows.length > 0) {
 				await manager.insert(AgentCredentialDependency, rows);

@@ -79,7 +79,7 @@ describe('AgentCredentialDependencyRepository', () => {
 		);
 	});
 
-	it('atomically rebuilds draft and published rows from the current locked agent state', async () => {
+	it('atomically rebuilds the union of draft and published credential references', async () => {
 		const agent = makeAgent();
 		const publishedVersion = makePublishedVersion();
 		entityManager.findOne.mockImplementation(async (entity) => {
@@ -101,33 +101,19 @@ describe('AgentCredentialDependencyRepository', () => {
 		expect(entityManager.insert).toHaveBeenCalledWith(AgentCredentialDependency, [
 			{
 				agentId: agent.id,
-				source: 'draft',
 				credentialId: 'credential-draft',
-				sourceVersionId: null,
 			},
 			{
 				agentId: agent.id,
-				source: 'draft',
 				credentialId: 'credential-shared',
-				sourceVersionId: null,
 			},
 			{
 				agentId: agent.id,
-				source: 'draft',
 				credentialId: 'credential-integration',
-				sourceVersionId: null,
 			},
 			{
 				agentId: agent.id,
-				source: 'published',
 				credentialId: 'credential-published',
-				sourceVersionId: publishedVersion.versionId,
-			},
-			{
-				agentId: agent.id,
-				source: 'published',
-				credentialId: 'credential-shared',
-				sourceVersionId: publishedVersion.versionId,
 			},
 		]);
 	});
@@ -145,9 +131,7 @@ describe('AgentCredentialDependencyRepository', () => {
 		expect(entityManager.insert).toHaveBeenCalledWith(AgentCredentialDependency, [
 			{
 				agentId: agent.id,
-				source: 'draft',
 				credentialId: 'credential-draft',
-				sourceVersionId: null,
 			},
 		]);
 	});

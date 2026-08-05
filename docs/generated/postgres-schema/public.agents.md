@@ -128,8 +128,6 @@ erDiagram
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
-  varchar_16_ source
-  varchar_36_ sourceVersionId
 }
 "public.agent_eval_dataset" {
   varchar_36_ agentId FK

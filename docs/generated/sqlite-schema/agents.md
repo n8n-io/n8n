@@ -131,8 +131,6 @@ erDiagram
   varchar_36_ agentId PK
   datetime_3_ createdAt
   varchar_36_ credentialId PK
-  varchar_16_ source PK
-  varchar_36_ sourceVersionId
 }
 "agent_eval_dataset" {
   varchar_36_ agentId FK

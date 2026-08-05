@@ -229,8 +229,8 @@ import { CreateAgentEvalTables1784815940112 } from '../common/1784815940112-Crea
 import { AddAgentFileStorageColumns1785186578138 } from '../common/1785186578138-AddAgentFileStorageColumns';
 import { CrashStaleEnqueuedExecutions1785247194306 } from '../common/1785247194306-CrashStaleEnqueuedExecutions';
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
-import { CreateAgentCredentialDependencyTable1785514360684 } from '../common/1785514360684-CreateAgentCredentialDependencyTable';
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
+import { CreateAgentCredentialDependencyTable1785828155092 } from '../common/1785828155092-CreateAgentCredentialDependencyTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -463,8 +463,8 @@ const sqliteMigrations: Migration[] = [
 	AddMisfirePolicyToScheduler1785247194307,
 	CreateAgentChatAttachmentsTable1785255306000,
 	AddSetupCompletedAtToAgents1785500832626,
-	CreateAgentCredentialDependencyTable1785514360684,
 	AddAgentExecutionRuntimeState1785828155091,
+	CreateAgentCredentialDependencyTable1785828155092,
 ];
 
 export { sqliteMigrations };

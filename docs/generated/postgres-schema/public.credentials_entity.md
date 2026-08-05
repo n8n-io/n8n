@@ -79,8 +79,6 @@ erDiagram
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
-  varchar_16_ source
-  varchar_36_ sourceVersionId
 }
 "public.chat_hub_agents" {
   timestamp_3__with_time_zone createdAt

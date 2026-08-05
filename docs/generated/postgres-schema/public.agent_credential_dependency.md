@@ -7,28 +7,24 @@
 | agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
-| source | varchar(16) |  | false |  |  | Agent configuration snapshot that references the credential |
-| sourceVersionId | varchar(36) |  | true |  |  | Published agent version; null for the current draft |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agent_credential_dependency_source | CHECK | CHECK (((source)::text = ANY ((ARRAY['draft'::character varying, 'published'::character varying])::text[]))) |
 | FK_6a6948884969cb4204a1975578b | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_fec7ee37062350d6a4a2979327d | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE CASCADE |
-| PK_847abe401cd0085ac9b2468c928 | PRIMARY KEY | PRIMARY KEY ("agentId", source, "credentialId") |
+| PK_546f5d9cfaf5ea78efcc6f5d0a2 | PRIMARY KEY | PRIMARY KEY ("agentId", "credentialId") |
 | agent_credential_dependency_agentId_not_null | n | NOT NULL "agentId" |
 | agent_credential_dependency_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_credential_dependency_credentialId_not_null | n | NOT NULL "credentialId" |
-| agent_credential_dependency_source_not_null | n | NOT NULL source |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_fec7ee37062350d6a4a2979327 | CREATE INDEX "IDX_fec7ee37062350d6a4a2979327" ON public.agent_credential_dependency USING btree ("credentialId") |
-| PK_847abe401cd0085ac9b2468c928 | CREATE UNIQUE INDEX "PK_847abe401cd0085ac9b2468c928" ON public.agent_credential_dependency USING btree ("agentId", source, "credentialId") |
+| PK_546f5d9cfaf5ea78efcc6f5d0a2 | CREATE UNIQUE INDEX "PK_546f5d9cfaf5ea78efcc6f5d0a2" ON public.agent_credential_dependency USING btree ("agentId", "credentialId") |
 
 ## Relations
 
@@ -42,8 +38,6 @@ erDiagram
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
-  varchar_16_ source
-  varchar_36_ sourceVersionId
 }
 "public.agents" {
   varchar_36_ activeVersionId FK

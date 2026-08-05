@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
 	createWorkflow,
 	randomCredentialPayload,
@@ -11,6 +13,7 @@ import { AgentCredentialDependency } from '@/modules/agents/entities/agent-crede
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentCredentialDependencyRepository } from '@/modules/agents/repositories/agent-credential-dependency.repository';
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { saveCredential } from '../shared/db/credentials';
@@ -20,6 +23,7 @@ import * as utils from '../shared/utils';
 let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;
 let agentDepRepo: AgentCredentialDependencyRepository;
+let agentHistoryRepo: AgentHistoryRepository;
 let agentRepo: AgentRepository;
 let projectRepo: ProjectRepository;
 
@@ -37,6 +41,7 @@ testServer = utils.setupTestServer({
 beforeAll(() => {
 	depRepo = Container.get(WorkflowDependencyRepository);
 	agentDepRepo = Container.get(AgentCredentialDependencyRepository);
+	agentHistoryRepo = Container.get(AgentHistoryRepository);
 	agentRepo = Container.get(AgentRepository);
 	projectRepo = Container.get(ProjectRepository);
 });
@@ -69,6 +74,7 @@ async function seedAgentCredentialDependencies(
 			name,
 			model: 'openai/gpt-4.1-mini',
 			instructions: 'Help the user',
+			credential: credentialId,
 			tools: [],
 			skills: [],
 		},
@@ -79,20 +85,18 @@ async function seedAgentCredentialDependencies(
 	});
 	await agentRepo.save(agent);
 
-	await agentDepRepo.save([
-		agentDepRepo.create({
-			agentId: agent.id,
-			source: 'draft',
-			sourceVersionId: null,
-			credentialId,
-		}),
-		agentDepRepo.create({
-			agentId: agent.id,
-			source: 'published',
-			sourceVersionId: 'published-version-1',
-			credentialId,
-		}),
-	]);
+	const publishedVersionId = randomUUID();
+	await agentHistoryRepo.saveVersion({
+		versionId: publishedVersionId,
+		agentId: agent.id,
+		schema: agent.schema,
+		tools: agent.tools,
+		skills: agent.skills,
+		publishedBy: user,
+	});
+	agent.activeVersionId = publishedVersionId;
+	await agentRepo.save(agent);
+	await agentDepRepo.refreshForAgent(agent.id);
 
 	return agent;
 }
