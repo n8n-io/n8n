@@ -193,21 +193,6 @@ success while nothing changed.
 Mock external dependencies; reuse hoisted `mock<T>()` fixtures. `packages/cli`
 tests use `createVitestConfigWithDecorators`.
 
-### E2E
-
-Existing MCP e2e coverage (`tests/e2e/mcp/mcp-service.spec.ts`, `mcp-oauth.spec.ts`)
-is API-level: auth, `tools/list`, and per-tool behaviour including
-"workflow not available in MCP" rejections. It asserts the *effect* of the
-per-workflow flag, but there is **no UI coverage of the MCP settings page** — no
-spec drives `mcp-access-toggle` or the workflows table.
-
-So no existing e2e test breaks when the store's hardcoded `false` is deleted, and
-none would catch a regression where a UI-created workflow stops being seeded.
-Unit coverage above is the real guard. One optional e2e is worth considering:
-toggle on → create a workflow → assert it appears in `search_workflows` with
-`availableInMCP: true`, which is the only test that exercises the full path the
-feature actually claims.
-
 ## Out of scope
 
 | Item | Why |
@@ -217,11 +202,3 @@ feature actually claims.
 | `search_workflows` exposure filtering | Pre-existing behaviour, unchanged here |
 | Per-workflow exposure provenance | Rejected above in favour of cohort measurement |
 | Not-yet-runnable workflows | No behaviour change; a trigger-less workflow is exposed like any other and fails the existing trigger check on run |
-
-### Known inconsistency, noted not fixed
-
-Unexposed workflows still appear in `search_workflows`, so their names and
-descriptions already reach any connected client. Execution search *does* filter
-on exposure, so the module is not consistent with itself, and no test covers the
-mixed case. Not this ticket — but it is why "expose" has never gated discovery,
-only actioning.
