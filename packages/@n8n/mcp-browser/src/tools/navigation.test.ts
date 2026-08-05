@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import type { Mock } from 'vitest';
+
 import { NotConnectedError } from '../errors';
 import { createNavigationTools } from './navigation';
 import { createMockConnection, findTool, structuredOf, textOf, TOOL_CONTEXT } from './test-helpers';
@@ -93,7 +95,7 @@ describe('createNavigationTools', () => {
 			});
 
 			it('returns error when not connected', async () => {
-				(mockConnection.connection.getConnection as jest.Mock).mockImplementation(() => {
+				(mockConnection.connection.getConnection as Mock).mockImplementation(() => {
 					throw new NotConnectedError();
 				});
 

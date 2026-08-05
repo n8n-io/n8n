@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getInsightsSummary
+  x-required-scope: insights:read
   x-eov-operation-handler: v1/handlers/insights/insights.handler
   tags:
     - Insights

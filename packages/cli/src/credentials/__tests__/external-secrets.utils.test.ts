@@ -75,6 +75,21 @@ describe('External secrets utils', () => {
 			const result = extractProviderKeysFromExpression(expression);
 			expect(result.sort()).toEqual(['aws', 'vault']);
 		});
+
+		describe('whitespace and newline between $secrets and accessor', () => {
+			it.each([
+				['space before dot', '={{ $secrets .vault.key }}'],
+				['multiple spaces before dot', '={{ $secrets   .vault.key }}'],
+				['tab before dot', '={{ $secrets\t.vault.key }}'],
+				['newline before dot', '={{ $secrets\n.vault.key }}'],
+				['space and newline before dot', '={{ $secrets \n.vault.key }}'],
+				['space before bracket', "={{ $secrets ['vault']['key'] }}"],
+				['multiple spaces before bracket', "={{ $secrets   ['vault']['key'] }}"],
+				['newline before bracket', "={{ $secrets\n['vault']['key'] }}"],
+			])('extracts the provider key with %s', (_label, expression) => {
+				expect(extractProviderKeysFromExpression(expression)).toEqual(['vault']);
+			});
+		});
 	});
 
 	describe('getExternalSecretExpressionPaths', () => {
@@ -89,6 +104,27 @@ describe('External secrets utils', () => {
 			};
 
 			expect(getExternalSecretExpressionPaths(data).sort()).toEqual(['arr[0].d', 'b', 'nested.c']);
+		});
+
+		describe('non-literal $secrets references', () => {
+			it.each([
+				['space before dot', '={{ $secrets .vault.key }}'],
+				['tab before dot', '={{ $secrets\t.vault.key }}'],
+				['newline before dot', '={{ $secrets\n.vault.key }}'],
+				['multiple spaces before bracket', "={{ $secrets   ['vault']['key'] }}"],
+				['newline before bracket', "={{ $secrets\n['vault']['key'] }}"],
+				['optional chaining', '={{ $secrets?.vault?.key }}'],
+				['parentheses', '={{ ($secrets).vault.key }}'],
+				['comma operator', '={{ (0, $secrets).vault.key }}'],
+				['array wrap', '={{ [$secrets].pop().vault.key }}'],
+				['inline comment', '={{ ( /* x */ $secrets ).vault.key }}'],
+				['Object() wrap', '={{ Object($secrets).vault.key }}'],
+				['nullish coalescing', '={{ ($secrets ?? {}).vault.key }}'],
+				['template-literal key', '={{ $secrets [`vault`].key }}'],
+				['concatenated key', '={{ $secrets ["va".concat("ult")].key }}'],
+			])('detects the reference with %s', (_label, expression) => {
+				expect(getExternalSecretExpressionPaths({ apiKey: expression })).toEqual(['apiKey']);
+			});
 		});
 	});
 

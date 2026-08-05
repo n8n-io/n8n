@@ -30,6 +30,7 @@ const plannedTaskRecordSchema = z.object({
 const plannedTaskGraphSchema = z.object({
 	planRunId: z.string(),
 	messageGroupId: z.string().optional(),
+	postBuildRunApprovalRequired: z.boolean().optional(),
 	status: z.enum(['awaiting_approval', 'active', 'awaiting_replan', 'completed', 'cancelled']),
 	tasks: z.array(plannedTaskRecordSchema),
 });

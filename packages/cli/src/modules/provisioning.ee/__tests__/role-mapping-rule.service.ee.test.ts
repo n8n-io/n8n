@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import { QueryFailedError } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -52,15 +53,15 @@ const projectRole: Role = {
 };
 
 describe('RoleMappingRuleService', () => {
-	const defaultUpdateSpy = jest.fn().mockResolvedValue(undefined);
-	const defaultTransactionSpy = jest
+	const defaultUpdateSpy = vi.fn().mockResolvedValue(undefined);
+	const defaultTransactionSpy = vi
 		.fn()
 		.mockImplementation(async (cb: (tx: { update: typeof defaultUpdateSpy }) => Promise<void>) => {
 			await cb({ update: defaultUpdateSpy });
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		roleMappingRuleRepository.findOne.mockResolvedValue(null);
 		// normalizeOrderForType calls find after every mutation; default to empty
 		// so existing tests hit the early-exit path and require no transaction mock.
@@ -381,6 +382,60 @@ describe('RoleMappingRuleService', () => {
 			);
 		});
 
+		it('should retry create after a concurrent temporary order conflict', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+
+			roleMappingRuleRepository.find
+				.mockResolvedValueOnce([{ id: 'rule-a', order: 0 } as RoleMappingRule])
+				.mockResolvedValueOnce([
+					{ id: 'rule-a', order: 0 } as RoleMappingRule,
+					{ id: 'rule-concurrent', order: 1 } as RoleMappingRule,
+				]);
+
+			const duplicateOrderError = new QueryFailedError(
+				'insert',
+				[],
+				Object.assign(new Error('duplicate key value violates unique constraint'), {
+					code: '23505',
+				}),
+			);
+
+			const savedRule = {
+				id: 'rule-new',
+				expression: 'claims.new',
+				role: globalRole,
+				type: 'instance',
+				order: 2,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save
+				.mockRejectedValueOnce(duplicateOrderError)
+				.mockResolvedValueOnce(savedRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			await service.create({
+				expression: 'claims.new',
+				role: globalRole.slug,
+				type: 'instance',
+			});
+
+			expect(roleMappingRuleRepository.find).toHaveBeenCalledTimes(2);
+			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(2);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-concurrent' },
+				{ order: 1 },
+			);
+			expect(defaultUpdateSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				{ id: 'rule-new' },
+				{ order: 2 },
+			);
+		});
+
 		it('should clamp supplied order beyond existing list length to the end', async () => {
 			roleRepository.findOne.mockResolvedValue(globalRole);
 			roleMappingRuleRepository.find.mockResolvedValue([
@@ -657,9 +712,9 @@ describe('RoleMappingRuleService', () => {
 		});
 
 		it('should use the transactional repository when an EntityManager is provided', async () => {
-			const txRepoDelete = jest.fn().mockResolvedValue({ affected: 2, raw: {} });
+			const txRepoDelete = vi.fn().mockResolvedValue({ affected: 2, raw: {} });
 			const txRepository = { delete: txRepoDelete };
-			const getRepository = jest.fn().mockReturnValue(txRepository);
+			const getRepository = vi.fn().mockReturnValue(txRepository);
 			const tx = { getRepository } as unknown as Parameters<typeof service.deleteAllOfType>[1];
 
 			const count = await service.deleteAllOfType('instance', tx);
@@ -688,8 +743,8 @@ describe('RoleMappingRuleService', () => {
 	});
 
 	describe('move', () => {
-		const updateSpy = jest.fn().mockResolvedValue(undefined);
-		const transactionSpy = jest.fn().mockImplementation(async (cb) => {
+		const updateSpy = vi.fn().mockResolvedValue(undefined);
+		const transactionSpy = vi.fn().mockImplementation(async (cb) => {
 			await cb({ update: updateSpy });
 		});
 
@@ -771,8 +826,8 @@ describe('RoleMappingRuleService', () => {
 		const makeRule = (id: string, order: number, type = 'instance') =>
 			({ id, order, type }) as unknown as RoleMappingRule;
 
-		const updateSpy = jest.fn().mockResolvedValue(undefined);
-		const transactionSpy = jest.fn();
+		const updateSpy = vi.fn().mockResolvedValue(undefined);
+		const transactionSpy = vi.fn();
 
 		beforeEach(() => {
 			updateSpy.mockClear();
@@ -781,7 +836,7 @@ describe('RoleMappingRuleService', () => {
 					await cb({ update: updateSpy });
 				},
 			);
-			// jest-mock-extended creates a Proxy; assigning manager directly
+			// vitest-mock-extended creates a Proxy; assigning manager directly
 			// is the reliable way to inject the transaction mock.
 			(roleMappingRuleRepository as unknown as Record<string, unknown>).manager = {
 				transaction: transactionSpy,

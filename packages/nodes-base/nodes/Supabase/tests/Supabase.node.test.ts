@@ -1,4 +1,4 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import {
 	type ILoadOptionsFunctions,
@@ -12,18 +12,19 @@ import {
 
 import * as utils from '../GenericFunctions';
 import { Supabase } from '../Supabase.node';
+import type { Mock } from 'vitest';
 
 describe('Test Supabase Node', () => {
 	const node = new Supabase();
 	const input = [{ json: {} }];
-	const mockRequestWithAuthentication = jest.fn().mockResolvedValue([]);
-	const mockGetCredentials = jest.fn().mockResolvedValue({
+	const mockRequestWithAuthentication = vi.fn().mockResolvedValue([]);
+	const mockGetCredentials = vi.fn().mockResolvedValue({
 		host: 'https://api.supabase.io',
 		serviceRole: 'service_role',
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const createMockExecuteFunction = (
@@ -64,7 +65,7 @@ describe('Test Supabase Node', () => {
 
 	describe('getAll pagination', () => {
 		it('should make exactly one request when limit is less than 1000', async () => {
-			const supabaseApiRequest = jest
+			const supabaseApiRequest = vi
 				.spyOn(utils, 'supabaseApiRequest')
 				.mockResolvedValueOnce(Array.from({ length: 50 }, (_, i) => ({ id: i })));
 
@@ -86,7 +87,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should make exactly one request when limit equals 1000', async () => {
-			const supabaseApiRequest = jest
+			const supabaseApiRequest = vi
 				.spyOn(utils, 'supabaseApiRequest')
 				.mockResolvedValueOnce(Array.from({ length: 1000 }, (_, i) => ({ id: i })));
 
@@ -109,7 +110,7 @@ describe('Test Supabase Node', () => {
 
 		it('should paginate and request only remaining rows on the last page when limit > 1000', async () => {
 			const capturedQs: IDataObject[] = [];
-			const supabaseApiRequest = jest
+			const supabaseApiRequest = vi
 				.spyOn(utils, 'supabaseApiRequest')
 				.mockImplementation(async (_method, _endpoint, _body, qs) => {
 					capturedQs.push({ ...qs });
@@ -139,7 +140,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should include order parameter in the request when orderBy is set', async () => {
-			const supabaseApiRequest = jest.spyOn(utils, 'supabaseApiRequest').mockResolvedValueOnce([]);
+			const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest').mockResolvedValueOnce([]);
 
 			const fakeExecuteFunction = createMockExecuteFunction({
 				resource: 'row',
@@ -166,7 +167,7 @@ describe('Test Supabase Node', () => {
 	});
 
 	it('should allow filtering on the same field multiple times', async () => {
-		const supabaseApiRequest = jest
+		const supabaseApiRequest = vi
 			.spyOn(utils, 'supabaseApiRequest')
 			.mockImplementation(async () => {
 				return [];
@@ -304,7 +305,7 @@ describe('Test Supabase Node', () => {
 			},
 		});
 
-		fakeExecuteFunction.helpers.requestWithAuthentication = jest.fn().mockRejectedValue({
+		fakeExecuteFunction.helpers.requestWithAuthentication = vi.fn().mockRejectedValue({
 			description: 'Something when wrong',
 			message: 'error',
 		});
@@ -317,19 +318,19 @@ describe('Test Supabase Node', () => {
 
 	describe('getSchemaHeader function', () => {
 		const mockExecuteContext = {
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as IExecuteFunctions;
 
 		const mockLoadOptionsContext = {
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as any;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should return empty object when useCustomSchema is false for execute context', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock).mockReturnValueOnce(false);
+			(mockExecuteContext.getNodeParameter as Mock).mockReturnValueOnce(false);
 
 			const result = utils.getSchemaHeader(mockExecuteContext, 'GET', 'execute');
 
@@ -338,7 +339,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return empty object when useCustomSchema is false for loadOptions context', () => {
-			(mockLoadOptionsContext.getNodeParameter as jest.Mock).mockReturnValueOnce(false);
+			(mockLoadOptionsContext.getNodeParameter as Mock).mockReturnValueOnce(false);
 
 			const result = utils.getSchemaHeader(mockLoadOptionsContext, 'GET', 'loadOptions');
 
@@ -350,7 +351,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Accept-Profile header for GET method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -362,7 +363,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Accept-Profile header for HEAD method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('test_schema');
 
@@ -372,7 +373,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for POST method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -382,7 +383,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for PATCH method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -392,7 +393,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for PUT method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -402,7 +403,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should return Content-Profile header for DELETE method when useCustomSchema is true', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('custom_schema');
 
@@ -412,7 +413,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should use different parameter calls for loadOptions context', () => {
-			(mockLoadOptionsContext.getNodeParameter as jest.Mock)
+			(mockLoadOptionsContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('load_options_schema');
 
@@ -427,7 +428,7 @@ describe('Test Supabase Node', () => {
 		});
 
 		it('should default to public schema when schema parameter is not provided', () => {
-			(mockExecuteContext.getNodeParameter as jest.Mock)
+			(mockExecuteContext.getNodeParameter as Mock)
 				.mockReturnValueOnce(true)
 				.mockReturnValueOnce('public');
 

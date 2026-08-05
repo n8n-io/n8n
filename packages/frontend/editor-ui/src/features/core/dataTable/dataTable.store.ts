@@ -233,6 +233,16 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return null;
 	};
 
+	// Looks up a data table across every project the user can access, without
+	// mutating the store's list. Used to resolve a link for an id typed by hand.
+	const fetchDataTableById = async (dataTableId: string): Promise<DataTable | null> => {
+		if (!canViewDataTables.value) return null;
+		const response = await fetchDataTablesApi(rootStore.restApiContext, '', undefined, {
+			id: dataTableId,
+		});
+		return response.data[0] ?? null;
+	};
+
 	const fetchOrFindDataTable = async (dataTableId: string, projectId: string) => {
 		const existingTable = dataTables.value.find((table) => table.id === dataTableId);
 		if (existingTable) {
@@ -431,6 +441,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		deleteDataTable,
 		updateDataTable,
 		fetchDataTableDetails,
+		fetchDataTableById,
 		fetchOrFindDataTable,
 		addDataTableColumn,
 		deleteDataTableColumn,

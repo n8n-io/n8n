@@ -5,8 +5,10 @@ import { CredentialResolutionError } from './credential-resolution.error';
  * (or no credentials field within it) is available.
  */
 export class MissingExecutionContextError extends CredentialResolutionError {
-	constructor(credentialName: string) {
-		super(`Cannot resolve dynamic credentials without execution context for "${credentialName}"`);
+	constructor() {
+		super(
+			"This node uses an end-user credential, but no user could be identified for this run, so the credential for it couldn't be resolved",
+		);
 		this.name = 'MissingExecutionContextError';
 	}
 }

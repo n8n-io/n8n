@@ -15,21 +15,18 @@ function mockApplySync(returnValue: unknown = undefined) {
 function createMockCallbacks(
 	overrides: {
 		getValueAtPath?: ReturnType<typeof vi.fn>;
-		callFunctionAtPath?: ReturnType<typeof vi.fn>;
 		getArrayElement?: ReturnType<typeof vi.fn>;
 	} = {},
 ) {
 	const getValueAtPath = overrides.getValueAtPath ?? mockApplySync();
-	const callFunctionAtPath = overrides.callFunctionAtPath ?? mockApplySync();
 	const getArrayElement = overrides.getArrayElement ?? mockApplySync();
 
 	const callbacks = {
 		getValueAtPath: { applySync: getValueAtPath },
-		callFunctionAtPath: { applySync: callFunctionAtPath },
 		getArrayElement: { applySync: getArrayElement },
 	};
 
-	return { getValueAtPath, callFunctionAtPath, getArrayElement, callbacks };
+	return { getValueAtPath, getArrayElement, callbacks };
 }
 
 // ---------------------------------------------------------------------------
@@ -161,36 +158,7 @@ describe('createDeepLazyProxy', () => {
 	});
 
 	// -----------------------------------------------------------------------
-	// 4. Function metadata
-	// -----------------------------------------------------------------------
-
-	describe('function metadata', () => {
-		it('creates a callable wrapper for function metadata', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isFunction: true, __name: 'myFn' });
-			const p = proxy();
-			expect(typeof p.myFn).toBe('function');
-		});
-
-		it('invokes __callFunctionAtPath with correct args when called', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isFunction: true, __name: 'myFn' });
-			mocks.callFunctionAtPath.mockReturnValue('result');
-			const p = proxy();
-			p.myFn('a', 1);
-			expect(mocks.callFunctionAtPath).toHaveBeenCalledWith(null, [['myFn'], 'a', 1], ivmCallOpts);
-		});
-
-		it('caches the function wrapper', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isFunction: true, __name: 'myFn' });
-			const p = proxy();
-			const first = p.myFn;
-			const second = p.myFn;
-			expect(first).toBe(second);
-			expect(mocks.getValueAtPath).toHaveBeenCalledTimes(1);
-		});
-	});
-
-	// -----------------------------------------------------------------------
-	// 5. Array metadata (always lazy-loaded via array proxy)
+	// 4. Array metadata (always lazy-loaded via array proxy)
 	// -----------------------------------------------------------------------
 
 	describe('array metadata', () => {
@@ -428,16 +396,6 @@ describe('createDeepLazyProxy', () => {
 	// -----------------------------------------------------------------------
 
 	describe('edge cases', () => {
-		it('plain object with __isFunction=false is treated as primitive', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isFunction: false, other: 1 });
-			const p = proxy();
-			const val = p.prop;
-			// Not a function — falls through to "primitive" caching
-			expect(typeof val).toBe('object');
-			expect(val.__isFunction).toBe(false);
-			expect(val.other).toBe(1);
-		});
-
 		it('plain object with __isArray=false is treated as primitive', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isArray: false, data: 'x' });
 			const p = proxy();
@@ -451,14 +409,6 @@ describe('createDeepLazyProxy', () => {
 			const p = proxy();
 			p.arr[-1];
 			expect(mocks.getArrayElement).not.toHaveBeenCalled();
-		});
-
-		it('function wrapper on a basePath proxy passes full path', () => {
-			mocks.getValueAtPath.mockReturnValue({ __isFunction: true, __name: '$items' });
-			mocks.callFunctionAtPath.mockReturnValue([]);
-			const p = proxy(['$root']);
-			p.fn();
-			expect(mocks.callFunctionAtPath).toHaveBeenCalledWith(null, [['$root', 'fn']], ivmCallOpts);
 		});
 	});
 

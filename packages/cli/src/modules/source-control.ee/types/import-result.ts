@@ -1,9 +1,11 @@
+import type { WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 
 export interface WorkflowImportResult {
 	id: string;
 	name: string;
 	publishingError?: string;
+	publishingErrorDetails?: WorkflowPublishBlockedDetails;
 }
 
 export interface ImportResult {

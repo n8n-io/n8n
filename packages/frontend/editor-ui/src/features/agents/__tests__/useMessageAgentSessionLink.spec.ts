@@ -6,7 +6,7 @@ import type { ITaskData } from 'n8n-workflow';
 
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
-import type { LogEntry } from '@/features/execution/logs/logs.types';
+import type { LogEntry, NodeLogEntry } from '@/features/execution/logs/logs.types';
 
 import { useMessageAgentSessionLink } from '../composables/useMessageAgentSessionLink';
 
@@ -14,6 +14,7 @@ function makeLogEntry(overrides: Partial<LogEntry> = {}): LogEntry {
 	// Only the fields the composable reads matter; the rest is cast through to
 	// keep this fixture small and avoid pulling in a real Workflow factory.
 	const base = {
+		type: 'node',
 		id: 'log-1',
 		runIndex: 0,
 		children: [],
@@ -104,6 +105,35 @@ describe('useMessageAgentSessionLink', () => {
 		expect(typeof value!.open).toBe('function');
 	});
 
+	it('links by the persisted threadId when present, keeping sessionId caller-facing', () => {
+		const scopedRunData = {
+			...sessionRunData,
+			data: {
+				main: [
+					[
+						{
+							json: {
+								text: 'hi',
+								session: {
+									agentId: 'agent-1',
+									projectId: 'project-1',
+									sessionId: 'thread-1',
+									threadId: 'workflow:project-project-1:thread-1',
+								},
+							},
+						},
+					],
+				],
+			},
+		} as unknown as ITaskData;
+		const logEntry = { value: makeLogEntry({ runData: scopedRunData }) };
+		const { link } = runWithRouter(logEntry, true);
+
+		expect(link()!.href).toBe(
+			'/projects/project-1/agents/agent-1/sessions/workflow:project-project-1:thread-1',
+		);
+	});
+
 	it('returns null when the node-type is not messageAnAgent', () => {
 		const logEntry = {
 			value: makeLogEntry({
@@ -114,7 +144,7 @@ describe('useMessageAgentSessionLink', () => {
 					typeVersion: 1,
 					parameters: {},
 					position: [0, 0],
-				} as LogEntry['node'],
+				} as NodeLogEntry['node'],
 				runData: sessionRunData,
 			}),
 		};

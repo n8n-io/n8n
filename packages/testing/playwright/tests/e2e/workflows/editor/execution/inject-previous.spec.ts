@@ -31,7 +31,7 @@ test.describe(
 
 			await n8n.canvas.openNode('Edit Fields');
 
-			expect(await n8n.ndv.getInputPanel().innerText()).toContain(
+			await expect(n8n.ndv.getInputPanel()).toContainText(
 				'The fields below come from the last successful execution.',
 			);
 

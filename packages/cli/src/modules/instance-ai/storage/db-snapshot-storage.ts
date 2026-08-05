@@ -158,8 +158,8 @@ export class DbSnapshotStorage {
 	 * terminal after the in-memory event bus is gone — e.g. handling a
 	 * confirmation orphaned by a restart — because rebuilding the tree from
 	 * an empty bus would clobber the saved plan / ask card with an empty
-	 * cancelled tree. Keeps the planner output, tool calls, and confirmation
-	 * payload intact so the user can still see what was being planned, just
+	 * cancelled tree. Keeps the tool calls and confirmation payload intact
+	 * so the user can still see what was being planned, just
 	 * without interactive buttons.
 	 */
 	async markRunCancelled(threadId: string, runId: string): Promise<void> {

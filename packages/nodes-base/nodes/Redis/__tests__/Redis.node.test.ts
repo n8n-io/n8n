@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -6,9 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+const { createClient } = vi.hoisted(() => ({ createClient: vi.fn() }));
+vi.mock('redis', () => ({ createClient }));
+
 const mockClient = mock<RedisClient>();
-const createClient = jest.fn().mockReturnValue(mockClient);
-jest.mock('redis', () => ({ createClient }));
+createClient.mockReturnValue(mockClient);
 
 import { Redis } from '../Redis.node';
 import type { RedisClient } from '../types';
@@ -18,11 +20,11 @@ describe('Redis Node', () => {
 	const node = new Redis();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		createClient.mockReturnValue(mockClient);
 	});
 
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => vi.resetAllMocks());
 
 	describe('setupRedisClient', () => {
 		it('should not configure TLS by default', () => {

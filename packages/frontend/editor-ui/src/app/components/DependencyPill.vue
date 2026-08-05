@@ -8,7 +8,7 @@ import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system'
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { DependencyType, ResolvedDependency } from '@n8n/api-types';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
@@ -47,8 +47,6 @@ const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) 
 const tooltipText = computed(() =>
 	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` satisfies BaseTextKey),
 );
-
-const hasFullDeps = computed(() => depsResult.value !== undefined);
 
 const showSearch = computed(
 	() => (depsResult.value?.dependencies.length ?? 0) >= MIN_ITEMS_FOR_SEARCH,
@@ -191,7 +189,9 @@ async function onDropdownToggle(open: boolean) {
 			dependency_count: effectiveCount.value,
 		});
 
-		if (!hasFullDeps.value && !isLoadingDetails.value) {
+		// Always refetch on open — cached entries may be stale (e.g. a credential
+		// deleted since the last fetch)
+		if (!isLoadingDetails.value) {
 			isLoadingDetails.value = true;
 			await loadDetails();
 			isLoadingDetails.value = false;
@@ -201,7 +201,7 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltipText" placement="bottom" :show-after="300">
+	<N8nTooltip :content="tooltipText" placement="top" :show-after="300">
 		<N8nDropdownMenu
 			:items="menuItems"
 			placement="bottom-end"

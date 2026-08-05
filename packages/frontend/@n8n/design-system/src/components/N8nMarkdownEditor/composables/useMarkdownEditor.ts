@@ -123,7 +123,11 @@ export const useMarkdownEditor = (
 	watch(
 		() => [props.disabled, props.readonly] as const,
 		([disabled, readonly]) => {
-			editor.value?.setEditable(!disabled && !readonly);
+			// `emitUpdate: false` — toggling editability is not a content change.
+			// With the default (`true`), tiptap fires `onUpdate`, so consumers see a
+			// spurious `update:modelValue` whenever a parent flips disabled/readonly
+			// (e.g. mid-stream in the agent builder) and mistake it for a real edit.
+			editor.value?.setEditable(!disabled && !readonly, false);
 		},
 	);
 

@@ -24,7 +24,7 @@ describe('WorkflowDependencyRepository', () => {
 			//
 			// ARRANGE
 			//
-			const workflow = await createWorkflow({ versionId: 'v1' });
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
 			const dependencies = new WorkflowDependencies(workflow.id, 1);
 			dependencies.add({
 				dependencyType: 'credentialId',
@@ -248,7 +248,7 @@ describe('WorkflowDependencyRepository', () => {
 			//
 			// ARRANGE
 			//
-			const workflow = await createWorkflow({ versionId: 'v1' });
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
 
 			//
 			// ACT

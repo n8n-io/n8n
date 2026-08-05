@@ -70,6 +70,7 @@ ENV_GRACEFUL_SHUTDOWN_TIMEOUT = "N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT"
 ENV_STDLIB_ALLOW = "N8N_RUNNERS_STDLIB_ALLOW"
 ENV_EXTERNAL_ALLOW = "N8N_RUNNERS_EXTERNAL_ALLOW"
 ENV_BUILTINS_DENY = "N8N_RUNNERS_BUILTINS_DENY"
+ENV_ALLOW_TRANSITIVE_IMPORTS = "N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS"
 ENV_HEALTH_CHECK_SERVER_ENABLED = "N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED"
 ENV_HEALTH_CHECK_SERVER_HOST = "N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST"
 ENV_HEALTH_CHECK_SERVER_PORT = "N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT"
@@ -117,6 +118,14 @@ TASK_REJECTED_REASON_AT_CAPACITY = "No open task slots - runner already at capac
 
 # Security
 BUILTINS_DENY_DEFAULT = "eval,exec,compile,open,input,breakpoint,getattr,object,type,vars,setattr,delattr,hasattr,dir,memoryview,__build_class__,globals,locals,license,help,credits,copyright"
+FORMAT_METHOD_NAMES = frozenset(
+    {
+        "format",
+        "format_map",
+        "vformat",
+        "get_field",
+    }
+)
 BLOCKED_NAMES = {
     "__loader__",
     "__builtins__",

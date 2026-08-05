@@ -16,24 +16,24 @@ import { ChildProcess, ExitReason, TaskRunnerProcessBase } from './task-runner-p
  */
 @Service()
 export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
-	readonly name = 'runnner:js';
+	protected readonly name = 'runner:js';
 
-	readonly loggerScope = 'task-runner-js';
+	protected readonly taskType = 'javascript';
 
 	private oomDetector: NodeProcessOomDetector | null = null;
 
 	constructor(
-		readonly logger: Logger,
-		readonly runnerConfig: TaskRunnersConfig,
-		readonly authService: TaskBrokerAuthService,
-		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		logger: Logger,
+		runnerConfig: TaskRunnersConfig,
+		authService: TaskBrokerAuthService,
+		runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super(logger, runnerConfig, authService, runnerLifecycleEvents);
+		super('task-runner-js', logger, runnerConfig, authService, runnerLifecycleEvents);
 
 		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
 	}
 
-	async startProcess(grantToken: string, taskBrokerUri: string): Promise<ChildProcess> {
+	startProcess(grantToken: string, taskBrokerUri: string): ChildProcess {
 		const startScript = require.resolve('@n8n/task-runner/start');
 		const flags = this.runnerConfig.insecureMode
 			? []
@@ -78,6 +78,10 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 			N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
 			N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 			N8N_RUNNERS_INSECURE_MODE: process.env.N8N_RUNNERS_INSECURE_MODE,
+			// Forwarded so the internal runner's graceful-shutdown grace can be coordinated
+			// with n8n's (otherwise it falls back to the runner's own default).
+			N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT: process.env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT,
+			N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN: process.env.N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN,
 		});
 
 		if (this.runnerConfig.maxOldSpaceSize) {

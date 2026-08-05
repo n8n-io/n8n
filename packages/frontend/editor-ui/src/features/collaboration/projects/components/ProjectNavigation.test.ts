@@ -6,7 +6,7 @@ import { createProjectListItem, createTestProject } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -22,7 +22,7 @@ vi.mock('vue-router', async () => {
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -41,10 +41,6 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 		}),
 	};
 });
-
-vi.mock('is-emoji-supported', () => ({
-	isEmojiSupported: () => true,
-}));
 
 const renderComponent = createComponentRenderer(ProjectsNavigation, {
 	global: {
@@ -105,6 +101,36 @@ describe('ProjectsNavigation', () => {
 		expect(getByTestId('project-personal-menu-item')).toBeVisible();
 		expect(getByTestId('project-personal-menu-item').querySelector('svg')).toBeVisible();
 		expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+	});
+
+	it('should show Instance AI above Home when enabled', () => {
+		projectsStore.teamProjectsLimit = -1;
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		expect(
+			getByTestId('project-instance-ai-menu-item').compareDocumentPosition(
+				getByTestId('project-home-menu-item'),
+			) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 
 	it('should not show "Projects" title when the menu is collapsed', async () => {

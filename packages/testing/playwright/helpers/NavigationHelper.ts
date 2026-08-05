@@ -98,10 +98,34 @@ export class NavigationHelper {
 	 * URLs:
 	 * - New workflow: /workflow/new
 	 * - Existing workflow: /workflow/{workflowId}
-	 * - Project workflow: /projects/{projectId}/workflow/{workflowId}
+	 * - New workflow in a project: /workflow/new?projectId={projectId}
 	 */
-	async toWorkflow(workflowId: string = 'new'): Promise<void> {
-		const url = `/workflow/${workflowId}`;
+	async toWorkflow(workflowId: string = 'new', options?: { projectId?: string }): Promise<void> {
+		let url = `/workflow/${workflowId}`;
+		if (options?.projectId) {
+			url += `?projectId=${options.projectId}`;
+		}
+		await this.page.goto(url);
+	}
+
+	/**
+	 * Navigate to a project's executions list
+	 * URL: /projects/{projectId}/executions
+	 */
+	async toProjectExecutions(
+		projectId: string,
+		options?: Parameters<Page['goto']>[1],
+	): Promise<void> {
+		await this.page.goto(`/projects/${projectId}/executions`, options);
+	}
+
+	/**
+	 * Navigate to a specific execution within a workflow
+	 * URLs:
+	 * - Existing workflow: /workflow/{workflowId}/executions/{executionId}
+	 */
+	async toExecution(workflowId: string, executionId: string): Promise<void> {
+		const url = `/workflow/${workflowId}/executions/${executionId}`;
 		await this.page.goto(url);
 	}
 
@@ -221,11 +245,10 @@ export class NavigationHelper {
 
 	/**
 	 * Navigate to Instance AI page
-	 * URL: /instance-ai
+	 * URL: /assistant
 	 */
 	async toInstanceAi() {
-		await this.page.goto('/instance-ai');
-		await this.instanceAi.enableInstanceAiIfPrompted();
+		await this.instanceAi.goto();
 	}
 
 	/**
@@ -258,5 +281,10 @@ export class NavigationHelper {
 	 */
 	async toExternalSecrets(): Promise<void> {
 		await this.secretsProviderSettings.goto();
+	}
+
+	/** Current page URL — use instead of reaching into n8n.page.url() from flows. */
+	currentUrl(): string {
+		return this.page.url();
 	}
 }

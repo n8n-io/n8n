@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useBuilderStore, type WorkflowBuilderJourneyEventType } from '../../builder.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
@@ -8,9 +8,8 @@ import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots, provide } from 'vue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	useWorkflowDocumentStore,
@@ -39,7 +38,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
@@ -86,7 +85,6 @@ const workflowAutosaveStore = useWorkflowSaveStore();
 const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
@@ -454,7 +452,9 @@ async function onWorkflowExecuted() {
 		return;
 	}
 
-	const executionData = workflowsStore.workflowExecutionData;
+	const executionData = useWorkflowExecutionStateStore(
+		workflowDocumentStore.value.documentId,
+	).activeExecution;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
@@ -869,7 +869,7 @@ defineExpose({
 					@upgrade-click="onUpgradeClick"
 					@vue:mounted="registerFocus(() => suggestionsInputRef?.focusInput())"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"
@@ -907,7 +907,7 @@ defineExpose({
 					@stop="builderStore.abortStreaming"
 					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 				>
-					<template v-if="builderStore.isPlanModeAvailable" #extra-actions>
+					<template #right-actions>
 						<PlanModeSelector
 							:model-value="builderStore.builderMode"
 							@update:model-value="builderStore.setBuilderMode"

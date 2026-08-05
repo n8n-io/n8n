@@ -3,20 +3,21 @@ import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PostHogClient } from '@/posthog';
 
-import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee';
 import type { EvaluationCollectionService } from '../evaluation-collection.service';
+import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee';
 
 describe('EvaluationCollectionsController', () => {
 	let controller: EvaluationCollectionsController;
-	let service: jest.Mocked<EvaluationCollectionService>;
-	let postHogClient: jest.Mocked<PostHogClient>;
-	let logger: jest.Mocked<Logger>;
+	let service: Mocked<EvaluationCollectionService>;
+	let postHogClient: Mocked<PostHogClient>;
+	let logger: Mocked<Logger>;
 
 	const user = mock<User>({ id: 'user-1' });
 
@@ -53,6 +54,10 @@ describe('EvaluationCollectionsController', () => {
 				'create',
 				async () =>
 					await controller.create(makeReq({ workflowId: 'wf-1' }), undefined, {} as never),
+			],
+			[
+				'rerun',
+				async () => await controller.rerun(makeReq({ workflowId: 'wf-1', collectionId: 'col-1' })),
 			],
 			[
 				'update',
@@ -133,6 +138,20 @@ describe('EvaluationCollectionsController', () => {
 		});
 	});
 
+	describe('rerun', () => {
+		it('delegates to service and merges runsStartedIds into the response', async () => {
+			service.rerunCollection.mockResolvedValueOnce({
+				record: { id: 'col-1' } as never,
+				runsStartedIds: ['tr-a', 'tr-b'],
+			});
+
+			const result = await controller.rerun(makeReq({ workflowId: 'wf-1', collectionId: 'col-1' }));
+
+			expect(service.rerunCollection).toHaveBeenCalledWith(user, 'wf-1', 'col-1');
+			expect(result).toMatchObject({ id: 'col-1', runsStartedIds: ['tr-a', 'tr-b'] });
+		});
+	});
+
 	describe('listVersions', () => {
 		it('rejects requests missing evaluationConfigId with 400', async () => {
 			await expect(
@@ -162,6 +181,7 @@ describe('EvaluationCollectionsController', () => {
 			list: 'workflow:read',
 			get: 'workflow:read',
 			create: 'workflow:execute',
+			rerun: 'workflow:execute',
 			update: 'workflow:update',
 			delete: 'workflow:update',
 			addRun: 'workflow:update',

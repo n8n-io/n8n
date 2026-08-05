@@ -4,12 +4,17 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
-import { escapeSqlIdentifier, replaceEmptyStringsByNulls } from '../../helpers/utils';
+import {
+	escapeSqlIdentifier,
+	prepareErrorItem,
+	replaceEmptyStringsByNulls,
+} from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -147,59 +152,72 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const table = this.getNodeParameter('table', i, undefined, {
-			extractValue: true,
-		}) as string;
+		try {
+			const table = this.getNodeParameter('table', i, undefined, {
+				extractValue: true,
+			}) as string;
 
-		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
+			const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
-		const dataMode = this.getNodeParameter('dataMode', i) as string;
+			const dataMode = this.getNodeParameter('dataMode', i) as string;
 
-		let item: IDataObject = {};
+			let item: IDataObject = {};
 
-		if (dataMode === DATA_MODE.AUTO_MAP) {
-			item = items[i].json;
+			if (dataMode === DATA_MODE.AUTO_MAP) {
+				item = items[i].json;
+			}
+
+			if (dataMode === DATA_MODE.MANUAL) {
+				const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+					.values as IDataObject[];
+
+				item = valuesToSend.reduce((acc, { column, value }) => {
+					acc[column as string] = value;
+					return acc;
+				}, {} as IDataObject);
+
+				item[columnToMatchOn] = this.getNodeParameter('valueToMatchOn', i) as string;
+			}
+
+			const onConflict = 'ON DUPLICATE KEY UPDATE';
+
+			const columns = Object.keys(item);
+			const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
+			const placeholder = `${columns.map(() => '?').join(',')}`;
+
+			const insertQuery = `INSERT INTO ${escapeSqlIdentifier(
+				table,
+			)}(${escapedColumns}) VALUES(${placeholder})`;
+
+			const values = Object.values(item) as QueryValues;
+
+			const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
+
+			const updates: string[] = [];
+
+			for (const column of updateColumns) {
+				updates.push(`${escapeSqlIdentifier(column)} = ?`);
+				values.push(item[column] as string);
+			}
+
+			const query = `${insertQuery} ${onConflict} ${updates.join(', ')}`;
+
+			queries.push({ query, values, itemIndex: i });
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+
+			const nodeError =
+				error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+
+			returnData.push(prepareErrorItem(items[i].json, nodeError, i));
 		}
-
-		if (dataMode === DATA_MODE.MANUAL) {
-			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-				.values as IDataObject[];
-
-			item = valuesToSend.reduce((acc, { column, value }) => {
-				acc[column as string] = value;
-				return acc;
-			}, {} as IDataObject);
-
-			item[columnToMatchOn] = this.getNodeParameter('valueToMatchOn', i) as string;
-		}
-
-		const onConflict = 'ON DUPLICATE KEY UPDATE';
-
-		const columns = Object.keys(item);
-		const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
-		const placeholder = `${columns.map(() => '?').join(',')}`;
-
-		const insertQuery = `INSERT INTO ${escapeSqlIdentifier(
-			table,
-		)}(${escapedColumns}) VALUES(${placeholder})`;
-
-		const values = Object.values(item) as QueryValues;
-
-		const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
-
-		const updates: string[] = [];
-
-		for (const column of updateColumns) {
-			updates.push(`${escapeSqlIdentifier(column)} = ?`);
-			values.push(item[column] as string);
-		}
-
-		const query = `${insertQuery} ${onConflict} ${updates.join(', ')}`;
-
-		queries.push({ query, values });
 	}
 
-	returnData = await runQueries(queries);
+	if (queries.length > 0) {
+		returnData = returnData.concat(await runQueries(queries));
+	}
 
 	return returnData;
 }

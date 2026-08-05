@@ -43,7 +43,7 @@ const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
 
-const { setActions, setMergeNodes } = useNodeCreatorStore();
+const { setActions, setMergeNodes, consumePendingInitialViewStack } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
@@ -125,6 +125,7 @@ watch(
 	(isActive) => {
 		if (!isActive) {
 			resetViewStacks();
+			consumePendingInitialViewStack();
 		}
 	},
 );

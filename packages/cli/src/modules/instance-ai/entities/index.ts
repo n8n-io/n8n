@@ -7,6 +7,9 @@ export { InstanceAiCheckpoint } from './instance-ai-checkpoint.entity';
 export { InstanceAiObservation } from './instance-ai-observation.entity';
 export { InstanceAiObservationCursor } from './instance-ai-observation-cursor.entity';
 export { InstanceAiObservationLock } from './instance-ai-observation-lock.entity';
+export { InstanceAiMcpRegistryConnection } from './instance-ai-mcp-registry-connection.entity';
+export { InstanceAiThreadGrant } from './instance-ai-thread-grant.entity';
+export { InstanceAiEventLogEntry } from './instance-ai-event-log-entry.entity';
 export type {
 	InstanceAiObservationMarker,
 	InstanceAiObservationStatus,

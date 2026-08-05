@@ -1,6 +1,6 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 
-import type { InstanceAiContext, PlannedTaskKind } from '../../types';
+import type { InstanceAiContext } from '../../types';
 import { applyPlannedTaskPermissions } from '../planned-task-permissions';
 
 function makeContext(
@@ -8,12 +8,15 @@ function makeContext(
 ): InstanceAiContext {
 	return {
 		userId: 'user-1',
+		projectId: 'project-1',
 		permissions: { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...permissionOverrides },
 		workflowService: {} as InstanceAiContext['workflowService'],
 		executionService: {} as InstanceAiContext['executionService'],
 		credentialService: {} as InstanceAiContext['credentialService'],
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
+		workflowTemplateService: {} as InstanceAiContext['workflowTemplateService'],
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 }
 
@@ -52,15 +55,6 @@ describe('applyPlannedTaskPermissions', () => {
 		});
 	});
 
-	describe.each<PlannedTaskKind>(['delegate'])('%s', (kind) => {
-		it('should return the original context unchanged', () => {
-			const context = makeContext();
-			const result = applyPlannedTaskPermissions(context, kind);
-
-			expect(result).toBe(context);
-		});
-	});
-
 	it('should return a new context object for overridden kinds', () => {
 		const context = makeContext();
 		const result = applyPlannedTaskPermissions(context, 'build-workflow');
@@ -85,5 +79,19 @@ describe('applyPlannedTaskPermissions', () => {
 		expect(result.dataTableService).toBe(context.dataTableService);
 		expect(result.workflowService).toBe(context.workflowService);
 		expect(result.userId).toBe(context.userId);
+	});
+
+	it('should preserve the bound projectId so sub-agents stay scoped to the thread project', () => {
+		const context = makeContext();
+		const result = applyPlannedTaskPermissions(context, 'build-workflow');
+
+		expect(result.projectId).toBe(context.projectId);
+	});
+
+	it('returns the original context for legacy delegate tasks', () => {
+		const context = makeContext();
+		const result = applyPlannedTaskPermissions(context, 'delegate');
+
+		expect(result).toBe(context);
 	});
 });

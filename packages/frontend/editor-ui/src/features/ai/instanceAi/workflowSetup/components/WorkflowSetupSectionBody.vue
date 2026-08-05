@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, provide, ref, watch } from 'vue';
+import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -10,13 +10,18 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { ExpressionLocalResolveContextSymbol, WorkflowDocumentStoreKey } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
 	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { INodeProperties } from 'n8n-workflow';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 
 const props = defineProps<{
 	section: WorkflowSetupSection;
@@ -38,6 +43,10 @@ const selectedCredentialId = computed(() =>
 const selectedCredentials = computed<INodeUi['credentials']>(() => {
 	const type = credentialType.value;
 	if (!type) return undefined;
+
+	if (selectedCredentialId.value === AI_GATEWAY_MANAGED_TAG) {
+		return { [type]: { id: null, name: '', __aiGatewayManaged: true } };
+	}
 
 	const cred = selectedCredentialId.value
 		? credentialsStore.getCredentialById(selectedCredentialId.value)
@@ -67,12 +76,34 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 	return nodeType.value.properties.filter((property) => names.has(property.name));
 });
 
-const revealedIssues = ref(new Set<string>());
+const assignmentCollectionEditableValueIndices = computed<Record<string, number[]>>(() => {
+	const result: Record<string, number[]> = {};
+	for (const parameter of parameterDefinitions.value) {
+		if (parameter.type !== 'assignmentCollection') continue;
+
+		const indices = new Set<number>();
+		const placeholderDetails = findPlaceholderDetails(
+			props.section.node.parameters[parameter.name],
+		);
+		for (const detail of placeholderDetails) {
+			if (detail.path[0] !== 'assignments' || detail.path[2] !== 'value') continue;
+			const match = /^\[(\d+)\]$/.exec(detail.path[1] ?? '');
+			if (match?.[1]) indices.add(Number.parseInt(match[1], 10));
+		}
+		result[parameter.name] = [...indices];
+	}
+	return result;
+});
+
+// Reveal validation for the setup-flagged parameters up front, so a required
+// field the builder left unset (e.g. an empty resource locator) shows why the
+// step is blocked instead of only surfacing after the user edits it.
+const revealedIssues = ref(new Set<string>(props.section.parameterNames));
 
 watch(
 	() => props.section.id,
 	() => {
-		revealedIssues.value = new Set();
+		revealedIssues.value = new Set(props.section.parameterNames);
 	},
 );
 
@@ -99,14 +130,11 @@ const displayNode = computed<INodeUi>(() => {
 	} as INodeUi;
 });
 
-const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(
-		createWorkflowDocumentId(
-			ctx.workflowId.value ?? 'instance-ai-workflow-setup',
-			props.section.id,
-		),
-	),
+const documentId = computed(() =>
+	createWorkflowDocumentId(ctx.workflowId.value ?? 'instance-ai-workflow-setup', props.section.id),
 );
+
+const workflowDocumentStore = computed(() => useWorkflowDocumentStore(documentId.value));
 
 watch(
 	displayNode,
@@ -115,6 +143,24 @@ watch(
 	},
 	{ immediate: true, deep: true },
 );
+
+// The provided document store — and the NDV store its descendants
+// (NodeCredentials, ParameterInputList) materialize via injectNDVStore() — are
+// keyed by a per-section document id. Pinia stores are not freed when this
+// component unmounts, so dispose the previous id whenever it changes and the
+// final id on scope teardown.
+function disposeStores(id: WorkflowDocumentId) {
+	disposeNDVStore(useNDVStore(id));
+	disposeWorkflowDocumentStore(useWorkflowDocumentStore(id));
+}
+
+watch(documentId, (_newId, oldId) => {
+	if (oldId) disposeStores(oldId);
+});
+
+onScopeDispose(() => {
+	disposeStores(documentId.value);
+});
 
 const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => ({
 	localResolve: true,
@@ -128,7 +174,11 @@ provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (!credentialType.value) return;
 	const data = update.properties.credentials?.[credentialType.value];
-	ctx.setCredential(props.section, data?.id ?? null);
+	let credId: string | null = null;
+	if (data && typeof data !== 'string') {
+		credId = data.__aiGatewayManaged === true ? AI_GATEWAY_MANAGED_TAG : (data.id ?? null);
+	}
+	ctx.setCredential(props.section, credId);
 }
 
 function onParameterValueChanged(update: IUpdateInformation) {
@@ -185,6 +235,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 				:remove-first-parameter-margin="true"
 				:remove-last-parameter-margin="true"
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+				:assignment-collection-editable-value-indices="assignmentCollectionEditableValueIndices"
 				@value-changed="onParameterValueChanged"
 				@parameter-blur="revealParameterIssues"
 			/>

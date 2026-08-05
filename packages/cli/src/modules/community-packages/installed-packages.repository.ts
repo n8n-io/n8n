@@ -15,12 +15,30 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 	}
 
 	async saveInstalledPackageWithNodes(packageLoader: PackageDirectoryLoader) {
+		return await this.persistPackageWithNodes(packageLoader);
+	}
+
+	async replaceInstalledPackageWithNodes(
+		previousInstalledPackage: InstalledPackages,
+		packageLoader: PackageDirectoryLoader,
+	) {
+		return await this.persistPackageWithNodes(packageLoader, previousInstalledPackage);
+	}
+
+	private async persistPackageWithNodes(
+		packageLoader: PackageDirectoryLoader,
+		previousInstalledPackage?: InstalledPackages,
+	) {
 		const { packageJson, nodeTypes, loadedNodes } = packageLoader;
 		const { name: packageName, version: installedVersion, author } = packageJson;
 
 		let installedPackage: InstalledPackages;
 
 		await this.manager.transaction(async (manager) => {
+			if (previousInstalledPackage) {
+				await manager.remove(previousInstalledPackage);
+			}
+
 			installedPackage = await manager.save(
 				this.create({
 					packageName,

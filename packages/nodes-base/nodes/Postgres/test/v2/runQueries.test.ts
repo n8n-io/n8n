@@ -1,4 +1,4 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -48,7 +48,7 @@ describe('Test PostgresV2, runQueries', () => {
 		const pgp = pgPromise();
 		const db = createMockDb([]);
 
-		const dbMultiSpy = jest.spyOn(db, 'multi');
+		const dbMultiSpy = vi.spyOn(db, 'multi');
 
 		const thisArg = mock<IExecuteFunctions>();
 		const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);

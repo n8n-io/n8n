@@ -9,8 +9,8 @@ import { Command, GraphRecursionError } from '@langchain/langgraph';
 import type { SelectedNodeContext } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
-	ApplicationError,
 	OperationalError,
+	UserError,
 	type INodeTypeDescription,
 	type IRunExecutionData,
 	type ITelemetryTrackProperties,
@@ -34,6 +34,7 @@ import {
 import { ValidationError } from './errors';
 import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
+import type { SsrfGuard } from './tools/utils/ssrf-guard';
 import type { ResourceLocatorCallback } from './types/callbacks';
 import type { HITLInterruptValue, PlanOutput } from './types/planning';
 import type { SimpleWorkflow } from './types/workflow';
@@ -96,6 +97,8 @@ export interface WorkflowBuilderAgentConfig {
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	/** Assistant handler for routing help/debug queries via the SDK (code builder only) */
 	assistantHandler?: AssistantHandler;
+	/** SSRF guard for web_fetch (real service when enabled, passthrough otherwise). */
+	ssrf?: SsrfGuard;
 }
 
 export interface ExpressionValue {
@@ -105,10 +108,8 @@ export interface ExpressionValue {
 }
 
 export interface BuilderFeatureFlags {
-	templateExamples?: boolean;
 	/** Enable pin data generation in code builder (default: true). */
 	pinData?: boolean;
-	planMode?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
 	enableIntrospection?: boolean;
 	/** Enable merged ask/build experience with assistant subgraph (default: false). */
@@ -158,6 +159,7 @@ export class WorkflowBuilderAgent {
 	private nodeDefinitionDirs?: string[];
 	private onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	private assistantHandler?: AssistantHandler;
+	private ssrf?: SsrfGuard;
 	/** Feature flags stored from the first chat call to ensure consistency across a session */
 	private sessionFeatureFlags?: BuilderFeatureFlags;
 
@@ -172,6 +174,7 @@ export class WorkflowBuilderAgent {
 		this.nodeDefinitionDirs = config.nodeDefinitionDirs;
 		this.onTelemetryEvent = config.onTelemetryEvent;
 		this.assistantHandler = config.assistantHandler;
+		this.ssrf = config.ssrf;
 	}
 
 	/**
@@ -186,6 +189,7 @@ export class WorkflowBuilderAgent {
 			checkpointer: this.checkpointer,
 			featureFlags,
 			assistantHandler: this.assistantHandler,
+			ssrf: this.ssrf,
 		});
 	}
 
@@ -234,8 +238,6 @@ export class WorkflowBuilderAgent {
 		externalCallbacks: Callbacks | undefined,
 		historicalMessages: BaseMessage[] | undefined,
 	) {
-		const usePlanMode = payload.featureFlags?.planMode === true;
-
 		// web_fetch_approval resumes always go through multi-agent (where the interrupt lives)
 		if (payload.resumeData && payload.resumeInterrupt?.type === 'web_fetch_approval') {
 			this.logger?.debug('web_fetch_approval resume, routing to multi-agent system', {
@@ -286,7 +288,7 @@ export class WorkflowBuilderAgent {
 		}
 
 		// Initial plan request: route to multi-agent for discovery + planning
-		if (usePlanMode && payload.mode === 'plan') {
+		if (payload.mode === 'plan') {
 			this.logger?.debug('Plan mode with code builder, routing to multi-agent for planning', {
 				userId,
 			});
@@ -643,12 +645,12 @@ export class WorkflowBuilderAgent {
 
 		// If it's not an abort error, check for GraphRecursionError
 		if (error instanceof GraphRecursionError) {
-			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
+			throw new UserError(WORKFLOW_TOO_COMPLEX_ERROR);
 		}
 
 		// Check for 401 expired token errors (typically from long-running generations)
 		if (this.isTokenExpiredError(error)) {
-			throw new ApplicationError(WORKFLOW_TOO_COMPLEX_ERROR);
+			throw new UserError(WORKFLOW_TOO_COMPLEX_ERROR);
 		}
 
 		// Re-throw any other errors

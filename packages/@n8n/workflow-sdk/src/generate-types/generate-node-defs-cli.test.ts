@@ -1,7 +1,7 @@
 /**
  * Tests for generate-node-defs-cli
  *
- * Run with: cd packages/@n8n/workflow-sdk && pnpm jest generate-node-defs-cli
+ * Run with: cd packages/@n8n/workflow-sdk && pnpm test generate-node-defs-cli
  */
 
 import * as fs from 'fs';
@@ -108,7 +108,7 @@ describe('generate-node-defs-cli', () => {
 			await new Promise((resolve) => setTimeout(resolve, 50));
 
 			// Second run: should skip (files unchanged)
-			const consoleSpy = jest.spyOn(console, 'log');
+			const consoleSpy = vi.spyOn(console, 'log');
 			await generateNodeDefinitions({ nodesJsonPath, outputDir });
 
 			expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('up to date'));
@@ -162,7 +162,7 @@ describe('generate-node-defs-cli', () => {
 			await fs.promises.unlink(hashFile);
 
 			// Should regenerate (not skip)
-			const consoleSpy = jest.spyOn(console, 'log');
+			const consoleSpy = vi.spyOn(console, 'log');
 			await generateNodeDefinitions({ nodesJsonPath, outputDir });
 
 			const logCalls = consoleSpy.mock.calls.map((c) => String(c[0]));

@@ -307,7 +307,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should remove only the offending MCP tool when one schema is too deep', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const tools = makeTools({
 				validTool: { input: z.object({ name: z.string() }) },
 				deepTool: { input: makeDeepObject(4) },
@@ -335,7 +335,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should bound lazy schemas', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const tools = makeTools({
 				lazyTool: { input: z.object({ payload: z.lazy(() => makeWideObject(4)) }) },
 			});
@@ -352,7 +352,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should remove tools containing unsupported tuple or intersection schemas', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const tools = makeTools({
 				tupleTool: { input: z.object({ pair: z.tuple([z.string(), z.null()]) }) },
 				intersectionTool: {
@@ -383,7 +383,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should remove tools containing unsupported wrapper types', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const tools = makeTools({
 				mapTool: { input: z.object({ values: z.map(z.string(), z.string()) }) },
 			});
@@ -398,7 +398,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should remove a shallow MCP tool with too many object properties', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const tools = makeTools({
 				wideTool: { input: makeWideObject(4) },
 			});
@@ -417,7 +417,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should remove a shallow MCP tool with too many union options', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const tools = makeTools({
 				unionTool: {
 					input: z.object({
@@ -440,7 +440,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should remove an MCP tool that exceeds the total schema node budget', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const tools = makeTools({
 				nodeBudgetTool: {
 					input: z.object({
@@ -463,7 +463,7 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('reports raw JSON output schema limit errors under the output schema path', () => {
-			const onError = jest.fn();
+			const onError = vi.fn();
 			const outputTool: BuiltTool = {
 				name: 'outputTool',
 				description: 'outputTool',

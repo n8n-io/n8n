@@ -1,5 +1,5 @@
 import type { PushPayload } from '@n8n/api-types';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import {

@@ -72,7 +72,7 @@ describe('SessionTimelineTable', () => {
 		expect(w.findAll('[data-test-id="timeline-row"]')).toHaveLength(4);
 	});
 
-	it('renders workflow and rich-interaction rows from the same turn', () => {
+	it('renders workflow and tool rows from the same turn', () => {
 		const w = mountTable({
 			items: [
 				{
@@ -90,8 +90,8 @@ describe('SessionTimelineTable', () => {
 					executionId: 'e1',
 					timestamp: 2000,
 					endTimestamp: 2050,
-					toolName: 'rich_interaction',
-					toolOutput: { displayOnly: true },
+					toolName: 'card_sender',
+					toolOutput: { ok: true },
 				},
 			],
 			selectedIndex: null,
@@ -100,7 +100,7 @@ describe('SessionTimelineTable', () => {
 
 		expect(w.findAll('[data-test-id="timeline-row"]')).toHaveLength(2);
 		expect(w.text()).toContain('Giphy GIF Search');
-		expect(w.text()).toContain('Card sent to user');
+		expect(w.text()).toContain('Card sender');
 	});
 
 	it('hides items whose filterKey is not in visibleKinds', () => {

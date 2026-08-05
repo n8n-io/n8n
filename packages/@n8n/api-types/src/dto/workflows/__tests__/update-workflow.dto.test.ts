@@ -60,6 +60,11 @@ describe('UpdateWorkflowDto', () => {
 				request: { nodeGroups: [] },
 			},
 			{
+				// `parentFolder` is not an accepted input; it must be tolerated (stripped), not rejected
+				name: 'with parentFolder object (ignored)',
+				request: { parentFolder: { id: 'folder123', name: 'Some Folder' } },
+			},
+			{
 				name: 'update multiple fields',
 				request: {
 					name: 'Updated Workflow',
@@ -73,6 +78,15 @@ describe('UpdateWorkflowDto', () => {
 			expect(result.success).toBe(true);
 		});
 
+		test('should strip parentFolder from the parsed payload', () => {
+			const result = UpdateWorkflowDto.safeParse({
+				parentFolder: { id: 'folder123', name: 'Some Folder' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('parentFolder');
+		});
+
 		test('should transform tags from objects to string array', () => {
 			const result = UpdateWorkflowDto.safeParse({
 				tags: [
@@ -83,6 +97,34 @@ describe('UpdateWorkflowDto', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
+		});
+
+		test('should preserve workflow custom span attribute settings', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'workflow_name', value: 'Workflow Name' },
+				],
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
+
+		test('should preserve workflow custom span attribute settings with keys that are unique after trim', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team', value: 'backend' },
+				],
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
 		});
 	});
 
@@ -117,6 +159,68 @@ describe('UpdateWorkflowDto', () => {
 				name: 'settings as array',
 				request: { settings: [] },
 				expectedErrorPath: ['settings'],
+			},
+			{
+				name: 'workflow custom span attributes as fixed collection object',
+				request: {
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'workflow custom span attribute with extra field',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys after trim',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: '  env  ', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'empty workflow custom span attribute key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only workflow custom span attribute key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '   ', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
 				name: 'staticData as array',

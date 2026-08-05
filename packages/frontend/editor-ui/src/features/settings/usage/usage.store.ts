@@ -1,4 +1,4 @@
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { UsageState } from '@n8n/api-types';
 import * as usageApi from '@n8n/rest-api-client/api/usage';
@@ -40,6 +40,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const settingsStore = useSettingsStore();
 
 	const state = reactive<UsageState>({ ...DEFAULT_STATE });
+	const hasLoadedLicense = ref(false);
 
 	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
 	const planId = computed(() => state.data.license.planId);
@@ -72,6 +73,7 @@ export const useUsageStore = defineStore('usage', () => {
 
 	const setData = (data: UsageState['data']) => {
 		state.data = data;
+		hasLoadedLicense.value = true;
 	};
 
 	const getLicenseInfo = async () => {
@@ -113,6 +115,7 @@ export const useUsageStore = defineStore('usage', () => {
 		refreshLicenseManagementToken,
 		requestEnterpriseLicenseTrial,
 		registerCommunityEdition,
+		hasLoadedLicense,
 		planName,
 		planId,
 		activeWorkflowTriggersLimit,

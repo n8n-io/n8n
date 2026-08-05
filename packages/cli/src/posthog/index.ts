@@ -1,4 +1,9 @@
-import { EVAL_COLLECTIONS_FLAG } from '@n8n/api-types';
+import {
+	AGENT_EVALS_FLAG,
+	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	CONFIG_EVALUATIONS_FLAG,
+	EVAL_COLLECTIONS_FLAG,
+} from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -49,12 +54,13 @@ export class PostHogClient {
 	}
 
 	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
+		if (!payload.userId || payload.userId === this.instanceSettings.instanceId) return;
+
 		const instanceId = payload?.properties?.instance_id;
 
 		this.postHog?.capture({
 			event: payload.event,
 			distinctId: payload.userId,
-			sendFeatureFlags: true,
 			properties: payload.properties,
 			...(typeof instanceId === 'string' && {
 				groups: { [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
@@ -74,13 +80,13 @@ export class PostHogClient {
 		if (!instanceId) return;
 
 		this.postHog?.capture({
-			distinctId: distinctId || instanceId,
+			distinctId: distinctId ?? `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
 			event: '$groupidentify',
-			sendFeatureFlags: true,
 			properties: {
 				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
 				$group_key: instanceId,
 				$group_set: properties,
+				...(!distinctId && { $process_person_profile: false }),
 			},
 			groups: {
 				[POSTHOG_GROUP_TYPE_INSTANCE]: instanceId,
@@ -166,6 +172,14 @@ export class PostHogClient {
 		const overrides: FeatureFlags = {};
 		if (this.globalConfig.evaluation.collectionsEnabled) {
 			overrides[EVAL_COLLECTIONS_FLAG] = true;
+		}
+		// `088_config_evaluations` is multivariate — the enabled arm is the
+		// `variant` string, not a boolean (`isConfigEvalsEnabled` checks for it).
+		if (this.globalConfig.evaluation.configEvalsEnabled) {
+			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
+		}
+		if (this.globalConfig.evaluation.agentEvalsEnabled) {
+			overrides[AGENT_EVALS_FLAG] = true;
 		}
 		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}

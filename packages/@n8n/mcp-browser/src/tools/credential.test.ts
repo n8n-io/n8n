@@ -1,3 +1,5 @@
+import type { Mocked, MockedFunction } from 'vitest';
+
 import type { SecretsBuffer, ToolContext } from '../types';
 import { createCredentialTools } from './credential';
 import { createMockConnection, findTool, structuredOf } from './test-helpers';
@@ -6,16 +8,16 @@ import { createMockConnection, findTool, structuredOf } from './test-helpers';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeBuffer(): jest.Mocked<SecretsBuffer> & { _store: Map<string, Map<string, string>> } {
+function makeBuffer(): Mocked<SecretsBuffer> & { _store: Map<string, Map<string, string>> } {
 	const store = new Map<string, Map<string, string>>();
 	return {
 		_store: store,
-		capture: jest.fn((key: string, field: string, value: string) => {
+		capture: vi.fn((key: string, field: string, value: string) => {
 			if (!store.has(key)) store.set(key, new Map());
 			store.get(key)!.set(field, value);
 		}),
-		getFields: jest.fn((key: string) => store.get(key)),
-		clear: jest.fn((key: string) => {
+		getFields: vi.fn((key: string) => store.get(key)),
+		clear: vi.fn((key: string) => {
 			store.delete(key);
 		}),
 	};
@@ -267,7 +269,7 @@ describe('browser_capture_secret', () => {
 describe('browser_create_credential', () => {
 	let mockConn: ReturnType<typeof createMockConnection>;
 	let buffer: ReturnType<typeof makeBuffer>;
-	let createCredential: jest.MockedFunction<
+	let createCredential: MockedFunction<
 		(p: {
 			name: string;
 			type: string;
@@ -282,7 +284,7 @@ describe('browser_create_credential', () => {
 		// Pre-populate buffer with some captured secrets
 		buffer.capture('k1', 'clientId', 'client-id-value');
 		buffer.capture('k1', 'clientSecret', 'client-secret-value');
-		createCredential = jest.fn().mockResolvedValue({ credentialId: 'cred-123' });
+		createCredential = vi.fn().mockResolvedValue({ credentialId: 'cred-123' });
 	});
 
 	const getTool = () =>

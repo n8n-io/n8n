@@ -8,6 +8,7 @@ import { useSourceControlStore } from '../sourceControl.store';
 import SettingsSourceControl from './SettingsSourceControl.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/app/constants';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { nextTick } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;
@@ -23,6 +24,11 @@ describe('SettingsSourceControl', () => {
 	});
 
 	beforeEach(async () => {
+		// The save-settings test asserts on rendered toast content, which needs the
+		// notifier the app registers at bootstrap. Explicit here because it no longer
+		// arrives as a side effect of importing `@n8n/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createPinia();
 		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
@@ -62,6 +68,34 @@ describe('SettingsSourceControl', () => {
 		expect(getByTestId('source-control-content-licensed')).toBeInTheDocument();
 		expect(queryByTestId('source-control-content-unlicensed')).not.toBeInTheDocument();
 		expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument();
+	});
+
+	it('should disable the connection form while preferences are loading', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
+
+		let resolvePreferences!: () => void;
+		const getPreferencesSpy = vi.spyOn(sourceControlStore, 'getPreferences').mockImplementation(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolvePreferences = resolve;
+				}),
+		);
+
+		try {
+			const { container } = renderComponent({ pinia });
+
+			await waitFor(() => expect(getPreferencesSpy).toHaveBeenCalled());
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+			expect(repoUrlInput).toBeDisabled();
+
+			resolvePreferences();
+
+			await waitFor(() => expect(repoUrlInput).toBeEnabled());
+		} finally {
+			getPreferencesSpy.mockRestore();
+		}
 	});
 
 	it('should render user flow happy path', async () => {

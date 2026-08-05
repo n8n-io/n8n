@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
@@ -13,14 +14,19 @@ import * as transport from './transport';
 
 describe('Anthropic Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = vi.spyOn(utils, 'downloadFile');
-	const uploadFileMock = vi.spyOn(utils, 'uploadFile');
-	const getBaseUrlMock = vi.spyOn(utils, 'getBaseUrl');
+	let apiRequestMock: MockInstance;
+	let getConnectedToolsMock: MockInstance;
+	let downloadFileMock: MockInstance;
+	let uploadFileMock: MockInstance;
+	let getBaseUrlMock: MockInstance;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
+		getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+		downloadFileMock = vi.spyOn(utils, 'downloadFile');
+		uploadFileMock = vi.spyOn(utils, 'uploadFile');
+		getBaseUrlMock = vi.spyOn(utils, 'getBaseUrl');
 	});
 
 	describe('Text -> Message', () => {

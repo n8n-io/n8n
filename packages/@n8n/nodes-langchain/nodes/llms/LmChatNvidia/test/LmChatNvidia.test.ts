@@ -46,7 +46,7 @@ describe('LmChatNvidia', () => {
 		});
 		ctx.getNode = vi.fn().mockReturnValue(nodeDef);
 		ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-			if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+			if (paramName === 'model') return 'nvidia/llama-3.3-nemotron-super-49b-v1';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
@@ -80,13 +80,36 @@ describe('LmChatNvidia', () => {
 			expect(node.description.outputNames).toEqual(['Model']);
 		});
 
-		it('should filter to Nemotron models in loadOptions', () => {
+		it('should reduce the fetched catalog to the supported allow-list in loadOptions', () => {
 			const modelProp = node.description.properties.find((p) => p?.name === 'model');
 			expect(modelProp).toBeDefined();
 			const postReceive = (modelProp?.typeOptions as any)?.loadOptions?.routing?.output
 				?.postReceive as Array<{ type: string; properties: { pass?: string } }>;
 			const filterStep = postReceive.find((step) => step.type === 'filter');
-			expect(filterStep?.properties.pass).toMatch(/nemotron/i);
+			const pass = filterStep?.properties.pass ?? '';
+
+			// The filter keeps only ids present in the allow-list (built from the same
+			// constant that backs the static options), excluding e.g. reward models.
+			const supported = ((modelProp as any)?.options as Array<{ value: string }>).map(
+				(o) => o.value,
+			);
+			expect(pass).toContain('.includes($responseItem.id)');
+			for (const id of supported) {
+				expect(pass).toContain(id);
+			}
+			expect(pass).not.toContain('nemotron-70b-reward');
+		});
+
+		it('should expose the supported models as static fallback options', () => {
+			const modelProp = node.description.properties.find((p) => p?.name === 'model');
+			const options = (modelProp as any)?.options as Array<{ name: string; value: string }>;
+			const values = options.map((o) => o.value);
+
+			expect(values).toContain('nvidia/llama-3.3-nemotron-super-49b-v1');
+			expect(values).toContain('nvidia/nemotron-3-super-120b-a12b');
+			expect(values).not.toContain('nvidia/llama-3.1-nemotron-70b-reward');
+			// The default must be one of the offered options.
+			expect(values).toContain((modelProp as any)?.default);
 		});
 	});
 
@@ -100,7 +123,7 @@ describe('LmChatNvidia', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-key',
-					model: 'nvidia/llama-3.1-nemotron-70b-instruct',
+					model: 'nvidia/llama-3.3-nemotron-super-49b-v1',
 					configuration: expect.objectContaining({
 						baseURL: 'https://integrate.api.nvidia.com/v1',
 					}),
@@ -138,7 +161,7 @@ describe('LmChatNvidia', () => {
 		it('should pass options through to ChatOpenAI', async () => {
 			const ctx = setupMockContext();
 			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+				if (paramName === 'model') return 'nvidia/llama-3.3-nemotron-super-49b-v1';
 				if (paramName === 'options')
 					return {
 						temperature: 0.5,
@@ -170,7 +193,7 @@ describe('LmChatNvidia', () => {
 		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
 			const ctx = setupMockContext();
 			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+				if (paramName === 'model') return 'nvidia/llama-3.3-nemotron-super-49b-v1';
 				if (paramName === 'options') return { responseFormat: 'json_object' };
 				return undefined;
 			});

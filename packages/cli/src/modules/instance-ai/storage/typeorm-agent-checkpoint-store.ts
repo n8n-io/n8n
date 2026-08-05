@@ -23,6 +23,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		const existing = await this.checkpointRepo.findOne({ where: { key } });
 		if (existing) {
 			existing.runId = this.getRunId(key);
+			existing.hostRunId = state.persistence?.hostRunId ?? null;
 			existing.threadId = threadId;
 			existing.resourceId = state.persistence?.resourceId ?? null;
 			existing.state = state;
@@ -34,6 +35,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		const checkpoint = this.checkpointRepo.create({
 			key,
 			runId: this.getRunId(key),
+			hostRunId: state.persistence?.hostRunId ?? null,
 			threadId,
 			resourceId: state.persistence?.resourceId ?? null,
 			state,
@@ -49,6 +51,10 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 			throw new UserError(EXPIRED_CHECKPOINT_MESSAGE);
 		}
 		return checkpoint.state;
+	}
+
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		return await this.checkpointRepo.claimSuspendedForResume(key, state);
 	}
 
 	async delete(key: string): Promise<void> {
@@ -77,6 +83,36 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 	 */
 	async deleteOlderThan(olderThan: Date): Promise<number> {
 		return await this.markExpiredOlderThan(olderThan);
+	}
+
+	/**
+	 * Look up the most recent suspended sub-agent run for a given resourceId
+	 * and pull the info needed to resume it. This supports deterministic
+	 * sub-agent persistence for suspended background or delegated work.
+	 */
+	async findSuspendedSubAgentResumeInfo(resourceId: string): Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	> {
+		const row = await this.checkpointRepo.findActiveByResourceId(resourceId);
+		if (!row?.state) return undefined;
+		// `pendingToolCalls` can hold parallel tool calls from one turn, only
+		// some of which suspended. Pick the suspended entry explicitly so we
+		// don't try to resume a tool that ran to completion in the same batch.
+		const suspendedEntry = Object.entries(row.state.pendingToolCalls ?? {}).find(
+			([, call]) => call.suspended,
+		);
+		const persistence = row.state.persistence;
+		if (!suspendedEntry || !persistence?.threadId || !persistence.resourceId) return undefined;
+		return {
+			runId: row.key,
+			toolCallId: suspendedEntry[0],
+			persistence: { threadId: persistence.threadId, resourceId: persistence.resourceId },
+		};
 	}
 
 	/** Drop expired tombstones outright once they're past the GC horizon. */

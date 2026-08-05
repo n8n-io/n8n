@@ -13,7 +13,7 @@ import {
 describe('evaluation-helpers', () => {
 	describe('withTimeout()', () => {
 		it('should allow p-limit slot to be released when timeout triggers (best-effort)', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const limit = pLimit(1);
 			const started: string[] = [];
 
@@ -35,7 +35,7 @@ describe('evaluation-helpers', () => {
 				started.push('p2');
 			});
 
-			jest.advanceTimersByTime(11);
+			vi.advanceTimersByTime(11);
 			await Promise.resolve();
 			await Promise.resolve();
 
@@ -43,7 +43,7 @@ describe('evaluation-helpers', () => {
 			expect(started).toEqual(['p1', 'p2']);
 
 			await p1;
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 	});
 

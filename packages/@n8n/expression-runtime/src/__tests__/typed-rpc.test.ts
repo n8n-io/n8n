@@ -2,12 +2,12 @@
  * Regression suite for the typed-RPC routing pattern.
  *
  * The pattern: `$('Foo').first()` is routed through the dedicated
- * `getNodeFirst` typed RPC rather than the generic `callFunctionAtPath`
- * channel. The in-isolate runtime exposes a synthetic proxy on
- * `target.$(...)` that intercepts `.first` and sends a typed envelope via
- * `callHost`; the bridge handler reads the literal string `"first"`
- * from the host-side proxy. The property name is compile-time fixed and
- * cannot be influenced by expression input.
+ * `getNodeFirst` typed RPC over the `callHost` dispatcher. The in-isolate
+ * runtime exposes a synthetic proxy on `target.$(...)` that intercepts
+ * `.first` and sends a typed envelope via `callHost`; the bridge handler
+ * reads the literal string `"first"` from the host-side proxy. The
+ * property name is compile-time fixed and cannot be influenced by
+ * expression input.
  *
  * Each typed RPC should land with a test in this file
  * confirming:

@@ -6,16 +6,19 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { setActivePinia } from 'pinia';
 import { useFloatingUiOffsets } from './useFloatingUiOffsets';
-import { reactive } from 'vue';
+import { reactive, shallowRef, type ShallowRef } from 'vue';
 import { EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { createTestNode } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 
 let currentRouteName = '';
+// App.vue passes in the current workflow document id; mirror that here.
+let workflowDocumentIdRef: ShallowRef<WorkflowDocumentId | null>;
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn(() =>
@@ -39,6 +42,7 @@ describe(useFloatingUiOffsets, () => {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.setNodes([createTestNode({ name: 'n0' })]);
+		workflowDocumentIdRef = shallowRef(createWorkflowDocumentId(workflowsStore.workflowId));
 	});
 
 	describe('toastBottomOffset', () => {
@@ -46,7 +50,7 @@ describe(useFloatingUiOffsets, () => {
 			useLogsStore().setHeight(3);
 			useNDVStore(createWorkflowDocumentId('test-workflow')).setActiveNodeName('n0', 'other'); // set NDV to be opened
 
-			const { toastBottomOffset } = useFloatingUiOffsets();
+			const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
 
 			expect(toastBottomOffset.value).toBe('0px');
 
@@ -58,7 +62,7 @@ describe(useFloatingUiOffsets, () => {
 		it('should not account for the height of log view when chat panel is open', () => {
 			useLogsStore().setHeight(300);
 
-			const { toastBottomOffset } = useFloatingUiOffsets();
+			const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
 
 			expect(toastBottomOffset.value).toBe('300px');
 
@@ -76,7 +80,7 @@ describe(useFloatingUiOffsets, () => {
 					aiAssistant: { enabled: true, setup: true },
 				});
 
-				const { toastBottomOffset } = useFloatingUiOffsets();
+				const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
 
 				expect(toastBottomOffset.value).toBe('0px');
 

@@ -39,7 +39,7 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			if (!personalProject) {
-				fail('Expected personalProject to be defined.');
+				expect.fail('Expected personalProject to be defined.');
 			}
 			expect(personalProject).toBeDefined();
 			expect(personalProject.id).toBe(ownerPersonalProject.id);
@@ -88,7 +88,7 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			if (!personalProject) {
-				fail('Expected personalProject to be defined.');
+				expect.fail('Expected personalProject to be defined.');
 			}
 			expect(personalProject).toBeDefined();
 			expect(personalProject.id).toBe(ownerPersonalProject.id);

@@ -6,6 +6,7 @@ import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
 } from '../../spec/serialized/workflow.schema';
+import { compareTagsByName } from '../tag/tag.types';
 
 /** Fields restored from package workflow.json; the target instance assigns the rest. */
 type WorkflowPackageContent = Pick<
@@ -15,7 +16,13 @@ type WorkflowPackageContent = Pick<
 
 @Service()
 export class WorkflowSerializer {
-	serialize(workflow: WorkflowEntity): SerializedWorkflow {
+	serialize(workflow: WorkflowEntity, options: { includeTags: boolean }): SerializedWorkflow {
+		// Emitted even when empty: on import, a present `tagIds` (incl. `[]`) overwrites
+		// taggings to exactly that set, while an absent key leaves them untouched.
+		const tags = options.includeTags
+			? [...(workflow.tags ?? [])].sort(compareTagsByName)
+			: undefined;
+
 		return serializedWorkflowSchema.parse({
 			id: workflow.id,
 			name: workflow.name,
@@ -24,8 +31,9 @@ export class WorkflowSerializer {
 			settings: workflow.settings,
 			versionId: workflow.versionId,
 			parentFolderId: workflow.parentFolder?.id ?? null,
-			active: workflow.activeVersionId === workflow.versionId,
+			isPublished: workflow.activeVersionId === workflow.versionId,
 			isArchived: workflow.isArchived,
+			...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
 		});
 	}
 
@@ -34,7 +42,7 @@ export class WorkflowSerializer {
 	 * the target instance.
 	 *
 	 * We drop anything the target owns — its id, versionId, where it lives,
-	 * whether it's active, timestamps — so the caller can set those fresh.
+	 * whether it's published, timestamps — so the caller can set those fresh.
 	 * The content of the workflow comes along, and we keep whichever
 	 * archived state the source had it in.
 	 */

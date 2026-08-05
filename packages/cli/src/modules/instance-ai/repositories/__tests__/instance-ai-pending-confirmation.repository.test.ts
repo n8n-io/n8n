@@ -1,5 +1,5 @@
 import type { DeleteResult, EntityManager, Repository } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiPendingConfirmation } from '../../entities/instance-ai-pending-confirmation.entity';
 import { InstanceAiPendingConfirmationRepository } from '../instance-ai-pending-confirmation.repository';
@@ -36,7 +36,7 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 		};
 
 		const outerManager = {
-			transaction: jest.fn(async (cb: (m: EntityManager) => Promise<unknown>) => await cb(manager)),
+			transaction: vi.fn(async (cb: (m: EntityManager) => Promise<unknown>) => await cb(manager)),
 		};
 
 		const repo = Object.create(
@@ -60,9 +60,11 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 
 		expect(result).toBe(row);
 		expect(txRepo.findOne).toHaveBeenCalledWith({
-			where: { requestId: 'req-1', userId: 'user-1' },
+			where: expect.objectContaining({ requestId: 'req-1', userId: 'user-1' }),
 		});
-		expect(txRepo.delete).toHaveBeenCalledWith({ requestId: 'req-1', userId: 'user-1' });
+		expect(txRepo.delete).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', userId: 'user-1' }),
+		);
 	});
 
 	it('returns undefined when no row matches the requestId+userId', async () => {
@@ -96,7 +98,63 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 
 		expect(result).toBeUndefined();
 		expect(txRepo.findOne).toHaveBeenCalledWith({
-			where: { requestId: 'req-1', userId: 'attacker-user' },
+			where: expect.objectContaining({ requestId: 'req-1', userId: 'attacker-user' }),
 		});
+	});
+
+	it('treats expired rows as already gone — same predicate as findLiveRequestIds', async () => {
+		// Driver behavior: an expired row would not match the live-where
+		// predicate, so findOne returns null even though the row physically
+		// exists. The expired-prune sweep is responsible for the physical row
+		// — the claim path treats it as unclaimable in the meantime.
+		const txRepo = mock<Repository<InstanceAiPendingConfirmation>>();
+		txRepo.findOne.mockResolvedValueOnce(null);
+		const { repo } = buildRepoWithTxRepo(txRepo);
+
+		const result = await repo.claim('req-expired', 'user-1');
+
+		expect(result).toBeUndefined();
+		expect(txRepo.delete).not.toHaveBeenCalled();
+		const where = (txRepo.findOne.mock.calls[0][0] as { where: Record<string, unknown> }).where;
+		expect(where).toHaveProperty('expiresAt');
+	});
+});
+
+describe('InstanceAiPendingConfirmationRepository.isPastExpiry', () => {
+	function buildRepoWithCount(countResult: number) {
+		const repo = Object.create(
+			InstanceAiPendingConfirmationRepository.prototype,
+		) as InstanceAiPendingConfirmationRepository;
+		const countMock = vi.fn(async (_opts?: { where: Record<string, unknown> }) => countResult);
+		Object.defineProperty(repo, 'count', { value: countMock, configurable: true });
+		return { repo, countMock };
+	}
+
+	it('is true when the user owns a row with expiresAt in the past', async () => {
+		const now = new Date('2026-05-13T12:00:00.000Z');
+		const { repo, countMock } = buildRepoWithCount(1);
+
+		await expect(repo.isPastExpiry('req-1', 'user-1', now)).resolves.toBe(true);
+		// Scoped by userId, and LessThan(now) excludes null expiresAt (timeout
+		// disabled) at the SQL layer.
+		const where = countMock.mock.calls[0][0]!.where;
+		expect(where).toMatchObject({ requestId: 'req-1', userId: 'user-1' });
+		expect(where).toHaveProperty('expiresAt');
+	});
+
+	it('is false when no row is past its expiry', async () => {
+		const { repo } = buildRepoWithCount(0);
+
+		await expect(repo.isPastExpiry('req-1', 'user-1', new Date())).resolves.toBe(false);
+	});
+
+	it('does not treat another user’s expired request as expired', async () => {
+		// The userId scope means the count query matches nothing for a request
+		// owned by someone else, so the caller falls through to its existing
+		// not-found/not-authorized handling instead of leaking an expired signal.
+		const { repo, countMock } = buildRepoWithCount(0);
+
+		await expect(repo.isPastExpiry('req-1', 'attacker-user', new Date())).resolves.toBe(false);
+		expect(countMock.mock.calls[0][0]!.where).toMatchObject({ userId: 'attacker-user' });
 	});
 });

@@ -7,10 +7,10 @@ import type {
 	ITriggerResponse,
 } from 'n8n-workflow';
 import {
-	ensureError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	TriggerCloseError,
+	UnexpectedError,
 } from 'n8n-workflow';
 
 import {
@@ -24,7 +24,13 @@ import {
 	configureDataEmitter,
 	getAutoCommitSettings,
 	runWithHeartbeat,
+	stopAndDisconnectConsumer,
+	toUserFacingConsumerError,
+	type ConsumerErrorHandler,
 } from './utils';
+
+// Bounds each teardown call so a hung broker request cannot block deactivation.
+const CLOSE_TIMEOUT_MS = 30_000;
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,6 +49,16 @@ export class KafkaTrigger implements INodeType {
 			{
 				name: 'kafka',
 				required: true,
+			},
+			{
+				name: 'schemaRegistryApi',
+				required: false,
+				displayName: 'Schema Registry',
+				displayOptions: {
+					show: {
+						useSchemaRegistry: [true],
+					},
+				},
 			},
 		],
 		properties: [
@@ -157,7 +173,6 @@ export class KafkaTrigger implements INodeType {
 				displayName: 'Schema Registry URL',
 				name: 'schemaRegistryUrl',
 				type: 'string',
-				required: true,
 				displayOptions: {
 					show: {
 						useSchemaRegistry: [true],
@@ -165,7 +180,8 @@ export class KafkaTrigger implements INodeType {
 				},
 				placeholder: 'https://schema-registry-domain:8081',
 				default: '',
-				description: 'URL of the schema registry',
+				description:
+					'URL of the schema registry. Only used when no Schema Registry credential is selected.',
 			},
 			{
 				displayName: 'Options',
@@ -383,7 +399,7 @@ export class KafkaTrigger implements INodeType {
 
 		const config = await createConfig(this);
 		const kafka = new apacheKafka(config);
-		const registry = setSchemaRegistry(this);
+		const registry = await setSchemaRegistry(this);
 
 		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
 		if (options.keepBinaryData && nodeVersion < 1.2) {
@@ -391,7 +407,16 @@ export class KafkaTrigger implements INodeType {
 		}
 
 		const consumerConfig = createConsumerConfig(this, options, nodeVersion);
-		const consumer = kafka.consumer(consumerConfig);
+
+		const closeController = new AbortController();
+		const closeSignal = closeController.signal;
+
+		// Vetoes kafkajs's automatic crash-restart once close was requested; the
+		// callback must never throw (kafkajs treats a throw as consent to restart).
+		const consumer = kafka.consumer({
+			...consumerConfig,
+			retry: { restartOnFailure: async () => !closeSignal.aborted },
+		});
 
 		const processMessage = configureMessageParser(
 			options,
@@ -404,7 +429,7 @@ export class KafkaTrigger implements INodeType {
 		const batchSize = options.batchSize ?? 1;
 		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
 
-		const dataEmitter = configureDataEmitter(this, options, nodeVersion);
+		const dataEmitter = configureDataEmitter(this, options, nodeVersion, closeSignal);
 
 		const startConsumer = async () => {
 			try {
@@ -423,13 +448,23 @@ export class KafkaTrigger implements INodeType {
 						isRunning,
 						commitOffsetsIfNecessary,
 					}: EachBatchPayload) => {
-						// avoid throwing error in the callback, as it leads to consumer stop, disconnect and crash
+						// A batch after close means a consumer survived teardown: crash it
+						// non-retriably. Below this guard, never throw in the callback.
+						// UnexpectedError is reported to Sentry, so tripping this backstop
+						// is visible. Use OperationalError instead if that is too noisy.
+						if (closeSignal.aborted) {
+							throw Object.assign(
+								new UnexpectedError('Kafka trigger consumer received messages after close'),
+								{ retriable: false },
+							);
+						}
+
 						const messages = batch.messages;
 						const messageTopic = batch.topic;
 
 						for (let i = 0; i < messages.length; i += batchSize) {
-							// stop if consumer stopped or partition revoked
-							if (!isRunning() || isStale()) {
+							// stop if consumer stopped, close requested, or partition revoked
+							if (closeSignal.aborted || !isRunning() || isStale()) {
 								this.logger.debug('Batch processing interrupted due to rebalance or consumer stop');
 								break;
 							}
@@ -475,16 +510,27 @@ export class KafkaTrigger implements INodeType {
 			}
 		};
 
-		const listeners = connectEventListeners(consumer, this.logger);
+		const handleConsumerError: ConsumerErrorHandler = (error) => {
+			// Don't surface errors that are a side effect of our own teardown.
+			if (!closeSignal.aborted) {
+				this.emitError(toUserFacingConsumerError(this.getNode(), error));
+			}
+		};
+		const listeners = connectEventListeners(consumer, this.logger, handleConsumerError);
 
 		const closeFunction = async () => {
-			try {
-				disconnectEventListeners(listeners);
-				await consumer.stop();
-				await consumer.disconnect();
-			} catch (error) {
+			// Unblock any eachBatch waiting on an in-flight execution.
+			closeController.abort();
+			disconnectEventListeners(listeners);
+
+			const teardownError = await stopAndDisconnectConsumer(
+				consumer,
+				this.logger,
+				CLOSE_TIMEOUT_MS,
+			);
+			if (teardownError) {
 				throw new TriggerCloseError(this.getNode(), {
-					cause: ensureError(error),
+					cause: teardownError,
 					level: 'warning',
 				});
 			}

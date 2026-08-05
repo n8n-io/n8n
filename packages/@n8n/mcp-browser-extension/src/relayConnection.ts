@@ -53,6 +53,7 @@ interface TabEntry {
 
 const CDP_COMMAND_TIMEOUT_MS = 30_000;
 const ATTACH_TIMEOUT_MS = 5_000;
+const KEEPALIVE_INTERVAL_MS = 15_000;
 
 // ---------------------------------------------------------------------------
 // RelayConnection
@@ -88,6 +89,7 @@ export class RelayConnection {
 	) => void;
 	private readonly detachListener: (source: chrome.debugger.Debuggee, reason: string) => void;
 	private closed = false;
+	private keepaliveInterval: ReturnType<typeof setInterval> | undefined;
 	private settings: TabManagementSettings = DEFAULT_SETTINGS;
 
 	onclose?: () => void;
@@ -102,6 +104,8 @@ export class RelayConnection {
 		this.detachListener = this.onDebuggerDetach.bind(this);
 		chrome.debugger.onEvent.addListener(this.eventListener);
 		chrome.debugger.onDetach.addListener(this.detachListener);
+
+		this.startKeepalive();
 	}
 
 	// =========================================================================
@@ -218,10 +222,24 @@ export class RelayConnection {
 	// Internal — connection lifecycle
 	// =========================================================================
 
+	private startKeepalive(): void {
+		this.keepaliveInterval = setInterval(() => {
+			this.sendMessage({ method: 'keepalive' });
+		}, KEEPALIVE_INTERVAL_MS);
+	}
+
+	private stopKeepalive(): void {
+		if (this.keepaliveInterval) {
+			clearInterval(this.keepaliveInterval);
+			this.keepaliveInterval = undefined;
+		}
+	}
+
 	private handleClose(): void {
 		if (this.closed) return;
 		this.closed = true;
 
+		this.stopKeepalive();
 		chrome.debugger.onEvent.removeListener(this.eventListener);
 		chrome.debugger.onDetach.removeListener(this.detachListener);
 

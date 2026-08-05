@@ -7,7 +7,7 @@ import type {
 	Schema,
 	SchemaType,
 } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
@@ -26,10 +26,11 @@ import {
 import { ref } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
-import { DEFAULT_SETTINGS } from '../stores/workflowDocument/useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 
 export function useDataSchema() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 	function getSchema(
 		input: Optional<Primitives | object>,
@@ -180,15 +181,15 @@ export function useDataSchema() {
 		runIndex = 0,
 		outputIndex = 0,
 	): INodeExecutionData[] {
-		const { getWorkflowExecution } = useWorkflowsStore();
 		if (node === null) {
 			return [];
 		}
 
-		if (getWorkflowExecution === null) {
+		const workflowExecution = workflowExecutionStateStore.value.activeExecution;
+		if (workflowExecution === null) {
 			return [];
 		}
-		const executionData = getWorkflowExecution.data;
+		const executionData = workflowExecution.data;
 		if (!executionData?.resultData) {
 			// unknown status
 			return [];

@@ -10,11 +10,82 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 
+import { matchesGlobalTrigger } from './global-triggers.js';
 import { findWorkspaceRoot, toPosix } from './path-utils.js';
 
 function parseJsonFile<T>(path: string): T {
 	try {
 		return JSON.parse(readFileSync(path, 'utf-8')) as T;
+	} catch (cause) {
+		throw new Error(`Failed to parse ${path}: ${(cause as Error).message}`);
+	}
+}
+
+/**
+ * Strip line and block comments from JSONC, skipping anything inside string
+ * literals. turbo.json is JSONC (turborepo allows comments); a plain
+ * `JSON.parse` throws on it. Trailing commas are not stripped — turbo.json
+ * doesn't use them.
+ */
+export function stripJsonComments(text: string): string {
+	let out = '';
+	let inString = false;
+	let quote = '';
+	let inLineComment = false;
+	let inBlockComment = false;
+
+	for (let i = 0; i < text.length; i++) {
+		const char = text[i];
+		const next = text[i + 1];
+
+		if (inLineComment) {
+			if (char === '\n') {
+				inLineComment = false;
+				out += char;
+			}
+			continue;
+		}
+		if (inBlockComment) {
+			if (char === '*' && next === '/') {
+				inBlockComment = false;
+				i++;
+			}
+			continue;
+		}
+		if (inString) {
+			out += char;
+			if (char === '\\') {
+				out += next ?? '';
+				i++;
+			} else if (char === quote) {
+				inString = false;
+			}
+			continue;
+		}
+		if (char === '"' || char === "'") {
+			inString = true;
+			quote = char;
+			out += char;
+			continue;
+		}
+		if (char === '/' && next === '/') {
+			inLineComment = true;
+			i++;
+			continue;
+		}
+		if (char === '/' && next === '*') {
+			inBlockComment = true;
+			i++;
+			continue;
+		}
+		out += char;
+	}
+	return out;
+}
+
+export function parseJsoncFile<T>(path: string): T {
+	try {
+		return JSON.parse(stripJsonComments(readFileSync(path, 'utf-8'))) as T;
 	} catch (cause) {
 		throw new Error(`Failed to parse ${path}: ${(cause as Error).message}`);
 	}
@@ -33,8 +104,6 @@ export interface AnalyzeOptions {
 	/** Repo-root-relative, forward slashes. `null` = no signal → all packages. */
 	changedFiles: string[] | null;
 }
-
-const GLOBAL_TRIGGER_FILES = new Set(['pnpm-lock.yaml', 'package.json']);
 
 function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
 	const wsFile = join(rootDir, 'pnpm-workspace.yaml');
@@ -88,7 +157,7 @@ interface TurboBinding {
 function loadTurboExtraInputs(rootDir: string, packages: WorkspacePackage[]): TurboBinding[] {
 	const turboFile = join(rootDir, 'turbo.json');
 	if (!existsSync(turboFile)) return [];
-	const parsed = parseJsonFile<{ tasks?: Record<string, { inputs?: string[] }> }>(turboFile);
+	const parsed = parseJsoncFile<{ tasks?: Record<string, { inputs?: string[] }> }>(turboFile);
 
 	const bindings: TurboBinding[] = [];
 	for (const [taskId, task] of Object.entries(parsed.tasks ?? {})) {
@@ -121,7 +190,7 @@ export function affectedPackages(options: AnalyzeOptions): string[] {
 	// No signal (local dev, missing env) → safest default: everything.
 	if (options.changedFiles === null) return allNames;
 
-	if (options.changedFiles.some((f) => GLOBAL_TRIGGER_FILES.has(f))) return allNames;
+	if (options.changedFiles.some(matchesGlobalTrigger)) return allNames;
 
 	const direct = new Set<string>();
 	for (const file of options.changedFiles) {

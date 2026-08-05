@@ -1,9 +1,17 @@
 {
-  "_comment": "Hand-resolved licenses for packages cdxgen + FETCH_LICENSE cannot resolve. Keys are PURLs (pkg:npm/<name>@<version>) — exact match required. 'source' points to where the license was verified so reviewers can re-check. Optional 'skipDiskText: true' opts out of on-disk LICENSE text lookup when the file disagrees with the overridden SPDX id.",
+  "_comment": "Hand-resolved licenses for packages cdxgen + FETCH_LICENSE cannot resolve. 'overrides' are PURL-pinned (pkg:npm/<name>@<version>, exact match) and drive the release-closure SBOM — a pin that stops matching fails loudly so the license is re-verified on the bump. 'byName' is version-agnostic (keyed by package name) for licenses stable across versions; it resolves the same package at whatever version a container image installed (e.g. ssh2 ships both 1.15.0 and 1.16.0 in the image, both MIT). 'elections' record which license n8n elects for a validly dual-licensed (OR) dependency so a copyleft policy gate reads the elected term. 'source' records where each was verified. Optional 'skipDiskText: true' opts out of on-disk LICENSE text lookup when the file disagrees with the overridden id.",
   "overrides": {
-    "pkg:npm/%40rudderstack/rudder-sdk-node@3.0.5": {
+    "pkg:npm/nub@0.0.0": {
       "license": "MIT",
-      "source": "compiled/node_modules/@rudderstack/rudder-sdk-node/LICENSE.md — verbatim MIT (Copyright Segment Inc.), no license field in package.json"
+      "source": "https://www.npmjs.com/package/nub — package.json declares non-SPDX 'MIT/X11'; X11 is the historical alias for the MIT license. Normalised to the canonical SPDX id."
+    },
+    "pkg:npm/xml-escape@1.1.0": {
+      "license": "MIT",
+      "source": "https://www.npmjs.com/package/xml-escape — package.json declares non-SPDX free text 'MIT License'. Normalised to the canonical SPDX id."
+    },
+    "pkg:npm/duck@0.1.12": {
+      "license": "BSD-2-Clause",
+      "source": "compiled/node_modules/duck/LICENSE — 2-clause BSD text (Copyright 2013 Michael Williamson; no 'neither the name ... endorse' clause). package.json declares bare 'BSD'; resolved to the matching SPDX variant."
     },
     "pkg:npm/%40ewoudenberg/difflib@0.1.0": {
       "license": "Python-2.0",
@@ -29,10 +37,6 @@
       "license": "MIT",
       "source": "compiled/node_modules/seq-queue/LICENSE — verbatim MIT, no license field in package.json"
     },
-    "pkg:npm/ssh2@1.15.0": {
-      "license": "MIT",
-      "source": "compiled/node_modules/ssh2/LICENSE — package.json uses legacy licenses[] array"
-    },
     "pkg:npm/streamsearch@1.1.0": {
       "license": "MIT",
       "source": "compiled/node_modules/streamsearch/LICENSE — package.json uses legacy licenses[] array"
@@ -40,6 +44,40 @@
     "pkg:npm/utf7@1.0.2": {
       "license": "MIT",
       "source": "DISCREPANCY: package.json declares legacy licenses[]=BSD, but compiled/node_modules/utf7/LICENSE ships verbatim MIT text (https://github.com/chris-rock/node-utf7/blob/master/LICENSE). On-disk LICENSE file taken as authoritative — this is the file customers actually receive in the release tarball. If a future legal review concludes differently, set skipDiskText:true and switch license to BSD-3-Clause."
+    }
+  },
+  "byName": {
+    "ssh2": {
+      "license": "MIT",
+      "source": "compiled/node_modules/ssh2/LICENSE — MIT; package.json uses a legacy licenses[] array so cdxgen leaves it unresolved. Version-agnostic: a container image can install more than one ssh2 (e.g. 1.15.0 and 1.16.0 side by side), and the license is MIT across versions."
+    },
+    "@rudderstack/rudder-sdk-node": {
+      "license": "MIT",
+      "source": "compiled/node_modules/@rudderstack/rudder-sdk-node/LICENSE.md — verbatim MIT (Copyright Segment Inc.), no license field in package.json. Version-agnostic: the package appears at multiple versions in the lockfile (direct dep + peer-dep resolution) and is actively maintained; name-keyed matching avoids version-pin drift."
+    },
+    "wa-sqlite": {
+      "license": "MIT",
+      "source": "https://github.com/rhashimoto/wa-sqlite — LICENSE file in published tarball confirms MIT. Package is installed via GitHub tarball URL so npm registry metadata is absent; no license field in package.json. Version-agnostic: the PURL emitted by cdxgen for tarball installs can vary (version field vs. commit SHA vs. qualifiers) depending on lockfile format and cdxgen version; name-keyed matching is stable across those variations."
+    },
+    "@n8n_io/license-sdk": {
+      "license": "LicenseRef-n8n-enterprise",
+      "source": "n8n-io/license-management — ships LICENSE_EE.md (n8n Enterprise License). EE-only runtime component; not under the Sustainable Use License. Version-agnostic: license is stable across SDK versions. FIRST_PARTY_PATTERNS would otherwise incorrectly stamp it as LicenseRef-n8n-sustainable-use.",
+      "skipDiskText": true
+    },
+    "@n8n_io/ai-assistant-sdk": {
+      "license": "LicenseRef-n8n-enterprise",
+      "source": "n8n-io/ai-assistant-service — ships LICENSE_EE.md (n8n Enterprise License). EE-only runtime component; not under the Sustainable Use License. Version-agnostic: license is stable across SDK versions.",
+      "skipDiskText": true
+    }
+  },
+  "elections": {
+    "pkg:npm/jszip@3.10.1": {
+      "elected": "MIT",
+      "source": "Dual-licensed (MIT OR GPL-3.0-or-later) per https://github.com/Stuk/jszip/blob/main/LICENSE.markdown. n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the GPL alternative."
+    },
+    "pkg:npm/%40zone-eu/mailsplit@5.4.8": {
+      "elected": "MIT",
+      "source": "Dual-licensed (MIT OR EUPL-1.1+) per https://github.com/zone-eu/mailsplit#license. n8n elects MIT; recorded so a copyleft policy gate reads MIT rather than the EUPL alternative."
     }
   }
 }

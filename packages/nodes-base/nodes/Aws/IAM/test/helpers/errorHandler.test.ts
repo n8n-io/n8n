@@ -4,8 +4,8 @@ import type { INodeExecutionData, IN8nHttpFullResponse, JsonObject } from 'n8n-w
 import { handleError } from '../../helpers/errorHandler';
 
 const mockExecuteSingleFunctions = {
-	getNode: jest.fn(() => ({ name: 'MockNode' })),
-	getNodeParameter: jest.fn(),
+	getNode: vi.fn(() => ({ name: 'MockNode' })),
+	getNodeParameter: vi.fn(),
 } as any;
 
 describe('handleError', () => {
@@ -23,7 +23,7 @@ describe('handleError', () => {
 	});
 
 	test('should throw NodeApiError for EntityAlreadyExists with user conflict', async () => {
-		mockExecuteSingleFunctions.getNodeParameter = jest
+		mockExecuteSingleFunctions.getNodeParameter = vi
 			.fn()
 			.mockReturnValueOnce('user')
 			.mockReturnValueOnce('existingUserName');
