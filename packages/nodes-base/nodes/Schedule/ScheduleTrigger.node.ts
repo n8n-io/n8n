@@ -427,8 +427,6 @@ export class ScheduleTrigger implements INodeType {
 				],
 			},
 			{
-				// Read straight off the stored parameters when the workflow activates,
-				// outside any execution, so an expression here would never be resolved.
 				displayName: 'If Execution Is Missed',
 				name: 'misfirePolicy',
 				type: 'options',
@@ -438,7 +436,7 @@ export class ScheduleTrigger implements INodeType {
 					{ name: "Don't Run Missed Executions", value: 'skip' },
 				],
 				hint: 'Applies once an execution is later than its configured grace period',
-				noDataExpression: true,
+				noDataExpression: true, // read at activation, so an expression would never be resolved
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.4 } }],

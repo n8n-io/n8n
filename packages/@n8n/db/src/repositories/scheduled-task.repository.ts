@@ -253,13 +253,11 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * Recompute `missedAfter` on a job's still-`pending` occurrences from the given
 	 * grace, anchored to each row's own `runAt` or DB-now, whichever is later, so a
 	 * grace change reaches rows already queued under the old grace without dragging
-	 * an overdue-but-still-live row's deadline into the past.
-	 *
-	 * Two kinds of row are left alone. A `null` `missedAfter` stays null:
-	 * reconciliation only adjusts an existing deadline, never gives one to a row
-	 * that never had one. A deadline already in the past stays put: that occurrence
-	 * has missed its window and is the reaper's to settle, and re-anchoring it to
-	 * DB-now would revive it as live again on every provisioning pass.
+	 * an overdue-but-still-live row's deadline into the past. Rows with a `null`
+	 * `missedAfter` are left alone: reconciliation only adjusts an existing
+	 * deadline, never gives one to a row that never had one. A deadline already
+	 * past is left alone too, so reconciliation never revives an occurrence the
+	 * reaper has yet to settle.
 	 */
 	async updateMissedAfterForJobs(
 		manager: EntityManager,

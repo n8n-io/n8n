@@ -26,13 +26,9 @@ interface CollectedSchedule {
 }
 
 /**
- * One node's collected rules together with the misfire policy read off that
- * same node revision. Both live in one entry so a single map write publishes
- * them and a single delete consumes them, keeping the session's
- * all-or-nothing hold over its half-collected state (see
- * {@link ScheduleTriggerCollectionSession}). Two maps keyed alike would have to
- * be kept in step by hand, and a re-collection that replaced one before the
- * other would provision a node's rules under a stale policy.
+ * One node's collected rules with the misfire policy read off that same node
+ * revision, so a single map write publishes both and a single delete consumes
+ * both.
  */
 interface PendingNode {
 	misfirePolicy: ScheduledJobMisfirePolicy;
@@ -420,17 +416,11 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 }
 
 /**
- * Read the node's misfire policy off its stored parameters.
- *
- * Only the exact opt-in value selects coalescing; anything else — the key
- * absent, a stale value from a hand-edited workflow, a non-string — resolves to
- * the safe default of skipping. Rejecting an unrecognised value instead would
- * fail an activation over a setting the run itself does not need.
- *
- * No `typeVersion` gate is needed despite the property being version-gated:
- * `Workflow`'s constructor normalisation drops a parameter its `displayOptions`
- * hide, so a node below the introducing version cannot reach here carrying the
- * key at all.
+ * Only the exact opt-in value selects coalescing; anything else resolves to
+ * skipping, rather than failing an activation over a setting the run does not
+ * need. No `typeVersion` gate despite the property being version-gated:
+ * `Workflow`'s constructor drops a parameter its `displayOptions` hide, so a
+ * node below the introducing version cannot arrive carrying the key.
  */
 function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce
