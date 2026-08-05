@@ -326,7 +326,7 @@ export type FrontendModuleSettings = {
 		/** Public URL of the instance MCP server endpoint. */
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
-		autoExposeNewWorkflows?: boolean;
+		autoExposeNewWorkflows: boolean;
 	};
 
 	/**

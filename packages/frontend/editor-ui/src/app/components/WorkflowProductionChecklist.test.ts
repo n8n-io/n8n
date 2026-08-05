@@ -732,7 +732,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -756,10 +756,36 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
 			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+
+			renderComponent({ pinia });
+
+			await vi.waitFor(() => {
+				const actions = mockN8nSuggestedActionsProps.actions;
+				expect(actions).toBeDefined();
+				expect(actions.find((a: { id: string }) => a.id === 'instance-mcp-access')).toBeUndefined();
+			});
+		});
+
+		it('should not show instance-level MCP action when ignored', async () => {
+			const pinia = createTestingPinia();
+			settingsStore = useSettingsStore(pinia);
+			usersStore = useUsersStore(pinia);
+
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+			});
+			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
+
+			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {
+					'instance-mcp-access': { ignored: true },
+				},
+			});
 
 			renderComponent({ pinia });
 
@@ -776,7 +802,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
 			});
 
 			renderComponent({ pinia });
@@ -798,7 +824,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
 			});
 
 			workflowDocumentStoreRef.value?.setSettings({
@@ -819,6 +845,58 @@ describe('WorkflowProductionChecklist', () => {
 			});
 		});
 
+<<<<<<< HEAD
+||||||| parent of 9e75b0af39 (fix(editor): Make autoExposeNewWorkflows required in MCP settings type)
+		it('should not show workflow-level MCP action when ignored', async () => {
+			const pinia = createTestingPinia();
+			settingsStore = useSettingsStore(pinia);
+
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
+			});
+
+			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {
+					'workflow-mcp-access': { ignored: true },
+				},
+			});
+
+			renderComponent({ pinia });
+
+			await vi.waitFor(() => {
+				const actions = mockN8nSuggestedActionsProps.actions;
+				expect(actions).toBeDefined();
+				expect(actions.find((a: { id: string }) => a.id === 'workflow-mcp-access')).toBeUndefined();
+			});
+		});
+
+=======
+		it('should not show workflow-level MCP action when ignored', async () => {
+			const pinia = createTestingPinia();
+			settingsStore = useSettingsStore(pinia);
+
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+			});
+
+			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
+				suggestedActions: {
+					'workflow-mcp-access': { ignored: true },
+				},
+			});
+
+			renderComponent({ pinia });
+
+			await vi.waitFor(() => {
+				const actions = mockN8nSuggestedActionsProps.actions;
+				expect(actions).toBeDefined();
+				expect(actions.find((a: { id: string }) => a.id === 'workflow-mcp-access')).toBeUndefined();
+			});
+		});
+
+>>>>>>> 9e75b0af39 (fix(editor): Make autoExposeNewWorkflows required in MCP settings type)
 		it('should navigate to MCP settings when instance-mcp-access action is clicked', async () => {
 			const pinia = createTestingPinia();
 			settingsStore = useSettingsStore(pinia);
@@ -826,7 +904,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -851,7 +929,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
 			});
 
 			renderComponent({ pinia });
