@@ -106,6 +106,20 @@ describe('Zod 4 schemas', () => {
 			$schema: 'http://json-schema.org/draft-07/schema#',
 		});
 	});
+
+	it('degrades an unrepresentable leaf instead of failing the whole schema', () => {
+		const result = toModelJsonSchema(z4.object({ id: z4.string(), when: z4.date() }));
+
+		expect(result?.properties?.id).toMatchObject({ type: 'string' });
+		expect(result?.properties?.when).toBeDefined();
+	});
+
+	it('serializes an output schema in the output direction', () => {
+		const schema = z4.object({ id: z4.string().default('x') });
+
+		expect(toModelJsonSchema(schema, 'output')).toMatchObject({ required: ['id'] });
+		expect(toModelJsonSchema(schema)?.required).toBeUndefined();
+	});
 });
 
 describe('toJsonSchemaOrNull', () => {

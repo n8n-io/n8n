@@ -445,7 +445,5 @@ export {
 	toModelJsonSchema,
 	toValidationJsonSchema,
 	toJsonSchemaOrNull,
-	zodToJsonSchema,
 } from './utils/zod';
-export type { SchemaAudience } from './utils/zod';
-export { lockAdditionalProperties, unlockAdditionalProperties } from './utils/json-schema';
+export type { SchemaAudience, SchemaDirection } from './utils/zod';

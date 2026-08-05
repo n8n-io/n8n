@@ -419,15 +419,13 @@ export class Tool<
 		if (!this.desc) throw new Error(`Tool "${this.name}" requires a description`);
 		if (!this.inputSchema) throw new Error(`Tool "${this.name}" requires an input schema`);
 
-		// Closed, because this descriptor is what the model is shown. It is also
-		// what `from-json-config` reconstructs the tool from — which re-opens it
-		// before using it to validate the model's arguments.
+		// Closed, because this descriptor is what the model is shown.
 		const inputSchema = isZodSchema(this.inputSchema)
 			? toModelJsonSchema(this.inputSchema)
 			: this.inputSchema;
 		const outputSchema = this.outputSchema
 			? isZodSchema(this.outputSchema)
-				? toModelJsonSchema(this.outputSchema)
+				? toModelJsonSchema(this.outputSchema, 'output')
 				: this.outputSchema
 			: null;
 		return {
