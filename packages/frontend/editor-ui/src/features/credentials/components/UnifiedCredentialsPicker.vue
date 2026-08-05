@@ -1,4 +1,12 @@
 <script setup lang="ts">
+/**
+ * Unified credential picker: one dropdown covering the invitational
+ * "Connect to {node}" entry state, the user's own credentials, and the
+ * managed "n8n credits" option.
+ *
+ * Purely presentational — props in, intent events out. The host
+ * (NodeCredentials) owns persistence and telemetry.
+ */
 import { computed } from 'vue';
 import {
 	N8nActionPill,
@@ -12,70 +20,101 @@ import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import CredentialIcon from './CredentialIcon.vue';
 
+/** An own credential of this type, as listed in the menu. */
 export interface CredentialOption {
 	id: string;
 	name: string;
 	typeDisplayName?: string;
+	/** End-user (resolvable) credential — user icon and "End-user credential" subtitle. */
 	isResolvable?: boolean;
 }
 
+/** Discriminates row rendering: leading icon and label layout. */
 type ItemKind = 'n8nCredits' | 'n8nCreditsEntry' | 'ownEntry' | 'key' | 'user' | 'create';
 
 interface ItemData {
 	kind: ItemKind;
 	subtitle?: string;
+	/** "$X remaining" / "No credits" status on the n8n credits row. */
 	pill?: { text: string; type: 'default' | 'danger' };
+	/** "$X free" incentive on the entry n8n credits row. */
 	freeBadge?: string;
 }
 
 type Item = DropdownMenuItemProps<string, ItemData>;
 
 const props = defineProps<{
+	/** Credential type of this row — resolves the service icon for the entry state. */
 	credentialType: string;
+	/** Interpolated into the entry button label, "Connect to {node}". */
 	nodeDisplayName: string;
+	/** The user's own credentials of this type. */
 	options: CredentialOption[];
+	/** Selected own credential; ignored while the managed slot is active. */
 	selectedCredentialId: string | null;
+	/** Whether the slot holds the gateway-managed "n8n credits" credential. */
 	isAiGatewayManaged: boolean;
+	/** Wallet balance in USD; when undefined, no pill/badge is shown. */
 	balance?: number;
 	readonly?: boolean;
+	/** `create` gates the create / "use my own credential" rows. */
 	permissions: PermissionsRecord['credential'];
 }>();
 
 const emit = defineEmits<{
+	/** The n8n credits row was picked. */
 	selectN8nCredits: [];
+	/** An own credential row was picked. */
 	selectCredential: [id: string];
+	/** A create row was picked ("Create a new credential" / "Use my own credential"). */
 	createCredential: [];
+	/** Pen click — edit the selected own credential. */
 	edit: [];
+	/** Gear click — open the n8n credits top-up. */
 	topUp: [];
 }>();
 
 const i18n = useI18n();
 
-// Menu item ids double as select values; `onSelect` maps them back to intents.
+// Ids of the two non-credential rows; `onSelect` maps ids back to intents.
 const N8N_CREDITS = '__n8n_credits__';
 const CREATE = '__create__';
+// Rows keep the legacy `node-credentials-select-*` test ids so existing tests
+// and E2E selectors resolve unchanged.
+const N8N_CREDITS_TEST_ID = 'node-credentials-select-item-n8n-credits';
+const CREATE_TEST_ID = 'node-credentials-select-item-new';
+
+// Leading icon + test id per row kind; entry variants share their target's icon.
+const ROW_ICONS = {
+	n8nCredits: { icon: 'wallet', testId: 'ucp-row-icon-wallet' },
+	n8nCreditsEntry: { icon: 'wallet', testId: 'ucp-row-icon-wallet' },
+	key: { icon: 'key-round', testId: 'ucp-row-icon-key' },
+	ownEntry: { icon: 'key-round', testId: 'ucp-row-icon-key' },
+	user: { icon: 'user-round', testId: 'ucp-row-icon-user' },
+	create: { icon: 'plus', testId: 'ucp-row-icon-create' },
+} as const satisfies Record<ItemKind, { icon: string; testId: string }>;
 
 const selectedOption = computed(
 	() => props.options.find((o) => o.id === props.selectedCredentialId) ?? null,
 );
-// A stale/missing id (cred deleted elsewhere) reads as "nothing selected".
-const ownSelected = computed(() => !props.isAiGatewayManaged && selectedOption.value !== null);
-const isEntry = computed(() => !props.isAiGatewayManaged && !ownSelected.value);
-// Compact "Connect to {node}" button when nothing is set; full-width select once
-// n8n credits or an own credential is chosen (per the Figma).
-const isSet = computed(() => props.isAiGatewayManaged || ownSelected.value);
-// The two-choice entry menu only stands in for the true first-run state; once any
-// own credential exists the full list is shown even while nothing is selected.
-const showEntryMenu = computed(() => !props.isAiGatewayManaged && props.options.length === 0);
+/** An own credential is selected; a stale id (credential deleted elsewhere) counts as none. */
+const ownCredentialSelected = computed(
+	() => !props.isAiGatewayManaged && selectedOption.value !== null,
+);
+/** Nothing selected → compact "Connect to {node}" button; otherwise a full-width select. */
+const hasSelection = computed(() => props.isAiGatewayManaged || ownCredentialSelected.value);
+const hasOwnCredentials = computed(() => props.options.length > 0);
+/** Before the first own credential exists, the menu is the two-choice entry list, not the full list. */
+const showEntryMenu = computed(() => !props.isAiGatewayManaged && !hasOwnCredentials.value);
 
 const formattedBalance = computed(() =>
 	props.balance === undefined ? undefined : `$${Number(props.balance).toFixed(2)}`,
 );
-const isDepleted = computed(() => props.balance !== undefined && props.balance <= 0);
 
 const remainingPill = computed<ItemData['pill']>(() => {
 	if (formattedBalance.value === undefined) return undefined;
-	return isDepleted.value
+	const depleted = props.balance !== undefined && props.balance <= 0;
+	return depleted
 		? { text: i18n.baseText('aiGateway.wallet.noCredits'), type: 'danger' }
 		: {
 				text: i18n.baseText('aiGateway.wallet.balanceRemaining', {
@@ -93,123 +132,116 @@ const freeBadge = computed(() =>
 			}),
 );
 
-function credentialKind(option: CredentialOption): 'key' | 'user' {
-	return option.isResolvable ? 'user' : 'key';
-}
-
-function credentialSubtitle(option: CredentialOption): string {
-	return option.isResolvable
-		? i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title')
-		: (option.typeDisplayName ?? '');
-}
-
-const items = computed<Item[]>(() => {
-	if (showEntryMenu.value) {
-		return [
-			{
+/** First menu row: the "Use n8n credits" invitation in the entry menu, the balance/status row otherwise. */
+const n8nCreditsItem = computed<Item>(() =>
+	showEntryMenu.value
+		? {
 				id: N8N_CREDITS,
-				testId: 'node-credentials-select-item-n8n-credits',
+				testId: N8N_CREDITS_TEST_ID,
 				label: i18n.baseText('aiGateway.picker.useN8nCredits'),
 				data: {
 					kind: 'n8nCreditsEntry',
 					subtitle: i18n.baseText('aiGateway.picker.readyToRun'),
 					freeBadge: freeBadge.value,
 				},
+			}
+		: {
+				id: N8N_CREDITS,
+				testId: N8N_CREDITS_TEST_ID,
+				label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
+				checked: props.isAiGatewayManaged,
+				keepOpen: true,
+				data: { kind: 'n8nCredits', pill: remainingPill.value },
 			},
-			{
+);
+
+/**
+ * Last menu row — either wording creates a new credential: the invitational
+ * "Use my own credential" until the first own credential exists, the plain
+ * divided "Create a new credential" after.
+ */
+const createItem = computed<Item>(() =>
+	hasOwnCredentials.value
+		? {
 				id: CREATE,
-				testId: 'node-credentials-select-item-new',
+				testId: CREATE_TEST_ID,
+				label: i18n.baseText('nodeCredentials.createNewCredential'),
+				divided: true,
+				disabled: !props.permissions.create,
+				data: { kind: 'create' },
+			}
+		: {
+				id: CREATE,
+				testId: CREATE_TEST_ID,
 				label: i18n.baseText('aiGateway.picker.useOwnCredential'),
 				disabled: !props.permissions.create,
 				data: { kind: 'ownEntry', subtitle: i18n.baseText('aiGateway.picker.bringYourOwnKey') },
 			},
-		];
-	}
+);
 
-	const credentialItems = props.options.map<Item>((option) => ({
+function toCredentialItem(option: CredentialOption): Item {
+	return {
 		id: option.id,
 		testId: `node-credentials-select-item-${option.id}`,
 		label: option.name,
 		checked: !props.isAiGatewayManaged && props.selectedCredentialId === option.id,
 		keepOpen: true,
-		data: { kind: credentialKind(option), subtitle: credentialSubtitle(option) },
-	}));
-
-	// With no own credentials yet, the create row reads as the invitational
-	// "Use my own credential" (same action); the plain create row only appears
-	// once a credential list exists above it.
-	const createItem: Item =
-		props.options.length === 0
-			? {
-					id: CREATE,
-					testId: 'node-credentials-select-item-new',
-					label: i18n.baseText('aiGateway.picker.useOwnCredential'),
-					disabled: !props.permissions.create,
-					data: { kind: 'ownEntry', subtitle: i18n.baseText('aiGateway.picker.bringYourOwnKey') },
-				}
-			: {
-					id: CREATE,
-					testId: 'node-credentials-select-item-new',
-					label: i18n.baseText('nodeCredentials.createNewCredential'),
-					divided: true,
-					disabled: !props.permissions.create,
-					data: { kind: 'create' },
-				};
-
-	return [
-		{
-			id: N8N_CREDITS,
-			testId: 'node-credentials-select-item-n8n-credits',
-			label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
-			checked: props.isAiGatewayManaged,
-			keepOpen: true,
-			data: { kind: 'n8nCredits', pill: remainingPill.value },
+		data: {
+			kind: option.isResolvable ? 'user' : 'key',
+			subtitle: option.isResolvable
+				? i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.title')
+				: (option.typeDisplayName ?? ''),
 		},
-		...credentialItems,
-		createItem,
-	];
+	};
+}
+
+const items = computed<Item[]>(() => [
+	n8nCreditsItem.value,
+	...props.options.map(toCredentialItem),
+	createItem.value,
+]);
+
+/** Leading icon on the trigger; null means the service icon (entry state). */
+const triggerIcon = computed(() => {
+	if (!hasSelection.value) return null;
+	if (props.isAiGatewayManaged)
+		return { icon: 'wallet', testId: 'ucp-trigger-icon-wallet' } as const;
+	return selectedOption.value?.isResolvable
+		? ({ icon: 'user-round', testId: 'ucp-trigger-icon-user' } as const)
+		: ({ icon: 'key-round', testId: 'ucp-trigger-icon-key' } as const);
 });
 
 const triggerLabel = computed(() => {
 	if (props.isAiGatewayManaged) return i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
-	if (ownSelected.value) return selectedOption.value?.name ?? '';
+	if (ownCredentialSelected.value) return selectedOption.value?.name ?? '';
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 		interpolate: { provider: props.nodeDisplayName },
 	});
 });
 
-// Entry-menu rows stack the subtitle under the title; configured rows put the
-// type/pill on the right (space-between).
+/** Entry rows stack the subtitle under the title; credential rows flow name + meta as one line. */
 function isEntryItem(item: Item): boolean {
 	return item.data?.kind === 'n8nCreditsEntry' || item.data?.kind === 'ownEntry';
 }
 
 function onSelect(id: string): void {
-	if (props.readonly) return;
 	if (id === N8N_CREDITS) emit('selectN8nCredits');
 	else if (id === CREATE) emit('createCredential');
 	else emit('selectCredential', id);
-}
-
-function onEdit(): void {
-	if (!props.readonly) emit('edit');
-}
-
-function onTopUp(): void {
-	if (!props.readonly) emit('topUp');
 }
 </script>
 
 <template>
 	<div :class="$style.row">
-		<div :class="[$style.control, isSet && $style.controlFull]">
+		<div :class="[$style.control, hasSelection && $style.controlFull]">
+			<!-- data-test-id lands on the dropdown's trigger wrapper; `.controlFull` targets it to stretch the trigger. -->
 			<N8nDropdownMenu
 				:items="items"
 				:disabled="readonly"
 				placement="bottom-start"
 				teleported
 				width="var(--reka-dropdown-menu-trigger-width)"
-				:extra-popper-class="isSet ? $style.menuFull : undefined"
+				:extra-popper-class="hasSelection ? $style.menuFull : undefined"
 				data-test-id="ucp-trigger-wrap"
 				@select="onSelect"
 			>
@@ -221,27 +253,15 @@ function onTopUp(): void {
 						:disabled="readonly"
 					>
 						<CredentialIcon
-							v-if="isEntry"
+							v-if="!triggerIcon"
 							:credential-type-name="credentialType"
 							:class="$style.icon"
 						/>
 						<N8nIcon
-							v-else-if="isAiGatewayManaged"
-							icon="wallet"
-							:class="$style.icon"
-							data-test-id="ucp-trigger-icon-wallet"
-						/>
-						<N8nIcon
-							v-else-if="selectedOption?.isResolvable"
-							icon="user-round"
-							:class="$style.icon"
-							data-test-id="ucp-trigger-icon-user"
-						/>
-						<N8nIcon
 							v-else
-							icon="key-round"
+							:icon="triggerIcon.icon"
 							:class="$style.icon"
-							data-test-id="ucp-trigger-icon-key"
+							:data-test-id="triggerIcon.testId"
 						/>
 
 						<span :class="$style.triggerLabel">{{ triggerLabel }}</span>
@@ -259,24 +279,11 @@ function onTopUp(): void {
 
 				<template #item-leading="{ item }">
 					<N8nIcon
-						v-if="item.data?.kind === 'n8nCredits' || item.data?.kind === 'n8nCreditsEntry'"
-						icon="wallet"
+						v-if="item.data"
+						:icon="ROW_ICONS[item.data.kind].icon"
 						size="medium"
-						data-test-id="ucp-row-icon-wallet"
+						:data-test-id="ROW_ICONS[item.data.kind].testId"
 					/>
-					<N8nIcon
-						v-else-if="item.data?.kind === 'user'"
-						icon="user-round"
-						size="medium"
-						data-test-id="ucp-row-icon-user"
-					/>
-					<N8nIcon
-						v-else-if="item.data?.kind === 'key' || item.data?.kind === 'ownEntry'"
-						icon="key-round"
-						size="medium"
-						data-test-id="ucp-row-icon-key"
-					/>
-					<N8nIcon v-else-if="item.data?.kind === 'create'" icon="plus" size="medium" />
 				</template>
 
 				<template #item-label="{ item }">
@@ -326,18 +333,18 @@ function onTopUp(): void {
 			data-test-id="ucp-settings-button"
 			:disabled="readonly"
 			:title="i18n.baseText('aiGateway.toggle.topUp')"
-			@click="onTopUp"
+			@click="emit('topUp')"
 		>
 			<N8nIcon icon="settings" size="medium" />
 		</button>
 		<button
-			v-else-if="ownSelected"
+			v-else-if="ownCredentialSelected"
 			type="button"
 			:class="$style.iconButton"
 			data-test-id="credential-edit-button"
 			:disabled="readonly"
 			:title="i18n.baseText('nodeCredentials.updateCredential')"
-			@click="onEdit"
+			@click="emit('edit')"
 		>
 			<N8nIcon icon="pen" size="medium" />
 		</button>
@@ -357,11 +364,10 @@ function onTopUp(): void {
 	min-width: 0;
 }
 
-// Stretch the design-system trigger (an inline-flex span that hugs content) to
-// fill the row only once a credential is set; the entry "Connect to {node}"
-// button stays compact. The menu mirrors the trigger width, so this also makes
-// the menu span the row. `:deep()` is scoped-CSS only — module styles need
-// `:global()`.
+// Stretch the design-system trigger wrapper (an inline-flex span that hugs
+// content) so the selected-state trigger — and the menu, which mirrors the
+// trigger width — fill the row. `:global()` because `:deep()` only works in
+// scoped styles, not modules.
 .controlFull {
 	flex: 1;
 	min-width: 0;
@@ -428,7 +434,6 @@ function onTopUp(): void {
 	gap: var(--spacing--2xs);
 	min-width: 0;
 	flex: 1;
-	width: 100%;
 }
 
 .itemMain {

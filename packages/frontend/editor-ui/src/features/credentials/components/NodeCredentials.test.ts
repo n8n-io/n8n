@@ -1472,7 +1472,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = nodeWithCred;
 
 				renderComponent({
-					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: nodeWithCred,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1489,7 +1493,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = nodeWithGateway;
 
 				renderComponent({
-					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: nodeWithGateway,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1524,7 +1532,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = nodeWithGateway;
 
 				renderComponent({
-					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: nodeWithGateway,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1551,7 +1563,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = googleAiNode;
 
 				renderComponent({
-					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: googleAiNode,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1566,7 +1582,12 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = nodeWithGateway;
 
 				renderComponent({
-					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi', readonly: true },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: nodeWithGateway,
+						overrideCredType: 'googlePalmApi',
+						readonly: true,
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1583,7 +1604,12 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = nodeWithCred;
 
 				renderComponent({
-					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi', readonly: true },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: nodeWithCred,
+						overrideCredType: 'googlePalmApi',
+						readonly: true,
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1685,7 +1711,7 @@ describe('NodeCredentials', () => {
 
 				renderComponent({
 					// Clear the suite-wide default override — these tests model the NDV row.
-					props: { node: multiAuthNode, overrideCredType: '' },
+					props: { useUnifiedCredentialsPicker: false, node: multiAuthNode, overrideCredType: '' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1696,7 +1722,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = multiAuthNode;
 
 				const { emitted } = renderComponent({
-					props: { node: multiAuthNode, overrideCredType: '' },
+					props: { useUnifiedCredentialsPicker: false, node: multiAuthNode, overrideCredType: '' },
 					global: {
 						stubs: {
 							AiGatewaySelector: {
@@ -1737,7 +1763,12 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = multiAuthNode;
 
 				const { emitted } = renderComponent({
-					props: { node: multiAuthNode, overrideCredType: '', showAll: true },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: multiAuthNode,
+						overrideCredType: '',
+						showAll: true,
+					},
 					global: {
 						stubs: {
 							AiGatewaySelector: {
@@ -1776,7 +1807,12 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = multiAuthNode;
 
 				renderComponent({
-					props: { node: multiAuthNode, overrideCredType: '', standalone: true },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: multiAuthNode,
+						overrideCredType: '',
+						standalone: true,
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1787,7 +1823,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = multiAuthNode;
 
 				renderComponent({
-					props: { node: multiAuthNode, overrideCredType: 'serviceOAuth2Api' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: multiAuthNode,
+						overrideCredType: 'serviceOAuth2Api',
+					},
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1850,7 +1890,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				renderComponent({
-					props: { node, overrideCredType: 'someApi' },
+					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1886,7 +1926,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				renderComponent({
-					props: { node, overrideCredType: 'someApi' },
+					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1922,7 +1962,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				const { emitted } = renderComponent({
-					props: { node, overrideCredType: 'someApi' },
+					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1963,7 +2003,7 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = node;
 
 				const { emitted } = renderComponent({
-					props: { node, overrideCredType: 'someApi' },
+					props: { useUnifiedCredentialsPicker: false, node, overrideCredType: 'someApi' },
 					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 				});
 
@@ -1975,7 +2015,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = googleAiNode;
 
 			const { emitted } = renderComponent({
-				props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: googleAiNode,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: {
 					stubs: {
 						AiGatewaySelector: {
@@ -2012,7 +2056,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithAction;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithAction,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 			});
 
@@ -2038,7 +2086,12 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithAction;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithAction, overrideCredType: '', showAll: true },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithAction,
+					overrideCredType: '',
+					showAll: true,
+				},
 				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 			});
 
@@ -2063,7 +2116,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithAction;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithAction,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 			});
 
@@ -2090,7 +2147,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithoutCred;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithoutCred, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithoutCred,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 			});
 
@@ -2128,7 +2189,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithAction;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithAction,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 			});
 
@@ -2145,7 +2210,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithAction;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithAction,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 			});
 
@@ -2190,7 +2259,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithOwnCred;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithOwnCred, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithOwnCred,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
 			});
 
@@ -2235,7 +2308,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithGateway;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithGateway,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: {
 					stubs: {
 						AiGatewaySelector: {
@@ -2282,7 +2359,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = googleAiNode;
 
 				renderComponent({
-					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: googleAiNode,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: toggleOnStub } },
 				});
 
@@ -2316,7 +2397,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = nodeWithGateway;
 
 				renderComponent({
-					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: nodeWithGateway,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: toggleOffStub } },
 				});
 
@@ -2348,7 +2433,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = nodeWithGateway;
 
 				renderComponent({
-					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: nodeWithGateway,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: toggleOffStub } },
 				});
 
@@ -2362,7 +2451,11 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = googleAiNode;
 
 				renderComponent({
-					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: googleAiNode,
+						overrideCredType: 'googlePalmApi',
+					},
 					global: { stubs: { AiGatewaySelector: toggleOnStub } },
 				});
 
@@ -2377,7 +2470,12 @@ describe('NodeCredentials', () => {
 				ndvStore.activeNode = googleAiNode;
 
 				renderComponent({
-					props: { node: googleAiNode, overrideCredType: 'googlePalmApi', standalone: true },
+					props: {
+						useUnifiedCredentialsPicker: false,
+						node: googleAiNode,
+						overrideCredType: 'googlePalmApi',
+						standalone: true,
+					},
 					global: { stubs: { AiGatewaySelector: toggleOnStub } },
 				});
 
@@ -2399,7 +2497,11 @@ describe('NodeCredentials', () => {
 			ndvStore.activeNode = nodeWithGateway;
 
 			const { emitted } = renderComponent({
-				props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+				props: {
+					useUnifiedCredentialsPicker: false,
+					node: nodeWithGateway,
+					overrideCredType: 'googlePalmApi',
+				},
 				global: {
 					stubs: {
 						AiGatewaySelector: {

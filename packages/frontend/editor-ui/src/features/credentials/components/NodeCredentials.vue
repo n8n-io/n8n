@@ -93,6 +93,10 @@ type Props = {
 	 *  document's nonexistent workflow id and replace the credential store
 	 *  with the empty result. */
 	skipCredentialsFetch?: boolean;
+	/** Kill-switch for the unified credentials picker (RLY-199): false restores
+	 *  the radio selector + classic select path unchanged. The seam for a
+	 *  PostHog rollout flag. */
+	useUnifiedCredentialsPicker?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -103,9 +107,8 @@ const props = withDefaults(defineProps<Props>(), {
 	skipAutoSelect: false,
 	standalone: false,
 	skipCredentialsFetch: false,
+	useUnifiedCredentialsPicker: true,
 });
-
-const USE_UNIFIED_CREDENTIALS_PICKER = true;
 
 const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
@@ -604,7 +607,7 @@ function onCredentialSelected(
 	// other n8n-credits node.
 	if (
 		!props.standalone &&
-		!(USE_UNIFIED_CREDENTIALS_PICKER && oldCredentials?.__aiGatewayManaged) &&
+		!(props.useUnifiedCredentialsPicker && oldCredentials?.__aiGatewayManaged) &&
 		(oldCredentials?.id === null ||
 			(oldCredentials?.id &&
 				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
@@ -974,14 +977,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<slot name="label-postfix" />
 				</template>
 				<AiGatewaySelector
-					v-if="!USE_UNIFIED_CREDENTIALS_PICKER && showAiGatewaySelector(type.name)"
+					v-if="!useUnifiedCredentialsPicker && showAiGatewaySelector(type.name)"
 					:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
 					:readonly="readonly"
 					:credential-type="type.name"
 					@toggle="onAiGatewaySelector(type.name, $event)"
 				/>
 				<UnifiedCredentialsPicker
-					v-if="USE_UNIFIED_CREDENTIALS_PICKER && showAiGatewaySelector(type.name)"
+					v-if="useUnifiedCredentialsPicker && showAiGatewaySelector(type.name)"
 					:credential-type="type.name"
 					:node-display-name="getServiceName(type.name)"
 					:options="options"
