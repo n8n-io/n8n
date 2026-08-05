@@ -34,8 +34,12 @@ const lastPointerEvent = ref<MouseEvent>();
  * node-nav / editor shortcuts don't also fire), or an ancestor @keydown.stop
  * (modals, keybinding wrappers). RovingFocus still moves focus; we click the
  * focused radio after nextTick to complete selection.
+ *
+ * Stop all arrows (canvas also binds Up/Down). Only Left/Right drive selection
+ * in this horizontal control.
  */
-const ARROW_KEYS = ['ArrowLeft', 'ArrowRight'];
+const ARROW_KEYS_STOP = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+const ARROW_KEYS_SELECT = ['ArrowLeft', 'ArrowRight'];
 
 function optionKey(value: Value): string {
 	return `${typeof value}:${String(value)}`;
@@ -56,11 +60,11 @@ function findOptionByRadioValue(raw: AcceptableValue): SegmentOption<Value> | un
 }
 
 function onKeyDown(event: KeyboardEvent) {
-	if (!ARROW_KEYS.includes(event.key)) return;
+	if (!ARROW_KEYS_STOP.includes(event.key)) return;
 
 	// Keep arrow keys inside the control so canvas/editor shortcuts don't also fire
 	event.stopPropagation();
-	if (props.disabled) return;
+	if (props.disabled || !ARROW_KEYS_SELECT.includes(event.key)) return;
 
 	const group = event.currentTarget;
 	if (!(group instanceof HTMLElement)) return;
