@@ -15,7 +15,7 @@ import { BUILDER_ENABLED_VIEWS } from './constants';
 
 const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';

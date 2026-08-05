@@ -6,7 +6,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRolesView from './ProjectRolesView.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const clickActionToggle = async (actionToggle: HTMLElement) => {
 	await userEvent.click(within(actionToggle).getByRole('button'));

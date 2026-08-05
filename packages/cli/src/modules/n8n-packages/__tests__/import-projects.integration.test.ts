@@ -18,6 +18,7 @@ import {
 } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { pickVariableForProject } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -69,6 +70,7 @@ async function importProjects(
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
+		variableConflictPolicy: 'keep-existing',
 		tagMissingMode: 'create',
 		tagConflictPolicy: 'skip',
 		...overrides,
@@ -786,6 +788,7 @@ describe('project shell import', () => {
 					missing: ['ABSENT_VAR'],
 					created: [],
 					stubbed: [],
+					updated: [],
 				});
 				// do-nothing mode does not create variables.
 				expect(await Container.get(VariablesRepository).count()).toBe(1);
@@ -807,6 +810,7 @@ describe('project shell import', () => {
 					missing: ['API_URL'],
 					created: [],
 					stubbed: [],
+					updated: [],
 				});
 			});
 		});
@@ -894,6 +898,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: expect.arrayContaining(['GLOBAL_VAR', 'PROJECT_VAR']),
+					updated: [],
 				});
 				expect(result.variables.stubbed).toHaveLength(2);
 
@@ -925,6 +930,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: ['GLOBAL_VAR'],
+					updated: [],
 				});
 
 				const created = await Container.get(VariablesRepository).find({
@@ -963,6 +969,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: ['API_URL'],
+					updated: [],
 				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
@@ -1005,6 +1012,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: ['API_URL'],
+					updated: [],
 				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
@@ -1054,6 +1062,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: ['THEIRS'],
+					updated: [],
 				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
@@ -1088,6 +1097,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: expect.arrayContaining(['API_URL', 'SHARED_URL']),
+					updated: [],
 				});
 				expect(result.variables.stubbed).toHaveLength(2);
 
@@ -1125,6 +1135,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: ['SHARED_URL'],
+					updated: [],
 				});
 				const created = await Container.get(VariablesRepository).find({
 					relations: { project: true },
@@ -1152,6 +1163,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: [],
 					stubbed: ['API_URL'],
+					updated: [],
 				});
 				const rows = await Container.get(VariablesRepository).find({
 					relations: { project: true },
@@ -1270,6 +1282,7 @@ describe('project shell import', () => {
 					missing: [],
 					created: ['API_URL'],
 					stubbed: [],
+					updated: [],
 				});
 				const rows = await Container.get(VariablesRepository).find({
 					relations: { project: true },
@@ -1331,7 +1344,216 @@ describe('project shell import', () => {
 					missing: [],
 					created: ['API_URL'],
 					stubbed: ['API_URL'],
+					updated: [],
 				});
+			});
+		});
+
+		describe('overwrite conflict policy', () => {
+			beforeEach(() => {
+				licenseMocker.enable('feat:variables');
+			});
+
+			const sharedGlobalPackage = async (value: string) =>
+				await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'variables/shared_url',
+							variable: { name: 'SHARED_URL', type: 'string', value },
+						},
+					],
+					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+			const perProjectPackage = async (brie: string, stilton: string) =>
+				await twoProjectPackage({
+					variables: [
+						{
+							id: 'v1',
+							target: 'projects/brie/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: brie },
+						},
+						{
+							id: 'v2',
+							target: 'projects/stilton/variables/api_url',
+							variable: { name: 'API_URL', type: 'string', value: stilton },
+						},
+					],
+					requirements: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+			it('reports one update when both projects resolve the same global variable', async () => {
+				await createVariable('SHARED_URL', 'https://existing.example.com');
+				const packageBuffer = await sharedGlobalPackage('https://bundled.example.com');
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableConflictPolicy: 'overwrite',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					created: [],
+					stubbed: [],
+					updated: ['SHARED_URL'],
+				});
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
+					{ key: 'SHARED_URL', value: 'https://bundled.example.com', project: null },
+				]);
+			});
+
+			it('leaves a differing global value alone under keep-existing', async () => {
+				await createVariable('SHARED_URL', 'https://existing.example.com');
+				const packageBuffer = await sharedGlobalPackage('https://bundled.example.com');
+
+				const result = await importProjects(owner, packageBuffer);
+
+				expect(result.variables).toMatchObject({ matched: ['SHARED_URL'], updated: [] });
+				expect((await Container.get(VariablesRepository).find())[0].value).toBe(
+					'https://existing.example.com',
+				);
+			});
+
+			it('blocks the whole package under fail, leaving no project behind', async () => {
+				await createVariable('SHARED_URL', 'https://existing.example.com');
+				const packageBuffer = await sharedGlobalPackage('https://bundled.example.com');
+
+				const error = await importProjects(owner, packageBuffer, undefined, {
+					variableConflictPolicy: 'fail',
+				}).catch((e: unknown) => e);
+
+				expect(error).toBeInstanceOf(ConflictError);
+				expect((error as ConflictError).meta?.issues).toEqual([
+					{ type: 'variable-conflict', name: 'SHARED_URL', usedByWorkflows: ['WFA'] },
+					{ type: 'variable-conflict', name: 'SHARED_URL', usedByWorkflows: ['WFB'] },
+				]);
+				expect(await findProject('P1')).toBeNull();
+				expect(await findProject('P2')).toBeNull();
+				expect((await Container.get(VariablesRepository).find())[0].value).toBe(
+					'https://existing.example.com',
+				);
+			});
+
+			it('blocks when the projects disagree about the value one row would hold', async () => {
+				// Neither project has its own row yet, so both resolve to the global and would write it.
+				await createVariable('API_URL', 'https://existing.example.com');
+				const packageBuffer = await perProjectPackage(
+					'https://brie.example.com',
+					'https://stilton.example.com',
+				);
+
+				const error = await importProjects(owner, packageBuffer, undefined, {
+					variableConflictPolicy: 'overwrite',
+				}).catch((e: unknown) => e);
+
+				expect(error).toBeInstanceOf(ConflictError);
+				// One issue per scope, as the `fail` policy reports the same collision.
+				expect((error as ConflictError).meta?.issues).toEqual([
+					{ type: 'variable-conflict', name: 'API_URL', usedByWorkflows: ['WFA'] },
+					{ type: 'variable-conflict', name: 'API_URL', usedByWorkflows: ['WFB'] },
+				]);
+				expect(await findProject('P1')).toBeNull();
+				expect(await findProject('P2')).toBeNull();
+				expect((await Container.get(VariablesRepository).find())[0].value).toBe(
+					'https://existing.example.com',
+				);
+			});
+
+			it('updates each project row on its own when both projects already own one', async () => {
+				const packageBuffer = await perProjectPackage(
+					'https://brie.example.com',
+					'https://stilton.example.com',
+				);
+				// A project has to exist before it can hold a variable, so the first import creates them.
+				await importProjects(owner, packageBuffer);
+				for (const [sourceId, value] of [
+					['P1', 'https://old-brie.example.com'],
+					['P2', 'https://old-stilton.example.com'],
+				]) {
+					await createProjectVariable('API_URL', value, (await findProject(sourceId))!);
+				}
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableConflictPolicy: 'overwrite',
+				});
+
+				expect(result.variables).toMatchObject({ updated: ['API_URL'] });
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(
+					rows.map(({ key, value, project }) => ({ key, value, scope: project?.id ?? 'global' })),
+				).toEqual(
+					expect.arrayContaining([
+						{ key: 'API_URL', value: 'https://brie.example.com', scope: 'P1' },
+						{ key: 'API_URL', value: 'https://stilton.example.com', scope: 'P2' },
+					]),
+				);
+				expect(rows).toHaveLength(2);
+			});
+
+			it('writes the shared row once when the projects agree on the value', async () => {
+				await createVariable('API_URL', 'https://existing.example.com');
+				const packageBuffer = await perProjectPackage(
+					'https://agreed.example.com',
+					'https://agreed.example.com',
+				);
+				const updateSpy = vi.spyOn(Container.get(VariablesService), 'update');
+				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+				try {
+					const result = await importProjects(owner, packageBuffer, undefined, {
+						variableConflictPolicy: 'overwrite',
+					});
+
+					expect(result.variables).toMatchObject({ updated: ['API_URL'] });
+					// Both projects wanted the same value, so the second scope has nothing left to write.
+					expect(updateSpy).toHaveBeenCalledTimes(1);
+					const rows = await Container.get(VariablesRepository).find({
+						relations: { project: true },
+					});
+					expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
+						{ key: 'API_URL', value: 'https://agreed.example.com', project: null },
+					]);
+					const importedEvents = emitSpy.mock.calls.filter(
+						([name]) => name === 'n8n-package-imported',
+					);
+					const payload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
+					expect(payload.counts.variables).toMatchObject({ updated: 1 });
+				} finally {
+					updateSpy.mockRestore();
+					emitSpy.mockRestore();
+				}
+			});
+
+			it('reuses a global the target already configured rather than shadowing it', async () => {
+				// Where a variable sat in the source says nothing about where it must land in the target.
+				await createVariable('API_URL', 'https://prod.example.com');
+				const packageBuffer = await perProjectPackage(
+					'https://staging-brie.example.com',
+					'https://staging-stilton.example.com',
+				);
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-with-value',
+				});
+
+				expect(result.variables).toMatchObject({ matched: ['API_URL'], created: [], updated: [] });
+				const rows = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(rows.map(({ key, value, project }) => ({ key, value, project }))).toEqual([
+					{ key: 'API_URL', value: 'https://prod.example.com', project: null },
+				]);
+				for (const projectId of ['P1', 'P2']) {
+					expect(pickVariableForProject(rows, 'API_URL', projectId)?.value).toBe(
+						'https://prod.example.com',
+					);
+				}
 			});
 		});
 	});

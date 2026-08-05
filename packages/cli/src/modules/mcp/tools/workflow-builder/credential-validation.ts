@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { isExpression, NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -243,6 +243,10 @@ function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<st
 	// static credentials array.
 	const { nodeCredentialType } = node.parameters;
 	if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
+		// An expression only resolves to its real type at execution time, so the
+		// static filter can't know which credential it activates. Check all
+		// referenced credentials rather than trust the unresolved literal.
+		if (isExpression(nodeCredentialType)) return null;
 		activeTypes.add(nodeCredentialType);
 	}
 
@@ -250,6 +254,7 @@ function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<st
 	// authentication=genericCredentialType) live in genericAuthType.
 	const { genericAuthType } = node.parameters;
 	if (typeof genericAuthType === 'string' && genericAuthType) {
+		if (isExpression(genericAuthType)) return null;
 		activeTypes.add(genericAuthType);
 	}
 

@@ -1,7 +1,9 @@
 import { UserError } from 'n8n-workflow';
 
+import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
-import { VariableParentPolicy } from '../n8n-packages.types';
+import { VariableConflictPolicy, VariableParentPolicy } from '../n8n-packages.types';
+import type { ImportVariableProperties } from '../n8n-packages.types';
 import type { ManifestEntry } from '../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../spec/requirements.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
@@ -21,6 +23,17 @@ export function workflowsInScope(
 		(entry) =>
 			entry.target.startsWith(`${basePrefix}workflows/`) ||
 			entry.target.startsWith(`${basePrefix}folders/`),
+	);
+}
+
+export function needsBundledVariableValues(
+	request: ImportVariableProperties,
+	hasRequirements: boolean,
+): boolean {
+	return (
+		hasRequirements &&
+		(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
+			request.variableConflictPolicy !== VariableConflictPolicy.KeepExisting)
 	);
 }
 
