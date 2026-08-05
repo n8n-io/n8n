@@ -25,6 +25,11 @@ interface CollectedSchedule {
 	firstRunAt: Date | null;
 }
 
+interface PendingNode {
+	misfirePolicy: ScheduledJobMisfirePolicy;
+	rules: CollectedSchedule[];
+}
+
 /**
  * One activation attempt's rule collection, from {@link ScheduleTriggerJobRegistrar.createSession}.
  *
@@ -153,13 +158,16 @@ export class ScheduleTriggerJobRegistrar {
 		 * {@link pendingKey}. An entry exists only between `createCollector` and
 		 * the `commit`/`discard` that consumes it.
 		 */
-		const pending = new Map<string, CollectedSchedule[]>();
+		const pending = new Map<string, PendingNode>();
 
 		return {
 			createCollector: (workflow: Workflow, node: INode): SchedulingFunctions => {
 				const timezone = explicitTimezone(workflow);
 				const collected: CollectedSchedule[] = [];
-				pending.set(pendingKey(workflow.id, node.id), collected);
+				pending.set(pendingKey(workflow.id, node.id), {
+					misfirePolicy: resolveMisfirePolicy(node),
+					rules: collected,
+				});
 
 				return {
 					registerCron: ({ expression, recurrence, source }: Cron) => {
@@ -203,10 +211,10 @@ export class ScheduleTriggerJobRegistrar {
 
 			commit: async (workflowId: string, nodeId: string): Promise<void> => {
 				const key = pendingKey(workflowId, nodeId);
-				const collected = pending.get(key);
-				if (collected !== undefined) {
+				const entry = pending.get(key);
+				if (entry !== undefined) {
 					pending.delete(key);
-					await this.provisionCollected(workflowId, nodeId, collected);
+					await this.provisionCollected(workflowId, nodeId, entry.rules, entry.misfirePolicy);
 				}
 			},
 
@@ -288,6 +296,7 @@ export class ScheduleTriggerJobRegistrar {
 		workflowId: string,
 		nodeId: string,
 		collected: CollectedSchedule[],
+		misfirePolicy: ScheduledJobMisfirePolicy,
 	): Promise<void> {
 		const seen = new Map<string, number>();
 		const desired = collected.map(({ schedule, firstRunAt }) => {
@@ -308,7 +317,7 @@ export class ScheduleTriggerJobRegistrar {
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.Coalesce,
+			misfirePolicy,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
@@ -399,4 +408,10 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 		return { ...schedule, timezone: schedule.timezone ?? defaultTimezone };
 	}
 	return schedule;
+}
+
+function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
+	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce
+		? ScheduledJobMisfirePolicy.Coalesce
+		: ScheduledJobMisfirePolicy.Skip;
 }
