@@ -1,0 +1,37 @@
+docs/generated/postgres-schema/README.md
+  s_87b7dc096911b8::t_5299c9a1819866 128,322-325,1507-1520,1522-1523
+docs/generated/sqlite-schema/workflow_review_activity_comment.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-8,10-20,22-42,44-61
+docs/generated/sqlite-schema/workflow_review_request.md
+  s_87b7dc096911b8::t_5299c9a1819866 24,58,96-104
+docs/generated/sqlite-schema/README.md
+  s_87b7dc096911b8::t_5299c9a1819866 128,309-312,1496-1509,1511-1512
+docs/generated/postgres-schema/public.user.md
+  s_87b7dc096911b8::t_5299c9a1819866 11,73,334-342
+docs/generated/sqlite-schema/workflow_review_activity.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-83,85-106
+docs/generated/postgres-schema/public.workflow_review_activity.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-11,13-78,80-101
+docs/generated/postgres-schema/public.workflow_review_request.md
+  s_87b7dc096911b8::t_5299c9a1819866 13,53,91-99
+docs/generated/sqlite-schema/user.md
+  s_87b7dc096911b8::t_5299c9a1819866 22,79,340-348
+docs/generated/postgres-schema/public.workflow_review_activity_comment.md
+  s_87b7dc096911b8::t_5299c9a1819866 1-9,11-39,41-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a147ba8fb964aabe0e9b909d4c8dddcff5c975d0",
+  "prompts": {},
+  "sessions": {
+    "s_87b7dc096911b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a6260b0-b810-4125-8749-e2239809baa5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
