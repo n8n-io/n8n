@@ -134,15 +134,6 @@ defineExpose({
 		:style="maxHeightStyle"
 		data-test-id="n8n-markdown-editor"
 	>
-		<MarkdownEditorToolbar
-			v-if="shouldShowToolbar && editor"
-			:editor="editor"
-			:disabled="props.disabled || props.readonly"
-			:is-raw-mode="isRawMode"
-			:mode="toolbarMode"
-			:variant="props.variant"
-			@update:is-raw-mode="toggleRawMode"
-		/>
 		<div v-if="isRawMode" :class="[$style.content, shouldPadContentTop ? $style.padTop : '']">
 			<textarea
 				ref="rawEditor"
@@ -162,6 +153,15 @@ defineExpose({
 			v-else
 			:editor="editor"
 			:class="[$style.content, shouldPadContentTop ? $style.padTop : '']"
+		/>
+		<MarkdownEditorToolbar
+			v-if="shouldShowToolbar && editor"
+			:editor="editor"
+			:disabled="props.disabled || props.readonly"
+			:is-raw-mode="isRawMode"
+			:mode="toolbarMode"
+			:variant="props.variant"
+			@update:is-raw-mode="toggleRawMode"
 		/>
 	</div>
 </template>

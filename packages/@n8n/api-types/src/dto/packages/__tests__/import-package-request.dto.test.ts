@@ -21,6 +21,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'create-with-value',
+				variableConflictPolicy: 'keep-existing',
 				tagMissingMode: 'create',
 				tagConflictPolicy: 'skip',
 			});
@@ -48,6 +49,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'create-with-value',
+				variableConflictPolicy: 'keep-existing',
 				tagMissingMode: 'create',
 				tagConflictPolicy: 'skip',
 			});
@@ -77,6 +79,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'create-with-value',
+				variableConflictPolicy: 'keep-existing',
 				tagMissingMode: 'create',
 				tagConflictPolicy: 'skip',
 			});
@@ -105,6 +108,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
 				variableMissingMode: 'create-with-value',
+				variableConflictPolicy: 'keep-existing',
 				tagMissingMode: 'create',
 				tagConflictPolicy: 'skip',
 			});
@@ -401,6 +405,7 @@ describe('ImportPackageRequestDto', () => {
 			{ field: 'dataTableMissingMode', expected: 'create' },
 			{ field: 'dataTableSchemaConflictPolicy', expected: 'keep-existing' },
 			{ field: 'variableMissingMode', expected: 'create-with-value' },
+			{ field: 'variableConflictPolicy', expected: 'keep-existing' },
 			{ field: 'tagMissingMode', expected: 'create' },
 			{ field: 'tagConflictPolicy', expected: 'skip' },
 		] as const)('defaults $field when the value is an empty string', ({ field, expected }) => {
@@ -445,6 +450,39 @@ describe('ImportPackageRequestDto', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
 					variableMissingMode: 'invent-variables',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
+	});
+
+	describe('variableConflictPolicy', () => {
+		it('defaults variableConflictPolicy to keep-existing when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.variableConflictPolicy).toBe('keep-existing');
+			}
+		});
+
+		it.each(['keep-existing', 'overwrite', 'fail'] as const)(
+			'accepts %s as a variableConflictPolicy value',
+			(variableConflictPolicy) => {
+				const result = ImportPackageRequestDto.safeParse({
+					variableConflictPolicy,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.variableConflictPolicy).toBe(variableConflictPolicy);
+				}
+			},
+		);
+
+		it('rejects unsupported variableConflictPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					variableConflictPolicy: 'merge-values',
 					workflowConflictPolicy: 'fail',
 				}).success,
 			).toBe(false);

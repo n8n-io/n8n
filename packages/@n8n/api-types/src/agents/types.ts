@@ -241,7 +241,7 @@ export interface AgentPersistedMessageDto {
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
-	executionStatus?: 'success' | 'error';
+	executionStatus?: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
 }
 
 export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;

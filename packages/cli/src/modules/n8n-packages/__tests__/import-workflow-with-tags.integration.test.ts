@@ -72,6 +72,7 @@ async function importPackage(params: ImportParams) {
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
+		variableConflictPolicy: 'keep-existing',
 		missingNodeTypeMode: 'fail',
 		tagMissingMode: 'create',
 		tagConflictPolicy: 'skip',

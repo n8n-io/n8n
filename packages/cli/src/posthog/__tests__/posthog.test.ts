@@ -6,6 +6,7 @@ import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '@/constants';
 import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
@@ -161,6 +162,8 @@ describe('PostHog', () => {
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
 				personProperties: {
 					created_at_timestamp: createdAt.getTime().toString(),
+					instance_id: instanceId,
+					version_cli: N8N_VERSION,
 				},
 				groups: { company: instanceId },
 			});

@@ -9,6 +9,15 @@ type BlockingIssue =
 	  }
 	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] }
 	| { type: 'variable-unresolved'; name: string; usedByWorkflows: string[] }
+	| { type: 'variable-conflict'; name: string; projectId?: string; usedByWorkflows: string[] }
+	| {
+			type: 'variable-limit-exceeded';
+			limit: number;
+			remaining: number;
+			requested: number;
+			names: string[];
+			usedByWorkflows: string[];
+	  }
 	| {
 			type: 'missing-node-type';
 			nodeType: string;
@@ -37,6 +46,16 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'variable-unresolved') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
 		return `variable "${it.name}" unresolved, used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'variable-conflict') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		const scope = it.projectId ? `project ${it.projectId}` : 'the global scope';
+		return `variable "${it.name}" in ${scope} holds a different value, used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'variable-limit-exceeded') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		const names = Array.isArray(it.names) ? it.names.join(', ') : '';
+		return `variable limit reached: ${it.requested} new variable(s) (${names}) with ${it.remaining} of ${it.limit} remaining, used by workflow(s) ${usedBy}`;
 	}
 	if (it.type === 'missing-node-type') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
