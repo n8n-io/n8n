@@ -1,10 +1,25 @@
 import '@n8n/vitest-config/frontend-setup';
 import { config } from '@vue/test-utils';
-import { afterEach, beforeEach, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 import { N8nPlugin } from '@n8n/design-system/plugin';
 
 config.global.plugins = [N8nPlugin];
+
+beforeAll(() => {
+	// jsdom lacks elementFromPoint; ProseMirror's posAtCoords calls it during
+	// editor mount (tiptap placeholder viewport tracking). null is a valid result.
+	//
+	// Kept local, not shared: defining it flips the behaviour of anything that
+	// feature-detects it. editor-ui's suite has always run without it, and adding
+	// it globally hung one of its agents-view tests.
+	const documentProto = Document.prototype as Document & {
+		elementFromPoint?: (x: number, y: number) => Element | null;
+	};
+	if (!documentProto.elementFromPoint) {
+		documentProto.elementFromPoint = () => null;
+	}
+});
 
 // Globally mock is-emoji-supported
 vi.mock('is-emoji-supported', () => ({
