@@ -205,30 +205,35 @@ git commit -m "feat(core): Add auto-expose new workflows MCP setting"
 
 Create or append to `packages/cli/src/modules/mcp/__tests__/mcp.settings.controller.test.ts`:
 
+The empty-body assertion belongs at the handler level, since the DTO itself now
+accepts `{}` by design:
+
 ```typescript
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 
 describe('UpdateMcpSettingsDto', () => {
-	it('rejects an empty body', () => {
-		expect(UpdateMcpSettingsDto.safeParse({}).success).toBe(false);
-	});
-
-	it('accepts mcpAccessEnabled alone', () => {
+	it('accepts either field alone, and both together', () => {
 		expect(UpdateMcpSettingsDto.safeParse({ mcpAccessEnabled: true }).success).toBe(true);
-	});
-
-	it('accepts autoExposeNewWorkflows alone', () => {
 		expect(UpdateMcpSettingsDto.safeParse({ autoExposeNewWorkflows: true }).success).toBe(true);
-	});
-
-	it('accepts both fields together', () => {
 		expect(
 			UpdateMcpSettingsDto.safeParse({ mcpAccessEnabled: false, autoExposeNewWorkflows: true })
 				.success,
 		).toBe(true);
 	});
 });
+
+describe('empty body', () => {
+	it('is rejected by the handler', async () => {
+		const dto = UpdateMcpSettingsDto.parse({});
+
+		await expect(controller.updateSettings(req, res, dto)).rejects.toThrow(BadRequestError);
+	});
+});
 ```
+
+Add the matching real-HTTP assertion to
+`packages/cli/src/modules/mcp/__tests__/mcp.settings.controller.api.test.ts`:
+`PATCH /mcp/settings` with `{}` returns 400.
 
 Add controller behaviour tests in the same file. Follow the existing mocking style in `packages/cli/src/modules/mcp/__tests__/`; construct the controller with `mock<T>()` dependencies.
 
@@ -289,23 +294,45 @@ export class UpdateMcpSettingsDto extends Z.class({
 }) {}
 ```
 
-`Z.class` returns a plain `z.object`, which has no `.refine`, so enforce "at least one" by overriding the static parsers. Append to the same file:
+`Z.class` takes a `ZodRawShape`, so it cannot carry an object-level refinement
+("at least one of these two fields"). Enforce emptiness **in the handler** with an
+explicit guard — do **not** reassign the class's static `parse`/`safeParse` with a
+refined schema. That monkey-patches a class after definition, is used nowhere else
+among the repo's ~169 `Z.class(...)` DTOs, and is silently bypassed by any caller
+that reaches for `.schema.safeParse()` directly.
+
+So the DTO file stays trivial:
 
 ```typescript
-const atLeastOneField = (data: {
-	mcpAccessEnabled?: boolean;
-	autoExposeNewWorkflows?: boolean;
-}): boolean => data.mcpAccessEnabled !== undefined || data.autoExposeNewWorkflows !== undefined;
+import { Z } from '@n8n/api-types';
+import { z } from 'zod';
 
-const refined = UpdateMcpSettingsDto.schema.refine(atLeastOneField, {
-	message: 'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows',
-});
-
-UpdateMcpSettingsDto.safeParse = (data: unknown) => refined.safeParse(data);
-UpdateMcpSettingsDto.parse = (data: unknown) => refined.parse(data);
+// `Z.class` takes a `ZodRawShape`, so it can't carry an object-level refine.
+// Both fields are optional so a settings-scoped update can touch just one of
+// them — the "at least one field present" check lives in the controller handler.
+export class UpdateMcpSettingsDto extends Z.class({
+	mcpAccessEnabled: z.boolean().optional(),
+	autoExposeNewWorkflows: z.boolean().optional(),
+}) {}
 ```
 
-> If the controller registry's reflection-based validation does not route through the static `parse`/`safeParse`, drop the override and instead validate at the top of the handler: `if (dto.mcpAccessEnabled === undefined && dto.autoExposeNewWorkflows === undefined) throw new BadRequestError('Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows');` — importing `BadRequestError` from `@/errors/response-errors/bad-request.error`. Verify which path applies by running the controller test in Step 4.
+and the guard is the handler's first statement, before the env check (a malformed
+body is a 400 regardless of instance configuration, matching how the registry
+already returns 400 for type errors):
+
+```typescript
+		if (dto.mcpAccessEnabled === undefined && dto.autoExposeNewWorkflows === undefined) {
+			throw new BadRequestError(
+				'Provide at least one of mcpAccessEnabled or autoExposeNewWorkflows',
+			);
+		}
+```
+
+Import `BadRequestError` from `@/errors/response-errors/bad-request.error`.
+
+Because rejection now lives in the handler rather than the DTO, the empty-body
+test must assert at the **handler** level, and a real-HTTP test must cover the 400
+through the actual Express stack — a DTO-only unit test would pass vacuously.
 
 Rewrite `updateSettings` in `mcp.settings.controller.ts`:
 
