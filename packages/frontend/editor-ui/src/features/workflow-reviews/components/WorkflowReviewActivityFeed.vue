@@ -73,6 +73,11 @@ watch(
 	{ flush: 'post' },
 );
 
+// `loadMore` is a no-op with no cursor, so a failed first page has to refetch.
+function retryInitialLoad() {
+	if (store.currentReviewId) void store.fetchFeed(store.currentReviewId);
+}
+
 // Not a watcher on `entries`: mounting with entries already loaded (the
 // Changes -> Activity round trip) mutates nothing, so a watcher never fires and
 // `positioned` would stay false for the rest of the mount.
@@ -85,14 +90,23 @@ onMounted(() => {
 <template>
 	<div ref="scrollContainer" :class="$style.feed" data-test-id="workflow-review-activity-feed">
 		<N8nLoading v-if="loading && entries.length === 0" :loading="true" :rows="3" />
-		<N8nText
+		<div
 			v-else-if="error && entries.length === 0"
-			color="text-light"
-			size="small"
+			:class="$style.errorRow"
 			data-test-id="workflow-review-activity-error"
 		>
-			{{ i18n.baseText('workflowReviews.detail.activity.error.load') }}
-		</N8nText>
+			<N8nText color="text-light" size="small">
+				{{ i18n.baseText('workflowReviews.detail.activity.error.load') }}
+			</N8nText>
+			<N8nButton
+				size="mini"
+				type="tertiary"
+				data-test-id="workflow-review-activity-retry"
+				@click="retryInitialLoad()"
+			>
+				{{ i18n.baseText('generic.retry') }}
+			</N8nButton>
+		</div>
 		<div v-else-if="entries.length === 0" data-test-id="workflow-review-activity-empty">
 			<N8nEmptyState
 				:heading="i18n.baseText('workflowReviews.detail.activity.empty.heading')"
@@ -107,7 +121,7 @@ onMounted(() => {
 				data-test-id="workflow-review-activity-load-more-sentinel"
 			/>
 			<N8nLoading v-if="loadingMore" :loading="true" :rows="1" />
-			<div v-if="error" :class="$style.loadMoreError">
+			<div v-if="error" :class="$style.errorRow">
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('workflowReviews.detail.activity.error.load') }}
 				</N8nText>
@@ -154,7 +168,7 @@ onMounted(() => {
 	gap: var(--spacing--sm);
 }
 
-.loadMoreError {
+.errorRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -162,7 +176,7 @@ onMounted(() => {
 }
 
 .sentinel {
-	height: var(--border-width);
+	height: var(--spacing--4xs);
 	flex-shrink: 0;
 }
 </style>

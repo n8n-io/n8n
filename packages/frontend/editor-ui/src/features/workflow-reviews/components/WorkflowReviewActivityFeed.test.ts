@@ -99,6 +99,16 @@ describe('WorkflowReviewActivityFeed', () => {
 		expect(queryByTestId('workflow-review-activity-empty')).not.toBeInTheDocument();
 	});
 
+	it('refetches the first page when the failed initial load is retried', () => {
+		store.error = new Error('boom');
+
+		const { getByTestId } = renderComponent();
+		getByTestId('workflow-review-activity-retry').click();
+
+		// `loadMore` is a no-op here: with no cursor it returns before requesting anything
+		expect(store.fetchFeed).toHaveBeenCalledWith('req-1');
+	});
+
 	it('keeps a loaded feed and offers a retry when load-more failed', async () => {
 		store.entries = [makeEntry()];
 		store.hasMore = true;
@@ -113,6 +123,17 @@ describe('WorkflowReviewActivityFeed', () => {
 		getByTestId('workflow-review-activity-load-more-retry').click();
 
 		expect(store.loadMore).toHaveBeenCalled();
+
+		// Paging must survive a failure: the sentinel is withheld while the error shows,
+		// so it has to come back — and be observed again — once the error clears.
+		observer.observe.mockClear();
+		store.error = null;
+		await nextTick();
+		await nextTick();
+
+		expect(observer.observe).toHaveBeenCalledWith(
+			getByTestId('workflow-review-activity-load-more-sentinel'),
+		);
 	});
 
 	it('renders the fallback for an entry version it does not know', async () => {
