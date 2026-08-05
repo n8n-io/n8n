@@ -5173,7 +5173,7 @@
 	"instanceAi.onboarding.model.baseUrl": "Base URL",
 	"instanceAi.onboarding.model.apiKey": "API key",
 	"instanceAi.onboarding.model.model": "Model",
-	"instanceAi.onboarding.model.anthropicHint": "Opus gives the best results. Sonnet costs less but may fail more often.",
+	"instanceAi.onboarding.model.anthropicHint": "Opus gives the best results for complex workflows. Sonnet is faster and costs less.",
 	"instanceAi.onboarding.model.weakModelWarning": "Local and smaller open models can run the Assistant, but they often produce workflows that don't execute. Expect worse results than with a frontier model.",
 	"instanceAi.onboarding.model.success": "The credential works. The model responded in {latency} ms.",
 	"instanceAi.onboarding.sandbox.label": "Code sandbox",

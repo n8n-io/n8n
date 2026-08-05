@@ -498,7 +498,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							v-else
 							id="assistant-model-provider"
 							:model-value="modelProvider"
-							:teleported="false"
+							:teleported="true"
 							data-test-id="assistant-model-provider"
 							@update:model-value="selectModelProvider"
 						>
@@ -556,7 +556,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							v-if="modelConfig.models.length && !modelNameLocked"
 							id="assistant-model-name"
 							:model-value="modelName"
-							:teleported="false"
+							:teleported="true"
 							data-test-id="assistant-model-name"
 							@update:model-value="modelName = String($event ?? '')"
 						>
