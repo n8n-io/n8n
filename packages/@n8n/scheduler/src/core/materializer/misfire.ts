@@ -60,22 +60,16 @@ export function applyMisfirePolicy(
 	}
 }
 
-/**
- * Groups a pass's discarded occurrences by the task type and policy that
- * discarded them. Folds in grouped catch-up drops too, so a `coalesce_owner`
- * job's dropped siblings count as misfires here even though they never touched
- * that job's own `skippedOccurrences`.
- */
+/** Groups a pass's discarded occurrences by the task type and policy that discarded them. */
 export function countMisfires(planned: PlannedJob[]): MisfireCount[] {
 	const grouped = planned
-		.filter(({ plan }) => plan.skippedOccurrences + plan.groupedCatchUps > 0)
+		.filter(({ plan }) => plan.skippedOccurrences > 0)
 		.reduce((groups, { job, plan }) => {
 			const key = `${job.taskType}:${job.misfirePolicy}`;
 			return groups.set(key, {
 				taskType: job.taskType,
 				policy: job.misfirePolicy,
-				discarded:
-					(groups.get(key)?.discarded ?? 0) + plan.skippedOccurrences + plan.groupedCatchUps,
+				discarded: (groups.get(key)?.discarded ?? 0) + plan.skippedOccurrences,
 			});
 		}, new Map<string, MisfireCount>());
 	return [...grouped.values()];

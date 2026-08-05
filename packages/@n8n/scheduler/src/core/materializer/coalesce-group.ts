@@ -29,22 +29,6 @@ export function coalesceSiblingCatchUps(planned: PlannedJob[]): PlannedJob[] {
 	return planned.map((entry) => (losers.has(entry) ? dropCatchUp(entry) : entry));
 }
 
-export function countMultiMemberOwnerGroups(planned: PlannedJob[]): number {
-	let groups = 0;
-	for (const members of groupOwnerCatchUps(planned).values()) {
-		if (members.length > 1) groups += 1;
-	}
-	return groups;
-}
-
-export function countRetainedOwnerCatchUps(planned: PlannedJob[]): number {
-	let retained = 0;
-	for (const entry of planned) {
-		if (isOwnerCatchUp(entry)) retained += 1;
-	}
-	return retained;
-}
-
 function isOwnerCatchUp({ job, plan }: PlannedJob): boolean {
 	return (
 		job.ownerKey !== null &&
@@ -82,27 +66,12 @@ function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
  */
 function groupKey(job: ScheduledJob): string | null {
 	try {
-		return JSON.stringify([
-			job.ownerKey,
-			job.taskType,
-			job.misfireGraceSeconds,
-			stableShape(job.payload),
-		]);
+		return JSON.stringify([job.ownerKey, job.taskType, job.misfireGraceSeconds, job.payload]);
 	} catch {
 		// An unserializable payload opts this job out of grouping rather than
 		// failing the whole pass.
 		return null;
 	}
-}
-
-function stableShape(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(stableShape);
-	if (typeof value === 'object' && value !== null) {
-		const entries = Object.entries(value as Record<string, unknown>);
-		entries.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
-		return entries.map(([key, entry]) => [key, stableShape(entry)]);
-	}
-	return value;
 }
 
 function latestThenLowestId(current: GroupMember, candidate: GroupMember): GroupMember {
@@ -122,7 +91,6 @@ function dropCatchUp({ job, plan }: PlannedJob): PlannedJob {
 			...plan,
 			occurrences: plan.occurrences.slice(1),
 			catchUpAt: null,
-			groupedCatchUps: plan.groupedCatchUps + 1,
 		},
 	};
 }

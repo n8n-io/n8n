@@ -1,5 +1,6 @@
 export {
 	materialize,
+	totalDiscarded,
 	type MaterializerHooks,
 	type MaterializerSummary,
 	type MaterializerOptions,

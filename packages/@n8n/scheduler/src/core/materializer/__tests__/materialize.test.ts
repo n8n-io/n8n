@@ -2,7 +2,7 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ScheduledJob } from '../../types';
-import { materialize, totalDiscarded, type MaterializerOptions } from '../materialize';
+import { materialize, type MaterializerOptions } from '../materialize';
 import type { RunInTransaction, MaterializerTransaction } from '../transaction';
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
@@ -67,11 +67,7 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
-			skippedOccurrences: 0,
 			retiredOccurrences: 0,
-			groupedCatchUps: 0,
-			multiMemberOwnerGroups: 0,
-			retainedOwnerCatchUps: 0,
 		});
 		expect(tx.recordOccurrences).not.toHaveBeenCalled();
 		expect(tx.advanceJobs).not.toHaveBeenCalled();
@@ -92,11 +88,7 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
-			skippedOccurrences: 0,
 			retiredOccurrences: 0,
-			groupedCatchUps: 0,
-			multiMemberOwnerGroups: 0,
-			retainedOwnerCatchUps: 0,
 		});
 
 		// One insert and one update for the whole batch, not a pair per job.
@@ -120,7 +112,6 @@ describe('materialize', () => {
 			skippedOccurrences: 0,
 			catchUpAt: null,
 			retireBefore: null,
-			groupedCatchUps: 0,
 			nextRunAt: new Date('2026-01-01T00:00:10.000Z'),
 			lastFiredAt: NOW,
 		};
@@ -322,11 +313,7 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 0,
 			misfires: [],
-			skippedOccurrences: 0,
 			retiredOccurrences: 0,
-			groupedCatchUps: 0,
-			multiMemberOwnerGroups: 0,
-			retainedOwnerCatchUps: 0,
 		});
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);
 	});
@@ -364,11 +351,7 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 1,
 			misfires: [],
-			skippedOccurrences: 0,
 			retiredOccurrences: 0,
-			groupedCatchUps: 0,
-			multiMemberOwnerGroups: 0,
-			retainedOwnerCatchUps: 0,
 		});
 		expect(onPlanError).toHaveBeenCalledTimes(1);
 		expect(onPlanError).toHaveBeenCalledWith(bad, expect.anything());
@@ -474,19 +457,6 @@ describe('materialize', () => {
 			}
 		});
 
-		it('reports the grouped, retained and multi-member catch-up counts on the summary, keeping the dropped runs out of skipped occurrences but in the discarded total', async () => {
-			const tx = makeTx();
-			claimSiblings(tx);
-
-			const summary = await materialize(runnerWith(tx), options);
-
-			expect(summary.groupedCatchUps).toBe(2);
-			expect(summary.retainedOwnerCatchUps).toBe(1);
-			expect(summary.multiMemberOwnerGroups).toBe(1);
-			expect(summary.skippedOccurrences).toBe(36);
-			expect(totalDiscarded(summary.misfires)).toBe(38);
-		});
-
 		it('completes the pass and records a catch-up run for a sibling whose payload cannot be serialised', async () => {
 			const tx = makeTx();
 			const cyclic: Record<string, unknown> = { rule: 'one' };
@@ -497,51 +467,11 @@ describe('materialize', () => {
 			});
 			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
 
-			const summary = await materialize(runnerWith(tx), options);
+			await materialize(runnerWith(tx), options);
 
 			const rows = tx.recordOccurrences.mock.calls[0][0];
 			expect(rows.map(({ jobId }) => jobId)).toEqual([1, 2]);
-			expect(summary.groupedCatchUps).toBe(1);
-			expect(summary.retainedOwnerCatchUps).toBe(2);
-			expect(summary.multiMemberOwnerGroups).toBe(1);
 			expect(tx.advanceJobs.mock.calls[0][0]).toHaveLength(3);
-		});
-
-		it('reports the catch-up run of an owner with no sibling as retained, in no group', async () => {
-			const tx = makeTx();
-			tx.claimDueJobs.mockResolvedValue({
-				now: NOW,
-				jobs: [
-					{ ...makeSibling(1), ownerKey: 'owner-a' },
-					{ ...makeSibling(2), ownerKey: 'owner-b' },
-				],
-			});
-			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
-
-			const summary = await materialize(runnerWith(tx), options);
-
-			expect(summary.groupedCatchUps).toBe(0);
-			expect(summary.retainedOwnerCatchUps).toBe(2);
-			expect(summary.multiMemberOwnerGroups).toBe(0);
-		});
-
-		it('reports a group and an owner with no sibling side by side', async () => {
-			const tx = makeTx();
-			tx.claimDueJobs.mockResolvedValue({
-				now: NOW,
-				jobs: [
-					{ ...makeSibling(1), ownerKey: 'owner-a' },
-					{ ...makeSibling(2), ownerKey: 'owner-a' },
-					{ ...makeSibling(3), ownerKey: 'owner-b' },
-				],
-			});
-			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
-
-			const summary = await materialize(runnerWith(tx), options);
-
-			expect(summary.groupedCatchUps).toBe(1);
-			expect(summary.retainedOwnerCatchUps).toBe(2);
-			expect(summary.multiMemberOwnerGroups).toBe(1);
 		});
 
 		it('keeps a sibling catch-up run when its payload differs from the others', async () => {
@@ -552,11 +482,8 @@ describe('materialize', () => {
 			});
 			tx.recordOccurrences.mockResolvedValue({ recorded: 2, created: [] });
 
-			const summary = await materialize(runnerWith(tx), options);
+			await materialize(runnerWith(tx), options);
 
-			expect(summary.groupedCatchUps).toBe(1);
-			expect(summary.retainedOwnerCatchUps).toBe(2);
-			expect(summary.multiMemberOwnerGroups).toBe(1);
 			const rows = tx.recordOccurrences.mock.calls[0][0];
 			expect(rows).toHaveLength(2);
 			expect(rows.map(({ payload }) => payload)).toEqual([{}, { rule: 'other' }]);
@@ -600,7 +527,7 @@ describe('materialize', () => {
 			}
 		});
 
-		it('counts a dropped catch-up run even when the member discarded no backlog', async () => {
+		it("a group's dropped catch-up run does not itself count as a misfire when the member discarded no backlog", async () => {
 			const tx = makeTx();
 			const hourly = (id: number, nextRunAt: string): ScheduledJob => ({
 				...makeSibling(id),
@@ -618,14 +545,11 @@ describe('materialize', () => {
 			const planned = tx.advanceJobs.mock.calls[0][0];
 			const dropped = planned.find(({ job }) => job.id === 2)!;
 			expect(dropped.plan.skippedOccurrences).toBe(0);
-			expect(dropped.plan.groupedCatchUps).toBe(1);
 
-			expect(summary.misfires).toEqual([
-				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.CoalesceOwner, discarded: 1 },
-			]);
+			expect(summary.misfires).toEqual([]);
 		});
 
-		it('counts dropped catch-up runs apart from a per-job policy discard in the same batch', async () => {
+		it('counts a per-job policy discard in the same batch as a group, apart from the group', async () => {
 			const tx = makeTx();
 			tx.claimDueJobs.mockResolvedValue({
 				now: NOW,
@@ -641,7 +565,7 @@ describe('materialize', () => {
 			const summary = await materialize(runnerWith(tx), options);
 
 			expect(summary.misfires).toEqual([
-				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.CoalesceOwner, discarded: 25 },
+				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.CoalesceOwner, discarded: 24 },
 				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Coalesce, discarded: 12 },
 				{ taskType: 'test', policy: ScheduledJobMisfirePolicy.Skip, discarded: 13 },
 			]);
@@ -666,9 +590,8 @@ describe('materialize', () => {
 			});
 			tx.recordOccurrences.mockResolvedValue({ recorded: 3, created: [] });
 
-			const summary = await materialize(runnerWith(tx), options);
+			await materialize(runnerWith(tx), options);
 
-			expect(summary.groupedCatchUps).toBe(0);
 			const rows = tx.recordOccurrences.mock.calls[0][0];
 			expect(rows.map((row) => row.jobId)).toEqual([1, 2, 3]);
 			for (const row of rows) {
@@ -707,11 +630,7 @@ describe('materialize', () => {
 			created: [],
 			deferredJobs: 1,
 			misfires: [],
-			skippedOccurrences: 0,
 			retiredOccurrences: 0,
-			groupedCatchUps: 0,
-			multiMemberOwnerGroups: 0,
-			retainedOwnerCatchUps: 0,
 		});
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
 		expect(tx.advanceJobs).toHaveBeenCalledTimes(1);

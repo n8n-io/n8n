@@ -51,7 +51,7 @@ export type {
 	DispatchReporter,
 	DispatchDecision,
 } from './executor';
-export { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
+export { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 export type {
 	MaterializerOptions,
 	MaterializerSummary,

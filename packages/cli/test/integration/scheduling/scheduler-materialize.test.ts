@@ -405,7 +405,7 @@ describe('scheduler materialization', () => {
 			await jobRepo.backdateNextRunAt(workflowId, nodeId, 200);
 
 			const firstPass = await runMaterialization(0);
-			expect(firstPass).toMatchObject({ claimedJobs: 3, occurrences: 3, groupedCatchUps: 0 });
+			expect(firstPass).toMatchObject({ claimedJobs: 3, occurrences: 3 });
 			const queued = await taskRepo.find();
 			expect(queued).toHaveLength(3);
 			expect(queued.every((task) => task.status === 'pending')).toBe(true);
@@ -418,9 +418,6 @@ describe('scheduler materialization', () => {
 			expect(secondPass).toMatchObject({
 				claimedJobs: 3,
 				occurrences: 1,
-				groupedCatchUps: 2,
-				retainedOwnerCatchUps: 1,
-				multiMemberOwnerGroups: 1,
 				retiredOccurrences: 3,
 			});
 

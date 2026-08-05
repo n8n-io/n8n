@@ -172,7 +172,7 @@ export function buildMaterializerTransaction(
 			async (manager) =>
 				await work({
 					claimDueJobs: async (limit, lookaheadMs) => {
-						const claimed = await jobs.claimDueCompletingOwnerGroups(manager, limit, lookaheadMs);
+						const claimed = await jobs.claimDue(manager, limit, lookaheadMs);
 						return claimed === undefined ? undefined : withOwnerKeys(claimed);
 					},
 					recordOccurrences: async (occurrences) =>

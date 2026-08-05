@@ -237,51 +237,17 @@ surviving row, and a job's rows can legitimately disagree about it (the limit co
 from configuration read at provisioning time, and existing rows are not rewritten when
 it changes), so keying on it would silently stop a node's rules grouping.
 
-### The residual gaps
+### The residual gap
 
-Grouping is a best-effort collapse within one pass, not a guarantee of one fire per
-owner. Three cases still leave an owner with more than one catch-up run, and they are
-worth knowing before reading the counters:
-
-1. **A sibling that was not yet due.** The claim only covers the rows that were due
-   when it ran, so a sibling that was not yet due is not part of the group and catches
-   up separately on a later pass.
-2. **Two passes running at once.** A pass claims a batch of due jobs, then runs a
-   second query to pull in the rest of the same owners' due jobs, so a batch boundary
-   does not split an owner group. That narrows the window; it does not close it. On
-   Postgres both queries take their rows with `FOR UPDATE SKIP LOCKED`, so two
-   overlapping passes can each claim a different sibling of the same owner, and each
-   record a catch-up run for it. On SQLite the transactions serialise, so this case
-   does not arise there.
-3. **A backlog larger than `maxPerJob`.** The planner walks at most `maxPerJob`
-   instants per job per pass. A job whose missed backlog alone fills that cap has its
-   walk truncated before it reaches the newest missed instant, so the planner records
-   nothing for it on this pass and plans no catch-up run: the job is not in its owner
-   group at all, and it catches up on a later pass, apart from the siblings whose
-   backlog fitted. Concretely, after a long outage a node mixing a 1-minute rule with
-   an hourly rule can still fire twice: the hourly rule's backlog fits and catches up
-   immediately, while the 1-minute rule's does not and catches up once it has drained
-   enough to fit.
-
-Both counters the planner reports are counts of catch-up runs, and neither measures
-those residual gaps:
-
-- `n8n_scheduler_catch_ups_grouped_total`: catch-up runs grouping collapsed away
-  because a sibling in the same pass won the group.
-- `n8n_scheduler_catch_ups_retained_total`: catch-up runs recorded for a job that
-  carries an owner key and `coalesce_owner`, i.e. the ones grouping kept. Most owners
-  hold a single job, so this counts ordinary single-rule catch-ups too; it is the
-  number of catch-up fires the policy produced, not a count of missed grouping
-  opportunities.
-
-Read the two together: `grouped` rising against `retained` is grouping doing work.
-Per-pass traces carry the same two numbers (`n8n.scheduler.grouped_catch_ups`,
-`n8n.scheduler.retained_owner_catch_ups`) plus
-`n8n.scheduler.multi_member_owner_groups`: how many groups in that pass held more than
-one member, where a group is everything jobs must agree on to group (owner, task type,
-payload, grace window) and a member is a job that planned a catch-up run on this pass.
-So one owner with two task types contributes 2. That is the population grouping could
-apply to at all.
+Grouping only sees the jobs one pass claims together, so it is a best-effort
+collapse, not a guarantee of one fire per owner. A sibling not claimed in the same
+pass, whether because it was not yet due or because a batch boundary split it from
+its owner, catches up separately on a later pass. Likewise, a backlog larger than
+`maxPerJob` truncates that job's walk before it plans a catch-up at all, so it sits
+out its owner's group for this pass and catches up once the backlog has drained
+enough to fit. Concretely, after a long outage a node mixing a 1-minute rule with an
+hourly rule can still fire twice: the hourly rule's backlog fits and catches up
+immediately, while the 1-minute rule's does not.
 
 Poll triggers use `skip` on purpose: a poll asks "what changed since last time?", so
 replaying a missed poll adds nothing that the next poll will not pick up anyway. They
