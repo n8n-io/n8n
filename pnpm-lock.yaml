@@ -5211,7 +5211,7 @@ importers:
         version: 1.0.15
     devDependencies:
       '@iconify/json':
-        specifier: ^2.2.488
+        specifier: 'catalog:'
         version: 2.2.488
       '@n8n/eslint-config':
         specifier: workspace:*
