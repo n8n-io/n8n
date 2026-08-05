@@ -8,6 +8,7 @@ export default defineConfig(
 		rules: {
 			// TODO: Lower the complexity threshold
 			complexity: ['error', 27],
+			'n8n-local-rules/no-dynamic-regexp': 'error',
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 
 			// TODO: Remove these
@@ -41,6 +42,7 @@ export default defineConfig(
 			'@typescript-eslint/unbound-method': 'warn',
 			'@typescript-eslint/no-unused-expressions': 'warn',
 			'id-denylist': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );
