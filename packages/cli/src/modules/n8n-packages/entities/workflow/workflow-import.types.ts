@@ -4,15 +4,13 @@ import type { WorkflowIdConflict } from './workflow-import-match.service';
 import type {
 	WorkflowPublishingBlockedReason,
 	WorkflowPublishingOutcome,
-	WorkflowPublishingPolicy,
 } from './workflow-publishing-policy.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 /** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
 export interface WorkflowImportContext extends ImportContext {
-	publishingPolicy: WorkflowPublishingPolicy;
-	/** Package workflow ids that must stay inactive, mapped to the reason why. */
-	publishBlocked: ReadonlyMap<string, WorkflowPublishingBlockedReason>;
+	/** Tag ids the tag plan dropped; stripped from every workflow's `tagIds` before attaching. */
+	droppedTagIds: ReadonlySet<string>;
 }
 
 export interface PreparedWorkflow {
@@ -25,6 +23,12 @@ export interface PreparedWorkflow {
 	 * target folder.
 	 */
 	parentFolderId: string | null;
+	/**
+	 * Source tag ids from the package's `workflow.json`. When present (even
+	 * empty) an update overwrites the target workflow's taggings to exactly
+	 * this set; when absent, taggings are left untouched.
+	 */
+	tagIds?: string[];
 }
 
 export type WorkflowPlannedAction = 'create' | 'update' | 'skip';

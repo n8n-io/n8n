@@ -879,6 +879,51 @@ describe('EvalExecutionService', () => {
 				expect(toolUrls).not.toContain('https://api.openai.com/v1/chat/completions');
 			});
 
+			it('detaches the ledger entry from a node mutating the served response in place', async () => {
+				// The reported failure: the OpenAI node's json_schema mode parses
+				// `output[].content[].text` in place, so an aliased entry rewrote
+				// history and the judge blamed the mock. Asserted at this call site,
+				// not just on the helper, so a refactor can't bypass the snapshot.
+				const served = { output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }] };
+				const innerMockHandler = vi.fn().mockResolvedValue({
+					body: served,
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				});
+				createLlmMockHandlerMock.mockReturnValue(innerMockHandler);
+
+				let capturedAd: StubAdditionalData | undefined;
+				workflowRunner.run.mockImplementation(async (data) => {
+					const ad = makeMockedAdditionalData();
+					await data.configureAdditionalData?.(ad as never);
+					capturedAd = ad;
+					return DB_EXECUTION_ID;
+				});
+
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
+					const response = (await capturedAd?.evalLlmMockHandler?.(
+						{ url: 'https://api.openai.com/v1/responses', method: 'POST' },
+						{
+							id: 'node-2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					)) as { body: typeof served } | undefined;
+					// Node code mutates the body it was handed.
+					response!.body.output[0].content[0].text = { a: 1 } as never;
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				const recorded = result.nodeResults['HTTP Request'].interceptedRequests[0]
+					.mockResponse as typeof served;
+				expect(recorded.output[0].content[0].text).toBe('{"a":1}');
+			});
+
 			it('records "(no URL)" when broken node routing emits a request without a URL', async () => {
 				const innerMockHandler = vi.fn().mockResolvedValue({
 					body: { error: { message: 'no URL' } },

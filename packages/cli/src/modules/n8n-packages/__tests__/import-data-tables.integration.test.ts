@@ -75,7 +75,10 @@ async function importPackage(params: ImportParams) {
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
 		variableMissingMode: 'do-nothing',
+		variableConflictPolicy: 'keep-existing',
 		variableParentPolicy: 'project',
+		tagMissingMode: 'create',
+		tagConflictPolicy: 'skip',
 		...params,
 	});
 }

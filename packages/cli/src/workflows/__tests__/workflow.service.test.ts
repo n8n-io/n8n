@@ -1,44 +1,51 @@
-import type { Mock } from 'vitest';
 import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
 	Role,
+	TagEntity,
 	User,
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import type { MockProxy } from 'vitest-mock-extended';
-import { mock } from 'vitest-mock-extended';
+import { QueryFailedError } from '@n8n/typeorm';
 import type { IConnections, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
-import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { EventService } from '@/events/event.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
+import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
+import type { TagService } from '@/services/tag.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-helpers');
@@ -102,6 +109,7 @@ describe('WorkflowService', () => {
 				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
 			);
 		});
 
@@ -370,6 +378,7 @@ describe('WorkflowService', () => {
 				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
+				mock(), // workflowPublishGuard
 			);
 
 			vi.clearAllMocks();
@@ -1017,6 +1026,7 @@ describe('WorkflowService', () => {
 		let scheduleTriggerJobRegistrarMock: MockProxy<ScheduleTriggerJobRegistrar>;
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 		let pollTriggerJobRegistrarMock: MockProxy<PollTriggerJobRegistrar>;
+		let workflowPublishGuardMock: MockProxy<WorkflowPublishGuardProxy>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const PREVIOUS_VERSION_ID = 'v1';
@@ -1070,6 +1080,7 @@ describe('WorkflowService', () => {
 			scheduleTriggerJobRegistrarMock = mock();
 			workflowHookContextServiceMock = mock<WorkflowHookContextService>();
 			pollTriggerJobRegistrarMock = mock();
+			workflowPublishGuardMock = mock<WorkflowPublishGuardProxy>();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -1107,6 +1118,7 @@ describe('WorkflowService', () => {
 				pollTriggerJobRegistrarMock, // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
+				workflowPublishGuardMock, // workflowPublishGuard
 			);
 
 			// Bypass validation internals
@@ -1120,6 +1132,112 @@ describe('WorkflowService', () => {
 			vi.spyOn(internals, '_validateNodes').mockReturnValue(undefined);
 			vi.spyOn(internals, '_validateDynamicCredentials').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateSubWorkflowReferences').mockResolvedValue(undefined);
+		});
+
+		test.each([
+			['current publication path', false],
+			['outbox publication path', true],
+		] as const)(
+			'does not start the %s when an open review blocks a first publication',
+			async (_path, useWorkflowPublicationService) => {
+				globalConfigMock.workflows.useWorkflowPublicationService = useWorkflowPublicationService;
+				const workflow = makeWorkflowEntity({ active: false, activeVersionId: null });
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+				workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+				workflowPublishGuardMock.assertCanPublish.mockRejectedValue(
+					new WorkflowPublishBlockedError({
+						reason: 'review_pending',
+						workflowReviewRequestId: 'review-1',
+					}),
+				);
+
+				await expect(
+					workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+						versionId: TARGET_VERSION_ID,
+					}),
+				).rejects.toBeInstanceOf(WorkflowPublishBlockedError);
+
+				expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+				expect(activeWorkflowManagerMock.add).not.toHaveBeenCalled();
+				expect(outboxRepositoryMock.enqueue).not.toHaveBeenCalled();
+				expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+			},
+		);
+
+		test('keeps the previous version running when an open review blocks a replacement', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowPublishGuardMock.assertCanPublish.mockRejectedValue(
+				new WorkflowPublishBlockedError({
+					reason: 'changes_requested',
+					workflowReviewRequestId: 'review-1',
+				}),
+			);
+
+			await expect(
+				workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+					versionId: TARGET_VERSION_ID,
+				}),
+			).rejects.toBeInstanceOf(WorkflowPublishBlockedError);
+
+			expect(workflow.activeVersionId).toBe(PREVIOUS_VERSION_ID);
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
+		});
+
+		test('checks for an open review after the activation hook has accepted the version', async () => {
+			const workflow = makeWorkflowEntity({ active: false, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowPublishGuardMock.assertCanPublish.mockRejectedValue(
+				new WorkflowPublishBlockedError({
+					reason: 'review_pending',
+					workflowReviewRequestId: 'review-1',
+				}),
+			);
+
+			await expect(
+				workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID),
+			).rejects.toBeInstanceOf(WorkflowPublishBlockedError);
+
+			expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.activate', expect.any(Array));
+			expect(externalHooksMock.run.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowPublishGuardMock.assertCanPublish.mock.invocationCallOrder[0],
+			);
+		});
+
+		test('does not check workflow reviews when re-applying the published version', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeActiveVersion());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			externalHooksMock.run.mockResolvedValue(undefined);
+			vi.spyOn(
+				workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+				'_addToActiveWorkflowManager',
+			).mockResolvedValue(undefined);
+			workflowPublishGuardMock.assertCanPublish.mockRejectedValue(
+				new WorkflowPublishBlockedError({
+					reason: 'review_pending',
+					workflowReviewRequestId: 'review-1',
+				}),
+			);
+
+			await workflowService.activateWorkflow(mock<User>(), WORKFLOW_ID, {
+				versionId: PREVIOUS_VERSION_ID,
+			});
+
+			expect(workflowPublishGuardMock.assertCanPublish).not.toHaveBeenCalled();
+		});
+
+		test('does not check workflow reviews while unpublishing', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
+
+			expect(workflowPublishGuardMock.assertCanPublish).not.toHaveBeenCalled();
 		});
 
 		test('republish blocked by hook leaves previous active version untouched', async () => {
@@ -1186,6 +1304,7 @@ describe('WorkflowService', () => {
 				versionId: TARGET_VERSION_ID,
 			});
 
+			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
@@ -1501,6 +1620,7 @@ describe('WorkflowService', () => {
 				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
 			);
 		});
 
@@ -1615,6 +1735,7 @@ describe('WorkflowService', () => {
 				mock(), // pollTriggerJobRegistrar
 				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
 			);
 		});
 
@@ -1759,6 +1880,7 @@ describe('WorkflowService', () => {
 				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
 			);
 		});
 
@@ -1878,6 +2000,7 @@ describe('WorkflowService', () => {
 				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
 			);
 		});
 
@@ -1903,6 +2026,95 @@ describe('WorkflowService', () => {
 				WORKFLOW_ID,
 				expectedActor,
 			]);
+		});
+	});
+
+	describe('updateWorkflowTags()', () => {
+		let workflowService: WorkflowService;
+		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let workflowTagMappingRepositoryMock: MockProxy<WorkflowTagMappingRepository>;
+		let tagServiceMock: MockProxy<TagService>;
+
+		const WORKFLOW_ID = 'workflow-1';
+		const user = mock<User>({ id: 'user-1' });
+
+		beforeEach(() => {
+			workflowFinderServiceMock = mock<WorkflowFinderService>();
+			workflowTagMappingRepositoryMock = mock<WorkflowTagMappingRepository>();
+			tagServiceMock = mock<TagService>();
+
+			workflowService = new WorkflowService(
+				mock(), // logger
+				mock(), // sharedWorkflowRepository
+				mock(), // workflowRepository
+				workflowTagMappingRepositoryMock, // workflowTagMappingRepository
+				mock(), // ownershipService
+				tagServiceMock, // tagService
+				mock(), // workflowHistoryService
+				mock(), // externalHooks
+				mock(), // activeWorkflowManager
+				mock(), // roleService
+				mock(), // projectService
+				mock(), // executionPersistence
+				mock(), // eventService
+				mock(), // globalConfig
+				mock(), // folderRepository
+				workflowFinderServiceMock, // workflowFinderService
+				mock(), // workflowPublishHistoryRepository
+				mock(), // outboxRepository
+				mock(), // workflowValidationService
+				mock(), // nodeTypes
+				mock(), // webhookService
+				mock(), // licenseState
+				mock(), // projectRepository
+				mock(), // redactionEnforcementService
+				mock(), // workflowPublicationNotifier
+				mock(), // scheduleTriggerJobRegistrar
+				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowPublishedVersionRepository
+				mock(), // workflowHookContextService
+				mock(), // workflowPublishGuard
+			);
+		});
+
+		test('checks workflow:update and does not overwrite tags when the user cannot access the workflow', async () => {
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(
+				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['tag-1']),
+			).rejects.toThrow(NotFoundError);
+
+			expect(workflowFinderServiceMock.findWorkflowForUser).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				user,
+				['workflow:update'],
+			);
+			expect(workflowTagMappingRepositoryMock.overwriteTaggings).not.toHaveBeenCalled();
+			expect(tagServiceMock.getAllByWorkflowId).not.toHaveBeenCalled();
+		});
+
+		test('overwrites tag mappings when the user can update the workflow', async () => {
+			const tags = [mock<TagEntity>({ id: 'tag-1' })];
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			tagServiceMock.getAllByWorkflowId.mockResolvedValue(tags);
+
+			const result = await workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['tag-1']);
+
+			expect(workflowTagMappingRepositoryMock.overwriteTaggings).toHaveBeenCalledWith(WORKFLOW_ID, [
+				'tag-1',
+			]);
+			expect(result).toBe(tags);
+		});
+
+		test('maps missing tag constraint failures to NotFoundError', async () => {
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			workflowTagMappingRepositoryMock.overwriteTaggings.mockRejectedValue(
+				new QueryFailedError('INSERT', [], new Error('FK')),
+			);
+
+			await expect(
+				workflowService.updateWorkflowTags(user, WORKFLOW_ID, ['missing-tag']),
+			).rejects.toThrow('Some tags not found');
 		});
 	});
 });

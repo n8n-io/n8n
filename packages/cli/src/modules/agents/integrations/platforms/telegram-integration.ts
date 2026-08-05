@@ -140,7 +140,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
-		const mode = this.getMode();
+		const mode = ctx.ingressEnabled ? this.getMode() : 'webhook';
 		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
 		const { createTelegramAdapter } = await loadTelegramAdapter();
 		return createTelegramAdapter({ botToken, mode, secretToken });

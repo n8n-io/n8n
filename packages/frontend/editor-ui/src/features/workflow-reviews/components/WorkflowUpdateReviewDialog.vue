@@ -1,10 +1,22 @@
 <script setup lang="ts">
+import { WORKFLOW_VERSION_NAME_MAX_LENGTH } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { N8nButton, N8nDialog, N8nDialogDescription, N8nDialogFooter } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nInput,
+	N8nInputLabel,
+	N8nLink,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
+import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
+import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { updateWorkflowReviewRequestVersion } from '@/features/workflow-reviews/workflowReviews.api';
 
@@ -23,8 +35,23 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
 const reviewStatusStore = useWorkflowReviewStatusStore();
+const { versionName, prefillVersionName, applyVersionName } = useReviewVersionName();
 
 const isSubmitting = ref(false);
+const workflowReviewRequestId = computed(
+	() => reviewStatusStore.openReviewRequest(props.workflowId)?.id,
+);
+
+const isSubmitDisabled = computed(
+	() => isSubmitting.value || versionName.value.trim().length === 0,
+);
+
+watch(
+	() => props.open,
+	(isOpen) => {
+		if (isOpen) prefillVersionName();
+	},
+);
 
 const close = () => {
 	if (isSubmitting.value) return;
@@ -42,9 +69,12 @@ const resolveOpenReviewRequestId = async (workflowId: string): Promise<string | 
 };
 
 const submit = async () => {
-	if (isSubmitting.value) return;
+	if (isSubmitDisabled.value) return;
 
 	const workflowId = props.workflowId;
+	// `flushSave()` awaits a full workflow save, so reading the field afterwards
+	// could send a name the guard never validated.
+	const trimmedVersionName = versionName.value.trim();
 
 	isSubmitting.value = true;
 	try {
@@ -75,7 +105,10 @@ const submit = async () => {
 		await updateWorkflowReviewRequestVersion(rootStore.restApiContext, workflowReviewRequestId, {
 			workflowId,
 			workflowVersionId,
+			workflowVersionName: trimmedVersionName,
 		});
+
+		applyVersionName(workflowVersionId, trimmedVersionName);
 
 		void reviewStatusStore.fetchStatus(workflowId);
 		emit('update:open', false);
@@ -98,8 +131,39 @@ const submit = async () => {
 		@update:open="close"
 	>
 		<N8nDialogDescription :class="$style.description">
-			{{ i18n.baseText('workflowReviews.updateReview.description') }}
+			<I18nT keypath="workflowReviews.updateReview.description" tag="span" scope="global">
+				<!-- the id is undefined until fetchStatus resolves (409 path), so the
+					label must render unlinked rather than leaving an empty slot. -->
+				<template #review>
+					<N8nLink
+						v-if="workflowReviewRequestId"
+						:to="{
+							name: WORKFLOW_REVIEW_REQUESTS_VIEW,
+							params: { reviewRequestId: workflowReviewRequestId },
+						}"
+					>
+						{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
+					</N8nLink>
+					<span v-else>
+						{{ i18n.baseText('workflowReviews.updateReview.description.review') }}
+					</span>
+				</template>
+			</I18nT>
 		</N8nDialogDescription>
+		<N8nInputLabel
+			input-name="workflow-update-review-version-name"
+			:label="i18n.baseText('workflowReviews.versionName.label')"
+			:class="$style.versionName"
+			required
+		>
+			<N8nInput
+				id="workflow-update-review-version-name"
+				v-model="versionName"
+				:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
+				:disabled="isSubmitting"
+				data-test-id="workflow-update-review-version-name-input"
+			/>
+		</N8nInputLabel>
 		<N8nDialogFooter data-test-id="workflow-update-review-dialog">
 			<N8nButton
 				type="button"
@@ -113,7 +177,7 @@ const submit = async () => {
 			<N8nButton
 				type="button"
 				:loading="isSubmitting"
-				:disabled="isSubmitting"
+				:disabled="isSubmitDisabled"
 				data-test-id="workflow-update-review-submit-button"
 				@click="submit"
 			>
@@ -127,5 +191,9 @@ const submit = async () => {
 .description {
 	display: block;
 	margin-top: var(--spacing--xs);
+}
+
+.versionName {
+	margin-top: var(--spacing--sm);
 }
 </style>

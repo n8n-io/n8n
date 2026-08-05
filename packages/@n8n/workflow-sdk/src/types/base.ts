@@ -1024,6 +1024,26 @@ export interface ToJSONOptions {
  */
 export type GroupMember = NodeInstance<string, string, unknown>;
 
+/** Optional group settings passed as `.group()`'s third argument. */
+export type GroupOptions = {
+	/**
+	 * Description shown when the group is collapsed on the canvas. Capped to
+	 * `GROUP_DESCRIPTION_MAX_LENGTH` characters on serialization; blank is
+	 * treated as no description.
+	 */
+	description?: string;
+};
+
+/**
+ * A node group as authored: members are node handles, resolved to the emitted node
+ * IDs only at serialization. `id` is present for a group carried in from JSON.
+ */
+export type AuthoredNodeGroup = GroupOptions & {
+	id?: string;
+	name: string;
+	members: GroupMember[];
+};
+
 export interface WorkflowBuilder {
 	readonly id: string;
 	readonly name: string;
@@ -1103,6 +1123,8 @@ export interface WorkflowBuilder {
 	 * Members resolve to the emitted node IDs in `toJSON()`, so groups survive
 	 * `regenerateNodeIds()` like connections do. Chainable.
 	 *
+	 * Pass `{ description }` to add the text shown when the group is collapsed.
+	 *
 	 * @example
 	 * ```typescript
 	 * const fetch = node({ ... });
@@ -1110,10 +1132,12 @@ export interface WorkflowBuilder {
 	 * workflow('id', 'Name')
 	 *   .add(fetch)
 	 *   .to(transform)
-	 *   .group('Data ingestion', [fetch, transform]);
+	 *   .group('Data ingestion', [fetch, transform], {
+	 *     description: 'Pulls the CRM contacts and normalizes them',
+	 *   });
 	 * ```
 	 */
-	group(name: string, members: GroupMember[]): WorkflowBuilder;
+	group(name: string, members: GroupMember[], options?: GroupOptions): WorkflowBuilder;
 
 	/**
 	 * Validate the workflow graph structure.

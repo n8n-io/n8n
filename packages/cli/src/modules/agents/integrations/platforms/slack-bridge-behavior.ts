@@ -10,6 +10,7 @@ import type {
 	PlatformAgentContext,
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
+import type { ReplyExpectation } from '../integration-tools';
 
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;
@@ -47,6 +48,30 @@ export function getSlackPlatformAgentContext(chat: ChatInstance): PlatformAgentC
 	return agentUserId ? { agentUserId } : {};
 }
 
+/**
+ * A reply is required for DMs and messages that mention the bot; only
+ * unaddressed follow-ups in subscribed group channels/threads may go
+ * unanswered.
+ */
+export function getSlackReplyExpectation(params: {
+	message: Message<unknown>;
+	isNewMention: boolean;
+}): ReplyExpectation {
+	// `isMention` is set by the Slack adapter from the app_mention event type,
+	// so it works even when the bot user ID (best-effort auth.test) is unknown.
+	if (params.isNewMention || params.message.isMention === true) return 'required';
+
+	const raw = params.message.raw;
+	if (!isRecord(raw)) return 'required';
+
+	const channelType = stringValue(raw.channel_type);
+	const channelId = stringValue(raw.channel);
+	const isDm = channelType === 'im' || channelId?.startsWith('D') === true;
+	if (isDm) return 'required';
+
+	return 'optional';
+}
+
 export function prepareSlackInboundText(text: string, context: PlatformAgentContext): string {
 	const trimmed = text.trim();
 	if (!context.agentUserId) return trimmed;
@@ -61,13 +86,17 @@ export async function createSlackBridgeExecutionContext(
 	const shouldFetchHistory = params.isNewMention && slackThreadContext?.hasRealThreadTs === true;
 
 	const [statusHandle, historyContext] = await Promise.all([
-		startSlackThinkingStatus(params.thread, {
-			chat: params.chat,
-			logger: params.logger,
-			agentId: params.agentId,
-			slackThreadContext,
-			statusRetry: params.statusRetry,
-		}),
+		// When the reply is optional the agent may stay silent — showing
+		// "Thinking..." would telegraph a reply that never comes.
+		params.replyExpectation === 'optional'
+			? Promise.resolve(undefined)
+			: startSlackThinkingStatus(params.thread, {
+					chat: params.chat,
+					logger: params.logger,
+					agentId: params.agentId,
+					slackThreadContext,
+					statusRetry: params.statusRetry,
+				}),
 		shouldFetchHistory
 			? fetchSlackThreadHistory(
 					params.thread,
@@ -145,6 +174,17 @@ async function startSlackThinkingStatus(
 			threadId: thread.id,
 			error: error instanceof Error ? error.message : String(error),
 		});
+	}
+
+	// Slack auto-clears the typing status when a message is posted, but a turn
+	// can end without posting anything (a silent turn, or a failure before the
+	// first response) — return a handle so those paths clear it explicitly.
+	if (slackThreadContext) {
+		return {
+			clearBeforeResponse: async () => {
+				await clearSlackAssistantStatus(slackThreadContext, options);
+			},
+		};
 	}
 	return undefined;
 }

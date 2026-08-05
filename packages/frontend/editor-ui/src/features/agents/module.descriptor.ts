@@ -14,7 +14,6 @@ import {
 	AGENT_SUB_AGENTS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	AGENT_JSON_IMPORT_MODAL_KEY,
-	AGENT_MODEL_CREDENTIAL_MODAL_KEY,
 	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
@@ -123,19 +122,6 @@ export const AgentsModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					onConfirm: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_MODEL_CREDENTIAL_MODAL_KEY,
-			component: async () => await import('../ai/components/CredentialSelectorModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					credentialType: '',
-					displayName: '',
-					initialValue: null,
-					onSelect: () => {},
 				},
 			},
 		},

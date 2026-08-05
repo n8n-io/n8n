@@ -2,7 +2,7 @@
 import { NPS_SURVEY_MODAL_KEY } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import ModalDrawer from '@/app/components/ModalDrawer.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ref, computed, watch } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';

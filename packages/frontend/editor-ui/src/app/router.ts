@@ -8,7 +8,7 @@ import type {
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -944,12 +944,7 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.API_SETTINGS,
 				component: SettingsApiView,
 				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['apiKey:list'],
-						},
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties() {

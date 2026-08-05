@@ -14,7 +14,7 @@ import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	SDK_IMPORT_STATEMENT: "import { workflow } from '@n8n/workflow-sdk';",
 	MCP_GET_SDK_REFERENCE_TOOL: {
-		toolName: 'get_sdk_reference',
+		toolName: 'get_workflow_sdk_reference',
 		displayTitle: 'Get SDK Reference',
 	},
 }));
@@ -50,6 +50,25 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 		expect(content).toContain('<zero_item_safety>');
 		expect(content).toContain('## Workflow Patterns Detailed');
 		expect(content).toContain('output: [{}]');
+	});
+
+	describe('SDK language rules in the full reference', () => {
+		test('includes the language reference', () => {
+			const content = getSdkReferenceContent('all');
+
+			expect(content).toContain('restricted subset of TypeScript');
+			expect(content).toContain('## Forbidden constructs');
+			expect(content).toContain('## Global objects are unavailable');
+			expect(content).toContain('## Where to put runtime logic');
+		});
+
+		test('embeds the groups docs exactly once when the flag is on, never when off', () => {
+			const withGroups = getSdkReferenceContent(undefined, { includeGroups: true });
+			expect(withGroups.split('## Node groups')).toHaveLength(2);
+
+			const withoutGroups = getSdkReferenceContent(undefined, { includeGroups: false });
+			expect(withoutGroups).not.toContain('## Node groups');
+		});
 	});
 
 	test('accepts patterns_detailed as a tool section', async () => {

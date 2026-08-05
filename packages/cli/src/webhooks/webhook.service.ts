@@ -106,6 +106,88 @@ export class WebhookService {
 	}
 
 	/**
+	 * Resolve a path (concrete or templated) to the rows of the one trigger that would
+	 * handle it — one per method it listens on, so callers can derive its method-set.
+	 *
+	 * Selection mirrors {@link findWebhook}, method first: narrowing by method only at
+	 * the end would let a static row for another method shadow the dynamic template that
+	 * actually routes. Without a method, only a path naming exactly one trigger resolves,
+	 * which costs the dynamic probe even on a static hit. `method` is untrusted input,
+	 * hence `string` rather than {@link Method}. Bypasses the cache.
+	 */
+	async findTriggerWebhooksByPath(path: string, method?: string): Promise<WebhookEntity[]> {
+		const staticWebhooks = await this.webhookRepository.findStaticWebhooksByPath(path);
+
+		if (method) {
+			const staticMatch = staticWebhooks.find((webhook) => webhook.method === method);
+			if (staticMatch) return this.rowsOfSameTrigger(staticWebhooks, staticMatch);
+			return await this.findDynamicTriggerWebhooks(path, method);
+		}
+
+		// Without a method the path must name one trigger across *both* kinds: a concrete
+		// path can be served statically on one method and by a dynamic template on
+		// another, so accepting a lone static row here would answer an ambiguous probe.
+		const candidates = [...staticWebhooks, ...(await this.findDynamicTriggerWebhooks(path))];
+		const [first] = candidates;
+		if (!first) return [];
+
+		const oneTrigger = this.rowsOfSameTrigger(candidates, first);
+		return oneTrigger.length === candidates.length ? oneTrigger : [];
+	}
+
+	/** Rows of the dynamic trigger whose template the path resolves to, if any. */
+	private async findDynamicTriggerWebhooks(
+		path: string,
+		method?: string,
+	): Promise<WebhookEntity[]> {
+		const [uuidSegment, ...otherSegments] = path.split('/');
+		const candidates = await this.webhookRepository.findDynamicWebhooksByWebhookId(
+			uuidSegment,
+			otherSegments.length,
+		);
+
+		const eligible = method ? candidates.filter((dw) => dw.method === method) : candidates;
+		const match = this.pickMatchingTemplate(eligible, new Set(otherSegments));
+
+		return match ? this.rowsOfSameTrigger(candidates, match) : [];
+	}
+
+	/** Every row of the trigger `row` belongs to — one per method it listens on. */
+	private rowsOfSameTrigger(webhooks: WebhookEntity[], row: WebhookEntity) {
+		return webhooks.filter(
+			(webhook) =>
+				webhook.workflowId === row.workflowId &&
+				webhook.node === row.node &&
+				webhook.webhookPath === row.webhookPath,
+		);
+	}
+
+	/**
+	 * The candidate whose template best matches the request's segments: most static
+	 * segments wins, falling back to an all-wildcard template. Shared by the router and
+	 * the OAuth resolver so "which resource" cannot drift from "which trigger fires".
+	 */
+	private pickMatchingTemplate(candidates: WebhookEntity[], requestSegments: Set<string>) {
+		const { webhook } = candidates.reduce<{ webhook: WebhookEntity | null; maxMatches: number }>(
+			(acc, dw) => {
+				const allStaticSegmentsMatch = dw.staticSegments.every((s) => requestSegments.has(s));
+
+				if (allStaticSegmentsMatch && dw.staticSegments.length > acc.maxMatches) {
+					acc.maxMatches = dw.staticSegments.length;
+					acc.webhook = dw;
+				} else if (dw.staticSegments.length === 0 && !acc.webhook) {
+					acc.webhook = dw; // edge case: if path is `:var`, match on anything
+				}
+
+				return acc;
+			},
+			{ webhook: null, maxMatches: 0 },
+		);
+
+		return webhook ?? undefined;
+	}
+
+	/**
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */
@@ -120,29 +202,7 @@ export class WebhookService {
 
 		if (dynamicWebhooks.length === 0) return null;
 
-		const requestSegments = new Set(otherSegments);
-
-		const { webhook } = dynamicWebhooks.reduce<{
-			webhook: WebhookEntity | null;
-			maxMatches: number;
-		}>(
-			(acc, dw) => {
-				const allStaticSegmentsMatch = dw.staticSegments.every((s) => requestSegments.has(s));
-
-				if (allStaticSegmentsMatch && dw.staticSegments.length > acc.maxMatches) {
-					acc.maxMatches = dw.staticSegments.length;
-					acc.webhook = dw;
-					return acc;
-				} else if (dw.staticSegments.length === 0 && !acc.webhook) {
-					acc.webhook = dw; // edge case: if path is `:var`, match on anything
-				}
-
-				return acc;
-			},
-			{ webhook: null, maxMatches: 0 },
-		);
-
-		return webhook;
+		return this.pickMatchingTemplate(dynamicWebhooks, new Set(otherSegments)) ?? null;
 	}
 
 	async findWebhook(method: Method, path: string) {

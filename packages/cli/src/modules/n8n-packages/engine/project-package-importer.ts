@@ -7,6 +7,7 @@ import { EventService } from '@/events/event.service';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
+import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
@@ -17,11 +18,12 @@ import type {
 	ImportedWorkflowSummary,
 	ImportPackageRequest,
 	ImportResult,
+	ImportTagSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
-import { assertPackageImportApiKeyScopes, assertVariableCreationAllowed } from './import-gates';
-import { deriveVariableScope } from './package-layout';
+import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
+import { needsBundledVariableValues, placeByLayout } from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportContentResult,
@@ -35,10 +37,13 @@ import {
 	scopeCredentialBindingsToRequirements,
 	toImportedWorkflowSummaries,
 	toPackageSummary,
+	toTagSummary,
+	unionTagSummaries,
 } from './import-result';
 import { emitPackageImportedEvent, type PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
 export class ProjectPackageImporter {
@@ -60,6 +65,12 @@ export class ProjectPackageImporter {
 
 		const projects = await this.packageParser.getProjects(reader);
 		const projectPlan = await this.projectImporter.plan(request.user, projects);
+		const bundledVariables = needsBundledVariableValues(
+			request,
+			(manifest.requirements?.variables?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getVariables(reader)
+			: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
@@ -76,12 +87,20 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
+				bundledVariables,
 			);
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
 		}
 
-		await this.importOrchestrator.assertNotBlocked(planned.map(({ plan }) => plan));
+		assertTagWritesAllowed(
+			request.apiKeyScopes,
+			planned.map(({ plan }) => plan.tagPlan),
+		);
+		await this.importOrchestrator.assertNotBlocked(
+			planned.map(({ plan }) => plan),
+			{ apiKeyScopes: request.apiKeyScopes },
+		);
 
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
 
@@ -123,8 +142,11 @@ export class ProjectPackageImporter {
 		const stubbed: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
+		const variablesCreated: string[] = [];
 		const variablesStubbed: string[] = [];
 		const variablesSkipped: string[] = [];
+		const variablesUpdated: string[] = [];
+		const tagSummaries: ImportTagSummary[] = [];
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan, content } of applied) {
@@ -137,14 +159,18 @@ export class ProjectPackageImporter {
 			stubbed.push(...content.credentialResult.stubbed);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
+			variablesCreated.push(...content.variableResult.created);
 			variablesStubbed.push(...content.variableResult.stubbed);
 			variablesSkipped.push(...content.variableResult.skippedExisting);
+			variablesUpdated.push(...content.variableResult.updated);
+			tagSummaries.push(toTagSummary(content.tagPlan));
 			scopes.push({
 				context: plan.input.context,
 				imported: content,
 				credentialRequest: plan.input.credentialRequest,
 				dataTableRequest: plan.input.dataTableRequest,
 				variableRequest: plan.input.variableRequest,
+				tagRequest: plan.input.tagRequest,
 			});
 		}
 
@@ -160,9 +186,12 @@ export class ProjectPackageImporter {
 			variables: reconcileVariableSummary({
 				matched: variablesMatched,
 				missing: variablesMissing,
+				created: variablesCreated,
 				stubbed: variablesStubbed,
 				skipped: variablesSkipped,
+				updated: variablesUpdated,
 			}),
+			tags: unionTagSummaries(tagSummaries),
 		});
 	}
 
@@ -172,6 +201,7 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
+		bundledVariables: Map<string, SerializedVariable> | undefined,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
@@ -199,14 +229,22 @@ export class ProjectPackageImporter {
 		};
 
 		const variableRequest: VariableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.variables, workflows)?.map(
-				(requirement) => ({
-					...requirement,
-					globalPlacement:
-						deriveVariableScope(manifest.variables, basePrefix, requirement.name) === 'global',
-				}),
-			),
+			requirements: placeByLayout({
+				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+				manifestVariables: manifest.variables,
+				scopePrefix: basePrefix,
+				bundledVariables,
+			}),
 			missingMode: request.variableMissingMode,
+			conflictPolicy: request.variableConflictPolicy,
+		};
+
+		// Untrimmed on purpose: the tag importer scopes by this project's workflows' own
+		// `tagIds`, so another project's requirements are simply never referenced here.
+		const tagRequest: TagImportRequest = {
+			requirements: manifest.requirements?.tags,
+			missingMode: request.tagMissingMode,
+			conflictPolicy: request.tagConflictPolicy,
 		};
 
 		return {
@@ -220,6 +258,7 @@ export class ProjectPackageImporter {
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
+			tagRequest,
 			options: request,
 			projectPendingCreation,
 		};
@@ -245,12 +284,5 @@ export class ProjectPackageImporter {
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
 		}
-
-		assertVariableCreationAllowed({
-			licenseState: this.licenseState,
-			apiKeyScopes: request.apiKeyScopes,
-			missingMode: request.variableMissingMode,
-			hasRequirements: (manifest.requirements?.variables?.length ?? 0) > 0,
-		});
 	}
 }

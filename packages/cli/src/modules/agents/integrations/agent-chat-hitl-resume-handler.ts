@@ -80,6 +80,9 @@ export class AgentChatHitlResumeHandler {
 			messageId: event.messageId,
 			interactingUserId: event.user.userId,
 			...this.options.getPlatformAgentContext(),
+			// The resume response streams back to this thread like any chat turn,
+			// so the same reply-delivery rules apply.
+			replyExpectation: 'required',
 		});
 
 		await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData.kind);
