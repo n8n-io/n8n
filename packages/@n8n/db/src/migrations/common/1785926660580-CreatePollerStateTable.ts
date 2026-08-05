@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreatePollerStateTable1785256245223 implements ReversibleMigration {
+export class CreatePollerStateTable1785926660580 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
 		await createTable('poller_state')
 			.withColumns(
