@@ -9,11 +9,11 @@ import { join, relative, resolve } from 'node:path';
  * from the filesystem instead, so one scan feeds every consumer.
  */
 
-/** Feature module packages (L3). Scaffolded by `pnpm setup-frontend-module`. */
-const FRONTEND_MODULE_ROOT = 'packages/frontend/modules';
+/** Platform packages (L0-L2) consumed from source. Scanned, not enumerated. */
+const PLATFORM_PACKAGE_ROOT = 'packages/frontend/@n8n';
 
-/** Workspace directories whose packages are consumed from source. Scanned, not enumerated. */
-const FRONTEND_PACKAGE_ROOTS = ['packages/frontend/@n8n', FRONTEND_MODULE_ROOT];
+/** Feature module packages (L3). Absent until the first module lands. */
+const MODULE_PACKAGE_ROOT = 'packages/frontend/modules';
 
 /**
  * Packages outside `packages/frontend` that the frontend still consumes from source.
@@ -41,8 +41,6 @@ export interface FrontendSourcePackage {
 	 * `.` in their `exports`, so a bare import of them does not resolve and must not be aliased.
 	 */
 	entry?: string;
-	/** True for feature module packages under `packages/frontend/modules`. */
-	isModule: boolean;
 }
 
 const readPackageJson = (dir: string): Record<string, unknown> | undefined => {
@@ -51,10 +49,7 @@ const readPackageJson = (dir: string): Record<string, unknown> | undefined => {
 	return JSON.parse(readFileSync(manifest, 'utf8')) as Record<string, unknown>;
 };
 
-const readPackage = (
-	dir: string,
-	isModule: boolean,
-): FrontendSourcePackage | undefined => {
+const readPackage = (dir: string): FrontendSourcePackage | undefined => {
 	const manifest = readPackageJson(dir);
 	if (typeof manifest?.name !== 'string') return undefined;
 
@@ -69,36 +64,44 @@ const readPackage = (
 		dir,
 		srcDir,
 		...(existsSync(entry) ? { entry } : {}),
-		isModule,
 	};
 };
 
-/**
- * Every workspace package the frontend consumes from source, sorted by name so generated
- * output is stable. Missing directories are skipped, not an error: `packages/frontend/modules`
- * does not exist until the first module lands.
- */
-export const findFrontendSourcePackages = (repoRoot: string): FrontendSourcePackage[] => {
-	const dirs = FRONTEND_PACKAGE_ROOTS.flatMap((root) => {
-		const absoluteRoot = resolve(repoRoot, root);
-		if (!existsSync(absoluteRoot)) return [];
-		const isModule = root === FRONTEND_MODULE_ROOT;
-		return readdirSync(absoluteRoot, { withFileTypes: true })
-			.filter((entry) => entry.isDirectory())
-			.map((entry) => ({ dir: join(absoluteRoot, entry.name), isModule }));
-	}).concat(
-		SHARED_SOURCE_PACKAGE_DIRS.map((dir) => ({
-			dir: resolve(repoRoot, dir),
-			isModule: false,
-		})),
-	);
-
-	const packages = dirs
-		.map(({ dir, isModule }) => readPackage(dir, isModule))
-		.filter((pkg): pkg is FrontendSourcePackage => pkg !== undefined);
-
-	return packages.sort((a, b) => a.name.localeCompare(b.name));
+const packagesIn = (repoRoot: string, root: string): string[] => {
+	const absoluteRoot = resolve(repoRoot, root);
+	if (!existsSync(absoluteRoot)) return [];
+	return readdirSync(absoluteRoot, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => join(absoluteRoot, entry.name));
 };
+
+const collect = (dirs: string[]): FrontendSourcePackage[] =>
+	dirs
+		.map(readPackage)
+		.filter((pkg): pkg is FrontendSourcePackage => pkg !== undefined)
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+/**
+ * The platform packages (L0-L2) every frontend consumer may resolve from source. Excludes feature
+ * modules, so this is the set a module package is allowed to see.
+ */
+export const findPlatformSourcePackages = (repoRoot: string): FrontendSourcePackage[] =>
+	collect([
+		...packagesIn(repoRoot, PLATFORM_PACKAGE_ROOT),
+		...SHARED_SOURCE_PACKAGE_DIRS.map((dir) => resolve(repoRoot, dir)),
+	]);
+
+/**
+ * Every workspace package the frontend consumes from source, modules included, sorted by name so
+ * generated output is stable. Missing directories are skipped, not an error: the module root does
+ * not exist until the first module lands.
+ */
+export const findFrontendSourcePackages = (repoRoot: string): FrontendSourcePackage[] =>
+	collect([
+		...packagesIn(repoRoot, PLATFORM_PACKAGE_ROOT),
+		...packagesIn(repoRoot, MODULE_PACKAGE_ROOT),
+		...SHARED_SOURCE_PACKAGE_DIRS.map((dir) => resolve(repoRoot, dir)),
+	]);
 
 /** Names a package.json declares as a dependency, in any dependency field. */
 const declaredDependencies = (dir: string): Set<string> => {
@@ -156,16 +159,13 @@ export const frontendSourceAliases = (
 export interface FrontendPathsOptions extends FrontendAliasOptions {
 	/** Absolute path to the directory the emitted paths are relative to (the tsconfig's own dir). */
 	fromDir: string;
-	/**
-	 * Leave feature module packages out of the mapping. The shared module base sets this: a
-	 * module's typecheck program should see the L0-L2 packages below it and no sibling module,
-	 * so an accidental cross-module import fails to resolve rather than resolving silently.
-	 */
-	excludeModules?: boolean;
 }
 
 /**
- * The same mapping as a tsconfig `paths` block, relative to `fromDir`.
+ * The platform mapping as a tsconfig `paths` block, relative to `fromDir`.
+ *
+ * Platform packages only — a module must not be handed a typechecked path into another module's
+ * `src`, and the only consumer of this block is the shared base that modules extend.
  *
  * Two explicit keys per package rather than the repo's terser `"@n8n/x*"`: the terse form also
  * matches sibling packages by prefix (`@n8n/chat*` swallows `@n8n/chat-hub`) and relies on
@@ -175,10 +175,7 @@ export interface FrontendPathsOptions extends FrontendAliasOptions {
  */
 export const frontendSourcePaths = (options: FrontendPathsOptions): Record<string, string[]> => {
 	const toPosix = (path: string) => relative(options.fromDir, path).split('\\').join('/');
-	const packages = forConsumer(
-		findFrontendSourcePackages(options.repoRoot),
-		options.consumerDir,
-	).filter((pkg) => !(options.excludeModules && pkg.isModule));
+	const packages = forConsumer(findPlatformSourcePackages(options.repoRoot), options.consumerDir);
 
 	const entries: Array<[string, string[]]> = packages.flatMap((pkg) => [
 		...(pkg.entry ? [[pkg.name, [toPosix(pkg.entry)]] as [string, string[]]] : []),

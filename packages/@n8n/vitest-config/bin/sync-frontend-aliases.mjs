@@ -22,13 +22,10 @@ const repoRoot = path.resolve(packageDir, '..', '..', '..');
 const GENERATED_TSCONFIG = 'packages/@n8n/typescript-config/tsconfig.frontend-module.json';
 const EDITOR_UI = 'packages/frontend/editor-ui';
 
-const args = process.argv.slice(2);
-const write = args.includes('--write');
-
-if (args.some((arg) => !['--write', '--check'].includes(arg))) {
-	console.error('Usage: node bin/sync-frontend-aliases.mjs [--check | --write]');
-	process.exit(2);
-}
+// Unrecognized arguments are ignored rather than rejected: this runs as the last link of
+// `lint:ci`'s `&&` chain, and pnpm forwards a caller's trailing args (CI passes `--summarize`)
+// to that last command only. Rejecting them turns any forwarded turbo flag into a CI failure.
+const write = process.argv.slice(2).includes('--write');
 
 const dist = path.join(packageDir, 'dist', 'frontend-aliases.js');
 let findFrontendSourcePackages, frontendSourcePaths;
@@ -74,9 +71,6 @@ const buildTsconfig = () => {
 	const paths = frontendSourcePaths({
 		repoRoot,
 		fromDir: path.join(repoRoot, path.dirname(GENERATED_TSCONFIG)),
-		// Keeps the header's promise true once the first module lands: without this the scan
-		// would path every module into every other module's typecheck program.
-		excludeModules: true,
 	});
 
 	const body = {
