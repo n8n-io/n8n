@@ -57,7 +57,11 @@ describe('step execution (integration)', () => {
 	 * Resolves once the execution's outcome is recorded, which is after every
 	 * step's own outcome is durable.
 	 */
-	async function runWorkflow(executor: IStepExecutor, triggerPayload: JsonObject) {
+	async function runWorkflow(
+		executor: IStepExecutor,
+		triggerPayload: JsonObject,
+		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
+	) {
 		const { executionStore, stepStore } = stores();
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
@@ -89,16 +93,19 @@ describe('step execution (integration)', () => {
 			new AllowAllAdmittance(),
 			executionStore,
 			orchestrationQueue,
-		).start({ workflowId: 'wf-1', graph, triggerPayload });
+		).start({ workflowId, graph: workflowGraph, triggerPayload });
 		await finished;
 
 		await stepWorker.stop();
 		await orchestrationWorker.stop();
 
+		const execution = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: executionId } });
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });
-		return { executionId, step: steps.find((candidate) => candidate.nodeId === 'node-a') };
+		return { executionId, execution, steps };
 	}
 
 	it('runs a queued step and persists its outputs', async () => {
@@ -111,7 +118,8 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, step } = await runWorkflow(executor, { body: { name: 'ada' } });
+		const { executionId, steps } = await runWorkflow(executor, { body: { name: 'ada' } });
+		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
 		expect(step?.status).toBe('completed');
 		expect(step?.outputs).toEqual([[{ json: { greeting: 'hi' } }]]);
@@ -137,7 +145,8 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { step } = await runWorkflow(executor, {});
+		const { steps } = await runWorkflow(executor, {});
+		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
 		expect(step?.status).toBe('failed');
 		expect(step?.error).toEqual({
@@ -161,21 +170,6 @@ describe('step execution (integration)', () => {
 				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
 			],
 		};
-		const { executionStore, stepStore } = stores();
-		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-		const stepQueue = new InMemoryWorkQueue<StepMessage>();
-
-		// The run is over when the execution is recorded finished, not when the first
-		// step completes — there are two hops here.
-		let done!: () => void;
-		const finished = new Promise<void>((resolve) => (done = resolve));
-		const finishExecution = executionStore.finishExecution.bind(executionStore);
-		vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
-			const recorded = await finishExecution(id, status);
-			done();
-			return recorded;
-		});
-
 		const requests: StepExecutionRequest[] = [];
 		const executor: IStepExecutor = {
 			execute: async (request) => {
@@ -185,42 +179,17 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const orchestrationWorker = new OrchestrationWorker(
-			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepCompletedHandler(executionStore, stepStore, stepQueue),
+		const { execution } = await runWorkflow(
+			executor,
+			{ body: { name: 'ada' } },
+			{ workflowId: 'wf-chain', graph: chainGraph },
 		);
-		const stepWorker = new StepWorker(
-			stepQueue,
-			new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
-				v1StepExecutor: executor,
-			}),
-		);
-		orchestrationWorker.start();
-		stepWorker.start();
-
-		const { executionId } = await new StartExecutionService(
-			new AllowAllAdmittance(),
-			executionStore,
-			orchestrationQueue,
-		).start({
-			workflowId: 'wf-chain',
-			graph: chainGraph,
-			triggerPayload: { body: { name: 'ada' } },
-		});
-		await finished;
-
-		await stepWorker.stop();
-		await orchestrationWorker.stop();
 
 		// both nodes ran, in order, each on what came before it
 		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
 		expect(requests[0].inputs).toEqual({ body: { name: 'ada' } });
 		expect(requests[1].inputs).toEqual([[{ json: { ran: 'node-a' } }]]);
 
-		const execution = await dataSource
-			.getRepository(WorkflowExecution)
-			.findOneOrFail({ where: { id: executionId } });
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
