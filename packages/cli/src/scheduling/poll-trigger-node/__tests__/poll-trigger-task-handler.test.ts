@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowRepository } from '@n8n/db';
+import type { PollerFailureState, WorkflowRepository } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter, TriggersAndPollers } from 'n8n-core';
 import type { INode, INodeExecutionData, IPollFunctions, IWorkflowBase } from 'n8n-workflow';
@@ -10,6 +10,7 @@ import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
+import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { isPollTriggerTaskPayload, POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
@@ -21,6 +22,7 @@ describe('PollTriggerTaskHandler', () => {
 	const triggersAndPollers = mock<TriggersAndPollers>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const errorReporter = mock<ErrorReporter>();
+	const pollBackoffService = mock<PollBackoffService>();
 
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
@@ -31,6 +33,7 @@ describe('PollTriggerTaskHandler', () => {
 		triggersAndPollers,
 		workflowRepository,
 		errorReporter,
+		pollBackoffService,
 	);
 
 	const onDispatch = vi.fn();
@@ -121,6 +124,9 @@ describe('PollTriggerTaskHandler', () => {
 
 		triggersAndPollers.runPollFunction.mockResolvedValue(pollData);
 		workflowRepository.isActive.mockResolvedValue(true);
+
+		pollBackoffService.peek.mockResolvedValue(null);
+		pollBackoffService.isBackingOff.mockReturnValue(false);
 
 		acquireIsolate = vi
 			.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
@@ -369,6 +375,117 @@ describe('PollTriggerTaskHandler', () => {
 				pollFunctions,
 			);
 			expect(scopedLogger.error).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('backoff', () => {
+		const fixedNow = new Date('2026-07-06T07:30:05.000Z');
+
+		beforeEach(() => {
+			vi.useFakeTimers({ now: fixedNow, toFake: ['Date'] });
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('skips the tick while backing off, without loading the workflow or polling', async () => {
+			const state: PollerFailureState = {
+				consecutiveErrors: 3,
+				backoffUntil: new Date(fixedNow.getTime() + 60_000),
+			};
+			pollBackoffService.peek.mockResolvedValue(state);
+			pollBackoffService.isBackingOff.mockReturnValue(true);
+
+			await handler.execute(buildTask(), report);
+
+			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).not.toHaveBeenCalled();
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(pollBackoffService.isBackingOff).toHaveBeenCalledWith(state, fixedNow);
+		});
+
+		test('runs the poll as normal when the peeked state is not backing off', async () => {
+			await handler.execute(buildTask(), report);
+
+			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalled();
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
+		});
+
+		test('records a failure with the thrown error, the peeked state and the tick clock', async () => {
+			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.peek.mockResolvedValue(state);
+			const error = new Error('poll source unreachable');
+			triggersAndPollers.runPollFunction.mockRejectedValue(error);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordFailure).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				error,
+				state,
+				now: fixedNow,
+			});
+		});
+
+		test.each([
+			['a poll returning items', pollData],
+			['a poll returning no items', null],
+		])('clears the failure state after %s', async (_name, pollResult) => {
+			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: null };
+			pollBackoffService.peek.mockResolvedValue(state);
+			triggersAndPollers.runPollFunction.mockResolvedValue(pollResult);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordSuccess).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				state,
+			});
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+		});
+
+		test('clears the failure state even when the workflow was deactivated during the poll', async () => {
+			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.peek.mockResolvedValue(state);
+			workflowRepository.isActive.mockResolvedValue(false);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollBackoffService.recordSuccess).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				nodeId: 'node-1',
+				state,
+			});
+		});
+
+		test('does not touch the failure counters when a setup failure happens before the try block', async () => {
+			const error = new UnexpectedError('Published version not found for workflow');
+			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
+
+			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
+
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
+		});
+
+		test('does not peek at all when the payload itself is invalid', async () => {
+			const task = buildTask({ payload: { nodeId: 'node-1' } });
+
+			await expect(handler.execute(task, report)).rejects.toThrow();
+
+			expect(pollBackoffService.peek).not.toHaveBeenCalled();
+		});
+
+		test('runs the poll as normal when peek itself throws, rather than failing the tick', async () => {
+			pollBackoffService.peek.mockRejectedValue(new Error('poller state read failed'));
+
+			await expect(handler.execute(buildTask(), report)).resolves.toBeDefined();
+
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
+			expect(onDispatch).toHaveBeenCalledTimes(1);
 		});
 	});
 

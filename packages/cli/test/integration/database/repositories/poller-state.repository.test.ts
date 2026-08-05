@@ -205,4 +205,149 @@ describe('PollerStateRepository', () => {
 			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
 		});
 	});
+
+	describe('findFailureState', () => {
+		it('returns null for a node that has never polled', async () => {
+			expect(await repository.findFailureState(workflowId, 'node-1')).toBeNull();
+		});
+
+		it('returns the stored counters', async () => {
+			await seed('node-1', {});
+			const backoffUntil = new Date('2026-08-05T12:30:00.000Z');
+			await repository.recordFailure(workflowId, 'node-1', backoffUntil);
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 1,
+				backoffUntil,
+			});
+		});
+	});
+
+	describe('recordFailure', () => {
+		it('increments the failure counter in SQL rather than reading then writing', async () => {
+			await seed('node-1', {});
+			const backoffUntil = new Date('2026-08-05T12:30:00.000Z');
+
+			await Promise.all([
+				repository.recordFailure(workflowId, 'node-1', backoffUntil),
+				repository.recordFailure(workflowId, 'node-1', backoffUntil),
+			]);
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(2);
+		});
+
+		it('sets the backoff deadline', async () => {
+			await seed('node-1', {});
+			const backoffUntil = new Date('2026-08-05T12:30:00.000Z');
+
+			await repository.recordFailure(workflowId, 'node-1', backoffUntil);
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 1,
+				backoffUntil,
+			});
+		});
+
+		it('moves updatedAt forward', async () => {
+			await seed('node-1', {});
+			const backdated = new Date(Date.now() - 60_000);
+			await repository.update({ workflowId, nodeId: 'node-1' }, { updatedAt: backdated });
+
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
+
+			const { updatedAt } = await readRow('node-1');
+			expect(updatedAt.getTime()).toBeGreaterThan(backdated.getTime());
+		});
+
+		it('does not touch the stored cursor', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
+
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+		});
+
+		it('returns false without throwing for a node with no stored row', async () => {
+			await expect(
+				repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z')),
+			).resolves.toBe(false);
+		});
+
+		it('commits with the surrounding transaction', async () => {
+			await seed('node-1', {});
+
+			await txRunner.run({}, async (ctx) => {
+				await repository.recordFailure(
+					workflowId,
+					'node-1',
+					new Date('2026-08-05T12:30:00.000Z'),
+					ctx,
+				);
+			});
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(1);
+		});
+
+		it('discards the increment when the surrounding transaction rolls back', async () => {
+			await seed('node-1', {});
+
+			await expect(
+				txRunner.run({}, async (ctx) => {
+					await repository.recordFailure(
+						workflowId,
+						'node-1',
+						new Date('2026-08-05T12:30:00.000Z'),
+						ctx,
+					);
+					throw new Error('execution insert failed');
+				}),
+			).rejects.toThrow('execution insert failed');
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+		});
+	});
+
+	describe('clearFailures', () => {
+		it('zeroes the counter and clears the deadline', async () => {
+			await seed('node-1', {});
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
+
+			await repository.clearFailures(workflowId, 'node-1');
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+		});
+
+		it('does not touch the stored cursor', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
+
+			await repository.clearFailures(workflowId, 'node-1');
+
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+		});
+
+		it('returns false without throwing for a node with no stored row', async () => {
+			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(false);
+		});
+
+		it('moves updatedAt forward', async () => {
+			await seed('node-1', {});
+			await repository.recordFailure(workflowId, 'node-1', new Date('2026-08-05T12:30:00.000Z'));
+			const backdated = new Date(Date.now() - 60_000);
+			await repository.update({ workflowId, nodeId: 'node-1' }, { updatedAt: backdated });
+
+			await repository.clearFailures(workflowId, 'node-1');
+
+			const { updatedAt } = await readRow('node-1');
+			expect(updatedAt.getTime()).toBeGreaterThan(backdated.getTime());
+		});
+	});
 });
