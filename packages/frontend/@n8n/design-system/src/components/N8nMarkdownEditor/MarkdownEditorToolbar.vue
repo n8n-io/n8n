@@ -193,6 +193,16 @@ function openLinkDialog() {
 	isLinkDialogOpen.value = true;
 }
 
+function scrollToolbar(event: WheelEvent) {
+	const toolbar = event.currentTarget;
+
+	if (!(toolbar instanceof HTMLElement) || toolbar.scrollWidth <= toolbar.clientWidth) return;
+	if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+
+	toolbar.scrollLeft += event.deltaY;
+	event.preventDefault();
+}
+
 function applyLink() {
 	const href = linkUrl.value.trim();
 
@@ -232,7 +242,10 @@ const setTextStyle = (value: string | number) => {
 		:class="[$style.toolbar, mode === 'always' ? $style.alwaysVisible : '']"
 		data-test-id="markdown-editor-toolbar"
 	>
-		<div :class="[$style.toolbarInner, variant === 'contained' ? $style.containedToolbar : '']">
+		<div
+			:class="[$style.toolbarInner, variant === 'contained' ? $style.containedToolbar : '']"
+			@wheel="scrollToolbar"
+		>
 			<div :class="$style.toolbarGroup">
 				<N8nTooltip :content="activeTextStyleLabel">
 					<N8nDropdownMenu
@@ -411,12 +424,24 @@ const setTextStyle = (value: string | number) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
 	height: var(--height--lg);
-	padding: var(--spacing--3xs) var(--spacing--3xs);
+	padding: var(--spacing--3xs);
+	overflow-x: auto;
+	overflow-y: hidden;
+	overscroll-behavior-inline: contain;
+	scrollbar-width: none;
 	background-color: var(--n8n--markdown-editor--background-color, var(--background--surface));
 	transition:
 		opacity var(--duration--snappy) var(--easing--ease-out),
 		visibility var(--duration--snappy) var(--easing--ease-out);
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 
 .containedToolbar {
