@@ -5,7 +5,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
-import type { Cron, CronExpression, INode, Workflow } from 'n8n-workflow';
+import type { Cron, CronExpression, INode, INodeParameters, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -33,8 +33,8 @@ const makeNode = ({
 }: {
 	id?: string;
 	typeVersion?: number;
-	parameters?: Record<string, unknown>;
-} = {}) =>
+	parameters?: INodeParameters;
+} = {}): INode =>
 	mock<INode>({
 		id,
 		type: SCHEDULE_TRIGGER_NODE_TYPE,
@@ -375,13 +375,13 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			);
 		});
 
-		it.each<[string, Record<string, unknown> | undefined, ScheduledJobMisfirePolicy]>([
+		it.each<[string, INodeParameters | undefined, ScheduledJobMisfirePolicy]>([
 			['1.4', undefined, ScheduledJobMisfirePolicy.Skip],
 			['1.4', { misfirePolicy: 'coalesce' }, ScheduledJobMisfirePolicy.Coalesce],
 			['1.4', { misfirePolicy: 'skip' }, ScheduledJobMisfirePolicy.Skip],
 			['1.3', undefined, ScheduledJobMisfirePolicy.Skip],
 			['1.3', { misfirePolicy: 'coalesce' }, ScheduledJobMisfirePolicy.Coalesce],
-			['1.4', { misfirePolicy: 'nonsense' }, ScheduledJobMisfirePolicy.Skip],
+			['1.4', { misfirePolicy: 'nonsense' } as INodeParameters, ScheduledJobMisfirePolicy.Skip],
 		])(
 			'resolves misfirePolicy %s with parameters %s to %s',
 			async (typeVersionLabel, parameters, expected) => {
