@@ -282,9 +282,16 @@ export class NodeResourceExplorerService {
 	}
 }
 
+/**
+ * A resource-locator value the credential can't reach. Identifies the parameter and the
+ * offending value only — the reachable values are gathered internally to decide that, but
+ * deliberately not returned: callers that want them can list them with `exploreResources`.
+ */
 export interface UnavailableResourceLocatorValue {
+	/** Parameter name, as declared by the node. */
 	name: string;
 	displayName: string;
+	/** The configured value the credential can't reach. Left in place; repair is the caller's. */
 	currentValue: string;
 }
 

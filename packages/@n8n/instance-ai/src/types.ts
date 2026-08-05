@@ -512,10 +512,16 @@ export interface ExploreResourcesResult {
 	builderHint?: string;
 }
 
-/** A resource-locator value the connected credential can't reach, plus the ones it can. */
+/**
+ * A resource-locator value the connected credential can't reach. Identifies the
+ * parameter and the offending value only — list the values it *can* reach with
+ * `exploreResources`, which runs the same lookup.
+ */
 export interface UnavailableLocatorValue {
+	/** Parameter name, as declared by the node. */
 	name: string;
 	displayName: string;
+	/** The configured value the credential can't reach. Left in place; repair is the caller's. */
 	currentValue: string;
 }
 
