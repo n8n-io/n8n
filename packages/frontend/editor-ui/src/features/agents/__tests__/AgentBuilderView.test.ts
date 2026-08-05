@@ -538,13 +538,9 @@ function resetViewMocks() {
 	openAgentArtifactThread.mockReset();
 }
 
-describe('AgentBuilderView — preview routing', () => {
-	// First Vite transform of this SFC + design-system deps can exceed the default
-	// 5s test timeout; warm the module once so each case measures mount behavior.
-	beforeAll(async () => {
-		await import('../views/AgentBuilderView.vue');
-	}, 30_000);
-
+// First Vite transform of this SFC + design-system deps can exceed the default
+// 5s test timeout; Provide a hefty timeout for this block to evade flakes due to pressure on machine
+describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
