@@ -7,7 +7,7 @@ import { useStyles } from '@n8n/composables/useStyles';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { commandBarEventBus } from '@/features/shared/commandBar/commandBar.eventBus';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const route = useRoute();
 const { APP_Z_INDEXES } = useStyles();
