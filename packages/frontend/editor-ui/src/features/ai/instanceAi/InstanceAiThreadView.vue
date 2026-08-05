@@ -827,7 +827,7 @@ async function dismissComposerContextChip() {
 		:class="[
 			$style.threadArea,
 			{
-				[$style.agentPreviewDockOpen]: isAgentPreviewDockOpen,
+				agentPreviewDockOpen: isAgentPreviewDockOpen,
 				[$style.agentPreviewDockNarrow]: isAgentPreviewDockNarrow,
 			},
 		]"
@@ -1223,13 +1223,6 @@ async function dismissComposerContextChip() {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
-}
-
-.agentPreviewDockOpen {
-	.chatArea {
-		width: var(--agent-preview-chat-column-width);
-		flex: 0 0 auto;
-	}
 }
 
 .agentPreviewLayoutTransition {

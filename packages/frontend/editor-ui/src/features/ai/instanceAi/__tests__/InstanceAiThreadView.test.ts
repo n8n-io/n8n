@@ -1061,7 +1061,7 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
 	});
 
-	it('uses the three-column layout and disables outer resizing while the agent dock is open', async () => {
+	it('uses the wide dock layout and disables outer resizing', async () => {
 		thread.producedArtifacts = new Map([
 			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],
 		]) as typeof thread.producedArtifacts;
@@ -1109,6 +1109,8 @@ describe('InstanceAiThreadView', () => {
 
 		const threadArea = getByTestId('instance-ai-thread-area');
 		expect(threadArea.className).toContain('agentPreviewDockOpen');
+		expect(threadArea).not.toHaveClass('agentPreviewDockNarrow');
+		expect(queryByTestId('instance-ai-builder-chat-rail')).not.toBeInTheDocument();
 		expect(previewPanel).toBeVisible();
 		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
@@ -1223,6 +1225,7 @@ describe('InstanceAiThreadView', () => {
 
 		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockNarrow');
 		expect(getByTestId('instance-ai-builder-chat-rail')).toBeVisible();
+		expect(getByTestId('instance-ai-preview-panel')).toBeVisible();
 		expect(getByRole('button', { name: 'Expand Builder chat' })).toHaveAttribute(
 			'aria-expanded',
 			'false',
