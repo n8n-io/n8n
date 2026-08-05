@@ -17,16 +17,18 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 export interface WorkflowReviewViewerEligibility {
 	canDecide: boolean;
 	reason: WorkflowReviewDecisionIneligibilityReason | null;
+	canComment: boolean;
 }
 
 /**
- * Decision-eligibility rules shared between the decision endpoint
- * (`WorkflowReviewRequestService.decide`) and the read side that surfaces the
- * `viewerCanDecide` capability (`WorkflowReviewInboxService.getDetail`), so
- * the two cannot drift.
+ * The viewer-capability rules of a review — who may decide it and who may comment
+ * on it — resolved in one pass so the two answers cannot disagree. Shared between
+ * the decision endpoint (`WorkflowReviewRequestService.decide`), the comment
+ * endpoint and the read side that surfaces both capabilities
+ * (`WorkflowReviewInboxService.getDetail`), so none of them can drift.
  */
 @Service()
-export class WorkflowReviewDecisionEligibilityService {
+export class WorkflowReviewEligibilityService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
@@ -50,11 +52,14 @@ export class WorkflowReviewDecisionEligibilityService {
 	}
 
 	/**
-	 * Advisory read-time snapshot of whether the viewer could decide the request,
-	 * mirroring `decide()`'s authorization checks in order (publish on the pinned
-	 * workflow first, then authorship) so the surfaced reason matches the error
-	 * the endpoint would return. The endpoint remains the source of truth and
-	 * re-checks under its lock.
+	 * `canDecide` is an advisory read-time snapshot of whether the viewer could decide
+	 * the request, mirroring `decide()`'s authorization checks in order (publish on the
+	 * pinned workflow first, then authorship) so the surfaced reason matches the error
+	 * the endpoint would return. The endpoint remains the source of truth and re-checks
+	 * under its lock.
+	 *
+	 * `canComment` is not advisory: it is the write gate the comment endpoint enforces
+	 * verbatim.
 	 *
 	 * Deliberately viewer-scoped: `decide()`'s `assertRequestUpdatable` lifecycle
 	 * guard is not mirrored here. It is shared with the update path and is not
@@ -65,27 +70,34 @@ export class WorkflowReviewDecisionEligibilityService {
 		user: User,
 		request: WorkflowReviewRequest,
 		pinnedWorkflowId: string | null,
+		canReadPinnedWorkflow: boolean,
 	): Promise<WorkflowReviewViewerEligibility> {
-		// No linked workflow means decide() would 404 before any permission check
+		// No linked workflow means decide() would 404 before any permission check, and
+		// there is nothing left to discuss either.
 		if (!pinnedWorkflowId) {
-			return { canDecide: false, reason: 'missing_publish_permission' };
+			return { canDecide: false, reason: 'missing_publish_permission', canComment: false };
 		}
 
-		const workflow = await this.workflowFinderService.findWorkflowForUser(pinnedWorkflowId, user, [
-			'workflow:publish',
+		const [workflow, isAuthor] = await Promise.all([
+			this.workflowFinderService.findWorkflowForUser(pinnedWorkflowId, user, ['workflow:publish']),
+			this.workflowReviewRequestAuthorRepository.isAuthor({
+				workflowReviewRequestId: request.id,
+				userId: user.id,
+			}),
 		]);
+
+		// Authorship is history; access is not. An author keeps commenting only while they
+		// can still read the pinned workflow — `workflow:read`, not `workflow:publish`, so a
+		// personal-project requester is not locked out of their own review.
+		const canComment = isAuthor ? canReadPinnedWorkflow : Boolean(workflow);
+
 		if (!workflow) {
-			return { canDecide: false, reason: 'missing_publish_permission' };
+			return { canDecide: false, reason: 'missing_publish_permission', canComment };
 		}
-
-		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor({
-			workflowReviewRequestId: request.id,
-			userId: user.id,
-		});
 		if (isAuthor && !(await this.hasAdminOverride(user, request.projectId))) {
-			return { canDecide: false, reason: 'author' };
+			return { canDecide: false, reason: 'author', canComment };
 		}
 
-		return { canDecide: true, reason: null };
+		return { canDecide: true, reason: null, canComment };
 	}
 }
