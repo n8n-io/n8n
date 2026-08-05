@@ -261,6 +261,7 @@ describe('POST /n8n-packages/import', () => {
 				missing: [],
 				created: [],
 				stubbed: [],
+				updated: [],
 			},
 			tags: {
 				matched: [],
@@ -291,6 +292,7 @@ describe('POST /n8n-packages/import', () => {
 			missing: [],
 			created: ['API_URL'],
 			stubbed: [],
+			updated: [],
 		});
 		const created = await getVariableByKey('API_URL');
 		expect(created).toMatchObject({ value: 'https://packaged.example.com' });
@@ -313,6 +315,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
 			.field('variableMissingMode', 'create-with-value')
+			.field('variableConflictPolicy', 'overwrite')
 			.field('variableParentPolicy', 'project')
 			.field('tagMissingMode', 'do-nothing')
 			.field('tagConflictPolicy', 'fail')

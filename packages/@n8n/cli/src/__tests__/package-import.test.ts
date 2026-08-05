@@ -26,6 +26,7 @@ interface ImportFlags {
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
 	variableParentPolicy?: string;
 	tagMissingMode?: string;
 	tagConflictPolicy?: string;
@@ -75,6 +76,7 @@ describe('package import command', () => {
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
 			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
 			variableParentPolicy: 'global',
 			tagMissingMode: 'do-nothing',
 			tagConflictPolicy: 'rename',
@@ -102,6 +104,7 @@ describe('package import command', () => {
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
 			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
 			variableParentPolicy: 'global',
 			tagMissingMode: 'do-nothing',
 			tagConflictPolicy: 'rename',

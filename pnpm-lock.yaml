@@ -1906,8 +1906,8 @@ importers:
   packages/@n8n/computer-use:
     dependencies:
       '@anthropic-ai/sandbox-runtime':
-        specifier: ^0.0.61
-        version: 0.0.61
+        specifier: ^0.0.66
+        version: 0.0.66
       '@inquirer/prompts':
         specifier: ^8.3.2
         version: 8.3.2(@types/node@20.19.41)
@@ -5197,15 +5197,9 @@ importers:
       sanitize-html:
         specifier: 'catalog:'
         version: 2.17.4
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
       vue-boring-avatars:
         specifier: ^1.3.0
         version: 1.3.0(vue@3.5.26(typescript@6.0.2))
-      vue-router:
-        specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -5321,6 +5315,12 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -7252,9 +7252,9 @@ packages:
   '@antfu/utils@0.7.10':
     resolution: {integrity: sha512-+562v9k4aI80m1+VuMHehNJWLOFjBnXn3tdOitzD0il5b7smkSBal4+a3oKiQTbrwMmN/TBUMDvbdoWDehgOww==}
 
-  '@anthropic-ai/sandbox-runtime@0.0.61':
-    resolution: {integrity: sha512-5atex1pnNZW/Ba83376+m83FFIbWrqzoCKCxeC4Kx7YF9El/50WBW3zAbDxYONP2k1SvK9XL07s5EZC6JhQ2jA==}
-    engines: {node: '>=18.0.0'}
+  '@anthropic-ai/sandbox-runtime@0.0.66':
+    resolution: {integrity: sha512-OE7QiGZJXe7ZshP47U2vk2z9FGSyiSN4ca9krVrE28LS2Qj0AHRWZz+gAce6FzG3gx/4OjNFwIhDuHXnI0WWwA==}
+    engines: {node: '>=20.11.0'}
     hasBin: true
 
   '@anthropic-ai/sdk@0.91.1':
@@ -23215,12 +23215,11 @@ snapshots:
 
   '@antfu/utils@0.7.10': {}
 
-  '@anthropic-ai/sandbox-runtime@0.0.61':
+  '@anthropic-ai/sandbox-runtime@0.0.66':
     dependencies:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0
       node-forge: 1.4.0
-      shell-quote: 1.9.0
       zod: 3.25.76
 
   '@anthropic-ai/sdk@0.91.1(zod@3.25.76)':
