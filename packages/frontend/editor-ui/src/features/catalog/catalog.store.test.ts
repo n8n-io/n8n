@@ -2,10 +2,17 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import * as api from '@/features/catalog/catalog.api';
 import { useCatalogStore } from '@/features/catalog/catalog.store';
+import type { CatalogEntry } from '@/features/catalog/catalog.types';
 
 vi.mock('@/features/catalog/catalog.api');
 
-const entry = (id: string) => ({ id, name: `Workflow ${id}`, description: null, fields: [] });
+const entry = (id: string): CatalogEntry => ({
+	id,
+	name: `Workflow ${id}`,
+	description: null,
+	trigger: 'manual-trigger',
+	fields: [],
+});
 
 describe('catalog.store', () => {
 	beforeEach(() => {

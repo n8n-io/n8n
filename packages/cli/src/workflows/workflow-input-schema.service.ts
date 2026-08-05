@@ -25,8 +25,15 @@ export type IneligibleReason =
 	/** Accepts arbitrary data, so there is no contract to build a form from. */
 	| 'passthrough-input';
 
+/** The trigger a caller enters the workflow through. */
+export type StartTrigger =
+	/** Declares named, typed inputs — the run form is built from them. */
+	| 'execute-workflow-trigger'
+	/** Compat path for workflows written before the contract existed: takes no input. */
+	| 'manual-trigger';
+
 export type WorkflowInputSchema =
-	| { eligible: true; fields: FieldValueOption[] }
+	| { eligible: true; trigger: StartTrigger; fields: FieldValueOption[] }
 	| { eligible: false; reason: IneligibleReason };
 
 /**
@@ -56,7 +63,7 @@ export class WorkflowInputSchemaService {
 			// Execute Workflow Trigger became the way to declare one.
 			const hasManualTrigger = enabled.some((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
 			return hasManualTrigger
-				? { eligible: true, fields: [] }
+				? { eligible: true, trigger: 'manual-trigger', fields: [] }
 				: { eligible: false, reason: 'no-start-node' };
 		}
 
@@ -66,7 +73,7 @@ export class WorkflowInputSchemaService {
 			return { eligible: false, reason: 'passthrough-input' };
 		}
 
-		return { eligible: true, fields };
+		return { eligible: true, trigger: 'execute-workflow-trigger', fields };
 	}
 
 	/**

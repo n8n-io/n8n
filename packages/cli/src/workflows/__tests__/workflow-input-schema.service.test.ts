@@ -80,13 +80,13 @@ describe('WorkflowInputSchemaService', () => {
 				]),
 			);
 
-			expect(result).toEqual({ eligible: true, fields: [] });
+			expect(result).toEqual({ eligible: true, trigger: 'manual-trigger', fields: [] });
 		});
 
 		it('should accept a manual trigger as taking no input', async () => {
 			const result = await service.describe(workflow([node(MANUAL_TRIGGER_NODE_TYPE)]));
 
-			expect(result).toEqual({ eligible: true, fields: [] });
+			expect(result).toEqual({ eligible: true, trigger: 'manual-trigger', fields: [] });
 		});
 
 		it('should reject a trigger that accepts arbitrary data', async () => {
@@ -131,6 +131,7 @@ describe('WorkflowInputSchemaService', () => {
 
 			expect(result).toEqual({
 				eligible: true,
+				trigger: 'execute-workflow-trigger',
 				fields: [
 					{ name: 'customer', type: 'string' },
 					{ name: 'amount', type: 'number' },
@@ -150,6 +151,7 @@ describe('WorkflowInputSchemaService', () => {
 
 			expect(result).toEqual({
 				eligible: true,
+				trigger: 'execute-workflow-trigger',
 				fields: [
 					{ name: 'customer', type: 'string' },
 					{ name: 'amount', type: 'number' },
@@ -162,7 +164,7 @@ describe('WorkflowInputSchemaService', () => {
 				workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, { inputSource: 'workflowInputs' })]),
 			);
 
-			expect(result).toEqual({ eligible: true, fields: [] });
+			expect(result).toEqual({ eligible: true, trigger: 'execute-workflow-trigger', fields: [] });
 		});
 
 		it('should prefer the declared contract over a manual trigger', async () => {
@@ -178,6 +180,7 @@ describe('WorkflowInputSchemaService', () => {
 
 			expect(result).toEqual({
 				eligible: true,
+				trigger: 'execute-workflow-trigger',
 				fields: [{ name: 'customer', type: 'string' }],
 			});
 		});

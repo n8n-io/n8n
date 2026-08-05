@@ -6,6 +6,7 @@ import type { ExecutionStatus, FieldValueOption } from 'n8n-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { CATALOG_RUN_USER_KEY } from '@/workflows/catalog-run.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { StartTrigger } from '@/workflows/workflow-input-schema.service';
 import { WorkflowInputSchemaService } from '@/workflows/workflow-input-schema.service';
 
 /**
@@ -19,6 +20,12 @@ export type CatalogEntry = {
 	id: string;
 	name: string;
 	description: string | null;
+	/**
+	 * How the workflow is entered. Surfaced rather than kept internal: a
+	 * manual-trigger workflow takes no input at all, which is otherwise
+	 * indistinguishable from one whose builder simply declared no fields yet.
+	 */
+	trigger: StartTrigger;
 	fields: FieldValueOption[];
 };
 
@@ -93,6 +100,7 @@ export class CatalogService {
 					id: workflow.id,
 					name: workflow.name,
 					description: workflow.description,
+					trigger: schema.trigger,
 					fields: schema.fields,
 				};
 			}),

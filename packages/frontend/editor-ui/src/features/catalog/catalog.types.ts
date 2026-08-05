@@ -6,10 +6,14 @@ export type CatalogField = {
 	type: string;
 };
 
+/** How the workflow is entered, which decides whether it takes input at all. */
+export type CatalogTrigger = 'execute-workflow-trigger' | 'manual-trigger';
+
 export type CatalogEntry = {
 	id: string;
 	name: string;
 	description: string | null;
+	trigger: CatalogTrigger;
 	fields: CatalogField[];
 };
 

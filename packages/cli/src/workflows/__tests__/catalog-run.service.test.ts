@@ -53,6 +53,7 @@ describe('CatalogRunService', () => {
 		executions.runWorkflow.mockResolvedValue('execution-1');
 		schemas.describe.mockResolvedValue({
 			eligible: true,
+			trigger: 'execute-workflow-trigger',
 			fields: [{ name: 'customer', type: 'string' }],
 		});
 

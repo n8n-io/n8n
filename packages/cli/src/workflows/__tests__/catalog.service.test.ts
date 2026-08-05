@@ -33,7 +33,11 @@ describe('CatalogService', () => {
 		schemas = mock<WorkflowInputSchemaService>();
 		executions = mock<ExecutionService>();
 
-		schemas.describe.mockResolvedValue({ eligible: true, fields: [] });
+		schemas.describe.mockResolvedValue({
+			eligible: true,
+			trigger: 'manual-trigger',
+			fields: [],
+		});
 		executions.findRangeWithCount.mockResolvedValue({ results: [], count: 0, estimated: false });
 
 		service = new CatalogService(logger, finder, schemas, executions);
@@ -51,6 +55,7 @@ describe('CatalogService', () => {
 		finder.findAllWorkflowsForUser.mockResolvedValue([entity('a', 'Weekly report')]);
 		schemas.describe.mockResolvedValue({
 			eligible: true,
+			trigger: 'execute-workflow-trigger',
 			fields: [{ name: 'customer', type: 'string' }],
 		});
 
@@ -61,6 +66,7 @@ describe('CatalogService', () => {
 				id: 'a',
 				name: 'Weekly report',
 				description: null,
+				trigger: 'execute-workflow-trigger',
 				fields: [{ name: 'customer', type: 'string' }],
 			},
 		]);
@@ -69,7 +75,7 @@ describe('CatalogService', () => {
 	it('should leave out workflows with no readable contract', async () => {
 		finder.findAllWorkflowsForUser.mockResolvedValue([entity('a'), entity('b')]);
 		schemas.describe
-			.mockResolvedValueOnce({ eligible: true, fields: [] })
+			.mockResolvedValueOnce({ eligible: true, trigger: 'manual-trigger', fields: [] })
 			.mockResolvedValueOnce({ eligible: false, reason: 'own-schedule' });
 
 		const result = await service.list(user);
