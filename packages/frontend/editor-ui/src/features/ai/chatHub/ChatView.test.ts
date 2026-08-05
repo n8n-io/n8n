@@ -482,9 +482,7 @@ describe('ChatView', () => {
 		// A conversation's agent can disappear (deleted, credentials revoked, provider
 		// disabled). `chatStore.getAgent` then falls back to a placeholder built from the
 		// name cached on the session, so the conversation stays readable and usable rather
-		// than blanking out. If we ever decide to warn here instead — the
-		// `selectModel.existing` callout is wired but unreachable on this path — this is the
-		// test to update (N8N-155).
+		// than blanking out.
 		it('handles when the agent selected for the conversation is not available anymore', async () => {
 			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
 
