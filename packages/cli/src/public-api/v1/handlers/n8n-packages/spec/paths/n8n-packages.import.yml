@@ -244,19 +244,20 @@ post:
                 `variables.updated`; it needs a license that permits variables,
                 the `variable:update` / `projectVariable:update` permission on
                 that scope, and, for API key callers, the `variable:update`
-                scope. `fail` rejects the import with a 409 instead. A package
-                with no value to write bundles nothing to compare, so every
-                policy leaves resolved variables alone: values excluded at
-                export, an exported value that was itself empty, or one
-                identical to the target's. The reverse does not hold: a resolved
-                variable holding an empty value — a stub an earlier import
-                created, say — still counts as a value, so `overwrite` fills it
-                and `fail` rejects it. Under `overwrite`, a project package
-                whose projects hold *different* values for a name they all
-                resolve to one row — a global none of them shadows, typically —
-                is rejected with a 409: one row cannot carry both values, and
-                the import will not pick for you. Give the projects their own
-                variables in the target, or import them separately.
+                scope. `fail` rejects the import with a 409 instead. Every
+                policy leaves a resolved variable alone when there is nothing
+                to change — either the package bundles no value for it (values
+                were excluded at export, or the exported value was itself
+                empty), or the value it bundles already matches the target's.
+                The reverse does not hold: a resolved variable holding an empty
+                value — a stub an earlier import created, say — still counts as
+                a value, so `overwrite` fills it and `fail` rejects it. Under
+                `overwrite`, a project package whose projects hold *different*
+                values for a name they all resolve to one row — a global none of
+                them shadows, typically — is rejected with a 409: one row cannot
+                carry both values, and the import will not pick for you. Give
+                the projects their own variables in the target, or import them
+                separately.
             variableParentPolicy:
               type: string
               enum:
