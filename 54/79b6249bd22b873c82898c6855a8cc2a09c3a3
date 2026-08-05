@@ -1,0 +1,22 @@
+packages/testing/playwright/tests/e2e/workflows/editor/execution/debug.spec.ts
+  s_28dfb27b9a618d::t_b263cb2a2e5897 54-59
+  s_28dfb27b9a618d::t_924d7061662f67 72-76
+packages/testing/playwright/pages/CanvasPage.ts
+  s_28dfb27b9a618d::t_00d985d5e6de2f 959-962
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5479b6249bd22b873c82898c6855a8cc2a09c3a3",
+  "prompts": {},
+  "sessions": {
+    "s_28dfb27b9a618d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a9590a8-c42b-4024-b963-57607ba46a84",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
