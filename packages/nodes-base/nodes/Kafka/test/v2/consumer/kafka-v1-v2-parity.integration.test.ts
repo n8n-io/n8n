@@ -22,7 +22,8 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import type { KafkaCredentials } from '../../../utils';
 import { KafkaTriggerV1 } from '../../../v1/KafkaTriggerV1.node';
-import { consumeTopic, createKafkaConsumer } from '../../../v2/consumer/consumer';
+import { consumeTopic } from '../../../v2/consumer/consume-topic';
+import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import { createMessageParser } from '../../../v2/consumer/message-parser';
 
 const execFileAsync = promisify(execFile);

@@ -3,9 +3,7 @@ import type { INodeExecutionData } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
 
 import type { KafkaMessageParser } from './message-parser';
-import { withTimeout, type KafkaCredentials } from '../../utils';
-import { getKafkaLibrary } from '../transport/client';
-import { toKafkaJSConfig } from '../transport/config';
+import { withTimeout } from '../../utils';
 
 /** Bounds teardown so a hung broker request cannot block deactivation, as in v1. */
 const CLOSE_TIMEOUT_MS = 30_000;
@@ -21,20 +19,8 @@ const closedDuringBatch = () =>
 	new OperationalError('Kafka consumer closed before the batch was handed off');
 
 /**
- * Consumer settings n8n pins rather than leaves to the library, from the ENT-8
- * findings (section 4). Both differ from librdkafka's own defaults and restore
- * what v1 effectively did on kafkajs.
- */
-export const CONSUMER_DEFAULTS = {
-	/** How long a fetch gathers messages before returning. librdkafka waits 500ms; kafkajs waited 5s. */
-	maxWaitTimeInMs: 5000,
-	/** How often read progress is saved. v1 drove commits itself; librdkafka needs the interval set. */
-	autoCommitInterval: 5000,
-} as const;
-
-/**
  * Partitions processed in parallel. Belongs to `run()`, not the constructor
- * config, so it is applied in {@link consumeTopic}.
+ * config, so it lives here rather than with the factory in `transport/consumer`.
  *
  * The library defaults this to 1 when the key is absent, but it checks with
  * `Object.hasOwn`, so passing the key with an explicit `undefined` skips that
@@ -42,37 +28,6 @@ export const CONSUMER_DEFAULTS = {
  * possibly-undefined user value straight through; resolve it to a number first.
  */
 export const DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY = 1;
-
-export interface KafkaConsumerOptions {
-	/** ID of the consumer group Kafka uses to track how far the group has read. */
-	groupId: string;
-}
-
-/**
- * Builds a configured but unconnected consumer, combining the credential
- * conversion with the pinned defaults above. Reaches the library only through
- * the shared lazy loader, so importing this module never loads the native
- * binding.
- * @param credentials - The decrypted Kafka credential
- * @param options - Per-node consumer settings
- */
-export async function createKafkaConsumer(
-	credentials: KafkaCredentials,
-	options: KafkaConsumerOptions,
-): Promise<KafkaJS.Consumer> {
-	const { Kafka, logLevel } = await getKafkaLibrary();
-	const config = toKafkaJSConfig(credentials);
-	// Without an explicit level the library's own logger writes broker host:port to
-	// process stdout, outside n8n's logger. v1 pinned ERROR the same way.
-	const kafka = new Kafka({ ...config, kafkaJS: { ...config.kafkaJS, logLevel: logLevel.ERROR } });
-
-	return kafka.consumer({
-		kafkaJS: {
-			groupId: options.groupId,
-			...CONSUMER_DEFAULTS,
-		},
-	});
-}
 
 /** One parsed batch, handed to the caller together with its completion callback. */
 export interface KafkaBatchHandOff {
@@ -111,7 +66,7 @@ export interface KafkaConsumerHandle {
  * `onBatch`. Automatic progress-saving stays on (`eachBatchAutoResolve` is left
  * at the library default), so the read position advances once the loop returns
  * from a batch.
- * @param consumer - An unconnected consumer from {@link createKafkaConsumer}
+ * @param consumer - An unconnected consumer from `transport/consumer`
  * @param options - Topic, parser, and the batch hand-off
  */
 export async function consumeTopic(

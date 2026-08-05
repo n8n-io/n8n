@@ -1,7 +1,8 @@
 import type { KafkaCredentials } from '../../../utils';
-// A static import, on purpose: the assertion below is that pulling the consumer
-// module into a process does not pull the native library in with it.
-import { createKafkaConsumer } from '../../../v2/consumer';
+// Static imports, on purpose: the assertion below is that pulling the consumer
+// modules into a process does not pull the native library in with them.
+import '../../../v2/consumer';
+import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
 	confluentKafkaModuleMock,
 	getConfluentKafkaAccessCount,

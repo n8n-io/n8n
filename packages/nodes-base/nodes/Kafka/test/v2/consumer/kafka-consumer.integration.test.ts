@@ -18,7 +18,8 @@ import { promisify } from 'node:util';
 import { mock } from 'vitest-mock-extended';
 
 import type { KafkaCredentials } from '../../../utils';
-import { consumeTopic, createKafkaConsumer } from '../../../v2/consumer/consumer';
+import { consumeTopic } from '../../../v2/consumer/consume-topic';
+import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
 	createMessageParser,
 	type KafkaMessageParserOptions,

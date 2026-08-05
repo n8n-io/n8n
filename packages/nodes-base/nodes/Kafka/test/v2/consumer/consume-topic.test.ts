@@ -1,14 +1,10 @@
 import type { INodeExecutionData } from 'n8n-workflow';
 
 import type { KafkaCredentials } from '../../../utils';
-import {
-	consumeTopic,
-	createKafkaConsumer,
-	type KafkaBatchHandOff,
-} from '../../../v2/consumer/consumer';
+import { consumeTopic, type KafkaBatchHandOff } from '../../../v2/consumer/consume-topic';
+import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
 	confluentKafkaModuleMock,
-	getFakeClientConfigs,
 	getFakeConsumers,
 	resetConfluentKafkaRecordings,
 	type FakeConsumer,
@@ -41,43 +37,6 @@ const newConsumer = async (groupId = 'n8n-kafka'): Promise<FakeConsumer> => {
 	if (!consumer) throw new Error('the fake recorded no consumer');
 	return consumer;
 };
-
-describe('createKafkaConsumer', () => {
-	it('hands the library the ENT-8 consumer defaults inside the kafkaJS wrapper key', async () => {
-		const consumer = await newConsumer('my-group');
-
-		expect(consumer.config).toStrictEqual({
-			kafkaJS: {
-				groupId: 'my-group',
-				maxWaitTimeInMs: 5000,
-				autoCommitInterval: 5000,
-			},
-		});
-	});
-
-	it('builds the client from the converted credential, with logging pinned to ERROR', async () => {
-		await newConsumer();
-
-		expect(getFakeClientConfigs()).toStrictEqual([
-			{
-				kafkaJS: {
-					brokers: ['localhost:9092'],
-					clientId: 'n8n-test',
-					ssl: false,
-					logLevel: 1,
-				},
-			},
-		]);
-	});
-
-	it('returns a consumer that has not connected yet', async () => {
-		const consumer = await newConsumer();
-
-		expect(consumer.connect).not.toHaveBeenCalled();
-		expect(consumer.subscribe).not.toHaveBeenCalled();
-		expect(consumer.run).not.toHaveBeenCalled();
-	});
-});
 
 describe('consumeTopic', () => {
 	const start = async (
