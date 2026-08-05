@@ -70,6 +70,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -83,6 +84,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 		});
 
@@ -95,6 +97,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -119,6 +122,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -142,6 +146,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(UserError);
@@ -156,6 +161,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -180,6 +186,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			discoveryMock.mockRejectedValueOnce(new Error('Discovery failed'));
@@ -206,6 +213,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			const mockConfiguration = new real_odic_client.Configuration(
@@ -238,6 +246,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			const newMockConfiguration = new real_odic_client.Configuration(
@@ -291,6 +300,7 @@ describe('OIDC service', () => {
 			prompt: 'consent',
 			authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			additionalScopes: '',
+			rpInitiatedLogoutEnabled: false,
 		};
 
 		await oidcService.updateConfig(initialConfig);
@@ -336,6 +346,7 @@ describe('OIDC service', () => {
 				prompt: 'consent',
 				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			};
 
 			await oidcService.updateConfig(initialConfig);
@@ -437,6 +448,7 @@ describe('OIDC service', () => {
 			prompt: 'select_account',
 			authenticationContextClassReference: [],
 			additionalScopes: '',
+			rpInitiatedLogoutEnabled: false,
 		};
 
 		let provisioningConfig: GlobalConfig['sso']['provisioning'];
@@ -548,6 +560,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: 'groups',
+				rpInitiatedLogoutEnabled: false,
 			});
 
 			const authUrl = await oidcService.generateTestLoginUrl();
@@ -577,6 +590,7 @@ describe('OIDC service', () => {
 				prompt: 'select_account',
 				authenticationContextClassReference: [],
 				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
 			});
 
 			const authUrl = await oidcService.generateTestLoginUrl();
