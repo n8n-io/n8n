@@ -9,7 +9,6 @@ import {
 import { makePollTriggerWorkflow } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
 
-const TRANSIENT_BACKOFF_FLOOR_MS = 5_000;
 const RECOVERY_SAFETY_MARGIN_MS = 1_500;
 const SKIP_CHECK_SAFETY_MARGIN_MS = 500;
 const MIN_SKIP_CHECK_WINDOW_MS = 1_000;
@@ -53,7 +52,9 @@ test.describe(
 			const failureState = await api.getPollerFailureState(workflowId, nodeId);
 			expect(failureState.consecutiveErrors).toBe(1);
 			expect(failureState.backoffUntil).not.toBeNull();
-			expect(new Date(failureState.backoffUntil as string).getTime()).toBeGreaterThan(Date.now());
+			const backoffUntilMs = new Date(failureState.backoffUntil as string).getTime();
+			expect(backoffUntilMs).toBeGreaterThan(Date.now());
+			const transientBackoffFloorMs = backoffUntilMs - failureIssuedAt;
 
 			const afterFailedPoll = await triggerExecutionIds(api, workflowId);
 			await api.fireScheduledJobsNow(workflowId, nodeId);
@@ -61,7 +62,7 @@ test.describe(
 			const elapsedSinceFailure = Date.now() - failureIssuedAt;
 			const skipCheckWindowMs = Math.max(
 				MIN_SKIP_CHECK_WINDOW_MS,
-				TRANSIENT_BACKOFF_FLOOR_MS - elapsedSinceFailure - SKIP_CHECK_SAFETY_MARGIN_MS,
+				transientBackoffFloorMs - elapsedSinceFailure - SKIP_CHECK_SAFETY_MARGIN_MS,
 			);
 			await expectNoNewTriggerExecution(api, workflowId, afterFailedPoll, skipCheckWindowMs);
 			expect(await services.proxy.wasRequestMade({ method: 'GET', path }, 2)).toBe(true);
@@ -69,7 +70,7 @@ test.describe(
 			const elapsedSinceSkipCheck = Date.now() - failureIssuedAt;
 			const remainingUntilRecovery = Math.max(
 				0,
-				TRANSIENT_BACKOFF_FLOOR_MS + RECOVERY_SAFETY_MARGIN_MS - elapsedSinceSkipCheck,
+				transientBackoffFloorMs + RECOVERY_SAFETY_MARGIN_MS - elapsedSinceSkipCheck,
 			);
 			await new Promise((resolve) => setTimeout(resolve, remainingUntilRecovery));
 

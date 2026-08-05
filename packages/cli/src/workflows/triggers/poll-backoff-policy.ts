@@ -7,6 +7,8 @@ export const MAX_BACKOFF_MS = 30 * Time.minutes.toMilliseconds;
 export const RETRY_AFTER_MAX_MS = 1 * Time.hours.toMilliseconds;
 
 const PERMANENT_STATUS_CODES = new Set([401, 403]);
+const MAX_CANDIDATE_DEPTH = 5;
+const CANDIDATE_CHILD_KEYS = ['cause', 'errorResponse', 'reason'] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
@@ -21,16 +23,29 @@ function getResponse(candidate: unknown): Record<string, unknown> | undefined {
 function candidateChain(error: unknown): Array<Record<string, unknown>> {
 	if (!isRecord(error)) return [];
 
-	const candidates: Array<Record<string, unknown>> = [error];
+	const candidates: Array<Record<string, unknown>> = [];
+	const visited = new Set<unknown>();
+	const queue: Array<{ value: Record<string, unknown>; depth: number }> = [
+		{ value: error, depth: 0 },
+	];
 
-	const cause = isRecord(error.cause) ? error.cause : undefined;
-	if (cause) candidates.push(cause);
+	while (queue.length > 0) {
+		const next = queue.shift();
+		if (!next) break;
+		const { value, depth } = next;
+		if (visited.has(value)) continue;
+		visited.add(value);
+		candidates.push(value);
 
-	const errorResponse = isRecord(error.errorResponse) ? error.errorResponse : undefined;
-	if (errorResponse) candidates.push(errorResponse);
+		if (depth >= MAX_CANDIDATE_DEPTH) continue;
 
-	const reason = errorResponse && isRecord(errorResponse.reason) ? errorResponse.reason : undefined;
-	if (reason) candidates.push(reason);
+		for (const key of CANDIDATE_CHILD_KEYS) {
+			const child = value[key];
+			if (isRecord(child) && !visited.has(child)) {
+				queue.push({ value: child, depth: depth + 1 });
+			}
+		}
+	}
 
 	return candidates;
 }
@@ -90,9 +105,10 @@ function parseRetryAfterValue(raw: string, now: Date): number | null {
 	return diff > 0 ? diff : null;
 }
 
-export function classifyPollFailure(error: unknown): PollFailureClass {
+export function classifyPollFailure(error: unknown, now: Date): PollFailureClass {
 	const status = httpCodeStatus(error) ?? statusFromWalk(error);
-	return status !== null && PERMANENT_STATUS_CODES.has(status) ? 'permanent' : 'transient';
+	if (status === null || !PERMANENT_STATUS_CODES.has(status)) return 'transient';
+	return retryAfterMs(error, now) !== null ? 'transient' : 'permanent';
 }
 
 export function retryAfterMs(error: unknown, now: Date): number | null {
@@ -106,7 +122,8 @@ export function retryAfterMs(error: unknown, now: Date): number | null {
 		const raw = Array.isArray(value) ? value[0] : value;
 		if (raw === undefined) continue;
 
-		return parseRetryAfterValue(raw, now);
+		const parsed = parseRetryAfterValue(raw, now);
+		if (parsed !== null) return parsed;
 	}
 	return null;
 }

@@ -4,7 +4,7 @@ import type { PollerFailureState, PollerStateRepository } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { MAX_BACKOFF_MS } from '@/workflows/triggers/poll-backoff-policy';
+import { MAX_BACKOFF_MS, RETRY_AFTER_MAX_MS } from '@/workflows/triggers/poll-backoff-policy';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 
 describe('PollBackoffService', () => {
@@ -99,8 +99,8 @@ describe('PollBackoffService', () => {
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
 		});
 
-		test('ignores a stale deadline further ahead than MAX_BACKOFF_MS', () => {
-			const backoffUntil = new Date(now.getTime() + MAX_BACKOFF_MS + 60_000);
+		test('ignores a stale deadline further ahead than RETRY_AFTER_MAX_MS', () => {
+			const backoffUntil = new Date(now.getTime() + RETRY_AFTER_MAX_MS + 60_000);
 
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
 		});
@@ -111,10 +111,27 @@ describe('PollBackoffService', () => {
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
 		});
 
-		test('is true exactly at the MAX_BACKOFF_MS clamp boundary', () => {
-			const backoffUntil = new Date(now.getTime() + MAX_BACKOFF_MS);
+		test('is true exactly at the RETRY_AFTER_MAX_MS clamp boundary', () => {
+			const backoffUntil = new Date(now.getTime() + RETRY_AFTER_MAX_MS);
 
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(true);
+		});
+
+		test('honours a Retry-After deadline beyond MAX_BACKOFF_MS but within RETRY_AFTER_MAX_MS', () => {
+			const backoffUntil = new Date(now.getTime() + 40 * 60_000);
+
+			expect(backoffUntil.getTime() - now.getTime()).toBeGreaterThan(MAX_BACKOFF_MS);
+			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(true);
+		});
+
+		test('is false when backoffUntil is not a Date', () => {
+			const state = {
+				consecutiveErrors: 1,
+				backoffUntil: now.toISOString(),
+			} as unknown as PollerFailureState;
+
+			expect(() => service.isBackingOff(state, now)).not.toThrow();
+			expect(service.isBackingOff(state, now)).toBe(false);
 		});
 	});
 
@@ -193,7 +210,18 @@ describe('PollBackoffService', () => {
 			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
+		test('does not log at warn when the row is missing at failure time', async () => {
+			pollerStateRepository.recordFailure.mockResolvedValue(false);
+			const service = buildService();
+
+			await recordFailure(service);
+
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
+			expect(scopedLogger.debug).toHaveBeenCalled();
+		});
+
 		test('logs the failure class, count and deadline at warn', async () => {
+			pollerStateRepository.recordFailure.mockResolvedValue(true);
 			const service = buildService();
 
 			await recordFailure(service, { state: { consecutiveErrors: 1, backoffUntil: null } });
@@ -209,6 +237,22 @@ describe('PollBackoffService', () => {
 				}),
 			);
 		});
+
+		test('does not throw and does not write when the error throws on property access', async () => {
+			const service = buildService();
+			const hostileError: Record<string, unknown> = {};
+			Object.defineProperty(hostileError, 'httpCode', {
+				get(): never {
+					throw new Error('trap');
+				},
+			});
+
+			await expect(
+				recordFailure(service, { state: null, error: hostileError }),
+			).resolves.toBeUndefined();
+
+			expect(pollerStateRepository.recordFailure).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('recordSuccess', () => {
@@ -223,12 +267,12 @@ describe('PollBackoffService', () => {
 			expect(pollerStateRepository.clearFailures).not.toHaveBeenCalled();
 		});
 
-		test('issues no write when the state is null', async () => {
+		test('issues a write when the state is null, since a null read is indistinguishable from a failed one', async () => {
 			const service = buildService();
 
 			await recordSuccess(service, null);
 
-			expect(pollerStateRepository.clearFailures).not.toHaveBeenCalled();
+			expect(pollerStateRepository.clearFailures).toHaveBeenCalledWith('wf-1', 'node-1');
 		});
 
 		test('issues no write when the state is already clean', async () => {

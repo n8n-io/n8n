@@ -20,6 +20,8 @@ const node: INode = {
 };
 
 describe('classifyPollFailure', () => {
+	const now = new Date('2026-08-05T12:00:00.000Z');
+
 	test.each([
 		['401', 'permanent'],
 		['403', 'permanent'],
@@ -30,13 +32,13 @@ describe('classifyPollFailure', () => {
 	])('classifies a NodeApiError with httpCode %s as %s', (httpCode, expected) => {
 		const error = new NodeApiError(node, {}, { httpCode });
 
-		expect(classifyPollFailure(error)).toBe(expected);
+		expect(classifyPollFailure(error, now)).toBe(expected);
 	});
 
 	test('classifies a network error with no status as transient', () => {
 		const error = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
 
-		expect(classifyPollFailure(error)).toBe('transient');
+		expect(classifyPollFailure(error, now)).toBe('transient');
 	});
 
 	test.each([
@@ -44,7 +46,7 @@ describe('classifyPollFailure', () => {
 		['undefined', undefined],
 		['a bare object', {}],
 	])('classifies %s as transient', (_name, thrown) => {
-		expect(classifyPollFailure(thrown)).toBe('transient');
+		expect(classifyPollFailure(thrown, now)).toBe('transient');
 	});
 
 	test.each([
@@ -56,38 +58,38 @@ describe('classifyPollFailure', () => {
 		(status, expected) => {
 			const error = { response: { status } };
 
-			expect(classifyPollFailure(error)).toBe(expected);
+			expect(classifyPollFailure(error, now)).toBe(expected);
 		},
 	);
 
 	test('prefers httpCode over a conflicting response.status', () => {
 		const error = { httpCode: '401', response: { status: 500 } };
 
-		expect(classifyPollFailure(error)).toBe('permanent');
+		expect(classifyPollFailure(error, now)).toBe('permanent');
 	});
 
 	test('accepts httpCode as a number rather than a string', () => {
 		const error = { httpCode: 401 };
 
-		expect(classifyPollFailure(error)).toBe('permanent');
+		expect(classifyPollFailure(error, now)).toBe('permanent');
 	});
 
 	test('prefers the direct response over a conflicting error.cause.response', () => {
 		const error = { response: { status: 500 }, cause: { response: { status: 401 } } };
 
-		expect(classifyPollFailure(error)).toBe('transient');
+		expect(classifyPollFailure(error, now)).toBe('transient');
 	});
 
 	test('treats a non-integer status as unmatched', () => {
 		const error = { response: { status: 401.5 } };
 
-		expect(classifyPollFailure(error)).toBe('transient');
+		expect(classifyPollFailure(error, now)).toBe('transient');
 	});
 
 	test('treats a negative status as unmatched', () => {
 		const error = { response: { status: -401 } };
 
-		expect(classifyPollFailure(error)).toBe('transient');
+		expect(classifyPollFailure(error, now)).toBe('transient');
 	});
 
 	test.each([
@@ -99,26 +101,47 @@ describe('classifyPollFailure', () => {
 			const cause = new NodeApiError(node, {}, { httpCode });
 			const error = new NodeOperationError(node, cause as Error);
 
-			expect(classifyPollFailure(error)).toBe(expected);
+			expect(classifyPollFailure(error, now)).toBe(expected);
 		},
 	);
 
 	test('reads httpCode off error.errorResponse rather than error.cause', () => {
 		const error = { errorResponse: { httpCode: '403' } };
 
-		expect(classifyPollFailure(error)).toBe('permanent');
+		expect(classifyPollFailure(error, now)).toBe('permanent');
 	});
 
 	test('prefers an httpCode on a later candidate over a conflicting response.status on an earlier one', () => {
 		const error = { response: { status: 500 }, cause: { httpCode: '401' } };
 
-		expect(classifyPollFailure(error)).toBe('permanent');
+		expect(classifyPollFailure(error, now)).toBe('permanent');
 	});
 
 	test('prefers an httpCode on an earlier candidate over a conflicting response.status on a later one', () => {
 		const error = { httpCode: '401', cause: { response: { status: 500 } } };
 
-		expect(classifyPollFailure(error)).toBe('permanent');
+		expect(classifyPollFailure(error, now)).toBe('permanent');
+	});
+
+	test.each([401, 403])(
+		'classifies a %s carrying a parseable Retry-After as transient',
+		(httpCode) => {
+			const error = { httpCode, response: { headers: { 'retry-after': '120' } } };
+
+			expect(classifyPollFailure(error, now)).toBe('transient');
+		},
+	);
+
+	test.each([401, 403])('classifies a %s with no Retry-After as permanent', (httpCode) => {
+		const error = { httpCode };
+
+		expect(classifyPollFailure(error, now)).toBe('permanent');
+	});
+
+	test('classifies a 403 carrying an unparseable Retry-After as permanent', () => {
+		const error = { httpCode: 403, response: { headers: { 'retry-after': 'soon' } } };
+
+		expect(classifyPollFailure(error, now)).toBe('permanent');
 	});
 });
 
@@ -215,6 +238,28 @@ describe('retryAfterMs', () => {
 		const error = {
 			response: { headers: { 'retry-after': '60' } },
 			cause: { response: { headers: { 'retry-after': '999' } } },
+		};
+
+		expect(retryAfterMs(error, now)).toBe(60_000);
+	});
+
+	test('finds a Retry-After nested two levels deep, at error.cause.cause.response.headers', () => {
+		const error = { cause: { cause: { response: { headers: { 'retry-after': '120' } } } } };
+
+		expect(retryAfterMs(error, now)).toBe(120_000);
+	});
+
+	test('terminates instead of hanging on a cyclic error.cause', () => {
+		const error: Record<string, unknown> = { response: { headers: { 'retry-after': '60' } } };
+		error.cause = error;
+
+		expect(retryAfterMs(error, now)).toBe(60_000);
+	});
+
+	test('continues past an unparseable header on a shallower candidate to a parseable one deeper', () => {
+		const error = {
+			response: { headers: { 'retry-after': 'soon' } },
+			cause: { response: { headers: { 'retry-after': '60' } } },
 		};
 
 		expect(retryAfterMs(error, now)).toBe(60_000);

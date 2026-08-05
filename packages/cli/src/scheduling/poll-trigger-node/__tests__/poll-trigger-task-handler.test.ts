@@ -479,13 +479,13 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.peek).not.toHaveBeenCalled();
 		});
 
-		test('runs the poll as normal when peek itself throws, rather than failing the tick', async () => {
-			pollBackoffService.peek.mockRejectedValue(new Error('poller state read failed'));
+		test('propagates when peek itself throws, since the service contract guarantees it never does', async () => {
+			const error = new Error('poller state read failed');
+			pollBackoffService.peek.mockRejectedValue(error);
 
-			await expect(handler.execute(buildTask(), report)).resolves.toBeDefined();
+			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
 
-			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
-			expect(onDispatch).toHaveBeenCalledTimes(1);
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 		});
 
 		test('does not record a success when poll() throws', async () => {
@@ -496,15 +496,34 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
 		});
 
-		test('passes the same tick clock to isBackingOff and to recordFailure', async () => {
+		test('anchors the failure deadline at failure time, not at tick start', async () => {
 			const error = new Error('poll source unreachable');
-			triggersAndPollers.runPollFunction.mockRejectedValue(error);
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				vi.advanceTimersByTime(90_000);
+				throw error;
+			});
 
 			await handler.execute(buildTask(), report);
 
 			const [, isBackingOffNow] = pollBackoffService.isBackingOff.mock.calls[0];
 			const { now: recordFailureNow } = pollBackoffService.recordFailure.mock.calls[0][0];
-			expect(recordFailureNow).toBe(isBackingOffNow);
+			expect(isBackingOffNow.getTime()).toBe(fixedNow.getTime());
+			expect(recordFailureNow.getTime()).toBeGreaterThan(isBackingOffNow.getTime());
+		});
+
+		test('routes a poll() error whose property access throws to the error workflow without propagating', async () => {
+			const hostileError: Record<string, unknown> = {};
+			Object.defineProperty(hostileError, 'httpCode', {
+				get(): never {
+					throw new Error('trap');
+				},
+			});
+			triggersAndPollers.runPollFunction.mockRejectedValue(hostileError);
+
+			await expect(handler.execute(buildTask(), report)).resolves.toBeDefined();
+
+			expect(pollFunctions.__emitError).toHaveBeenCalledTimes(1);
+			expect(onDispatch).toHaveBeenCalledTimes(1);
 		});
 	});
 
