@@ -1,10 +1,12 @@
 import type { Mocked } from 'vitest';
 import type { User } from '@n8n/db';
-import { CredentialResolverError } from '@n8n/decorators';
+import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
+import type { IVerifiedClaim } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import type { IdentityResolutionProxy } from '@/services/identity-resolution-proxy.service';
 import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
 import { N8NIdentifier } from '../n8n-identifier';
@@ -13,14 +15,33 @@ describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;
 	let mockAuthService: Mocked<AuthService>;
 	let mockOAuthVerifier: Mocked<OAuthTokenVerifierProxy>;
+	let mockIdentityResolution: Mocked<IdentityResolutionProxy>;
 
 	const mockUser = mock<User>({ id: 'user-123' });
+
+	const claim: IVerifiedClaim = {
+		version: 1,
+		sourceId: 'source-1',
+		issuer: 'https://idp.example.com',
+		subject: 'external-subject-1',
+		audience: 'https://n8n.example.com',
+		expiresAt: Date.now() + 60_000,
+		boundWorkflowId: 'workflow-1',
+	};
+
+	const externalIdpContext = (claims?: IVerifiedClaim) => ({
+		identity: '',
+		version: 1 as const,
+		metadata: { source: 'external-idp' as const },
+		claims,
+	});
 
 	beforeEach(() => {
 		mockAuthService = mock<AuthService>();
 		mockOAuthVerifier = mock<OAuthTokenVerifierProxy>();
+		mockIdentityResolution = mock<IdentityResolutionProxy>();
 
-		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier);
+		identifier = new N8NIdentifier(mockAuthService, mockOAuthVerifier, mockIdentityResolution);
 	});
 
 	afterEach(() => {
@@ -360,6 +381,83 @@ describe('N8NIdentifier', () => {
 				};
 
 				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
+			});
+		});
+
+		describe('external-idp branch', () => {
+			it('should resolve the principal from the claim on every access', async () => {
+				mockIdentityResolution.resolve.mockResolvedValue(mockUser);
+
+				const result = await identifier.resolve(externalIdpContext(claim), {});
+
+				expect(result).toBe('user-123');
+				expect(mockIdentityResolution.resolve).toHaveBeenCalledWith(
+					{ iss: 'https://idp.example.com', sub: 'external-subject-1' },
+					undefined,
+					{ issuer: 'https://idp.example.com' },
+					false,
+				);
+				expect(mockAuthService.authenticateUserByCookie).not.toHaveBeenCalled();
+				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
+				expect(mockOAuthVerifier.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			});
+
+			it('should never allow provisioning from an inbound trigger', async () => {
+				mockIdentityResolution.resolve.mockResolvedValue(mockUser);
+
+				await identifier.resolve(externalIdpContext(claim), {});
+
+				const allowProvisioning = mockIdentityResolution.resolve.mock.calls[0][3];
+				expect(allowProvisioning).toBe(false);
+			});
+
+			it('should re-resolve on each access rather than caching the principal', async () => {
+				mockIdentityResolution.resolve.mockResolvedValue(mockUser);
+				const context = externalIdpContext(claim);
+
+				await identifier.resolve(context, {});
+				await identifier.resolve(context, {});
+				await identifier.resolve(context, {});
+
+				expect(mockIdentityResolution.resolve).toHaveBeenCalledTimes(3);
+			});
+
+			it('should stop resolving once the binding is revoked mid-execution', async () => {
+				mockIdentityResolution.resolve.mockResolvedValueOnce(mockUser);
+				const context = externalIdpContext(claim);
+
+				await expect(identifier.resolve(context, {})).resolves.toBe('user-123');
+
+				// Binding revoked between accesses: read-only resolution returns null.
+				mockIdentityResolution.resolve.mockResolvedValue(null);
+
+				await expect(identifier.resolve(context, {})).rejects.toThrow(
+					CredentialResolverDataNotFoundError,
+				);
+			});
+
+			it('should still resolve when the claim has outlived the token expiry', async () => {
+				mockIdentityResolution.resolve.mockResolvedValue(mockUser);
+				const expiredClaim = { ...claim, expiresAt: Date.now() - 60_000 };
+
+				await expect(identifier.resolve(externalIdpContext(expiredClaim), {})).resolves.toBe(
+					'user-123',
+				);
+			});
+
+			it('should report as unconnected when the context carries no claim', async () => {
+				await expect(identifier.resolve(externalIdpContext(undefined), {})).rejects.toThrow(
+					CredentialResolverDataNotFoundError,
+				);
+				expect(mockIdentityResolution.resolve).not.toHaveBeenCalled();
+			});
+
+			it('should report as unconnected when no binding exists for the claim', async () => {
+				mockIdentityResolution.resolve.mockResolvedValue(null);
+
+				await expect(identifier.resolve(externalIdpContext(claim), {})).rejects.toThrow(
+					CredentialResolverDataNotFoundError,
+				);
 			});
 		});
 	});
