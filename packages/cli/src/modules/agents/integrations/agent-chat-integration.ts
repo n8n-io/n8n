@@ -39,6 +39,16 @@ export interface UnauthenticatedWebhookResponse {
 	body: unknown;
 }
 
+export interface WebhookRequestContext {
+	headers: Readonly<Record<string, string | string[] | undefined>>;
+	body: unknown;
+}
+
+export type WebhookRequestResolution =
+	| { type: 'reject'; response: UnauthenticatedWebhookResponse }
+	| { type: 'select'; connectionSelector: string }
+	| { type: 'no_match' };
+
 export interface AgentChatIntegrationBuilderGuidance {
 	capabilities: string[];
 	useIntegrationWhen: string[];
@@ -266,6 +276,19 @@ export abstract class AgentChatIntegration {
 	 * in the request itself).
 	 */
 	handleUnauthenticatedWebhook?(body: unknown): UnauthenticatedWebhookResponse | undefined;
+
+	/**
+	 * Resolve platform-specific routing before selecting a connected adapter.
+	 * A selector is only a routing hint; the chosen adapter still authenticates
+	 * the request.
+	 */
+	resolveWebhookRequest?(request: WebhookRequestContext): WebhookRequestResolution;
+
+	/** Match an opaque webhook selector against one connected credential. */
+	matchesWebhookConnection?(
+		credential: Record<string, unknown>,
+		connectionSelector: string,
+	): boolean;
 
 	/**
 	 * Optional hook run BEFORE the adapter is built. Use it to reject the

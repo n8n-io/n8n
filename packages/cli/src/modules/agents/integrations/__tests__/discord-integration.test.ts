@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -28,6 +29,31 @@ const GUILD_ID = '800000000000000001';
 const APPLICATION_ID = '900000000000000001';
 const PUBLIC_KEY = 'a'.repeat(64);
 const BOT_TOKEN = 'test-bot-token';
+
+function createFetchBackedHttpClient(): HttpRequestClient {
+	return {
+		request: vi.fn(
+			async (request: {
+				method?: string;
+				url: string;
+				headers?: Record<string, string>;
+				body?: unknown;
+				encoding?: string;
+			}) => {
+				const response = await globalThis.fetch(request.url, {
+					method: request.method,
+					headers: request.headers,
+					body: request.body ? JSON.stringify(request.body) : undefined,
+				});
+				const body =
+					request.encoding === 'arraybuffer'
+						? Buffer.from(await response.arrayBuffer())
+						: await response.json();
+				return { body, headers: {}, statusCode: response.status };
+			},
+		),
+	} as unknown as HttpRequestClient;
+}
 
 function connectionContext(
 	overrides: Partial<AgentChatIntegrationContext> = {},
@@ -63,16 +89,54 @@ describe('DiscordIntegration', () => {
 	let integration: DiscordIntegration;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let logger: ReturnType<typeof mock<Logger>>;
+	let outboundHttp: ReturnType<typeof mock<OutboundHttp>>;
 
 	beforeEach(() => {
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIntegrationCredential.mockResolvedValue([]);
 		logger = mock<Logger>();
+		outboundHttp = mock<OutboundHttp>();
+		outboundHttp.requests.mockReturnValue(createFetchBackedHttpClient());
 		integration = new DiscordIntegration(
 			logger,
 			mock<InstanceSettings>({ isLeader: false }),
 			agentRepository,
+			outboundHttp,
 		);
+	});
+
+	it('rejects gateway forwarding and routes interaction webhooks by application ID', () => {
+		expect(
+			integration.resolveWebhookRequest({
+				headers: { 'x-discord-gateway-token': 'token' },
+				body: { application_id: APPLICATION_ID },
+			}),
+		).toEqual({
+			type: 'reject',
+			response: { status: 404, body: { error: 'Not found' } },
+		});
+		expect(
+			integration.resolveWebhookRequest({
+				headers: {},
+				body: { application_id: APPLICATION_ID },
+			}),
+		).toEqual({ type: 'select', connectionSelector: APPLICATION_ID });
+		expect(integration.resolveWebhookRequest({ headers: {}, body: { type: 1 } })).toEqual({
+			type: 'no_match',
+		});
+	});
+
+	it('matches webhook selectors against the normalized credential application ID', () => {
+		expect(
+			integration.matchesWebhookConnection(
+				{ applicationId: ` ${APPLICATION_ID} ` },
+				APPLICATION_ID,
+			),
+		).toBe(true);
+		expect(integration.matchesWebhookConnection({ applicationId: 'other' }, APPLICATION_ID)).toBe(
+			false,
+		);
+		expect(integration.matchesWebhookConnection({}, APPLICATION_ID)).toBe(false);
 	});
 
 	it('extracts the Discord bot user ID for bridge message context', () => {

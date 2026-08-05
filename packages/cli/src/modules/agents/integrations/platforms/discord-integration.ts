@@ -1,5 +1,6 @@
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -20,6 +21,8 @@ import {
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
 	type SettleActionMessageParams,
+	type WebhookRequestContext,
+	type WebhookRequestResolution,
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import type { SuspendComponent } from '../component-mapper';
@@ -121,7 +124,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 	]);
 
 	readonly contextToolGuidance = [
-		'Use search_channels to turn a channel name such as "general" into a channel ID. It searches every Discord server the bot has been invited to, so the same name can appear more than once — the guildName on each result tells them apart.',
+		'Use search_channels to turn a channel name such as "general" into a channel ID. The same name can appear in more than one server — guildName tells them apart. When the result includes nextCursor, pass it back to continue searching the bot’s remaining servers.',
 	];
 
 	readonly actionToolGuidance = [
@@ -141,6 +144,29 @@ export class DiscordIntegration extends AgentChatIntegration {
 	 */
 	readonly deleteActionMessageBeforeResume = false;
 
+	resolveWebhookRequest(request: WebhookRequestContext): WebhookRequestResolution {
+		// n8n does not enable the adapter's HTTP Gateway forwarding mode.
+		if (request.headers['x-discord-gateway-token'] !== undefined) {
+			return { type: 'reject', response: { status: 404, body: { error: 'Not found' } } };
+		}
+
+		// application_id is only an untrusted selector; the selected adapter still
+		// verifies the request signature with that connection's public key.
+		if (!isRecord(request.body) || typeof request.body.application_id !== 'string') {
+			return { type: 'no_match' };
+		}
+
+		return { type: 'select', connectionSelector: request.body.application_id };
+	}
+
+	matchesWebhookConnection(
+		credential: Record<string, unknown>,
+		connectionSelector: string,
+	): boolean {
+		const applicationId = credential.applicationId;
+		return typeof applicationId === 'string' && applicationId.trim() === connectionSelector;
+	}
+
 	/**
 	 * Connections built by {@link createAdapter}, awaiting the `onConnected` hook
 	 * that runs once the Chat instance has been initialized. Keyed by
@@ -153,13 +179,19 @@ export class DiscordIntegration extends AgentChatIntegration {
 
 	private readonly gateway: DiscordGateway;
 
+	private readonly httpClient: HttpRequestClient;
+
 	constructor(
 		private readonly logger: Logger,
 		instanceSettings: InstanceSettings,
 		private readonly agentRepository: AgentRepository,
+		outboundHttp: OutboundHttp,
 	) {
 		super();
 		this.gateway = new DiscordGateway(logger, instanceSettings);
+		this.httpClient = outboundHttp.requests({
+			ssrf: 'disabled', // the Discord API host is fixed and public
+		});
 	}
 
 	/**
@@ -244,6 +276,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 		}
 
 		await settleDiscordActionMessage({
+			httpClient: this.httpClient,
 			apiUrl: DISCORD_API_URL,
 			botToken,
 			threadId: params.threadId,
@@ -282,6 +315,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 		const botToken = this.gateway.botTokenFor(`${agentId}:${integration.credentialId}`);
 
 		return await executeDiscordContextQuery({
+			httpClient: this.httpClient,
 			apiUrl: DISCORD_API_URL,
 			botToken,
 			query: params.query,
@@ -416,6 +450,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 		const applicationId = this.extractApplicationId(ctx.credential);
 
 		const result = await fetchDiscordApplicationMetadata({
+			httpClient: this.httpClient,
 			apiUrl: DISCORD_API_URL,
 			botToken,
 		});

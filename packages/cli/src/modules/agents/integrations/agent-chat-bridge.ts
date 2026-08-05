@@ -6,6 +6,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from '@n8n/api-types';
 import { LockService } from '@n8n/backend-common';
+import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
@@ -103,6 +104,7 @@ export class AgentChatBridge {
 		private readonly integration: AgentIntegrationConfig,
 		messageContextStore?: IntegrationMessageContextService,
 		private readonly attachmentService?: AgentChatAttachmentService,
+		private readonly discordHttpClient?: HttpRequestClient,
 	) {
 		this.integrationImpl = Container.get(ChatIntegrationRegistry).get(integration.type);
 		this.messageContextBridge = new AgentChatMessageContextBridge(
@@ -214,6 +216,11 @@ export class AgentChatBridge {
 			integration,
 			Container.get(IntegrationMessageContextService),
 			Container.get(AgentChatAttachmentService),
+			integration.type === 'discord'
+				? Container.get(OutboundHttp).requests({
+						ssrf: 'disabled', // Discord attachment URLs are restricted to its fixed CDN host
+					})
+				: undefined,
 		);
 	}
 
@@ -475,8 +482,8 @@ export class AgentChatBridge {
 		if (attachment.fetchData) return await attachment.fetchData();
 		if (Buffer.isBuffer(attachment.data)) return attachment.data;
 		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
-		if (this.integration.type === 'discord' && attachment.url) {
-			return await downloadDiscordAttachment(attachment.url);
+		if (this.integration.type === 'discord' && attachment.url && this.discordHttpClient) {
+			return await downloadDiscordAttachment(attachment.url, this.discordHttpClient);
 		}
 		return null;
 	}

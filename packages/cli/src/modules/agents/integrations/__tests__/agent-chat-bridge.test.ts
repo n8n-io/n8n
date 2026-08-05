@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
@@ -749,6 +750,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			agentExecutor: ReturnType<typeof makeAgentExecutor>,
 			attachmentService: ReturnType<typeof makeAttachmentService>,
 			integration: AgentIntegrationConfig = streamingIntegration,
+			discordHttpClient?: HttpRequestClient,
 		) {
 			const { bot, handlers } = makeBot();
 			new AgentChatBridge(
@@ -761,6 +763,7 @@ describe('AgentChatBridge — consumeStream', () => {
 				integration,
 				undefined,
 				attachmentService as never,
+				discordHttpClient,
 			);
 			return handlers;
 		}
@@ -814,55 +817,59 @@ describe('AgentChatBridge — consumeStream', () => {
 		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
 			const agentExecutor = makeAgentExecutor([finishChunk]);
 			const attachmentService = makeAttachmentService();
-			const handlers = makeBridge(agentExecutor, attachmentService, {
-				type: 'discord',
-				credentialId: 'cred-discord',
-			} as unknown as AgentIntegrationConfig);
+			const request = vi.fn().mockResolvedValue({
+				body: pngBytes,
+				headers: {},
+				statusCode: 200,
+			});
+			const httpClient = { request } as unknown as HttpRequestClient;
+			const handlers = makeBridge(
+				agentExecutor,
+				attachmentService,
+				{
+					type: 'discord',
+					credentialId: 'cred-discord',
+				} as unknown as AgentIntegrationConfig,
+				httpClient,
+			);
 			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
-			const fetchMock = vi
-				.spyOn(globalThis, 'fetch')
-				.mockResolvedValue(new Response(new Uint8Array(pngBytes)));
 
-			try {
-				await handlers.mention!(makeThread(), {
-					text: 'what is this?',
-					author: { userId: 'u1', userName: 'user1' },
-					attachments: [
-						{
-							type: 'image',
-							url: attachmentUrl,
-							name: 'photo.png',
-							mimeType: 'image/png',
-						},
-						{
-							type: 'image',
-							url: 'http://127.0.0.1/internal.png',
-							name: 'internal.png',
-							mimeType: 'image/png',
-						},
-					],
-				});
-
-				expect(fetchMock).toHaveBeenCalledTimes(1);
-				expect(String(fetchMock.mock.calls[0]?.[0])).toBe(attachmentUrl);
-				expect(attachmentService.storeInbound).toHaveBeenCalledWith(
-					expect.objectContaining({
-						source: 'discord',
-						fileName: 'photo.png',
+			await handlers.mention!(makeThread(), {
+				text: 'what is this?',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						url: attachmentUrl,
+						name: 'photo.png',
 						mimeType: 'image/png',
-					}),
-				);
-				expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
-					expect.objectContaining({
-						message: 'what is this?\n[Attachment "internal.png" could not be processed]',
-						attachments: [
-							{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
-						],
-					}),
-				);
-			} finally {
-				fetchMock.mockRestore();
-			}
+					},
+					{
+						type: 'image',
+						url: 'http://127.0.0.1/internal.png',
+						name: 'internal.png',
+						mimeType: 'image/png',
+					},
+				],
+			});
+
+			expect(request).toHaveBeenCalledOnce();
+			expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: attachmentUrl }));
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'discord',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+				}),
+			);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'what is this?\n[Attachment "internal.png" could not be processed]',
+					attachments: [
+						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+					],
+				}),
+			);
 		});
 
 		it('deletes stored attachments when execution setup fails before the stream is consumed', async () => {

@@ -231,38 +231,30 @@ export class AgentIntegrationsController {
 		res: Response,
 	) {
 		const { agentId, platform } = req.params;
-		// The Discord adapter accepts `x-discord-gateway-token` as an alternative to
-		// Ed25519 verification and dispatches the body straight into its Gateway
-		// handler. n8n never enables that forwarding mode, so a request carrying the
-		// header can only be an attempt to bypass signature checks — and with the bot
-		// token it would let the caller forge a message from any author. 404 rather
-		// than 401 so the route gives nothing away.
-		if (platform === 'discord' && req.headers['x-discord-gateway-token'] !== undefined) {
-			res.status(404).json({ error: 'Not found' });
+		const integration = this.chatIntegrationRegistry.get(platform);
+		const resolution = integration?.resolveWebhookRequest?.({
+			headers: req.headers,
+			body: req.body,
+		});
+		if (resolution?.type === 'reject') {
+			res.status(resolution.response.status).json(resolution.response.body);
 			return;
 		}
-		// Discord interactions carry a top-level `application_id`. Use it only as
-		// an untrusted selector among multiple Discord apps on the same agent —
-		// the chosen adapter still verifies the Ed25519 signature. Without a
-		// string application_id we must not fall back to another Discord connection.
-		const discordApplicationId =
-			platform === 'discord' &&
-			req.body !== null &&
-			typeof req.body === 'object' &&
-			typeof (req.body as { application_id?: unknown }).application_id === 'string'
-				? (req.body as { application_id: string }).application_id
-				: undefined;
+
 		const webhookHandler =
-			platform === 'discord' && discordApplicationId === undefined
+			resolution?.type === 'no_match'
 				? undefined
-				: this.chatIntegrationService.getWebhookHandler(agentId, platform, discordApplicationId);
+				: this.chatIntegrationService.getWebhookHandler(
+						agentId,
+						platform,
+						resolution?.type === 'select' ? resolution.connectionSelector : undefined,
+					);
 
 		if (!webhookHandler) {
 			// Allow platforms to respond to setup-time webhooks (e.g. Slack's
 			// `url_verification` challenge) before credentials are configured,
 			// so the user doesn't have to come back and re-verify URLs after
 			// connecting the credential.
-			const integration = this.chatIntegrationRegistry.get(platform);
 			const earlyResponse = integration?.handleUnauthenticatedWebhook?.(req.body);
 			if (earlyResponse) {
 				res.status(earlyResponse.status).json(earlyResponse.body);

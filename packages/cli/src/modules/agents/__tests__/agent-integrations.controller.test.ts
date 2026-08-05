@@ -746,9 +746,16 @@ describe('AgentIntegrationsController integration credentials', () => {
 		});
 	});
 
-	it('rejects Discord webhooks carrying an x-discord-gateway-token header', async () => {
+	it('returns a platform webhook rejection without looking up a handler', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		const { controller } = makeController({ chatIntegrationService });
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({
+				type: 'reject',
+				response: { status: 404, body: { error: 'Not found' } },
+			}),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -767,11 +774,15 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
 	});
 
-	it('passes Discord application_id to getWebhookHandler as a routing discriminator', async () => {
+	it('passes the platform connection selector to getWebhookHandler', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
 		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
-		const { controller } = makeController({ chatIntegrationService });
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'select', connectionSelector: 'app-b' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -800,10 +811,13 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(res.status).toHaveBeenCalledWith(200);
 	});
 
-	it('does not look up a Discord handler when application_id is missing', async () => {
+	it('does not look up a handler when the platform reports no match', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		const { controller, chatIntegrationRegistry } = makeController({ chatIntegrationService });
-		chatIntegrationRegistry.get.mockReturnValue(undefined);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'no_match' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),
@@ -825,11 +839,17 @@ describe('AgentIntegrationsController integration credentials', () => {
 		});
 	});
 
-	it('returns 404 when Discord application_id matches no connection', async () => {
+	it('returns 404 when the selected connection has no handler', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getWebhookHandler.mockReturnValue(undefined);
-		const { controller, chatIntegrationRegistry } = makeController({ chatIntegrationService });
-		chatIntegrationRegistry.get.mockReturnValue(undefined);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({
+				type: 'select',
+				connectionSelector: 'app-unknown',
+			}),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
 		const res = {
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn(),

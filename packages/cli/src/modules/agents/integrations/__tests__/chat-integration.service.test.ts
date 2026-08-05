@@ -1147,10 +1147,10 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 	});
 
 	describe('getWebhookHandler', () => {
-		const seedDiscordConnection = (
+		const seedConnection = (
 			service: ChatIntegrationService,
 			credentialId: string,
-			applicationId: string,
+			credential: Record<string, unknown>,
 			handler: unknown,
 		) => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1160,29 +1160,36 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 					agentId: 'agent-1',
 					projectId: 'project-1',
 					credentialId,
-					credential: { applicationId },
+					credential,
 					webhookUrlFor: () => 'https://n8n.example.com/wh',
 				},
 			});
 		};
 
-		it('selects the Discord handler whose credential applicationId matches', () => {
-			const { service } = buildServiceWith({});
+		it('uses the integration matcher to select a connection', () => {
+			const registry = new ChatIntegrationRegistry();
+			const integration = new FakeIntegration('discord', false);
+			integration.matchesWebhookConnection = (credential, selector) =>
+				credential.applicationId === selector;
+			registry.register(integration);
+			const { service } = buildServiceWith({ registry });
 			const handlerA = vi.fn();
 			const handlerB = vi.fn();
-			seedDiscordConnection(service, 'cred-a', 'app-a', handlerA);
-			seedDiscordConnection(service, 'cred-b', '  app-b  ', handlerB);
+			seedConnection(service, 'cred-a', { applicationId: 'app-a' }, handlerA);
+			seedConnection(service, 'cred-b', { applicationId: 'app-b' }, handlerB);
 
 			expect(service.getWebhookHandler('agent-1', 'discord', 'app-b')).toBe(handlerB);
 			expect(service.getWebhookHandler('agent-1', 'discord', 'app-a')).toBe(handlerA);
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-unknown')).toBeUndefined();
 		});
 
-		it('returns undefined for an unknown Discord applicationId', () => {
-			const { service } = buildServiceWith({});
-			seedDiscordConnection(service, 'cred-a', 'app-a', vi.fn());
-			seedDiscordConnection(service, 'cred-b', 'app-b', vi.fn());
+		it('does not fall back to the first connection when a selector has no matcher', () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('discord', false));
+			const { service } = buildServiceWith({ registry });
+			seedConnection(service, 'cred-a', { applicationId: 'app-a' }, vi.fn());
 
-			expect(service.getWebhookHandler('agent-1', 'discord', 'app-unknown')).toBeUndefined();
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-a')).toBeUndefined();
 		});
 	});
 

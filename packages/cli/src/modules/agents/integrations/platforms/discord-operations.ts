@@ -1,3 +1,4 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { z } from 'zod';
 
 import { connectionUnavailable, unsupportedQuery } from '../integration-helpers';
@@ -25,7 +26,10 @@ const POSTABLE_CHANNEL_TYPES = new Set([
  */
 const MAX_GUILDS_SCANNED = 20;
 
-export async function downloadDiscordAttachment(attachmentUrl: string): Promise<Buffer> {
+export async function downloadDiscordAttachment(
+	attachmentUrl: string,
+	httpClient: HttpRequestClient,
+): Promise<Buffer> {
 	const url = new URL(attachmentUrl);
 	if (
 		url.protocol !== 'https:' ||
@@ -37,19 +41,26 @@ export async function downloadDiscordAttachment(attachmentUrl: string): Promise<
 		throw new Error('Invalid Discord attachment URL');
 	}
 
-	const response = await fetch(url, {
-		redirect: 'error',
-		signal: AbortSignal.timeout(30_000),
+	const response = await httpClient.request<Buffer>({
+		method: 'GET',
+		url: url.href,
+		encoding: 'arraybuffer',
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
+		disableFollowRedirect: true,
+		timeout: 30_000,
+		abortSignal: AbortSignal.timeout(30_000),
 	});
-	if (!response.ok) {
-		throw new Error(`Discord attachment download failed with status ${response.status}`);
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		throw new Error(`Discord attachment download failed with status ${response.statusCode}`);
 	}
-	return Buffer.from(await response.arrayBuffer());
+	return Buffer.from(response.body);
 }
 
 export const discordSearchChannelsSchema = z.object({
 	query: z.string().min(1),
 	limit: z.number().int().min(1).max(50).default(10),
+	cursor: z.string().min(1).optional(),
 });
 
 export type DiscordSearchChannelsInput = z.infer<typeof discordSearchChannelsSchema>;
@@ -77,20 +88,30 @@ interface DiscordChannel {
  * Call the Discord REST API directly rather than through the adapter.
  *
  * `@chat-adapter/discord` exposes no client or request helper (unlike the Slack
- * adapter, whose `client` backs Slack's channel search), so there is nothing to
- * borrow. Global `fetch` matches what the adapter itself uses for every Discord
- * call, and the host is a module constant here, so there is no user-controlled
- * URL to guard. Telegram routes its Bot API calls through `OutboundHttp` with
- * SSRF protection for the opposite reason: its host comes from the credential.
+ * adapter, whose `client` backs Slack's channel search), so requests use n8n's
+ * outbound client directly.
  */
-async function discordApiGet<T>(apiUrl: string, botToken: string, path: string): Promise<T> {
-	const response = await fetch(`${apiUrl}${path}`, {
+async function discordApiGet<T>(
+	httpClient: HttpRequestClient,
+	apiUrl: string,
+	botToken: string,
+	path: string,
+): Promise<T> {
+	const response = await httpClient.request<T>({
+		method: 'GET',
+		url: `${apiUrl}${path}`,
 		headers: { Authorization: `Bot ${botToken}` },
+		json: true,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
+		sendCredentialsOnCrossOriginRedirect: false,
 	});
-	if (!response.ok) {
-		throw new Error(`Discord API ${path} failed: ${response.status} ${await response.text()}`);
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		throw new Error(
+			`Discord API ${path} failed: ${response.statusCode} ${JSON.stringify(response.body)}`,
+		);
 	}
-	return (await response.json()) as T;
+	return response.body;
 }
 
 /** Match on a normalized name so "#General" and "general" both hit. */
@@ -104,22 +125,33 @@ function normalizeChannelName(value: string): string {
  * because message context is the only other source of a channel ID.
  */
 export async function searchDiscordChannels(params: {
+	httpClient: HttpRequestClient;
 	apiUrl: string;
 	botToken: string;
 	input: DiscordSearchChannelsInput;
 }): Promise<unknown> {
-	const { apiUrl, botToken, input } = params;
+	const { httpClient, apiUrl, botToken, input } = params;
 	const searchTerm = normalizeChannelName(input.query);
+	const guildParams = new URLSearchParams({ limit: String(MAX_GUILDS_SCANNED) });
+	if (input.cursor) guildParams.set('after', input.cursor);
 
-	const guilds = await discordApiGet<DiscordGuild[]>(apiUrl, botToken, '/users/@me/guilds');
+	const guilds = await discordApiGet<DiscordGuild[]>(
+		httpClient,
+		apiUrl,
+		botToken,
+		`/users/@me/guilds?${guildParams.toString()}`,
+	);
 	const channels: DiscordChannelSearchResult[] = [];
+	let lastScannedGuildId: string | undefined;
 
-	for (const guild of guilds.slice(0, MAX_GUILDS_SCANNED)) {
+	for (const guild of guilds) {
 		if (channels.length >= input.limit) break;
+		lastScannedGuildId = guild.id;
 
 		let guildChannels: DiscordChannel[];
 		try {
 			guildChannels = await discordApiGet<DiscordChannel[]>(
+				httpClient,
 				apiUrl,
 				botToken,
 				`/guilds/${guild.id}/channels`,
@@ -144,10 +176,23 @@ export async function searchDiscordChannels(params: {
 		}
 	}
 
-	return { ok: true, channels, resultCount: channels.length };
+	const hasUnscannedGuilds =
+		lastScannedGuildId !== undefined && lastScannedGuildId !== guilds.at(-1)?.id;
+	const nextCursor =
+		lastScannedGuildId && (hasUnscannedGuilds || guilds.length === MAX_GUILDS_SCANNED)
+			? lastScannedGuildId
+			: undefined;
+
+	return {
+		ok: true,
+		channels,
+		resultCount: channels.length,
+		...(nextCursor ? { nextCursor } : {}),
+	};
 }
 
 export async function executeDiscordContextQuery(params: {
+	httpClient: HttpRequestClient;
 	apiUrl: string;
 	botToken: string | undefined;
 	query: string;
@@ -157,6 +202,7 @@ export async function executeDiscordContextQuery(params: {
 	if (!params.botToken) return connectionUnavailable();
 
 	return await searchDiscordChannels({
+		httpClient: params.httpClient,
 		apiUrl: params.apiUrl,
 		botToken: params.botToken,
 		input: discordSearchChannelsSchema.parse(params.input),
@@ -181,6 +227,7 @@ export function resolveDiscordMessageTargetChannelId(threadId: string): string {
  * "leave unchanged" — so buttons would otherwise stick around after a decision.
  */
 export async function settleDiscordActionMessage(params: {
+	httpClient: HttpRequestClient;
 	apiUrl: string;
 	botToken: string;
 	threadId: string;
@@ -189,25 +236,24 @@ export async function settleDiscordActionMessage(params: {
 }): Promise<void> {
 	const channelId = resolveDiscordMessageTargetChannelId(params.threadId);
 	const content = params.content.slice(0, DISCORD_MESSAGE_CONTENT_LIMIT);
-	const response = await fetch(
-		`${params.apiUrl}/channels/${channelId}/messages/${params.messageId}`,
-		{
-			method: 'PATCH',
-			headers: {
-				Authorization: `Bot ${params.botToken}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				content,
-				embeds: [],
-				components: [],
-				allowed_mentions: { parse: [] },
-			}),
+	const response = await params.httpClient.request({
+		method: 'PATCH',
+		url: `${params.apiUrl}/channels/${channelId}/messages/${params.messageId}`,
+		headers: { Authorization: `Bot ${params.botToken}` },
+		body: {
+			content,
+			embeds: [],
+			components: [],
+			allowed_mentions: { parse: [] },
 		},
-	);
-	if (!response.ok) {
+		json: true,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
+		sendCredentialsOnCrossOriginRedirect: false,
+	});
+	if (response.statusCode < 200 || response.statusCode >= 300) {
 		throw new Error(
-			`Discord API PATCH /channels/${channelId}/messages/${params.messageId} failed: ${response.status}`,
+			`Discord API PATCH /channels/${channelId}/messages/${params.messageId} failed: ${response.statusCode}`,
 		);
 	}
 }
@@ -219,6 +265,7 @@ export interface DiscordApplicationMetadata {
 
 /** Authenticated application metadata for the bot token (`GET /oauth2/applications/@me`). */
 export async function fetchDiscordApplicationMetadata(params: {
+	httpClient: HttpRequestClient;
 	apiUrl: string;
 	botToken: string;
 }): Promise<
@@ -226,13 +273,19 @@ export async function fetchDiscordApplicationMetadata(params: {
 	| { ok: false; kind: 'http'; status: number }
 	| { ok: false; kind: 'incomplete' }
 > {
-	const response = await fetch(`${params.apiUrl}/oauth2/applications/@me`, {
+	const response = await params.httpClient.request<Partial<DiscordApplicationMetadata>>({
+		method: 'GET',
+		url: `${params.apiUrl}/oauth2/applications/@me`,
 		headers: { Authorization: `Bot ${params.botToken}` },
+		json: true,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
+		sendCredentialsOnCrossOriginRedirect: false,
 	});
-	if (!response.ok) {
-		return { ok: false, kind: 'http', status: response.status };
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		return { ok: false, kind: 'http', status: response.statusCode };
 	}
-	const body = (await response.json()) as Partial<DiscordApplicationMetadata>;
+	const body = response.body;
 	if (
 		typeof body.id !== 'string' ||
 		!body.id ||

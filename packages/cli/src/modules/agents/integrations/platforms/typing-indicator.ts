@@ -21,8 +21,7 @@ export interface TypingIndicatorOptions {
 /**
  * Show a platform's "typing…" indicator for the duration of an agent run.
  *
- * Every platform we support expires the indicator o
- * n its own — after a few
+ * Every platform we support expires the indicator on its own — after a few
  * seconds, or as soon as the bot posts — so stopping means clearing the refresh
  * interval; no remote "clear" call is needed.
  */
