@@ -78,6 +78,10 @@ export interface WorkflowNodeResponse {
 	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
+	alwaysOutputData?: boolean;
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
