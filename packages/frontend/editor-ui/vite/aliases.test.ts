@@ -1,4 +1,7 @@
-import { findFrontendSourcePackages } from '@n8n/vitest-config/frontend-aliases';
+import {
+	findFrontendSourcePackages,
+	frontendSourcePaths,
+} from '@n8n/vitest-config/frontend-aliases';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import type { Alias } from 'vite';
@@ -68,5 +71,36 @@ describe('editor-ui vite aliases', () => {
 		expect(resolveSpecifier('@n8n/chat-hub/api', [...aliases].reverse())).toBe(
 			'packages/@n8n/chat-hub/src/api',
 		);
+	});
+
+	it('resolves @n8n/tournament from source', () => {
+		// Reached transitively via `n8n-workflow`, so it is not a declared dependency and the
+		// generated mapping does not cover it. Its dist is CJS: on `dist` the dev server fails to
+		// parse a named export out of it and the build loses ~397 kB to defeated tree-shaking.
+		expect(resolveSpecifier('@n8n/tournament', aliases)).toBe(
+			'packages/@n8n/tournament/src/index.ts',
+		);
+		expect(resolveSpecifier('@n8n/tournament/ast', aliases)).toBe(
+			'packages/@n8n/tournament/src/ast',
+		);
+	});
+
+	it('keeps feature modules out of the shared module tsconfig base', () => {
+		// The base is what module packages extend. A `paths` entry for another module would hand
+		// every module a typechecked path into every other module's src.
+		const paths = frontendSourcePaths({
+			repoRoot,
+			fromDir: join(repoRoot, 'packages', '@n8n', 'typescript-config'),
+		});
+
+		const moduleRoot = join('packages', 'frontend', 'modules');
+		const leaked = Object.entries(paths).filter(([, [target]]) =>
+			relative(
+				repoRoot,
+				join(repoRoot, 'packages', '@n8n', 'typescript-config', target),
+			).startsWith(moduleRoot),
+		);
+
+		expect(leaked).toEqual([]);
 	});
 });
