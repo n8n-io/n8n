@@ -17,7 +17,7 @@
 | FK_0f6f0f2c6d46b806fee02962ac2 | FOREIGN KEY | FOREIGN KEY ("workflowVersionId") REFERENCES workflow_history("versionId") ON DELETE SET NULL |
 | FK_619f5b0544bcec60c3387e82f2f | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | FK_e44b652e6dc99ef1364a2d85504 | FOREIGN KEY | FOREIGN KEY ("workflowReviewRequestId") REFERENCES workflow_review_request(id) ON DELETE CASCADE |
-| FK_ea1e6a42d305137f6eafad411cb | FOREIGN KEY | FOREIGN KEY ("baselineVersionId") REFERENCES workflow_history("versionId") ON DELETE SET NULL |
+| FK_workflow_review_request_workflow_baselineVersionId | FOREIGN KEY | FOREIGN KEY ("baselineVersionId") REFERENCES workflow_history("versionId") ON DELETE SET NULL |
 | PK_be3bf4facb054cf2b2b116b3b9c | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_review_request_workfl_workflowReviewRequestId_not_null | n | NOT NULL "workflowReviewRequestId" |
 | workflow_review_request_workflow_id_not_null | n | NOT NULL id |

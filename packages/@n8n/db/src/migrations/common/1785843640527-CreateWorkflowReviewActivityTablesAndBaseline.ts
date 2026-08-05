@@ -9,6 +9,9 @@ const WORKFLOW_HISTORY_TABLE = 'workflow_history';
 const USER_TABLE = 'user';
 
 const BASELINE_VERSION_COLUMN = 'baselineVersionId';
+// Named explicitly because SQLite drops a foreign key by matching the constraint name only:
+// an unnamed one never matches the loaded (auto-named) constraint and silently stays behind.
+const BASELINE_VERSION_FK = 'FK_workflow_review_request_workflow_baselineVersionId';
 
 const ACTIVITY_TYPES = [
 	'review.opened',
@@ -137,7 +140,7 @@ export class CreateWorkflowReviewActivityTablesAndBaseline1785843640527
 			REQUEST_WORKFLOW_TABLE,
 			BASELINE_VERSION_COLUMN,
 			[WORKFLOW_HISTORY_TABLE, 'versionId'],
-			undefined,
+			BASELINE_VERSION_FK,
 			'SET NULL',
 		);
 	}
@@ -145,10 +148,12 @@ export class CreateWorkflowReviewActivityTablesAndBaseline1785843640527
 	private async dropBaselineVersionColumn({
 		schemaBuilder: { dropColumns, dropForeignKey },
 	}: MigrationContext) {
-		await dropForeignKey(REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN, [
-			WORKFLOW_HISTORY_TABLE,
-			'versionId',
-		]);
+		await dropForeignKey(
+			REQUEST_WORKFLOW_TABLE,
+			BASELINE_VERSION_COLUMN,
+			[WORKFLOW_HISTORY_TABLE, 'versionId'],
+			BASELINE_VERSION_FK,
+		);
 		await dropColumns(REQUEST_WORKFLOW_TABLE, [BASELINE_VERSION_COLUMN], {
 			recreatesOnSqlite: true,
 		});

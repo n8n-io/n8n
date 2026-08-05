@@ -17,6 +17,7 @@ const ACTIVITY_TABLE = 'workflow_review_activity';
 const COMMENT_TABLE = 'workflow_review_activity_comment';
 const REQUEST_WORKFLOW_TABLE = 'workflow_review_request_workflow';
 const BASELINE_VERSION_COLUMN = 'baselineVersionId';
+const BASELINE_VERSION_FK = 'FK_workflow_review_request_workflow_baselineVersionId';
 
 async function tableExists(context: TestMigrationContext, table: string): Promise<boolean> {
 	const name = `${context.tablePrefix}${table}`;
@@ -52,6 +53,32 @@ async function columnMeta(
 		{ tableName: `${context.tablePrefix}${table}`, columnName },
 	);
 	return rows[0] && { nullable: rows[0].is_nullable === 'YES' };
+}
+
+async function foreignKeyNames(
+	context: TestMigrationContext,
+	table: string,
+	columnName: string,
+): Promise<string[]> {
+	if (context.isSqlite) {
+		const [{ sql }] = await context.runQuery<Array<{ sql: string }>>(
+			"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :name",
+			{ name: `${context.tablePrefix}${table}` },
+		);
+		const pattern = new RegExp(`CONSTRAINT "([^"]+)" FOREIGN KEY \\("${columnName}"\\)`, 'g');
+		return [...sql.matchAll(pattern)].map(([, name]) => name);
+	}
+	const rows = await context.runQuery<Array<{ constraintName: string }>>(
+		`SELECT tc.constraint_name AS ${context.escape.columnName('constraintName')}
+		 FROM information_schema.table_constraints tc
+		 JOIN information_schema.key_column_usage kcu
+		   ON kcu.constraint_name = tc.constraint_name AND kcu.table_schema = tc.table_schema
+		 WHERE tc.table_name = :tableName
+		   AND tc.constraint_type = 'FOREIGN KEY'
+		   AND kcu.column_name = :columnName`,
+		{ tableName: `${context.tablePrefix}${table}`, columnName },
+	);
+	return rows.map((row) => row.constraintName);
 }
 
 describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
@@ -366,6 +393,19 @@ describe('CreateWorkflowReviewActivityTablesAndBaseline Migration', () => {
 				expect(await columnMeta(context, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN)).toEqual({
 					nullable: true,
 				});
+			} finally {
+				await context.queryRunner.release();
+			}
+		});
+
+		// The name is what makes `down()` deterministic: SQLite drops a foreign key by matching the
+		// constraint name, and an auto-generated one never matches what the DSL passes in.
+		it('names the baseline foreign key explicitly', async () => {
+			const context = createTestMigrationContext(dataSource);
+			try {
+				expect(
+					await foreignKeyNames(context, REQUEST_WORKFLOW_TABLE, BASELINE_VERSION_COLUMN),
+				).toEqual([BASELINE_VERSION_FK]);
 			} finally {
 				await context.queryRunner.release();
 			}
