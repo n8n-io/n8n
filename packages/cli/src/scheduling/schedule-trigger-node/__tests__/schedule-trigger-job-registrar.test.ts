@@ -408,7 +408,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			},
 		);
 
-		it('resolves a typeVersion 1.3 node to Skip even when its raw JSON carries misfirePolicy, because Workflow normalisation strips a parameter gated to 1.4+', async () => {
+		const buildRealNormalizedNode = (typeVersion: number, parameters: INodeParameters) => {
 			const scheduleTriggerNodeTypes = mock<INodeTypes>({
 				getByNameAndVersion: () => new ScheduleTrigger(),
 			});
@@ -419,16 +419,22 @@ describe('ScheduleTriggerJobRegistrar', () => {
 						id: NODE_ID,
 						name: 'Schedule Trigger',
 						type: SCHEDULE_TRIGGER_NODE_TYPE,
-						typeVersion: 1.3,
+						typeVersion,
 						position: [0, 0],
-						parameters: { misfirePolicy: 'coalesce' },
+						parameters,
 					},
 				],
 				connections: {},
 				active: false,
 				nodeTypes: scheduleTriggerNodeTypes,
 			});
-			const normalizedNode = realWorkflow.nodes['Schedule Trigger'];
+			return { workflow: realWorkflow, node: realWorkflow.nodes['Schedule Trigger'] };
+		};
+
+		it('resolves a typeVersion 1.3 node to Skip even when its raw JSON carries misfirePolicy, because Workflow normalisation strips a parameter gated to 1.4+', async () => {
+			const { workflow: realWorkflow, node: normalizedNode } = buildRealNormalizedNode(1.3, {
+				misfirePolicy: 'coalesce',
+			});
 			expect(normalizedNode.parameters.misfirePolicy).toBeUndefined();
 
 			const session = makeRegistrar().createSession();
@@ -443,6 +449,27 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Skip,
+			);
+		});
+
+		it("keeps a typeVersion 1.4 node's coalesce parameter through Workflow normalisation, since the version gate is satisfied", async () => {
+			const { workflow: realWorkflow, node: normalizedNode } = buildRealNormalizedNode(1.4, {
+				misfirePolicy: 'coalesce',
+			});
+			expect(normalizedNode.parameters.misfirePolicy).toBe('coalesce');
+
+			const session = makeRegistrar().createSession();
+			session.createCollector(realWorkflow, normalizedNode).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				NODE_ID,
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				expect.anything(),
+				ScheduledJobMisfirePolicy.Coalesce,
 			);
 		});
 
@@ -510,7 +537,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			);
 		});
 
-		it('two sessions collecting different policies for the same workflow and node both commit, each provisioning its own policy, last write winning', async () => {
+		it('two sessions collecting different policies for the same workflow and node each provision their own resolved policy', async () => {
 			const registrar = makeRegistrar();
 			const attemptA = registrar.createSession();
 			const attemptB = registrar.createSession();

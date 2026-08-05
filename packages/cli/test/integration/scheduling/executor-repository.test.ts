@@ -1066,7 +1066,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(reloaded.missedAfter!.getTime()).toBe(runAt.getTime() + 90_000);
 		});
 
-		it('clamps the recomputed deadline of an overdue row that is still within its deadline to now', async () => {
+		it("clamps an overdue-but-still-live row's recomputed deadline to now", async () => {
 			const runAt = past();
 			const missedAfter = new Date(Date.now() + 60_000);
 			const task = await createTask({ runAt, missedAfter });
