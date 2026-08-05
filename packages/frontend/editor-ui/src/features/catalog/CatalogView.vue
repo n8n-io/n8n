@@ -90,11 +90,6 @@ onMounted(async () => {
 	}
 });
 
-const triggerLabel = (entry: CatalogEntry) =>
-	entry.trigger === 'manual-trigger'
-		? i18n.baseText('catalog.trigger.manual')
-		: i18n.baseText('catalog.trigger.declared');
-
 const inputsLabel = (entry: CatalogEntry) =>
 	entry.fields.length === 0
 		? i18n.baseText('catalog.inputs.none')
@@ -302,15 +297,20 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 						-->
 						<div :class="$style.footer">
 							<div :class="$style.meta">
-								<N8nBadge theme="tertiary">
-									<N8nIcon
-										:icon="entry.trigger === 'manual-trigger' ? 'mouse-pointer' : 'workflow'"
-										size="xsmall"
-										:class="$style.badgeIcon"
-									/>
-									{{ triggerLabel(entry) }}
-								</N8nBadge>
 								<N8nBadge theme="default">{{ inputsLabel(entry) }}</N8nBadge>
+								<!--
+									Only for the exception. Saying "takes input" on every other card
+									would restate the badge beside it, and contradict it outright
+									when the trigger declares no fields yet.
+								-->
+								<N8nBadge
+									v-if="entry.trigger === 'manual-trigger'"
+									theme="tertiary"
+									data-test-id="catalog-on-demand-only"
+								>
+									<N8nIcon icon="mouse-pointer" size="xsmall" :class="$style.badgeIcon" />
+									{{ i18n.baseText('catalog.card.onDemandOnly') }}
+								</N8nBadge>
 								<N8nBadge
 									v-if="ownSchedule(entry).state !== 'none'"
 									:theme="ownSchedule(entry).state === 'scheduled' ? 'success' : 'warning'"
