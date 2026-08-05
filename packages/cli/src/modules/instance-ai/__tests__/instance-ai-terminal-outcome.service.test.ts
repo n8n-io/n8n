@@ -534,6 +534,45 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		});
 	});
 
+	it('settles a failed resume with the fallback error before the run-finish', async () => {
+		const { service, deps } = createService();
+
+		await service.finishFailedResumeRun({
+			threadId: 'thread-a',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			errorMessage: 'Safe user-facing error',
+			snapshotStorage: {} as never,
+		});
+
+		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(deps.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+	});
+
+	it('still finishes a failed resume when the guard read and the snapshot save fail', async () => {
+		const { service, deps } = createService();
+		deps.eventBus.getEventsForRuns.mockRejectedValue(new Error('event log unavailable'));
+		deps.saveAgentTreeSnapshot.mockRejectedValue(new Error('snapshot write failed'));
+
+		await expect(
+			service.finishFailedResumeRun({
+				threadId: 'thread-a',
+				runId: 'run-1',
+				messageGroupId: 'group-1',
+				errorMessage: 'Safe user-facing error',
+				snapshotStorage: {} as never,
+			}),
+		).resolves.toBeUndefined();
+
+		expect(deps.publishRunFinish).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'errored',
+			'Safe user-facing error',
+		);
+		expect(deps.logger.warn).toHaveBeenCalledTimes(2);
+	});
+
 	it('reads events across the message group when a group id is provided', async () => {
 		const { service, deps } = createService();
 

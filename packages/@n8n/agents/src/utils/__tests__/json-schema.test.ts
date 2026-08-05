@@ -122,3 +122,72 @@ describe('lockAdditionalProperties', () => {
 		expect(Object.prototype.hasOwnProperty.call(resultProps, '__proto__')).toBe(true);
 	});
 });
+
+describe('lockAdditionalProperties — composed objects', () => {
+	it.each([
+		['allOf', { allOf: [{ type: 'object', properties: { a: { type: 'string' } } }] }],
+		['oneOf', { oneOf: [{ type: 'object', properties: { a: { type: 'string' } } }] }],
+		['$ref', { $ref: '#/$defs/Inner' }],
+		['then', { if: { required: ['k'] }, then: { properties: { a: { type: 'string' } } } }],
+	])('leaves an object composed via %s open', (_keyword, composition) => {
+		const result = lockAdditionalProperties({
+			type: 'object',
+			...composition,
+		} as unknown as JSONSchema7);
+
+		expect(result.additionalProperties).toBeUndefined();
+	});
+
+	it('leaves an object open when its own properties are extended by a branch', () => {
+		const result = lockAdditionalProperties({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			allOf: [{ type: 'object', properties: { b: { type: 'string' } } }],
+		});
+
+		expect(result.additionalProperties).toBeUndefined();
+		const branch = (result.allOf ?? []) as JSONSchema7[];
+		expect(branch[0].additionalProperties).toBe(false);
+	});
+
+	it('still closes an object that only lists its own properties', () => {
+		const result = lockAdditionalProperties({
+			type: 'object',
+			properties: { a: { type: 'string' } },
+			not: { required: ['b'] },
+		});
+
+		expect(result.additionalProperties).toBe(false);
+	});
+
+	it('honours an explicit additionalProperties on a composed object', () => {
+		const result = lockAdditionalProperties({
+			type: 'object',
+			additionalProperties: false,
+			allOf: [{ type: 'object', properties: { a: { type: 'string' } } }],
+		});
+
+		expect(result.additionalProperties).toBe(false);
+	});
+});
+
+describe('lockAdditionalProperties — nested keywords', () => {
+	it('reaches objects behind 2020-12 and conditional keywords', () => {
+		const result = lockAdditionalProperties({
+			type: 'array',
+			prefixItems: [{ type: 'object', properties: {} }],
+			contains: { type: 'object', properties: {} },
+			if: { type: 'object', properties: {} },
+			then: { type: 'object', properties: {} },
+			patternProperties: { '^x-': { type: 'object', properties: {} } },
+		} as unknown as JSONSchema7) as unknown as Record<string, JSONSchema7>;
+
+		const prefixItems = result.prefixItems as unknown as JSONSchema7[];
+		expect(prefixItems[0].additionalProperties).toBe(false);
+		expect(result.contains.additionalProperties).toBe(false);
+		expect(result.if.additionalProperties).toBe(false);
+		expect(result.then.additionalProperties).toBe(false);
+		const patternProperties = result.patternProperties as unknown as Record<string, JSONSchema7>;
+		expect(patternProperties['^x-'].additionalProperties).toBe(false);
+	});
+});
