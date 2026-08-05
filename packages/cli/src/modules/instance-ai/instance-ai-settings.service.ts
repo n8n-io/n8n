@@ -675,8 +675,14 @@ export class InstanceAiSettingsService {
 						n8nSandboxCredentialId !== undefined) &&
 					nextDaytonaCredentialId === null &&
 					nextN8nCredentialId === null;
+				const assignsSandboxConnection =
+					(sandboxConnection !== undefined ||
+						daytonaCredentialId !== undefined ||
+						n8nSandboxCredentialId !== undefined) &&
+					(nextDaytonaCredentialId !== null || nextN8nCredentialId !== null);
+				if (assignsSandboxConnection) settingsUpdate.sandboxEnabled = true;
 				this.validateAdminSettingsUpdate(
-					update,
+					settingsUpdate,
 					current,
 					clearsSandboxConnection
 						? this.environmentSandboxProvider

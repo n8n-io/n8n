@@ -565,7 +565,8 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
 					operationContext,
 				);
-				expect(result.sandboxProvider).toBe('daytona');
+				expect(result).toMatchObject({ sandboxEnabled: true, sandboxProvider: 'daytona' });
+				expect(persistedSettingsValue).toContain('"sandboxEnabled":true');
 			});
 
 			it('should restore the environment sandbox provider when the connection is cleared', async () => {
