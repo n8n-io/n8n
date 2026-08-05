@@ -209,7 +209,11 @@ describe('v2/components/Combobox', () => {
 			});
 
 			const { popover } = await getPopoverContainer();
-			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(1);
+			// Decorative only (reka sets aria-hidden); role="separator" is invalid inside listbox.
+			expect(popover.querySelectorAll('[role="separator"]')).toHaveLength(0);
+			expect(popover.querySelectorAll('[aria-hidden="true"]')).toHaveLength(1);
+			expect(within(popover).getByRole('option', { name: 'Option 1' })).toBeVisible();
+			expect(within(popover).getByRole('option', { name: 'Option 2' })).toBeVisible();
 		});
 
 		it('should render empty state text when filtering returns no matches', async () => {

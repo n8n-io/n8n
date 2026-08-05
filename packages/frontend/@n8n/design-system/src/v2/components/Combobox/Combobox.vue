@@ -359,7 +359,6 @@ function onInput(event: Event) {
 							<ComboboxSeparator
 								v-if="item.type === 'separator'"
 								:class="$style.comboboxSeparator"
-								role="separator"
 							/>
 
 							<slot v-else name="item" :item="item">
