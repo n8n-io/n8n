@@ -57,6 +57,7 @@ import { areAgentToolsAvailable } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpClientInfo,
+	RegisterResourceFn,
 	RegisterToolFn,
 	ToolDefinition,
 } from './mcp.types';
@@ -352,6 +353,18 @@ export class McpService {
 	}
 
 	/**
+	 * Resource counterpart to createToolRegistrar: the single chokepoint every
+	 * static resource registers through, so callers (builder and agent tools)
+	 * never reach for the raw McpServer. Resources carry no input schema to
+	 * bridge and aren't instrumented like tool calls, so this only forwards to
+	 * the SDK today; keeping the seam means resource-wide concerns have one home.
+	 */
+	createResourceRegistrar(server: McpServer): RegisterResourceFn {
+		return (resource) =>
+			server.registerResource(resource.name, resource.uri, resource.config, resource.read);
+	}
+
+	/**
 	 * Builds a per-request MCP server exposing only the tools covered by the
 	 * token's granted scopes. `grantedScopes: undefined` (API keys, legacy
 	 * tokens) exposes all tools. Filtering registration is sufficient
@@ -403,6 +416,7 @@ export class McpService {
 		);
 
 		const registerTool = this.createToolRegistrar(server, user, clientInfo);
+		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
@@ -576,6 +590,7 @@ export class McpService {
 				dataTableOps,
 				featureFlags,
 				registerIfAllowed,
+				registerResource,
 				allowedToolNames,
 				clientInfo,
 			);
@@ -584,8 +599,8 @@ export class McpService {
 		if (agentsEnabled) {
 			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
 			Container.get(McpAgentToolsService).registerTools(
-				server,
 				registerIfAllowed,
+				registerResource,
 				user,
 				allowedToolNames,
 			);
@@ -600,6 +615,7 @@ export class McpService {
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
 		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
+		registerResource: RegisterResourceFn,
 		allowedToolNames: Set<string> | undefined,
 		clientInfo?: McpClientInfo,
 	) {
@@ -740,14 +756,14 @@ export class McpService {
 		registerIfAllowed(restoreVersionTool);
 
 		// SDK reference as MCP resource — for clients that support resources.
-		server.registerResource(
-			'workflow-sdk-reference',
-			'n8n://workflow-sdk/reference',
-			{
+		registerResource({
+			name: 'workflow-sdk-reference',
+			uri: 'n8n://workflow-sdk/reference',
+			config: {
 				description:
 					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
-			() => ({
+			read: () => ({
 				contents: [
 					{
 						uri: 'n8n://workflow-sdk/reference',
@@ -758,7 +774,7 @@ export class McpService {
 					},
 				],
 			}),
-		);
+		});
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.

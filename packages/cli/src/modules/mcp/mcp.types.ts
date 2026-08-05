@@ -43,6 +43,37 @@ export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
 	tool: ToolDefinition<InputArgs>,
 ) => void;
 
+/** Read result for a static MCP resource (a single text document). */
+type ResourceReadResult = {
+	contents: Array<{
+		uri: string;
+		mimeType: string;
+		text: string;
+		_meta?: Record<string, unknown>;
+	}>;
+};
+
+/**
+ * A static MCP resource (no URI template). Resources register through the same
+ * chokepoint as tools (see McpService.createResourceRegistrar), so no caller
+ * touches the raw McpServer.
+ */
+export type ResourceDefinition = {
+	name: string;
+	uri: string;
+	config: {
+		description?: string;
+		mimeType?: string;
+		/** SEP-2549 client cache hint for this resource's reads. */
+		cacheHint?: { ttlMs: number; cacheScope: 'private' | 'public' };
+		_meta?: Record<string, unknown>;
+	};
+	read: () => ResourceReadResult | Promise<ResourceReadResult>;
+};
+
+/** Registers a static resource on the per-request server. */
+export type RegisterResourceFn = (resource: ResourceDefinition) => void;
+
 // Shared MCP tool types
 export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
 	'updatedAt:desc',

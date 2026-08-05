@@ -1,4 +1,3 @@
-import type { McpServer } from '@modelcontextprotocol/server';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	rejectIfDynamicSelectorUsesFromAi,
@@ -68,6 +67,7 @@ import {
 } from './agent-reference';
 import { MCP_CREATE_AGENT_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type {
+	RegisterResourceFn,
 	RegisterToolFn,
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
@@ -375,11 +375,12 @@ export class McpAgentToolsService {
 	 * (undefined means a non-scope-bearing credential with full access).
 	 * `registerTool` is the caller's scope-checking registrar (see
 	 * McpService.createToolRegistrar), which also bridges the raw-shape zod
-	 * schemas to what the v2 SDK expects.
+	 * schemas to what the v2 SDK expects; `registerResource` is its resource
+	 * counterpart (McpService.createResourceRegistrar).
 	 */
 	registerTools(
-		server: McpServer,
 		registerTool: RegisterToolFn,
+		registerResource: RegisterResourceFn,
 		user: User,
 		allowedToolNames?: Set<string>,
 	): void {
@@ -407,11 +408,11 @@ export class McpAgentToolsService {
 		// follows that tool's scope gate.
 		if (allowedToolNames && !allowedToolNames.has('get_agent_builder_reference')) return;
 
-		server.registerResource(
-			'agent-builder-reference',
-			AGENT_BUILDER_REFERENCE_URI,
-			{ description: 'Reference for creating and managing n8n Agents through MCP.' },
-			() => ({
+		registerResource({
+			name: 'agent-builder-reference',
+			uri: AGENT_BUILDER_REFERENCE_URI,
+			config: { description: 'Reference for creating and managing n8n Agents through MCP.' },
+			read: () => ({
 				contents: [
 					{
 						uri: AGENT_BUILDER_REFERENCE_URI,
@@ -420,7 +421,7 @@ export class McpAgentToolsService {
 					},
 				],
 			}),
-		);
+		});
 	}
 
 	private searchAgentsTool(user: User): ToolDefinition<typeof searchAgentsInput> {

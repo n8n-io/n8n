@@ -1,4 +1,3 @@
-import type { McpServer } from '@modelcontextprotocol/server';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
@@ -157,16 +156,13 @@ describe('McpAgentToolsService', () => {
 
 		tools = new Map();
 		registerResource = vi.fn();
-		const server = {
-			registerResource,
-		} as unknown as McpServer;
 		const registerTool: RegisterToolFn = (tool) => {
 			tools.set(tool.name, {
 				config: tool.config,
 				handler: tool.handler as unknown as RegisteredTool['handler'],
 			});
 		};
-		service.registerTools(server, registerTool, user);
+		service.registerTools(registerTool, registerResource, user);
 	});
 
 	const callTool = async (name: string, input: Record<string, unknown>): Promise<ToolResult> => {
@@ -250,10 +246,12 @@ describe('McpAgentToolsService', () => {
 				].sort(),
 			);
 			expect(registerResource).toHaveBeenCalledWith(
-				'agent-builder-reference',
-				'n8n://agents/reference',
-				expect.any(Object),
-				expect.any(Function),
+				expect.objectContaining({
+					name: 'agent-builder-reference',
+					uri: 'n8n://agents/reference',
+					config: expect.any(Object),
+					read: expect.any(Function),
+				}),
 			);
 		});
 
@@ -264,16 +262,13 @@ describe('McpAgentToolsService', () => {
 		const registerFiltered = (allowedToolNames?: Set<string>) => {
 			const filteredTools = new Map<string, RegisteredTool>();
 			const resource = vi.fn();
-			const server = {
-				registerResource: resource,
-			} as unknown as McpServer;
 			const registerTool: RegisterToolFn = (tool) => {
 				filteredTools.set(tool.name, {
 					config: tool.config,
 					handler: tool.handler as unknown as RegisteredTool['handler'],
 				});
 			};
-			service.registerTools(server, registerTool, user, allowedToolNames);
+			service.registerTools(registerTool, resource, user, allowedToolNames);
 			return { tools: filteredTools, resource };
 		};
 
