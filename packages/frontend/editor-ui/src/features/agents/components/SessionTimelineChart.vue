@@ -155,7 +155,7 @@ function onClick(index: number, item: TimelineItem): void {
 	emit('select', index);
 }
 
-function showPopover(segment: Segment, event: MouseEvent | FocusEvent): void {
+function showPopover(segment: Segment, event: MouseEvent): void {
 	if (!(event.currentTarget instanceof HTMLElement)) return;
 	const reference = event.currentTarget;
 	clearShowPopoverTimer();
@@ -169,25 +169,6 @@ function clearShowPopoverTimer(): void {
 	if (!showPopoverTimer) return;
 	clearTimeout(showPopoverTimer);
 	showPopoverTimer = null;
-}
-
-function showSelectedPopover(): void {
-	const selectedIndex = props.selectedIndex;
-	if (selectedIndex === null) {
-		popoverOpen.value = false;
-		activePopover.value = null;
-		return;
-	}
-
-	const segment = segments.value.find((seg) => seg.kind === 'event' && seg.index === selectedIndex);
-	const reference = chartRef.value?.querySelector<HTMLElement>(
-		`[data-timeline-index="${selectedIndex}"]`,
-	);
-
-	if (segment && reference) {
-		activePopover.value = { segment, reference };
-		popoverOpen.value = true;
-	}
 }
 
 function scrollSelectedIntoView(): void {
@@ -239,13 +220,8 @@ function scrollChart(direction: -1 | 1): void {
 	chart.scrollBy({ left: direction * distance, top: 0, behavior });
 }
 
-function hidePopover(segment: Segment): void {
+function hidePopover(): void {
 	clearShowPopoverTimer();
-	if (segment.kind === 'event' && segment.index === props.selectedIndex) {
-		showSelectedPopover();
-		return;
-	}
-
 	popoverOpen.value = false;
 	activePopover.value = null;
 }
@@ -253,11 +229,7 @@ function hidePopover(segment: Segment): void {
 watch(
 	() => props.selectedIndex,
 	() => {
-		clearShowPopoverTimer();
-		void nextTick(() => {
-			scrollSelectedIntoView();
-			showSelectedPopover();
-		});
+		void nextTick(scrollSelectedIntoView);
 	},
 );
 
@@ -342,7 +314,7 @@ onBeforeUnmount(() => {
 					data-test-id="timeline-idle"
 					:class="$style.idle"
 					@mouseenter="showPopover(seg, $event)"
-					@mouseleave="hidePopover(seg)"
+					@mouseleave="hidePopover"
 				>
 					<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
 				</div>
@@ -355,9 +327,7 @@ onBeforeUnmount(() => {
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
-					@mouseleave="hidePopover(seg)"
-					@focus="showPopover(seg, $event)"
-					@blur="hidePopover(seg)"
+					@mouseleave="hidePopover"
 					@click="onClick(seg.index, seg.item)"
 				/>
 			</div>
@@ -402,7 +372,7 @@ onBeforeUnmount(() => {
 
 /*
  * Each segment lives inside a flex .cell that owns the inline flex sizing.
- * Hover/focus popover positioning is handled by one shared HoverCard above,
+ * Hover popover positioning is handled by one shared HoverCard above,
  * anchored to the active block/idle element.
  */
 .cell {
