@@ -178,8 +178,11 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				displayName: workflow.name,
 				// First-party = this trigger's URL may act as its own virtual client
 				// (client_id = redirect_uri = resource), which is what lets a browser be
-				// redirected through `/oauth/authorize` with no client registration.
-				isFirstParty: isWebhookOAuth2BrowserFlowEnabled(),
+				// redirected through `/oauth/authorize` with no client registration. Spread
+				// conditionally so the resource is byte-identical to before when the browser
+				// flow is off — a webhook is otherwise called by external clients and is not
+				// first-party.
+				...(isWebhookOAuth2BrowserFlowEnabled() && { isFirstParty: true }),
 				authorize: async (user: User) => {
 					if (requireExecute) {
 						return (

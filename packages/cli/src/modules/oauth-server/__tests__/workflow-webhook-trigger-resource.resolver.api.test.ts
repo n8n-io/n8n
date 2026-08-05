@@ -263,6 +263,25 @@ describe('protected resource metadata for webhook triggers', () => {
 		expect(resource?.getResourceUrl()).toContain('?method=POST');
 	});
 
+	// With the browser flow on, the trigger URL doubles as its own virtual client
+	// (client_id = redirect_uri = resource), so the resource must opt into first-party.
+	test('should resolve as first-party once the browser flow is enabled', async () => {
+		process.env.N8N_ENV_FEAT_WEBHOOK_OAUTH2_BROWSER_FLOW = 'true';
+		try {
+			const webhookPath = randomUUID();
+			await createPublishedWebhookWorkflow(webhookPath, webhookNode());
+
+			const resource = await resolveResource(webhookPath);
+
+			expect(resource?.isFirstParty).toBe(true);
+			// Still no allowlist of its own: the single registered redirect_uri (the
+			// trigger URL) is what constrains the flow.
+			expect(resource?.getAllowedRedirectUris).toBeUndefined();
+		} finally {
+			delete process.env.N8N_ENV_FEAT_WEBHOOK_OAUTH2_BROWSER_FLOW;
+		}
+	});
+
 	test('should expose the workflow name for the consent screen', async () => {
 		const webhookPath = randomUUID();
 		const workflow = await createPublishedWebhookWorkflow(webhookPath, webhookNode());
