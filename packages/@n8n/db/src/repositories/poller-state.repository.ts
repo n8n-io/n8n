@@ -15,6 +15,11 @@ export type { PollerCursor } from '../entities/poller-state';
 /** A fence miss can't tell a reclaimed lease apart from a genuinely gone cursor row. */
 export type PollLeaseFence = { taskId: string; leaseEpoch: number };
 
+export interface PollerFailureState {
+	consecutiveErrors: number;
+	backoffUntil: Date | null;
+}
+
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -124,5 +129,53 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 			extra: { workflowId, nodeId },
 		});
+	}
+
+	async findFailureState(
+		workflowId: string,
+		nodeId: string,
+		ctx: OperationContext = {},
+	): Promise<PollerFailureState | null> {
+		const row = await this.managerFor(ctx).findOne(PollerState, {
+			select: ['consecutiveErrors', 'backoffUntil'],
+			where: { workflowId, nodeId },
+		});
+		return row === null
+			? null
+			: { consecutiveErrors: row.consecutiveErrors, backoffUntil: row.backoffUntil };
+	}
+
+	async recordFailure(
+		workflowId: string,
+		nodeId: string,
+		backoffUntil: Date,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(PollerState)
+			.set({
+				consecutiveErrors: () => '"consecutiveErrors" + 1',
+				backoffUntil,
+				updatedAt: new Date(),
+			} as QueryDeepPartialEntity<PollerState>)
+			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
+			.execute();
+
+		return result.affected === 1;
+	}
+
+	async clearFailures(
+		workflowId: string,
+		nodeId: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(PollerState, { workflowId, nodeId }, {
+			consecutiveErrors: 0,
+			backoffUntil: null,
+			updatedAt: new Date(),
+		} as QueryDeepPartialEntity<PollerState>);
+
+		return result.affected === 1;
 	}
 }
