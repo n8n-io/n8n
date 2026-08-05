@@ -330,6 +330,19 @@ function renameMentions(message: SeedMessage, fn: (s: string) => string): SeedMe
 export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	if (seed.workflows.length === 0 && seed.agents.length === 0) return seed;
 
+	// Duplicates collapse in the id Set below, so both entries take ONE fresh id and
+	// the restore's second `create` on that pinned id aborts the whole seed. Refuse
+	// here rather than fail mid-restore — `workflows` has no such invariant either,
+	// but its duplicate NAMES are already refused further down.
+	const agentIds = seed.agents.map((agent) => agent.id);
+	const duplicateAgentId = agentIds.find((id, index) => agentIds.indexOf(id) !== index);
+	if (duplicateAgentId !== undefined) {
+		throw new Error(
+			`Seed declares two agents with id "${duplicateAgentId}". Each seeded agent is created at ` +
+				'its pinned id, so the second would abort the restore — give them distinct ids',
+		);
+	}
+
 	// Workflows and agents share one id space: a fresh id must miss every original,
 	// or this sequential replace could rewrite a not-yet-processed artifact's id.
 	const originalIds = new Set([
@@ -574,4 +587,37 @@ function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
 		args: call.input,
 		result: 'output' in block ? block.output : undefined,
 	};
+}
+
+/**
+ * The agent a seeded history LAST targeted — the one the restored thread continues,
+ * and so the one a case grades and executes.
+ *
+ * Mirrors the server's own binding rule (`seedAgentBuilderTargetMetadata`): the last
+ * resolved `build-agent` call, ordered by `(createdAt, id)` because that is how the
+ * message store reads a thread back. Seed-ARRAY order is an authoring artifact, so a
+ * parent/helper seed would otherwise have the harness grade one agent while the
+ * thread continues the other.
+ */
+export function activeSeedAgentId(seed: ConversationSeed): string | undefined {
+	const stamp = (m: Record<string, unknown>) => {
+		const raw = m.createdAt;
+		if (typeof raw !== 'string') return 0;
+		const parsed = Date.parse(raw);
+		return Number.isNaN(parsed) ? 0 : parsed;
+	};
+	const idOf = (m: Record<string, unknown>) => (typeof m.id === 'string' ? m.id : '');
+	let active: string | undefined;
+	for (const message of [...seed.messages].sort(
+		(a, b) => stamp(a) - stamp(b) || idOf(a).localeCompare(idOf(b)),
+	)) {
+		if (!Array.isArray(message.content)) continue;
+		for (const block of message.content) {
+			if (!isRecord(block) || block.type !== 'tool-call') continue;
+			if (block.toolName !== ORCHESTRATION_TOOL_IDS.BUILD_AGENT) continue;
+			const output = isRecord(block.output) ? block.output : undefined;
+			if (typeof output?.agentId === 'string') active = output.agentId;
+		}
+	}
+	return active;
 }

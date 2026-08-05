@@ -21,6 +21,7 @@ import {
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
+	activeSeedAgentId,
 	remapSeedArtifactIds,
 	SEED_NAME_RE,
 	seedNameBase,
@@ -325,6 +326,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
+	/** The agent the seeded history last targeted — graded and executed first. */
+	let seedActiveAgentId: string | undefined;
 	// TRUST-311 follow-up: scenario seed tables are created empty before the build
 	// turn (so the agent binds their real id); this maps declared name → real id
 	// for the per-scenario row seeding, and the note tells the agent they exist.
@@ -462,6 +465,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
 				restoredAgentIds = restoreResult.agentIds;
+				// The server binds the thread to the agent the history LAST targeted, so
+				// the harness has to grade that same one — array order is an authoring
+				// artifact and `findAgentArtifactRef` takes the first ref it sees.
+				seedActiveAgentId = activeSeedAgentId(remapped);
 				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
 				const dtSuffix =
 					restoredDataTableIds.length > 0
@@ -651,9 +658,15 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
 		);
+		// Active agent first, so `findAgentArtifactRef` picks the one the restored
+		// thread actually continues rather than whichever the seed happened to list first.
+		const restoredAgentOrder =
+			seedActiveAgentId && restoredAgentIds.includes(seedActiveAgentId)
+				? [seedActiveAgentId, ...restoredAgentIds.filter((id) => id !== seedActiveAgentId)]
+				: restoredAgentIds;
 		const artifactRefs: ArtifactRef[] = [
 			...eventOutcome.artifactRefs,
-			...restoredAgentIds
+			...restoredAgentOrder
 				.filter((id) => !seenAgentIds.has(id))
 				.map((id) => ({ type: 'agent' as const, id })),
 		];

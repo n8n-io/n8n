@@ -371,6 +371,7 @@ export {
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
 	instanceAiEvalSeedAgentSchema,
+	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,

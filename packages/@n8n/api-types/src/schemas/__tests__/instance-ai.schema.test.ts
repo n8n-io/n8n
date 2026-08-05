@@ -9,6 +9,7 @@ import {
 	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
+	findUnbackedSeedWorkflowTools,
 	InstanceAiEvalRestoreThreadRequest,
 	instanceAiEvalSeedAgentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
@@ -524,48 +525,61 @@ describe('instanceAiEvalSeedAgentSchema resource references', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects a sub-agent reference the seed does not declare', () => {
-		// Nothing else exists in a fresh eval project to delegate to.
+	it('rejects duplicate seed agent ids', () => {
+		// The harness remaps ids through a Set, so both entries take ONE fresh id and
+		// the second `create` on the pinned id aborts the restore.
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',
 			messages: [],
-			agents: [
-				agent({
-					config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT00000000000' }] } },
-				}),
-			],
+			agents: [agent(), agent()],
 		});
 		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('does not declare');
+		expect(errorOf(result)).toContain('Duplicate seed agent id');
 	});
 
-	it('rejects an agent that delegates to itself', () => {
-		// The agent config service forbids it too; a restored self-delegating config
-		// either fails or recurses.
+	it('rejects sub-agent delegation outright — seeded agents restore unpublished', () => {
 		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
 			threadId: '11111111-1111-4111-8111-111111111111',
 			messages: [],
 			agents: [
-				agent({
-					config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT12345678901' }] } },
-				}),
-			],
-		});
-		expect(result.success).toBe(false);
-		expect(errorOf(result)).toContain('delegates to itself');
-	});
-
-	it('accepts a sub-agent reference to another seeded agent', () => {
-		const result = InstanceAiEvalRestoreThreadRequest.safeParse({
-			threadId: '11111111-1111-4111-8111-111111111111',
-			messages: [],
-			agents: [
-				agent({
-					config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT99999999999' }] } },
-				}),
+				agent({ config: { ...config, subAgents: { agents: [{ agentId: 'AgEnT99999999999' }] } } }),
 				agent({ id: 'AgEnT99999999999', config: { ...config, name: 'Helper' } }),
 			],
 		});
-		expect(result.success).toBe(true);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('unpublished draft');
+	});
+
+	it('rejects an inherited property name as a backed skill body', () => {
+		const result = instanceAiEvalSeedAgentSchema.safeParse(
+			agent({ config: { ...config, skills: [{ type: 'skill', id: 'constructor' }] }, skills: {} }),
+		);
+		expect(result.success).toBe(false);
+		expect(errorOf(result)).toContain('carries no body');
+	});
+
+	it('flags a workflow tool no seeded workflow name backs', () => {
+		// Cross-field, so it lives beside the schema rather than in it.
+		const unbacked = findUnbackedSeedWorkflowTools({
+			workflows: [{ name: 'Batch loop' }],
+			agents: [
+				{
+					id: 'AgEnT12345678901',
+					config: { tools: [{ type: 'workflow', workflow: 'wf12345678' }] },
+				},
+			],
+		});
+		expect(unbacked).toEqual([{ agentId: 'AgEnT12345678901', target: 'wf12345678' }]);
+
+		const backed = findUnbackedSeedWorkflowTools({
+			workflows: [{ name: 'Batch loop' }],
+			agents: [
+				{
+					id: 'AgEnT12345678901',
+					config: { tools: [{ type: 'workflow', workflow: 'Batch loop' }] },
+				},
+			],
+		});
+		expect(backed).toEqual([]);
 	});
 });

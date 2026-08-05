@@ -893,15 +893,33 @@ describe('InstanceAiController', () => {
 				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
 			});
 
-			it('should roll the agent back when a later step fails, leaving no binding to it', async () => {
-				// The binding is not rolled back, so it must not be written before the
-				// steps that can fail.
+			it('should roll the binding back when the message write fails', async () => {
+				// The binding is written BEFORE the messages and undone on failure, so a
+				// message failure can't leave a binding pointing at agents the rollback
+				// just deleted — and the thread's prior metadata is restored exactly,
+				// not blanked.
+				memoryService.getThreadMetadata.mockResolvedValue({ somethingElse: 'keep me' });
 				memoryService.restoreThreadMessages.mockRejectedValue(new Error('boom'));
 
 				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow('boom');
 
 				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
-				expect(memoryService.updateThread).not.toHaveBeenCalled();
+				expect(memoryService.updateThread).toHaveBeenLastCalledWith(THREAD_ID, {
+					metadata: { somethingElse: 'keep me' },
+				});
+			});
+
+			it('should not touch the thread when the binding write itself fails', async () => {
+				memoryService.getThreadMetadata.mockResolvedValue({});
+				memoryService.updateThread.mockRejectedValueOnce(new Error('metadata down'));
+
+				await expect(controller.restoreEvalThread(req, res, agentPayload)).rejects.toThrow(
+					'metadata down',
+				);
+
+				// No messages were written, and the artifacts are rolled back.
+				expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+				expect(evalThreadRestore.deleteAgents).toHaveBeenCalledWith(['agent-seed-1'], 'project-1');
 			});
 		});
 

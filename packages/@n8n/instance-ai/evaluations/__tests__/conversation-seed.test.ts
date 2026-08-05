@@ -1,6 +1,7 @@
 import {
 	ConversationSeedSchema,
 	expandSeedMessageShorthand,
+	activeSeedAgentId,
 	remapSeedArtifactIds,
 	SEED_NAME_RE,
 	transcriptPrefixFromSeed,
@@ -475,6 +476,12 @@ describe('remapSeedArtifactIds', () => {
 		expect(() => remapSeedArtifactIds(seed)).toThrow(/too short to remap/);
 	});
 
+	it('refuses two agents sharing an id — the restore would abort on the second', () => {
+		const seed = makeAgentSeed();
+		seed.agents = [seed.agents[0], { ...seed.agents[0] }];
+		expect(() => remapSeedArtifactIds(seed)).toThrow(/two agents with id/);
+	});
+
 	it('renames an agent workflow tool with the workflow it points at', () => {
 		// A workflow tool addresses its workflow by DISPLAY NAME, and seeded workflow
 		// names gain a per-run suffix. Miss this and the restored agent holds a tool
@@ -716,5 +723,51 @@ describe('transcriptPrefixFromSeed', () => {
 		expect(turns).toHaveLength(1);
 		expect(turns[0].userMessage).toBeUndefined();
 		expect(turns[0].steps).toEqual([{ kind: 'agent-text', text: 'Picking up where we left off.' }]);
+	});
+});
+
+describe('activeSeedAgentId', () => {
+	function buildAgentCall(agentId: string, at: string, id: string) {
+		return {
+			id,
+			type: 'llm',
+			role: 'assistant' as const,
+			createdAt: at,
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: `tc-${agentId}`,
+					toolName: 'build-agent',
+					state: 'resolved',
+					output: { ok: true, agentId },
+				},
+			],
+		};
+	}
+
+	it('picks the agent the history LAST targeted, not the first seeded', () => {
+		// `findAgentArtifactRef` grades the first agent ref, and the server binds the
+		// last-targeted one — so a parent/helper seed graded the wrong agent.
+		const seed = makeAgentSeed();
+		seed.messages = [
+			buildAgentCall('agentHELPER1', '2026-01-01T00:00:01.000Z', 'm1'),
+			buildAgentCall(AGENT_ID, '2026-01-01T00:00:02.000Z', 'm2'),
+		];
+		expect(activeSeedAgentId(seed)).toBe(AGENT_ID);
+	});
+
+	it('orders by createdAt, not array order', () => {
+		const seed = makeAgentSeed();
+		seed.messages = [
+			buildAgentCall(AGENT_ID, '2026-01-01T00:00:09.000Z', 'm2'),
+			buildAgentCall('agentHELPER1', '2026-01-01T00:00:01.000Z', 'm1'),
+		];
+		expect(activeSeedAgentId(seed)).toBe(AGENT_ID);
+	});
+
+	it('is undefined when the history targeted no agent', () => {
+		const seed = makeAgentSeed();
+		seed.messages = [{ ...buildAgentCall('x', '2026-01-01T00:00:01.000Z', 'm1'), content: [] }];
+		expect(activeSeedAgentId(seed)).toBeUndefined();
 	});
 });

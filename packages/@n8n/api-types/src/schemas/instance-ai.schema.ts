@@ -1826,7 +1826,9 @@ export const instanceAiEvalSeedAgentSchema = z
 	// broken fixture. Refuse at authoring time instead.
 	.superRefine((agent, ctx) => {
 		for (const [index, skill] of (agent.config.skills ?? []).entries()) {
-			if (!agent.skills?.[skill.id]) {
+			// Own property only: direct indexing treats inherited names like
+			// `constructor` as a present body, restoring an agent with none.
+			if (!Object.hasOwn(agent.skills ?? {}, skill.id)) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					path: ['config', 'skills', index, 'id'],
@@ -1865,33 +1867,39 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
 	/** Agents the history references; created at their pinned id, with the thread
 	 *  bound to them so the next turn continues one instead of resolving it again.
-	 *  A sub-agent reference must name another agent in this same seed — nothing
-	 *  else exists in a fresh eval project to delegate to. */
+	 *  Sub-agent delegation is refused: every seeded agent restores as an
+	 *  unpublished draft, which a referenced sub-agent may not be. */
 	agents: z
 		.array(instanceAiEvalSeedAgentSchema)
 		.max(5)
 		.optional()
 		.superRefine((agents, ctx) => {
 			if (!agents) return;
-			const seeded = new Set(agents.map((agent) => agent.id));
+			// Unlike `workflows`, this array carries no uniqueness invariant of its own —
+			// and the harness remaps ids through a Set, so duplicates collapse to ONE
+			// fresh id and the second `create` aborts the whole restore on the pinned id.
+			const seenIds = new Set<string>();
 			for (const [index, agent] of agents.entries()) {
-				for (const [subIndex, sub] of (agent.config.subAgents?.agents ?? []).entries()) {
-					const path = [index, 'config', 'subAgents', 'agents', subIndex, 'agentId'];
-					// Self-delegation is refused by the agent config service too, and a
-					// restored config that delegates to itself either fails or recurses.
-					if (sub.agentId === agent.id) {
-						ctx.addIssue({
-							code: z.ZodIssueCode.custom,
-							path,
-							message: `Seed agent "${agent.id}" delegates to itself as a sub-agent`,
-						});
-					} else if (!seeded.has(sub.agentId)) {
-						ctx.addIssue({
-							code: z.ZodIssueCode.custom,
-							path,
-							message: `Seed agent "${agent.id}" delegates to sub-agent "${sub.agentId}", which this seed does not declare`,
-						});
-					}
+				if (seenIds.has(agent.id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						path: [index, 'id'],
+						message: `Duplicate seed agent id "${agent.id}" — each seeded agent is created at its pinned id, so the second would abort the restore`,
+					});
+				}
+				seenIds.add(agent.id);
+			}
+			for (const [index, agent] of agents.entries()) {
+				// Refused outright, not membership-checked: this restore creates every seeded
+				// agent as an UNPUBLISHED draft, and `AgentConfigService` requires a referenced
+				// sub-agent to be published — so a parent that delegates restores invalid to
+				// execute, whoever it points at.
+				if ((agent.config.subAgents?.agents ?? []).length > 0) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						path: [index, 'config', 'subAgents', 'agents'],
+						message: `Seed agent "${agent.id}" declares sub-agents, which a seed cannot restore usably — every seeded agent is created as an unpublished draft, and a referenced sub-agent must be published`,
+					});
 				}
 			}
 		}),
@@ -1900,6 +1908,37 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	 *  freshly-built workflow's by-name references resolve. */
 	uniquifyNames: z.boolean().optional(),
 }) {}
+
+/**
+ * A seeded agent's workflow tool addresses its workflow by DISPLAY NAME, and the
+ * runtime resolves it that way — so a name no seeded workflow carries restores a
+ * dead tool, or binds an unrelated ambient workflow that happens to share it. A
+ * workflow ID in that field is the common mistake and looks configured.
+ *
+ * Cross-field, so it can't live on `agents` alone: only the whole request knows
+ * which workflows are being seeded alongside.
+ */
+export function findUnbackedSeedWorkflowTools(payload: {
+	workflows?: Array<{ name?: unknown }>;
+	agents?: Array<{ id: string; config: { tools?: Array<Record<string, unknown>> } }>;
+}): Array<{ agentId: string; target: unknown }> {
+	const seeded = new Set(
+		(payload.workflows ?? [])
+			.map((workflow) => workflow.name)
+			.filter((name): name is string => typeof name === 'string'),
+	);
+	const unbacked: Array<{ agentId: string; target: unknown }> = [];
+	for (const agent of payload.agents ?? []) {
+		for (const tool of agent.config.tools ?? []) {
+			if (tool.type !== 'workflow') continue;
+			const target = tool.workflow;
+			if (typeof target !== 'string' || !target || !seeded.has(target)) {
+				unbacked.push({ agentId: agent.id, target });
+			}
+		}
+	}
+	return unbacked;
+}
 
 /**
  * Reset an existing data table's rows to exactly `rows` (clear-then-insert).
