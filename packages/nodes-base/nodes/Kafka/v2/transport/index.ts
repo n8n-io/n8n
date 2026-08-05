@@ -1,1 +1,1 @@
-export { createKafkaProducer } from './producer';
+export { createKafkaProducer, type KafkaProducerOptions } from './producer';

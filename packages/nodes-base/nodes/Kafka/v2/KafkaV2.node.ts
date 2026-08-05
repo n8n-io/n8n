@@ -15,7 +15,7 @@ import { jsonParse, NodeConnectionTypes, NodeError, NodeOperationError } from 'n
 import { generatePairedItemData } from '@utils/utilities';
 
 import { createSchemaRegistry, type KafkaCredentials } from '../utils';
-import { createKafkaProducer } from './transport';
+import { createKafkaProducer, type KafkaProducerOptions } from './transport';
 
 const DEFAULT_TIMEOUT_MS = 30000;
 
@@ -23,6 +23,65 @@ const DEFAULT_TIMEOUT_MS = 30000;
 interface HeaderRow {
 	key: string;
 	value: string;
+}
+
+/**
+ * Maps the `options` collection onto the producer factory's options. Both fields
+ * differ deliberately from v1, so they are converted in one place rather than at
+ * the call site.
+ */
+function toProducerOptions(options: IDataObject): KafkaProducerOptions {
+	return {
+		// -1 = all in-sync replicas, matching the option description. v1 maps
+		// `true` to 1 (leader only) — a bug not worth carrying into a new version.
+		acks: options.acks === true ? -1 : 0,
+		// Unlike v1 (kafkajs tolerates `undefined`), confluent's native library
+		// crashes if `timeout` reaches the producer config as `undefined` — which
+		// it would be here if the user never added the option, since a `collection`
+		// param only carries keys the user explicitly set, ignoring its declared
+		// UI default. Fall back to that same default explicitly.
+		timeout: (options.timeout as number | undefined) ?? DEFAULT_TIMEOUT_MS,
+	};
+}
+
+/** Resolved Schema Registry client plus the schema id every message encodes against. */
+interface ResolvedSchemaRegistry {
+	registry: SchemaRegistry;
+	schemaId: number;
+}
+
+/**
+ * Encodes a message for the wire, returning it unchanged when the Schema Registry
+ * is off. Both failure modes are the user's to fix, so each maps to its own
+ * message rather than surfacing a registry-internal error.
+ */
+async function encodeMessage(
+	message: string,
+	schemaRegistry: ResolvedSchemaRegistry | undefined,
+	node: INode,
+	itemIndex: number,
+): Promise<string | Buffer> {
+	if (!schemaRegistry) return message;
+
+	let parsedMessage: unknown;
+	try {
+		parsedMessage = JSON.parse(message);
+	} catch {
+		throw new NodeOperationError(node, 'Message is not valid JSON', {
+			description:
+				'The Schema Registry encodes JSON messages. Provide a valid JSON message, or turn off "Use Schema Registry".',
+			itemIndex,
+		});
+	}
+
+	try {
+		return await schemaRegistry.registry.encode(schemaRegistry.schemaId, parsedMessage);
+	} catch {
+		// The original error is dropped rather than kept as `cause`: registry errors
+		// interpolate the request URL and response body, which would then be
+		// persisted into execution data.
+		throw new NodeOperationError(node, 'Verify your Schema Registry configuration', { itemIndex });
+	}
 }
 
 /**
@@ -254,21 +313,10 @@ export class KafkaV2 implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const options = this.getNodeParameter('options', 0);
+			const producerOptions = toProducerOptions(this.getNodeParameter('options', 0));
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
-
-			// Unlike v1 (kafkajs tolerates `undefined`), confluent's native library
-			// crashes if `timeout` reaches the producer config as `undefined` — which
-			// it would be here if the user never added the option, since a `collection`
-			// param only carries keys the user explicitly set, ignoring its declared
-			// UI default. Fall back to that same default explicitly.
-			const timeout = (options.timeout as number | undefined) ?? DEFAULT_TIMEOUT_MS;
-
-			// -1 = all in-sync replicas, matching the option description. v1 maps
-			// `true` to 1 (leader only) — a bug not worth carrying into a new version.
-			const acks = options.acks === true ? -1 : 0;
 
 			const credentials = await this.getCredentials<KafkaCredentials>('kafka');
 
@@ -276,7 +324,7 @@ export class KafkaV2 implements INodeType {
 			// up, so credential misconfiguration surfaces with its own error
 			// message and never leaks a connected producer. The registry client
 			// and schema ID are loop-invariant (`eventName` is read at index 0)
-			let schemaRegistry: { registry: SchemaRegistry; schemaId: number } | undefined;
+			let schemaRegistry: ResolvedSchemaRegistry | undefined;
 
 			if (useSchemaRegistry) {
 				const registry = await createSchemaRegistry(
@@ -293,40 +341,12 @@ export class KafkaV2 implements INodeType {
 				}
 			}
 
-			let message: string | Buffer;
-
 			for (let i = 0; i < length; i++) {
-				if (sendInputData) {
-					message = JSON.stringify(items[i].json);
-				} else {
-					message = this.getNodeParameter('message', i) as string;
-				}
+				const rawMessage = sendInputData
+					? JSON.stringify(items[i].json)
+					: (this.getNodeParameter('message', i) as string);
 
-				if (schemaRegistry) {
-					let parsedMessage: unknown;
-					try {
-						parsedMessage = JSON.parse(message);
-					} catch {
-						throw new NodeOperationError(this.getNode(), 'Message is not valid JSON', {
-							description:
-								'The Schema Registry encodes JSON messages. Provide a valid JSON message, or turn off "Use Schema Registry".',
-							itemIndex: i,
-						});
-					}
-
-					try {
-						message = await schemaRegistry.registry.encode(schemaRegistry.schemaId, parsedMessage);
-					} catch {
-						// The original error is dropped rather than kept as `cause`: registry errors
-						// interpolate the request URL and response body, which would then be
-						// persisted into execution data.
-						throw new NodeOperationError(
-							this.getNode(),
-							'Verify your Schema Registry configuration',
-							{ itemIndex: i },
-						);
-					}
-				}
+				const message = await encodeMessage(rawMessage, schemaRegistry, this.getNode(), i);
 
 				const topic = this.getNodeParameter('topic', i) as string;
 
@@ -373,7 +393,7 @@ export class KafkaV2 implements INodeType {
 				});
 			}
 
-			const producer = await createKafkaProducer(credentials, { acks, timeout });
+			const producer = await createKafkaProducer(credentials, producerOptions);
 
 			try {
 				await producer.connect();
