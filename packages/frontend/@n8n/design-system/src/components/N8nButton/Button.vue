@@ -47,7 +47,7 @@ const componentTag = computed(() => {
 
 const buttonType = computed(() => {
 	if (componentTag.value === 'a') return undefined;
-	return (attrs.type as string | undefined) ?? 'button';
+	return props.type ?? 'button';
 });
 
 const isDisabled = computed(() => props.disabled || props.loading);
