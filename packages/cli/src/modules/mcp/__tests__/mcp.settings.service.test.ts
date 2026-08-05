@@ -97,6 +97,56 @@ describe('McpSettingsService', () => {
 		});
 	});
 
+	describe('getAutoExposeNewWorkflows', () => {
+		test('returns false by default when no setting exists', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(null);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(false);
+			expect(findByKey).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows');
+			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'false');
+		});
+
+		test('returns the cached value without hitting the database', async () => {
+			cacheService.get.mockResolvedValue('true');
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+			expect(findByKey).not.toHaveBeenCalled();
+		});
+
+		test('reads through to the database on a cache miss', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue({
+				key: 'mcp.autoExposeNewWorkflows',
+				value: 'true',
+				loadOnStartup: true,
+			} as Settings);
+
+			await expect(service.getAutoExposeNewWorkflows()).resolves.toBe(true);
+		});
+	});
+
+	describe('setAutoExposeNewWorkflows', () => {
+		test('persists with loadOnStartup and primes the cache', async () => {
+			await service.setAutoExposeNewWorkflows(true);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith('mcp.autoExposeNewWorkflows', 'true');
+		});
+
+		test('persists false without special-casing it', async () => {
+			await service.setAutoExposeNewWorkflows(false);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: 'mcp.autoExposeNewWorkflows', value: 'false', loadOnStartup: true },
+				['key'],
+			);
+		});
+	});
+
 	describe('getAllowedRedirectUris', () => {
 		test('returns empty array by default when no setting exists', async () => {
 			findByKey.mockResolvedValue(null);

@@ -21,6 +21,7 @@ import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-avai
 
 const KEY = 'mcp.access.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
+const AUTO_EXPOSE_NEW_WORKFLOWS_KEY = 'mcp.autoExposeNewWorkflows';
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -103,6 +104,31 @@ export class McpSettingsService {
 		);
 
 		await this.cacheService.set(REDIRECT_URIS_KEY, JSON.stringify(uris));
+	}
+
+	async getAutoExposeNewWorkflows(): Promise<boolean> {
+		const cached = await this.cacheService.get<string>(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+
+		if (cached !== undefined) {
+			return cached === 'true';
+		}
+
+		const row = await this.settingsRepository.findByKey(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+
+		const enabled = row?.value === 'true';
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+
+		return enabled;
+	}
+
+	async setAutoExposeNewWorkflows(enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: AUTO_EXPOSE_NEW_WORKFLOWS_KEY, value: enabled.toString(), loadOnStartup: true },
+			['key'],
+		);
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
 	}
 
 	async bulkSetAvailableInMCP(
