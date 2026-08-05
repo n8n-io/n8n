@@ -506,6 +506,38 @@ describe('ChatView', () => {
 			expect(rendered.queryByText(/reselect a model/i)).not.toBeInTheDocument();
 			expect(rendered.getByRole('textbox')).not.toBeDisabled();
 		});
+
+		// The deleted-agent half of the pair above: the agent row is gone, so the session's
+		// `agentId` goes to NULL (`FK_chat_hub_sessions_agentId`, ON DELETE SET NULL).
+		// `unflattenModel` then has nothing to rebuild a model from, `selectedModel` is null
+		// and `messagingState` becomes 'missingAgent'. This is the path that reaches the
+		// `selectModel.existing` callout — ChatPrompt.test.ts covers the prop, nothing
+		// covered the path (N8N-155).
+		it('asks the user to reselect a model when the agent of the conversation was deleted', async () => {
+			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
+				createMockConversationResponse({
+					session: createMockSession({
+						id: 'existing-session-123',
+						title: 'Test Conversation',
+						lastMessageAt: new Date().toISOString(),
+						provider: 'custom-agent',
+						agentId: null,
+						agentName: 'Name Cached On Session',
+					}),
+					conversation: { messages: {} },
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// The callout is gated on the agent list having arrived, so asserting before
+			// that would pass for the wrong reason
+			await vi.waitFor(() => expect(chatStore.agentsReady).toBe(true));
+			await nextTick();
+
+			expect(await rendered.findByText(/reselect a model/i)).toBeInTheDocument();
+			expect(rendered.getByRole('textbox')).toBeDisabled();
+		});
 	});
 
 	describe('Sending messages', () => {
