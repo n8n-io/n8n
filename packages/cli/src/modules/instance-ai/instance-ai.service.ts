@@ -177,6 +177,7 @@ import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import { isStreamTransportError } from './stream-transport-error';
 import {
 	SuspendedRunRestorer,
 	type RebuildSuspendedRunOutcome,
@@ -341,6 +342,10 @@ function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
 export function getUserFacingErrorMessage(error: unknown): string {
 	if (isQuotaExhaustedError(error)) {
 		return QUOTA_EXHAUSTED_USER_MESSAGE;
+	}
+
+	if (isStreamTransportError(error)) {
+		return 'The connection to the AI provider dropped before I could finish that response. Please try again.';
 	}
 
 	if (error instanceof UserError) {
