@@ -19,6 +19,7 @@ import {
 	type CatalogSubscriptionTaskPayload,
 } from '@/workflows/catalog-subscription-task';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowInputSchema } from '@/workflows/workflow-input-schema.service';
 import { WorkflowInputSchemaService } from '@/workflows/workflow-input-schema.service';
 
 /**
@@ -104,12 +105,10 @@ export class CatalogSubscriptionService {
 			throw new UserError('Could not find workflow');
 		}
 
-		const schema = await this.workflowInputSchemaService.describe(workflow);
-		if (!schema.eligible) {
-			throw new UserError('This workflow cannot be run on a schedule', {
-				extra: { workflowId, reason: schema.reason },
-			});
-		}
+		const schema = this.assertSchedulable(
+			workflowId,
+			await this.workflowInputSchemaService.describe(workflow),
+		);
 
 		const held = await this.subscriptions.countForUser(user.id);
 		if (held >= MAX_SUBSCRIPTIONS_PER_USER) {
@@ -157,12 +156,10 @@ export class CatalogSubscriptionService {
 			throw new UserError('Could not find workflow');
 		}
 
-		const schema = await this.workflowInputSchemaService.describe(workflow);
-		if (!schema.eligible) {
-			throw new UserError('This workflow cannot be run on a schedule', {
-				extra: { workflowId: existing.workflowId, reason: schema.reason },
-			});
-		}
+		const schema = this.assertSchedulable(
+			existing.workflowId,
+			await this.workflowInputSchemaService.describe(workflow),
+		);
 
 		const firstRunAt = this.planFirstRun(input);
 		const declared = new Set(schema.fields.map((field) => field.name));
@@ -223,6 +220,39 @@ export class CatalogSubscriptionService {
 			userId: user.id,
 			subscriptions: held.length,
 		});
+	}
+
+	/**
+	 * A schedule needs more than a runnable workflow: it needs one whose builder
+	 * deliberately opened it up.
+	 *
+	 * Running something now is bounded — the person is there, it happens once,
+	 * they see the result — and a manual trigger is enough to justify it, since
+	 * anyone with execute access could have run it from the editor anyway. A
+	 * schedule is unattended, recurring, and acts with that person's accounts for
+	 * as long as it stands. That is too large a commitment to infer from the mere
+	 * presence of a start node: the Execute Workflow Trigger is the builder saying
+	 * "this is meant to be called by something other than me", and nothing else
+	 * says it.
+	 */
+	private assertSchedulable(
+		workflowId: string,
+		schema: WorkflowInputSchema,
+	): Extract<WorkflowInputSchema, { eligible: true }> {
+		if (!schema.eligible) {
+			throw new UserError('This workflow cannot be run on a schedule', {
+				extra: { workflowId, reason: schema.reason },
+			});
+		}
+
+		if (schema.trigger !== 'execute-workflow-trigger') {
+			throw new UserError(
+				'This workflow can only be run on demand. Ask whoever built it to add an Execute Workflow Trigger.',
+				{ extra: { workflowId, trigger: schema.trigger } },
+			);
+		}
+
+		return schema;
 	}
 
 	/**

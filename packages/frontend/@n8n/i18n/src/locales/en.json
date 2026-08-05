@@ -5028,6 +5028,7 @@
 	"catalog.card.scheduleMore": "+{count} more | +{count} more",
 	"catalog.schedule.add": "Run on a schedule",
 	"catalog.schedule.addAnother": "Add another schedule",
+	"catalog.schedule.notSchedulable": "This one can only be run on demand. Ask whoever built it to add an Execute Workflow Trigger.",
 	"catalog.schedule.change": "Change your schedule",
 	"catalog.schedule.create.title": "Set up a schedule",
 	"catalog.schedule.edit.title": "Change this schedule",

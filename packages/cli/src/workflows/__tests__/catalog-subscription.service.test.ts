@@ -153,6 +153,22 @@ describe('CatalogSubscriptionService', () => {
 			await expect(service.create(user, 'wf-1', validInput)).rejects.toThrow(UserError);
 		});
 
+		it('should refuse a workflow whose builder never opened it up', async () => {
+			// A manual trigger is enough to run something once with the person there;
+			// it is not the builder saying the workflow may run unattended forever.
+			schemas.describe.mockResolvedValue({
+				eligible: true,
+				trigger: 'manual-trigger',
+				fields: [],
+			});
+
+			await expect(service.create(user, 'wf-1', validInput)).rejects.toThrow(
+				'can only be run on demand',
+			);
+			expect(subscriptions.createOne).not.toHaveBeenCalled();
+			expect(bindings.grant).not.toHaveBeenCalled();
+		});
+
 		it('should refuse a workflow the person may not execute', async () => {
 			finder.findWorkflowForUser.mockResolvedValue(null);
 
@@ -196,6 +212,20 @@ describe('CatalogSubscriptionService', () => {
 			subscriptions.findOneForUser.mockResolvedValue(null);
 
 			await expect(service.update(user, 'sub-1', validInput)).rejects.toThrow(UserError);
+		});
+
+		it('should refuse once the workflow no longer declares a callable trigger', async () => {
+			// The builder can take the Execute Workflow Trigger back out after someone
+			// subscribed; changing the schedule must not quietly re-bless it.
+			schemas.describe.mockResolvedValue({
+				eligible: true,
+				trigger: 'manual-trigger',
+				fields: [],
+			});
+
+			await expect(service.update(user, 'sub-1', validInput)).rejects.toThrow(
+				'can only be run on demand',
+			);
 		});
 
 		it('should remove the job when the schedule is paused', async () => {

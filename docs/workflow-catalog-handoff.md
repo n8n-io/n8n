@@ -55,6 +55,14 @@ for schedules (one person may want two schedules for the same workflow).
 **Manual runs need no binding** — the person is present, identity comes from the
 session.
 
+**Schedules need an Execute Workflow Trigger; manual runs do not.** A manual
+trigger is enough to justify running something once with the person watching —
+anyone with execute access could have run it from the editor anyway. A schedule
+is unattended, recurring and acts with their accounts indefinitely, which is too
+large a commitment to infer from the mere presence of a start node. So a
+manual-trigger workflow appears in the catalog and can be run, but its schedule
+button is disabled with an explanation.
+
 **Trap:** the DB cascade will not deprovision scheduler jobs. Deprovision
 explicitly in the service before deleting rows.
 

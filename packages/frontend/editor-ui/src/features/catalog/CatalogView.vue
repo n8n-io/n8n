@@ -130,9 +130,26 @@ const ownScheduleLabel = (entry: CatalogEntry) => {
  * case and saves a trip to the list below.
  */
 const scheduleAction = (entry: CatalogEntry) => {
+	// Running something once with the person watching is one thing; letting it run
+	// unattended with their accounts for months is another, and only the Execute
+	// Workflow Trigger is the builder saying the workflow may be called at all.
+	// Explained on a disabled button rather than by hiding it, so nobody is left
+	// wondering where the option went.
+	if (entry.trigger !== 'execute-workflow-trigger') {
+		return {
+			label: i18n.baseText('catalog.schedule.notSchedulable'),
+			subscription: undefined,
+			disabled: true,
+		};
+	}
+
 	const held = catalogStore.subscriptionsByWorkflow[entry.id] ?? [];
 	if (held.length === 1) {
-		return { label: i18n.baseText('catalog.schedule.change'), subscription: held[0] };
+		return {
+			label: i18n.baseText('catalog.schedule.change'),
+			subscription: held[0],
+			disabled: false,
+		};
 	}
 	return {
 		label:
@@ -140,6 +157,7 @@ const scheduleAction = (entry: CatalogEntry) => {
 				? i18n.baseText('catalog.schedule.add')
 				: i18n.baseText('catalog.schedule.addAnother'),
 		subscription: undefined,
+		disabled: false,
 	};
 };
 
@@ -305,14 +323,20 @@ const removeSchedule = async (subscription: CatalogSubscription) => {
 								/>
 							</N8nTooltip>
 							<N8nTooltip :content="scheduleAction(entry).label">
-								<N8nIconButton
-									icon="calendar"
-									type="tertiary"
-									size="small"
-									:aria-label="scheduleAction(entry).label"
-									data-test-id="catalog-schedule-button"
-									@click="scheduling = { entry, subscription: scheduleAction(entry).subscription }"
-								/>
+								<!-- Wrapped so the tooltip still fires when the button is disabled. -->
+								<span>
+									<N8nIconButton
+										icon="calendar"
+										type="tertiary"
+										size="small"
+										:disabled="scheduleAction(entry).disabled"
+										:aria-label="scheduleAction(entry).label"
+										data-test-id="catalog-schedule-button"
+										@click="
+											scheduling = { entry, subscription: scheduleAction(entry).subscription }
+										"
+									/>
+								</span>
 							</N8nTooltip>
 							<N8nButton
 								size="small"
