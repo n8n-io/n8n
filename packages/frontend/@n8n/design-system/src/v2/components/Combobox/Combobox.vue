@@ -113,6 +113,34 @@ const groups = computed<ComboboxListItem[]>(() => {
 	});
 });
 
+type ComboboxSection = {
+	label?: ComboboxListItem;
+	items: ComboboxListItem[];
+};
+
+const sections = computed<ComboboxSection[]>(() => {
+	const result: ComboboxSection[] = [];
+	let current: ComboboxSection = { items: [] };
+
+	for (const item of groups.value) {
+		if (item.type === 'label') {
+			if (current.label || current.items.length > 0) {
+				result.push(current);
+			}
+			current = { label: item, items: [] };
+			continue;
+		}
+
+		current.items.push(item);
+	}
+
+	if (current.label || current.items.length > 0) {
+		result.push(current);
+	}
+
+	return result;
+});
+
 function getDisplayValue(value: unknown): string {
 	if (value === undefined || value === null) {
 		return '';
@@ -314,16 +342,22 @@ function onInput(event: Event) {
 						{{ props.emptyText }}
 					</ComboboxEmpty>
 
-					<ComboboxGroup>
-						<template v-for="(item, index) in groups" :key="`group-${index}`">
-							<ComboboxLabel v-if="item.type === 'label'" :class="$style.comboboxLabel">
-								<slot name="label" :item="item">
-									{{ item.label }}
-								</slot>
-							</ComboboxLabel>
+					<ComboboxGroup
+						v-for="(section, sectionIndex) in sections"
+						:key="`section-${sectionIndex}`"
+					>
+						<ComboboxLabel v-if="section.label" :class="$style.comboboxLabel">
+							<slot name="label" :item="section.label">
+								{{ section.label.label }}
+							</slot>
+						</ComboboxLabel>
 
+						<template
+							v-for="(item, index) in section.items"
+							:key="`section-${sectionIndex}-item-${index}`"
+						>
 							<ComboboxSeparator
-								v-else-if="item.type === 'separator'"
+								v-if="item.type === 'separator'"
 								:class="$style.comboboxSeparator"
 								role="separator"
 							/>

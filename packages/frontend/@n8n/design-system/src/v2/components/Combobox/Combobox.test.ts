@@ -165,6 +165,36 @@ describe('v2/components/Combobox', () => {
 			expect(within(popover).getByText('Group 1')).toBeVisible();
 		});
 
+		it('should render each section label with a unique id and its own group', async () => {
+			const items: ComboboxItem[] = [
+				{ label: 'Fruits', type: 'label' },
+				{ value: 'apple', label: 'Apple' },
+				{ label: 'More Fruits', type: 'label' },
+				{ value: 'mango', label: 'Mango' },
+			];
+			render(Combobox, {
+				props: {
+					items,
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer();
+
+			const fruits = within(popover).getByText('Fruits');
+			const moreFruits = within(popover).getByText('More Fruits');
+			expect(fruits).toBeVisible();
+			expect(moreFruits).toBeVisible();
+			expect(fruits.id).toBeTruthy();
+			expect(moreFruits.id).toBeTruthy();
+			expect(fruits.id).not.toBe(moreFruits.id);
+
+			const groupElements = popover.querySelectorAll('[role="group"]');
+			expect(groupElements).toHaveLength(2);
+			expect(groupElements[0]).toHaveAttribute('aria-labelledby', fruits.id);
+			expect(groupElements[1]).toHaveAttribute('aria-labelledby', moreFruits.id);
+		});
+
 		it('should render separator items', async () => {
 			const items: ComboboxItem[] = [
 				{ value: '1', label: 'Option 1' },

@@ -18,14 +18,16 @@ Combobox (N8nCombobox2)
     ├── header slot
     ├── ComboboxViewport (scrollable list area)
     │   ├── ComboboxEmpty
-    │   └── ComboboxGroup
-    │       ├── ComboboxLabel (section headings)
+    │   └── ComboboxGroup (one per section; split at `type: 'label'` boundaries)
+    │       ├── ComboboxLabel (section heading, when present)
     │       ├── ComboboxSeparator
     │       └── N8nCombobox2Item (reka-ui ComboboxItem + default row: icon, label, check)
     └── footer slot
 ```
 
 When `multiple` is true, selected values render via embedded `N8nTagsInput2` (shared chip/layout styles; Combobox keeps the field chrome). Freeform tag creation is disabled — values are only added from the dropdown.
+
+Items with `type: 'label'` start a new `ComboboxGroup`. That keeps each heading’s DOM `id` unique so `aria-labelledby` on the group points at the correct label (multiple labels in one group would reuse reka’s single `labelId`).
 
 ## Public API Definition
 
