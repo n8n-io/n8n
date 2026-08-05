@@ -537,6 +537,7 @@ function createNewCredential(
 		{
 			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
+			...(isToolContext ? { appendToBody: true } : {}),
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
 		},
 	);
@@ -844,6 +845,7 @@ function editCredential(credentialType: string): void {
 
 	uiStore.openExistingCredential(credential.id, {
 		hideAskAssistant: hideAskAssistant.value,
+		...(isToolContext ? { appendToBody: true } : {}),
 		instanceAiCredentialHelp: instanceAiCredentialHelp(),
 	});
 

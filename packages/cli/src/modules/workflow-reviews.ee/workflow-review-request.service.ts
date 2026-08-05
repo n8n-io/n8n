@@ -19,11 +19,13 @@ import {
 	DbLockService,
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
+	type OperationContext,
 	type User,
 	type WorkflowReviewRequest,
 	type WorkflowReviewRequestForWorkflowRow,
@@ -58,6 +60,7 @@ export class WorkflowReviewRequestService {
 		private readonly featureGate: WorkflowReviewFeatureGate,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
@@ -240,11 +243,35 @@ export class WorkflowReviewRequestService {
 		};
 	}
 
+	/**
+	 * Called with the review's transaction so a version pruned between the
+	 * pre-lock existence check and this write rolls the review write back
+	 * instead of leaving an unnamed (still prunable) pin behind.
+	 */
+	private async nameVersion(
+		workflowId: string,
+		versionId: string,
+		name: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const affected = await this.workflowHistoryRepository.updateVersionName(
+			{ workflowId, versionId, name },
+			ctx,
+		);
+
+		if (affected === 0) {
+			throw new BadRequestError(
+				`Version '${versionId}' does not exist for workflow '${workflowId}'`,
+			);
+		}
+	}
+
 	async create(
 		user: User,
 		dto: CreateWorkflowReviewRequestDto,
 	): Promise<WorkflowReviewRequestSummary> {
-		const { workflowId, workflowVersionId } = dto.workflows[0];
+		const { workflowId, workflowVersionId, workflowVersionName } = dto.workflows[0];
+		const versionName = workflowVersionName?.trim();
 
 		await this.featureGate.assertAvailable();
 
@@ -293,7 +320,7 @@ export class WorkflowReviewRequestService {
 
 		const request = await this.dbLockService.withLock(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
-			async (tx) => {
+			async (tx, ctx) => {
 				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
 					tx,
@@ -324,6 +351,11 @@ export class WorkflowReviewRequestService {
 					},
 					tx,
 				);
+
+				// After the conflict check, so a 409 never renames the version.
+				if (versionName) {
+					await this.nameVersion(workflowId, workflowVersionId, versionName, ctx);
+				}
 
 				await this.workflowReviewRequestAuthorRepository.addAuthor(
 					{ workflowReviewRequestId: created.id, userId: user.id },
@@ -394,16 +426,23 @@ export class WorkflowReviewRequestService {
 			);
 		}
 
+		const versionName = dto.workflowVersionName?.trim();
+
 		// Nothing new to review: skip the lock, write nothing, broadcast nothing.
-		// Once decisions exist (LIGO-786) this also means an unchanged version does
-		// NOT reset `changes_requested` back to `pending` — which is correct.
 		if (workflowRow.workflowVersionId === dto.workflowVersionId) {
+			// A rename is the one thing that can still be pending here, and a lone
+			// UPDATE is atomic, so apply it rather than silently dropping it.
+			if (versionName && versionName !== version.name) {
+				// No transaction here: a lone UPDATE is atomic, so the root context is right.
+				await this.nameVersion(dto.workflowId, dto.workflowVersionId, versionName, {});
+			}
+
 			return this.toSummary(request, workflowRow.workflowVersionId);
 		}
 
 		const { request: updated, changed } = await this.dbLockService.withLock(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
-			async (tx) => {
+			async (tx, ctx) => {
 				// Re-check under the lock so update can't race a concurrent close/approve.
 				const current = await this.workflowReviewRequestRepository.findById(
 					workflowReviewRequestId,
@@ -426,6 +465,13 @@ export class WorkflowReviewRequestService {
 					throw new NotFoundError('Could not find review request');
 				}
 				if (currentRow.workflowVersionId === dto.workflowVersionId) {
+					// A concurrent sync won the lock and already re-pinned this version
+					// but our rename can still be pending — apply it rather than
+					// dropping it, mirroring the pre-lock branch.
+					if (versionName && versionName !== version.name) {
+						await this.nameVersion(dto.workflowId, dto.workflowVersionId, versionName, ctx);
+					}
+
 					return { request: current, changed: false };
 				}
 
@@ -437,6 +483,10 @@ export class WorkflowReviewRequestService {
 					},
 					tx,
 				);
+
+				if (versionName) {
+					await this.nameVersion(dto.workflowId, dto.workflowVersionId, versionName, ctx);
+				}
 
 				current.decision = 'pending';
 				current.updatedById = user.id;
