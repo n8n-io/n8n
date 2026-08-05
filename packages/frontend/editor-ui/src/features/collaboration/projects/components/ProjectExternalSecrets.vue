@@ -7,7 +7,7 @@ import { useSecretsProvidersList } from '@/features/integrations/secretsProvider
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRouter } from 'vue-router';
 
 import {

@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue';
 
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { canMessageInstanceAi } from '../instanceAiPermissions';
 

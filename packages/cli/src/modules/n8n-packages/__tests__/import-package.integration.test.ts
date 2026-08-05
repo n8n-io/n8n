@@ -50,6 +50,7 @@ import {
 	VariableParentPolicy,
 	TagMissingMode,
 	TagConflictPolicy,
+	VariableConflictPolicy,
 } from '../n8n-packages.types';
 import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types';
 import { FORMAT_VERSION } from '../spec/constants';
@@ -77,6 +78,7 @@ type ImportPackageParams = Omit<
 	| 'dataTableMissingMode'
 	| 'dataTableSchemaConflictPolicy'
 	| 'variableMissingMode'
+	| 'variableConflictPolicy'
 	| 'variableParentPolicy'
 	| 'tagMissingMode'
 	| 'tagConflictPolicy'
@@ -96,6 +98,7 @@ type ImportPackageParams = Omit<
 			| 'dataTableMissingMode'
 			| 'dataTableSchemaConflictPolicy'
 			| 'variableMissingMode'
+			| 'variableConflictPolicy'
 			| 'variableParentPolicy'
 			| 'tagMissingMode'
 			| 'tagConflictPolicy'
@@ -116,6 +119,7 @@ async function importPackage(params: ImportPackageParams) {
 		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
 		variableMissingMode: VariableMissingMode.DoNothing,
 		variableParentPolicy: VariableParentPolicy.Project,
+		variableConflictPolicy: VariableConflictPolicy.KeepExisting,
 		tagMissingMode: TagMissingMode.Create,
 		tagConflictPolicy: TagConflictPolicy.Skip,
 		...params,
@@ -1223,6 +1227,8 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1316,6 +1322,8 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1378,6 +1386,8 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1442,6 +1452,8 @@ describe('Package import event emission', () => {
 					matched: 0,
 					missing: 0,
 					created: 0,
+					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {

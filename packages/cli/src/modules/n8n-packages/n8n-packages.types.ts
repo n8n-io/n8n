@@ -4,6 +4,7 @@ import type { Readable } from 'node:stream';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
 import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
+	VariableConflict,
 	VariableLimitFailure,
 	VariableResolutionFailure,
 } from './entities/variable/variable.types';
@@ -94,6 +95,17 @@ export const VariableMissingMode = {
 	MustPreexist: 'must-preexist',
 	/** Creates each unresolved variable with an empty value at the placement scope; the response lists the created names under `stubbed`. */
 	CreateStub: 'create-stub',
+	/** Creates each unresolved variable with its package value, falling back to an empty stub when the package carries no value for it. */
+	CreateWithValue: 'create-with-value',
+} as const;
+
+export const VariableConflictPolicy = {
+	/** Leaves the target value alone, even when the package bundles a different one. */
+	KeepExisting: 'keep-existing',
+	/** Replaces the target value with the package's, at whichever scope the variable was found. */
+	Overwrite: 'overwrite',
+	/** Rejects the import when the package bundles a value that differs from the target's. */
+	Fail: 'fail',
 } as const;
 
 export const VariableParentPolicy = {
@@ -139,6 +151,9 @@ export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
 
 export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof VariableMissingMode];
+
+export type VariableConflictPolicy =
+	(typeof VariableConflictPolicy)[keyof typeof VariableConflictPolicy];
 
 export type VariableParentPolicy = (typeof VariableParentPolicy)[keyof typeof VariableParentPolicy];
 
@@ -195,6 +210,7 @@ export type ImportDataTableProperties = {
 
 export type ImportVariableProperties = {
 	variableMissingMode: VariableMissingMode;
+	variableConflictPolicy: VariableConflictPolicy;
 	variableParentPolicy?: VariableParentPolicy;
 };
 
@@ -253,6 +269,8 @@ export type ImportPackageEventCounts = {
 		matched: number;
 		missing: number;
 		created: number;
+		stubbed: number;
+		updated: number;
 		requirements: number;
 	};
 	tags: {
@@ -341,6 +359,7 @@ export type BlockingIssue =
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
 	| ({ type: 'tag-unresolved' } & TagResolutionFailure)
 	| ({ type: 'variable-unresolved' } & VariableResolutionFailure)
+	| ({ type: 'variable-conflict' } & VariableConflict)
 	| ({ type: 'variable-limit-exceeded' } & VariableLimitFailure)
 	| {
 			type: 'missing-node-type';
@@ -412,7 +431,9 @@ export interface ImportCredentialSummary {
 export interface ImportVariableSummary {
 	matched: string[];
 	missing: string[];
+	created: string[];
 	stubbed: string[];
+	updated: string[];
 }
 
 /** Tag names (not ids), grouped by how the import resolved them. */
