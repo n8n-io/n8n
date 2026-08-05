@@ -56,6 +56,7 @@ import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
+import { WebauthnCredential } from './webauthn-credential';
 import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
@@ -167,6 +168,7 @@ export {
 	ProjectSecretsProviderAccess,
 	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
+	WebauthnCredential,
 };
 
 export const entities = {
@@ -226,4 +228,5 @@ export const entities = {
 	ScheduledTask,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
+	WebauthnCredential,
 };
