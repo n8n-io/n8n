@@ -14,6 +14,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { formatBytes } from '@/app/utils/typesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
@@ -49,12 +50,17 @@ const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
+const projectsStore = useProjectsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
 const workflowId = useInjectWorkflowId();
 const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+const projectPermissions = computed(() => {
+	const project = projectsStore.currentProject ?? projectsStore.personalProject;
+	return getResourcePermissions(project?.scopes);
+});
 const executionId = computed(() => route.params.executionId as string);
 const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>

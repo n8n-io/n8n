@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
@@ -15,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const workflowsListStore = useWorkflowsListStore();
+const projectsStore = useProjectsStore();
 const i18n = useI18n();
 
 const annotationDropdownRef = ref<InstanceType<typeof ElDropdown> | null>(null);
@@ -24,6 +26,13 @@ const workflowId = useInjectWorkflowId();
 const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+);
+const projectPermissions = computed(() => {
+	const project = projectsStore.currentProject ?? projectsStore.personalProject;
+	return getResourcePermissions(project?.scopes);
+});
+const hasUpdatePermission = computed(
+	() => workflowPermissions.value.update || projectPermissions.value.workflow.update,
 );
 
 const customDataLength = computed(() => {
@@ -52,7 +61,7 @@ function onDropdownVisibleChange(visible: boolean) {
 		<N8nButton
 			variant="subtle"
 			:title="i18n.baseText('executionDetails.additionalActions')"
-			:disabled="!workflowPermissions.update"
+			:disabled="!hasUpdatePermission"
 			icon="list-checks"
 			:class="{
 				[$style.highlightDataButton]: true,
