@@ -34,6 +34,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
+	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 } from 'n8n-workflow';
@@ -813,15 +814,12 @@ export class CredentialsService {
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
-		// Dynamic client registration fields are hidden, so a save never carries
-		// them and the token could no longer be refreshed. Dropped along with the
-		// token when the caller clears it.
 		if (!options?.clearOauthTokenData) {
-			const dataToSave = updateData.data as unknown as ICredentialDataDecryptedObject;
-			for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
-				if (field in dataToSave || !(field in decryptedData)) continue;
-				dataToSave[field] = decryptedData[field];
-			}
+			this.restoreHiddenDcrFields(
+				existingCredential.type,
+				updateData.data as unknown as ICredentialDataDecryptedObject,
+				decryptedData,
+			);
 		}
 
 		this.validateOAuthCredentialUrls(
@@ -829,6 +827,48 @@ export class CredentialsService {
 			updateData.data as unknown as ICredentialDataDecryptedObject,
 		);
 		return updateData;
+	}
+
+	/**
+	 * The frontend sends only displayed fields holding a non-default value, so a
+	 * save would drop what dynamic client registration negotiated and leave the
+	 * stored token unable to refresh. A displayed field stays the user's: its
+	 * absence means they chose its default.
+	 */
+	private restoreHiddenDcrFields(
+		credentialType: string,
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): void {
+		let properties: INodeProperties[] | undefined;
+		try {
+			properties = this.credentialsHelper.getCredentialsProperties(credentialType);
+		} catch {
+			return;
+		}
+		if (!properties?.length) return;
+
+		// Display rules read `useDynamicClientRegistration`, a hidden property that
+		// is usually not stored, so defaults have to be filled in.
+		const storedWithDefaults =
+			NodeHelpers.getNodeParameters(
+				properties,
+				storedData as unknown as INodeParameters,
+				true,
+				true,
+				null,
+				null,
+			) ?? {};
+
+		for (const field of DCR_MANAGED_CREDENTIAL_FIELDS) {
+			if (field in dataToSave || !(field in storedData)) continue;
+
+			// An undeclared field has no way of being shown, so it is never the user's.
+			const property = properties.find((candidate) => candidate.name === field);
+			if (property && displayParameter(storedWithDefaults, property, null, null)) continue;
+
+			dataToSave[field] = storedData[field];
+		}
 	}
 
 	async createEncryptedData(credential: {

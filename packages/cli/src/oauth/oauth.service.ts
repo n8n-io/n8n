@@ -1139,11 +1139,7 @@ export class OauthService {
 		});
 	}
 
-	/**
-	 * Writes the negotiated {@link DCR_MANAGED_CREDENTIAL_FIELDS} to the in-memory
-	 * credential and to the pending update, clearing the ones the authorization
-	 * server did not grant.
-	 */
+	/** Clears the fields the authorization server did not grant. */
 	private applyDcrManagedFields(
 		oauthCredentials: OAuth2CredentialData,
 		toUpdate: ICredentialDataDecryptedObject,

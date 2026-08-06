@@ -1,10 +1,8 @@
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 
 /**
- * Credential fields owned by the dynamic client registration handshake, not by
- * the user. They are written when the client registers with the authorization
- * server and are hidden in the UI, so a credential save never carries them —
- * without them a stored token can no longer be refreshed.
+ * Credential fields owned by the dynamic client registration handshake rather
+ * than the user, and hidden in the UI.
  */
 export const DCR_MANAGED_CREDENTIAL_FIELDS = [
 	'authUrl',
