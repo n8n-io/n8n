@@ -1,0 +1,27 @@
+packages/@n8n/vitest-config/bin/sync-frontend-aliases.mjs
+  s_c4fe131c2ca196::t_556b3a0c7b5c6f 77-79
+  s_c4fe131c2ca196::t_d21a0bf451a27f 63-70,87-90
+packages/@n8n/vitest-config/frontend-aliases.ts
+  s_c4fe131c2ca196::t_477cec936e0bbf 159-164,178-181
+  s_c4fe131c2ca196::t_ee61bbeaf5a564 12-14,16
+  s_c4fe131c2ca196::t_01d2213529698a 85,88-94,97
+  s_c4fe131c2ca196::t_44f505ea5290b7 44-45,54-57,72
+packages/@n8n/typescript-config/tsconfig.frontend-module.json
+  s_c4fe131c2ca196::t_9c2b72d5a94f7a 11-18,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a0407db485a293be7cff702f0b948fa3704f7819",
+  "prompts": {},
+  "sessions": {
+    "s_c4fe131c2ca196": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22b23070-f51d-467f-bfdb-0b165ef0f700",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
