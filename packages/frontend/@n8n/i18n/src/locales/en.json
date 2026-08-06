@@ -5408,7 +5408,7 @@
 	"workflowReviews.detail.metadata.status": "Status",
 	"workflowReviews.detail.metadata.state.open": "Open",
 	"workflowReviews.detail.metadata.reviewers": "Reviewers",
-	"workflowReviews.detail.metadata.noReviewers": "No reviewers notified.",
+	"workflowReviews.detail.metadata.noReviewers": "No reviewers selected.",
 	"workflowReviews.detail.metadata.changes": "Changes",
 	"workflowReviews.detail.metadata.noWorkflows": "No workflows available.",
 	"workflowReviews.changes.closed.body": "Changes aren't shown for closed reviews.",

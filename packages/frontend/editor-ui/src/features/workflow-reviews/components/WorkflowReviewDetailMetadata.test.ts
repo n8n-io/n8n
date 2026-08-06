@@ -95,7 +95,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-no-reviewers')).toHaveTextContent(
-			'No reviewers notified.',
+			'No reviewers selected.',
 		);
 		expect(getByTestId('workflow-review-detail-no-workflows')).toHaveTextContent(
 			'No workflows available.',
