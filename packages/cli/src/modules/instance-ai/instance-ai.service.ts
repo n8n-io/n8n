@@ -5940,7 +5940,7 @@ export class InstanceAiService {
 			status: effectiveStatus,
 			...(userId ? { user_id: userId } : {}),
 		});
-		this.emitBrowserCredentialSetupOutcomes(threadId, runId);
+		this.emitBrowserCredentialSetupOutcomes(threadId, runId, status, reason);
 		if (status === 'errored') {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
@@ -5955,12 +5955,28 @@ export class InstanceAiService {
 	/**
 	 * Emit one terminal telemetry event per browser-assisted credential setup
 	 * attempt of the finished run (NODE-5511). Consumes the pending record so
-	 * every attempt yields exactly one success or failure event.
+	 * every attempt yields exactly one success or failure event. When the flow
+	 * itself never failed, the run's own termination (user stop, timeout,
+	 * stream error) is reported as the error code so aborts aren't counted as
+	 * flow failures.
 	 */
-	private emitBrowserCredentialSetupOutcomes(threadId: string, runId: string): void {
+	private emitBrowserCredentialSetupOutcomes(
+		threadId: string,
+		runId: string,
+		runStatus: 'completed' | 'cancelled' | 'errored',
+		runFinishReason?: string,
+	): void {
 		const browserSetup = this.pendingBrowserCredentialSetups.get(runId);
 		if (!browserSetup) return;
 		this.pendingBrowserCredentialSetups.delete(runId);
+		const terminalErrorCode =
+			runStatus === 'completed'
+				? 'not_attempted'
+				: runStatus === 'errored'
+					? 'run_errored'
+					: runFinishReason === INSTANCE_AI_RUN_TIMEOUT_REASON
+						? 'run_timed_out'
+						: 'run_cancelled';
 		for (const attempt of browserSetup.attempts) {
 			this.telemetry.track('Instance AI Browser Use credential setup completed', {
 				user_id: browserSetup.userId,
@@ -5970,7 +5986,7 @@ export class InstanceAiService {
 					? {}
 					: {
 							failure_stage: failureStageForErrorCode(attempt.errorCode),
-							error_code: attempt.errorCode ?? 'not_attempted',
+							error_code: attempt.errorCode ?? terminalErrorCode,
 						}),
 				// The flow never runs a credential test, so validation support is unknown.
 				is_valid: null,

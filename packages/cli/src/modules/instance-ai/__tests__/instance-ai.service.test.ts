@@ -3041,6 +3041,46 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(service.pendingBrowserCredentialSetups.size).toBe(0);
 	});
 
+	it('reports the run termination as error code when the user stops a pending credential setup', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+		service.pendingBrowserCredentialSetups.set('run-1', {
+			userId: 'user-1',
+			attempts: [{ credentialType: 'slackApi', startedAt: 1000, created: false }],
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			'Instance AI Browser Use credential setup completed',
+			expect.objectContaining({
+				credential_type: 'slackApi',
+				status: 'failure',
+				failure_stage: 'unknown',
+				error_code: 'run_cancelled',
+			}),
+		);
+	});
+
 	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
 		const service = createTerminalGuardOrderService();
 		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
