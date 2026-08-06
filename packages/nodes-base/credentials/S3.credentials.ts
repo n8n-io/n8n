@@ -7,6 +7,8 @@ export class S3 implements ICredentialType {
 
 	documentationUrl = 's3';
 
+	description = 'For use with S3-compatible services like MinIO, RustFS, DigitalOcean Spaces, etc.';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'S3 Endpoint',
