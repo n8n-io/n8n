@@ -31,7 +31,6 @@ import {
 
 const trackMock = vi.hoisted(() => vi.fn());
 const authorizeMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
-const n8nCreditsCredentialSelectionEnabled = vi.hoisted(() => ({ value: false }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackMock }),
@@ -58,12 +57,6 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
 		fetchWallet: vi.fn().mockResolvedValue(undefined),
 		saveAfterToggle: vi.fn().mockResolvedValue(undefined),
-	})),
-}));
-
-vi.mock('@/experiments/n8nCreditsCredentialSelection', () => ({
-	useN8nCreditsCredentialSelectionExperiment: vi.fn(() => ({
-		isFeatureEnabled: n8nCreditsCredentialSelectionEnabled,
 	})),
 }));
 
@@ -183,7 +176,6 @@ describe('NodeCredentials', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		n8nCreditsCredentialSelectionEnabled.value = false;
 
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -2077,23 +2069,6 @@ describe('NodeCredentials', () => {
 				name: '',
 				__aiGatewayManaged: true,
 			});
-		});
-
-		it('should not auto-enable gateway credential when the credential selection experiment is enabled', () => {
-			n8nCreditsCredentialSelectionEnabled.value = true;
-			credentialsStore.state.credentials = {};
-			const nodeWithAction: INodeUi = {
-				...googleAiNode,
-				parameters: { resource: 'chat', operation: 'message' },
-			};
-			ndvStore.activeNode = nodeWithAction;
-
-			const { emitted } = renderComponent({
-				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
-				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
-			});
-
-			expect(emitted('credentialSelected')).toBeFalsy();
 		});
 
 		it('should auto-select an own credential when one is available', () => {

@@ -51,7 +51,6 @@ import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
-import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
 	N8nButton,
@@ -144,8 +143,6 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
-const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
-	useN8nCreditsCredentialSelectionExperiment();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
@@ -334,8 +331,8 @@ watch(
 
 		// No credentials available to select — auto-enable AI Gateway for supported
 		// types, but only on the initial setup so a later action change doesn't
-		// redirect the user onto n8n credits. The experiment variant leaves it unselected.
-		if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
+		// redirect the user onto n8n credits.
+		if (aiGateway.isEnabled.value && isInitialEvaluation) {
 			for (const { type } of types) {
 				// Same rule as showAiGatewaySelector: supported type, or a sibling fallback.
 				const gatewaySupported =
@@ -589,9 +586,12 @@ function onCredentialSelected(
 		name: selectedCredentials.name,
 	};
 
-	// if credentials has been string or neither id matched nor name matched uniquely
+	// if credentials has been string or neither id matched nor name matched uniquely.
+	// A gateway-managed slot also has id: null but is a deliberate state, not an
+	// invalid credential — repairing it would sweep every other n8n-credits node.
 	if (
 		!props.standalone &&
+		!oldCredentials?.__aiGatewayManaged &&
 		(oldCredentials?.id === null ||
 			(oldCredentials?.id &&
 				!credentialsStore.getCredentialByIdAndType(oldCredentials.id, selectedCredentialsType)))
