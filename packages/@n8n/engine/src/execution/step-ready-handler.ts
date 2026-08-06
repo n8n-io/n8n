@@ -148,7 +148,14 @@ export class StepReadyHandler {
 		}
 
 		const outputsByNodeId = await this.stepStore.loadStepOutputs(execution.id, [edge.from]);
-		const predecessorOutputs = outputsByNodeId[edge.from] ?? [];
+		const predecessorOutputs = outputsByNodeId[edge.from];
+		if (!predecessorOutputs) {
+			// A step is planned only once every predecessor completed, so running on
+			// a fabricated empty input would mask a planner/store inconsistency.
+			throw new UnexpectedError(
+				`step ${step.id} reads node ${edge.from}, whose step has not completed`,
+			);
+		}
 		if (predecessorOutputs.length > 1) {
 			throw new UnexpectedError(
 				`step ${step.id} reads node ${edge.from}, whose step recorded more than one output slot; the write-time guard admits only slot 0`,

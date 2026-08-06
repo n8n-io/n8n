@@ -54,7 +54,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		claimStep: vi.fn().mockResolvedValue(true),
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
-		loadStepOutputs: vi.fn().mockResolvedValue({}),
+		loadStepOutputs: vi.fn().mockResolvedValue({ trigger: [{}] }),
 		loadCompletedNodeIds: vi.fn().mockResolvedValue(new Set()),
 		hasActiveSteps: vi.fn().mockResolvedValue(false),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
@@ -214,6 +214,29 @@ describe('StepReadyHandler', () => {
 		await expect(handler.handle({ ...event, stepId: 'step-b' })).rejects.toMatchObject({
 			name: 'UnexpectedError',
 			message: expect.stringContaining('more than one output slot') as string,
+		});
+
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+	});
+
+	it('throws, running nothing, when the predecessor step has no completed outputs', async () => {
+		// a step is planned only once every predecessor completed, so a null entry
+		// means the planner and the store disagree — running on a fabricated empty
+		// input would mask that
+		const stepStore = makeStepStore(
+			{},
+			{ loadStepOutputs: vi.fn().mockResolvedValue({ trigger: null }) },
+		);
+		const executor = makeExecutor();
+		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await expect(handler.handle(event)).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('not completed') as string,
 		});
 
 		expect(executor.execute).not.toHaveBeenCalled();

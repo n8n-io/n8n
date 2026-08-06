@@ -40,6 +40,9 @@ export class ExecutionStartHandler {
 		// The trigger's output was captured at execution start; record it as
 		// already completed so successors can treat it as a satisfied predecessor.
 		// The claim above makes this the only writer, so the row cannot exist yet.
+		// NOTE: trigger payloads are not really supported yet — the raw payload is
+		// not item-shaped, so the v1 shim coerces it to zero items. Proper trigger
+		// handling will decide its shape.
 		const [triggerStep] = await this.stepStore.createSteps([
 			{
 				executionId: event.executionId,
