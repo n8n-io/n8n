@@ -5,8 +5,8 @@ multiple requested effects, digests or reports, non-trivial branching, or Code
 nodes. They are a runtime checklist, not extra user-facing output.
 
 Code-node runtime limits (no network, forbidden imports, nested template
-literals) and unsolicited stickies are enforced by `workflow-sdk validate` —
-fix those findings before `build-workflow`. Prefer built-in nodes for simple
+literals) and unsolicited stickies are linted by `build-workflow` — fix those
+findings when the build reports them. Prefer built-in nodes for simple
 split, map, filter, merge, and aggregate work.
 
 ## Preserve Source Data

@@ -115,7 +115,7 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
+				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools).',
 			),
 		workflowId: z
 			.string()
@@ -296,7 +296,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
+				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file`, then call this tool with filePath — the build validates and lints the source. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(buildWorkflowInputSchema)
