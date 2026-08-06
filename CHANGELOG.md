@@ -1,3 +1,12 @@
+## [2.34.2](https://github.com/n8n-io/n8n/compare/n8n@2.34.1...n8n@2.34.2) (2026-08-06)
+
+
+### Bug Fixes
+
+* **editor:** Focus Markdown editor input before toolbar ([#35605](https://github.com/n8n-io/n8n/issues/35605)) ([ed4298a](https://github.com/n8n-io/n8n/commit/ed4298acfd7734f74df6183f0aa735feeaea48bc))
+* **editor:** Show agent tool credentials above configuration ([#35612](https://github.com/n8n-io/n8n/issues/35612)) ([38b6dca](https://github.com/n8n-io/n8n/commit/38b6dca1b5dd5ac3cee5ce3f9b01de0f8f126012))
+
+
 ## [2.34.1](https://github.com/n8n-io/n8n/compare/n8n@2.34.0...n8n@2.34.1) (2026-08-05)
 
 
