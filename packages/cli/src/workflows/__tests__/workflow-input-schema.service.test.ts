@@ -89,16 +89,23 @@ describe('WorkflowInputSchemaService', () => {
 			expect(result).toEqual({ eligible: true, trigger: 'manual-trigger', fields: [] });
 		});
 
-		it('should reject a trigger that accepts arbitrary data', async () => {
-			// Nothing to render a form from.
+		it('should accept a trigger that takes all data as one taking none', async () => {
+			// No fields to render, which is the same position as a declared contract
+			// with nothing in it — and that one is offered.
 			const result = await service.describe(
 				workflow([node(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, { inputSource: 'passthrough' })]),
 			);
 
-			expect(result).toEqual({ eligible: false, reason: 'passthrough-input' });
+			expect(result).toEqual({
+				eligible: true,
+				trigger: 'execute-workflow-trigger',
+				fields: [],
+			});
 		});
 
-		it('should reject a pre-1.1 trigger, which has no input contract to declare', async () => {
+		it('should accept a pre-1.1 trigger, which has no mode to set', async () => {
+			// It reads as passthrough because the parameter does not exist below 1.1,
+			// so it lands in the same place: a trigger declaring no fields.
 			const result = await service.describe(
 				workflow([
 					node(
@@ -109,7 +116,11 @@ describe('WorkflowInputSchemaService', () => {
 				]),
 			);
 
-			expect(result).toEqual({ eligible: false, reason: 'passthrough-input' });
+			expect(result).toEqual({
+				eligible: true,
+				trigger: 'execute-workflow-trigger',
+				fields: [],
+			});
 		});
 	});
 

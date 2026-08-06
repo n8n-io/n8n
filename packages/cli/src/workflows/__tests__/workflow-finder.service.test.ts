@@ -43,8 +43,7 @@ describe('WorkflowFinderService', () => {
 
 			await service.findAllWorkflowsForUser(owner, ['workflow:execute']);
 
-			const [{ where }] = sharedWorkflowRepository.find.mock.calls[0];
-			expect(where).toEqual({});
+			expect(sharedWorkflowRepository.find.mock.calls[0][0]?.where).toEqual({});
 		});
 
 		it('narrows to what was shared with them when the caller asks for that', async () => {
@@ -56,8 +55,7 @@ describe('WorkflowFinderService', () => {
 
 			// Otherwise an owner's catalog is every workflow on the instance, other
 			// people's personal ones included.
-			const [{ where }] = sharedWorkflowRepository.find.mock.calls[0];
-			expect(where).toMatchObject({
+			expect(sharedWorkflowRepository.find.mock.calls[0][0]?.where).toMatchObject({
 				project: { projectRelations: { userId: 'owner-1' } },
 			});
 		});

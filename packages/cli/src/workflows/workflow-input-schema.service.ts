@@ -7,7 +7,6 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	Workflow,
 	getFieldEntries,
-	PASSTHROUGH,
 } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
@@ -21,9 +20,7 @@ export type IneligibleReason =
 	 * The workflow runs itself on a shared schedule. Offering per-person runs on
 	 * top of that would silently double up, so it is excluded rather than hidden.
 	 */
-	| 'own-schedule'
-	/** Accepts arbitrary data, so there is no contract to build a form from. */
-	| 'passthrough-input';
+	| 'own-schedule';
 
 /** The trigger a caller enters the workflow through. */
 export type StartTrigger =
@@ -67,11 +64,12 @@ export class WorkflowInputSchemaService {
 				: { eligible: false, reason: 'no-start-node' };
 		}
 
-		const { dataMode, fields } = await this.readFieldEntries(workflowData, triggerNode);
-
-		if (dataMode === PASSTHROUGH) {
-			return { eligible: false, reason: 'passthrough-input' };
-		}
+		// A trigger set to accept all data — and a pre-1.1 one, which has no mode to
+		// set and reads the same way — declares no fields. That is a workflow taking
+		// no input, not one that cannot be offered: it behaves exactly like a
+		// declared contract with nothing in it, which is offered, and it carries
+		// more of the builder's intent than a manual trigger, which is also offered.
+		const { fields } = await this.readFieldEntries(workflowData, triggerNode);
 
 		return { eligible: true, trigger: 'execute-workflow-trigger', fields };
 	}

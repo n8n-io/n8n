@@ -131,9 +131,10 @@ caller (`workflow-execute-additional-data.ts:552-556`). Static creds and
 per-user dynamic creds don't conflict.
 
 **Execute Workflow Trigger v1.0 has no `inputSource` parameter** (gated
-`@version >= 1.1`), so it declares nothing and reads as passthrough. Correct
-behaviour; builders need "upgrade the node", not "your workflow doesn't
-qualify".
+`@version >= 1.1`), so it declares nothing and reads as passthrough — the same
+as a 1.1+ trigger set to "Accept all data". Both are offered, with no fields:
+declaring nothing is a workflow that takes no input, not one that can't be
+offered, and it is the same position as a declared contract with nothing in it.
 
 **`findAllWorkflowsForUser` already existed** in `WorkflowFinderService` and
 returns `{...workflow, projectId}` — one row per share path, so dedupe at the
