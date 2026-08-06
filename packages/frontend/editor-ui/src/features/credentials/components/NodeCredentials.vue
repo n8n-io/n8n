@@ -59,7 +59,6 @@ import { useAiGateway } from '@/app/composables/useAiGateway';
 
 import {
 	N8nActionPill,
-	N8nButton,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -175,14 +174,10 @@ watch(
 	},
 );
 
-// The entry trigger hugs its label like a button; an input cannot size to its
-// placeholder, so approximate with ch (label) + fixed chrome (icon, gaps,
-// caret, padding).
-function entryTriggerStyle(credentialType: string) {
-	const label = i18n.baseText('nodeCredentials.quickConnect.connectTo', {
+function entryPlaceholder(credentialType: string): string {
+	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 		interpolate: { provider: getServiceName(credentialType) },
 	});
-	return { width: `calc(${label.length}ch + 70px)` };
 }
 
 function selectedCredentialIcon(credentialType: string) {
@@ -1113,14 +1108,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<N8nSelect
 						ref="selectRefs"
 						:class="$style.emptySelect"
-						:style="entryTriggerStyle(type.name)"
 						size="small"
 						:disabled="!canCreateCredentials && !showN8nCreditsOption(type.name)"
-						:placeholder="
-							i18n.baseText('nodeCredentials.quickConnect.connectTo', {
-								interpolate: { provider: getServiceName(type.name) },
-							})
-						"
+						:placeholder="entryPlaceholder(type.name)"
 						:popper-class="`${$style.selectPopper} ${$style.entryPopper}`"
 						@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
 					>
@@ -1174,6 +1164,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							</button>
 						</template>
 					</N8nSelect>
+					<!-- Invisible sizer: its width (label + icon/caret room) sizes the grid
+					     cell so the select stacked in the same cell hugs the label. -->
+					<span :class="$style.emptySizer" aria-hidden="true">{{
+						entryPlaceholder(type.name)
+					}}</span>
 				</div>
 				<div
 					v-else
@@ -1528,10 +1523,18 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	margin-left: auto;
 }
 
-// The entry menu is wider than its content so the pill gets clear air past the
-// row text. el-select pins the popper min-width inline, hence the important.
+// Give the menu a comfortable floor width (wider than the compact trigger) so
+// the right-aligned balance badge clears the longest option text with a gap;
+// grows past this if content is longer. el-select pins the popper min-width
+// inline, hence the important.
 .entryPopper {
-	min-width: calc(var(--spacing--5xl) + var(--spacing--xl)) !important;
+	min-width: calc(var(--spacing--5xl) + var(--spacing--3xl)) !important;
+
+	// The footer sits outside the list's padding; restore the bottom air so the
+	// create row is inset from the popper edge like the option rows above it.
+	:global(.el-select-dropdown__footer) {
+		padding-bottom: var(--spacing--4xs);
+	}
 
 	// The popper is wider than the compact trigger; keep the arrow centered on
 	// the popup instead of the trigger (popper.js positions it inline).
@@ -1555,14 +1558,19 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 // The entry menu is invitational — no divider before its create row, and it
-// hovers like the option rows (inset, rounded).
-.entryCreate {
+// hovers like the option rows (inset, rounded). Compounded with .newCredential
+// so these win over its base border-top/hover regardless of source order.
+.entryCreate.newCredential {
 	border-top: 0;
 	text-align: left;
 	width: calc(100% - 2 * var(--spacing--4xs));
 	margin: 0 var(--spacing--4xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--radius);
+
+	&:not([disabled]):hover {
+		background-color: var(--color--background);
+	}
 }
 
 .optionMeta {
@@ -1676,20 +1684,50 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 .standardEmptyContainer {
-	display: flex;
+	// Stack the invisible sizer and the select in one grid cell: the sizer's
+	// intrinsic width sizes the column and the select fills it, so the trigger
+	// hugs its placeholder text — a cross-browser stand-in for `field-sizing`.
+	display: inline-grid;
 	align-items: center;
-	gap: var(--spacing--xs);
+	// The parent N8nInputLabel is a flex column, which would stretch this to full
+	// width; opt out so the grid can shrink-wrap the sizer.
+	align-self: flex-start;
+	max-width: 100%;
 	margin-top: var(--spacing--4xs);
+}
+
+// Off-screen twin of the placeholder. Same type and icon/caret padding as the
+// input, so the grid column ends up exactly as wide as the rendered trigger.
+.emptySizer {
+	grid-area: 1 / 1;
+	height: 0;
+	overflow: hidden;
+	visibility: hidden;
+	pointer-events: none;
+	white-space: nowrap;
+	font-size: var(--font-size--2xs);
+	padding-left: 37px;
+	padding-right: 30px;
 }
 
 .emptySelect {
 	// Compact invitational trigger; the label reads as a button, not a hint.
-	flex: none;
-	max-width: 100%;
+	// `width: auto` (not 100%) so this item doesn't blow the grid track out to
+	// full width; grid's default stretch still fills the cell the sizer defines.
+	grid-area: 1 / 1;
+	width: auto;
+	min-width: 0;
 
-	:global(.el-input__inner::placeholder) {
-		color: var(--color--text--shade-1);
-		opacity: 1;
+	:global(.el-input__inner) {
+		// Room for the absolutely-positioned prefix icon and caret; mirrors the
+		// sizer's padding so the placeholder lines up with the column.
+		padding-left: 37px;
+		padding-right: 30px;
+
+		&::placeholder {
+			color: var(--color--text--shade-1);
+			opacity: 1;
+		}
 	}
 }
 
