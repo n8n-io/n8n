@@ -136,6 +136,7 @@ async function mountColumn(
 		}>;
 		knowledgeBaseEnabled: boolean;
 		canEditAgent: boolean;
+		canExecuteAgent: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -166,6 +167,7 @@ async function mountColumn(
 			appliedSkills: [],
 			connectedTriggers: [],
 			canEditAgent: overrides.canEditAgent ?? true,
+			canExecuteAgent: overrides.canExecuteAgent ?? true,
 			executionsDescription: '',
 		},
 		global: {
@@ -288,8 +290,22 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(section.props('agentId')).toBe('agent-1');
 	});
 
-	it('withholds running evals from a read-only agent', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
+	// Running is gated on execute, not edit: a project viewer holds the former and
+	// not the latter, and checking an agent behaves is what that role is for.
+	it('allows running evals for a user who cannot edit the agent', async () => {
+		const wrapper = await mountColumn({
+			activeMainTab: 'evals',
+			canEditAgent: false,
+			canExecuteAgent: true,
+		});
+
+		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+		expect(section.props('disabled')).toBe(true);
+		expect(section.props('canRun')).toBe(true);
+	});
+
+	it('withholds running evals without the execute permission', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals', canExecuteAgent: false });
 
 		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('canRun')).toBe(false);
 	});
