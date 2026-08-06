@@ -664,7 +664,6 @@ type TerminalGuardOrderServiceInternals = {
 	};
 	threadPushRef: Map<string, string>;
 	saveAgentTreeSnapshot: Mock;
-	/** The run-finish callback handed to the terminal-outcome collaborator. */
 	terminalRunFinish: Mock;
 	backgroundTasks: { getRunningTasks: Mock; getRunningTasksByParentCheckpoint?: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };

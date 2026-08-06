@@ -53,25 +53,14 @@ function candidateDialects(schema: JSONSchema7): Dialect[] {
 	return declared ? [declared] : ['2020-12', '2019-09', 'draft-07'];
 }
 
-interface CompiledSchema {
-	ajv: InstanceType<typeof AjvType>;
-	validate: ValidateFunction;
-}
-
-type CompileResult = ({ success: true } & CompiledSchema) | { success: false; error: string };
-
-// Keyed by schema object, so a compiled validator lives exactly as long as its schema.
-const compiledStripping = new WeakMap<JSONSchema7, CompiledSchema>();
-const compiledPreserving = new WeakMap<JSONSchema7, CompiledSchema>();
+type CompileResult =
+	| { success: true; ajv: InstanceType<typeof AjvType>; validate: ValidateFunction }
+	| { success: false; error: string };
 
 async function compileJsonSchema(
 	schema: JSONSchema7,
 	stripUnknown: boolean,
 ): Promise<CompileResult> {
-	const cache = stripUnknown ? compiledStripping : compiledPreserving;
-	const cached = cache.get(schema);
-	if (cached) return { success: true, ...cached };
-
 	let firstError: unknown;
 	for (const dialect of candidateDialects(schema)) {
 		let Ajv: typeof AjvType;
@@ -83,10 +72,8 @@ async function compileJsonSchema(
 		}
 		for (const unicodeRegExp of [true, false]) {
 			try {
-				// One instance per schema: Ajv retains everything it compiles — the schema,
-				// its patterns and the generated code — for the instance's lifetime, so a
-				// shared instance would accumulate every schema ever seen. Pairing the
-				// instance with its validator in the WeakMap lets both go when the schema does.
+				// Ajv retains every schema it compiles for the life of the instance, so this
+				// one is scoped to a single validation and collected along with it.
 				const ajv = new Ajv({
 					strict: false,
 					allErrors: true,
@@ -95,9 +82,7 @@ async function compileJsonSchema(
 					unicodeRegExp,
 					removeAdditional: stripUnknown,
 				});
-				const validate = ajv.compile(schema);
-				cache.set(schema, { ajv, validate });
-				return { success: true, ajv, validate };
+				return { success: true, ajv, validate: ajv.compile(schema) };
 			} catch (error) {
 				firstError ??= error;
 			}
