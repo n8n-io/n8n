@@ -88,8 +88,6 @@ export interface SearchWorkflowsResult {
 		createdAt: string | null;
 		updatedAt: string | null;
 		triggerCount: number | null;
-		scopes: string[];
-		canExecute: boolean;
 		availableInMCP: boolean;
 		tags: Array<{ id: string; name: string }>;
 	}>;
