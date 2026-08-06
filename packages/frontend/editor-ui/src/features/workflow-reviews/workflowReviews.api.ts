@@ -124,3 +124,16 @@ export async function fetchWorkflowReviewActivity(
 		params,
 	);
 }
+
+export async function createWorkflowReviewComment(
+	context: IRestApiContext,
+	workflowReviewRequestId: string,
+	payload: { body: string },
+): Promise<WorkflowReviewActivityEntry> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/workflow-review-requests/${encodeURIComponent(workflowReviewRequestId)}/comments`,
+		{ ...payload },
+	);
+}

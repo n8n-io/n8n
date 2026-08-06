@@ -802,6 +802,7 @@ function createDetail(
 		workflows: [],
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
+		viewerCanComment: true,
 		...overrides,
 	};
 }
