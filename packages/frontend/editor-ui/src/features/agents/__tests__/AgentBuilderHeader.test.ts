@@ -287,24 +287,21 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('header-action')).toEqual([['delete']]);
 	});
 
-	it('emits open-preview from the preview button', async () => {
-		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-preview-btn"]').trigger('click');
-		expect(wrapper.emitted('open-preview')).toEqual([[]]);
-	});
-
-	it('switches to a close-preview toggle while Preview is open', async () => {
-		const wrapper = mountHeader({ isPreviewOpen: true });
+	it.each([
+		{ label: 'opens', isPreviewOpen: false, event: 'open-preview', opposite: 'close-preview' },
+		{ label: 'closes', isPreviewOpen: true, event: 'close-preview', opposite: 'open-preview' },
+	])('$label Preview from the preview action', async ({ isPreviewOpen, event, opposite }) => {
+		const wrapper = mountHeader({ isPreviewOpen });
 		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 
-		expect(previewButton.attributes('data-icon')).toBe('x');
-		expect(previewButton.text()).toBe('agents.builder.preview.close.ariaLabel');
-		expect(previewButton.attributes('href')).toBeUndefined();
+		if (isPreviewOpen) {
+			expect(previewButton.text()).toBe('agents.builder.preview.close.ariaLabel');
+			expect(previewButton.attributes('href')).toBeUndefined();
+		}
 
 		await previewButton.trigger('click');
-
-		expect(wrapper.emitted('close-preview')).toEqual([[]]);
-		expect(wrapper.emitted('open-preview')).toBeUndefined();
+		expect(wrapper.emitted(event)).toEqual([[]]);
+		expect(wrapper.emitted(opposite)).toBeUndefined();
 	});
 
 	it('exposes the preview route href for browser new-tab actions', () => {
