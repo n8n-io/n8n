@@ -503,10 +503,9 @@ export interface McpRegistryConnectionSummary {
 
 /** A connection reconciled against the tools that actually reached the agent. */
 export interface ConnectedMcpService extends McpRegistryConnectionSummary {
-	/** False when none of this connection's tools are attached to the running agent —
-	 *  expired or revoked OAuth, an under-scoped credential, an unreachable remote and a
-	 *  registry entry that no longer resolves are indistinguishable from here, and share
-	 *  the one fix: the user reconnects it. */
+	/** False when none of this connection's tools are attached to the running agent.
+	 *  The causes (expired token, under-scoped credential, dead remote, retired registry
+	 *  entry) are indistinguishable from here and share one fix: reconnect. */
 	toolsLoaded: boolean;
 }
 
@@ -1032,10 +1031,9 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
-	/** The user's MCP registry connections reconciled against the tools that reached
-	 *  the running agent. Set by `createInstanceAgent` before the tools are built, so
-	 *  the same view feeds the system prompt and the `mcp-servers` tool. Undefined
-	 *  means "not established" — never treat it as "nothing is connected". */
+	/** The user's MCP registry connections, each flagged with whether its tools are
+	 *  attached to the running agent. Undefined means "not established" — never treat
+	 *  it as "nothing is connected". */
 	connectedMcpServices?: ConnectedMcpService[];
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };

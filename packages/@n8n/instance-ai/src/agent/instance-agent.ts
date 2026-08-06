@@ -66,9 +66,6 @@ export async function createInstanceAgent(
 	// returns per-server connection failures alongside the tools so they travel
 	// with this call (not shared mutable state) — concurrent runs with different
 	// configs can't read each other's failures.
-	// Loaded before the domain tools so the reconciled connection view below can be
-	// captured by their closures — assigning it onto `context` afterwards would not
-	// reach `domainContext`.
 	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
 	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
 		await mcpManager.getRegularTools(mcpServers, context.logger, requireMcpToolApproval);
@@ -81,25 +78,12 @@ export async function createInstanceAgent(
 		error: f.error,
 	}));
 
-	// Shared by the system prompt and the `mcp-servers` tool so they cannot disagree.
-	const connectedMcpServices = await loadConnectedMcpServices(
-		context.mcpService,
-		mcpServers,
-		mcpTools,
-		context.logger,
-	);
-
 	// Build native n8n domain tools (context captured via closures — per-run).
 	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
-	const domainContext: InstanceAiContext = {
-		...context,
-		tracing: orchestrationContext?.tracing,
-		connectedMcpServices,
-	};
+	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
 	const domainTools = createAllTools(domainContext);
-	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
 
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
@@ -154,6 +138,17 @@ export async function createInstanceAgent(
 		source: 'external MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
+	});
+
+	const connectedMcpServices = await loadConnectedMcpServices(
+		context.mcpService,
+		mcpServers,
+		safeMcpTools,
+		context.logger,
+	);
+	const orchestratorDomainTools = createOrchestratorDomainTools({
+		...domainContext,
+		connectedMcpServices,
 	});
 
 	const allOrchestratorTools = mergeToolRegistries(

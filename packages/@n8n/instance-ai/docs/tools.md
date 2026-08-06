@@ -750,31 +750,22 @@ conversation. Creation and editing stay on `build-agent`.
 
 ### `mcp-servers` *(domain tool — conditional)*
 
-Search the MCP registry so the orchestrator can discover a hosted MCP server for
-a service the user asked about, and offer an inline card to connect or reconnect
-one.
+Discover hosted MCP servers for a service the user asked about, and let the user
+connect one from the chat. Orchestrator only, registered when the adapter wires
+`mcpService`.
 
-- `search` over `{ queries: string[] }` returns
-  `{ results: [{ slug, title, description, credentialType, tools, state }], hint? }`,
-  capped at 5, most relevant first. `state` is `not-connected`, `connected`, or
-  `connected-not-working` — a connected server stays in the results so a broken one
-  can be found and reconnected.
-- `connect` over `{ serverSlugs: string[] (max 3), reason: string }` suspends with
-  an `mcpConnectRequest` payload, which the frontend renders as the inline
-  "Available tools" card, and returns `{ connectedSlugs, message }`. An
-  already-connected server is offered too, so its credential can be switched or its
-  connection repaired. On resume the tool re-reads the user's connections and reports
-  only verified slugs — the client's `connectedSlugs` is a hint, never the source of
-  truth. A resume that *claims* a connection rebuilds the agent before the tool runs,
-  so the new server's tools are reachable through `search_tools` in the same turn
-  rather than the next one; a failed rebuild cancels the run, and the user's next
-  message starts a fresh one.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | `'search' \| 'connect'` | yes | Discriminator |
+| `queries` | string[] | `search` | Free-text queries matched against server name, title, description |
+| `serverSlugs` | string[] | `connect` | Slugs returned by `search`, best match first, max 3 |
+| `reason` | string | `connect` | One sentence for the confirmation record |
 
-Each agent build reconciles the user's connections against the MCP tools that
-actually reached the agent (`connectedMcpServices` on the context). That one view
-feeds both the system prompt's "Services the user has connected" list and this
-tool's `state`, so a connection that exists but whose tools did not load is
-reported as broken instead of being mistaken for a working one.
+**Returns**: `search` → `{ results: [{ slug, title, description,
+credentialType, tools, state }], hint? }`, capped at 5, where `state` is
+`not-connected`, `connected`, or `connected-not-working` (connected, but its
+tools did not load, so none are callable). `connect` →
+`{ connectedSlugs, message }`.
 
 ## Other Domain Tools
 

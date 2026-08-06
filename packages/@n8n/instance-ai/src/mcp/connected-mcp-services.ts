@@ -6,12 +6,8 @@ import type {
 	McpServerConfig,
 } from '../types';
 
-/**
- * A connection is absent from `mcpServers` when it could not be resolved into a
- * loadable config (missing credential, unrefreshable token, registry entry gone),
- * and absent from `mcpTools` when the server was reachable but listed nothing.
- * Both mean the same thing to the agent, so both come back as `toolsLoaded: false`.
- */
+/** A connection that never became a loadable config and one that loaded but listed no
+ *  tools are the same to the agent, so both come back as `toolsLoaded: false`. */
 export function reconcileConnectedMcpServices(
 	connections: ReadonlyArray<{ slug: string; title: string }>,
 	mcpServers: readonly McpServerConfig[],

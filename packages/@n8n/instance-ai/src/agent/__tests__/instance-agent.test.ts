@@ -506,11 +506,8 @@ describe('createInstanceAgent', () => {
 			{ slug: 'notion', title: 'Notion' },
 		];
 
-		const buildWith = async (listConnections: Mock) => {
-			const linearTool = {
-				...mockBuiltTool('mcp_linear_create_issue'),
-				mcpServerName: 'mcp_linear',
-			};
+		const buildWith = async (listConnections: Mock, toolName = 'mcp_linear_create_issue') => {
+			const linearTool = { ...mockBuiltTool(toolName), mcpServerName: 'mcp_linear' };
 
 			await createInstanceAgent({
 				modelId: 'test-model',
@@ -522,7 +519,7 @@ describe('createInstanceAgent', () => {
 				orchestrationContext: { runId: 'connected-mcp' },
 				memoryConfig: {},
 				mcpServers,
-				mcpManager: createMcpManagerStub(new Map([['mcp_linear_create_issue', linearTool]])),
+				mcpManager: createMcpManagerStub(new Map([[toolName, linearTool]])),
 			} as never);
 		};
 
@@ -539,8 +536,7 @@ describe('createInstanceAgent', () => {
 			);
 		});
 
-		// The tools capture the context by value, so the view has to exist before they
-		// are built rather than be assigned onto the context afterwards.
+		// The tools capture the context by value, so assigning it on afterwards is too late.
 		it('hands the same view to the domain tools', async () => {
 			await buildWith(vi.fn().mockResolvedValue(connections));
 
@@ -551,6 +547,32 @@ describe('createInstanceAgent', () => {
 				{ slug: 'linear', title: 'Linear', toolsLoaded: true },
 				{ slug: 'notion', title: 'Notion', toolsLoaded: false },
 			]);
+		});
+
+		it('does not call a connection working when its only tool has an unsafe name', async () => {
+			await buildWith(vi.fn().mockResolvedValue(connections), 'mcp_linear.create_issue');
+
+			expect(getSystemPrompt).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					connectedMcpServices: [
+						{ slug: 'linear', title: 'Linear', toolsLoaded: false },
+						{ slug: 'notion', title: 'Notion', toolsLoaded: false },
+					],
+				}),
+			);
+		});
+
+		it('does not call a connection working when its only tool collides with a domain tool', async () => {
+			await buildWith(vi.fn().mockResolvedValue(connections), 'workflows');
+
+			expect(getSystemPrompt).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					connectedMcpServices: [
+						{ slug: 'linear', title: 'Linear', toolsLoaded: false },
+						{ slug: 'notion', title: 'Notion', toolsLoaded: false },
+					],
+				}),
+			);
 		});
 
 		it('leaves the view unset when the host lookup fails', async () => {
