@@ -3434,7 +3434,10 @@ describe('Validation', () => {
 	});
 
 	describe('TOOL_NAME_STYLE validation', () => {
-		function createAgentWorkflow(toolName: string, toolType = 'n8n-nodes-base.gmailTool') {
+		function createAgentWorkflow(
+			toolName: string,
+			toolType = 'n8n-nodes-base.gmailTool',
+		): WorkflowJSON {
 			return {
 				id: 'test',
 				name: 'Test',
