@@ -2592,7 +2592,6 @@ describe('InstanceAiService — stale confirmation resume guard', () => {
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
 		expect(result).toBeNull();
-		// The active run's registry entry and the pending row must stay untouched.
 		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
 		expect(service.suspendedThreads.dropPendingConfirmation).not.toHaveBeenCalled();
 		expect(service.processResumedStream).not.toHaveBeenCalled();
@@ -2905,8 +2904,6 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		// A silently consumed confirmation wedges the thread: the client saw
-		// {ok:true} and would wait forever without a terminal event.
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
 		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
 			expect.any(Error),
@@ -2941,8 +2938,6 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			},
 		);
 
-		// Another consumer owns the run; emitting a terminal event here would
-		// clobber its healthy stream. Only our registry entry gets released.
 		expect(service.eventBus.events).toEqual([]);
 		expect(service.instanceAiErrorReporter.report).not.toHaveBeenCalled();
 		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-a', resumeExecutionToken);

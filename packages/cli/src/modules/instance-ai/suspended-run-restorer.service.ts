@@ -142,12 +142,6 @@ export class SuspendedRunRestorer {
 		}
 		if (!orphan) return null;
 
-		// A live run on this thread means it isn't an orphan — the thread moved on
-		// and this row is a leftover from an earlier turn. Restoring it would
-		// overwrite the live run's registry entry and message-group mapping, and
-		// its resume payload would race the live run (INS-1092). Reject like a
-		// consumed requestId: `claim()` above already dropped the row, so retries
-		// fail cleanly too.
 		if (this.runState.hasLiveRun(orphan.threadId)) {
 			this.logger.warn('Rejecting stale pending confirmation: thread already has a live run', {
 				requestId,

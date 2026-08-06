@@ -4769,10 +4769,6 @@ export class InstanceAiService {
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
-		// An active run on this thread means the suspension is stale — the thread
-		// moved on since the confirmation card was rendered. Activating it would
-		// overwrite the active run's registry entry and message-group mapping
-		// (INS-1092), so reject like a consumed requestId instead.
 		const activeRun = this.runState.getActiveRun(threadId);
 		if (activeRun) {
 			this.logger.warn('Rejecting suspended-run confirmation: thread already has an active run', {
@@ -5334,12 +5330,6 @@ export class InstanceAiService {
 						metadata: { completion_source: 'resume_claim' },
 					},
 				);
-				// The claim never happened, so no other finalizer owns this segment.
-				// The confirmation endpoint already answered {ok}, the suspension was
-				// consumed on activation, and nothing else will emit for this run —
-				// without a terminal event the thread stays dead until an external
-				// timeout (INS-1092). Unlike the stale case above, no concurrent
-				// consumer owns the run, so terminating it visibly is safe.
 				await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
 					messageGroupId: this.tracing.getMessageGroupId(opts.runId),
 					errorMessage: RESUME_REJECTED_MESSAGE,
