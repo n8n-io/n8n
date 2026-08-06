@@ -13,7 +13,9 @@ import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mc
 import type { WorkflowListItem } from '@/Interface';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT } from '@/app/constants/experiments';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { useToast } from '@n8n/composables/useToast';
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 const { hasPermissionMock } = vi.hoisted(() => ({
@@ -30,6 +32,14 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: trackSpy }),
 }));
+
+vi.mock('@n8n/composables/useToast', () => {
+	const showMessage = vi.fn();
+	const showError = vi.fn();
+	return {
+		useToast: () => ({ showMessage, showError }),
+	};
+});
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -517,6 +527,7 @@ describe('SettingsMCPView', () => {
 		it('persists the new state and tracks the resulting value', async () => {
 			hasPermissionMock.mockReturnValue(true);
 			exposeAllWorkflowsToMcpStore.isEnabled = true;
+			exposeAllWorkflowsToMcpStore.currentVariant = EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.variant;
 			mcpStore.setAutoExposeNewWorkflows.mockResolvedValue(true);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -528,6 +539,11 @@ describe('SettingsMCPView', () => {
 			expect(trackSpy).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
 				expect.objectContaining({ enabled: true }),
+			);
+			// The event must be splittable by experiment cohort, not just enabled/disabled.
+			const trackedPayload = trackSpy.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+			expect(Object.keys(trackedPayload)).toContain(
+				`$feature/${EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name}`,
 			);
 		});
 
@@ -545,6 +561,10 @@ describe('SettingsMCPView', () => {
 			expect(trackSpy).not.toHaveBeenCalledWith(
 				TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
 				expect.anything(),
+			);
+			expect(useToast().showError).toHaveBeenCalledWith(
+				expect.anything(),
+				'Could not update setting',
 			);
 		});
 	});
