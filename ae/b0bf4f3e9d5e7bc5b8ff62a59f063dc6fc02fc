@@ -1,0 +1,227 @@
+AGENT_IDENTITY_WRITEUP.md
+  s_172ae85e6bd0ce::t_f30747dac099e8 494-498,500-501
+  s_172ae85e6bd0ce::t_6c71c54a28e0c0 384,392,439
+  s_172ae85e6bd0ce::t_3abe59e2c8911e 3-9,13-15,17-31,39-41,50-95,105-106,110,117-125,127,129-131,133-135,141-142,144,148-151,153-154,157,159-160,162-164,166,170,174-177,179-182,186-187,189,195-198,204-214,219-271,273-291,325-327,330-344,346-354,360,362-365,367-370,372-378,386-388,390-391,393-395,397,402-438,440-441,445-452,459-480,486-493,499
+  s_172ae85e6bd0ce::t_8d3a451e81b046 293-319
+  s_172ae85e6bd0ce::t_9492be6da2ca22 292
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_172ae85e6bd0ce::t_d613cd074a6d29 192-197
+  s_172ae85e6bd0ce::t_c85b43b0ce9146 240
+  s_172ae85e6bd0ce::t_1c9252ca303777 143,150-151,156-157
+  s_172ae85e6bd0ce::t_3d6e306c6c1c36 227
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_172ae85e6bd0ce::t_99128be4ae89ae 54-59
+  s_172ae85e6bd0ce::t_77c0e9474c700a 83-87
+  s_172ae85e6bd0ce::t_a6846bb8cbcf57 472
+  s_172ae85e6bd0ce::t_bde91504c47eae 338-340,342,347-348
+packages/cli/src/modules/oauth-server/__tests__/internal-oauth2-mint.service.test.ts
+  s_172ae85e6bd0ce::t_b77b2e206b0a89 56,61-62,66,76,82
+  s_172ae85e6bd0ce::t_dee05ecc4fea61 182,185,190-193,199-202,204-210,224-225,231-235,244,247-250,272,286,290,293,302-304
+  s_172ae85e6bd0ce::t_31d48055bd2fe7 90-97
+  s_172ae85e6bd0ce::t_c3592aedd6c46c 294,296-297
+  s_172ae85e6bd0ce::t_23be4e64e57391 242-243,245-246,264-271
+  s_172ae85e6bd0ce::t_eba172643355ac 63-65
+  s_172ae85e6bd0ce::t_a950fb44abe7a3 16
+  s_172ae85e6bd0ce::t_31d29ae19970c3 183-184,186-189,194-198,203,211-223,226-230,236-241,251-263,273-285,287-289,291-292,295,298-301
+packages/cli/src/modules/log-streaming.ee/database/entities/index.ts
+  s_380a6bb7ef7090::t_acf4b44df11e8c 2
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_172ae85e6bd0ce::t_69c96b59ebe012 1222-1270
+  s_172ae85e6bd0ce::t_71232a949e6ffe 140-147
+packages/@n8n/api-types/src/dto/index.ts
+  s_380a6bb7ef7090::t_0abc082393ccfa 169
+packages/workflow/src/message-event-bus.ts
+  s_380a6bb7ef7090::t_b35293d94a3a0b 28,36
+packages/@n8n/db/src/migrations/common/1785900000001-CreateAuditLogEventTable.ts
+  s_380a6bb7ef7090::t_b1fdec04662f52 12
+  s_380a6bb7ef7090::t_339cc1a44a3fcc 1-11,13-21
+packages/cli/src/modules/log-streaming.ee/database/entities/audit-log-event.entity.ts
+  s_380a6bb7ef7090::t_dbc145da28c067 26
+  s_380a6bb7ef7090::t_388a0bb751820f 1-25,27
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_380a6bb7ef7090::t_9047e1d2823556 489
+  s_380a6bb7ef7090::t_e1c470b498f769 243
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_172ae85e6bd0ce::t_2db0bf3ad6d540 129-134
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_172ae85e6bd0ce::t_f41af7677b370c 99-100
+  s_172ae85e6bd0ce::t_5a2319de0dedf7 329
+  s_172ae85e6bd0ce::t_730688567f8a91 189-208,211-234,253-277,279-293
+  s_172ae85e6bd0ce::t_0486c611a26e01 137,153-157
+  s_172ae85e6bd0ce::t_3cd02ba9a40781 83
+  s_172ae85e6bd0ce::t_3ddaaf9784faee 80-82,84-85,93-98,101-133
+  s_172ae85e6bd0ce::t_b33a8ee575feb1 278
+  s_172ae85e6bd0ce::t_6bd02df82a5cf7 407-412
+  s_172ae85e6bd0ce::t_0e74ca1756f05b 209-210,235-252
+  s_172ae85e6bd0ce::t_3f5fa77e6309be 134
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_172ae85e6bd0ce::t_21dd0f9e6f6b1e 242-247,257
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_172ae85e6bd0ce::t_ef922d9738565f 27-32
+  s_172ae85e6bd0ce::t_0ddf786b255da8 179
+packages/cli/src/modules/oauth-server/internal-oauth2-mint.service.ts
+  s_172ae85e6bd0ce::t_aea20ad1ce74ab 49
+  s_172ae85e6bd0ce::t_214150287513b9 11-12
+  s_172ae85e6bd0ce::t_8229b98aed1584 63-68,71-72
+  s_172ae85e6bd0ce::t_6a05a32c612437 117-150,152
+  s_172ae85e6bd0ce::t_e9b1b218a61d33 153,162-169
+  s_172ae85e6bd0ce::t_20c3204ab24fc8 82
+  s_172ae85e6bd0ce::t_3d7967f6df6c27 59-62,78
+  s_172ae85e6bd0ce::t_3511cae9028810 292,294-295,297-298
+  s_172ae85e6bd0ce::t_2d08b820d6d786 151
+  s_172ae85e6bd0ce::t_c2ce5fb5cf9b0a 160,172,174-204,216
+  s_172ae85e6bd0ce::t_32996b6818baf6 170
+  s_172ae85e6bd0ce::t_cd951664fa86be 116
+  s_172ae85e6bd0ce::t_2700cd918dc139 154-156
+  s_172ae85e6bd0ce::t_073a59c3d4f691 171
+  s_47e7d2e7d95af1::t_266af729698eeb 157-158
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_172ae85e6bd0ce::t_29e25a19e2f732 189-190,195-211
+  s_172ae85e6bd0ce::t_50d0e1278b2c46 212-213
+packages/frontend/@n8n/rest-api-client/src/api/audit-log.ts
+  s_380a6bb7ef7090::t_efc8a0d9246f64 1-22
+packages/cli/src/modules/log-streaming.ee/database/repositories/__tests__/audit-log-event.repository.integration.test.ts
+  s_380a6bb7ef7090::t_9f6816de6f4cbd 1-60
+packages/cli/src/modules/log-streaming.ee/__tests__/log-streaming.controller.test.ts
+  s_380a6bb7ef7090::t_3b9612fb4cea77 12,23,35
+packages/workflow/src/interfaces.ts
+  s_172ae85e6bd0ce::t_6782aa71255cf3 3657-3664
+packages/frontend/@n8n/rest-api-client/src/api/index.ts
+  s_380a6bb7ef7090::t_abcf7ebac670fa 3
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_172ae85e6bd0ce::t_415e4a5c6c03da 160-162,167,169,171-179,181-182,184,186-192,194-202,206-210,212,229-230,232-237,239-243,245,254-255,257,259-265,267-271,273,281-284,286-292,294,316,325-327
+  s_172ae85e6bd0ce::t_bea73077a2b7d4 163-166,168,170,180,183,185,193,203-205,211,213-219,231,238,244,256,258,266,272,285,293,295,304-315
+  s_172ae85e6bd0ce::t_50c65e81e72fb3 220-228,246-253,274-280,296-303,317-324
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_172ae85e6bd0ce::t_8f370aaeb151bd 825,841,855,860-882
+  s_172ae85e6bd0ce::t_a477313c58e7d2 883-885
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_380a6bb7ef7090::t_b4c74cdf9326f6 3744-3748
+  s_380a6bb7ef7090::t_08fc5632d485c5 3749
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_380a6bb7ef7090::t_a80908db7d70ed 179
+  s_380a6bb7ef7090::t_306623a24bf972 178,180-185
+  s_380a6bb7ef7090::t_93b7847310cb02 177
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_172ae85e6bd0ce::t_1cf8b9a4a16d24 236
+  s_172ae85e6bd0ce::t_44dfb81524613d 405
+  s_172ae85e6bd0ce::t_cbce1160bf61e6 188
+  s_172ae85e6bd0ce::t_223ffd42921fc9 373,381
+  s_172ae85e6bd0ce::t_c9ed026df57799 354
+  s_172ae85e6bd0ce::t_2cfda375ebe6bb 539
+  s_172ae85e6bd0ce::t_03c03c728d3939 561
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_172ae85e6bd0ce::t_68d432cdbd1976 3154-3278
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-database.ee.ts
+  s_380a6bb7ef7090::t_ec747676fecb3d 1-43
+packages/cli/src/modules/log-streaming.ee/log-streaming-destination.service.ts
+  s_380a6bb7ef7090::t_db36356fe27f6c 95-102
+  s_380a6bb7ef7090::t_e474fc12d2044f 94
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_172ae85e6bd0ce::t_e4150b9a268925 556-565
+  s_172ae85e6bd0ce::t_fdb13cb24c43a5 491,500,504-520,546-547
+  s_172ae85e6bd0ce::t_5b6a8306cb529a 469-475,481,495,522-524
+  s_172ae85e6bd0ce::t_58e1b8fd95308e 466-468,476-480,482-490,492-494,496-499,501-503,521,525-545,548-555
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_172ae85e6bd0ce::t_8198c041b8b1c0 738
+  s_172ae85e6bd0ce::t_87378a2f25bfa6 213-268
+  s_172ae85e6bd0ce::t_51ebca91819321 211,608-660
+  s_172ae85e6bd0ce::t_e40e343f3c540b 148-210
+  s_172ae85e6bd0ce::t_d62e499f5d0d48 674,677-707,718
+  s_172ae85e6bd0ce::t_9cdbafb09f2a5f 212
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_172ae85e6bd0ce::t_ecff7dcabf1dae 120
+  s_172ae85e6bd0ce::t_b86fbddf305b93 152-153
+  s_172ae85e6bd0ce::t_dd615ed873fce2 137-151,154-156
+  s_172ae85e6bd0ce::t_96f57f5c13ed25 363
+  s_172ae85e6bd0ce::t_bd3dbd1a00b4d3 187
+  s_172ae85e6bd0ce::t_108561f9837e97 221,232
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_380a6bb7ef7090::t_893caee0fc97ec 235
+  s_380a6bb7ef7090::t_45d6e6076775b2 471
+packages/cli/src/modules/oauth-server/__tests__/agent-obo-mint.api.test.ts
+  s_172ae85e6bd0ce::t_ccd5a0a7d29dab 8
+  s_172ae85e6bd0ce::t_9ae6d9578743ba 1-7,9-171,198-301
+  s_172ae85e6bd0ce::t_078a2d7d1ac674 172-197
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_172ae85e6bd0ce::t_40df63257ef818 600-622
+  s_172ae85e6bd0ce::t_8b1dfee09dda24 593-599
+  s_172ae85e6bd0ce::t_6dc529fd9e12b8 161
+  s_172ae85e6bd0ce::t_2593512d494e17 57-98,138,140-146
+  s_172ae85e6bd0ce::t_10a2b27ff45852 328-331,339
+  s_172ae85e6bd0ce::t_5c59e3d42c4489 38-40
+  s_172ae85e6bd0ce::t_65204195adbd3e 178-180
+  s_172ae85e6bd0ce::t_1f4c4f4588565e 434,436
+  s_172ae85e6bd0ce::t_63445dcfac0203 6
+  s_172ae85e6bd0ce::t_550d7626dfb43d 433,435,437,450,453
+  s_172ae85e6bd0ce::t_e0f9e121ef58cb 365,367-372
+  s_172ae85e6bd0ce::t_d4be1f846881e3 452
+  s_172ae85e6bd0ce::t_475f727d5abeba 99-132
+packages/cli/src/events/maps/relay.event-map.ts
+  s_172ae85e6bd0ce::t_8e096b956a2f1d 1023-1026,1036-1049
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_380a6bb7ef7090::t_cbd639c2e56fd2 60
+packages/frontend/editor-ui/src/features/settings/auditLog/auditLog.store.ts
+  s_380a6bb7ef7090::t_93cf767728bf04 1-49
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/message-event-bus-destination-database.ee.test.ts
+  s_380a6bb7ef7090::t_301d67beb17ea9 1-77
+packages/cli/src/modules/log-streaming.ee/log-streaming.module.ts
+  s_380a6bb7ef7090::t_26cd497379f8ab 5
+  s_380a6bb7ef7090::t_bdd70f0eab7389 29-45
+packages/@n8n/api-types/src/dto/log-streaming/list-audit-log-events.dto.ts
+  s_380a6bb7ef7090::t_dc1d149857bc56 1-10
+packages/cli/src/modules/log-streaming.ee/database/repositories/audit-log-event.repository.ts
+  s_380a6bb7ef7090::t_a55b8857117bd1 1-12,14-24
+  s_380a6bb7ef7090::t_dad41edb4ece45 13
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.api.test.ts
+  s_172ae85e6bd0ce::t_cc32e7e623a980 44-49
+  s_172ae85e6bd0ce::t_21050013b7d68f 537-576
+packages/cli/src/modules/log-streaming.ee/log-streaming.controller.ts
+  s_380a6bb7ef7090::t_423c95f95c68f0 5
+  s_380a6bb7ef7090::t_6e175a5d0daa7e 47-61
+  s_380a6bb7ef7090::t_c3286399c6b0c0 20-21,31
+packages/frontend/editor-ui/src/features/settings/auditLog/views/AuditLogView.vue
+  s_380a6bb7ef7090::t_d98fab1289ebf5 8
+  s_380a6bb7ef7090::t_a676ca0bfc557b 1-7,9-34,37-39,42-98,106-114,124
+  s_380a6bb7ef7090::t_6d7c772d377970 99-105
+  s_380a6bb7ef7090::t_dc5bd757bdff3d 35-36,40-41
+  s_380a6bb7ef7090::t_d672a62e049268 115-123
+packages/frontend/editor-ui/src/app/router.ts
+  s_380a6bb7ef7090::t_34acf7fceb56e7 63-64
+  s_380a6bb7ef7090::t_8e17c045cf21b7 1099-1113
+  s_380a6bb7ef7090::t_9f37964c75a323 1098
+packages/cli/src/modules/oauth-server/__tests__/agent-mint-hook.api.test.ts
+  s_172ae85e6bd0ce::t_b503b6e9b135fe 218,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aeb0bf4f3e9d5e7bc5b8ff62a59f063dc6fc02fc",
+  "prompts": {},
+  "sessions": {
+    "s_172ae85e6bd0ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48a641c1-1ea0-41ca-a17c-37cb2bc75169",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_380a6bb7ef7090": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae3a06a-e1d7-467b-b541-2572e290d60d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_47e7d2e7d95af1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a66059488382249de",
+        "model": "unknown"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
