@@ -32,6 +32,7 @@ import type {
 	PollCursor,
 } from 'n8n-workflow';
 import {
+	OperationalError,
 	SubworkflowOperationError,
 	UnexpectedError,
 	Workflow,
@@ -206,7 +207,9 @@ export class WorkflowExecutionService {
 				'Poll cursor commit skipped: the poll no longer holds its lease, or its cursor row is gone',
 				{ workflowId: workflowData.id, nodeName: node.name },
 			);
-			// No poll call site supplies a `responsePromise`, so leaving it unsettled is fine.
+			responsePromise?.reject(
+				new OperationalError('Poll cursor commit skipped: the poll no longer holds its lease'),
+			);
 			return undefined;
 		}
 
