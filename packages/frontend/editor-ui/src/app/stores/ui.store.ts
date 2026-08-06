@@ -95,7 +95,7 @@ import type {
 	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
@@ -118,6 +118,22 @@ try {
 } catch (e) {}
 
 type UiStore = ReturnType<typeof useUIStore>;
+
+/** State a modal key resolves to while it is not registered. */
+const CLOSED_MODAL_STATE: ModalState = Object.freeze({ open: false });
+
+/**
+ * Read-only view of `source` in which an unknown key reads as `fallback` instead
+ * of `undefined`. Modals register at different points in the boot sequence (shell
+ * keys eagerly, module keys post-login), so a reader can legitimately run before
+ * its key exists — it should see a closed modal, not throw.
+ */
+function withFallback<T>(source: Record<string, T>, fallback: T): Record<string, T> {
+	return new Proxy(source, {
+		get: (target, key) =>
+			typeof key === 'string' ? (target[key] ?? fallback) : Reflect.get(target, key),
+	});
+}
 
 export const useUIStore = defineStore(STORES.UI, () => {
 	const telemetry = useTelemetry();
@@ -421,11 +437,21 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		} as const;
 	});
 
+	/**
+	 * Modal state by key, for reading. `modalsById` remains the writable state;
+	 * this is the accessor components should read through, because it tolerates a
+	 * key that is not registered.
+	 */
+	const modalStateById = computed(() => withFallback(modalsById.value, CLOSED_MODAL_STATE));
+
 	const isModalActiveById = computed(() =>
-		Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
-			acc[name] = name === modalStack.value[0];
-			return acc;
-		}, {}),
+		withFallback(
+			Object.keys(modalsById.value).reduce((acc: { [key: string]: boolean }, name) => {
+				acc[name] = name === modalStack.value[0];
+				return acc;
+			}, {}),
+			false,
+		),
 	);
 
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
@@ -769,6 +795,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
+		modalStateById,
 		currentView,
 		isAnyModalOpen,
 		activeModals,

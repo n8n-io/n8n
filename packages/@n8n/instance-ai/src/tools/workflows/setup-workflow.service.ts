@@ -301,6 +301,49 @@ function buildEditableParameters(
 }
 
 /**
+ * Ask the host which of the node's list-backed locator parameters the connected
+ * credential can't reach, and turn each into a parameter issue.
+ *
+ * Applies to any credential and any node: the free OpenAI credits credential narrows the
+ * model list via its proxy allowlist, a user's own key can be just as restricted by their
+ * org's model access, and a Sheets document or Slack channel the builder guessed at may not
+ * exist on the account that ends up connected. See
+ * `findUnavailableResourceLocatorValues` for what the host will and won't claim.
+ *
+ * Reports only the unusable value, not the usable ones: whoever repairs it can list those
+ * through the nodes tool's resource exploration, against the credential that is now bound.
+ */
+async function computeUnavailableLocatorIssues(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	parameters: Record<string, unknown>,
+	typeVersion: number,
+	credentialType: string,
+	credential: { id: string; name: string },
+): Promise<Record<string, string[]>> {
+	if (!context.nodeService.findUnavailableLocatorValues) return {};
+
+	const unavailable = await context.nodeService
+		.findUnavailableLocatorValues({
+			nodeType: node.type,
+			version: typeVersion,
+			credentialType,
+			credentialId: credential.id,
+			parameters,
+		})
+		.catch(() => []);
+
+	const issues: Record<string, string[]> = {};
+	for (const entry of unavailable) {
+		issues[entry.name] = [
+			`"${entry.currentValue}" isn't available with the connected credential "${credential.name}". ` +
+				'Pick a value the credential offers instead.',
+		];
+	}
+	return issues;
+}
+
+/**
  * Resolve the credential types valid for a node: dynamic resolver first, then
  * the description's static credentials filtered by displayOptions, then the
  * dynamic types implied by `authentication: generic/predefinedCredentialType`.
@@ -374,6 +417,13 @@ interface CredentialState {
 	 */
 	autoAppliedGateway?: true;
 	credentialTestResult?: { success: boolean; message?: string };
+	/**
+	 * The stored credential this slot effectively resolves to — bound on the node,
+	 * or the sole candidate we auto-applied. Undefined for the gateway option (no
+	 * stored record) and for slots with nothing resolved yet. Used to validate
+	 * credential-scoped parameter values such as a model name.
+	 */
+	effectiveCredential?: { id: string; name: string };
 }
 
 /**
@@ -446,6 +496,9 @@ async function resolveCredentialState(
 		};
 	}
 
+	const resolvedCredential = sortedCreds.find((c) => c.id === credToTest);
+	const effectiveCredential = resolvedCredential ? { effectiveCredential: resolvedCredential } : {};
+
 	let testabilityPromise = cache?.testability.get(credentialType);
 	if (!testabilityPromise) {
 		testabilityPromise = context.credentialService.isTestable
@@ -454,7 +507,7 @@ async function resolveCredentialState(
 		cache?.testability.set(credentialType, testabilityPromise);
 	}
 	const canTest = await testabilityPromise;
-	if (!canTest) return { existingCredentials, isAutoApplied };
+	if (!canTest) return { existingCredentials, isAutoApplied, ...effectiveCredential };
 
 	let testPromise = cache?.tests.get(credToTest);
 	if (!testPromise) {
@@ -465,7 +518,7 @@ async function resolveCredentialState(
 		cache?.tests.set(credToTest, testPromise);
 	}
 	const credentialTestResult = await testPromise;
-	return { existingCredentials, isAutoApplied, credentialTestResult };
+	return { existingCredentials, isAutoApplied, credentialTestResult, ...effectiveCredential };
 }
 
 type RequestNodeCredentials = NonNullable<SetupRequest['node']['credentials']>;
@@ -544,7 +597,6 @@ interface NodeSetupContext {
 	nodeName: string;
 	isTrigger: boolean;
 	isTestable: boolean;
-	hasParamIssues: boolean;
 	parameterIssues: Record<string, string[]>;
 	editableParameters: SetupRequest['editableParameters'];
 	triggerTestResult?: { status: 'success' | 'error' | 'listening'; error?: string };
@@ -577,17 +629,39 @@ async function buildRequestForCredentialType(
 			)
 		: undefined;
 
-	const { existingCredentials, isAutoApplied, credentialTestResult, autoAppliedGateway } =
-		await resolveAppliedCredentialState(
-			context,
-			node,
-			credentialType,
-			cache,
-			workflowId,
-			nodeCredentials,
-		);
+	const {
+		existingCredentials,
+		isAutoApplied,
+		credentialTestResult,
+		autoAppliedGateway,
+		effectiveCredential,
+	} = await resolveAppliedCredentialState(
+		context,
+		node,
+		credentialType,
+		cache,
+		workflowId,
+		nodeCredentials,
+	);
 
-	const { isTrigger, isTestable, hasParamIssues } = nodeCtx;
+	// The connected credential can rule out a parameter value chosen before it existed
+	// (see computeUnavailableLocatorIssues), so fold those in as parameter issues.
+	const unavailableIssues =
+		credentialType && effectiveCredential
+			? await computeUnavailableLocatorIssues(
+					context,
+					node,
+					nodeCtx.parameters,
+					nodeCtx.typeVersion,
+					credentialType,
+					effectiveCredential,
+				)
+			: {};
+
+	const parameterIssues = { ...nodeCtx.parameterIssues, ...unavailableIssues };
+
+	const { isTrigger, isTestable } = nodeCtx;
+	const hasParamIssues = Object.keys(parameterIssues).length > 0;
 	if (!credentialType && !isTrigger && !hasParamIssues) return null;
 	if (!credentialType && isTrigger && !isTestable && !hasParamIssues) return null;
 
@@ -641,7 +715,7 @@ async function buildRequestForCredentialType(
 		...(isAutoApplied ? { isAutoApplied } : {}),
 		...(credentialTestResult ? { credentialTestResult } : {}),
 		...(nodeCtx.triggerTestResult ? { triggerTestResult: nodeCtx.triggerTestResult } : {}),
-		...(hasParamIssues ? { parameterIssues: nodeCtx.parameterIssues } : {}),
+		...(hasParamIssues ? { parameterIssues } : {}),
 		...(nodeCtx.editableParameters && nodeCtx.editableParameters.length > 0
 			? { editableParameters: nodeCtx.editableParameters }
 			: {}),
@@ -685,7 +759,6 @@ export async function buildSetupRequests(
 
 	const nodeId = node.id ?? nanoid();
 	const nodePosition: [number, number] = node.position ?? [0, 0];
-	const hasParamIssues = Object.keys(parameterIssues).length > 0;
 
 	const requests: SetupRequest[] = [];
 	const processedCredTypes = credentialTypes.length > 0 ? credentialTypes : [undefined];
@@ -693,7 +766,6 @@ export async function buildSetupRequests(
 		nodeName: node.name,
 		isTrigger,
 		isTestable,
-		hasParamIssues,
 		parameterIssues,
 		editableParameters,
 		triggerTestResult,

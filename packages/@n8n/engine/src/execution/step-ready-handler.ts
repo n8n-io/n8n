@@ -4,6 +4,7 @@ import type { GraphNode, WorkflowGraph } from '../graph';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import type { StepError, StepRecord, StepStore } from './step-store';
+import { validateStepContext } from './validate-step-context';
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued → running`),
@@ -11,8 +12,7 @@ import type { StepError, StepRecord, StepStore } from './step-store';
  * reports back to the orchestration worker with `step:completed`.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
- * makes the handler throw: before the claim the event is rejected with the
- * step untouched, after it the step is left `running` for reconciliation
+ * makes the handler throw, leaving the step `running` for reconciliation
  * (CAT-2938) or internal consistency checks (CAT-3930) to resolve.
  */
 export class StepReadyHandler {
@@ -24,11 +24,25 @@ export class StepReadyHandler {
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
-		const { step, execution, node, executor } = await this.prepareToClaimStep(event);
-
 		// Claim via CAS so a duplicate/redelivered event is a no-op.
-		const claimed = await this.stepStore.claimStep(event.stepId);
-		if (!claimed) return;
+		const step = await this.stepStore.claimStep(event.stepId);
+		if (!step) return;
+
+		// NOTE: we would prefer to do this validation before the claim,
+		// but we need to check the execution status AFTER the claim to
+		// avoid executing a step for a failed or cancelled execution.
+		// Reconciliation or a more robust consistency story will improve
+		// this in the future (CAT-2938, CAT-3930).
+		const execution = await this.executionStore.loadExecution(event.executionId);
+		const node = validateStepContext(step, execution);
+		const executor = this.executorFor(step, node);
+
+		if (execution.status !== 'running') {
+			// The execution is no longer running, so we don't run the step.
+			// The step is left `running` for reconciliation (CAT-2938) or
+			// internal consistency checks (CAT-3930) to resolve.
+			return;
+		}
 
 		// NOTE: an unexpected error in gathering inputs will leave the step
 		// running. In the future, this will be handled by either:
@@ -63,35 +77,6 @@ export class StepReadyHandler {
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});
-	}
-
-	// Retrieve the step and the execution and do some validation before we claim the step.
-	// TODO(CAT-3930): more thorough validation and handling of internal consistency errors.
-	private async prepareToClaimStep(event: StepReadyEvent): Promise<{
-		step: StepRecord;
-		execution: ExecutionRecord;
-		node: GraphNode;
-		executor: IStepExecutor;
-	}> {
-		const [step, execution] = await Promise.all([
-			this.stepStore.loadStep(event.stepId),
-			this.executionStore.loadExecution(event.executionId),
-		]);
-		if (step.executionId !== event.executionId) {
-			throw new UnexpectedError(
-				`step ${step.id} belongs to execution ${step.executionId}, but the event claims ${event.executionId}`,
-			);
-		}
-		const node: GraphNode | undefined = execution.graph.nodes.find(
-			(candidate) => candidate.id === step.nodeId,
-		);
-		if (!node) {
-			throw new UnexpectedError(
-				`step ${step.id} references node ${step.nodeId}, which is absent from the execution graph`,
-			);
-		}
-		const executor = this.executorFor(step, node);
-		return { step, execution, node, executor };
 	}
 
 	private async runStep(

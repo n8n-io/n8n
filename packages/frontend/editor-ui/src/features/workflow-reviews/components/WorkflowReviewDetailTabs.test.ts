@@ -23,6 +23,13 @@ vi.mock('./WorkflowReviewActivityFeed.vue', () => ({
 	},
 }));
 
+vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
+	default: {
+		name: 'WorkflowReviewDetailMetadata',
+		template: '<aside data-test-id="workflow-review-detail-metadata" />',
+	},
+}));
+
 const renderComponent = createComponentRenderer(WorkflowReviewDetailTabs, {
 	global: {
 		stubs: {
