@@ -21,6 +21,16 @@ const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
 
+// Dev backend URL. N8N_PORT (the backend's own listen-port var) moves both
+// the injected BASE_PATH and the REST base URL, so one var configures a
+// second instance running next to the default one. Dev-server only: in
+// builds VUE_APP_URL_BASE_API must stay unset so the app falls back to
+// window.BASE_PATH.
+const devBackendPort = process.env.N8N_PORT ?? '5678';
+if (NODE_ENV === 'development') {
+	process.env.VUE_APP_URL_BASE_API ??= `http://localhost:${devBackendPort}/`;
+}
+
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
@@ -96,7 +106,7 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', `//localhost:${process.env.N8N_PORT ?? '5678'}`)
+						.replaceAll('/{{BASE_PATH}}', `//localhost:${devBackendPort}`)
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
