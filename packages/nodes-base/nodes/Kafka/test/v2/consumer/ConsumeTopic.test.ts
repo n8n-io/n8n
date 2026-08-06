@@ -28,7 +28,9 @@ const echoMessage = async (
 ): Promise<INodeExecutionData> => ({ json: { message: message.value?.toString(), topic } });
 
 const parseMessage = vi.fn(echoMessage);
-const emit = vi.fn(async (): Promise<EmitResult> => ({ success: true }));
+const emit = vi.fn(
+	async (_items: INodeExecutionData[]): Promise<EmitResult> => ({ success: true }),
+);
 
 let logger: Logger;
 
@@ -245,14 +247,27 @@ describe('consumeTopic', () => {
 			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
 		});
 
-		it.each([0, -3])(
-			'treats a batch size of %s as one, rather than looping forever',
+		// NaN is the case that defeats a plain Math.max clamp: it slips through and
+		// makes every chunk empty, so the batch is silently skipped and re-read.
+		it.each([0, -3, 1.7, NaN, Infinity])(
+			'treats a batch size of %s as usable, rather than skipping or looping',
 			async (batchSize) => {
 				const { consumer } = await start({ batchSize });
 
 				await consumer.deliverBatch({ messages: messages('a', 'b') });
 
-				expect(emit).toHaveBeenCalledTimes(2);
+				// Every message reaches a workflow, whatever the setting was.
+				expect(emit.mock.calls.flatMap((call) => call[0] as INodeExecutionData[])).toHaveLength(2);
+				expect(consumer.payloadSpies.resolveOffset).toHaveBeenCalledWith('1');
+			},
+		);
+
+		it.each([0, -3, NaN])(
+			'treats a partition concurrency of %s as one',
+			async (partitionsConsumedConcurrently) => {
+				const { consumer } = await start({ partitionsConsumedConcurrently });
+
+				expect(consumer.runConfig?.partitionsConsumedConcurrently).toBe(1);
 			},
 		);
 

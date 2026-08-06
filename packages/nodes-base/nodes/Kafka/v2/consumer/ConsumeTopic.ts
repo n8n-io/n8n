@@ -44,6 +44,17 @@ export interface ConsumeTopicOptions {
 	errorRetryDelay?: number;
 }
 
+/**
+ * Resolves a caller-supplied count to a number the loop can rely on. Both uses
+ * below feed either a loop increment or a library config key, where `NaN` is
+ * worse than a wrong value: it slips past a `Math.max` clamp and past `??`, then
+ * silently produces empty chunks or a broken worker count. A node option can
+ * reach here as `NaN` from an expression that did not evaluate to a number.
+ */
+function countOr(value: number | undefined, fallback: number): number {
+	return Number.isFinite(value) ? Math.max(1, Math.trunc(value as number)) : fallback;
+}
+
 export interface KafkaConsumerHandle {
 	/** Disconnects the consumer. ENT-226 verifies this against a real broker. */
 	close: () => Promise<void>;
@@ -63,9 +74,7 @@ export async function consumeTopic(
 	options: ConsumeTopicOptions,
 ): Promise<KafkaConsumerHandle> {
 	const { topic, parseMessage, emit, logger } = options;
-	// Clamped: the loop steps by this, so a zero or negative value would never
-	// advance and would re-emit the same chunk forever.
-	const batchSize = Math.max(DEFAULT_BATCH_SIZE, Math.trunc(options.batchSize ?? 0));
+	const batchSize = countOr(options.batchSize, DEFAULT_BATCH_SIZE);
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	const closeController = new AbortController();
@@ -89,8 +98,10 @@ export async function consumeTopic(
 		await consumer.subscribe({ topics: [topic] });
 
 		await consumer.run({
-			partitionsConsumedConcurrently:
-				options.partitionsConsumedConcurrently ?? DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
+			partitionsConsumedConcurrently: countOr(
+				options.partitionsConsumedConcurrently,
+				DEFAULT_PARTITIONS_CONSUMED_CONCURRENTLY,
+			),
 			// Off, as in v1: the loop below decides what counts as read. Leaving it on
 			// would mark a whole batch done the moment the callback returns, including
 			// messages no execution ever saw.
@@ -115,7 +126,14 @@ export async function consumeTopic(
 							chunk.map(async (message) => await parseMessage(message, batch.topic)),
 						);
 					} catch (error) {
-						logger.error('Kafka chunk could not be parsed, leaving it unresolved', { error });
+						// Coordinates included: this message is now re-read indefinitely, and
+						// the log is the only way to find which one it is.
+						logger.error('Kafka chunk could not be parsed, leaving it unresolved', {
+							error,
+							topic: batch.topic,
+							partition: batch.partition,
+							offset: chunk[0]?.offset,
+						});
 						await pauseBeforeRetry();
 						break;
 					}
