@@ -266,7 +266,7 @@ describe('ChannelSetupCard', () => {
 		);
 	});
 
-	it('renders a skeleton until managed Slack setup availability is known', async () => {
+	it('renders a loading skeleton until managed Slack setup availability is known', async () => {
 		let resolveManagedSetup: (value: {
 			managedSetupAvailable: boolean;
 			managerCredentials: [];
@@ -279,14 +279,14 @@ describe('ChannelSetupCard', () => {
 		const wrapper = mountCard();
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="slack-managed-setup-skeleton"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="mock-slack-managed-setup"]').exists()).toBe(false);
 
 		resolveManagedSetup({ managedSetupAvailable: false, managerCredentials: [] });
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="slack-managed-setup-skeleton"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="mock-slack-setup"]').exists()).toBe(true);
 	});
 
