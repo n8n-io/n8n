@@ -1,4 +1,4 @@
-import type { AgentIntegrationRemovalWarning, RichCardComponentType } from '@n8n/api-types';
+import type { AgentIntegrationDisconnectWarning, RichCardComponentType } from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
 import type { Thread } from 'chat';
 
@@ -114,7 +114,7 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	async onRemove(
 		ctx: AgentIntegrationRemovalContext,
-	): Promise<AgentIntegrationRemovalWarning | undefined> {
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
 		return await Container.get(SlackManagedSetupService).deleteAppForCredential(ctx);
 	}
 

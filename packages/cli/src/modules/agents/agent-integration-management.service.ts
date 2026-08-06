@@ -1,7 +1,7 @@
 import {
 	AgentIntegrationSchema,
 	type AgentIntegrationConfig,
-	type AgentIntegrationRemovalWarning,
+	type AgentIntegrationDisconnectWarning,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -85,7 +85,7 @@ export class AgentIntegrationManagementService {
 		credentialId: string;
 		deleteExternalResource?: boolean;
 		modifiedBy?: 'user' | 'mcp';
-	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationRemovalWarning }> {
+	}): Promise<{ savedAgent: Agent; warning?: AgentIntegrationDisconnectWarning }> {
 		const persisted = (options.agent.integrations ?? []).find(
 			(item) => item.type === options.type && item.credentialId === options.credentialId,
 		);

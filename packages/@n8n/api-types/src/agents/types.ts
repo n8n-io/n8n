@@ -61,9 +61,6 @@ export interface AgentIntegrationDisconnectWarning {
 	details?: Record<string, string>;
 }
 
-/** @deprecated Use AgentIntegrationDisconnectWarning. */
-export type AgentIntegrationRemovalWarning = AgentIntegrationDisconnectWarning;
-
 export interface AgentSkillReference {
 	path: string;
 	content: string;

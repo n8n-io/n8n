@@ -1,6 +1,6 @@
 import {
 	AgentIntegrationConfig,
-	type AgentIntegrationRemovalWarning,
+	type AgentIntegrationDisconnectWarning,
 	type RichCardComponentType,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
@@ -334,7 +334,7 @@ export abstract class AgentChatIntegration {
 	 */
 	onRemove?(
 		ctx: AgentIntegrationRemovalContext,
-	): Promise<AgentIntegrationRemovalWarning | undefined>;
+	): Promise<AgentIntegrationDisconnectWarning | undefined>;
 
 	/**
 	 * Prepare a thread created or selected by an outbound send. Slack uses this
