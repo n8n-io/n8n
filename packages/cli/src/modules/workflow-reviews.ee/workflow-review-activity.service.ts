@@ -11,8 +11,7 @@ import {
 	WorkflowReviewActivityCommentRepository,
 	WorkflowReviewActivityRepository,
 	type User,
-	type WorkflowReviewActivity,
-	type WorkflowReviewActivityComment,
+	type WorkflowReviewActivityFeedEntry,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -49,25 +48,20 @@ export class WorkflowReviewActivityService {
 		await this.featureGate.assertAvailable();
 		await this.accessService.findReadableRequestOrFail(user, workflowReviewRequestId);
 
-		const { limit } = query;
-		// Read the tail newest-first and page backwards; the wire stays ascending.
-		const rows = await this.activityRepository.findManyForRequest(
+		const { entries, hasMore } = await this.activityRepository.findFeedPage(
 			{
 				workflowReviewRequestId,
-				limit: limit + 1,
+				limit: query.limit,
 				beforeId: query.cursor ? this.decodeCursor(query.cursor) : undefined,
 			},
 			{},
 		);
 
-		const hasMore = rows.length > limit;
-		const page = rows.slice(0, limit);
-		// Taken while the page is still descending: its last row is the oldest one.
-		const oldestRow = page.at(-1);
-		const nextCursor = hasMore && oldestRow ? this.encodeCursor(oldestRow.id) : null;
-		page.reverse();
+		// The page is ascending, so the oldest entry it holds is the one to page back from.
+		const oldest = entries.at(0);
+		const nextCursor = hasMore && oldest ? this.encodeCursor(oldest.activity.id) : null;
 
-		return { data: await this.hydrate(workflowReviewRequestId, page), nextCursor, hasMore };
+		return { data: await this.hydrate(entries), nextCursor, hasMore };
 	}
 
 	async createComment(
@@ -113,29 +107,16 @@ export class WorkflowReviewActivityService {
 	}
 
 	private async hydrate(
-		workflowReviewRequestId: string,
-		rows: WorkflowReviewActivity[],
+		entries: WorkflowReviewActivityFeedEntry[],
 	): Promise<WorkflowReviewActivityEntry[]> {
-		const messages = await this.activityCommentRepository.findManyByActivityIds(
-			{ workflowReviewRequestId, activityIds: rows.map((row) => row.id) },
-			{},
+		const usersById = await this.hydrateAuthors(
+			entries.flatMap((entry) => [
+				entry.activity.createdById,
+				...entry.messages.map((message) => message.createdById),
+			]),
 		);
 
-		const messagesByActivityId = new Map<number, WorkflowReviewActivityComment[]>();
-		for (const message of messages) {
-			const thread = messagesByActivityId.get(message.activityId) ?? [];
-			thread.push(message);
-			messagesByActivityId.set(message.activityId, thread);
-		}
-
-		const usersById = await this.hydrateAuthors([
-			...rows.map((row) => row.createdById),
-			...messages.map((message) => message.createdById),
-		]);
-
-		return rows.map((row) =>
-			toActivityEntry(row, messagesByActivityId.get(row.id) ?? [], usersById),
-		);
+		return entries.map((entry) => toActivityEntry(entry.activity, entry.messages, usersById));
 	}
 
 	/** Deleted authors simply drop out of the map, leaving their entries without a lookup hit. */

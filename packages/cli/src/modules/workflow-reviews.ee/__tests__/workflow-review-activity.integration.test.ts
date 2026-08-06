@@ -481,8 +481,7 @@ describe('GET /workflow-review-requests/:id/activity', () => {
 		const secondIds = await seedEntries(second.request.id, 1);
 		firstIds.push(...(await seedEntries(first.request.id, 1)));
 		// A comment in each pins that messages land on their own thread when several reviews
-		// hold messages. The query's review-id scoping is unreachable from here — see the
-		// `findManyByActivityIds` repository test.
+		// hold messages.
 		async function comment(requestId: string, body: string) {
 			const response = await ownerAgent
 				.post(`/workflow-review-requests/${requestId}/comments`)

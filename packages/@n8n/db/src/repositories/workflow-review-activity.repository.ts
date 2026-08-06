@@ -4,8 +4,14 @@ import { DataSource, LessThan } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
+import { WorkflowReviewActivityComment } from '../entities/workflow-review-activity-comment.ee';
 import { WorkflowReviewActivity } from '../entities/workflow-review-activity.ee';
 import type { OperationContext } from '../services/transaction';
+
+export type WorkflowReviewActivityFeedEntry = {
+	activity: WorkflowReviewActivity;
+	messages: WorkflowReviewActivityComment[];
+};
 
 @Service()
 export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowReviewActivity> {
@@ -27,24 +33,83 @@ export class WorkflowReviewActivityRepository extends BaseRepository<WorkflowRev
 	}
 
 	/**
-	 * Newest-first tail of the feed, optionally older than `beforeId`. Callers reverse the
-	 * page to present it ascending.
+	 * One page of the feed, oldest-first, each thread with its messages attached.
+	 * Pages backwards: `beforeId` returns entries older than it.
 	 */
-	async findManyForRequest(
+	async findFeedPage(
 		input: {
 			workflowReviewRequestId: string;
 			limit: number;
 			beforeId?: number;
 		},
 		ctx: OperationContext,
-	): Promise<WorkflowReviewActivity[]> {
-		return await this.managerFor(ctx).find(WorkflowReviewActivity, {
+	): Promise<{ entries: WorkflowReviewActivityFeedEntry[]; hasMore: boolean }> {
+		// One row past the page tells us whether an older one exists without a second count.
+		const rows = await this.managerFor(ctx).find(WorkflowReviewActivity, {
 			where: {
 				workflowReviewRequestId: input.workflowReviewRequestId,
 				...(input.beforeId !== undefined ? { id: LessThan(input.beforeId) } : {}),
 			},
 			order: { id: 'DESC' },
-			take: input.limit,
+			take: input.limit + 1,
 		});
+
+		const hasMore = rows.length > input.limit;
+		const page = rows.slice(0, input.limit).reverse();
+
+		const messages = await this.findMessagesForActivities(
+			{
+				workflowReviewRequestId: input.workflowReviewRequestId,
+				activityIds: page.map((row) => row.id),
+			},
+			ctx,
+		);
+
+		const messagesByActivityId = new Map<number, WorkflowReviewActivityComment[]>();
+		for (const message of messages) {
+			const thread = messagesByActivityId.get(message.activityId) ?? [];
+			thread.push(message);
+			messagesByActivityId.set(message.activityId, thread);
+		}
+
+		return {
+			entries: page.map((activity) => ({
+				activity,
+				messages: messagesByActivityId.get(activity.id) ?? [],
+			})),
+			hasMore,
+		};
+	}
+
+	/**
+	 * Messages of the given threads, scoped to one review through an inner join on the
+	 * activity header: the comment table carries no `workflowReviewRequestId` and its ids
+	 * are globally enumerable, so every access authorises through the header.
+	 *
+	 * Unbounded per thread — the page size bounds threads, not messages. Fine while a thread
+	 * holds exactly one message; the replies ticket has to bound it.
+	 */
+	private async findMessagesForActivities(
+		input: {
+			workflowReviewRequestId: string;
+			activityIds: number[];
+		},
+		ctx: OperationContext,
+	): Promise<WorkflowReviewActivityComment[]> {
+		if (input.activityIds.length === 0) {
+			return [];
+		}
+
+		return await this.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewActivityComment, 'comment')
+			// Join via entity so DB_TABLE_PREFIX is applied (postgres ITs).
+			.innerJoin(WorkflowReviewActivity, 'activity', 'activity.id = comment.activityId')
+			.where('comment.activityId IN (:...activityIds)', { activityIds: input.activityIds })
+			.andWhere('activity.workflowReviewRequestId = :workflowReviewRequestId', {
+				workflowReviewRequestId: input.workflowReviewRequestId,
+			})
+			.orderBy('comment.activityId', 'ASC')
+			.addOrderBy('comment.id', 'ASC')
+			.getMany();
 	}
 }
