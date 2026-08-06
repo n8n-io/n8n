@@ -32,6 +32,7 @@ import type { AgentIntegrationPersistenceService } from '../agent-integration-pe
 import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
+import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
@@ -78,6 +79,7 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
+	const agentTestRunService = mock<AgentTestRunService>();
 	const telemetry = mock<Telemetry>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
@@ -108,6 +110,7 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentPublishService,
+		agentTestRunService,
 		aiService,
 		mock<AiGatewayService>(),
 		outboundHttp,
@@ -126,6 +129,7 @@ function makeService() {
 		attachableWorkflowsService,
 		agentTaskService,
 		agentPublishService,
+		agentTestRunService,
 		nodeTypes,
 		outboundHttp,
 		telemetry,
@@ -225,7 +229,7 @@ describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
 	const credentialProvider = mock<CredentialProvider>();
-	const user = mock<User>();
+	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -1742,6 +1746,77 @@ describe('AgentsBuilderToolsService', () => {
 			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent "agent-1" not found' }] });
+		});
+	});
+
+	describe('call_agent tool', () => {
+		function getCallAgentTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.find((tool) => tool.name === BUILDER_TOOLS.CALL_AGENT)!;
+		}
+
+		it('denies test execution when the user lacks agent:execute', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			const result = await getCallAgentTool(service).handler!({ message: 'Hello' }, ctx);
+
+			expect(result).toEqual({
+				status: 'error',
+				code: 'forbidden',
+				message: 'You do not have permission to run agents in this project.',
+			});
+			expect(agentTestRunService.executeDraftRun).not.toHaveBeenCalled();
+		});
+
+		it('cancels a suspended run and directs the user to Preview without approval data', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'suspended',
+				response: 'I need approval.',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+				suspensions: [
+					{
+						runId: 'run-1',
+						toolCallId: 'tool-call-1',
+						toolName: 'delete_record',
+						input: { id: 'record-1' },
+						suspendPayload: { type: 'approval' },
+					},
+				],
+			});
+			agentTestRunService.cancelSuspendedRun.mockResolvedValue(true);
+
+			const result = await getCallAgentTool(service).handler!(
+				{ message: 'Delete it', sessionId: 'session-1' },
+				ctx,
+			);
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith({
+				agentId,
+				projectId,
+				message: 'Delete it',
+				sessionId: 'session-1',
+				credentialProvider,
+				user,
+				source: 'instance-ai',
+			});
+			expect(agentTestRunService.cancelSuspendedRun).toHaveBeenCalledWith({
+				agentId,
+				runId: 'run-1',
+				userId: 'user-1',
+			});
+			expect(result).toEqual({
+				status: 'approval_required',
+				response: 'I need approval.',
+				sessionId: 'session-1',
+				executionId: 'execution-1',
+				suspensions: [{ runId: 'run-1', toolCallId: 'tool-call-1', toolName: 'delete_record' }],
+				previewPath: '/projects/project-1/agents/agent-1/preview',
+			});
 		});
 	});
 

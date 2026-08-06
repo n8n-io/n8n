@@ -925,9 +925,13 @@ async function resolveTargetForCall(
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
-			'Builds and edits n8n **Agent** artifacts only (instructions, model, tools, skills, ' +
-				'tasks, integrations, sub-agents) by delegating to the agents-module builder. It is ' +
-				'only for that purpose. When the request is workflow-anchored (via the intent gate / ' +
+			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
+				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
+				'builder. When the user asks to test or run an agent, call this tool and forward that ' +
+				'intent in `message`. The builder owns the internal `call_agent` tool, so it will not ' +
+				'appear in your toolset or tool search; never conclude agent testing is unavailable ' +
+				'because you cannot see it. This tool is only for Agent artifacts. When the request ' +
+				'is workflow-anchored (via the intent gate / ' +
 				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
 				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
 				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
