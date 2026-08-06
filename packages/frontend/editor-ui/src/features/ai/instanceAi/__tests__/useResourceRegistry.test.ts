@@ -229,8 +229,8 @@ describe('useResourceRegistry', () => {
 	});
 
 	describe('producedArtifacts — message attachments', () => {
-		test('preserves pending state from a new-agent attachment', async () => {
-			const { messages, producedArtifacts } = setup();
+		test('keeps a pending new-agent attachment produced but not linkable', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 			messages.value = [
 				makeMessage({
@@ -255,6 +255,7 @@ describe('useResourceRegistry', () => {
 				projectId: 'proj-1',
 				pending: true,
 			});
+			expect(linkableResourceNameIndex.get('support agent')).toBeUndefined();
 		});
 	});
 

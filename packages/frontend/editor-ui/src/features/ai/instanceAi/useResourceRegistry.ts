@@ -343,13 +343,17 @@ function collectFromMessageAttachments(message: InstanceAiMessage, col: Collecti
 				name: attachment.name ?? 'Untitled',
 			});
 		} else if (attachment.type === 'agent') {
-			recordProduced(col, {
-				type: 'agent',
-				id: attachment.id,
-				name: attachment.name ?? 'Untitled',
-				projectId: attachment.projectId,
-				...(attachment.pending ? { pending: true } : {}),
-			});
+			recordProduced(
+				col,
+				{
+					type: 'agent',
+					id: attachment.id,
+					name: attachment.name ?? 'Untitled',
+					projectId: attachment.projectId,
+					...(attachment.pending ? { pending: true } : {}),
+				},
+				{ linkable: !attachment.pending },
+			);
 		}
 	}
 }
