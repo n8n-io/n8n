@@ -7,6 +7,7 @@ import type {
 	ListWorkflowReviewActivityResponse,
 	ListWorkflowReviewInboxResponse,
 	UpdateWorkflowReviewRequestVersionDto,
+	WorkflowReviewActivityEntry,
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestDetail,
 	WorkflowReviewRequestList,
