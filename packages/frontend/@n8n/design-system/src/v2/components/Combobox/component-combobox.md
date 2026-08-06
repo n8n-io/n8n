@@ -237,7 +237,7 @@ const value = ref<string | undefined>('Option 1');
 </template>
 ```
 
-When the clear button is clicked, single selection emits `undefined`, multiple selection emits `[]`, and the input is refocused.
+When the clear button is clicked, single selection emits `undefined`, multiple selection emits `[]`, and the input is refocused. Clearing the input text to search again does **not** clear the committed selection — abandon the search (Escape / blur) to restore the display via `resetSearchTermOnBlur`.
 
 **Multiple selection (tags)**
 

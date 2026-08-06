@@ -535,17 +535,63 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
-		it('should clear the selection when the input value is deleted', async () => {
-			const wrapper = render(Combobox, {
-				props: {
-					items: ['Option 1', 'Option 2'],
-					modelValue: 'Option 1',
+		it('should keep the selection when the input is cleared to search again', async () => {
+			const value = ref('Apple');
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					return { value };
 				},
+				template: `
+					<Combobox
+						v-model="value"
+						:items="['Apple', 'Banana', 'Orange']"
+						clearable
+					/>
+				`,
 			});
 
-			await userEvent.clear(getComboboxInput(wrapper));
+			const input = getComboboxInput(wrapper);
+			input.focus();
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Ban');
 
-			expect(wrapper.emitted('update:modelValue')).toContainEqual([undefined]);
+			expect(value.value).toBe('Apple');
+			expect(wrapper.emitted('update:modelValue')).toBeFalsy();
+			expect(wrapper.queryByRole('button', { name: 'Clear selection' })).toBeInTheDocument();
+		});
+
+		it('should restore the committed selection when an abandoned search is dismissed', async () => {
+			const value = ref('Apple');
+			render({
+				components: { Combobox },
+				setup() {
+					return { value };
+				},
+				template: `
+					<Combobox
+						v-model="value"
+						:items="['Apple', 'Banana', 'Orange']"
+						clearable
+					/>
+				`,
+			});
+
+			const input = document.querySelector('[role="combobox"]');
+			if (!(input instanceof HTMLInputElement)) {
+				throw new Error('Combobox input not found');
+			}
+
+			input.focus();
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Ban');
+			await userEvent.keyboard('{Escape}');
+			input.blur();
+
+			await waitFor(() => {
+				expect(value.value).toBe('Apple');
+				expect(input).toHaveValue('Apple');
+			});
 		});
 
 		it('should display selected value for string items', async () => {

@@ -271,15 +271,6 @@ function onClear() {
 function onTagsUpdate(value: TagsInputValue[]) {
 	emit('update:modelValue', value);
 }
-
-function onInput(event: Event) {
-	if (props.multiple || !hasValue.value) return;
-	if (!(event.target instanceof HTMLInputElement)) return;
-
-	if (event.target.value === '') {
-		emit('update:modelValue', undefined);
-	}
-}
 </script>
 
 <template>
@@ -352,7 +343,6 @@ function onInput(event: Event) {
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
 				:aria-label="$attrs['aria-label'] ?? props.placeholder"
-				@input="onInput"
 			/>
 
 			<button
