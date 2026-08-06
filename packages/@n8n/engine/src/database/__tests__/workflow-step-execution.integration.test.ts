@@ -105,6 +105,18 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.createSteps([])).toEqual([]);
 	});
 
+	it('TypeOrmStepStore.createSteps rejects a step created with outputs but not completed', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+
+		await expect(
+			store.createSteps([{ executionId, nodeId: 'x', status: 'queued', outputs: [{}] }]),
+		).rejects.toMatchObject({
+			name: 'UnexpectedError',
+			message: expect.stringContaining('completed') as string,
+		});
+	});
+
 	it('cascades step deletion when the parent execution is deleted', async () => {
 		const executionId = await createExecution();
 		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
