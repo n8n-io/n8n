@@ -1,11 +1,14 @@
 import type { UpdateWorkflowReviewRequestVersionDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
+import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowHistory,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
@@ -13,8 +16,9 @@ import type {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestWorkflowRepository,
+	Transaction,
+	OperationContext,
 } from '@n8n/db';
-import { DbLock } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -39,12 +43,14 @@ const requestId = 'req-1';
 const dto: UpdateWorkflowReviewRequestVersionDto = {
 	workflowId: 'wf-1',
 	workflowVersionId: 'ver-2',
+	workflowVersionName: 'Release candidate',
 };
 
 describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -60,12 +66,15 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const workflowService = mock<WorkflowService>();
 	const logger = mock<Logger>();
 	const tx = mock<EntityManager>();
+	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
+	const ctx: OperationContext = { trx: mock<Transaction>() };
 
 	const service = new WorkflowReviewRequestService(
 		logger,
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		workflowFinderService,
 		workflowHistoryService,
+		workflowHistoryRepository,
 		sharedWorkflowRepository,
 		publishHistoryRepository,
 		requestRepository,
@@ -103,6 +112,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 			mock<WorkflowEntity>({ isArchived: false }),
 		);
 		workflowHistoryService.findVersion.mockResolvedValue(mock());
+		workflowHistoryRepository.updateVersionName.mockResolvedValue(1);
 		tx.save.mockImplementation(async (entity) => entity);
 	};
 
@@ -112,7 +122,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
-		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, {}));
+		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx, ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
@@ -297,6 +307,106 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(NotFoundError);
 
 		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
+	});
+
+	describe('pinned version naming', () => {
+		/** A no-op re-pin: the review already points at the version being submitted. */
+		const mockAlreadyPinned = (currentName: string | null) => {
+			mockSuccessfulUpdatePath();
+			workflowRepository.findByRequestId.mockResolvedValue([
+				mock<WorkflowReviewRequestWorkflow>({
+					workflowReviewRequestId: requestId,
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-2',
+				}),
+			]);
+			workflowHistoryService.findVersion.mockResolvedValue(
+				mock<WorkflowHistory>({ name: currentName }),
+			);
+		};
+
+		it('names the newly pinned version in the same transaction as the re-pin', async () => {
+			mockSuccessfulUpdatePath();
+
+			await service.updateVersion(user, requestId, {
+				...dto,
+				workflowVersionName: '  Release candidate  ',
+			});
+
+			expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
+				{ workflowId: 'wf-1', versionId: 'ver-2', name: 'Release candidate' },
+				ctx,
+			);
+		});
+
+		it('throws BadRequestError when the version was pruned before the naming write', async () => {
+			mockSuccessfulUpdatePath();
+			workflowHistoryRepository.updateVersionName.mockResolvedValue(0);
+
+			await expect(
+				service.updateVersion(user, requestId, {
+					...dto,
+					workflowVersionName: 'Release candidate',
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('renames without taking the lock when only the name changed', async () => {
+			mockAlreadyPinned('Old name');
+
+			await service.updateVersion(user, requestId, { ...dto, workflowVersionName: 'New name' });
+
+			expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
+				{ workflowId: 'wf-1', versionId: 'ver-2', name: 'New name' },
+				// Root context, not the lock's — this path deliberately runs untransacted.
+				{},
+			);
+			expect(dbLockService.withLock).not.toHaveBeenCalled();
+			expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+		});
+
+		it('writes nothing when the pinned version already carries the same name', async () => {
+			mockAlreadyPinned('Same name');
+
+			await service.updateVersion(user, requestId, { ...dto, workflowVersionName: 'Same name' });
+
+			expect(workflowHistoryRepository.updateVersionName).not.toHaveBeenCalled();
+			expect(dbLockService.withLock).not.toHaveBeenCalled();
+		});
+
+		it('still names the version when a concurrent sync re-pinned it first', async () => {
+			mockSuccessfulUpdatePath();
+			workflowHistoryService.findVersion.mockResolvedValue(
+				mock<WorkflowHistory>({ name: 'Old name' }),
+			);
+			workflowRepository.findByRequestId
+				// Pre-lock: still on the old version, so we take the lock.
+				.mockResolvedValueOnce([
+					mock<WorkflowReviewRequestWorkflow>({
+						workflowReviewRequestId: requestId,
+						workflowId: 'wf-1',
+						workflowVersionId: 'ver-1',
+					}),
+				])
+				// In-lock: the winner already re-pinned, leaving only our rename pending.
+				.mockResolvedValueOnce([
+					mock<WorkflowReviewRequestWorkflow>({
+						workflowReviewRequestId: requestId,
+						workflowId: 'wf-1',
+						workflowVersionId: 'ver-2',
+					}),
+				]);
+
+			await service.updateVersion(user, requestId, { ...dto, workflowVersionName: 'New name' });
+
+			expect(workflowHistoryRepository.updateVersionName).toHaveBeenCalledWith(
+				{ workflowId: 'wf-1', versionId: 'ver-2', name: 'New name' },
+				ctx,
+			);
+			// The re-pin itself stays skipped — only the name was outstanding.
+			expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
+			expect(tx.save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('review state broadcast', () => {

@@ -465,6 +465,34 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('enables the MCP registry prompt section only when the host wired mcpService', async () => {
+		const baseOptions = {
+			modelId: 'test-model',
+			orchestrationContext: { runId: 'mcp-registry-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(new Map()),
+		};
+		const baseContext = {
+			runLabel: 'mcp-registry-prompt',
+			localGatewayStatus: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+		};
+
+		await createInstanceAgent({ ...baseOptions, context: baseContext } as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: false }),
+		);
+
+		await createInstanceAgent({
+			...baseOptions,
+			context: { ...baseContext, mcpService: { search: vi.fn() } },
+		} as never);
+		expect(getSystemPrompt).toHaveBeenLastCalledWith(
+			expect.objectContaining({ mcpRegistrySearchEnabled: true }),
+		);
+	});
+
 	it('does not enable MCP-specific tool search guidance when deferred search is disabled', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',

@@ -14,6 +14,7 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 
 import {
 	AgentModificationTelemetryService,
@@ -46,6 +47,7 @@ export class AgentConfigService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
@@ -264,6 +266,7 @@ export class AgentConfigService {
 		);
 
 		const saved = await this.agentRepository.save(entity);
+		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		this.modificationTelemetry.record({
