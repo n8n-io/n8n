@@ -2,6 +2,8 @@ packages/frontend/editor-ui/vite.config.mts
   s_9fc8be0aa06faa::t_a8b3085ba5afc3 22-30
   s_9fc8be0aa06faa::t_b7185ac9e1fcd3 180
   s_9fc8be0aa06faa::t_7e1a9ce10848f2 31
+packages/frontend/editor-ui/package.json
+  s_9fc8be0aa06faa::t_de1e3415b2736a 21
 ---
 {
   "schema_version": "authorship/3.0.0",
