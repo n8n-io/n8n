@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { ElSwitch } from 'element-plus';
 import {
 	N8nButton,
 	N8nDialog,
@@ -17,8 +18,11 @@ import {
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
@@ -36,6 +40,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
 const toast = useToast();
+const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
 const router = useRouter();
@@ -43,6 +48,7 @@ const router = useRouter();
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
+const exposeAllWorkflowsToMcpStore = useExposeAllWorkflowsToMcpStore();
 
 const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
 
@@ -53,6 +59,26 @@ const canManageMcpInstance = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
 );
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
+
+const autoExposeSaving = ref(false);
+
+const onAutoExposeSwitchUpdate = (value: string | number | boolean) => {
+	void onToggleAutoExpose(value === true);
+};
+
+const onToggleAutoExpose = async (value: boolean) => {
+	autoExposeSaving.value = true;
+	try {
+		const updated = await mcpStore.setAutoExposeNewWorkflows(value);
+		telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
+			enabled: updated,
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.autoExpose.error.title'));
+	} finally {
+		autoExposeSaving.value = false;
+	}
+};
 
 const exposedWorkflowsCount = ref(0);
 
@@ -298,6 +324,22 @@ onMounted(async () => {
 					>
 						<template #action>
 							<N8nSettingsRowConfigure :value="agentsExposedValue" />
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="canManageMcpInstance && exposeAllWorkflowsToMcpStore.isEnabled">
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.autoExpose.title')"
+						:description="i18n.baseText('settings.mcp.autoExpose.description')"
+					>
+						<template #action>
+							<ElSwitch
+								data-test-id="mcp-auto-expose-toggle"
+								:model-value="mcpStore.autoExposeNewWorkflows"
+								:disabled="mcpStore.mcpManagedByEnv"
+								:loading="autoExposeSaving"
+								@update:model-value="onAutoExposeSwitchUpdate"
+							/>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>

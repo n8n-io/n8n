@@ -4,7 +4,6 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { waitAllPromises } from '@/__tests__/utils';
 import SettingsMCPWorkflowsView from '@/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -16,27 +15,10 @@ import {
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 import type { WorkflowListItem } from '@/Interface';
-import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
 const { routerPush, routerReplace } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	routerReplace: vi.fn(),
-}));
-
-const { hasPermissionMock } = vi.hoisted(() => ({
-	hasPermissionMock: vi.fn().mockReturnValue(true),
-}));
-
-const { trackSpy } = vi.hoisted(() => ({
-	trackSpy: vi.fn(),
-}));
-
-vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: hasPermissionMock,
-}));
-
-vi.mock('@n8n/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: trackSpy }),
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -60,7 +42,6 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
-let exposeAllWorkflowsToMcpStore: MockedStore<typeof useExposeAllWorkflowsToMcpStore>;
 
 const createComponent = createComponentRenderer(SettingsMCPWorkflowsView, {
 	global: {
@@ -78,13 +59,10 @@ const workflowPage = (data: WorkflowListItem[] = []) => ({ data, count: data.len
 
 describe('SettingsMCPWorkflowsView', () => {
 	beforeEach(() => {
-		hasPermissionMock.mockReturnValue(true);
 		pinia = createTestingPinia();
 		mcpStore = mockedStore(useMCPStore);
 		settingsStore = mockedStore(useSettingsStore);
 		uiStore = mockedStore(useUIStore);
-		exposeAllWorkflowsToMcpStore = mockedStore(useExposeAllWorkflowsToMcpStore);
-		exposeAllWorkflowsToMcpStore.isEnabled = true;
 
 		settingsStore.settings = {
 			enterprise: {},
@@ -102,7 +80,6 @@ describe('SettingsMCPWorkflowsView', () => {
 			...workflowPage(),
 			page,
 		}));
-		mcpStore.setAutoExposeNewWorkflows.mockImplementation(async (enabled: boolean) => enabled);
 	});
 
 	afterEach(() => {
@@ -279,61 +256,6 @@ describe('SettingsMCPWorkflowsView', () => {
 			await waitFor(() => {
 				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalled();
 			});
-		});
-	});
-
-	describe('auto-expose toggle', () => {
-		it('renders for a user with mcp:manage when the experiment is on', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await waitAllPromises();
-
-			expect(getByTestId('mcp-auto-expose-toggle')).toBeTruthy();
-		});
-
-		it('is hidden without the experiment flag', async () => {
-			exposeAllWorkflowsToMcpStore.isEnabled = false;
-
-			const { queryByTestId } = createComponent({ pinia });
-			await waitAllPromises();
-
-			expect(queryByTestId('mcp-auto-expose-toggle')).toBeNull();
-		});
-
-		it('is hidden for a user without mcp:manage', async () => {
-			hasPermissionMock.mockReturnValue(false);
-
-			const { queryByTestId } = createComponent({ pinia });
-			await waitAllPromises();
-
-			expect(queryByTestId('mcp-auto-expose-toggle')).toBeNull();
-		});
-
-		it('persists the new state and tracks the resulting value', async () => {
-			const { getByTestId } = createComponent({ pinia });
-			await waitAllPromises();
-
-			await userEvent.click(getByTestId('mcp-auto-expose-toggle').querySelector('input')!);
-
-			expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
-			expect(trackSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'User toggled auto-expose new workflows to MCP' }),
-				expect.objectContaining({ enabled: true }),
-			);
-		});
-
-		it('shows a toast error and does not track when persisting fails', async () => {
-			mcpStore.setAutoExposeNewWorkflows.mockRejectedValueOnce(new Error('nope'));
-
-			const { getByTestId } = createComponent({ pinia });
-			await waitAllPromises();
-
-			await userEvent.click(getByTestId('mcp-auto-expose-toggle').querySelector('input')!);
-			await waitAllPromises();
-
-			expect(trackSpy).not.toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'User toggled auto-expose new workflows to MCP' }),
-				expect.anything(),
-			);
 		});
 	});
 });
