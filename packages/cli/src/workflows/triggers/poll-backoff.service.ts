@@ -138,6 +138,17 @@ export class PollBackoffService {
 		}
 	}
 
+	/** Forgets past failures, so a newly provisioned node is not born inside an old backoff window. */
+	async reset(workflowId: string, nodeId: string): Promise<void> {
+		if (!this.enabled) return;
+
+		try {
+			await this.pollerStateRepository.clearFailures(workflowId, nodeId);
+		} catch (error) {
+			this.reportFailure(error, workflowId, nodeId, 'Failed to clear poller failure state');
+		}
+	}
+
 	// Logging and reporting must not throw either, since this runs from catch
 	// blocks that already handled the real failure; each guard is independent
 	// so one failing doesn't stop the other.

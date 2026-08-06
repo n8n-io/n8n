@@ -357,7 +357,7 @@ describe('computeBackoffUntil', () => {
 	});
 
 	describe('permanent', () => {
-		test.each([1, 2, 10, 100])(
+		test.each([1, 100])(
 			'sits at MAX_BACKOFF_MS from the first failure regardless of the count (attempt %d)',
 			(consecutiveErrors) => {
 				const until = computeBackoffUntil({

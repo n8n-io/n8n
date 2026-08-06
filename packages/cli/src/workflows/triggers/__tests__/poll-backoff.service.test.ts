@@ -227,20 +227,13 @@ describe('PollBackoffService', () => {
 			);
 		});
 
-		test('is a no-op, not a throw, when the row is missing at failure time', async () => {
+		test('is a no-op, not a throw, and does not log at warn when the row is missing at failure time', async () => {
 			pollerStateRepository.recordFailure.mockResolvedValue(false);
 			const service = buildService();
 
 			await expect(recordFailure(service)).resolves.toBeUndefined();
+
 			expect(errorReporter.error).not.toHaveBeenCalled();
-		});
-
-		test('does not log at warn when the row is missing at failure time', async () => {
-			pollerStateRepository.recordFailure.mockResolvedValue(false);
-			const service = buildService();
-
-			await recordFailure(service);
-
 			expect(scopedLogger.warn).not.toHaveBeenCalled();
 			expect(scopedLogger.debug).toHaveBeenCalled();
 		});
@@ -324,6 +317,39 @@ describe('PollBackoffService', () => {
 			await expect(
 				recordSuccess(service, { consecutiveErrors: 2, backoffUntil: now }),
 			).resolves.toBeUndefined();
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				writeError,
+				expect.objectContaining({
+					extra: expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1' }),
+				}),
+			);
+		});
+	});
+
+	describe('reset', () => {
+		test('does not query when the flag is off', async () => {
+			const service = buildService(false);
+
+			await service.reset('wf-1', 'node-1');
+
+			expect(pollerStateRepository.clearFailures).not.toHaveBeenCalled();
+		});
+
+		test('clears unconditionally, with no peeked state to check', async () => {
+			const service = buildService();
+
+			await service.reset('wf-1', 'node-1');
+
+			expect(pollerStateRepository.clearFailures).toHaveBeenCalledWith('wf-1', 'node-1');
+		});
+
+		test('swallows and reports a failing write instead of throwing', async () => {
+			const writeError = new Error('poller state write failed');
+			pollerStateRepository.clearFailures.mockRejectedValue(writeError);
+			const service = buildService();
+
+			await expect(service.reset('wf-1', 'node-1')).resolves.toBeUndefined();
 
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				writeError,
