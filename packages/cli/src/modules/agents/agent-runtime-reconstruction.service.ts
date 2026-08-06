@@ -111,7 +111,10 @@ export interface ReconstructAgentRuntimeParams {
 	 * its own published snapshot.
 	 */
 	runType: AgentRunTelemetryType;
-	/** Execution classification for workflow tools built into this runtime. */
+	/**
+	 * Execution classification for workflow tools. It stays separate from runType
+	 * because production-classified agents can run inside a workflow execution.
+	 */
 	workflowToolExecutionMode?: WorkflowToolExecutionMode;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
 	parentAgentIdForDelegation?: string;
@@ -438,6 +441,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			runtimeProfile,
 			runType,
+			workflowToolExecutionMode,
 			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
@@ -562,6 +566,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		runtimeProfile: AgentRuntimeProfile;
 		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		config: AgentJsonConfig;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
@@ -577,6 +582,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			runtimeProfile,
 			runType,
+			workflowToolExecutionMode,
 			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
@@ -671,6 +677,7 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				credentialProvider,
 				runType,
+				workflowToolExecutionMode,
 				delegation: subAgentDelegation,
 				user,
 				instrumentation,
@@ -702,6 +709,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		delegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
@@ -713,6 +721,7 @@ export class AgentRuntimeReconstructionService {
 			projectId,
 			credentialProvider,
 			runType,
+			workflowToolExecutionMode,
 			delegation,
 			user,
 			instrumentation,
@@ -729,6 +738,7 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId,
 				credentialProvider,
 				runType,
+				workflowToolExecutionMode,
 				user,
 				instrumentation,
 				policy: this.buildSubAgentPolicy(config),
