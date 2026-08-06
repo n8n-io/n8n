@@ -28,6 +28,14 @@ export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
 export const EXECUTIONS_SECTION_KEY = '__executions';
 
+/**
+ * Rows read in one page of an agent's eval cases. Case generation caps a dataset at
+ * 20 cases and the view has no pager, so a single page covers anything the builder
+ * can produce; the server's total is cached alongside so the run button stays
+ * truthful if rows were added outside the builder.
+ */
+export const AGENT_EVAL_CASES_PAGE_SIZE = 100;
+
 export {
 	CHAT_MESSAGE_STATUS,
 	TOOL_CALL_STATE,
