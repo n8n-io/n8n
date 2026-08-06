@@ -28,6 +28,14 @@ describe('PollBackoffService', () => {
 
 	const now = new Date('2026-08-05T12:00:00.000Z');
 
+	const expectErrorReported = (error: Error) =>
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({
+				extra: expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1' }),
+			}),
+		);
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		rootLogger.scoped.mockReturnValue(scopedLogger);
@@ -71,52 +79,46 @@ describe('PollBackoffService', () => {
 
 			await expect(service.peek('wf-1', 'node-1')).resolves.toBeNull();
 
-			expect(errorReporter.error).toHaveBeenCalledWith(
-				readError,
-				expect.objectContaining({
-					extra: expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1' }),
-				}),
-			);
+			expectErrorReported(readError);
 		});
 	});
 
 	describe('isBackingOff', () => {
 		const service = buildService();
 
-		test('is false for a null state', () => {
-			expect(service.isBackingOff(null, now)).toBe(false);
+		test.each<[string, PollerFailureState | null]>([
+			['a null state', null],
+			['backoffUntil null', { consecutiveErrors: 1, backoffUntil: null }],
+			[
+				'backoffUntil already passed',
+				{ consecutiveErrors: 1, backoffUntil: new Date(now.getTime() - 1) },
+			],
+			[
+				'backoffUntil past the RETRY_AFTER_MAX_MS ceiling',
+				{
+					consecutiveErrors: 1,
+					backoffUntil: new Date(now.getTime() + RETRY_AFTER_MAX_MS + 60_000),
+				},
+			],
+			[
+				'backoffUntil exactly at now',
+				{ consecutiveErrors: 1, backoffUntil: new Date(now.getTime()) },
+			],
+			[
+				'backoffUntil not a Date',
+				{ consecutiveErrors: 1, backoffUntil: now.toISOString() } as unknown as PollerFailureState,
+			],
+			['backoffUntil an invalid Date', { consecutiveErrors: 1, backoffUntil: new Date(NaN) }],
+		])('is false for %s', (_name, state) => {
+			expect(() => service.isBackingOff(state, now)).not.toThrow();
+			expect(service.isBackingOff(state, now)).toBe(false);
 		});
 
-		test('is false when backoffUntil is null', () => {
-			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil: null }, now)).toBe(false);
-		});
-
-		test('is true for a deadline in the near future', () => {
-			const backoffUntil = new Date(now.getTime() + 60_000);
-
-			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(true);
-		});
-
-		test('is false when backoffUntil has already passed', () => {
-			const backoffUntil = new Date(now.getTime() - 1);
-
-			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
-		});
-
-		test('ignores a stale deadline further ahead than RETRY_AFTER_MAX_MS', () => {
-			const backoffUntil = new Date(now.getTime() + RETRY_AFTER_MAX_MS + 60_000);
-
-			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
-		});
-
-		test('is false exactly at the deadline', () => {
-			const backoffUntil = new Date(now.getTime());
-
-			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(false);
-		});
-
-		test('is true exactly at the RETRY_AFTER_MAX_MS clamp boundary', () => {
-			const backoffUntil = new Date(now.getTime() + RETRY_AFTER_MAX_MS);
+		test.each<[string, number]>([
+			['a deadline in the near future', 60_000],
+			['exactly at the RETRY_AFTER_MAX_MS clamp boundary', RETRY_AFTER_MAX_MS],
+		])('is true for %s', (_name, deltaMs) => {
+			const backoffUntil = new Date(now.getTime() + deltaMs);
 
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(true);
 		});
@@ -126,22 +128,6 @@ describe('PollBackoffService', () => {
 
 			expect(backoffUntil.getTime() - now.getTime()).toBeGreaterThan(MAX_BACKOFF_MS);
 			expect(service.isBackingOff({ consecutiveErrors: 1, backoffUntil }, now)).toBe(true);
-		});
-
-		test('is false when backoffUntil is not a Date', () => {
-			const state = {
-				consecutiveErrors: 1,
-				backoffUntil: now.toISOString(),
-			} as unknown as PollerFailureState;
-
-			expect(() => service.isBackingOff(state, now)).not.toThrow();
-			expect(service.isBackingOff(state, now)).toBe(false);
-		});
-
-		test('is false when backoffUntil is an invalid Date', () => {
-			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: new Date(NaN) };
-
-			expect(service.isBackingOff(state, now)).toBe(false);
 		});
 	});
 
@@ -166,32 +152,17 @@ describe('PollBackoffService', () => {
 			expect(pollerStateRepository.recordFailure).not.toHaveBeenCalled();
 		});
 
-		test('increments from zero and stores a computed deadline for a first failure', async () => {
+		test.each<[string, PollerFailureState | null, number]>([
+			['a first failure', null, 1],
+			['a repeated failure', { consecutiveErrors: 3, backoffUntil: null }, 4],
+		])('increments the stored count for %s', async (_name, state, expectedCount) => {
 			const service = buildService();
 
-			await recordFailure(service, { state: null });
+			await recordFailure(service, { state });
 
 			const expectedBackoffUntil = computeBackoffUntil({
 				failureClass: 'transient',
-				consecutiveErrors: 1,
-				retryAfterMs: null,
-				now,
-			});
-			expect(pollerStateRepository.recordFailure).toHaveBeenCalledWith(
-				'wf-1',
-				'node-1',
-				expectedBackoffUntil,
-			);
-		});
-
-		test('increments from the stored count for a repeated failure', async () => {
-			const service = buildService();
-
-			await recordFailure(service, { state: { consecutiveErrors: 3, backoffUntil: null } });
-
-			const expectedBackoffUntil = computeBackoffUntil({
-				failureClass: 'transient',
-				consecutiveErrors: 4,
+				consecutiveErrors: expectedCount,
 				retryAfterMs: null,
 				now,
 			});
@@ -219,12 +190,7 @@ describe('PollBackoffService', () => {
 
 			await expect(recordFailure(service)).resolves.toBeUndefined();
 
-			expect(errorReporter.error).toHaveBeenCalledWith(
-				writeError,
-				expect.objectContaining({
-					extra: expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1' }),
-				}),
-			);
+			expectErrorReported(writeError);
 		});
 
 		test('is a no-op, not a throw, and does not log at warn when the row is missing at failure time', async () => {
@@ -285,10 +251,13 @@ describe('PollBackoffService', () => {
 			expect(pollerStateRepository.clearFailures).not.toHaveBeenCalled();
 		});
 
-		test('issues a write when the state is null, since a null read is indistinguishable from a failed one', async () => {
+		test.each<[string, PollerFailureState | null]>([
+			['a null state, since a null read is indistinguishable from a failed one', null],
+			['a dirty state', { consecutiveErrors: 2, backoffUntil: now }],
+		])('issues a write for %s', async (_name, state) => {
 			const service = buildService();
 
-			await recordSuccess(service, null);
+			await recordSuccess(service, state);
 
 			expect(pollerStateRepository.clearFailures).toHaveBeenCalledWith('wf-1', 'node-1');
 		});
@@ -301,14 +270,6 @@ describe('PollBackoffService', () => {
 			expect(pollerStateRepository.clearFailures).not.toHaveBeenCalled();
 		});
 
-		test('clears a dirty state', async () => {
-			const service = buildService();
-
-			await recordSuccess(service, { consecutiveErrors: 2, backoffUntil: now });
-
-			expect(pollerStateRepository.clearFailures).toHaveBeenCalledWith('wf-1', 'node-1');
-		});
-
 		test('swallows and reports a failing write instead of throwing', async () => {
 			const writeError = new Error('poller state write failed');
 			pollerStateRepository.clearFailures.mockRejectedValue(writeError);
@@ -318,12 +279,7 @@ describe('PollBackoffService', () => {
 				recordSuccess(service, { consecutiveErrors: 2, backoffUntil: now }),
 			).resolves.toBeUndefined();
 
-			expect(errorReporter.error).toHaveBeenCalledWith(
-				writeError,
-				expect.objectContaining({
-					extra: expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1' }),
-				}),
-			);
+			expectErrorReported(writeError);
 		});
 	});
 
@@ -351,12 +307,7 @@ describe('PollBackoffService', () => {
 
 			await expect(service.reset('wf-1', 'node-1')).resolves.toBeUndefined();
 
-			expect(errorReporter.error).toHaveBeenCalledWith(
-				writeError,
-				expect.objectContaining({
-					extra: expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1' }),
-				}),
-			);
+			expectErrorReported(writeError);
 		});
 	});
 });

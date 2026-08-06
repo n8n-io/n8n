@@ -74,11 +74,9 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * Call inside the transaction that also inserts the execution the poll produced, so
-	 * neither commits without the other. Without a `fence`, throws if no row matched: the
-	 * row was read before `poll()` ran, so a miss means the workflow or node was removed
-	 * mid-poll. With a `fence`, a miss returns `false` instead. The write is unconditional
-	 * otherwise, so when two polls of one node overlap, the last transaction to commit wins.
+	 * Call inside the transaction that also inserts the poll's execution, so neither commits
+	 * without the other. Without a `fence`, a miss throws (the workflow/node was removed
+	 * mid-poll); with one, a miss returns `false` instead.
 	 */
 	async advanceCursor(
 		workflowId: string,
@@ -147,11 +145,9 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 	}
 
 	/**
-	 * Increments the failure counter and sets the backoff deadline. Update-only:
-	 * the cursor read that runs before every poll guarantees the row already
-	 * exists, and an upsert would have to invent a cursor value, seeding `{}`
-	 * and destroying an unmigrated node's static-data seed. A missing row is
-	 * reported as `false`, not thrown.
+	 * Increments the failure counter and sets the backoff deadline. Update-only: an upsert
+	 * would have to invent a cursor value, seeding `{}` and destroying an unmigrated node's
+	 * static-data seed. A missing row is reported as `false`, not thrown.
 	 */
 	async recordFailure(
 		workflowId: string,
