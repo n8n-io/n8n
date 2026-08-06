@@ -61,6 +61,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const latestRunByDatasetId = ref<Record<string, AgentEvalRunRecord>>({});
 	const runSummariesByRunId = ref<Record<string, AgentEvalRunSummary>>({});
 	const startingRunByDatasetId = ref<Record<string, boolean | undefined>>({});
+	const cancellingRunByDatasetId = ref<Record<string, boolean | undefined>>({});
 
 	const getDatasets = (agentId: string) => datasetsByAgentId.value[agentId] ?? [];
 
@@ -89,6 +90,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	const getRunSummary = (runId: string) => runSummariesByRunId.value[runId] ?? null;
 
 	const isStartingRun = (datasetId: string) => startingRunByDatasetId.value[datasetId] === true;
+
+	const isCancellingRun = (datasetId: string) => cancellingRunByDatasetId.value[datasetId] === true;
 
 	const setDatasets = (agentId: string, datasets: AgentEvalDatasetRecord[]) => {
 		datasetsByAgentId.value = { ...datasetsByAgentId.value, [agentId]: datasets };
@@ -256,6 +259,29 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// Records the cancelled run as the server returns it. The cases already in flight
+	// settle on their own, so callers keep polling rather than treating this as the end.
+	const cancelRun = async (
+		projectId: string,
+		agentId: string,
+		datasetId: string,
+		runId: string,
+	) => {
+		cancellingRunByDatasetId.value = { ...cancellingRunByDatasetId.value, [datasetId]: true };
+		try {
+			const run = await agentEvalsApi.cancelRun(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				runId,
+			);
+			setLatestRun(datasetId, run);
+			return run;
+		} finally {
+			cancellingRunByDatasetId.value = { ...cancellingRunByDatasetId.value, [datasetId]: false };
+		}
+	};
+
 	// Takes the datasetId the run belongs to because the summary doesn't carry it,
 	// and the cached run's status has to stay coherent with the counts the view
 	// renders beside it.
@@ -316,7 +342,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		getLatestRun,
 		getRunSummary,
 		isStartingRun,
+		isCancellingRun,
 		startRun,
+		cancelRun,
 		fetchRunSummary,
 		fetchLatestRun,
 	};

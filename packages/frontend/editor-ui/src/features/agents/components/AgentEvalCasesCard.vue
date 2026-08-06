@@ -73,11 +73,19 @@ const isLoading = computed(
 
 // Destructured so the template reads the refs directly — properties of a returned
 // object are not unwrapped the way top-level setup bindings are.
-const { summary, isRunning, isStarting, lostTrack, startRun } = useAgentEvalRunProgress({
-	projectId: () => props.projectId,
-	agentId: () => props.agentId,
-	datasetId: () => props.dataset.id,
-});
+const { summary, isRunning, isStarting, isCancelling, lostTrack, startRun, cancelRun } =
+	useAgentEvalRunProgress({
+		projectId: () => props.projectId,
+		agentId: () => props.agentId,
+		datasetId: () => props.dataset.id,
+	});
+
+const isInFlight = computed(() => isStarting.value || isRunning.value);
+
+// Cancelling is `agent:update` server-side, not `agent:execute` — it stops work
+// someone else may have started. So a viewer who can start a run genuinely cannot
+// stop it, and the control is absent rather than present-and-failing.
+const canCancel = computed(() => !props.disabled);
 
 const runAllLabel = computed(() =>
 	i18n.baseText('agents.builder.agentEvals.cases.runAll', {
@@ -318,12 +326,25 @@ async function onRegenerate() {
 			</N8nText>
 
 			<N8nButton
+				v-if="isInFlight && canCancel"
+				variant="subtle"
+				size="medium"
+				type="button"
+				icon="filled-square"
+				:loading="isCancelling"
+				data-testid="agent-evals-cancel-run"
+				@click="cancelRun"
+			>
+				{{ i18n.baseText('agents.builder.agentEvals.run.cancel') }}
+			</N8nButton>
+			<N8nButton
+				v-else
 				variant="solid"
 				size="medium"
 				type="button"
 				icon="play"
 				:disabled="!canRun || caseCount === 0"
-				:loading="isStarting || isRunning"
+				:loading="isInFlight"
 				data-testid="agent-evals-run-all"
 				@click="startRun"
 			>

@@ -18,8 +18,9 @@ const { fetchDataTableContent, insertRow, updateRow, deleteRows } = vi.hoisted((
 	deleteRows: vi.fn(),
 }));
 
-const { startRun, getRunSummary, listRuns } = vi.hoisted(() => ({
+const { startRun, cancelRun, getRunSummary, listRuns } = vi.hoisted(() => ({
 	startRun: vi.fn(),
+	cancelRun: vi.fn(),
 	getRunSummary: vi.fn(),
 	listRuns: vi.fn(),
 }));
@@ -32,6 +33,7 @@ vi.mock('../agentEvals.api', () => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
 	startRun,
+	cancelRun,
 	getRunSummary,
 	listRuns,
 }));
@@ -140,6 +142,47 @@ describe('AgentEvalCasesCard', () => {
 				'mocked-agents.builder.agentEvals.run.progress',
 			),
 		);
+	});
+
+	describe('stopping a run', () => {
+		const startAndRun = async (props: Record<string, unknown> = {}) => {
+			startRun.mockResolvedValue({ id: 'run-1', status: 'running' });
+			getRunSummary.mockResolvedValue({
+				runId: 'run-1',
+				status: 'running',
+				counts: { total: 2, success: 0, error: 0, cancelled: 0, pending: 2 },
+			});
+			const rendered = renderComponent({ props });
+			await waitFor(() => expect(rendered.getByTestId('agent-evals-run-all')).toBeEnabled());
+			await userEvent.click(rendered.getByTestId('agent-evals-run-all'));
+			return rendered;
+		};
+
+		it('replaces Run all with a stop control while the run is in flight', async () => {
+			const { getByTestId, queryByTestId } = await startAndRun();
+
+			await waitFor(() => expect(getByTestId('agent-evals-cancel-run')).toBeInTheDocument());
+			expect(queryByTestId('agent-evals-run-all')).not.toBeInTheDocument();
+		});
+
+		it('asks the runner to stop when clicked', async () => {
+			cancelRun.mockResolvedValue({ id: 'run-1', status: 'cancelled' });
+			const { getByTestId } = await startAndRun();
+			await waitFor(() => expect(getByTestId('agent-evals-cancel-run')).toBeInTheDocument());
+
+			await userEvent.click(getByTestId('agent-evals-cancel-run'));
+
+			expect(cancelRun).toHaveBeenCalledWith(expect.anything(), 'project-1', 'agent-1', 'run-1');
+		});
+
+		// Stopping is `agent:update` server-side while starting is `agent:execute`, so a
+		// viewer genuinely cannot stop — better absent than present and failing.
+		it('offers no stop control to a user who cannot edit the agent', async () => {
+			const { getByTestId, queryByTestId } = await startAndRun({ disabled: true, canRun: true });
+
+			await waitFor(() => expect(getByTestId('agent-evals-run-all')).toBeInTheDocument());
+			expect(queryByTestId('agent-evals-cancel-run')).not.toBeInTheDocument();
+		});
 	});
 
 	it('swaps one row into the editor and leaves its siblings in read mode', async () => {

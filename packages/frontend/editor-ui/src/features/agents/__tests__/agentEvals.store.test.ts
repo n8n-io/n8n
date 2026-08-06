@@ -9,13 +9,15 @@ import type {
 } from '../agentEvals.types';
 import type { AgentEvalCaseSource } from '../utils/agentEvalCases.utils';
 
-const { getDatasets, generateDraftCases, startRun, getRunSummary, listRuns } = vi.hoisted(() => ({
-	getDatasets: vi.fn(),
-	generateDraftCases: vi.fn(),
-	startRun: vi.fn(),
-	getRunSummary: vi.fn(),
-	listRuns: vi.fn(),
-}));
+const { getDatasets, generateDraftCases, startRun, cancelRun, getRunSummary, listRuns } =
+	vi.hoisted(() => ({
+		getDatasets: vi.fn(),
+		generateDraftCases: vi.fn(),
+		startRun: vi.fn(),
+		cancelRun: vi.fn(),
+		getRunSummary: vi.fn(),
+		listRuns: vi.fn(),
+	}));
 
 const { fetchDataTableContent, insertRow, updateRow, deleteRows } = vi.hoisted(() => ({
 	fetchDataTableContent: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock('../agentEvals.api', () => ({
 	getDatasets,
 	generateDraftCases,
 	startRun,
+	cancelRun,
 	getRunSummary,
 	listRuns,
 }));
@@ -407,6 +410,37 @@ describe('useAgentEvalsStore', () => {
 
 			expect(store.isStartingRun(DATASET_ID)).toBe(false);
 			expect(store.getLatestRun(DATASET_ID)).toBeNull();
+		});
+	});
+
+	describe('cancelRun', () => {
+		it('records the cancelled run the server returns', async () => {
+			startRun.mockResolvedValue(run({ status: 'running' }));
+			cancelRun.mockResolvedValue(run({ status: 'cancelled' }));
+			const store = useAgentEvalsStore();
+			await store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID);
+
+			await store.cancelRun(PROJECT_ID, AGENT_ID, DATASET_ID, RUN_ID);
+
+			expect(cancelRun).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				RUN_ID,
+			);
+			expect(store.getLatestRun(DATASET_ID)?.status).toBe('cancelled');
+			expect(store.isCancellingRun(DATASET_ID)).toBe(false);
+		});
+
+		it('clears the cancelling flag when the request rejects', async () => {
+			cancelRun.mockRejectedValue(new Error('already finished'));
+			const store = useAgentEvalsStore();
+
+			await expect(store.cancelRun(PROJECT_ID, AGENT_ID, DATASET_ID, RUN_ID)).rejects.toThrow(
+				'already finished',
+			);
+
+			expect(store.isCancellingRun(DATASET_ID)).toBe(false);
 		});
 	});
 

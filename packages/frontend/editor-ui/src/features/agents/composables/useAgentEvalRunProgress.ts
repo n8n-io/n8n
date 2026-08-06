@@ -45,6 +45,7 @@ export function useAgentEvalRunProgress(params: UseAgentEvalRunProgressParams) {
 	const run = computed(() => store.getLatestRun(toValue(params.datasetId)));
 	const summary = computed(() => (run.value ? store.getRunSummary(run.value.id) : null));
 	const isStarting = computed(() => store.isStartingRun(toValue(params.datasetId)));
+	const isCancelling = computed(() => store.isCancellingRun(toValue(params.datasetId)));
 
 	// `counts.pending` folds `new` and `running`, so it is exactly "not settled".
 	// Before the first summary lands there are no counts, so the run's own status
@@ -69,7 +70,21 @@ export function useAgentEvalRunProgress(params: UseAgentEvalRunProgressParams) {
 	}
 
 	function announceSettled(settled: AgentEvalRunSummary) {
-		const { total, success, error } = settled.counts;
+		const { total, success, error, cancelled } = settled.counts;
+
+		// A cancelled run has no meaningful pass tally — reporting one would read as a
+		// result rather than an interruption.
+		if (cancelled > 0) {
+			showMessage({
+				title: i18n.baseText('agents.builder.agentEvals.run.cancelled', {
+					adjustToNumber: cancelled,
+					interpolate: { cancelled: String(cancelled) },
+				}),
+				type: 'info',
+			});
+			return;
+		}
+
 		showMessage({
 			title: i18n.baseText('agents.builder.agentEvals.run.finished', {
 				adjustToNumber: total,
@@ -169,6 +184,25 @@ export function useAgentEvalRunProgress(params: UseAgentEvalRunProgressParams) {
 		}
 	}
 
+	// Asks the runner to stop, then keeps polling: the cases already in flight settle
+	// on their own, and the summary reaching zero pending is still what ends the watch.
+	// Treating cancel as the end would strand the tallies mid-count.
+	async function cancelRun() {
+		const projectId = toValue(params.projectId);
+		const agentId = toValue(params.agentId);
+		const datasetId = toValue(params.datasetId);
+		const runId = run.value?.id;
+		if (!projectId || !agentId || !datasetId || !runId) return;
+
+		try {
+			await store.cancelRun(projectId, agentId, datasetId, runId);
+		} catch (error) {
+			if (isStaleRun(projectId, agentId, datasetId, runId)) return;
+
+			showError(error, i18n.baseText('agents.builder.agentEvals.run.cancelError'));
+		}
+	}
+
 	// Reading the newest run is what lets a reload mid-run pick it back up; without
 	// it the view would render as idle and never update.
 	async function adoptLatestRun() {
@@ -209,5 +243,5 @@ export function useAgentEvalRunProgress(params: UseAgentEvalRunProgressParams) {
 	// requests for a view nobody is looking at.
 	onScopeDispose(() => pause());
 
-	return { run, summary, isRunning, isStarting, lostTrack, startRun };
+	return { run, summary, isRunning, isStarting, isCancelling, lostTrack, startRun, cancelRun };
 }

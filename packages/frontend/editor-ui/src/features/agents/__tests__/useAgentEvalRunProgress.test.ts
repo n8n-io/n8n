@@ -15,8 +15,9 @@ import type {
 	AgentEvalRunSummary,
 } from '../agentEvals.types';
 
-const { startRun, getRunSummary, listRuns } = vi.hoisted(() => ({
+const { startRun, cancelRun, getRunSummary, listRuns } = vi.hoisted(() => ({
 	startRun: vi.fn(),
+	cancelRun: vi.fn(),
 	getRunSummary: vi.fn(),
 	listRuns: vi.fn(),
 }));
@@ -30,6 +31,7 @@ vi.mock('../agentEvals.api', () => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
 	startRun,
+	cancelRun,
 	getRunSummary,
 	listRuns,
 }));
@@ -192,6 +194,80 @@ describe('useAgentEvalRunProgress', () => {
 			);
 			expect(getRunSummary).not.toHaveBeenCalled();
 			expect(progress.isRunning.value).toBe(false);
+		});
+	});
+
+	describe('cancelRun', () => {
+		it('asks the runner to stop but keeps polling until the cases settle', async () => {
+			startRun.mockResolvedValue(run());
+			cancelRun.mockResolvedValue(run('cancelled'));
+			getRunSummary
+				.mockResolvedValueOnce(summary({ pending: 2 }))
+				.mockResolvedValueOnce(summary({ pending: 1, cancelled: 1 }))
+				.mockResolvedValueOnce(summary({ pending: 0, cancelled: 2 }, 'cancelled'));
+			const progress = create();
+			await flush();
+			await progress.startRun();
+
+			await progress.cancelRun();
+
+			expect(cancelRun).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				RUN_ID,
+			);
+			// Cancelling is a request, not the end — the tallies still have to land.
+			await vi.advanceTimersByTimeAsync(AGENT_EVAL_RUN_POLL_INTERVAL);
+			expect(progress.isRunning.value).toBe(true);
+
+			await vi.advanceTimersByTimeAsync(AGENT_EVAL_RUN_POLL_INTERVAL);
+			expect(progress.isRunning.value).toBe(false);
+		});
+
+		it('reports a stopped run as stopped rather than as a pass tally', async () => {
+			startRun.mockResolvedValue(run());
+			cancelRun.mockResolvedValue(run('cancelled'));
+			getRunSummary.mockResolvedValue(
+				summary({ pending: 0, success: 1, cancelled: 1 }, 'cancelled'),
+			);
+			const progress = create();
+			await flush();
+
+			await progress.startRun();
+			await flush();
+
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'mocked-agents.builder.agentEvals.run.cancelled',
+					type: 'info',
+				}),
+			);
+		});
+
+		it('surfaces a failure to stop', async () => {
+			startRun.mockResolvedValue(run());
+			getRunSummary.mockResolvedValue(summary({ pending: 2 }));
+			cancelRun.mockRejectedValue(new Error('gone'));
+			const progress = create();
+			await flush();
+			await progress.startRun();
+
+			await progress.cancelRun();
+
+			expect(showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				'mocked-agents.builder.agentEvals.run.cancelError',
+			);
+		});
+
+		it('does nothing when there is no run to stop', async () => {
+			const progress = create();
+			await flush();
+
+			await progress.cancelRun();
+
+			expect(cancelRun).not.toHaveBeenCalled();
 		});
 	});
 
