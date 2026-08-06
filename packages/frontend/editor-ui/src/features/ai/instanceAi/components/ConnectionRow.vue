@@ -25,9 +25,14 @@ const props = withDefaults(
 	{ status: 'none', actions: () => [], clickable: true },
 );
 
-const iconSource = computed<ToolIconSource>(() =>
-	typeof props.icon === 'string' ? { type: 'icon', name: props.icon } : props.icon,
-);
+const iconSource = computed<ToolIconSource>(() => {
+	if (typeof props.icon === 'string') {
+		return { type: 'icon', name: props.icon, color: 'var(--color--text)' };
+	}
+	return props.icon.type === 'icon' && !props.icon.color
+		? { ...props.icon, color: 'var(--color--text)' }
+		: props.icon;
+});
 
 const emit = defineEmits<{
 	connect: [];
