@@ -139,15 +139,18 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
-		const { mcpAccessEnabled: updated } = await updateMcpSettings(rootStore.restApiContext, {
-			mcpAccessEnabled: enabled,
-		});
+		const { mcpAccessEnabled: updated, autoExposeNewWorkflows: updatedAutoExpose } =
+			await updateMcpSettings(rootStore.restApiContext, { mcpAccessEnabled: enabled });
 		const next = updated ?? enabled;
+		const existing = settingsStore.moduleSettings.mcp;
 		settingsStore.moduleSettings.mcp = {
 			mcpManagedByEnv: false,
 			autoExposeNewWorkflows: false,
-			...(settingsStore.moduleSettings.mcp ?? {}),
+			...(existing ?? {}),
 			mcpAccessEnabled: next,
+			// Only overwrite when the backend actually told us something about it
+			// (e.g. it reset auto-expose as a side effect of disabling access).
+			...(updatedAutoExpose !== undefined ? { autoExposeNewWorkflows: updatedAutoExpose } : {}),
 		};
 		return next;
 	}
