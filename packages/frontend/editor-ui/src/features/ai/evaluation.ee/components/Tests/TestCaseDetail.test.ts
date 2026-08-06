@@ -7,6 +7,7 @@ import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import TestCaseDetail from './TestCaseDetail.vue';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
+import { useEvaluationStore } from '../../evaluation.store';
 
 // ─── Module-level mocks ───────────────────────────────────────────────────────
 
@@ -211,13 +212,43 @@ describe('TestCaseDetail', () => {
 		expect(getByText('$json.x > 1')).toBeInTheDocument();
 	});
 
-	it('shows the latest-run pane once a run is active for the case', async () => {
+	it('shows the latest-run pane when the pinned run covers the case', async () => {
 		const store = setup();
+		const evaluationStore = useEvaluationStore();
 		store.setActiveRow(2, 20);
 		store.setActiveRunId('run-1');
+		// The pinned run has this row's execution → pane visible, keyed by row index.
+		evaluationStore.testCaseExecutionsById = {
+			c1: { id: 'c1', testRunId: 'run-1', runIndex: 2, status: 'success' },
+		} as never;
 		const { findByTestId } = renderComponent();
-		// Keyed by the active row index (= the case's runIndex).
 		expect(await findByTestId('stub-run-result-2')).toBeInTheDocument();
+	});
+
+	it('hides the latest-run pane when the pinned run has no execution for this case', () => {
+		const store = setup();
+		const evaluationStore = useEvaluationStore();
+		// The pinned run ran row 0 only...
+		evaluationStore.testRunsById = { 'run-1': { id: 'run-1', status: 'success' } } as never;
+		evaluationStore.testCaseExecutionsById = {
+			c0: { id: 'c0', testRunId: 'run-1', runIndex: 0, status: 'success' },
+		} as never;
+		// ...but we navigated to row 1 (whose sticky activeRunId is still run-1).
+		store.setActiveRow(1, 11);
+		store.setActiveRunId('run-1');
+		const { queryByTestId } = renderComponent();
+		// No empty pane, no false "running" — the run didn't cover this case.
+		expect(queryByTestId('tests-detail-results')).toBeNull();
+	});
+
+	it('shows the latest-run pane while a run is dispatching for this case', async () => {
+		const store = setup();
+		store.setActiveRow(0, 10);
+		const { getByTestId, findByTestId } = renderComponent();
+		// No execution seeded yet; the dispatch flag keeps the pane visible so the
+		// "running" state shows before the first poll lands the execution.
+		await userEvent.click(getByTestId('tests-detail-run'));
+		expect(await findByTestId('tests-detail-results')).toBeInTheDocument();
 	});
 
 	it('does not show the latest-run pane before a run is triggered', () => {

@@ -36,12 +36,16 @@ const OPERATIONAL_LABEL: Record<string, BaseTextKey> = {
 const props = withDefaults(
 	defineProps<{
 		index: number;
+		// Which run to render. Omitted on the overview cards → the workflow's newest
+		// run. The detail view pins a specific run so a later, unrelated run landing
+		// (e.g. a "Run all") can't silently swap in.
+		runId?: string | null;
 		// Show the full output (Output label, answer text, operational metrics).
 		expanded?: boolean;
 		// Draw a full-bleed top separator — used when embedded below a card's title.
 		separated?: boolean;
 	}>(),
-	{ expanded: false, separated: false },
+	{ runId: null, expanded: false, separated: false },
 );
 
 const locale = useI18n();
@@ -59,21 +63,29 @@ const workflowRuns = computed<TestRunRecord[]>(() => {
 	);
 });
 
-const latestRun = computed<TestRunRecord | undefined>(
-	() => workflowRuns.value[workflowRuns.value.length - 1],
+// The run this card renders: the pinned one in the detail view, else the newest.
+const targetRun = computed<TestRunRecord | undefined>(() =>
+	props.runId != null
+		? workflowRuns.value.find((r) => r.id === props.runId)
+		: workflowRuns.value[workflowRuns.value.length - 1],
 );
 
-const runNumber = computed(() => workflowRuns.value.length);
+// 1-based position of the shown run among all runs — its "Run #N".
+const runNumber = computed(() => {
+	const id = targetRun.value?.id;
+	if (!id) return 0;
+	return workflowRuns.value.findIndex((r) => r.id === id) + 1;
+});
 
 const runDateLabel = computed(() => {
-	const run = latestRun.value;
+	const run = targetRun.value;
 	if (!run) return '';
 	return formatShortDateTime(run.runAt ?? run.createdAt);
 });
 
-// This row's case execution within the latest run.
+// This row's case execution within the shown run.
 const caseExecution = computed<TestCaseExecutionRecord | undefined>(() => {
-	const runId = latestRun.value?.id;
+	const runId = targetRun.value?.id;
 	if (!runId) return undefined;
 	return Object.values(evaluationStore.testCaseExecutionsById ?? {}).find(
 		(c) => c.testRunId === runId && (c.runIndex ?? 0) === props.index,
@@ -83,7 +95,7 @@ const caseExecution = computed<TestCaseExecutionRecord | undefined>(() => {
 // A run is in progress for this case until its execution reaches a terminal
 // status (or, before it's seeded, while the run itself is new/running).
 const isRunning = computed(() => {
-	const run = latestRun.value;
+	const run = targetRun.value;
 	if (!run) return false;
 	if (!['new', 'running'].includes(run.status)) return false;
 	const status = caseExecution.value?.status;

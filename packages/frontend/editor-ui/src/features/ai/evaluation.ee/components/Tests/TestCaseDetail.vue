@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useDebounceFn } from '@vueuse/core';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -20,6 +20,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
+import { useEvaluationStore } from '../../evaluation.store';
 import { useTestCasePersistence } from '../../composables/useTestCasePersistence';
 import { useSliceInputs } from '../../composables/useSliceInputs';
 import {
@@ -39,6 +40,7 @@ const METRIC_SENTENCE_KEY: Record<CannedMetricKey, BaseTextKey> = {
 };
 
 const wizardStore = useEvaluationsWizardSidepanelStore();
+const evaluationStore = useEvaluationStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const locale = useI18n();
 const message = useMessage();
@@ -200,22 +202,60 @@ function toggleTool(name: string) {
 const configOpen = ref(true);
 const runOpen = ref(true);
 
-// Once a run has been triggered for this case, show its outcome keyed by the
-// row's index (which equals the case's runIndex). `persistAndRunCase` sets both
-// before the run dispatches.
-const runResultIndex = computed<number | null>(() =>
-	activeRunId.value !== null ? activeRowIndex.value : null,
+// The run pinned to this pane. `activeRunId` is a sticky global (survives
+// navigation, re-pinned to the newest run on hydration), so it identifies "the
+// run in view" but NOT that the run covers this case — that's checked below.
+const pinnedRunId = computed(() => activeRunId.value);
+
+// Does the pinned run have a case execution for the active row? A run started
+// for a different case (or a "Run all" still spinning up) won't, so this keeps
+// its result from being shown against — or reported as running for — this case.
+const pinnedRunCoversRow = computed(() => {
+	const runId = pinnedRunId.value;
+	const row = activeRowIndex.value;
+	if (runId === null || row === null) return false;
+	return Object.values(evaluationStore.testCaseExecutionsById ?? {}).some(
+		(c) => c.testRunId === runId && (c.runIndex ?? 0) === row,
+	);
+});
+
+const pinnedRunTerminal = computed(() => {
+	const runId = pinnedRunId.value;
+	if (runId === null) return false;
+	const status = evaluationStore.testRunsById[runId]?.status;
+	return Boolean(status) && !['new', 'running'].includes(status);
+});
+
+// Set while a run we just started for THIS row hasn't surfaced its execution
+// yet, so the pane can show "running" before the first poll seeds the row.
+// Cleared once the execution lands or the run finishes without one (so a run
+// that never covers this row can't leave the pane stuck).
+const isDispatching = ref(false);
+watch([pinnedRunCoversRow, pinnedRunTerminal], ([covers, terminal]) => {
+	if (covers || terminal) isDispatching.value = false;
+});
+
+// Show the run pane only when the pinned run pertains to this row — it already
+// has this row's execution, or we're mid-dispatch for it.
+const showRunPane = computed(
+	() => activeRowIndex.value !== null && (pinnedRunCoversRow.value || isDispatching.value),
 );
 
+// Row index the result is keyed by (equals the case's runIndex).
+const runResultIndex = computed(() => activeRowIndex.value);
+
 async function handleRun() {
-	// The Run button shows its own loading state during the persist chain, so keep
-	// Config open until the run has actually landed. Collapsing it only on success
-	// avoids stranding it closed if the dispatch fails, and means the Latest-run
-	// pane is only revealed once the store has the run to show (no empty gap).
+	// Mark dispatch so the pane shows "running" through the persist chain and the
+	// gap before polling seeds this row's execution.
+	isDispatching.value = true;
 	const ok = await persistAndRunCase(activeRunId.value ? 'run_again' : 'initial');
 	if (ok) {
 		configOpen.value = false;
 		runOpen.value = true;
+	} else {
+		// Nothing dispatched: drop the flag so the pane doesn't linger on a spinner,
+		// and Config stays open (never collapsed) so the user isn't stranded.
+		isDispatching.value = false;
 	}
 }
 </script>
@@ -384,15 +424,15 @@ async function handleRun() {
 				</div>
 			</N8nCollapsiblePanel>
 
-			<!-- Latest run: the outcome of the most recent run for this case -->
+			<!-- Latest run: the outcome of the pinned run for this case -->
 			<N8nCollapsiblePanel
-				v-if="runResultIndex !== null"
+				v-if="showRunPane && runResultIndex !== null"
 				v-model="runOpen"
 				:title="locale.baseText('evaluations.tests.detail.latestRun')"
 			>
 				<div :class="$style.paneContent" data-test-id="tests-detail-results">
-					<!-- Only fetch/show the full run output while the pane is open. -->
-					<TestCaseRunResult :index="runResultIndex" :expanded="runOpen" />
+					<!-- Pin the exact run and only fetch the full output while open. -->
+					<TestCaseRunResult :index="runResultIndex" :run-id="pinnedRunId" :expanded="runOpen" />
 				</div>
 			</N8nCollapsiblePanel>
 		</div>
