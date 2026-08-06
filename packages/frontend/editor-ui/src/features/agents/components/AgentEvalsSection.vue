@@ -1,14 +1,24 @@
 <script setup lang="ts">
 /**
- * Container for the agent's eval surface. Today it only renders the first-run
- * state; the case list and review views mount here as they land, which is why
- * the empty state is a branch rather than the whole component.
+ * Container for the agent's eval surface: the drafted cases once a dataset exists,
+ * the first-run state before one does. The review view mounts here too as it lands,
+ * which is why each state is a branch rather than the whole component.
  */
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed, ref, watch } from 'vue';
 
-defineProps<{
+import { useAgentEvalsStore } from '../agentEvals.store';
+import { isDataTableDataset } from '../utils/agentEvalCases.utils';
+import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
+
+const props = defineProps<{
+	projectId: string;
+	agentId: string;
+	/** No `agent:update` — cases render but nothing can be changed. */
 	disabled?: boolean;
+	/** `agent:execute`, which a viewer holds without holding update. */
+	canRun?: boolean;
 	generating?: boolean;
 }>();
 
@@ -17,11 +27,77 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const store = useAgentEvalsStore();
+
+const datasets = computed(() => store.getDatasets(props.agentId));
+
+// Newest first from the server, so the newest data-table dataset is the one a
+// regeneration just produced.
+const dataset = computed(() => datasets.value.find(isDataTableDataset) ?? null);
+
+// A dataset this view can't read rows for — reachable only by attaching one
+// through the API, but falling through to "no test cases yet" would be a lie.
+const hasOnlyExternalDatasets = computed(() => datasets.value.length > 0 && dataset.value === null);
+
+/** False until the read for the current agent settles — either way, so a failed read
+ * can't leave the skeleton up forever. */
+const hasSettled = ref(false);
+
+const isLoading = computed(() => !hasSettled.value);
+
+// Absence of a cache entry is "not read yet" rather than "none", which is what
+// decides whether to read at all. A failure degrades to the first-run state: with
+// no datasets to show, the generate CTA is still the right next step.
+watch(
+	[() => props.projectId, () => props.agentId],
+	async ([projectId, agentId]) => {
+		if (!projectId || !agentId) return;
+		if (store.isLoaded(agentId)) {
+			hasSettled.value = true;
+			return;
+		}
+
+		hasSettled.value = false;
+		try {
+			await store.fetchDatasets(projectId, agentId);
+		} catch {
+			// Intentionally quiet — the first-run state is a reasonable fallback, and a
+			// toast here would fire on every visit to the tab while the read keeps failing.
+		} finally {
+			hasSettled.value = true;
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div :class="$style.section" data-testid="agent-evals-section">
-		<div :class="$style.emptyState" data-testid="agent-evals-empty-state">
+		<div v-if="isLoading" data-testid="agent-evals-loading">
+			<N8nLoading variant="p" :rows="6" />
+		</div>
+
+		<AgentEvalCasesCard
+			v-else-if="dataset"
+			:key="`${projectId}:${agentId}:${dataset.id}`"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:dataset="dataset"
+			:disabled="disabled"
+			:can-run="canRun"
+			:generating="generating"
+			@regenerate="emit('generate')"
+		/>
+
+		<N8nCallout
+			v-else-if="hasOnlyExternalDatasets"
+			theme="info"
+			data-testid="agent-evals-external-source"
+		>
+			{{ i18n.baseText('agents.builder.agentEvals.external.description') }}
+		</N8nCallout>
+
+		<div v-else :class="$style.emptyState" data-testid="agent-evals-empty-state">
 			<div :class="$style.iconBadge">
 				<N8nIcon icon="sparkles" size="xlarge" />
 			</div>

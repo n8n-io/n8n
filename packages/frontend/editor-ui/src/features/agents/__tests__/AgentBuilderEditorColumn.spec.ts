@@ -187,6 +187,14 @@ async function mountColumn(
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
+				// Stubbed so this spec stays about the column's wiring: the real section
+				// reads datasets and cases, which is its own suite's concern.
+				AgentEvalsSection: {
+					name: 'AgentEvalsSection',
+					template: '<div data-testid="agent-evals-section" />',
+					props: ['projectId', 'agentId', 'disabled', 'canRun', 'generating'],
+					emits: ['generate'],
+				},
 			},
 		},
 	});
@@ -270,6 +278,20 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 
 		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('disabled')).toBe(true);
+	});
+
+	it('identifies the agent to the evals section, which reads its own datasets', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+
+		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });
+		expect(section.props('projectId')).toBe('project-1');
+		expect(section.props('agentId')).toBe('agent-1');
+	});
+
+	it('withholds running evals from a read-only agent', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
+
+		expect(wrapper.getComponent({ name: 'AgentEvalsSection' }).props('canRun')).toBe(false);
 	});
 
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
