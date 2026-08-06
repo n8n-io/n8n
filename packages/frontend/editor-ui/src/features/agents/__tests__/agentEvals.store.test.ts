@@ -164,10 +164,19 @@ describe('useAgentEvalsStore', () => {
 			const store = useAgentEvalsStore();
 			store.requestEvalsFocus(AGENT_ID, true);
 
-			store.clearEvalsFocus();
+			store.clearEvalsFocus(AGENT_ID);
 
 			expect(store.pendingEvalsFocus).toBeNull();
 			expect(store.consumeEvalsFocus(AGENT_ID)).toBeNull();
+		});
+
+		it('leaves a request another surface raised for a different agent', () => {
+			const store = useAgentEvalsStore();
+			store.requestEvalsFocus(AGENT_ID, true);
+
+			store.clearEvalsFocus('other-agent');
+
+			expect(store.pendingEvalsFocus).toEqual({ agentId: AGENT_ID, generate: true });
 		});
 	});
 });

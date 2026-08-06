@@ -79,6 +79,7 @@ import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
+import { useIsAgentWorking } from './composables/useIsAgentWorking';
 
 const props = defineProps<{
 	threadId: string;
@@ -176,18 +177,9 @@ const activeFixWithAiOffer = computed(() => {
 const isAgentEvalsEnabled = useAgentEvalsFlag();
 const agentEvalsStore = useAgentEvalsStore();
 
-// Mirrors `useIsAgentWorking()`, recomputed from the local runtime because that
-// composable injects the thread and this component provides it rather than
-// inheriting it. Kept field-for-field identical — in particular
-// `isAwaitingConfirmation` is excluded, since it can linger on a confirmation
-// left unresolved by a finished run and would suppress the suggestion for good.
-const isAgentWorking = computed(
-	() =>
-		thread.isHydratingThread ||
-		thread.isStreaming ||
-		thread.isSendingMessage ||
-		builderAgents.value.length > 0,
-);
+// Passed the local runtime because this component provides the thread rather
+// than inheriting it, so the composable's own `useThread()` inject would fail.
+const isAgentWorking = useIsAgentWorking(thread);
 
 // The agent the builder actually persisted in this thread. Absent until then,
 // which is what keeps the suggestion from firing mid-build.
@@ -195,27 +187,43 @@ const agentBuilderTarget = computed(() =>
 	getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id)),
 );
 
-// Blank while the flag is off so the capability summary is never fetched for a
-// surface the user can't reach.
-const offerAgentId = computed(() =>
-	isAgentEvalsEnabled.value ? (agentBuilderTarget.value?.agentId ?? '') : '',
-);
-const offerProjectId = computed(() =>
-	isAgentEvalsEnabled.value ? (agentBuilderTarget.value?.projectId ?? '') : '',
-);
+/**
+ * The agent this thread would offer to test, before the checks that need its
+ * capabilities. Resolves to null for the conditions we can decide without a
+ * network call — flag off, nothing built, already dismissed — so the capability
+ * summary is never fetched for a card the user will not be shown.
+ */
+const testAgentOfferCandidate = computed(() => {
+	if (!isAgentEvalsEnabled.value) return null;
+	const target = agentBuilderTarget.value;
+	if (!target) return null;
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	return dismissedKeys.has(testAgentOfferKey(target.agentId)) ? null : target;
+});
+
+const offerAgentId = computed(() => testAgentOfferCandidate.value?.agentId ?? '');
+const offerProjectId = computed(() => testAgentOfferCandidate.value?.projectId ?? '');
 
 const { summary: offerAgentSummary } = useAgentCapabilitySummary(offerProjectId, offerAgentId);
 
 const activeTestAgentOffer = computed(() => {
-	const target = agentBuilderTarget.value;
-	if (!isAgentEvalsEnabled.value || !target) return null;
+	const target = testAgentOfferCandidate.value;
+	if (!target) return null;
 	// Waiting for the run to settle keeps the card from appearing while the
 	// assistant is still adding tools the generated cases would need to cover.
 	if (isAgentWorking.value) return null;
+	// Don't offer to draft cases for an agent that already has some — e.g. the
+	// user generated them from the Evals tab without dismissing this card.
+	// Only suppresses when the store already knows; deliberately no fetch just to
+	// answer this, so a cold thread can still offer once against an agent whose
+	// datasets have never been loaded.
+	if (
+		agentEvalsStore.isLoaded(target.agentId) &&
+		agentEvalsStore.getDatasets(target.agentId).length
+	)
+		return null;
 	if (!isAgentWorthTesting(offerAgentSummary.value)) return null;
-
-	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
-	if (dismissedKeys.has(testAgentOfferKey(target.agentId))) return null;
 
 	return target;
 });
@@ -694,9 +702,11 @@ onUnmounted(() => {
 	// must not tear down the runtime the live instance is rendering.
 	if (router.currentRoute.value.params.threadId !== props.threadId) {
 		store.disposeRuntime(props.threadId);
-		// Guarded by the same route check: a discarded duplicate instance must not
-		// drop a request the live instance's builder is still about to claim.
-		agentEvalsStore.clearEvalsFocus();
+		// Guarded by the same route check, and scoped to this thread's agent: a
+		// discarded duplicate instance must not drop a request the live instance's
+		// builder is still about to claim.
+		const offeredAgentId = agentBuilderTarget.value?.agentId;
+		if (offeredAgentId) agentEvalsStore.clearEvalsFocus(offeredAgentId);
 	}
 	contentResizeObserver?.disconnect();
 });

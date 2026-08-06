@@ -1426,6 +1426,28 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
+		it('stays hidden once the agent already has test cases', () => {
+			seedReadyAgent();
+			const evalsStore = mockedStore(useAgentEvalsStore);
+			evalsStore.isLoaded.mockReturnValue(true);
+			evalsStore.getDatasets.mockReturnValue([{ id: 'dataset-1' }] as never);
+
+			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+		});
+
+		it('still suggests when the dataset list has loaded and is empty', async () => {
+			seedReadyAgent();
+			const evalsStore = mockedStore(useAgentEvalsStore);
+			evalsStore.isLoaded.mockReturnValue(true);
+			evalsStore.getDatasets.mockReturnValue([]);
+
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+		});
+
 		it('stays hidden for an agent with no tools or skills', () => {
 			seedReadyAgent();
 			testAgentOfferState.capabilitySummary = {
@@ -1496,7 +1518,7 @@ describe('InstanceAiThreadView', () => {
 			mockRouteState.params = { threadId: 'thread-2' };
 			unmount();
 
-			expect(evalsStore.clearEvalsFocus).toHaveBeenCalled();
+			expect(evalsStore.clearEvalsFocus).toHaveBeenCalledWith('agent-1');
 		});
 
 		it('keeps a focus request when a duplicate instance unmounts on the same thread', () => {

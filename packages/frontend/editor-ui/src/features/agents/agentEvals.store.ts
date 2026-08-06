@@ -48,12 +48,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	};
 
 	/**
-	 * Drops an unclaimed request. Called by the surface that raised it when it
-	 * goes away: without this, a request no builder ever picked up would sit here
-	 * for the rest of the session and then fire in an unrelated context, jumping
-	 * to Evals and generating cases the user didn't ask for at that moment.
+	 * Drops an unclaimed request for this agent. Called by the surface that raised
+	 * it when it goes away: without this, a request no builder ever picked up
+	 * would sit here for the rest of the session and then fire in an unrelated
+	 * context, jumping to Evals and generating cases the user didn't ask for at
+	 * that moment.
+	 *
+	 * Scoped by agent for the same reason `consumeEvalsFocus` is — a surface
+	 * tearing down must not discard a request some other surface just raised.
 	 */
-	const clearEvalsFocus = () => {
+	const clearEvalsFocus = (agentId: string) => {
+		if (pendingEvalsFocus.value?.agentId !== agentId) return;
 		pendingEvalsFocus.value = null;
 	};
 
