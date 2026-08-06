@@ -51,13 +51,11 @@ export class AgentIntegrationManagementService {
 			);
 		}
 
-		if (options.agent.activeVersionId !== null) {
-			await this.chatService.validateBeforeConnect(
-				options.agent.id,
-				integration,
-				options.agent.projectId,
-			);
-		}
+		await this.chatService.validateBeforeConnect(
+			options.agent.id,
+			integration,
+			options.agent.projectId,
+		);
 
 		const savedAgent = await this.persistenceService.saveCredentialIntegration(
 			options.agent,
