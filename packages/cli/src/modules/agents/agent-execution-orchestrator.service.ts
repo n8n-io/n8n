@@ -54,6 +54,8 @@ export interface ExecuteForChatConfig {
 	memory: AgentMemoryScope;
 	/** Stored attachments to include as file parts on the user turn. */
 	attachments?: StoredAttachmentRef[];
+	/** Identifies the surface that started the draft test run. */
+	source?: string;
 	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
 	onExecutionRecorded?: (executionId: string) => void;
 	abortSignal?: AbortSignal;
@@ -112,10 +114,6 @@ export interface ExecuteForTaskPublishedConfig {
 	taskId: string;
 	/** Published agent_history version that supplied the scheduled task snapshot. */
 	taskVersionId: string;
-	// No `user` field here: this run is fired by `ScheduledTaskManager` on a
-	// cron tick — there is no human in the loop at all, let alone an n8n
-	// session, so there's nothing to gate tools against. Same project-scoped
-	// trust boundary as `ExecuteForChatPublishedConfig`.
 }
 
 export interface ExecuteForTaskNowConfig {
@@ -447,6 +445,7 @@ export class AgentExecutionOrchestratorService {
 			user,
 			memory,
 			attachments,
+			source,
 			onExecutionRecorded,
 			abortSignal,
 		} = config;
@@ -477,6 +476,7 @@ export class AgentExecutionOrchestratorService {
 			attachments,
 			memory,
 			projectId: runtime.projectId,
+			source,
 			telemetry: {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,

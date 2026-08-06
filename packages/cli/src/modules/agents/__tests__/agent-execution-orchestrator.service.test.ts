@@ -316,7 +316,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.finalizeExecution).toHaveBeenCalled();
 	});
 
-	it('executes in-app chat against the draft runtime', async () => {
+	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {
 			service,
 			runtimeCacheService,
@@ -335,6 +335,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				message: 'hello',
 				user,
 				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				source: 'instance-ai',
 			}),
 		);
 
@@ -368,7 +369,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({
-				source: undefined,
+				source: 'instance-ai',
 				taskId: undefined,
 				telemetry: {
 					runType: 'test',
@@ -376,11 +377,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 			}),
 		);
-		// In-app test chat has no `source` — the tracing metadata normalizes it
-		// to 'test', distinct from the (unrelated) analytics `source` above.
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
-				source: 'test',
+				source: 'instance-ai',
 				threadId: 'thread-1',
 				modelId: 'anthropic/claude-sonnet-4-5',
 			}),

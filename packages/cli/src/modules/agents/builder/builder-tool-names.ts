@@ -26,6 +26,7 @@ export const BUILDER_TOOLS = {
 	LIST_WORKFLOWS: 'list_workflows',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
+	CALL_AGENT: 'call_agent',
 	PUBLISH_AGENT: 'publish_agent',
 	UNPUBLISH_AGENT: 'unpublish_agent',
 	RESOLVE_INTEGRATION: 'resolve_integration',
