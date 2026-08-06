@@ -31,6 +31,12 @@ export interface N8nChatInputProps {
 	autofocus?: boolean;
 	buttonLabel?: string;
 	layout?: 'multiline' | 'single-line';
+	/**
+	 * Floor for the multiline layout, so a chat prompt still reads as a writing surface when
+	 * empty. Pass `'auto'` for a composer that should start one row tall and grow, Slack-style.
+	 * Ignored by `single-line`, which is a fixed height.
+	 */
+	minHeight?: string;
 	autosize?: boolean | { minRows: number; maxRows: number };
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
@@ -54,6 +60,7 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	autofocus: false,
 	buttonLabel: undefined,
 	layout: 'multiline',
+	minHeight: '80px',
 	autosize: true,
 	submitDisabled: undefined,
 	sendButtonTestId: 'send-message-button',
@@ -105,7 +112,7 @@ const sendDisabled = computed(
 );
 
 const containerStyle = computed(() => {
-	return props.layout === 'single-line' ? undefined : { minHeight: '80px' };
+	return props.layout === 'single-line' ? undefined : { minHeight: props.minHeight };
 });
 
 const hasNoCredits = computed(() => {
