@@ -38,6 +38,11 @@ jobs:
         # correctly. cd-ing into the playwright package double-nests it.
         run: pnpm --filter=n8n-playwright test:dev-server-smoke --reporter=list
 
+      - name: Run dev-server smoke spec (backend on non-default port)
+        # Same spec, backend on 5699: verifies the dev frontend derives its
+        # backend URL from N8N_PORT instead of assuming 5678.
+        run: pnpm --filter=n8n-playwright test:dev-server-smoke:alt-port --reporter=list
+
       - name: Upload Failure Artifacts
         if: ${{ failure() }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
