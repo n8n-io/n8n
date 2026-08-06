@@ -198,7 +198,7 @@ const scrollRight = () => scroll(50);
 }
 
 .tabs {
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	font-weight: var(--font-weight--medium);
 	display: flex;
 	align-items: center;
@@ -231,7 +231,7 @@ const scrollRight = () => scroll(50);
 
 	cursor: pointer;
 	white-space: nowrap;
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	&:hover {
 		color: var(--color--primary);
 	}
@@ -315,7 +315,7 @@ const scrollRight = () => scroll(50);
 
 .link {
 	cursor: pointer;
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		color: var(--color--primary);
@@ -355,11 +355,11 @@ const scrollRight = () => scroll(50);
 }
 
 .disabledTab {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle--tint-1);
 	cursor: not-allowed;
 
 	&:hover {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtle--tint-1);
 	}
 }
 

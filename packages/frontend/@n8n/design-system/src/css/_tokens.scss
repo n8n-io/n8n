@@ -16,11 +16,6 @@
 	--background--focus: var(--color--black-alpha-100);
 	--background--disabled: var(--color--neutral-200);
 
-	--color--primary: var(--color--neutral-900);
-	--color--primary--tint-1: var(--color--neutral-600);
-	--color--primary--tint-2: var(--color--neutral-400);
-	--color--primary--tint-3: var(--color--neutral-300);
-
 	/* stylelint-disable @n8n/css-var-naming */
 	--border-color: var(--border-color-base, var(--color--black-alpha-100));
 	/* stylelint-enable @n8n/css-var-naming */
@@ -38,6 +33,11 @@
 	--text-color--subtle: var(--color--neutral-600);
 	--text-color--subtler: var(--color--neutral-500);
 	--text-color--disabled: var(--color--neutral-400);
+
+	--color--primary: var(--color--neutral-900);
+	--color--primary--tint-1: var(--color--neutral-600);
+	--color--primary--tint-2: var(--color--neutral-400);
+	--color--primary--tint-3: var(--color--neutral-300);
 
 	--background--success: var(--color--green-50);
 	--border-color--success: var(--color--green-200);
@@ -684,6 +684,11 @@
 	--text-color--subtle: var(--color--neutral-200);
 	--text-color--subtler: var(--color--neutral-400);
 	--text-color--disabled: var(--color--neutral-600);
+
+	--color--primary: var(--color--neutral-white);
+	--color--primary--tint-1: var(--color--neutral-200);
+	--color--primary--tint-2: var(--color--neutral-500);
+	--color--primary--tint-3: var(--color--neutral-700);
 
 	--background--success: var(--color--green-950);
 	--border-color--success: var(--color--green-800);
