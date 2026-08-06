@@ -85,7 +85,7 @@ async function onExposeAll(close: () => void) {
 				? mcpStore.toggleAgentsMcpAccess({ allAgents: true }, true)
 				: Promise.resolve(undefined),
 		]);
-		if (mcpStore.autoExposeNewWorkflows) {
+		if (workflowsResponse.autoExposeNewWorkflows) {
 			telemetry.track(TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED, {
 				enabled: true,
 			});

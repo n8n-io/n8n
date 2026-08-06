@@ -479,6 +479,7 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			unchangedCount: 0,
 			skippedCount: 0,
 			failedCount: 0,
+			autoExposeNewWorkflows: true,
 		});
 		expect(await readAvailableInMCP(memberWf.id)).toBe(true);
 		expect(await readAvailableInMCP(ownerWf.id)).toBeUndefined();
@@ -496,6 +497,7 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			unchangedCount: 1,
 			skippedCount: 0,
 			failedCount: 0,
+			autoExposeNewWorkflows: true,
 		});
 		expect(await readAvailableInMCP(ownerWf.id)).toBe(true);
 	});

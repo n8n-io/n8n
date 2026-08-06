@@ -35,6 +35,7 @@ type BulkSetAvailableInMCPResult = {
 	changedWorkflows: WorkflowMCPAvailabilityChange[];
 	updatedIds?: string[];
 	unchangedIds?: string[];
+	autoExposeNewWorkflows?: boolean;
 };
 
 type WorkflowMCPAvailabilityChange = {
@@ -144,9 +145,11 @@ export class McpSettingsService {
 			);
 		}
 
+		let autoExposeNewWorkflowsEnabled: boolean | undefined;
 		if (allWorkflows && availableInMCP) {
 			try {
 				await this.setAutoExposeNewWorkflows(true);
+				autoExposeNewWorkflowsEnabled = true;
 			} catch (error) {
 				this.logger.warn('Failed to enable auto-expose after bulk-exposing all workflows', {
 					cause: error instanceof Error ? error.message : String(error),
@@ -172,6 +175,9 @@ export class McpSettingsService {
 				failedCount: 0,
 				changedWorkflows: [],
 				...(isWorkflowIdsScope ? { updatedIds: [], unchangedIds: [] } : {}),
+				...(autoExposeNewWorkflowsEnabled !== undefined
+					? { autoExposeNewWorkflows: autoExposeNewWorkflowsEnabled }
+					: {}),
 			};
 		}
 
@@ -285,6 +291,9 @@ export class McpSettingsService {
 			failedCount,
 			changedWorkflows,
 			...(isWorkflowIdsScope ? { updatedIds: writtenIds, unchangedIds: noOpIds } : {}),
+			...(autoExposeNewWorkflowsEnabled !== undefined
+				? { autoExposeNewWorkflows: autoExposeNewWorkflowsEnabled }
+				: {}),
 		};
 	}
 
