@@ -295,6 +295,62 @@ describe('ChatIntegrationService', () => {
 		}
 	});
 
+	it('releases per-connection state when the connect fails', async () => {
+		const createAdapter = vi.fn().mockResolvedValue({ name: 'slack' });
+		const onDisconnected = vi.fn().mockResolvedValue(undefined);
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+			createAdapter;
+		(integration as unknown as { onDisconnected: typeof onDisconnected }).onDisconnected =
+			onDisconnected;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
+
+		const state = mock<StateAdapter>();
+		state.disconnect.mockResolvedValue(undefined);
+		const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+		chatSubscriptionStateService.createStateAdapter.mockReturnValue(state);
+
+		const loadMemoryStateSpy = vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+			createMemoryState: vi.fn(() => mock<StateAdapter>()),
+		} as never);
+		const loadChatSdkSpy = vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({
+			Chat: vi.fn(() => {
+				throw new Error('chat construction failed');
+			}),
+		} as never);
+
+		try {
+			const { service } = buildServiceWith({
+				registry,
+				credentialsService,
+				urlService,
+				chatSubscriptionStateService,
+			});
+
+			await expect(service.connect('agent-1', slackIntegration, 'project-1')).rejects.toThrow(
+				'chat construction failed',
+			);
+
+			expect(onDisconnected).toHaveBeenCalledTimes(1);
+			expect(onDisconnected).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					credentialId: 'cred-1',
+				}),
+			);
+		} finally {
+			loadMemoryStateSpy.mockRestore();
+			loadChatSdkSpy.mockRestore();
+		}
+	});
+
 	describe('connect — project-scoped credential resolution', () => {
 		it('connects using a project-accessible credential without any user', async () => {
 			const createAdapter = vi.fn().mockResolvedValue({ name: 'slack' });
@@ -373,8 +429,6 @@ describe('ChatIntegrationService', () => {
 			const service = buildService();
 			const shutdownA = vi.fn().mockResolvedValue(undefined);
 			const shutdownB = vi.fn().mockResolvedValue(undefined);
-			const disposeA = vi.fn();
-			const disposeB = vi.fn();
 
 			// Seed two connections via the private map.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -388,7 +442,6 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeA },
 			});
 			internal.connections.set('agent-2:telegram:cred-2', {
 				chat: {
@@ -399,15 +452,12 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeB },
 			});
 
 			await service.disconnectAll();
 
 			expect(shutdownA).toHaveBeenCalledTimes(1);
 			expect(shutdownB).toHaveBeenCalledTimes(1);
-			expect(disposeA).toHaveBeenCalledTimes(1);
-			expect(disposeB).toHaveBeenCalledTimes(1);
 			expect(internal.connections.size).toBe(0);
 		});
 
@@ -420,8 +470,6 @@ describe('ChatIntegrationService', () => {
 			const service = buildService();
 			const shutdownA = vi.fn().mockRejectedValue(new Error('boom'));
 			const shutdownB = vi.fn().mockResolvedValue(undefined);
-			const disposeA = vi.fn();
-			const disposeB = vi.fn();
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const internal = service as any;
@@ -434,7 +482,6 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeA },
 			});
 			internal.connections.set('agent-2:telegram:cred-2', {
 				chat: {
@@ -445,15 +492,12 @@ describe('ChatIntegrationService', () => {
 					onSubscribedMessage: vi.fn(),
 					initialize: vi.fn(),
 				},
-				bridge: { dispose: disposeB },
 			});
 
 			await expect(service.disconnectAll()).resolves.toBeUndefined();
 
 			expect(shutdownA).toHaveBeenCalledTimes(1);
 			expect(shutdownB).toHaveBeenCalledTimes(1);
-			expect(disposeA).toHaveBeenCalledTimes(1);
-			expect(disposeB).toHaveBeenCalledTimes(1);
 			expect(internal.connections.size).toBe(0);
 		});
 	});
@@ -560,17 +604,33 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 	});
 
 	it('disposes a stale outbound connection when the agent is published', async () => {
+		const onDisconnected = vi.fn().mockResolvedValue(undefined);
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { onDisconnected: typeof onDisconnected }).onDisconnected =
+			onDisconnected;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findOne.mockResolvedValue(
 			makeAgent({ integrations: [slackIntegration], activeVersionId: 'version-1' }),
 		);
-		const { service } = buildServiceWith({ agentRepository });
+		const { service } = buildServiceWith({ agentRepository, registry });
 		const shutdown = vi.fn().mockResolvedValue(undefined);
+		const outboundContext = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			credentialId: 'cred-1',
+			credential: {},
+			ingressEnabled: false,
+			webhookUrlFor: () => 'https://n8n.test/webhook',
+		};
 		const internal = service as unknown as {
 			outboundConnections: Map<string, unknown>;
 		};
 		internal.outboundConnections.set('agent-1:slack:cred-1', {
 			chat: { shutdown },
+			context: outboundContext,
 		});
 
 		await expect(
@@ -578,6 +638,8 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		).resolves.toBeUndefined();
 
 		expect(shutdown).toHaveBeenCalledTimes(1);
+		expect(onDisconnected).toHaveBeenCalledTimes(1);
+		expect(onDisconnected).toHaveBeenCalledWith(outboundContext);
 		expect(internal.outboundConnections.size).toBe(0);
 	});
 
@@ -677,7 +739,6 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		);
 		expect(service.getChatInstance('agent-1', slackIntegration)).toBe(liveChat);
 		expect(internal.outboundConnections.size).toBe(0);
-		expect(bridge.dispose).not.toHaveBeenCalled();
 	});
 });
 
@@ -691,7 +752,6 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 			onSubscribedMessage: Mock;
 			initialize: Mock;
 		};
-		bridge: { dispose: Mock };
 		context: AgentChatIntegrationContext;
 	};
 
@@ -709,7 +769,6 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 				onSubscribedMessage: vi.fn(),
 				initialize: vi.fn(),
 			},
-			bridge: { dispose: vi.fn() },
 			context: ctx,
 		};
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -750,11 +809,9 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 
 		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
 		expect(onBeforeDisconnect).toHaveBeenCalledWith(ctx);
-		// Order: external teardown → local shutdown → dispose
 		expect(onBeforeDisconnect.mock.invocationCallOrder[0]).toBeLessThan(
 			stub.chat.shutdown.mock.invocationCallOrder[0],
 		);
-		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect((service as any).connections.size).toBe(0);
 	});
@@ -777,7 +834,6 @@ describe('ChatIntegrationService — onBeforeDisconnect plumbing', () => {
 
 		expect(onBeforeDisconnect).toHaveBeenCalledTimes(1);
 		expect(stub.chat.shutdown).toHaveBeenCalledTimes(1);
-		expect(stub.bridge.dispose).toHaveBeenCalledTimes(1);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect((service as any).connections.size).toBe(0);
 	});
@@ -1087,6 +1143,53 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			});
 
 			expect(connectSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getWebhookHandler', () => {
+		const seedConnection = (
+			service: ChatIntegrationService,
+			credentialId: string,
+			credential: Record<string, unknown>,
+			handler: unknown,
+		) => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(service as any).connections.set(`agent-1:discord:${credentialId}`, {
+				chat: { webhooks: { discord: handler } },
+				context: {
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					credentialId,
+					credential,
+					webhookUrlFor: () => 'https://n8n.example.com/wh',
+				},
+			});
+		};
+
+		it('uses the integration matcher to select a connection', () => {
+			const registry = new ChatIntegrationRegistry();
+			const integration = new FakeIntegration('discord', false);
+			integration.matchesWebhookConnection = (credential, selector) =>
+				credential.applicationId === selector;
+			registry.register(integration);
+			const { service } = buildServiceWith({ registry });
+			const handlerA = vi.fn();
+			const handlerB = vi.fn();
+			seedConnection(service, 'cred-a', { applicationId: 'app-a' }, handlerA);
+			seedConnection(service, 'cred-b', { applicationId: 'app-b' }, handlerB);
+
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-b')).toBe(handlerB);
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-a')).toBe(handlerA);
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-unknown')).toBeUndefined();
+		});
+
+		it('does not fall back to the first connection when a selector has no matcher', () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('discord', false));
+			const { service } = buildServiceWith({ registry });
+			seedConnection(service, 'cred-a', { applicationId: 'app-a' }, vi.fn());
+
+			expect(service.getWebhookHandler('agent-1', 'discord', 'app-a')).toBeUndefined();
 		});
 	});
 

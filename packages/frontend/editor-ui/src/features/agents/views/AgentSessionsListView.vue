@@ -117,6 +117,8 @@ function originIcon(thread: AgentExecutionThread): string {
 			return 'telegram';
 		case 'linear':
 			return 'linear';
+		case 'discord':
+			return 'discord';
 		default:
 			return 'zap';
 	}

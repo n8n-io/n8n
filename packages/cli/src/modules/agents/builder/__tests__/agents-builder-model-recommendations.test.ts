@@ -228,13 +228,6 @@ describe('builder model recommendations', () => {
 		]);
 		expect(skillsById.has('agent-builder-research')).toBe(false);
 
-		const externalServices = skillsById.get('agent-builder-external-services');
-		expect(externalServices?.description).toContain(
-			'chat integration/trigger versus an MCP, node, or workflow tool',
-		);
-		expect(externalServices?.instructions).toContain('Integration vs Callable Tool Decision');
-		expect(externalServices?.instructions).toContain('Linear callable tools');
-
 		const resourceLocators = skillsById.get('agent-builder-resource-locators');
 		expect(resourceLocators?.description).toContain('stable dynamic selector fields');
 		expect(resourceLocators?.instructions).toContain('Linear `teamId`');

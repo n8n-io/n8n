@@ -5,6 +5,7 @@ import type { Adapter, SentMessage } from 'chat';
 import { z } from 'zod';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
+import type { CallbackMetadata } from './callback-store';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
 import {
 	ComponentMapper,
@@ -16,6 +17,7 @@ import {
 	connectionUnavailable,
 	integrationError,
 	normalizePlatformId,
+	unsupportedAction,
 } from './integration-helpers';
 import type {
 	IntegrationAction,
@@ -45,14 +47,19 @@ const editMessageInputSchema = z
 		message: messageSchema,
 	})
 	.strict();
+const addReactionInputSchema = z.object({
+	emoji: z.string().min(1),
+	threadId: z.string().min(1).optional(),
+	messageId: z.string().min(1).optional(),
+});
 
 type MessagePayload = z.infer<typeof messageSchema>;
 
 /**
  * Dispatches action invocations between cross-platform actions (`respond`,
- * `send_dm`, `send_channel_message`, `edit_message`) and platform-specific actions
- * (`add_reaction`, `create_issue`, `create_comment`, …) owned by each
- * {@link AgentChatIntegration} subclass.
+ * `send_dm`, `send_channel_message`, `edit_message`, `add_reaction`) and
+ * platform-specific actions (`create_issue`, `create_comment`, …) owned by
+ * each {@link AgentChatIntegration} subclass.
  */
 @Service()
 export class ChatIntegrationActionExecutor implements IntegrationActionExecutor {
@@ -129,6 +136,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			if (params.action === 'edit_message') {
 				return await this.editMessageInCurrentThread(chat, params);
 			}
+			if (params.action === 'add_reaction') {
+				return await this.addReactionToMessage(chat, params);
+			}
 
 			// Platform-specific actions delegate to the integration implementation.
 			if (integrationDef?.executeAction) {
@@ -174,6 +184,57 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		};
 	}
 
+	private async addReactionToMessage(
+		chat: ChatInstance,
+		params: ExecuteParams,
+	): Promise<IntegrationActionResult> {
+		const adapter = chat.getAdapter(params.descriptor.integration.type);
+		if (!supportsAddReaction(adapter)) {
+			return unsupportedAction(params.descriptor.integration.type, 'add_reaction');
+		}
+
+		const input = addReactionInputSchema.parse(params.input);
+		const currentMessageContext = params.currentMessageContext;
+		const replyTargetForReaction =
+			input.messageId !== undefined &&
+			input.messageId === currentMessageContext?.replyMessageId &&
+			(input.threadId === undefined ||
+				input.threadId === currentMessageContext.replyTarget?.threadId)
+				? currentMessageContext.replyTarget
+				: undefined;
+		const fallbackTarget = replyTargetForReaction ?? currentMessageContext?.target;
+		const threadId = input.threadId ?? fallbackTarget?.threadId;
+		const messageId = input.messageId ?? currentMessageContext?.messageId;
+		if (!threadId || !messageId) {
+			const platform = params.descriptor.integration.type;
+			const displayLabel = `${platform.charAt(0).toUpperCase()}${platform.slice(1)}`;
+			return integrationError(
+				INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,
+				`${displayLabel} reactions require a messageId and threadId or current message context.`,
+			);
+		}
+
+		await adapter.addReaction(threadId, messageId, input.emoji);
+
+		return {
+			ok: true,
+			reaction: { emoji: input.emoji, threadId, messageId },
+			messageContext: {
+				integrationConnectionId: params.descriptor.integrationConnectionId,
+				platform: params.descriptor.integration.type,
+				target:
+					replyTargetForReaction && currentMessageContext
+						? currentMessageContext.target
+						: buildReactionTarget(params.descriptor.integration.type, threadId, fallbackTarget),
+				messageId:
+					replyTargetForReaction && currentMessageContext
+						? currentMessageContext.messageId
+						: messageId,
+				updatedAt: new Date().toISOString(),
+			},
+		};
+	}
+
 	private async respondInCurrentThread(
 		chat: ChatInstance,
 		params: ExecuteParams,
@@ -187,10 +248,11 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 		}
 
-		// `replyExpectation` marks a turn triggered by an inbound chat message,
-		// where the bridge already posts the assistant's reply text to this
-		// thread — a text-only respond would deliver the same content twice.
-		if (!input.message.card && params.currentMessageContext?.replyExpectation) {
+		const replyTargetThreadId = params.currentMessageContext?.replyTarget?.threadId;
+		const isAutomaticReplyTarget =
+			params.currentMessageContext?.replyExpectation !== undefined &&
+			(replyTargetThreadId === undefined || replyTargetThreadId === threadId);
+		if (!input.message.card && isAutomaticReplyTarget) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
 				'Plain text is already delivered to this conversation as your normal reply — write the text directly in your reply instead of calling respond. Call respond only with message.card, or use an explicit send action for a different target.',
@@ -311,7 +373,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			params.runId ?? '',
 			params.toolCallId ?? '',
 			INTERACTIVE_CARD_RESUME_JSON_SCHEMA,
-			this.getShortenCallback(descriptor),
+			this.getShortenCallback(
+				descriptor,
+				params.runId && params.toolCallId
+					? { groupId: JSON.stringify([params.runId, params.toolCallId]) }
+					: undefined,
+			),
 			descriptor.integration.type,
 		);
 
@@ -320,20 +387,26 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private getShortenCallback(
 		descriptor: IntegrationToolConnectionDescriptor,
+		metadata?: CallbackMetadata,
 	): ShortenCallback | undefined {
 		const { agentId, integration } = descriptor;
 		if (!agentId) return undefined;
 		const { credentialId } = integration;
 		if (!credentialId) return undefined;
-		return this.chatIntegrationService.getShortenCallback(agentId, {
-			type: integration.type,
-			credentialId,
-		});
+		return this.chatIntegrationService.getShortenCallback(
+			agentId,
+			{ type: integration.type, credentialId },
+			metadata,
+		);
 	}
 }
 
 function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'editMessage'> {
 	return isRecord(adapter) && typeof adapter.editMessage === 'function';
+}
+
+function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
+	return isRecord(adapter) && typeof adapter.addReaction === 'function';
 }
 
 interface ExecuteParams {
@@ -358,6 +431,21 @@ function buildMessageContextFromSentMessage(params: {
 		messageId: params.sent.id,
 		updatedAt: new Date().toISOString(),
 	};
+}
+
+function buildReactionTarget(
+	platform: string,
+	threadId: string,
+	fallbackTarget: IntegrationMessageContext['target'] | undefined,
+): IntegrationMessageContext['target'] {
+	if (fallbackTarget?.threadId === threadId) return fallbackTarget;
+
+	const [threadPlatform, channel] = threadId.split(':');
+	const channelId =
+		platform === 'slack' && threadPlatform === 'slack' && channel
+			? `${threadPlatform}:${channel}`
+			: undefined;
+	return { type: 'thread', threadId, ...(channelId ? { channelId } : {}) };
 }
 
 async function maybeSubscribeSlackThread(

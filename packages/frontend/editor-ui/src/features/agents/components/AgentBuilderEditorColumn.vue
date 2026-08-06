@@ -120,6 +120,7 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:agent-id="agentId"
 						:project-id="projectId"
+						:is-published="Boolean(agent?.activeVersionId)"
 						:validation-issues="configValidationIssues ?? []"
 						:simple-channel-setup="artifactMode"
 						:agent-unsaved="agentUnsaved"

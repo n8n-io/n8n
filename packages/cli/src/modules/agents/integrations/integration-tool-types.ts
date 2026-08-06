@@ -38,6 +38,9 @@ export interface IntegrationMessageContext {
 	agentUserId?: string;
 	subject?: IntegrationMessageSubject;
 	replyExpectation?: ReplyExpectation;
+	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
+	replyTarget?: IntegrationMessageTarget;
+	replyMessageId?: string;
 	updatedAt: string;
 }
 

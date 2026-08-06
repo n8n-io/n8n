@@ -20,6 +20,7 @@ import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentChannelSlackSetup from './AgentChannelSlackSetup.vue';
 import AgentChannelLinearSetup from './AgentChannelLinearSetup.vue';
 import AgentChannelTelegramSetup from './AgentChannelTelegramSetup.vue';
+import AgentChannelDiscordSetup from './AgentChannelDiscordSetup.vue';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
 
 export type ChannelView =
@@ -29,12 +30,15 @@ export type ChannelView =
 	| 'linear_setup'
 	| 'linear_edit'
 	| 'telegram_setup'
-	| 'telegram_edit';
+	| 'telegram_edit'
+	| 'discord_setup'
+	| 'discord_edit';
 
 interface Props {
 	open: boolean;
 	agentId: string;
 	projectId: string;
+	isPublished: boolean;
 	view: ChannelView;
 	ensureAgentPersisted?: () => Promise<void>;
 }
@@ -497,6 +501,28 @@ watch(
 						@edit="editCredential"
 						@connect="saveChannelConfig"
 					/>
+					<AgentChannelDiscordSetup
+						v-else-if="currentIntegration?.type === 'discord'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="setup"
+						:integration="currentIntegration"
+						:credentials="getCredentials(currentIntegration.type)"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
+						:error-message="
+							hasError(currentIntegration.type) ? errorMessages[currentIntegration.type] : ''
+						"
+						:error-is-conflict="errorIsConflict[currentIntegration.type]"
+						:is-published="props.isPublished"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@create="createCredential"
+						@edit="editCredential"
+						@connect="saveChannelConfig"
+					/>
 				</div>
 
 				<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
@@ -555,6 +581,20 @@ watch(
 						:connected="isConfigured(currentIntegration.type)"
 						:saved-settings="integrationSettings[currentIntegration.type]"
 						:agent-name="agentId"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
+					<AgentChannelDiscordSetup
+						v-else-if="currentIntegration?.type === 'discord'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials[currentIntegration.type]"
+						mode="edit"
+						:integration="currentIntegration"
+						:credentials="getCredentials(currentIntegration.type)"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="hasPendingCredentialReplacement || isLoading(currentIntegration.type)"
+						:connected="isConfigured(currentIntegration.type)"
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>

@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
@@ -616,14 +617,17 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('does not post a fallback for a cardless integration action suspension', async () => {
+		it('drops buffered card preamble but keeps text emitted after suspension', async () => {
 			const thread = await runMention(bufferedIntegration, [
+				{ type: 'text-delta', id: 't1', delta: 'Here is the approval card.' },
 				integrationActionSuspension,
+				{ type: 'text-delta', id: 't2', delta: 'The action was approved.' },
 				finishChunk,
 			]);
 
 			expect(componentMapper.toCard).not.toHaveBeenCalled();
-			expect(thread.post).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledOnce();
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'The action was approved.' });
 		});
 
 		it('does not post an error when a failed tool call is retried successfully', async () => {
@@ -745,6 +749,8 @@ describe('AgentChatBridge — consumeStream', () => {
 		function makeBridge(
 			agentExecutor: ReturnType<typeof makeAgentExecutor>,
 			attachmentService: ReturnType<typeof makeAttachmentService>,
+			integration: AgentIntegrationConfig = streamingIntegration,
+			discordHttpClient?: HttpRequestClient,
 		) {
 			const { bot, handlers } = makeBot();
 			new AgentChatBridge(
@@ -754,9 +760,10 @@ describe('AgentChatBridge — consumeStream', () => {
 				componentMapper,
 				logger,
 				'project-1',
-				streamingIntegration,
+				integration,
 				undefined,
 				attachmentService as never,
+				discordHttpClient,
 			);
 			return handlers;
 		}
@@ -800,6 +807,64 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'look at this',
+					attachments: [
+						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+					],
+				}),
+			);
+		});
+
+		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const attachmentService = makeAttachmentService();
+			const request = vi.fn().mockResolvedValue({
+				body: pngBytes,
+				headers: {},
+				statusCode: 200,
+			});
+			const httpClient = { request } as unknown as HttpRequestClient;
+			const handlers = makeBridge(
+				agentExecutor,
+				attachmentService,
+				{
+					type: 'discord',
+					credentialId: 'cred-discord',
+				} as unknown as AgentIntegrationConfig,
+				httpClient,
+			);
+			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
+
+			await handlers.mention!(makeThread(), {
+				text: 'what is this?',
+				author: { userId: 'u1', userName: 'user1' },
+				attachments: [
+					{
+						type: 'image',
+						url: attachmentUrl,
+						name: 'photo.png',
+						mimeType: 'image/png',
+					},
+					{
+						type: 'image',
+						url: 'http://127.0.0.1/internal.png',
+						name: 'internal.png',
+						mimeType: 'image/png',
+					},
+				],
+			});
+
+			expect(request).toHaveBeenCalledOnce();
+			expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: attachmentUrl }));
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'discord',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+				}),
+			);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'what is this?\n[Attachment "internal.png" could not be processed]',
 					attachments: [
 						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
 					],
@@ -1587,7 +1652,15 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(messageContextStore.setLatest).toHaveBeenCalledWith(
 				'agent-1:thread-1',
 				'u1',
-				expect.objectContaining({ replyExpectation: 'optional' }),
+				expect.objectContaining({
+					replyExpectation: 'optional',
+					replyTarget: {
+						type: 'thread',
+						threadId: 'thread-1',
+						channelId: 'channel-1',
+					},
+					replyMessageId: 'message-2',
+				}),
 			);
 		});
 

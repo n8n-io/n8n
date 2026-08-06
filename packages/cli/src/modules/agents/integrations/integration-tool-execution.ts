@@ -267,22 +267,25 @@ function withPreviousSubject(
 ): IntegrationMessageContext {
 	if (!previousContext) return context;
 	if (context.integrationConnectionId !== previousContext.integrationConnectionId) return context;
+	const replyExpectation = context.replyExpectation ?? previousContext.replyExpectation;
+	const replyTarget =
+		context.replyTarget ??
+		previousContext.replyTarget ??
+		(replyExpectation ? previousContext.target : undefined);
+	const replyMessageId =
+		context.replyMessageId ??
+		previousContext.replyMessageId ??
+		(replyExpectation ? previousContext.messageId : undefined);
+
 	return {
 		...context,
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
 			: {}),
-		// The turn's reply policy comes from the inbound message, not from what
-		// the agent sent — keep it through same-thread context rebuilds so
-		// `do_not_respond` stays available after e.g. a card respond. A rebuild
-		// targeting a different thread (send_dm/send_channel_message) drops it:
-		// the streamed reply does not go there, so its delivery rules don't apply.
-		...(!context.replyExpectation &&
-		previousContext.replyExpectation &&
-		context.target.threadId === previousContext.target.threadId
-			? { replyExpectation: previousContext.replyExpectation }
-			: {}),
+		...(replyExpectation ? { replyExpectation } : {}),
+		...(replyTarget ? { replyTarget } : {}),
+		...(replyMessageId ? { replyMessageId } : {}),
 	};
 }
 

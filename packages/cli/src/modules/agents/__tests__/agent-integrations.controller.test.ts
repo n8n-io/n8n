@@ -745,4 +745,133 @@ describe('AgentIntegrationsController integration credentials', () => {
 			},
 		});
 	});
+
+	it('returns a platform webhook rejection without looking up a handler', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({
+				type: 'reject',
+				response: { status: 404, body: { error: 'Not found' } },
+			}),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { 'x-discord-gateway-token': 'some-token' },
+			} as never,
+			res as never,
+		);
+
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({ error: 'Not found' });
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+	});
+
+	it('passes the platform connection selector to getWebhookHandler', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const handler = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+		chatIntegrationService.getWebhookHandler.mockReturnValue(handler);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'select', connectionSelector: 'app-b' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+			setHeader: vi.fn(),
+			send: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: { host: 'localhost', 'content-type': 'application/json' },
+				method: 'POST',
+				protocol: 'https',
+				originalUrl: '/rest/projects/project-1/agents/v2/agent-1/webhooks/discord',
+				body: { application_id: 'app-b', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'discord',
+			'app-b',
+		);
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(res.status).toHaveBeenCalledWith(200);
+	});
+
+	it('does not look up a handler when the platform reports no match', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({ type: 'no_match' }),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: {},
+				body: { type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({
+			error: 'No active discord integration for agent "agent-1"',
+		});
+	});
+
+	it('returns 404 when the selected connection has no handler', async () => {
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getWebhookHandler.mockReturnValue(undefined);
+		const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+		chatIntegrationRegistry.get.mockReturnValue({
+			resolveWebhookRequest: () => ({
+				type: 'select',
+				connectionSelector: 'app-unknown',
+			}),
+		} as never);
+		const { controller } = makeController({ chatIntegrationService, chatIntegrationRegistry });
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn(),
+		};
+
+		await controller.handleWebhook(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1', platform: 'discord' },
+				headers: {},
+				body: { application_id: 'app-unknown', type: 1 },
+			} as never,
+			res as never,
+		);
+
+		expect(chatIntegrationService.getWebhookHandler).toHaveBeenCalledWith(
+			'agent-1',
+			'discord',
+			'app-unknown',
+		);
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({
+			error: 'No active discord integration for agent "agent-1"',
+		});
+	});
 });

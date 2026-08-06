@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 
 /**
  * `ChannelSetupCard` owns the body + orchestration for the `configure_channel`
@@ -27,6 +28,8 @@ const mocks = vi.hoisted(() => {
 		slackIntegration,
 		linearIntegration,
 		ensureLoaded: vi.fn(),
+		reloadCatalog: vi.fn(),
+		setCatalog: vi.fn<(integrations: ChatIntegrationDescriptor[]) => void>(),
 		fetchStatus: vi.fn(),
 		connect: vi.fn(),
 		isConnected: vi.fn(),
@@ -50,12 +53,22 @@ vi.mock('@n8n/permissions', () => ({
 	}),
 }));
 
-vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => ({
-	useAgentIntegrationsCatalog: () => ({
-		catalog: ref([mocks.slackIntegration, mocks.linearIntegration]),
-		ensureLoaded: mocks.ensureLoaded,
-	}),
-}));
+vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => {
+	const catalog = ref<ChatIntegrationDescriptor[]>([
+		mocks.slackIntegration,
+		mocks.linearIntegration,
+	]);
+	mocks.setCatalog.mockImplementation((integrations) => {
+		catalog.value = integrations;
+	});
+	return {
+		useAgentIntegrationsCatalog: () => ({
+			catalog,
+			ensureLoaded: mocks.ensureLoaded,
+			reload: mocks.reloadCatalog,
+		}),
+	};
+});
 
 vi.mock('@/features/agents/composables/useAgentIntegrationStatus', () => ({
 	useAgentIntegrationStatus: () => ({
@@ -145,6 +158,10 @@ function mountCard(props: Record<string, unknown> = {}) {
 					props: ['disabled'],
 				},
 				N8nIcon: { template: '<i />', props: ['icon', 'size', 'color'] },
+				N8nLoading: {
+					template: '<div v-bind="$attrs" />',
+					props: ['loading', 'rows'],
+				},
 				N8nText: { template: '<span><slot/></span>', props: ['size', 'bold', 'color', 'tag'] },
 			},
 		},
@@ -155,7 +172,9 @@ describe('ChannelSetupCard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.ensureLoaded.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
+		mocks.reloadCatalog.mockResolvedValue([mocks.slackIntegration, mocks.linearIntegration]);
 		mocks.fetchStatus.mockResolvedValue(undefined);
 		mocks.connect.mockResolvedValue({ status: 'connected' });
 		mocks.isConnected.mockReturnValue(false);
@@ -288,13 +307,58 @@ describe('ChannelSetupCard', () => {
 		expect(wrapper.emitted('resolve')).toBeUndefined();
 	});
 
-	it('renders the unsupported-channel placeholder instead of a blank body when the catalog descriptor is missing', async () => {
-		// Catalog loaded successfully but has no entry for this (known) type —
-		// e.g. a fetch failure that fell back to an empty/partial list.
-		const wrapper = mountCard({ integrationType: 'telegram' });
+	it('shows a loading state until the integration catalog arrives', async () => {
+		let resolveCatalog: (integrations: ChatIntegrationDescriptor[]) => void = () => {};
+		mocks.setCatalog([]);
+		mocks.ensureLoaded.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveCatalog = resolve;
+			}),
+		);
+		const wrapper = mountCard({ integrationType: 'linear' });
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(false);
+
+		mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+		resolveCatalog([mocks.slackIntegration, mocks.linearIntegration]);
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('agents.channels.modal.setupPlaceholder');
+		expect(wrapper.find('[data-testid="channel-setup-catalog-loading"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(true);
+	});
+
+	it('refreshes a stale catalog before showing an error', async () => {
+		mocks.setCatalog([mocks.slackIntegration]);
+		mocks.ensureLoaded.mockResolvedValueOnce([mocks.slackIntegration]);
+		mocks.reloadCatalog.mockImplementationOnce(async () => {
+			mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+			return [mocks.slackIntegration, mocks.linearIntegration];
+		});
+		const wrapper = mountCard({ integrationType: 'linear' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(true);
+	});
+
+	it('retries loading the integration catalog after an error', async () => {
+		mocks.setCatalog([]);
+		mocks.ensureLoaded.mockRejectedValueOnce(new Error('catalog unavailable'));
+		mocks.reloadCatalog.mockImplementationOnce(async () => {
+			mocks.setCatalog([mocks.slackIntegration, mocks.linearIntegration]);
+			return [mocks.slackIntegration, mocks.linearIntegration];
+		});
+		const wrapper = mountCard({ integrationType: 'linear' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="channel-setup-catalog-retry"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="channel-setup-catalog-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="mock-linear-setup"]').exists()).toBe(true);
 	});
 
 	it('does not call connect or emit resolve when the disabled prop is already true', async () => {

@@ -22,6 +22,10 @@ catalog:
   '@ai-sdk/xai': ^4.0.18
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
+  # Exact pin: the adapters share an internal protocol with `chat`, and a range
+  # that resolves higher than the locked `chat` pulls a second copy of it into
+  # the tree. Bump this together with `chat` and the other adapters below.
+  '@chat-adapter/discord': 4.28.1
   '@chat-adapter/linear': ^4.28.1
   '@chat-adapter/slack': ^4.28.1
   '@chat-adapter/state-memory': ^4.28.1
