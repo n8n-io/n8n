@@ -155,8 +155,7 @@ again.
 
 ## Error workflow follow-up
 
-Offer or build an error workflow only after the latest primary version passes a
-real, full-path live test and that version is published. Until then, keep
+Offer or build an error workflow only after the latest primary version is tested and that version is published. Until then, keep
 working on the primary workflow.
 
 If you just built an Error Trigger workflow because the user opted into adding
