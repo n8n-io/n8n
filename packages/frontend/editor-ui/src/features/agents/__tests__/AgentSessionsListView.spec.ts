@@ -201,6 +201,7 @@ describe('AgentSessionsListView', () => {
 			params: { projectId: 'project-1', agentId: 'agent-1' },
 			query: { continueSessionId: 'thread-1', section: '__executions' },
 		});
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('uses a native title button while leaving the table row out of the tab order', async () => {
@@ -239,6 +240,7 @@ describe('AgentSessionsListView', () => {
 
 		await wrapper.find('[data-test-id="agent-session-list-item"]').trigger('click');
 
+		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
 		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
@@ -252,6 +254,7 @@ describe('AgentSessionsListView', () => {
 			name: 'AgentSessionDetailView',
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		});
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('opens the trace in a new tab when requested', async () => {
@@ -263,6 +266,7 @@ describe('AgentSessionsListView', () => {
 
 		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
 
+		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
 		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
@@ -283,6 +287,7 @@ describe('AgentSessionsListView', () => {
 				threadId: 'parent-thread-1',
 			},
 		});
+		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('fetches, polls, and manages the visibility listener by default', async () => {
