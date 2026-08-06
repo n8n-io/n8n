@@ -30,8 +30,6 @@ export class StepCompletedHandler {
 		// just its branch.
 		if (step.status === 'failed') {
 			await this.executionStore.finishExecution(execution.id, 'failed');
-			// Not gated on the finish CAS: a crash between the two writes is
-			// repaired by the redelivered event re-running the sweep.
 			await this.stepStore.cancelQueuedSteps(execution.id);
 			return;
 		}
