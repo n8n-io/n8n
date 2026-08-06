@@ -12,8 +12,7 @@ import type { StepError, StepRecord, StepStore } from './step-store';
  * reports back to the orchestration worker with `step:completed`.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
- * makes the handler throw: before the claim the event is rejected with the
- * step untouched, after it the step is left `running` for reconciliation
+ * makes the handler throw, leaving the step `running` for reconciliation
  * (CAT-2938) or internal consistency checks (CAT-3930) to resolve.
  */
 export class StepReadyHandler {
@@ -25,16 +24,21 @@ export class StepReadyHandler {
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
+		// Claim via CAS so a duplicate/redelivered event is a no-op.
+		const claimed = await this.stepStore.claimStep(event.stepId);
+		if (!claimed) return;
+
+		// NOTE: we would prefer to do this validation before the claim,
+		// but we need to check the execution status AFTER the claim to
+		// avoid executing a step for a failed or cancelled execution.
+		// Reconciliation or a more robust consistency story will improve
+		// this in the future (CAT-2938, CAT-3930).
 		const { step, execution, node } = await loadStepContext(
 			this.executionStore,
 			this.stepStore,
 			event,
 		);
 		const executor = this.executorFor(step, node);
-
-		// Claim via CAS so a duplicate/redelivered event is a no-op.
-		const claimed = await this.stepStore.claimStep(event.stepId);
-		if (!claimed) return;
 
 		if (execution.status !== 'running') {
 			// The execution is no longer running, so we don't run the step.
