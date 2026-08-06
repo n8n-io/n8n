@@ -272,11 +272,19 @@ test.describe(
 			await n8n.ndv.close();
 			await n8n.canvas.logsPanel.open();
 
+			// Each chat send creates its own execution; wait on chat messages (not
+			// refreshSession + toast) so the second turn is reliable in CI.
 			await n8n.canvas.logsPanel.sendManualChatMessage('First message');
-			await n8n.notifications.waitForNotificationAndClose('Successful');
-			await n8n.canvas.logsPanel.refreshSession();
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(0)).toContainText(
+				'First message',
+			);
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(1)).toContainText('Hello');
+
 			await n8n.canvas.logsPanel.sendManualChatMessage('Second message');
-			await n8n.notifications.waitForNotificationAndClose('Successful');
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(2)).toContainText(
+				'Second message',
+			);
+			await expect(n8n.canvas.logsPanel.getManualChatMessages().nth(3)).toContainText('Hello');
 
 			await n8n.canvas.openExecutions();
 			await n8n.executions.getAutoRefreshButton().click();
