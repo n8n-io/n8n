@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { INode, Workflow } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProtectedResource, ProtectedResourceResolver } from '../protected-resource.registry';
@@ -170,7 +171,7 @@ describe('ProtectedResourceRegistry', () => {
 		it('should resolve via a resolver implementing resolveByNode', async () => {
 			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			const resolver = mock<ProtectedResourceResolver>({ id: 'webhook', scopes: [] });
-			resolver.resolveByNode!.mockResolvedValue(resourceB);
+			(resolver.resolveByNode as Mock).mockResolvedValue(resourceB);
 			resolverRegistry.registerResolver(resolver);
 
 			expect(await resolverRegistry.getByWorkflowNode(workflow, node)).toBe(resourceB);
@@ -193,7 +194,7 @@ describe('ProtectedResourceRegistry', () => {
 		it('should return undefined when no resolver matches', async () => {
 			const resolverRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			const resolver = mock<ProtectedResourceResolver>({ id: 'webhook', scopes: [] });
-			resolver.resolveByNode!.mockResolvedValue(undefined);
+			(resolver.resolveByNode as Mock).mockResolvedValue(undefined);
 			resolverRegistry.registerResolver(resolver);
 
 			expect(await resolverRegistry.getByWorkflowNode(workflow, node)).toBeUndefined();
@@ -203,7 +204,7 @@ describe('ProtectedResourceRegistry', () => {
 			const logger = mock<Logger>();
 			const failingRegistry = new ProtectedResourceRegistry(logger);
 			const resolver = mock<ProtectedResourceResolver>({ id: 'boom', scopes: [] });
-			resolver.resolveByNode!.mockRejectedValue(new Error('backing store unavailable'));
+			(resolver.resolveByNode as Mock).mockRejectedValue(new Error('backing store unavailable'));
 			failingRegistry.registerResolver(resolver);
 
 			expect(await failingRegistry.getByWorkflowNode(workflow, node)).toBeUndefined();
