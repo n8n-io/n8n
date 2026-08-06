@@ -30,6 +30,12 @@ describe('WorkflowReviewCommentComposer', () => {
 		store.postComment.mockResolvedValue(undefined);
 	});
 
+	it('names the icon-only send button for screen readers', () => {
+		const { getByTestId, getByRole } = renderComponent({ props: { canComment: true } });
+
+		expect(getByRole('button', { name: 'Send' })).toBe(getByTestId('send-message-button'));
+	});
+
 	it('disables the send button and the textarea when the viewer cannot comment', () => {
 		const { getByTestId, getByRole } = renderComponent({ props: { canComment: false } });
 

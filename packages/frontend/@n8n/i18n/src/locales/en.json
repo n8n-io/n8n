@@ -5413,7 +5413,6 @@
 	"workflowReviews.detail.activity.unknownAuthor": "Deleted user",
 	"workflowReviews.detail.activity.composer.label": "Add a comment",
 	"workflowReviews.detail.activity.composer.placeholder": "Leave a comment...",
-	"workflowReviews.detail.activity.composer.submit": "Comment",
 	"workflowReviews.detail.activity.composer.notAllowed": "You don't have permission to comment on this review.",
 	"workflowReviews.detail.activity.error.load": "Could not load activity",
 	"workflowReviews.detail.activity.error.post": "Could not post comment",

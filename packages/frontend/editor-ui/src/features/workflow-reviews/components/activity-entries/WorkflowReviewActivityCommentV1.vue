@@ -81,7 +81,7 @@ function authorName(message: WorkflowReviewActivityMessage): string {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	min-width: 0;
 }
 

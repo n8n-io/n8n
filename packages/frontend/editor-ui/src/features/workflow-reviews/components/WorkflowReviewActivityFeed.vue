@@ -160,12 +160,13 @@ onMounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+	padding-block: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .list {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 }
 
 .errorRow {

@@ -48,8 +48,6 @@ async function onSubmit() {
 		<N8nChatInput
 			v-model="draft"
 			:max-length="WORKFLOW_REVIEW_COMMENT_MAX_LENGTH"
-			:autosize="{ minRows: 3, maxRows: 10 }"
-			:button-label="i18n.baseText('workflowReviews.detail.activity.composer.submit')"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 			refocus-after-send
 			:disabled="!canComment"
@@ -65,6 +63,7 @@ async function onSubmit() {
 .composer {
 	display: block;
 	flex-shrink: 0;
+	border-top: var(--border);
 	padding-top: var(--spacing--sm);
 }
 
