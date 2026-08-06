@@ -2,26 +2,23 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 
-import { InboundAudienceService } from '@/modules/token-exchange/context-establishment-hooks/inbound-audience.service';
-import {
-	TokenExchangeAuthError,
-	TokenExchangeRequestError,
-} from '@/modules/token-exchange/token-exchange.errors';
-import type {
-	ExternalTokenClaims,
-	ResolvedTrustedKey,
-	ResourceServerTokenClaims,
-} from '@/modules/token-exchange/token-exchange.schemas';
-import {
-	ExternalTokenClaimsSchema,
-	ResourceServerTokenClaimsSchema,
-} from '@/modules/token-exchange/token-exchange.schemas';
-import { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type {
 	ExternalTokenVerifier,
 	VerifiedClaimResult,
 } from '@/services/external-token-verifier-proxy.service';
 
+import { InboundAudienceService } from '../context-establishment-hooks/inbound-audience.service';
+import { TokenExchangeAuthError, TokenExchangeRequestError } from '../identity-substrate.errors';
+import type {
+	ExternalTokenClaims,
+	ResolvedTrustedKey,
+	ResourceServerTokenClaims,
+} from '../identity-substrate.schemas';
+import {
+	ExternalTokenClaimsSchema,
+	ResourceServerTokenClaimsSchema,
+} from '../identity-substrate.schemas';
+import { TokenExchangeFailureReason } from '../identity-substrate.types';
 import { JtiStoreService } from './jti-store.service';
 import { TrustedKeyService } from './trusted-key.service';
 

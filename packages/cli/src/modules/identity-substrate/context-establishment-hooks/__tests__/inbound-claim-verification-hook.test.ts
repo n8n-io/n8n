@@ -5,8 +5,8 @@ import type { Mocked } from 'vitest';
 
 import type { ExternalTokenVerifierProxy } from '@/services/external-token-verifier-proxy.service';
 
-import { InboundClaimVerificationHook } from '../inbound-claim-verification-hook';
 import type { InboundAudienceService } from '../inbound-audience.service';
+import { InboundClaimVerificationHook } from '../inbound-claim-verification-hook';
 
 function triggerItems(headers?: Record<string, unknown>): INodeExecutionData[] {
 	return [{ json: { headers } }];

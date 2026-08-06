@@ -188,7 +188,9 @@ describe('EmbedAuthController', () => {
 			const req = mock<AuthlessRequest>({ browserId: 'browser-id-789', ip: '10.0.0.1' });
 			const res = mock<Response>();
 			const query = new EmbedLoginQueryDto({ token: 'bad-token' });
-			const { TokenExchangeAuthError } = await import('../../token-exchange.errors.js');
+			const { TokenExchangeAuthError } = await import(
+				'@/modules/identity-substrate/identity-substrate.errors.js'
+			);
 			const { TokenExchangeFailureReason } = await import('../../token-exchange.types.js');
 			tokenExchangeService.embedLogin.mockRejectedValue(
 				new TokenExchangeAuthError(

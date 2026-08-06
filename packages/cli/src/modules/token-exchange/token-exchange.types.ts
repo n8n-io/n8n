@@ -1,24 +1,11 @@
 import type { TOKEN_EXCHANGE_GRANT_TYPE } from './token-exchange.schemas';
 
-export const TokenExchangeFailureReason = {
-	InvalidSignature: 'invalid_signature',
-	UnknownKey: 'unknown_key',
-	TokenReplay: 'token_replay',
-	TokenTooLong: 'token_too_long',
-	TokenNearExpiry: 'token_near_expiry',
-	InvalidFormat: 'invalid_format',
-	MissingKid: 'missing_kid',
-	MissingIss: 'missing_iss',
-	AudienceRequired: 'audience_required',
-	InvalidClaims: 'invalid_claims',
-	InternalError: 'internal_error',
-	RoleNotAllowed: 'role_not_allowed',
-	EmailNotVerified: 'email_not_verified',
-	Other: 'other',
-} as const;
-
-export type TokenExchangeFailureReason =
-	(typeof TokenExchangeFailureReason)[keyof typeof TokenExchangeFailureReason];
+// Re-exported so existing call sites (controllers, events, other modules)
+// that import `TokenExchangeFailureReason` from here keep working unchanged
+// - the enum itself is substrate-owned (see `identity-substrate.types.ts`)
+// since `IdentityResolutionService` throws it too and can't depend on this
+// (consumer) module.
+export { TokenExchangeFailureReason } from '@/modules/identity-substrate/identity-substrate.types';
 
 export interface IssuedTokenResult {
 	accessToken: string;

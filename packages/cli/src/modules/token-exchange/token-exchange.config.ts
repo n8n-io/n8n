@@ -14,31 +14,6 @@ export class TokenExchangeConfig {
 	@Env('N8N_TOKEN_EXCHANGE_MAX_TOKEN_TTL')
 	maxTokenTtl: number = 900;
 
-	@Env('N8N_TOKEN_EXCHANGE_EXCLUDE_OWNER')
-	excludeOwner: boolean = true;
-
-	/**
-	 * JSON array of trusted key sources for JWT verification.
-	 * Each entry is validated against `TrustedKeySourceSchema`.
-	 *
-	 * Can also be loaded from a file by setting `N8N_TOKEN_EXCHANGE_TRUSTED_KEYS_FILE`
-	 * to a path — the `@Env` decorator reads the file contents automatically.
-	 */
-	@Env('N8N_TOKEN_EXCHANGE_TRUSTED_KEYS')
-	trustedKeys: string = '';
-
-	/** Interval in seconds between trusted key refresh runs (leader only). */
-	@Env('N8N_TOKEN_EXCHANGE_KEY_REFRESH_INTERVAL_SECONDS')
-	keyRefreshIntervalSeconds: number = 300;
-
-	/** Interval in seconds between JTI cleanup runs. */
-	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_INTERVAL_SECONDS')
-	jtiCleanupIntervalSeconds: number = 60;
-
-	/** Maximum number of expired JTI rows to delete per cleanup run. */
-	@Env('N8N_TOKEN_EXCHANGE_JTI_CLEANUP_BATCH_SIZE')
-	jtiCleanupBatchSize: number = 1000;
-
 	/** Maximum number of embed logins per ip per minute. */
 	@Env('N8N_TOKEN_EXCHANGE_EMBED_LOGIN_PER_MINUTE')
 	rateLimitEmbedLogin: number = 20;
@@ -46,24 +21,4 @@ export class TokenExchangeConfig {
 	/** Maximum number of token exchanges per ip per minute. */
 	@Env('N8N_TOKEN_EXCHANGE_TOKEN_EXCHANGE_PER_MINUTE')
 	rateLimitTokenExchange: number = 20;
-
-	/**
-	 * Audience external tokens must target to be accepted on surfaces with no
-	 * protected resource to resolve a per-surface audience from (e.g. the
-	 * dynamic-credentials connect flow). Defaults to the instance base URL
-	 * when unset. Webhook/MCP triggers don't use this - see
-	 * `ProtectedResourceRegistry` for their per-`(workflow, triggerNode)`
-	 * resolution.
-	 */
-	@Env('N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE')
-	inboundAudience: string = '';
-
-	/**
-	 * Claim to use as the effective subject for SSO-derived trusted key
-	 * sources, instead of the standard `sub` claim - e.g. `uid` for an Okta
-	 * custom authorization server, whose access-token `sub` is often the
-	 * user's login rather than a stable id. Instance-wide, not per-issuer.
-	 */
-	@Env('N8N_TOKEN_EXCHANGE_INBOUND_SUBJECT_CLAIM')
-	inboundSubjectClaim: string = '';
 }

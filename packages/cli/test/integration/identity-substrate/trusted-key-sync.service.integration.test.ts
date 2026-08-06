@@ -5,9 +5,9 @@ import { InstanceSettings } from 'n8n-core';
 import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
 import { TrustedKeySourceRepository } from '@/modules/identity-substrate/database/repositories/trusted-key-source.repository';
 import { TrustedKeyRepository } from '@/modules/identity-substrate/database/repositories/trusted-key.repository';
+import { IdentitySubstrateConfig } from '@/modules/identity-substrate/identity-substrate.config';
+import type { TrustedKeyData } from '@/modules/identity-substrate/identity-substrate.schemas';
 import { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
-import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
-import type { TrustedKeyData } from '@/modules/token-exchange/token-exchange.schemas';
 
 // ──────────────────────────────────────────────────────────────────────
 // Pre-generated PEM public keys (test-only, no secrets)
@@ -75,7 +75,7 @@ async function insertSource(
 // Setup / Teardown
 // ──────────────────────────────────────────────────────────────────────
 
-const config = mockInstance(TokenExchangeConfig, {
+const config = mockInstance(IdentitySubstrateConfig, {
 	trustedKeys: '',
 	keyRefreshIntervalSeconds: 300,
 });

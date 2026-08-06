@@ -8,11 +8,11 @@ import { mock } from 'vitest-mock-extended';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import { TokenExchangeAuthError } from '@/modules/identity-substrate/identity-substrate.errors';
 import type { AuthlessRequest } from '@/requests';
 
 import { TokenExchangeService } from '../../services/token-exchange.service';
 import { TokenExchangeConfig } from '../../token-exchange.config';
-import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '../../token-exchange.schemas';
 import { TokenExchangeFailureReason, type IssuedTokenResult } from '../../token-exchange.types';
 import { TokenExchangeController } from '../token-exchange.controller';
@@ -35,8 +35,6 @@ describe('TokenExchangeController', () => {
 		vi.resetAllMocks();
 		tokenExchangeConfig.enabled = true;
 		tokenExchangeConfig.maxTokenTtl = 900;
-		tokenExchangeConfig.jtiCleanupIntervalSeconds = 60;
-		tokenExchangeConfig.jtiCleanupBatchSize = 1000;
 		req = mock<AuthlessRequest>({ ip: '127.0.0.1' });
 		res = mock<Response>();
 		res.status.mockReturnThis();

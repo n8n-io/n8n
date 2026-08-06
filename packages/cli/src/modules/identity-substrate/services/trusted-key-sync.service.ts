@@ -10,20 +10,19 @@ import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
 import { createHash, createPublicKey } from 'node:crypto';
 import { z } from 'zod';
 
-import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
+import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
+import { TrustedKeyEntity } from '../database/entities/trusted-key.entity';
+import { TrustedKeySourceRepository } from '../database/repositories/trusted-key-source.repository';
+import { IdentitySubstrateConfig } from '../identity-substrate.config';
 import type {
 	JwksKeySource,
 	JwtAlgorithm,
 	StaticKeySource,
 	TrustedKeyData,
 	TrustedKeySource,
-} from '@/modules/token-exchange/token-exchange.schemas';
-import { TrustedKeySourceSchema } from '@/modules/token-exchange/token-exchange.schemas';
-
+} from '../identity-substrate.schemas';
+import { TrustedKeySourceSchema } from '../identity-substrate.schemas';
 import { JwksResolverService } from './jwks-resolver';
-import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '../database/entities/trusted-key.entity';
-import { TrustedKeySourceRepository } from '../database/repositories/trusted-key-source.repository';
 
 type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
 
@@ -70,7 +69,7 @@ export class TrustedKeySyncService {
 
 	constructor(
 		logger: Logger,
-		private readonly config: TokenExchangeConfig,
+		private readonly config: IdentitySubstrateConfig,
 		private readonly trustedKeySourceRepository: TrustedKeySourceRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbLockService: DbLockService,

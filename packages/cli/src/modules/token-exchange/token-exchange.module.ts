@@ -52,7 +52,9 @@ export class TokenExchangeModule implements ModuleInterface {
 		const { IdentityResolutionProxy } = await import(
 			'@/services/identity-resolution-proxy.service.js'
 		);
-		const { IdentityResolutionService } = await import('./services/identity-resolution.service.js');
+		const { IdentityResolutionService } = await import(
+			'@/modules/identity-substrate/services/identity-resolution.service.js'
+		);
 		Container.get(IdentityResolutionProxy).registerProvider(
 			Container.get(IdentityResolutionService),
 		);
@@ -61,7 +63,9 @@ export class TokenExchangeModule implements ModuleInterface {
 		// registers this class into ContextEstablishmentHookMetadata at
 		// class-evaluation time; ExecutionContextHookRegistry.init() discovers
 		// it later.
-		await import('./context-establishment-hooks/inbound-claim-verification-hook.js');
+		await import(
+			'@/modules/identity-substrate/context-establishment-hooks/inbound-claim-verification-hook.js'
+		);
 
 		await import('./controllers/token-exchange.controller.js');
 		await import('./controllers/embed-auth.controller.js');

@@ -3,16 +3,12 @@ import { Service } from '@n8n/di';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
 
-import type {
-	ResolvedTrustedKey,
-	TrustedKeyData,
-} from '@/modules/token-exchange/token-exchange.schemas';
-import { TrustedKeyDataSchema } from '@/modules/token-exchange/token-exchange.schemas';
-
 import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
 import { TrustedKeyEntity } from '../database/entities/trusted-key.entity';
 import { TrustedKeySourceRepository } from '../database/repositories/trusted-key-source.repository';
 import { TrustedKeyRepository } from '../database/repositories/trusted-key.repository';
+import type { ResolvedTrustedKey, TrustedKeyData } from '../identity-substrate.schemas';
+import { TrustedKeyDataSchema } from '../identity-substrate.schemas';
 
 /**
  * Read-only lookups over trusted public keys for JWT signature verification.

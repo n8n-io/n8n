@@ -4,7 +4,7 @@ import type { INode, Workflow } from 'n8n-workflow';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-import { TokenExchangeConfig } from '../token-exchange.config';
+import { IdentitySubstrateConfig } from '../identity-substrate.config';
 
 export type ExpectedAudienceResult =
 	| { audiences: string[]; reason?: undefined }
@@ -33,7 +33,7 @@ export type ExpectedAudienceResult =
 export class InboundAudienceService {
 	constructor(
 		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
-		private readonly config: TokenExchangeConfig,
+		private readonly config: IdentitySubstrateConfig,
 		private readonly urlService: UrlService,
 	) {}
 

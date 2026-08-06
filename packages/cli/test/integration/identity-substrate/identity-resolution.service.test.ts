@@ -9,13 +9,13 @@ import {
 import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
-import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
+import { IdentitySubstrateConfig } from '@/modules/identity-substrate/identity-substrate.config';
+import type { ExternalTokenClaims } from '@/modules/identity-substrate/identity-substrate.schemas';
 import {
 	IdentityResolutionService,
 	qualifiedProviderId,
-} from '@/modules/token-exchange/services/identity-resolution.service';
-import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
-import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
+} from '@/modules/identity-substrate/services/identity-resolution.service';
+import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 import { EXTERNAL_IDENTITY_PASSWORD_PLACEHOLDER } from '@/services/identity-binding.service';
 
 import { createOwner, createUser } from '../shared/db/users';
@@ -28,7 +28,7 @@ let trustedKeyService: TrustedKeyService;
 let eventService: EventService;
 
 beforeAll(async () => {
-	await testModules.loadModules(['identity-substrate', 'token-exchange']);
+	await testModules.loadModules(['identity-substrate']);
 	await testDb.init();
 
 	service = Container.get(IdentityResolutionService);
@@ -305,7 +305,7 @@ describe('IdentityResolutionService (integration)', () => {
 
 	describe('profile and role sync', () => {
 		it('rejects a global:owner user by default (excludeOwner)', async () => {
-			Container.get(TokenExchangeConfig).excludeOwner = true;
+			Container.get(IdentitySubstrateConfig).excludeOwner = true;
 			const owner = await createOwner();
 			await authIdentityRepository.save(
 				AuthIdentity.create(owner, providerIdFor('ext-owner'), 'token-exchange'),
