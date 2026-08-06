@@ -49,7 +49,7 @@ export type McpRegistryServer = {
 	isOfficial: boolean;
 	origin: 'registry';
 	status: McpRegistryServerStatus;
-	// FIXME: api returns {data?: string[]} not string[]
+	/** Normalized from the registry API's Strapi relation wrapper by `McpRegistryApiClient`. */
 	tags?: string[];
 	extendsCredential?: McpRegistryExtendsCredential;
 };

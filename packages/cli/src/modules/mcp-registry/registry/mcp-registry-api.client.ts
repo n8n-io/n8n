@@ -13,10 +13,27 @@ const MCP_SERVERS_PRODUCTION_URL = 'https://api.n8n.io/api/mcp-servers';
 /** Strapi's qs parser has an arrayLimit of 100 */
 const STRAPI_ARRAY_LIMIT = 100;
 
+/**
+ * `tags` is a Strapi relation, so the API wraps it in `{ data }`. `paginatedRequest`
+ * only unwraps the top-level entity, not nested relations, so it arrives wrapped
+ * and has to be flattened here before it reaches the entity and the DTO.
+ */
+type RawMcpRegistryServer = Omit<McpRegistryServer, 'tags'> & {
+	tags?: string[] | { data?: string[] };
+};
+
+function normalizeServer(server: RawMcpRegistryServer): McpRegistryServer {
+	const { tags, ...rest } = server;
+
+	if (tags === undefined || tags === null) return rest;
+
+	return { ...rest, tags: Array.isArray(tags) ? tags : (tags.data ?? []) };
+}
+
 @Service()
 export class McpRegistryApiClient {
 	async fetchAllServers(): Promise<McpRegistryServer[]> {
-		return await paginatedRequest<McpRegistryServer>(
+		const servers = await paginatedRequest<RawMcpRegistryServer>(
 			this.getUrl(),
 			{
 				pagination: { page: 1, pageSize: 25 },
@@ -25,6 +42,8 @@ export class McpRegistryApiClient {
 				throwOnError: true,
 			},
 		);
+
+		return servers.map(normalizeServer);
 	}
 
 	async fetchServersMetadata(): Promise<McpRegistryServerMetadata[]> {
@@ -44,7 +63,7 @@ export class McpRegistryApiClient {
 		const data: McpRegistryServer[] = [];
 		for (let i = 0; i < slugs.length; i += STRAPI_ARRAY_LIMIT) {
 			const batch = slugs.slice(i, i + STRAPI_ARRAY_LIMIT);
-			const batchData = await paginatedRequest<McpRegistryServer>(
+			const batchData = await paginatedRequest<RawMcpRegistryServer>(
 				this.getUrl(),
 				{
 					filters: {
@@ -58,7 +77,7 @@ export class McpRegistryApiClient {
 					throwOnError: true,
 				},
 			);
-			data.push(...batchData);
+			data.push(...batchData.map(normalizeServer));
 		}
 
 		return data;

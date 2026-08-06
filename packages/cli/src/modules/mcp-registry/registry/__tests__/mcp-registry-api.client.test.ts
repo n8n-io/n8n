@@ -274,4 +274,48 @@ describe('McpRegistryApiClient', () => {
 			expect(result).toEqual([...batch1, ...batch2]);
 		});
 	});
+
+	describe('tags normalization', () => {
+		const rawServer = (tags: unknown) => ({ slug: 'notion', name: 'Notion', tags });
+
+		it('should unwrap the Strapi relation wrapper into a flat array', async () => {
+			mockPaginatedRequest.mockResolvedValue([rawServer({ data: ['productivity', 'docs'] })]);
+
+			const [server] = await client.fetchAllServers();
+
+			expect(server.tags).toEqual(['productivity', 'docs']);
+		});
+
+		it('should pass an already flat array through unchanged', async () => {
+			mockPaginatedRequest.mockResolvedValue([rawServer(['productivity', 'docs'])]);
+
+			const [server] = await client.fetchAllServers();
+
+			expect(server.tags).toEqual(['productivity', 'docs']);
+		});
+
+		it('should treat a wrapper with no data as an empty list', async () => {
+			mockPaginatedRequest.mockResolvedValue([rawServer({})]);
+
+			const [server] = await client.fetchAllServers();
+
+			expect(server.tags).toEqual([]);
+		});
+
+		it('should leave a server without tags untouched', async () => {
+			mockPaginatedRequest.mockResolvedValue([{ slug: 'notion', name: 'Notion' }]);
+
+			const [server] = await client.fetchAllServers();
+
+			expect(server).not.toHaveProperty('tags');
+		});
+
+		it('should normalize tags fetched by slug as well', async () => {
+			mockPaginatedRequest.mockResolvedValue([rawServer({ data: ['issue-tracking'] })]);
+
+			const [server] = await client.fetchServersBySlugs(['linear']);
+
+			expect(server.tags).toEqual(['issue-tracking']);
+		});
+	});
 });
