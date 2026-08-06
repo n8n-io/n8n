@@ -473,7 +473,10 @@ describe('workflows tool', () => {
 				note: STRUCTURE_ONLY_NOTE,
 			});
 			const codegenInput = vi.mocked(generateWorkflowCode).mock.calls[0][0];
-			expect(codegenInput).toMatchObject({ name: 'Test WF' });
+			expect(codegenInput).toMatchObject({
+				workflow: { name: 'Test WF' },
+				omitPositions: true,
+			});
 			expect(JSON.stringify(codegenInput)).not.toContain('conditions');
 		});
 

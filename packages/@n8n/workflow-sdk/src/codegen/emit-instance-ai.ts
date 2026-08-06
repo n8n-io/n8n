@@ -22,7 +22,9 @@ function generateWorkflowCode(workflow: WorkflowJSON): string {
 	const graph = buildSemanticGraph(workflow);
 	annotateGraph(graph);
 	const tree = buildCompositeTree(graph);
-	return generateCode(tree, workflow, graph, {});
+	// The builder agent never writes positions (layout is recomputed on build),
+	// so the instance-ai flavor omits them for fidelity with agent-written code.
+	return generateCode(tree, workflow, graph, { omitPositions: true });
 }
 
 /**

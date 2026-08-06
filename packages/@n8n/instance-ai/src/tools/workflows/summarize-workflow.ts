@@ -75,15 +75,18 @@ export async function summarizeWorkflowStructure(
 	try {
 		const { generateWorkflowCode } = await import('@n8n/workflow-sdk');
 		return generateWorkflowCode({
-			name,
-			nodes: nodes.map((node) => ({
-				id: node.name,
-				name: node.name,
-				type: node.type,
-				typeVersion: node.typeVersion ?? 1,
-				position: [node.position[0] ?? 0, node.position[1] ?? 0],
-			})),
-			connections: toConnections(connections),
+			workflow: {
+				name,
+				nodes: nodes.map((node) => ({
+					id: node.name,
+					name: node.name,
+					type: node.type,
+					typeVersion: node.typeVersion ?? 1,
+					position: [node.position[0] ?? 0, node.position[1] ?? 0],
+				})),
+				connections: toConnections(connections),
+			},
+			omitPositions: true,
 		});
 	} catch {
 		return [

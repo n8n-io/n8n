@@ -48,6 +48,8 @@ export interface GenerateWorkflowCodeOptions {
 	valuesExcluded?: boolean;
 	/** Node names whose output schema was derived from pin data rather than real execution output */
 	pinnedNodes?: string[];
+	/** Skip `position: [x, y]` in emitted configs (builder-agent consumers recompute layout). */
+	omitPositions?: boolean;
 }
 
 // Re-export individual functions for testing and extension
@@ -107,6 +109,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		executionData,
 		valuesExcluded,
 		pinnedNodes,
+		omitPositions,
 	} = isOptionsObject(input)
 		? input
 		: {
@@ -116,6 +119,7 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 				executionData: undefined,
 				valuesExcluded: undefined,
 				pinnedNodes: undefined,
+				omitPositions: undefined,
 			};
 
 	// Phase 1: Build semantic graph
@@ -150,5 +154,6 @@ export function generateWorkflowCode(input: WorkflowJSON | GenerateWorkflowCodeO
 		workflowStatusJSDoc: workflowStatusJSDoc || undefined,
 		valuesExcluded,
 		pinnedNodes: pinnedNodes ? new Set(pinnedNodes) : undefined,
+		omitPositions,
 	});
 }

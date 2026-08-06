@@ -56,6 +56,12 @@ export interface ExecutionContextOptions {
 	valuesExcluded?: boolean;
 	/** Node names whose output schema was derived from pin data */
 	pinnedNodes?: Set<string>;
+	/**
+	 * Skip `position: [x, y]` in emitted configs. For builder-agent consumers
+	 * the build recomputes layout and restores saved positions, so emitting
+	 * them only invites the agent to hand-maintain coordinates.
+	 */
+	omitPositions?: boolean;
 }
 
 /**
@@ -76,6 +82,7 @@ interface GenerationContext {
 	workflowStatusJSDoc?: string;
 	valuesExcluded?: boolean;
 	pinnedNodes?: Set<string>;
+	omitPositions?: boolean;
 }
 
 /**
@@ -114,7 +121,7 @@ function generateSubnodeCall(
 		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
-	const pos = subnodeNode.json.position;
+	const pos = ctx.omitPositions ? undefined : subnodeNode.json.position;
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
@@ -304,7 +311,7 @@ function generateSubnodeCallWithVarRefs(
 		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
-	const pos = subnodeNode.json.position;
+	const pos = ctx.omitPositions ? undefined : subnodeNode.json.position;
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
@@ -432,7 +439,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	// Include position if non-zero
-	const pos = node.json.position;
+	const pos = ctx.omitPositions ? undefined : node.json.position;
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
@@ -590,7 +597,7 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 		options.push(`height: ${Number(params.height)}`);
 	}
 
-	const pos = node.json.position;
+	const pos = ctx.omitPositions ? undefined : node.json.position;
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		options.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
@@ -627,7 +634,7 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 	}
 
 	// Include position if non-zero
-	const pos = node.json.position;
+	const pos = ctx.omitPositions ? undefined : node.json.position;
 	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
@@ -1346,6 +1353,7 @@ export function generateCode(
 		workflowStatusJSDoc: executionContext?.workflowStatusJSDoc,
 		valuesExcluded: executionContext?.valuesExcluded,
 		pinnedNodes: executionContext?.pinnedNodes,
+		omitPositions: executionContext?.omitPositions,
 	};
 
 	// Pre-register all node variable names to detect and resolve collisions.
