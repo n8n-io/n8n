@@ -31,6 +31,7 @@ interface CollectedSchedule {
  */
 interface PendingNode {
 	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds: number | undefined;
 	rules: CollectedSchedule[];
 }
 
@@ -170,6 +171,7 @@ export class ScheduleTriggerJobRegistrar {
 				const collected: CollectedSchedule[] = [];
 				pending.set(pendingKey(workflow.id, node.id), {
 					misfirePolicy: resolveMisfirePolicy(node),
+					misfireGraceSeconds: resolveMisfireGraceSeconds(node),
 					rules: collected,
 				});
 
@@ -218,7 +220,13 @@ export class ScheduleTriggerJobRegistrar {
 				const entry = pending.get(key);
 				if (entry !== undefined) {
 					pending.delete(key);
-					await this.provisionCollected(workflowId, nodeId, entry.rules, entry.misfirePolicy);
+					await this.provisionCollected(
+						workflowId,
+						nodeId,
+						entry.rules,
+						entry.misfirePolicy,
+						entry.misfireGraceSeconds,
+					);
 				}
 			},
 
@@ -301,6 +309,7 @@ export class ScheduleTriggerJobRegistrar {
 		nodeId: string,
 		collected: CollectedSchedule[],
 		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds: number | undefined,
 	): Promise<void> {
 		const seen = new Map<string, number>();
 		const desired = collected.map(({ schedule, firstRunAt }) => {
@@ -322,6 +331,7 @@ export class ScheduleTriggerJobRegistrar {
 			{ ...payload },
 			desired,
 			misfirePolicy,
+			misfireGraceSeconds,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
@@ -424,4 +434,11 @@ function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 	return node.parameters?.misfirePolicy === ScheduledJobMisfirePolicy.Coalesce
 		? ScheduledJobMisfirePolicy.Coalesce
 		: ScheduledJobMisfirePolicy.Skip;
+}
+
+function resolveMisfireGraceSeconds(node: INode): number | undefined {
+	const graceSeconds = node.parameters?.misfireGraceSeconds;
+	return typeof graceSeconds === 'number' && Number.isInteger(graceSeconds) && graceSeconds > 0
+		? graceSeconds
+		: undefined;
 }
