@@ -24,7 +24,7 @@ workflows are untouched (that is MCP-7).
 
 ```mermaid
 flowchart TD
-    Toggle["Settings row<br/>SettingsMCPWorkflowsView.vue"] -->|PATCH /rest/mcp/settings| Ctrl[McpSettingsController]
+    Toggle["Settings row<br/>SettingsMCPView.vue"] -->|PATCH /rest/mcp/settings| Ctrl[McpSettingsController]
     Ctrl --> Svc[McpSettingsService]
     Svc --> Store[("settings table<br/>mcp.autoExposeNewWorkflows")]
     Svc --> Cache[(CacheService)]
@@ -84,27 +84,36 @@ endpoint mirroring `PATCH /oauth/allowed-redirect-uris` — would avoid touching
 the existing DTO contract but adds a third settings endpoint to the same
 controller.)
 
-- `update-mcp-settings.dto.ts` — make both fields optional, plus a `.refine()`
-  requiring at least one to be present.
-- `mcp.settings.controller.ts` — write each field only when present. Keep the
+- `update-mcp-settings.dto.ts` — make both fields optional. `Z.class` takes a
+  `ZodRawShape`, so it cannot carry an object-level refinement ("at least one of
+  these two fields") — do **not** reassign the class's static `parse`/
+  `safeParse` with a `.refine()`d schema to work around that; an early attempt
+  did exactly this and it was rejected as a hack (it monkey-patches a class
+  after definition and is silently bypassed by any caller that reaches for
+  `.schema.safeParse()` directly).
+- `mcp.settings.controller.ts` — enforce "at least one field present" as the
+  handler's **first statement**, throwing `BadRequestError` before the
+  `mcpManagedByEnv` check. Then write each field only when present. Keep the
   existing `mcpManagedByEnv` guard and the `refreshModuleSettings('mcp')` call.
   Keep emitting `mcp-access-updated` only when `mcpAccessEnabled` was present.
 - `mcp.module.ts` `settings()` — add `autoExposeNewWorkflows`.
 
-**Why the refinement is required, not optional strictness.** `Z.class` is a plain
-`z.object` ([zod-class.ts](../../../packages/@n8n/api-types/src/zod-class.ts)) and
-`mcpAccessEnabled` is currently required, so an empty `{}` body is rejected today.
-Making both fields optional silently converts that 400 into a 200-that-does-
-nothing. Verified against zod directly:
+**Why the guard lives in the handler, not the DTO.** `mcpAccessEnabled` is
+currently required, so an empty `{}` body is rejected today. Making both fields
+optional silently converts that 400 into a 200-that-does-nothing unless
+something still enforces the non-empty constraint. Verified against zod
+directly:
 
-| DTO shape | `{}` |
+| Enforcement point | `{}` |
 |---|---|
 | Today (`mcpAccessEnabled` required) | rejected |
-| Naive both-optional | accepted → silent no-op |
-| Both-optional + `.refine()` | rejected |
+| Naive both-optional DTO, no handler guard | accepted → silent no-op |
+| Both-optional DTO + explicit handler guard | rejected |
 
-The refinement preserves existing behaviour through a change that would otherwise
-loosen it.
+Because rejection now lives in the handler rather than the DTO, the test for it
+must assert at the handler level (and a real-HTTP test must cover the 400
+through the actual Express stack) — a DTO-only unit test would pass vacuously,
+since the DTO itself now accepts `{}` by design.
 
 ### Where seeding happens
 
@@ -158,8 +167,14 @@ keeps per-workflow opt-out working, keeps the settings table accurate, and avoid
   only write in the store, and no store reads the value optimistically before
   the POST response — the response carries the saved `settings`, so the client
   uses what it is given.
-- Settings row at the top of `SettingsMCPWorkflowsView.vue`: `ElSwitch` +
-  `N8nText` label and description.
+- Settings row on `SettingsMCPView.vue` — the top-level `/settings/mcp` page,
+  **not** `SettingsMCPWorkflowsView.vue` (a drill-down sub-page reached by
+  clicking "Workflows exposed"; an early attempt built the row there by
+  mistake and it had to be moved). Placed as a new `N8nSettingsRowGroup` inside
+  the existing "Access" section, after the "Workflows/Agents exposed" group and
+  before "Allowed callback URLs" — matching the page's existing
+  `N8nSettingsRow` + `#action` pattern (an `ElSwitch` in the action slot, like
+  `McpStatusControl` above it), not a bespoke layout.
 - Gated on `mcp:manage`; disabled with the existing `managedByEnv` tooltip when
   `mcpManagedByEnv`; rendered only under `EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT`.
 - Store action in `mcp.store.ts` + field in `mcp.api.ts`.
@@ -212,7 +227,7 @@ success while nothing changed.
 | `mcp.settings.controller` | patching one field leaves the other untouched (guards finding #2); env guard still rejects; `mcp-access-updated` not emitted for an auto-expose-only patch |
 | `workflow-creation.service` | seeds `true` when `availableInMCP` unset and setting on; respects explicit `false`; respects explicit `true`; no seed when setting off |
 | `mcp.module` | `settings()` includes `autoExposeNewWorkflows` |
-| `SettingsMCPWorkflowsView` | row renders for `mcp:manage`; hidden for member; disabled under `managedByEnv`; hidden without the experiment flag |
+| `SettingsMCPView` | row renders for `mcp:manage` + experiment on; hidden for member; hidden without the experiment flag; disabled (not hidden) under `managedByEnv` |
 
 Mock external dependencies; reuse hoisted `mock<T>()` fixtures. `packages/cli`
 tests use `createVitestConfigWithDecorators`.
