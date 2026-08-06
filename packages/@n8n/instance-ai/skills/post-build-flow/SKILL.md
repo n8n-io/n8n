@@ -159,7 +159,7 @@ again.
 
 ## Error workflow follow-up
 
-This follow-up comes after only after a direct new primary workflow is successfully published.
+This follow-up comes only after a direct new primary workflow is successfully published.
 
 If you just built an Error Trigger workflow because the user opted into adding
 one for a known target workflow, do not ask whether to build another error
