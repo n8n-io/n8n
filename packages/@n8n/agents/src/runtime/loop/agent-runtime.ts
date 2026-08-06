@@ -372,7 +372,7 @@ export class AgentRuntime {
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
 		if (!isCancellation(resumeData) && resumeSchema) {
-			const parseResult = await parseWithSchema(resumeSchema, data);
+			const parseResult = await parseWithSchema(resumeSchema, data, { stripUnknown: true });
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
