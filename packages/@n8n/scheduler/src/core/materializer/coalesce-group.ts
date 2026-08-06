@@ -29,20 +29,18 @@ export function coalesceSiblingCatchUps(planned: PlannedJob[]): PlannedJob[] {
 	return planned.map((entry) => (losers.has(entry) ? dropCatchUp(entry) : entry));
 }
 
-function isOwnerCatchUp({ job, plan }: PlannedJob): boolean {
-	return (
-		job.ownerKey !== null &&
-		job.misfirePolicy === ScheduledJobMisfirePolicy.CoalesceOwner &&
-		plan.catchUpAt !== null
-	);
+function ownerCatchUpAt({ job, plan }: PlannedJob): Date | null {
+	if (job.ownerKey === null || job.misfirePolicy !== ScheduledJobMisfirePolicy.CoalesceOwner) {
+		return null;
+	}
+	return plan.catchUpAt;
 }
 
 function groupOwnerCatchUps(planned: PlannedJob[]): Map<string, GroupMember[]> {
 	const groups = new Map<string, GroupMember[]>();
 
 	for (const entry of planned) {
-		if (!isOwnerCatchUp(entry)) continue;
-		const { catchUpAt } = entry.plan;
+		const catchUpAt = ownerCatchUpAt(entry);
 		if (catchUpAt === null) continue;
 
 		const key = groupKey(entry.job);
