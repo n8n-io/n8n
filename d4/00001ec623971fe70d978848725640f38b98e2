@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/catalog/module.descriptor.ts
+  s_8a60b387177b0b::t_9e7c6c1c1760bb 1-22
+packages/frontend/editor-ui/src/features/catalog/catalog.store.ts
+  s_8a60b387177b0b::t_57431fe3a78703 1-41
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8a60b387177b0b::t_c38a65ffc7e551 5008-5017
+packages/frontend/editor-ui/src/features/catalog/catalog.store.test.ts
+  s_8a60b387177b0b::t_65057f984d6b68 1-58
+packages/frontend/editor-ui/src/features/catalog/catalog.api.ts
+  s_8a60b387177b0b::t_3d7fd0d07472d4 1-22
+packages/frontend/editor-ui/src/features/catalog/catalog.types.ts
+  s_8a60b387177b0b::t_8bc78a8ae5fec9 1-35
+packages/frontend/editor-ui/src/features/catalog/constants.ts
+  s_8a60b387177b0b::t_288df36f7191f1 1-2
+packages/frontend/editor-ui/src/features/catalog/CatalogView.vue
+  s_8a60b387177b0b::t_dcbf6438ba256f 2,14-66,68,73,75,78,80,82,84,87-91,95,99,102,104-107,113-116,119,121,123,137-165
+  s_8a60b387177b0b::t_17b442b0ff7176 1,67,69-72,74,76-77,79,81,83,85-86,92-94,96-98,100-101,103,108-112,117-118,120,122,124-136,166
+  s_8a60b387177b0b::t_441287e0dd5bd5 3-13
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_8a60b387177b0b::t_6d428029622a23 17
+  s_8a60b387177b0b::t_b86222ad2f1f5c 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d400001ec623971fe70d978848725640f38b98e2",
+  "prompts": {},
+  "sessions": {
+    "s_8a60b387177b0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6036dc6f-cbd9-4e33-aeb8-df572d6fed3b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
