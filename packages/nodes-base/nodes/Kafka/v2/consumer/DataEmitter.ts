@@ -34,6 +34,9 @@ export interface DataEmitterOptions {
 
 const DEFAULT_EXECUTION_TIMEOUT_SECONDS = 3600;
 
+const ADVANCE: EmitResult = { success: true };
+const HOLD_BACK: EmitResult = { success: false };
+
 /**
  * Builds the function that starts an execution for a chunk of items and decides
  * whether its offsets may advance. `success: false` means the caller must not
@@ -52,104 +55,131 @@ export function createDataEmitter(
 	options: DataEmitterOptions,
 	closeSignal: AbortSignal,
 ): DataEmitter {
-	const { resolveOffsetMode } = options;
+	return options.resolveOffsetMode === 'immediately'
+		? createImmediateEmitter(ctx, closeSignal)
+		: createAwaitingEmitter(ctx, options, closeSignal);
+}
 
-	if (resolveOffsetMode === 'immediately') {
-		return async (items) => {
-			// Never start an execution once the trigger is closing.
-			if (closeSignal.aborted) return { success: false };
-			ctx.emit([items]);
-			return { success: true };
-		};
-	}
+/** Hands the chunk over and advances at once, without waiting for the run. */
+function createImmediateEmitter(ctx: DataEmitterContext, closeSignal: AbortSignal): DataEmitter {
+	return async (items) => {
+		// Never start an execution once the trigger is closing.
+		if (closeSignal.aborted) return HOLD_BACK;
+		ctx.emit([items]);
+		return ADVANCE;
+	};
+}
 
-	const allowedStatuses: string[] = [];
-	if (resolveOffsetMode === 'onSuccess') {
-		allowedStatuses.push('success');
-	} else if (resolveOffsetMode === 'onStatus') {
-		if (!options.allowedStatuses?.length) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				'At least one execution status must be selected to resolve offsets on selected statuses.',
-			);
-		}
-		allowedStatuses.push(...options.allowedStatuses);
-	}
-
-	const executionTimeoutSeconds =
-		options.executionTimeoutSeconds ?? DEFAULT_EXECUTION_TIMEOUT_SECONDS;
-	// n8n treats a workflow timeout of <= 0 as explicitly unbounded
-	// (workflow-execute-additional-data.ts:255). Handing that to setTimeout would
-	// fire on the next tick and fail every hand-off, so there is simply no local
-	// deadline in that case; close still ends the wait.
-	const isTimeoutBounded = executionTimeoutSeconds > 0;
+/** Waits for the execution and advances only if its status is allowed. */
+function createAwaitingEmitter(
+	ctx: DataEmitterContext,
+	options: DataEmitterOptions,
+	closeSignal: AbortSignal,
+): DataEmitter {
+	const allowedStatuses = resolveAllowedStatuses(ctx, options);
+	const deadlineSeconds = options.executionTimeoutSeconds ?? DEFAULT_EXECUTION_TIMEOUT_SECONDS;
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
-	// Rejects on close; kept handled so it can never become an unhandled rejection.
-	const abortPromise = new Promise<never>((_, reject) => {
-		closeSignal.addEventListener(
-			'abort',
-			() =>
-				reject(
-					new OperationalError(
-						'Trigger closed before the execution finished, offsets not resolved.',
-					),
-				),
-			{ once: true },
-		);
-	});
-	void abortPromise.catch(() => undefined);
+	// Two views of the same event: one to end a wait with a reason, one to cut a
+	// wait short quietly. Deriving the quiet one also keeps the rejection handled.
+	const closedWithReason = rejectOnClose(closeSignal);
+	const closedQuietly = closedWithReason.catch(() => undefined);
 
 	return async (items) => {
-		if (closeSignal.aborted) return { success: false };
+		if (closeSignal.aborted) return HOLD_BACK;
 
-		let timeoutId: NodeJS.Timeout | undefined;
 		try {
-			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
-			ctx.emit([items], undefined, responsePromise);
+			const run = await awaitExecution(ctx, items, deadlineSeconds, closedWithReason);
 
-			const waits: Array<Promise<IRun>> = [responsePromise.promise, abortPromise];
-			if (isTimeoutBounded) {
-				waits.push(
-					new Promise<IRun>((_, reject) => {
-						timeoutId = setTimeout(() => {
-							reject(
-								new NodeOperationError(
-									ctx.getNode(),
-									`Execution took longer than the configured workflow timeout of ${executionTimeoutSeconds} seconds to complete, offsets not resolved.`,
-								),
-							);
-						}, executionTimeoutSeconds * 1000);
-					}),
-				);
-			}
-
-			const run = await Promise.race(waits);
-
-			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
+			if (allowedStatuses && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
 					ctx.getNode(),
-					'Execution status is not allowed for resolving offsets, current status: ' + run.status,
+					`Execution status is not allowed for resolving offsets, current status: ${run.status}`,
 				);
 			}
 
-			return { success: true };
-		} catch (e) {
+			return ADVANCE;
+		} catch (caught) {
 			// The retry backoff must not delay teardown.
-			if (!closeSignal.aborted) {
-				await Promise.race([sleep(errorRetryDelay), abortPromise.catch(() => undefined)]);
-			}
-			const error = ensureError(e);
+			if (!closeSignal.aborted) await Promise.race([sleep(errorRetryDelay), closedQuietly]);
+
+			const error = ensureError(caught);
 			// Teardown cancelling an in-flight execution is expected, not a failure,
 			// so it must not surface as an error in the log.
-			if (closeSignal.aborted) {
-				ctx.logger.debug(error.message, { error });
-			} else {
-				ctx.logger.error(error.message, { error });
-			}
-			return { success: false };
-		} finally {
-			if (timeoutId) clearTimeout(timeoutId);
+			if (closeSignal.aborted) ctx.logger.debug(error.message, { error });
+			else ctx.logger.error(error.message, { error });
+
+			return HOLD_BACK;
 		}
 	};
+}
+
+/** The statuses that let the offset advance, or undefined when any status does. */
+function resolveAllowedStatuses(
+	ctx: DataEmitterContext,
+	options: DataEmitterOptions,
+): string[] | undefined {
+	if (options.resolveOffsetMode === 'onCompletion') return undefined;
+	if (options.resolveOffsetMode === 'onSuccess') return ['success'];
+
+	if (!options.allowedStatuses?.length) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'At least one execution status must be selected to resolve offsets on selected statuses.',
+		);
+	}
+	return options.allowedStatuses;
+}
+
+/** Rejects when the trigger closes, so a wait ends with a reason rather than hanging. */
+async function rejectOnClose(closeSignal: AbortSignal): Promise<never> {
+	return await new Promise<never>((_, reject) => {
+		const fail = () =>
+			reject(
+				new OperationalError('Trigger closed before the execution finished, offsets not resolved.'),
+			);
+		if (closeSignal.aborted) return fail();
+		closeSignal.addEventListener('abort', fail, { once: true });
+	});
+}
+
+/**
+ * Starts one execution and waits for it, bounded by the workflow's timeout and
+ * by close.
+ * @param deadlineSeconds - Zero or less means unbounded. n8n treats a workflow
+ * timeout of <= 0 that way (workflow-execute-additional-data.ts:255), and handing
+ * it to setTimeout would fire on the next tick and fail every hand-off.
+ */
+async function awaitExecution(
+	ctx: DataEmitterContext,
+	items: INodeExecutionData[],
+	deadlineSeconds: number,
+	closedWithReason: Promise<never>,
+): Promise<IRun> {
+	const response = ctx.helpers.createDeferredPromise<IRun>();
+	ctx.emit([items], undefined, response);
+
+	const finished = Promise.race([response.promise, closedWithReason]);
+	if (deadlineSeconds <= 0) return await finished;
+
+	let timer: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			finished,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(
+					() =>
+						reject(
+							new NodeOperationError(
+								ctx.getNode(),
+								`Execution took longer than the configured workflow timeout of ${deadlineSeconds} seconds to complete, offsets not resolved.`,
+							),
+						),
+					deadlineSeconds * 1000,
+				);
+			}),
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
 }
