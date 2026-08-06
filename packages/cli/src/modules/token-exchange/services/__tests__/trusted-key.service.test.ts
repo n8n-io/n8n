@@ -6,13 +6,14 @@ import { jsonParse } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '../../database/entities/trusted-key.entity';
-import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
-import type { TrustedKeyRepository } from '../../database/repositories/trusted-key.repository';
+import { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
+import { TrustedKeyEntity } from '@/modules/identity-substrate/database/entities/trusted-key.entity';
+import type { TrustedKeySourceRepository } from '@/modules/identity-substrate/database/repositories/trusted-key-source.repository';
+import type { TrustedKeyRepository } from '@/modules/identity-substrate/database/repositories/trusted-key.repository';
+import type { JwksResolverService } from '@/modules/identity-substrate/services/jwks-resolver';
+
 import type { TokenExchangeConfig } from '../../token-exchange.config';
 import type { TrustedKeyData } from '../../token-exchange.schemas';
-import type { JwksResolverService } from '../jwks-resolver';
 import { TrustedKeyService } from '../trusted-key.service';
 
 // ──────────────────────────────────────────────────────────────────────

@@ -28,7 +28,7 @@ let trustedKeyService: TrustedKeyService;
 let eventService: EventService;
 
 beforeAll(async () => {
-	await testModules.loadModules(['token-exchange']);
+	await testModules.loadModules(['identity-substrate', 'token-exchange']);
 	await testDb.init();
 
 	service = Container.get(IdentityResolutionService);

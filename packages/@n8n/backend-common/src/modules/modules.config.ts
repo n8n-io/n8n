@@ -28,6 +28,7 @@ export const MODULE_NAMES = [
 	'instance-ai',
 	'mcp-registry',
 	'otel',
+	'identity-substrate',
 	'token-exchange',
 	'instance-version-history',
 	'encryption-key-manager',

@@ -11,10 +11,12 @@ import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
 import { z } from 'zod';
 
-import { TrustedKeySourceEntity } from '../database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '../database/entities/trusted-key.entity';
-import { TrustedKeySourceRepository } from '../database/repositories/trusted-key-source.repository';
-import { TrustedKeyRepository } from '../database/repositories/trusted-key.repository';
+import { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
+import { TrustedKeyEntity } from '@/modules/identity-substrate/database/entities/trusted-key.entity';
+import { TrustedKeySourceRepository } from '@/modules/identity-substrate/database/repositories/trusted-key-source.repository';
+import { TrustedKeyRepository } from '@/modules/identity-substrate/database/repositories/trusted-key.repository';
+import { JwksResolverService } from '@/modules/identity-substrate/services/jwks-resolver';
+
 import { TokenExchangeConfig } from '../token-exchange.config';
 import type {
 	JwksKeySource,
@@ -25,7 +27,6 @@ import type {
 	TrustedKeySource,
 } from '../token-exchange.schemas';
 import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
-import { JwksResolverService } from './jwks-resolver';
 
 type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
 

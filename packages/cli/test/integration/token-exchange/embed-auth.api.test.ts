@@ -49,7 +49,7 @@ Container.get(InstanceSettings).markAsLeader();
 const testServer = utils.setupTestServer({
 	endpointGroups: ['auth'],
 	enabledFeatures: ['feat:tokenExchange'],
-	modules: ['token-exchange'],
+	modules: ['identity-substrate', 'token-exchange'],
 });
 
 function signEmbedToken(overrides: Record<string, unknown> = {}): string {

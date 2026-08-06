@@ -57,7 +57,7 @@ async function resolveViaTokenExchange(sub: string, email?: string) {
 }
 
 beforeAll(async () => {
-	await testModules.loadModules(['token-exchange']);
+	await testModules.loadModules(['identity-substrate', 'token-exchange']);
 	await testDb.init();
 
 	oidcService = Container.get(OidcService);

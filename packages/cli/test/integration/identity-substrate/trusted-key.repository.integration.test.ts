@@ -1,8 +1,8 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
-import { TrustedKeySourceRepository } from '@/modules/token-exchange/database/repositories/trusted-key-source.repository';
-import { TrustedKeyRepository } from '@/modules/token-exchange/database/repositories/trusted-key.repository';
+import { TrustedKeySourceRepository } from '@/modules/identity-substrate/database/repositories/trusted-key-source.repository';
+import { TrustedKeyRepository } from '@/modules/identity-substrate/database/repositories/trusted-key.repository';
 import type {
 	TrustedKeyData,
 	TrustedKeySourceStatus,
@@ -43,7 +43,7 @@ describe('TrustedKeySourceRepository & TrustedKeyRepository', () => {
 	let keyRepo: TrustedKeyRepository;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['token-exchange']);
+		await testModules.loadModules(['identity-substrate']);
 		await testDb.init();
 		sourceRepo = Container.get(TrustedKeySourceRepository);
 		keyRepo = Container.get(TrustedKeyRepository);
