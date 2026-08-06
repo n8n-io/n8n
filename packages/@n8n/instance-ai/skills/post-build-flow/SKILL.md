@@ -145,16 +145,13 @@ again.
 6. After setup completes or is applied, follow
    [Mocked verification live-test follow-up](#mocked-verification-live-test-follow-up)
    when the latest verification evidence used mocks or simulations.
-7. For a direct new primary workflow, ask about one step at a time: live test,
-   publish, then error workflow. Move to publishing only after the latest
-   version passes a real, full-path live test without mocks. Move to the error
-   workflow only after that version is published with user approval.
-8. Ask the user if they want to test the workflow (skip this if
-   `verify-built-workflow` already proved it works end-to-end with full
-   coverage). Only call `workflows(action="publish")` when the user explicitly
-   asks to publish. Never publish automatically.
-9. After the tested primary is published, follow
-   [Error workflow follow-up](#error-workflow-follow-up).
+7. For a direct new primary workflow, if the latest version has not passed a
+   real, full-path live test, ask whether the user wants to run
+   one. `verify-built-workflow` alone does not satisfy this requirement. If the user declines or defers, state what remains untested.
+8. After offering live test, ask whether the user wants to publish the primary
+   workflow. Only call `workflows(action="publish")` when the user explicitly
+   asks to publish. Never publish automatically. After publication succeeds,
+   follow [Error workflow follow-up](#error-workflow-follow-up).
 
 ## Error workflow follow-up
 
