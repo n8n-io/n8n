@@ -395,6 +395,88 @@ describe('UnifiedCredentialsPicker', () => {
 			await userEvent.click(screen.getByTestId('credential-edit-button'));
 			expect(emitted('edit')).toBeTruthy();
 		});
+
+		it('hides the pen when the selected end-user credential is not editable', () => {
+			renderComponent({
+				props: {
+					...baseProps,
+					selectedCredentialId: 'c2',
+					options: [option({ id: 'c2', name: 'OpenAI dynamic', isResolvable: true })],
+					canEdit: false,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-edit-button')).not.toBeInTheDocument();
+		});
+	});
+
+	// ─── Issues & availability ───────────────────────────────────────────────
+	describe('issues & availability', () => {
+		it('shows a warning with the issue list when the credential has issues', () => {
+			renderComponent({
+				props: {
+					...baseProps,
+					selectedCredentialId: 'c1',
+					options: [option()],
+					issues: ['Credential is not connected'],
+				},
+			});
+
+			expect(screen.getByTestId('ucp-issues-warning')).toBeInTheDocument();
+		});
+
+		it('shows no warning without issues', () => {
+			renderComponent({
+				props: { ...baseProps, selectedCredentialId: 'c1', options: [option()] },
+			});
+
+			expect(screen.queryByTestId('ucp-issues-warning')).not.toBeInTheDocument();
+		});
+
+		it('labels the trigger "{name} (unavailable)" when the stored credential no longer resolves', () => {
+			renderComponent({
+				props: {
+					...baseProps,
+					options: [option()],
+					selectedCredentialId: 'gone',
+					selectedCredentialName: 'Old key',
+					issues: ['Credential not found'],
+				},
+			});
+
+			expect(screen.getByTestId('node-credentials-select')).toHaveTextContent(
+				'Old key (unavailable)',
+			);
+		});
+	});
+
+	// ─── End-user credential indicator ───────────────────────────────────────
+	describe('end-user credential indicator', () => {
+		const resolvableProps = {
+			...baseProps,
+			selectedCredentialId: 'c2',
+			options: [option({ id: 'c2', name: 'OpenAI dynamic', isResolvable: true })],
+		};
+
+		it('shows the indicator next to the control when the selected credential is end-user', () => {
+			renderComponent({ props: { ...resolvableProps } });
+
+			expect(screen.getByTestId('node-credential-private-icon')).toBeInTheDocument();
+		});
+
+		it('keeps the indicator in readonly mode', () => {
+			renderComponent({ props: { ...resolvableProps, readonly: true } });
+
+			expect(screen.getByTestId('node-credential-private-icon')).toBeInTheDocument();
+		});
+
+		it('shows no indicator for a standard credential', () => {
+			renderComponent({
+				props: { ...baseProps, selectedCredentialId: 'c1', options: [option()] },
+			});
+
+			expect(screen.queryByTestId('node-credential-private-icon')).not.toBeInTheDocument();
+		});
 	});
 
 	// ─── Readonly & permissions ──────────────────────────────────────────────

@@ -13,10 +13,12 @@ import {
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nText,
+	N8nTooltip,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
+import TitledList from '@/app/components/TitledList.vue';
 import CredentialIcon from './CredentialIcon.vue';
 
 /** An own credential of this type, as listed in the menu. */
@@ -58,9 +60,20 @@ type Props = {
 	readonly?: boolean;
 	/** `create` gates the create / "use my own credential" rows. */
 	permissions: PermissionsRecord['credential'];
+	/** Issue messages for this credential row; renders the warning affordance. */
+	issues?: string[];
+	/** Name stored on the node's slot — labels the trigger "{name} (unavailable)" when it no longer resolves. */
+	selectedCredentialName?: string | null;
+	/** Whether the selected own credential may be edited (end-user credentials can be restricted). */
+	canEdit?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { showN8nCredits: true });
+const props = withDefaults(defineProps<Props>(), {
+	showN8nCredits: true,
+	issues: () => [],
+	selectedCredentialName: null,
+	canEdit: true,
+});
 
 const emit = defineEmits<{
 	/** The n8n credits row was picked. */
@@ -105,8 +118,19 @@ const selectedOption = computed(
 const ownCredentialSelected = computed(
 	() => !props.isAiGatewayManaged && selectedOption.value !== null,
 );
+const hasIssues = computed(() => props.issues.length > 0);
+/** The stored credential no longer resolves to a usable option (deleted/unshared) but is still named on the node. */
+const isUnavailable = computed(
+	() =>
+		!props.isAiGatewayManaged &&
+		!ownCredentialSelected.value &&
+		hasIssues.value &&
+		!!props.selectedCredentialName,
+);
 /** Nothing selected → compact "Connect to {node}" button; otherwise a full-width select. */
-const hasSelection = computed(() => props.isAiGatewayManaged || ownCredentialSelected.value);
+const hasSelection = computed(
+	() => props.isAiGatewayManaged || ownCredentialSelected.value || isUnavailable.value,
+);
 const hasOwnCredentials = computed(() => props.options.length > 0);
 /** Before the first own credential exists, the menu is the two-choice entry list, not the full list. */
 const showEntryMenu = computed(() => !props.isAiGatewayManaged && !hasOwnCredentials.value);
@@ -197,11 +221,11 @@ const items = computed<Item[]>(() => [
 	createItem.value,
 ]);
 
-/** Leading icon on the trigger; null means the service icon (entry state). */
+/** Leading icon on the trigger; null means the service icon (entry and unavailable states). */
 const triggerIcon = computed(() => {
-	if (!hasSelection.value) return null;
 	if (props.isAiGatewayManaged)
 		return { icon: 'wallet', testId: 'ucp-trigger-icon-wallet' } as const;
+	if (!ownCredentialSelected.value) return null;
 	return selectedOption.value?.isResolvable
 		? ({ icon: 'user-round', testId: 'ucp-trigger-icon-user' } as const)
 		: ({ icon: 'key-round', testId: 'ucp-trigger-icon-key' } as const);
@@ -210,6 +234,10 @@ const triggerIcon = computed(() => {
 const triggerLabel = computed(() => {
 	if (props.isAiGatewayManaged) return i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
 	if (ownCredentialSelected.value) return selectedOption.value?.name ?? '';
+	if (isUnavailable.value)
+		return i18n.baseText('nodeCredentials.selectedCredentialUnavailable', {
+			interpolate: { name: props.selectedCredentialName ?? '' },
+		});
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 		interpolate: { provider: props.nodeDisplayName },
 	});
@@ -329,6 +357,23 @@ function onSelect(id: string): void {
 			</N8nDropdownMenu>
 		</div>
 
+		<N8nTooltip v-if="hasIssues" placement="top">
+			<template #content>
+				<TitledList :title="`${i18n.baseText('nodeCredentials.issues')}:`" :items="issues" />
+			</template>
+			<N8nIcon icon="triangle-alert" :class="$style.warning" data-test-id="ucp-issues-warning" />
+		</N8nTooltip>
+
+		<N8nTooltip v-if="ownCredentialSelected && selectedOption?.isResolvable" placement="top">
+			<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
+			<N8nIcon
+				icon="user-round-key"
+				size="small"
+				:class="$style.privateIndicator"
+				data-test-id="node-credential-private-icon"
+			/>
+		</N8nTooltip>
+
 		<button
 			v-if="isAiGatewayManaged"
 			type="button"
@@ -341,7 +386,7 @@ function onSelect(id: string): void {
 			<N8nIcon icon="settings" size="medium" />
 		</button>
 		<button
-			v-else-if="ownCredentialSelected"
+			v-else-if="ownCredentialSelected && canEdit"
 			type="button"
 			:class="$style.iconButton"
 			data-test-id="credential-edit-button"
@@ -489,6 +534,16 @@ function onSelect(id: string): void {
 .inlineMeta {
 	margin-left: var(--spacing--2xs);
 	vertical-align: middle;
+}
+
+.warning {
+	flex-shrink: 0;
+	color: var(--color--danger);
+}
+
+.privateIndicator {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
 }
 
 .iconButton {

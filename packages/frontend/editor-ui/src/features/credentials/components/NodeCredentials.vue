@@ -1008,6 +1008,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:selected-credential-id="getSelectedId(type) ?? null"
 					:is-ai-gateway-managed="isAiGatewayManagedCredentials(type.name)"
 					:show-n8n-credits="showAiGatewaySelector(type.name)"
+					:issues="hideIssues ? [] : getIssues(type.name)"
+					:selected-credential-name="getSelectedName(type.name) ?? null"
+					:can-edit="
+						!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name)
+					"
 					:balance="walletBalance"
 					:readonly="readonly"
 					:permissions="credentialPermissions"

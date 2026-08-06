@@ -2694,12 +2694,17 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('unified picker (all nodes)', () => {
-		// Renders show-n8n-credits so per-row eligibility is assertable without
-		// mounting the real dropdown.
+		// Renders the wired props so host wiring is assertable without mounting
+		// the real dropdown.
 		const unifiedPickerStub = {
-			props: ['showN8nCredits', 'credentialType'],
+			props: ['showN8nCredits', 'credentialType', 'issues', 'canEdit', 'selectedCredentialName'],
 			emits: ['selectCredential', 'selectN8nCredits', 'createCredential', 'edit', 'topUp'],
-			template: `<div data-test-id="unified-picker-stub" :data-show-credits="String(showN8nCredits)">
+			template: `<div
+				data-test-id="unified-picker-stub"
+				:data-show-credits="String(showN8nCredits)"
+				:data-issues="(issues ?? []).join('|')"
+				:data-can-edit="String(canEdit)"
+			>
 				<button type="button" data-test-id="stub-pick" @click="$emit('selectCredential', 'cred-pick-1')" />
 			</div>`,
 		};
@@ -2745,6 +2750,28 @@ describe('NodeCredentials', () => {
 			expect(screen.getByTestId('unified-picker-stub')).toHaveAttribute(
 				'data-show-credits',
 				'true',
+			);
+		});
+
+		it('wires credential issues through to the picker (respecting hideIssues)', () => {
+			const nodeWithIssues: INodeUi = {
+				...httpNode,
+				issues: { credentials: { openAiApi: ['Credential not found'] } },
+			};
+			ndvStore.activeNode = nodeWithIssues;
+
+			renderComponent({
+				props: {
+					node: nodeWithIssues,
+					overrideCredType: 'openAiApi',
+					useUnifiedCredentialsPicker: true,
+				},
+				global: { stubs: { UnifiedCredentialsPicker: unifiedPickerStub } },
+			});
+
+			expect(screen.getByTestId('unified-picker-stub')).toHaveAttribute(
+				'data-issues',
+				'Credential not found',
 			);
 		});
 
