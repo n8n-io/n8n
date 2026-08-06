@@ -1,17 +1,16 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nDropdownMenu, N8nText } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import ToolIcon from '@/features/shared/toolsConnection/ToolIcon.vue';
+import type { ToolIconSource } from '@/features/shared/toolsConnection/types';
 
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 /** `none` is for rows that were never connected: there is no state to report, so
  *  the row renders no indicator at all rather than a failure-coloured one. */
 export type ConnectionStatus = 'connected' | 'waiting' | 'disconnected' | 'none';
-export type ConnectionRowIcon =
-	| IconName
-	| { type: 'icon'; name: IconName }
-	| { type: 'file'; src: string };
+export type ConnectionRowIcon = IconName | ToolIconSource;
 
 const props = withDefaults(
 	defineProps<{
@@ -26,11 +25,8 @@ const props = withDefaults(
 	{ status: 'none', actions: () => [], clickable: true },
 );
 
-const iconSource = computed<{ type: 'icon'; name: IconName } | { type: 'file'; src: string }>(
-	() => {
-		if (typeof props.icon === 'string') return { type: 'icon', name: props.icon };
-		return props.icon;
-	},
+const iconSource = computed<ToolIconSource>(() =>
+	typeof props.icon === 'string' ? { type: 'icon', name: props.icon } : props.icon,
 );
 
 const emit = defineEmits<{
@@ -83,18 +79,7 @@ function handleRowClick() {
 
 <template>
 	<div :class="[$style.row, !clickable && $style.rowStatic]" @click="handleRowClick">
-		<span :class="$style.iconWrap">
-			<img
-				v-if="iconSource.type === 'file'"
-				:src="iconSource.src"
-				alt=""
-				aria-hidden="true"
-				loading="lazy"
-				referrerpolicy="no-referrer"
-				:class="$style.iconImage"
-			/>
-			<N8nIcon v-else :icon="iconSource.name" size="large" :class="$style.icon" />
-		</span>
+		<ToolIcon :source="iconSource" />
 		<div :class="$style.labels">
 			<N8nText bold size="small" :class="$style.name">{{ name }}</N8nText>
 			<N8nText size="xsmall" color="text-light">{{ subtitle }}</N8nText>
@@ -137,27 +122,6 @@ function handleRowClick() {
 
 .rowStatic {
 	cursor: default;
-}
-
-.iconWrap {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius);
-	flex-shrink: 0;
-}
-
-.icon {
-	color: var(--color--text);
-}
-
-.iconImage {
-	width: 20px;
-	height: 20px;
-	object-fit: contain;
-	display: block;
 }
 
 .labels {
