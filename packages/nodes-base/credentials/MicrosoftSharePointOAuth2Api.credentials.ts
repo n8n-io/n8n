@@ -28,6 +28,7 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 			name: 'subdomain',
 			type: 'string',
 			required: true,
+			placeholder: 'tenant123',
 			default: '',
 			hint: 'You can extract the subdomain from the URL. For example, in the URL "https://tenant123.sharepoint.com", the subdomain is "tenant123".',
 		},
@@ -70,7 +71,7 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 			default:
 				'={{($self["customScopes"] ? $self["enabledScopes"] : "' +
 				defaultScopes.join(' ') +
-				'").replace(/\\{subdomain\\}/g, $self["subdomain"])}}',
+				'").replace(/\\{subdomain\\}/g, ($self["subdomain"] || "").trim())}}',
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',
