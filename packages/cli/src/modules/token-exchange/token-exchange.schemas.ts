@@ -159,10 +159,11 @@ export interface ResolvedTrustedKey {
 	 *
 	 * Kept separate from `expectedAudience` — which is the audience of the
 	 * one-shot exchange grant — so registering an inbound audience never
-	 * widens what the exchange endpoint accepts, or vice versa. Populated
-	 * automatically for SSO-derived sources with the OIDC client id: a token
-	 * the IdP minted for n8n's own SSO client names this instance as its
-	 * intended recipient, which is exactly what audience validation is for.
+	 * widens what the exchange endpoint accepts, or vice versa.
+	 *
+	 * Always configured, never derived: what an IdP puts in `aud` isn't in its
+	 * discovery document and varies by token type and vendor (see
+	 * `TokenExchangeConfig.ssoInboundAudiences`).
 	 */
 	inboundAudiences?: string[];
 

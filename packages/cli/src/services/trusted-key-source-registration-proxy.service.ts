@@ -6,11 +6,7 @@ import { Service } from '@n8n/di';
  * `token-exchange` module.
  */
 export interface TrustedKeySourceRegistrar {
-	/**
-	 * `clientId` is the OIDC client id n8n registered with the provider; it
-	 * becomes an accepted audience for tokens presented inbound to n8n.
-	 */
-	registerFromDiscovery(issuer: string, jwksUri: string, clientId?: string): Promise<void>;
+	registerFromDiscovery(issuer: string, jwksUri: string): Promise<void>;
 }
 
 /**
@@ -29,8 +25,8 @@ export class TrustedKeySourceRegistrationProxy implements TrustedKeySourceRegist
 		this.provider = provider;
 	}
 
-	async registerFromDiscovery(issuer: string, jwksUri: string, clientId?: string): Promise<void> {
+	async registerFromDiscovery(issuer: string, jwksUri: string): Promise<void> {
 		if (!this.provider) return;
-		await this.provider.registerFromDiscovery(issuer, jwksUri, clientId);
+		await this.provider.registerFromDiscovery(issuer, jwksUri);
 	}
 }

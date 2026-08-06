@@ -273,6 +273,58 @@ describe('DynamicCredentialsController', () => {
 			expect(inboundClaimConnectService.ensureBinding).toHaveBeenCalledWith(verified, policy);
 		});
 
+		it('binds before validateIdentity, so a first-time caller can be validated', async () => {
+			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
+			const req = mock<Request>({
+				params: { id: '1' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer idp-token' },
+			});
+			const res = mock<Response>();
+
+			const verified = mock<VerifiedClaim>({
+				issuer: 'https://idp.example.com',
+				subject: 'external-subject-1',
+				attributes: { email: 'jo@example.com' },
+			});
+			dynamicCredentialWebService.getInboundIdentityFromRequest.mockResolvedValue({
+				context: { identity: 'idp-token', version: 1, metadata: { source: 'external-idp' } },
+				verified,
+				policy: mock<VerifiedClaimPolicy>(),
+			});
+
+			// The n8n resolver validates by resolving the identifier, which for an
+			// external-idp context is a read-only claim lookup. Model that: it only
+			// succeeds once a binding exists.
+			const callOrder: string[] = [];
+			let bound = false;
+			inboundClaimConnectService.ensureBinding.mockImplementation(async () => {
+				callOrder.push('ensureBinding');
+				bound = true;
+				return 'user-1';
+			});
+			const resolverWithValidation = {
+				...mockResolver,
+				validateIdentity: vi.fn(async () => {
+					callOrder.push('validateIdentity');
+					if (!bound) throw new Error('No credential resolver data found');
+				}),
+			};
+
+			enterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
+			resolverRepository.findOneBy.mockResolvedValue(mockResolverEntity);
+			resolverRegistry.getResolverByTypename.mockReturnValue(resolverWithValidation);
+			cipher.decryptV2.mockResolvedValue('{}');
+			oauthService.generateAOauth2AuthUri.mockResolvedValueOnce(
+				'https://example.domain/oauth2/auth',
+			);
+
+			await expect(controller.authorizeCredential(req, res)).resolves.toBe(
+				'https://example.domain/oauth2/auth',
+			);
+			expect(callOrder).toEqual(['ensureBinding', 'validateIdentity']);
+		});
+
 		it('does not attempt to bind anything when the context carries no claim', async () => {
 			const mockCredential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const req = mock<Request>({

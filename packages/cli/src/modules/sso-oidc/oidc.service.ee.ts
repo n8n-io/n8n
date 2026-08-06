@@ -788,11 +788,7 @@ export class OidcService {
 		try {
 			const { issuer, jwks_uri: jwksUri } = discoveredMetadata.serverMetadata();
 			if (!jwksUri) return;
-			await Container.get(TrustedKeySourceRegistrationProxy).registerFromDiscovery(
-				issuer,
-				jwksUri,
-				this.oidcConfig.clientId,
-			);
+			await Container.get(TrustedKeySourceRegistrationProxy).registerFromDiscovery(issuer, jwksUri);
 		} catch (error) {
 			this.logger.warn('Failed to register OIDC provider as a trusted key source', { error });
 		}

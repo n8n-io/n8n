@@ -172,6 +172,22 @@ export class DynamicCredentialsController {
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
 
+		// Connecting is the point at which an inbound identity may be bound to an
+		// n8n user: it is interactive, and the caller just presented a verified
+		// token. Without this, someone arriving with an IdP token they have never
+		// logged into n8n with would have nothing to store their connection under.
+		//
+		// Must run before `validateIdentity`, not after: the n8n resolver validates
+		// by resolving the identifier, which for an `external-idp` context is a
+		// read-only claim lookup that throws when no binding exists. Bind second
+		// and a first-time caller never gets past validation to be bound at all.
+		// The token was already cryptographically verified by a trusted source
+		// above, so this ordering doesn't skip an authentication gate — it only
+		// moves the write ahead of a read that depends on it.
+		if (verified) {
+			await this.inboundClaimConnectService.ensureBinding(verified, policy);
+		}
+
 		if (resolver.validateIdentity) {
 			// Decrypt and parse resolver configuration
 			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
@@ -182,14 +198,6 @@ export class DynamicCredentialsController {
 				resolverName: resolverEntity.type,
 				configuration: resolverConfig,
 			});
-		}
-
-		// Connecting is the point at which an inbound identity may be bound to an
-		// n8n user: it is interactive, and the caller just presented a verified
-		// token. Without this, someone arriving with an IdP token they have never
-		// logged into n8n with would have nothing to store their connection under.
-		if (verified) {
-			await this.inboundClaimConnectService.ensureBinding(verified, policy);
 		}
 
 		// Best-effort: bind the callback to the intended n8n user when the resolver

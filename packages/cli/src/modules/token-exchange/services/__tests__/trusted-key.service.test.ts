@@ -65,17 +65,20 @@ function createMocks({
 	trustedKeys = '',
 	inboundSubjectClaim = '',
 	inboundRequireVerifiedEmail = true,
+	ssoInboundAudiences = '',
 }: {
 	isLeader?: boolean;
 	trustedKeys?: string;
 	inboundSubjectClaim?: string;
 	inboundRequireVerifiedEmail?: boolean;
+	ssoInboundAudiences?: string;
 } = {}) {
 	const config = mock<TokenExchangeConfig>({
 		trustedKeys,
 		keyRefreshIntervalSeconds: 300,
 		inboundSubjectClaim,
 		inboundRequireVerifiedEmail,
+		ssoInboundAudiences,
 	});
 	const sourceRepo = mock<TrustedKeySourceRepository>();
 	const keyRepo = mock<TrustedKeyRepository>();
@@ -448,17 +451,19 @@ describe('TrustedKeyService', () => {
 			expect(tx.save).toHaveBeenCalled();
 		});
 
-		it('accepts the OIDC client id as an inbound audience', async () => {
-			const { service, tx, sourceRepo } = createMocks();
+		it('takes inbound audiences from config, as a trimmed list', async () => {
+			const { service, tx, sourceRepo } = createMocks({
+				ssoInboundAudiences: 'api://n8n, https://n8n.example.com ',
+			});
 			tx.findOneBy.mockResolvedValueOnce(null);
 			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
 
-			await service.registerSsoDerivedSource(issuer, jwksUri, 'n8n-sso-client-id');
+			await service.registerSsoDerivedSource(issuer, jwksUri);
 
 			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
-			// So a token the IdP minted for n8n's SSO client verifies inbound
-			// without an admin also setting N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE.
-			expect(jsonParse(saved.config)).toMatchObject({ inboundAudiences: ['n8n-sso-client-id'] });
+			expect(jsonParse(saved.config)).toMatchObject({
+				inboundAudiences: ['api://n8n', 'https://n8n.example.com'],
+			});
 		});
 
 		it('carries the instance-wide verified-email requirement onto the source', async () => {
@@ -466,13 +471,13 @@ describe('TrustedKeyService', () => {
 			tx.findOneBy.mockResolvedValueOnce(null);
 			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());
 
-			await service.registerSsoDerivedSource(issuer, jwksUri, 'n8n-sso-client-id');
+			await service.registerSsoDerivedSource(issuer, jwksUri);
 
 			const [, saved] = tx.save.mock.calls[0] as [unknown, { config: string }];
 			expect(jsonParse(saved.config)).toMatchObject({ requireVerifiedEmail: false });
 		});
 
-		it('omits inboundAudiences when no client id is supplied', async () => {
+		it('omits inboundAudiences when none are configured', async () => {
 			const { service, tx, sourceRepo } = createMocks();
 			tx.findOneBy.mockResolvedValueOnce(null);
 			sourceRepo.findOneBy.mockResolvedValue(mock<TrustedKeySourceEntity>());

@@ -68,6 +68,25 @@ export class TokenExchangeConfig {
 	inboundSubjectClaim: string = '';
 
 	/**
+	 * Comma-separated `aud` values accepted on tokens signed by the SSO
+	 * provider specifically, on top of `inboundAudience`.
+	 *
+	 * This has to be configured rather than derived: what an IdP stamps in
+	 * `aud` isn't in its discovery document, and it differs by token type and
+	 * vendor. Only an ID token is required to carry the OIDC client id (OIDC
+	 * Core 2); an access token's `aud` names the resource server (RFC 9068
+	 * 2.2) - Keycloak uses its audience mappers, Okta the authorization
+	 * server's audience, Auth0 the API identifier, with the client id in
+	 * `azp`/`cid` instead.
+	 *
+	 * Scoped to the SSO source rather than instance-wide (`inboundAudience`)
+	 * so that with several trusted sources configured, an audience accepted
+	 * for the SSO provider isn't also accepted for every other issuer.
+	 */
+	@Env('N8N_TOKEN_EXCHANGE_SSO_INBOUND_AUDIENCES')
+	ssoInboundAudiences: string = '';
+
+	/**
 	 * Whether an SSO-derived trusted key source requires `email_verified` on a
 	 * token before its email may be used to link or provision a user.
 	 *

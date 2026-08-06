@@ -364,24 +364,22 @@ export class TrustedKeyService {
 	 * same issuer — `issuer` is globally unique — rather than failing on the
 	 * DB's unique constraint with an opaque error.
 	 *
-	 * `clientId` is the OIDC client id n8n registered with this provider. It
-	 * becomes an accepted inbound audience, so a token the IdP minted for
-	 * n8n's SSO client is accepted when presented directly to n8n as a
-	 * resource server — without an admin having to also set
-	 * `N8N_TOKEN_EXCHANGE_INBOUND_AUDIENCE` to the same value.
+	 * Audiences accepted for this source come from config, not from the
+	 * discovery document: an IdP doesn't advertise what it stamps in `aud`,
+	 * and it isn't the OIDC client id except on ID tokens.
 	 */
-	async registerSsoDerivedSource(
-		issuer: string,
-		jwksUri: string,
-		clientId?: string,
-	): Promise<void> {
+	async registerSsoDerivedSource(issuer: string, jwksUri: string): Promise<void> {
 		const sourceId = createHash('sha256').update(issuer).digest('hex').slice(0, 36);
+		const inboundAudiences = this.config.ssoInboundAudiences
+			.split(',')
+			.map((audience) => audience.trim())
+			.filter((audience) => audience.length > 0);
 		const config: JwksKeySource = {
 			type: 'jwks',
 			url: jwksUri,
 			issuer,
 			subjectClaim: this.config.inboundSubjectClaim || undefined,
-			inboundAudiences: clientId ? [clientId] : undefined,
+			inboundAudiences: inboundAudiences.length > 0 ? inboundAudiences : undefined,
 			requireVerifiedEmail: this.config.inboundRequireVerifiedEmail,
 		};
 

@@ -76,11 +76,12 @@ export class TokenExchangeService implements ExternalTokenVerifier {
 	 * set matches).
 	 *
 	 * A caller that states an `expectedAudience` is verifying a token
-	 * presented inbound to n8n, so the source's own `inboundAudiences` — e.g.
-	 * the OIDC client id of an SSO-derived source — count too. Without the
-	 * caller's expectation this is the plain exchange path, which stays on
-	 * the source's `expectedAudience` alone: an inbound audience must never
-	 * widen what the exchange endpoint accepts.
+	 * presented inbound to n8n, so the source's own `inboundAudiences` count
+	 * too — that's how an admin says "this issuer stamps *this* audience on
+	 * tokens meant for us", scoped to one trust source instead of instance-
+	 * wide. Without the caller's expectation this is the plain exchange path,
+	 * which stays on the source's `expectedAudience` alone: an inbound
+	 * audience must never widen what the exchange endpoint accepts.
 	 *
 	 * Returns `undefined` only when nothing is configured anywhere, which
 	 * `jwt.verify` reads as "skip the audience check". That is safe for the

@@ -41,8 +41,8 @@ export class TokenExchangeModule implements ModuleInterface {
 			'@/services/trusted-key-source-registration-proxy.service.js'
 		);
 		Container.get(TrustedKeySourceRegistrationProxy).registerProvider({
-			registerFromDiscovery: async (issuer, jwksUri, clientId) =>
-				await trustedKeyService.registerSsoDerivedSource(issuer, jwksUri, clientId),
+			registerFromDiscovery: async (issuer, jwksUri) =>
+				await trustedKeyService.registerSsoDerivedSource(issuer, jwksUri),
 		});
 
 		// Register as the ExternalTokenVerifierProxy provider so other modules can verify without importing this one.
