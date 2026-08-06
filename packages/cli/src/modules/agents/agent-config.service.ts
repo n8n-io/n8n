@@ -74,10 +74,7 @@ export class AgentConfigService {
 	 * Without this the export carries only `{ type, id, enabled }` refs and the
 	 * task body is lost when the config is downloaded and imported elsewhere.
 	 */
-	private async hydrateTaskDefinitions(
-		agentId: string,
-		config: AgentJsonConfig,
-	): Promise<void> {
+	private async hydrateTaskDefinitions(agentId: string, config: AgentJsonConfig): Promise<void> {
 		if (!config.tasks?.length) return;
 
 		const definitions = await this.agentTaskRepository.findByAgentId(agentId);
