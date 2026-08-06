@@ -333,15 +333,15 @@ export function useNodeHelpers() {
 	function updateNodeCredentialIssues(node: INodeUi): void {
 		const fullNodeIssues: INodeIssues | null = getNodeCredentialIssues(node);
 
-		let newIssues: INodeIssueObjectProperty | null = null;
-		if (fullNodeIssues !== null) {
-			newIssues = fullNodeIssues.credentials!;
-		}
-
 		workflowDocumentStore.value.setNodeIssue({
 			node: node.name,
 			type: 'credentials',
-			value: newIssues,
+			value: fullNodeIssues?.credentials ?? null,
+		});
+		workflowDocumentStore.value.setNodeIssue({
+			node: node.name,
+			type: 'identityTrigger',
+			value: fullNodeIssues?.identityTrigger ?? null,
 		});
 	}
 
@@ -457,13 +457,22 @@ export function useNodeHelpers() {
 			: null;
 	}
 
+	/**
+	 * Writes into `identityTriggerIssues`, a category kept separate from `foundIssues`
+	 * (credentials) so it stays informational on the canvas without tripping
+	 * `hasPublishBlockingIssues` — a hotfix so save/publish aren't blocked while this
+	 * compatibility model is still being worked out. `foundIssues` is only consulted to
+	 * avoid double-messaging a credential that already has a real (blocking) issue.
+	 */
 	function collectPrivateCredentialIssues(
 		node: INodeUi,
 		foundIssues: INodeIssueObjectProperty,
+		identityTriggerIssues: INodeIssueObjectProperty,
 	): void {
 		if (!isPrivateCredentialsEnabled.value) return;
 
 		const blockingTrigger = getBlockingTrigger();
+		if (!blockingTrigger) return;
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -472,29 +481,26 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			// Mirror the backend publish check: trigger incompatibility blocks publish
-			// regardless of who connected the credential, so warn on it here too. A
-			// merely-not-yet-connected credential is surfaced via the callout/banner.
-			// The message depends on the resolver: the system resolver needs a trigger
-			// that establishes the n8n user identity, a custom resolver needs one that
-			// extracts an external identity. Form and webhook are only listed as
-			// supported while their respective OAuth2 flags are on — without them
-			// neither establishes an identity, so listing them would advertise a fix
-			// that doesn't work.
-			if (blockingTrigger) {
-				let messageKey: BaseTextKey = 'nodeIssues.credentials.privateRequiresIdentityTrigger';
+			// Mirror the backend publish check: warn on trigger incompatibility
+			// regardless of who connected the credential. A merely-not-yet-connected
+			// credential is surfaced via the callout/banner. The message depends on the
+			// resolver: the system resolver needs a trigger that establishes the n8n user
+			// identity, a custom resolver needs one that extracts an external identity.
+			// Form and webhook are only listed as supported while their respective OAuth2
+			// flags are on — without them neither establishes an identity, so listing them
+			// would advertise a fix that doesn't work.
+			let messageKey: BaseTextKey = 'nodeIssues.credentials.privateRequiresIdentityTrigger';
 
-				if (!blockingTrigger.isSystemResolver) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityExtractor';
-				} else if (blockingTrigger.formOAuth2Enabled && blockingTrigger.webhookOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook';
-				} else if (blockingTrigger.formOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithForm';
-				} else if (blockingTrigger.webhookOAuth2Enabled) {
-					messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithWebhook';
-				}
-				foundIssues[credTypeName] = [i18n.baseText(messageKey)];
+			if (!blockingTrigger.isSystemResolver) {
+				messageKey = 'nodeIssues.credentials.privateRequiresIdentityExtractor';
+			} else if (blockingTrigger.formOAuth2Enabled && blockingTrigger.webhookOAuth2Enabled) {
+				messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithFormAndWebhook';
+			} else if (blockingTrigger.formOAuth2Enabled) {
+				messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithForm';
+			} else if (blockingTrigger.webhookOAuth2Enabled) {
+				messageKey = 'nodeIssues.credentials.privateRequiresIdentityTriggerWithWebhook';
 			}
+			identityTriggerIssues[credTypeName] = [i18n.baseText(messageKey)];
 		}
 	}
 
@@ -646,16 +652,22 @@ export function useNodeHelpers() {
 			}
 		}
 
-		collectPrivateCredentialIssues(node, foundIssues);
+		const identityTriggerIssues: INodeIssueObjectProperty = {};
+		collectPrivateCredentialIssues(node, foundIssues, identityTriggerIssues);
 
 		// TODO: Could later check also if the node has access to the credentials
-		if (Object.keys(foundIssues).length === 0) {
+		if (Object.keys(foundIssues).length === 0 && Object.keys(identityTriggerIssues).length === 0) {
 			return null;
 		}
 
-		return {
-			credentials: foundIssues,
-		};
+		const issues: INodeIssues = {};
+		if (Object.keys(foundIssues).length > 0) {
+			issues.credentials = foundIssues;
+		}
+		if (Object.keys(identityTriggerIssues).length > 0) {
+			issues.identityTrigger = identityTriggerIssues;
+		}
+		return issues;
 	}
 	/**
 	 * Whether the node has no selected credentials, or none of the node's
@@ -694,6 +706,11 @@ export function useNodeHelpers() {
 				node: node.name,
 				type: 'credentials',
 				value: issues?.credentials ?? null,
+			});
+			workflowDocumentStore.value.setNodeIssue({
+				node: node.name,
+				type: 'identityTrigger',
+				value: issues?.identityTrigger ?? null,
 			});
 		}
 	}
