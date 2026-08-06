@@ -529,6 +529,88 @@ describe('DurableJobProvisioner', () => {
 
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
+
+		it('resolves a node-supplied grace given as a numeric string to that number', async () => {
+			await provisionWithGrace('300');
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ misfireGraceSeconds: 300 }),
+			]);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('accepts a node-supplied grace of one second, raising it to the floor', async () => {
+			await provisionWithGrace(1);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ misfireGraceSeconds: 60 }),
+			]);
+		});
+
+		it('leaves a node-supplied grace sitting exactly on the floor unclamped, and does not warn', async () => {
+			await provisionWithGrace(60);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ misfireGraceSeconds: 60 }),
+			]);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('leaves a node-supplied grace sitting exactly on the thirty-day cap unclamped, and does not warn', async () => {
+			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
+			]);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('warns that it raised the grace, reporting the truncated request and the value written', async () => {
+			await provisionWithGrace(30.7);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				"Raised a node's misfire grace to the scheduler's minimum",
+				{ requestedMisfireGraceSeconds: 30, misfireGraceSeconds: 60 },
+			);
+		});
+
+		it('warns that it lowered the grace, reporting the request and the cap written', async () => {
+			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS + 500);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				"Lowered a node's misfire grace to the scheduler's maximum",
+				{
+					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 500,
+					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
+				},
+			);
+		});
+
+		it('reconciles a row stored at the raw node-supplied grace up to the clamped grace', async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([jobRow({ misfireGraceSeconds: 30 })]);
+
+			await provisionWithGrace(30);
+
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 60,
+			});
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 60);
+		});
+
+		it('reconciles a job whose grace and policy both changed on the same activation only once', async () => {
+			jobs.findManyByWorkflowNode.mockResolvedValue([
+				jobRow({ misfirePolicy: ScheduledJobMisfirePolicy.Skip, misfireGraceSeconds: 90 }),
+			]);
+
+			await provisionWithGrace(300);
+
+			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 300,
+			});
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 300);
+		});
 	});
 
 	describe('seeding a freshly provisioned job', () => {
