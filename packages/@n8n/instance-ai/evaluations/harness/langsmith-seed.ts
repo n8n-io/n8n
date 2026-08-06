@@ -412,6 +412,8 @@ async function reconstructWithClient(
 			messages,
 			workflows,
 			dataTables,
+			// A trace carries no agent artifacts yet; only authored seeds can seed one.
+			agents: [],
 		},
 		liveTurn,
 		runCount: runs.length,

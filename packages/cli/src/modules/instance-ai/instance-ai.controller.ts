@@ -18,6 +18,7 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
@@ -42,7 +43,11 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import {
+	buildAgentTreeFromEvents,
+	clearedAgentBuilderTargetMetadata,
+	seedAgentBuilderTargetMetadata,
+} from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -1015,10 +1020,10 @@ export class InstanceAiController {
 
 	/**
 	 * Seed an existing (owned) thread with a previously exported conversation:
-	 * recreate the workflow artifacts the history references (node credentials
-	 * stripped — see `EvalThreadRestoreService`), then write the native message
-	 * log verbatim. The thread then continues as if the conversation really
-	 * happened, so an eval can drive the next turn live.
+	 * recreate the artifacts the history references — workflows (node credentials
+	 * stripped — see `EvalThreadRestoreService`), data tables and agents — then
+	 * write the native message log verbatim. The thread then continues as if the
+	 * conversation really happened, so an eval can drive the next turn live.
 	 */
 	@Post('/eval/restore-thread')
 	@GlobalScope('instanceAi:eval')
@@ -1035,6 +1040,21 @@ export class InstanceAiController {
 		}
 
 		const workflows = payload.workflows ?? [];
+		const agents = payload.agents ?? [];
+		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
+		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
+		// dead tool (or binds an unrelated ambient workflow of the same name).
+		const unbacked = findUnbackedSeedWorkflowTools(payload);
+		if (unbacked.length > 0) {
+			throw new BadRequestError(
+				unbacked
+					.map(
+						({ agentId, target }: { agentId: string; target: unknown }) =>
+							`Seed agent ${agentId} has a workflow tool targeting ${JSON.stringify(target)}, which no seeded workflow's name matches`,
+					)
+					.join('; '),
+			);
+		}
 		// Data tables first: the workflows reference them, and their ids are
 		// rewritten to the recreated tables' ids during workflow restore.
 		const idMap = await this.evalThreadRestore.restoreDataTables(
@@ -1044,15 +1064,47 @@ export class InstanceAiController {
 		);
 		const dataTableIds = [...idMap.values()];
 		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak workflows/tables into the shared eval project.
+		// restore doesn't leak workflows/tables/agents into the shared eval project.
 		let restored = 0;
 		let createdWorkflowIds: string[] = [];
+		let createdAgentIds: string[] = [];
+		// Captured so the binding write is undoable: the message write happens after
+		// it, and without this a message failure left a binding pointing at agents the
+		// rollback had already deleted.
+		let priorMetadata: Record<string, unknown> | undefined;
+		let bindingWritten = false;
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
 				idMap,
 			);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			// Built (and validated) BEFORE the message write: a rejected binding — two
+			// agents whose refs collide — must fail while the restore is still fully
+			// rollback-able, not after the messages have committed.
+			const binding =
+				createdAgentIds.length > 0
+					? seedAgentBuilderTargetMetadata(
+							agents.map((agent) => ({
+								agentId: agent.id,
+								projectId,
+								name: agent.config.name,
+								ref: agent.config.name,
+							})),
+							payload.messages,
+						)
+					: undefined;
+			// Bind the thread as the conversation that built these agents would have, or
+			// the live turn's first `build-agent` call is rejected as an unknown agentRef.
+			// BEFORE the messages, and undoable: the catch restores the prior metadata,
+			// so a message failure can't leave a binding pointing at deleted agents, and
+			// a binding failure can't leave messages referencing them.
+			if (binding) {
+				priorMetadata = await this.memoryService.getThreadMetadata(req.user.id, payload.threadId);
+				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
+				bindingWritten = true;
+			}
 			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
 			if (payload.messages.length > 0) {
 				({ restored } = await this.memoryService.restoreThreadMessages(
@@ -1062,6 +1114,19 @@ export class InstanceAiController {
 				));
 			}
 		} catch (error) {
+			if (bindingWritten) {
+				try {
+					// `updateThread` MERGES, so the prior snapshot alone would leave the
+					// binding keys standing — this names them and restores each.
+					await this.memoryService.updateThread(payload.threadId, {
+						metadata: clearedAgentBuilderTargetMetadata(priorMetadata),
+					});
+				} catch {
+					// Best-effort, like the artifact deletes: never throw over the failure
+					// that triggered the rollback.
+				}
+			}
+			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId);
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
 			throw error;
@@ -1072,6 +1137,7 @@ export class InstanceAiController {
 			restored,
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
+			agentIds: createdAgentIds,
 		};
 	}
 

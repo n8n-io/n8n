@@ -128,14 +128,23 @@ export async function cleanupBuild(
 		}
 	}
 
-	// Agent-anchored builds create a first-class Agent — delete it with the
-	// rest of the build's artifacts so no caller has to remember to.
+	// Agent-anchored builds create a first-class Agent, and a seed may have restored
+	// one — delete both with the rest of the build's artifacts so no caller has to
+	// remember to. A seeded agent the live turn also edited appears in both.
 	const agentRef = findAgentArtifactRef(build.artifactRefs);
-	if (agentRef) {
+	const agentIds = new Set([...(agentRef ? [agentRef.id] : []), ...(build.createdAgentIds ?? [])]);
+	if (agentIds.size > 0) {
 		try {
-			await client.deleteAgent(await client.getPersonalProjectId(), agentRef.id);
+			const projectId = await client.getPersonalProjectId();
+			for (const id of agentIds) {
+				try {
+					await client.deleteAgent(projectId, id);
+				} catch {
+					clean = false; // Best-effort cleanup
+				}
+			}
 		} catch {
-			clean = false; // Best-effort cleanup
+			clean = false; // Non-fatal — project ID lookup may fail
 		}
 	}
 

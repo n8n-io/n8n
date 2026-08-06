@@ -135,6 +135,45 @@ describe('AgentsService', () => {
 		});
 	});
 
+	it('splits a seeded config so integrations land on their own column', async () => {
+		// `composeJsonConfig` reads integrations from the entity column, so leaving
+		// them inside `schema` loses every trigger on the next read — an eval seed
+		// would restore an agent whose integrations silently vanished.
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+		const integrations = [{ type: 'slack' as const, credentialId: 'cred-slack-1' }];
+
+		await service.create(projectId, 'Support Agent', {
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				integrations,
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.integrations).toEqual(integrations);
+		expect(entity.schema).not.toHaveProperty('integrations');
+		expect(entity.schema).toMatchObject({ name: 'Support Agent', instructions: 'Triage tickets.' });
+	});
+
+	it('omits the integrations column when the seeded config declares none', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		agentRepository.create.mockReturnValue(saved);
+		agentRepository.save.mockResolvedValue(saved);
+
+		await service.create(projectId, 'Support Agent', {
+			schema: { name: 'Support Agent', model: '', instructions: '' },
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity).not.toHaveProperty('integrations');
+	});
+
 	describe('create with a client-minted id', () => {
 		const mintedId = 'aBcDeFgHiJkLmNoP';
 		const uniqueViolation = () =>

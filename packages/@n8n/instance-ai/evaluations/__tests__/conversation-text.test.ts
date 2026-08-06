@@ -137,6 +137,7 @@ function seedDeclaring(name: string): CaseSeed {
 		],
 		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name, nodes: [], connections: {} }],
 		dataTables: [],
+		agents: [],
 	};
 }
 
