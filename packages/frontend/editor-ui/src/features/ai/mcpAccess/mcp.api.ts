@@ -29,6 +29,7 @@ export type ToggleWorkflowsMcpAccessResponse = {
 	failedCount: number;
 	updatedIds?: string[];
 	unchangedIds?: string[];
+	autoExposeNewWorkflows?: boolean;
 };
 
 export type ToggleAgentsMcpAccessTarget =

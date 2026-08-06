@@ -130,14 +130,14 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 		expect(experimentStore.trackConfirmed).not.toHaveBeenCalled();
 	});
 
-	it('tracks auto-expose enabled after a successful expose-all', async () => {
+	it('tracks auto-expose enabled when the response confirms it', async () => {
 		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
 			updatedCount: 3,
 			unchangedCount: 0,
 			skippedCount: 0,
 			failedCount: 0,
+			autoExposeNewWorkflows: true,
 		});
-		mcpStore.autoExposeNewWorkflows = true;
 
 		const user = userEvent.setup();
 		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
@@ -150,14 +150,15 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 		);
 	});
 
-	it('does not track auto-expose when the backend never turned it on', async () => {
+	it('does not track auto-expose when the response omits it', async () => {
 		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
 			updatedCount: 3,
 			unchangedCount: 0,
 			skippedCount: 0,
 			failedCount: 0,
+			// autoExposeNewWorkflows absent — backend condition didn't apply, or its
+			// fire-and-forget write failed
 		});
-		mcpStore.autoExposeNewWorkflows = false;
 
 		const user = userEvent.setup();
 		const { getByTestId } = renderComponent({ pinia, props: defaultProps });

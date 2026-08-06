@@ -734,6 +734,7 @@ describe('McpSettingsService', () => {
 						checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
 					},
 				],
+				autoExposeNewWorkflows: true,
 			});
 			expect(result).not.toHaveProperty('updatedIds');
 			expect(result).not.toHaveProperty('unchangedIds');
@@ -960,12 +961,13 @@ describe('McpSettingsService', () => {
 					allWorkflows: true,
 				});
 
-				await service.bulkSetAvailableInMCP(user, dto);
+				const result = await service.bulkSetAvailableInMCP(user, dto);
 
 				expect(upsert).toHaveBeenCalledWith(
 					{ key: 'mcp.autoExposeNewWorkflows', value: 'true', loadOnStartup: true },
 					['key'],
 				);
+				expect(result.autoExposeNewWorkflows).toBe(true);
 			});
 
 			test('does not touch auto-expose for a scoped (non-allWorkflows) update', async () => {
@@ -1011,7 +1013,9 @@ describe('McpSettingsService', () => {
 					allWorkflows: true,
 				});
 
-				await expect(service.bulkSetAvailableInMCP(user, dto)).resolves.toBeDefined();
+				const result = await service.bulkSetAvailableInMCP(user, dto);
+
+				expect(result.autoExposeNewWorkflows).toBeUndefined();
 			});
 		});
 	});
