@@ -172,10 +172,10 @@ const SubAgentsConfigSchema = z
 	})
 	.strict();
 
-const NodeToolCredentialSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-});
+const NodeToolCredentialSchema = z.union([
+	z.object({ id: z.string(), name: z.string() }),
+	z.object({ id: z.null(), name: z.string(), __aiGatewayManaged: z.literal(true) }),
+]);
 
 export const DraftAgentModelSchema = z.union([z.literal(''), AgentModelSchema]);
 

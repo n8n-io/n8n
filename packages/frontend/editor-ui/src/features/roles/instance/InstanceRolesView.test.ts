@@ -6,7 +6,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import InstanceRolesView from './InstanceRolesView.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 vi.mock('vue-router', async () => {

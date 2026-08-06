@@ -6,7 +6,6 @@ import type {
 	SASLOptions,
 	ConsumerConfig,
 } from 'kafkajs';
-import { logLevel } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type {
@@ -82,9 +81,9 @@ interface SchemaRegistryOptions {
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
 /**
- * Normalizes a PEM credential field and returns it as a Buffer, throwing a clear
- * error when the value is not a PEM block (the most common paste mistake) so the
- * failure surfaces at config time instead of as an opaque TLS handshake error.
+ * Normalizes a PEM credential field, throwing a clear error when the value is not
+ * a PEM block (the most common paste mistake) so the failure surfaces at config
+ * time instead of as an opaque TLS handshake error.
  *
  * The strict BEGIN/END check stays here rather than in the shared `formatPemBlock`
  * normalizer: that helper is a non-throwing, best-effort formatter used by many
@@ -93,7 +92,7 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  * @param value - The raw PEM string from the credential
  * @param fieldName - Human-readable field name used in the error message
  */
-function toPemBuffer(value: string, fieldName: string): Buffer {
+export function formatAndValidatePem(value: string, fieldName: string): string {
 	const formatted = formatPemBlock(value);
 	// Require a matching BEGIN/END pair with the same label — a lone BEGIN header
 	// (e.g. a truncated paste) would otherwise pass and only fail later as an
@@ -105,7 +104,12 @@ function toPemBuffer(value: string, fieldName: string): Buffer {
 				'Paste the full PEM, including the "-----BEGIN ...-----" and "-----END ...-----" lines.',
 		});
 	}
-	return Buffer.from(formatted);
+	return formatted;
+}
+
+/** kafkajs's `tls.ConnectionOptions` fields take Buffers, the v2 library takes strings. */
+function toPemBuffer(value: string, fieldName: string): Buffer {
+	return Buffer.from(formatAndValidatePem(value, fieldName));
 }
 
 /**
@@ -153,6 +157,10 @@ export function resolveKafkaSsl(credentials: KafkaCredentials): ConnectionOption
  * @returns Kafka configuration object with authentication settings
  */
 export async function createConfig(ctx: ITriggerFunctions) {
+	// Loaded lazily so importing this module (shared with the v2 node, which runs on
+	// a different Kafka library) never pulls `kafkajs` into the runtime.
+	const { logLevel } = await import('kafkajs');
+
 	const credentials = (await ctx.getCredentials('kafka')) as KafkaCredentials;
 	const clientId = credentials.clientId;
 	const brokers = (credentials.brokers ?? '').split(',').map((item) => item.trim());
