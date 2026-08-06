@@ -45,7 +45,7 @@ export const jiraDefaultScopes = [
 	'read:jira-work',
 	'write:jira-work',
 	'manage:jira-webhook',
-	// Retired by Atlassian — silently dropped at consent, kept only to avoid churning the request string;
+	// Retired by Atlassian — silently dropped at consent, kept only to avoid churning the request string.
 	'manage:jira-user',
 	offlineAccessScope,
 ];

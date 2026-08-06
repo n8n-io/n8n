@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 import { atlassianScopes } from './common/atlassian-scopes';
 
@@ -99,4 +99,14 @@ export class AtlassianOAuth2Api implements ICredentialType {
 				'={{$self["customScopes"] ? $self["enabledScopes"] : "' + defaultScopes.join(' ') + '"}}',
 		},
 	];
+
+	// Credential tests don't inherit through `extends`, so extending credentials
+	// need their own test block; this one covers users creating the base directly.
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.atlassian.com',
+			url: '/oauth/token/accessible-resources',
+			method: 'GET',
+		},
+	};
 }

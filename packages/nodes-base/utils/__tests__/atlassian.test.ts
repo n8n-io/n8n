@@ -129,6 +129,21 @@ describe('getAtlassianCloudId', () => {
 		).rejects.toThrow(/No Jira site matched/);
 	});
 
+	it('should say "no sites" when the connection can access none', async () => {
+		mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue([]);
+
+		await expect(
+			getAtlassianCloudId.call(
+				mockExecuteFunctions,
+				credentialType,
+				'https://example.atlassian.net',
+				'confluence',
+			),
+		).rejects.toThrow(
+			'No Confluence site matched "example.atlassian.net". This connection can access: no sites.',
+		);
+	});
+
 	it('should throw a clear error on unparseable site URL', async () => {
 		await expect(
 			getAtlassianCloudId.call(mockExecuteFunctions, credentialType, '', 'confluence'),

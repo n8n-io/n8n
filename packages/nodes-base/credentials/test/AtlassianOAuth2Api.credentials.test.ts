@@ -57,4 +57,14 @@ describe('AtlassianOAuth2Api Credential', () => {
 		expect(scopeProperty?.type).toBe('hidden');
 		expect(scopeProperty?.default).toContain('$self["customScopes"]');
 	});
+
+	it('should test the connection against accessible-resources', () => {
+		expect(atlassianOAuth2Api.test).toEqual({
+			request: {
+				baseURL: 'https://api.atlassian.com',
+				url: '/oauth/token/accessible-resources',
+				method: 'GET',
+			},
+		});
+	});
 });
