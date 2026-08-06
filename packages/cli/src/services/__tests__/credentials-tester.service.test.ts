@@ -1,5 +1,9 @@
+import { OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import { RoutingNode } from 'n8n-core';
 import type {
+	ICredentialTestFunctions,
 	ICredentialType,
 	INode,
 	INodeType,
@@ -159,6 +163,40 @@ describe('CredentialsTester', () => {
 
 			expect(redactedMessage.status).toBe('Error');
 			expect(redactedMessage.message).toBe('Test failed for apiKey *****key');
+		});
+
+		// A node-defined credential test function may issue an outbound request to
+		// a credential-supplied host. `testCredentials` must hand it a context
+		// carrying the execution's egress policy, so that when SSRF protection is
+		// enabled the test honours the same restrictions as node execution. The
+		// legacy `this.helpers.request` helper routes through
+		// `OutboundHttp.requests({ ssrf })`; asserting that argument proves the
+		// bridge reaches the test function.
+		it('forwards the SSRF bridge from getBase to a function-based credential test', async () => {
+			const requestLegacy = vi.fn().mockResolvedValue('ok');
+			const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ requestLegacy }));
+			Container.set(OutboundHttp, mock<OutboundHttp>({ requests }));
+
+			const ssrfBridge = mock<SsrfBridge>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>({ ssrfBridge }),
+			);
+
+			mockTestFunction.mockImplementation(async function (this: ICredentialTestFunctions) {
+				await this.helpers.request({ uri: 'http://internal-service.local/api' });
+				return { status: 'OK', message: 'ok' };
+			});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({ baseUrl: 'http://host' });
+
+			await credentialsTester.testCredentials('user-id', 'testCredentials', {
+				id: 'credential-id',
+				name: 'credential-name',
+				type: 'oAuth2Api',
+				data: { baseUrl: 'http://host' },
+			});
+
+			expect(mockTestFunction).toHaveBeenCalled();
+			expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
 		});
 
 		it('should keep function-based tests working with the real routing engine untouched', async () => {

@@ -2,6 +2,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
+import { useRoleDeleteGuard } from './useRoleDeleteGuard';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
@@ -34,6 +35,7 @@ interface ReassignState extends Pick<RequestDeleteOptions, 'roleType' | 'redirec
  */
 export function useRoleDeletion() {
 	const rolesStore = useRolesStore();
+	const { deleteBlockedReason } = useRoleDeleteGuard();
 	const { showError, showMessage } = useToast();
 	const message = useMessage();
 	const i18n = useI18n();
@@ -113,6 +115,11 @@ export function useRoleDeletion() {
 			if (userCount === null) return;
 
 			if (userCount > 0) {
+				// The delete controls are disabled when the role can't be removed (own role,
+				// or assigned users the caller can't reassign). Guard the modal too so it
+				// never opens in those cases.
+				if (deleteBlockedReason({ ...role, usedByUsers: userCount }, roleType)) return;
+
 				reassignState.value = { role, userCount, roleType, redirectTo };
 				return;
 			}

@@ -14,13 +14,21 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 
+import {
+	AgentModificationTelemetryService,
+	diffAgentConfigParts,
+	isUnconfiguredAgent,
+	type AgentActor,
+} from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -40,7 +48,10 @@ export class AgentConfigService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
+		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
+		private readonly modificationTelemetry: AgentModificationTelemetryService,
 	) {}
 
 	/**
@@ -113,8 +124,8 @@ export class AgentConfigService {
 		agentId: string,
 		projectId: string,
 		config: unknown,
-		user?: User,
-		options?: { clearOmittedOptionalFields?: boolean },
+		user: User,
+		options: { clearOmittedOptionalFields?: boolean; modifiedBy: AgentActor },
 	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
@@ -124,8 +135,9 @@ export class AgentConfigService {
 			projectId,
 			user,
 		);
+		const accessibleCredentials = await credentialProvider.list();
 		const accessibleCredentialIds = new Set(
-			(await credentialProvider.list()).map((credential) => credential.id),
+			accessibleCredentials.map((credential) => credential.id),
 		);
 		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
@@ -144,6 +156,10 @@ export class AgentConfigService {
 		const validatedConfig = reconcileNativeWebSearch(result.config);
 
 		if (validatedConfig.tools !== undefined) {
+			await this.nodeToolAiGatewayService.assignManagedCredentials(
+				validatedConfig.tools,
+				new Set(accessibleCredentials.map((credential) => credential.type)),
+			);
 			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
 		}
 
@@ -212,6 +228,14 @@ export class AgentConfigService {
 			clearOmittedOptionalFields(nextSchema, validatedConfig);
 		}
 
+		// Diffed against what is about to be written, before `entity` is mutated.
+		const changedParts = diffAgentConfigParts(
+			previousSchema,
+			nextSchema,
+			previousIntegrations,
+			nextIntegrations,
+		);
+
 		entity.schema = nextSchema;
 		entity.name = validatedConfig.name;
 		entity.integrations = nextIntegrations;
@@ -249,7 +273,17 @@ export class AgentConfigService {
 		);
 
 		const saved = await this.agentRepository.save(entity);
+		this.eventService.emit('agent-saved', { agentId });
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
+
+		this.modificationTelemetry.record({
+			agent: saved,
+			projectId,
+			user,
+			by: options.modifiedBy,
+			changedParts,
+			wasUnconfigured: isUnconfiguredAgent(previousSchema, previousIntegrations),
+		});
 		await emitSetupCompleted?.();
 
 		if (tasksProvided) {

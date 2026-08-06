@@ -4,7 +4,7 @@ import AskAssistantChat from './AskAssistantChat.vue';
 import type { ChatUI, WorkflowSuggestion } from '../../types/assistant';
 
 export default {
-	title: 'Assistant/AskAssistantChat',
+	title: 'Areas/Assistant/AskAssistantChat',
 	component: AskAssistantChat,
 	argTypes: {},
 };

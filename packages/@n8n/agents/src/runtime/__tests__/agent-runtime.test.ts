@@ -1652,6 +1652,16 @@ describe('AgentRuntime — state transitions on error', () => {
 
 		expect(runtime.getState().status).toBe('success');
 	});
+
+	it("reflects running→success on stream()'s own result.getState(), not just runtime.getState()", async () => {
+		streamText.mockReturnValue(makeStreamSuccess());
+
+		const { runtime } = createRuntime();
+		const { stream, getState } = await runtime.stream('hi');
+		await collectChunks(stream);
+
+		expect(getState().status).toBe('success');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -4137,6 +4147,45 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 		);
 		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
 	});
+
+	it('strips keys the persisted schema does not declare instead of rejecting', async () => {
+		let observedResumeData: unknown;
+		const tool: BuiltTool = {
+			name: 'approve',
+			description: 'Requires approval',
+			inputSchema: z.object({ question: z.string() }),
+			suspendSchema: z.object({ question: z.string() }),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input: unknown, ctx: unknown) => {
+				const { suspend, resumeData } = ctx as InterruptibleToolContext;
+				if (!resumeData) return await suspend({ question: 'approve?' });
+				observedResumeData = resumeData;
+				return { approved: true };
+			},
+		};
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'approve', { question: 'ok?' }),
+		);
+
+		const runtimeWithTool = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+			checkpointStorage: 'memory',
+		});
+
+		const first = await runtimeWithTool.generate('go');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const payload = { approved: true, userInput: 'looks good' };
+		await runtimeWithTool.resume('generate', payload, { runId, toolCallId });
+
+		expect(observedResumeData).toEqual({ approved: true });
+		expect(payload).toEqual({ approved: true, userInput: 'looks good' });
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -6452,6 +6501,11 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(telemetry.isEnabled).toBe(true);
 		expect(telemetry.functionId).toBe('test-agent');
 	});
+
+	// Real parent/child span nesting (via a genuine OTel context manager, not
+	// mock-call-order heuristics) is covered by
+	// agent-runtime-memory.otel.test.ts's "memory span nesting under the root
+	// span" suite, for both generate() and stream().
 
 	it('enables smoothStream by default on streamText', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());

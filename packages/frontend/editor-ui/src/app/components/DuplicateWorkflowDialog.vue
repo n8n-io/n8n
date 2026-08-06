@@ -4,7 +4,7 @@ import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
 import { useToast } from '@n8n/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/app/components/Modal.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';

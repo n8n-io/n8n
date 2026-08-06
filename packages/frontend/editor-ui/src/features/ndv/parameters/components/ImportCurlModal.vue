@@ -23,7 +23,7 @@ const modalBus = createEventBus();
 const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 
 onMounted(() => {
-	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
+	const curlCommands = uiStore.modalStateById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
 		string,
 		string
 	>;
@@ -59,7 +59,8 @@ function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) 
 function onAfterImport() {
 	const nodeId = ndvStore.value.activeNode?.id as string;
 	const curlCommands =
-		(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<string, string>) ?? {};
+		(uiStore.modalStateById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<string, string>) ??
+		{};
 	curlCommands[nodeId] = curlCommand.value;
 	uiStore.setModalData({
 		name: IMPORT_CURL_MODAL_KEY,

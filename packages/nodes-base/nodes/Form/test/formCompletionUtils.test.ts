@@ -206,6 +206,7 @@ describe('formCompletionUtils', () => {
 					completionTitle: 'Form Completion',
 					completionMessage: maliciousMessage,
 					responseText,
+					respondWith: 'showText',
 					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
@@ -240,6 +241,7 @@ describe('formCompletionUtils', () => {
 					completionTitle: 'Form Completion',
 					completionMessage,
 					responseText,
+					respondWith: 'showText',
 					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
@@ -426,6 +428,8 @@ describe('formCompletionUtils', () => {
 					completionMessage: 'Form has been submitted successfully',
 					options: { formTitle: 'Form Title' },
 					respondWith: 'redirect',
+					responseText: '<p>Unused response</p>',
+					redirectUrl: 'https://example.com',
 				};
 				return params[parameterName];
 			});
@@ -436,7 +440,13 @@ describe('formCompletionUtils', () => {
 				'Content-Security-Policy',
 				expect.any(String),
 			);
-			expect(mockResponse.render).toHaveBeenCalled();
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					redirectUrl: 'https://example.com',
+					responseText: '',
+				}),
+			);
 		});
 
 		it('embeds an x-auth-token-compatible authToken when an authed user is provided', async () => {
