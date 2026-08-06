@@ -29,6 +29,8 @@ describe('TwitterOAuth2Api Credential', () => {
 	it('should default scope to the full scope list', () => {
 		const scopeProperty = credential.properties.find((p) => p.name === 'scope');
 		expect(scopeProperty?.type).toBe('hidden');
-		expect(scopeProperty?.default).toBeTruthy();
+		expect(scopeProperty?.default).toBe(
+			'tweet.read users.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access like.read like.write dm.write dm.read list.read list.write',
+		);
 	});
 });
