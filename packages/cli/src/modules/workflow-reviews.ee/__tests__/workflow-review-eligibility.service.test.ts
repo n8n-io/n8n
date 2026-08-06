@@ -137,6 +137,37 @@ describe('WorkflowReviewEligibilityService', () => {
 			expect(eligibility).toEqual({ canDecide: true, reason: null, canComment: true });
 		});
 
+		// The two deny arms of `canComment`. Both are also enforced end to end in
+		// workflow-review-activity.integration.test.ts, but the branch itself is pure, so
+		// it is pinned here where it lives.
+		it('refuses commenting to a non-author who cannot publish on the pinned workflow', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+
+			expect(eligibility).toEqual({
+				canDecide: false,
+				reason: 'missing_publish_permission',
+				canComment: false,
+			});
+		});
+
+		it('refuses commenting to an author who can no longer read the pinned workflow', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+			authorRepository.isAuthor.mockResolvedValue(true);
+
+			const eligibility = await service.resolveViewerEligibility(
+				memberUser(),
+				readable({ canReadPinnedWorkflow: false }),
+			);
+
+			expect(eligibility).toEqual({
+				canDecide: false,
+				reason: 'missing_publish_permission',
+				canComment: false,
+			});
+		});
+
 		it('reports a review with no linked workflow as ineligible without any lookup', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),

@@ -237,6 +237,30 @@ describe('useReviewActivityStore', () => {
 		expect(store.currentReviewId).toBeNull();
 	});
 
+	it('does not leave the next review posting while an earlier post is still in flight', async () => {
+		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
+		let resolvePost: (entry: WorkflowReviewActivityEntry) => void = () => {};
+		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockReturnValue(
+			new Promise((resolve) => {
+				resolvePost = resolve;
+			}),
+		);
+		const store = useReviewActivityStore();
+		await store.fetchFeed('req-1');
+
+		const pending = store.postComment('hi');
+		expect(store.posting).toBe(true);
+
+		await store.fetchFeed('req-2');
+		expect(store.posting).toBe(false);
+
+		// The stale post settling must not clear the flag out from under req-2.
+		store.posting = true;
+		resolvePost(makeEntry('9'));
+		await pending;
+		expect(store.posting).toBe(true);
+	});
+
 	it('rethrows a post failure without writing the feed error', async () => {
 		vi.mocked(workflowReviewsApi.fetchWorkflowReviewActivity).mockResolvedValue(makePage(['1']));
 		vi.mocked(workflowReviewsApi.createWorkflowReviewComment).mockRejectedValue(new Error('nope'));

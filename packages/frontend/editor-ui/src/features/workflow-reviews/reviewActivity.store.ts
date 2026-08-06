@@ -46,6 +46,9 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 		loadingMore.value = false;
 		loading.value = true;
 		error.value = null;
+		// A post still in flight for the review we just left must not leave this one's
+		// send button disabled.
+		posting.value = false;
 
 		try {
 			const response = await fetchWorkflowReviewActivity(rootStore.restApiContext, reviewId, {
@@ -116,7 +119,9 @@ export const useReviewActivityStore = defineStore('workflowReviewActivity', () =
 			// A feed refetch that raced this post may already carry the comment.
 			entries.value = [...withoutIdsIn(entries.value, [entry]), entry];
 		} finally {
-			posting.value = false;
+			// Only for the review this post belongs to. A switch already cleared the flag, and
+			// clearing it again would re-enable the send button mid-post on the new review.
+			if (currentReviewId.value === reviewId) posting.value = false;
 		}
 	}
 
