@@ -1,6 +1,6 @@
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -92,25 +92,8 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.where({ workflowId, nodeId });
 
 		if (fence) {
-			const fenceExists = manager
-				.createQueryBuilder()
-				.subQuery()
-				.select('1')
-				.from(ScheduledTask, 'fenced_task')
-				.where('fenced_task.id = :fenceTaskId')
-				.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
-				// `<> 'pending'`, not `= 'running'`: a fire-and-forget commit can land after
-				// the task already succeeded, and only a pending task's lease can be reclaimed.
-				.andWhere('fenced_task.status != :fenceExcludedStatus')
-				.getQuery();
-
-			// Binding via object criteria was reverted: TypeORM's per-builder parameter
-			// names made the subquery's binding overwrite this builder's own.
-			qb.andWhere(`EXISTS ${fenceExists}`, {
-				fenceTaskId: Number(fence.taskId),
-				fenceLeaseEpoch: fence.leaseEpoch,
-				fenceExcludedStatus: ScheduledTaskStatus.Pending,
-			});
+			const { sql, params } = this.buildFenceClause(manager, fence);
+			qb.andWhere(sql, params);
 		}
 
 		const result = await qb.execute();
@@ -124,5 +107,31 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		throw new UnexpectedError('Poller cursor row disappeared while its poll was running', {
 			extra: { workflowId, nodeId },
 		});
+	}
+
+	private buildFenceClause(
+		manager: EntityManager,
+		fence: PollLeaseFence,
+	): { sql: string; params: ObjectLiteral } {
+		const fenceExists = manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('1')
+			.from(ScheduledTask, 'fenced_task')
+			.where('fenced_task.id = :fenceTaskId')
+			.andWhere('fenced_task.leaseEpoch = :fenceLeaseEpoch')
+			// `<> 'pending'`, not `= 'running'`: a fire-and-forget commit can land after
+			// the task already succeeded, and only a pending task's lease can be reclaimed.
+			.andWhere('fenced_task.status != :fenceExcludedStatus')
+			.getQuery();
+
+		return {
+			sql: `EXISTS ${fenceExists}`,
+			params: {
+				fenceTaskId: Number(fence.taskId),
+				fenceLeaseEpoch: fence.leaseEpoch,
+				fenceExcludedStatus: ScheduledTaskStatus.Pending,
+			},
+		};
 	}
 }
