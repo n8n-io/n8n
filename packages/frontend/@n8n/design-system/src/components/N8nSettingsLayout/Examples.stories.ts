@@ -39,7 +39,7 @@ import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
 const meta = {
-	title: 'Instance Settings/Examples',
+	title: 'Areas/Settings/Examples',
 	component: N8nSettingsLayout,
 	parameters: {
 		docs: {

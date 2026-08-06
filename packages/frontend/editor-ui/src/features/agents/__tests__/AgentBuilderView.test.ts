@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
-import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref, computed } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -142,6 +142,12 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 	getAgentConfigValidation: getAgentConfigValidationMock,
+}));
+
+const generateDraftCasesMock = vi.fn();
+vi.mock('../agentEvals.api', () => ({
+	getDatasets: vi.fn().mockResolvedValue([]),
+	generateDraftCases: (...args: unknown[]) => generateDraftCasesMock(...args),
 }));
 
 const builderTelemetryMock = vi.hoisted(() => ({
@@ -323,7 +329,7 @@ async function renderView({
 	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
-	const { useSettingsStore } = await import('@/app/stores/settings.store');
+	const { useSettingsStore } = await import('@n8n/stores/settings.store');
 	const settingsStore = useSettingsStore();
 	settingsStore.settings = { activeModules: knowledgeBaseEnabled ? ['agents'] : [] } as never;
 	settingsStore.moduleSettings = {
@@ -538,13 +544,9 @@ function resetViewMocks() {
 	openAgentArtifactThread.mockReset();
 }
 
-describe('AgentBuilderView — preview routing', () => {
-	// First Vite transform of this SFC + design-system deps can exceed the default
-	// 5s test timeout; warm the module once so each case measures mount behavior.
-	beforeAll(async () => {
-		await import('../views/AgentBuilderView.vue');
-	}, 30_000);
-
+// First Vite transform of this SFC + design-system deps can exceed the default
+// 5s test timeout; Provide a hefty timeout for this block to evade flakes due to pressure on machine
+describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
@@ -794,6 +796,37 @@ describe('AgentBuilderView — preview routing', () => {
 			expect.any(Error),
 			'agents.builder.files.uploadTotalTooLarge.title',
 		);
+	});
+
+	it('generates eval cases and confirms the result with a toast', async () => {
+		generateDraftCasesMock.mockResolvedValue({
+			datasetId: 'd1',
+			dataTableId: 'dt1',
+			cases: [
+				{ input: 'a', whatToCheck: 'x' },
+				{ input: 'b', whatToCheck: 'y' },
+			],
+		});
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('generate-eval-cases');
+		await flushPromises();
+
+		expect(generateDraftCasesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {});
+		// Nothing renders the generated cases yet, so the toast is the only
+		// signal the work landed — without it the click looks like a no-op.
+		expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+	});
+
+	it('surfaces a failed eval-case generation', async () => {
+		generateDraftCasesMock.mockRejectedValue(new Error('no model configured'));
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('generate-eval-cases');
+		await flushPromises();
+
+		expect(showErrorMock).toHaveBeenCalled();
+		expect(showMessageMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 	});
 
 	it('uploads knowledge files for an unpublished agent', async () => {

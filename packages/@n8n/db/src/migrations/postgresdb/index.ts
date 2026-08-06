@@ -238,6 +238,7 @@ import { AddMisfirePolicyToScheduler1785247194307 } from '../common/178524719430
 import { CreateAgentChatAttachmentsTable1785255306000 } from '../common/1785255306000-CreateAgentChatAttachmentsTable';
 import { AddSetupCompletedAtToAgents1785500832626 } from '../common/1785500832626-AddSetupCompletedAtToAgents';
 import { AddAgentExecutionRuntimeState1785828155091 } from '../common/1785828155091-AddAgentExecutionRuntimeState';
+import { CreateAgentCredentialDependencyTable1785828155092 } from '../common/1785828155092-CreateAgentCredentialDependencyTable';
 import { AllowDiscordAgentChatSubscriptions1785840970000 } from '../common/1785840970000-AllowDiscordAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
 
@@ -482,5 +483,6 @@ export const postgresMigrations: Migration[] = [
 	CreateAgentChatAttachmentsTable1785255306000,
 	AddSetupCompletedAtToAgents1785500832626,
 	AddAgentExecutionRuntimeState1785828155091,
+	CreateAgentCredentialDependencyTable1785828155092,
 	AllowDiscordAgentChatSubscriptions1785840970000,
 ];

@@ -4,7 +4,7 @@ import type { FrontendSettings } from '@n8n/api-types';
 import { useDocumentTitle } from './useDocumentTitle';
 
 const settings = mock<FrontendSettings>({ releaseChannel: 'stable' });
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings })),
 }));
 

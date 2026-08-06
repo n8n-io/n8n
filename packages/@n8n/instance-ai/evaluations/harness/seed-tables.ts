@@ -8,6 +8,12 @@
 
 import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
 
+import {
+	freshSeedNameSuffix,
+	SEED_NAME_RE,
+	seedNameBase,
+	uniquifySeedName,
+} from './conversation-seed';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import type { ExecutionScenario } from '../types';
@@ -78,6 +84,60 @@ export function buildSeededTablesNote(tables: InstanceAiEvalSeedDataTable[]): st
 		return `- "${table.name}" (columns: ${columns})`;
 	});
 	return `\n\nThe following data table(s) already exist in this workspace — reuse them (look them up with the Data Table node's list/schema) instead of creating new ones:\n${lines.join('\n')}`;
+}
+
+/** Per-run table names (`Orders [seed 1a2b3c4d]`). A table name is unique per
+ *  project, so under the declared name two iterations of one case collide — they
+ *  overlap on a lane, which is released when the build returns while the tables
+ *  live to the last scenario row. Callers keep the declared name as the map key. */
+export function uniquifyScenarioTableNames(
+	tables: InstanceAiEvalSeedDataTable[],
+): InstanceAiEvalSeedDataTable[] {
+	const suffix = freshSeedNameSuffix();
+	return tables.map((table) => ({ ...table, name: uniquifySeedName(table.name, suffix) }));
+}
+
+/** Delete a previous run's seed tables (a crash or `--keep-workflows` skips the
+ *  id-based cleanup), so the agent isn't offered 20 near-identical ones to ground
+ *  on. Only ids in the pre-run snapshot, so a concurrent iteration's live table
+ *  can't match — same rule as `evictLeftoverSeedWorkflows`. Best-effort. */
+export async function evictLeftoverSeedTables(
+	client: N8nClient,
+	declared: InstanceAiEvalSeedDataTable[],
+	preRunDataTableIds: Set<string> | undefined,
+	logger: EvalLogger,
+	laneTag?: string,
+): Promise<void> {
+	if (!preRunDataTableIds || preRunDataTableIds.size === 0) return;
+	const baseNames = new Set(declared.map((table) => seedNameBase(table.name)));
+	try {
+		const projectId = await client.getPersonalProjectId();
+		const stale = (await client.listDataTables(projectId)).filter((table) => {
+			if (!preRunDataTableIds.has(table.id)) return false;
+			const base = SEED_NAME_RE.exec(table.name)?.[1];
+			return base !== undefined && baseNames.has(base);
+		});
+		let evicted = 0;
+		for (const table of stale) {
+			try {
+				await client.deleteDataTable(projectId, table.id);
+				evicted++;
+			} catch (error: unknown) {
+				logger.info(
+					`  Could not evict leftover seed data table "${table.name}" (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+				);
+			}
+		}
+		if (evicted > 0) {
+			logger.info(
+				`  Evicted ${String(evicted)} leftover seed data table(s) before pre-seeding${laneTag ?? ''}`,
+			);
+		}
+	} catch (error: unknown) {
+		logger.info(
+			`  Could not evict leftover seed data tables (continuing): ${error instanceof Error ? error.message : String(error)}${laneTag ?? ''}`,
+		);
+	}
 }
 
 /**

@@ -2,7 +2,7 @@ import { onBeforeUnmount, onMounted, toValue, watch } from 'vue';
 import type { MaybeRefOrGetter } from 'vue';
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,

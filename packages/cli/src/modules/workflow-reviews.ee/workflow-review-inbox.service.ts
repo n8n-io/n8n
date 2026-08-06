@@ -261,6 +261,7 @@ export class WorkflowReviewInboxService {
 	private toVersionSnapshot(version: WorkflowHistory): WorkflowReviewVersionSnapshot {
 		return {
 			versionId: version.versionId,
+			name: version.name,
 			nodes: version.nodes,
 			connections: version.connections,
 			nodeGroups: version.nodeGroups,
