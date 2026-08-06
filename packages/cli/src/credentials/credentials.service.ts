@@ -102,6 +102,8 @@ type UpdateOptions = {
 	deleteUserEntries?: boolean;
 	/** Existing instance credential whose hook-mutated payload must be revalidated. */
 	instanceCredential?: Pick<CredentialsEntity, 'id' | 'type'>;
+	/** When provided, the returned entity is enriched with `connectedByMe` for this user. */
+	user?: User;
 };
 
 type CreateCredentialOptions = CreateCredentialDto & {
@@ -153,6 +155,15 @@ type WorkflowCredentialResult = {
 	currentUserHasAccess: boolean;
 	connectedByMe?: boolean;
 };
+
+/** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
+function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
+	if (typeof raw !== 'string' || raw.trim() === '') return undefined;
+	const parsed = jsonParse<unknown>(raw, { fallbackValue: null });
+	if (!Array.isArray(parsed)) return undefined;
+	const codes = parsed.filter((code): code is number => Number.isInteger(code));
+	return codes.length > 0 ? codes : undefined;
+}
 
 @Service()
 export class CredentialsService {
@@ -797,7 +808,7 @@ export class CredentialsService {
 		// every time anybody changes anything on the credentials even if it is just the name.
 		// Exception: when toggling to private (Static→Private), the shared token must be cleared.
 		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
-			// @ts-ignore
+			// @ts-expect-error data is typed as encrypted string
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 
@@ -908,23 +919,37 @@ export class CredentialsService {
 			return await transactionManager.findOneBy(CredentialsEntity, { id: credentialId });
 		};
 
+		let result: CredentialsEntity | null;
 		if (!options?.instanceCredential) {
-			return await this.credentialsRepository.manager.transaction(persist);
+			result = await this.credentialsRepository.manager.transaction(persist);
+		} else {
+			const instanceCredential = options.instanceCredential;
+			const hookedData = await this.getValidatedInstanceCredentialHookData(
+				newCredentialData,
+				instanceCredential.id,
+				instanceCredential.type,
+			);
+			result = await this.dbLockService.withLock(
+				DbLock.INSTANCE_AI_SETTINGS,
+				async (transactionManager, ctx) => {
+					await this.validateInstanceCredentialUpdate(
+						instanceCredential,
+						hookedData,
+						undefined,
+						ctx,
+					);
+					return await persist(transactionManager);
+				},
+			);
 		}
 
-		const instanceCredential = options.instanceCredential;
-		const hookedData = await this.getValidatedInstanceCredentialHookData(
-			newCredentialData,
-			instanceCredential.id,
-			instanceCredential.type,
-		);
-		return await this.dbLockService.withLock(
-			DbLock.INSTANCE_AI_SETTINGS,
-			async (transactionManager, ctx) => {
-				await this.validateInstanceCredentialUpdate(instanceCredential, hookedData, undefined, ctx);
-				return await persist(transactionManager);
-			},
-		);
+		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
+		const enriched: (CredentialsEntity & { connectedByMe?: boolean }) | null = result;
+		if (enriched && options?.user) {
+			await this.populateConnectedByMe([enriched], options.user);
+		}
+
+		return enriched;
 	}
 
 	/**
@@ -1166,6 +1191,45 @@ export class CredentialsService {
 		return await this.test(user.id, mergedCredentials);
 	}
 
+	/**
+	 * Auth-probe a stored credential against the test URL persisted in its own
+	 * data (e.g. Templated Custom Auth, whose type declares no test of its own).
+	 * The target is never caller-supplied, so a merely readable credential
+	 * cannot be pointed at an arbitrary endpoint.
+	 */
+	async probeById(user: User, credentialId: string) {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new CredentialNotFoundError(credentialId);
+		}
+
+		const data = await this.decrypt(storedCredential, true);
+
+		// Expressions (leading '=') and non-http values are refused, not resolved.
+		const testUrl = data.testUrl;
+		if (typeof testUrl !== 'string' || !/^https?:\/\//i.test(testUrl)) {
+			throw new BadRequestError('The credential has no test URL to probe');
+		}
+
+		return await this.credentialsTester.probeCredentialAuth(
+			user.id,
+			storedCredential.type,
+			{
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data,
+			},
+			testUrl,
+			{ acceptedStatusCodes: parseAcceptedStatusCodes(data.acceptedStatusCodes) },
+		);
+	}
+
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
 	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
@@ -1280,6 +1344,9 @@ export class CredentialsService {
 				]),
 			);
 		}
+		// Expressions are references (e.g. external secrets), not secrets — keep
+		// them visible and editable, mirroring the field-level password rule.
+		if (typeof obj === 'string' && obj.startsWith('={{')) return obj;
 		return CUSTOM_AUTH_JSON_REDACTED_VALUE;
 	}
 
@@ -1311,7 +1378,11 @@ export class CredentialsService {
 	private unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
-			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
+			// Strip a leading `=`: switching a redacted field to expression mode
+			// prepends it to the sentinel, which would otherwise defeat the match
+			// and persist the sentinel as the real value.
+			const sentinel = typeof value === 'string' && value.startsWith('=') ? value.slice(1) : value;
+			if (sentinel === CREDENTIAL_BLANKING_VALUE || sentinel === CREDENTIAL_EMPTY_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (

@@ -140,6 +140,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 	'breakingChanges:list',
+	'breakingChanges:migrate',
 	'execution:reveal',
 	'apiKey:manage',
 	'apiKey:list',

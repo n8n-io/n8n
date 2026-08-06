@@ -7,7 +7,7 @@ import type {
 	InstanceAiEditorActionSource,
 	InstanceAiEditorCapability,
 } from '@/app/composables/useInstanceAiEditorCapability';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';

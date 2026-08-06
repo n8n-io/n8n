@@ -48,8 +48,10 @@ describe('N8nClient packages', () => {
 
 			const result = await client.exportPackage({ workflowIds: ['a', 'b'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
+			// Older servers omit the counts header.
+			expect(result.counts).toBeUndefined();
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
@@ -61,12 +63,24 @@ describe('N8nClient packages', () => {
 
 			const result = await client.exportPackage({ projectIds: ['proj-1', 'proj-2'] });
 
-			expect(Buffer.isBuffer(result)).toBe(true);
-			expect(result.equals(Buffer.from([4, 5, 6]))).toBe(true);
+			expect(Buffer.isBuffer(result.archive)).toBe(true);
+			expect(result.archive.equals(Buffer.from([4, 5, 6]))).toBe(true);
 
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
 			expect(init.body).toBe(JSON.stringify({ projectIds: ['proj-1', 'proj-2'] }));
+		});
+
+		it('parses the X-N8n-Export-Counts header into counts when the server sends it', async () => {
+			const counts = { workflows: 2, folders: 1, credentials: 0, dataTables: 0, variables: 0 };
+			const response = binaryResponse(200, new Uint8Array([1, 2, 3]));
+			response.headers.set('X-N8n-Export-Counts', JSON.stringify(counts));
+			fetchMock.mockResolvedValue(response);
+
+			const result = await client.exportPackage({ workflowIds: ['a'] });
+
+			expect(result.counts).toEqual(counts);
+			expect(result.archive.equals(Buffer.from([1, 2, 3]))).toBe(true);
 		});
 
 		it('includes folderIds in the body when provided', async () => {
@@ -129,6 +143,15 @@ describe('N8nClient packages', () => {
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
+		});
+
+		it('includes includeTags=false in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeTags: false });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
 		});
 	});
 
@@ -239,13 +262,40 @@ describe('N8nClient packages', () => {
 		});
 
 		describe('variableMissingMode', () => {
-			it.each(['do-nothing', 'must-preexist'])('sends %s when provided', async (policy) => {
+			it.each(['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'])(
+				'sends %s when provided',
+				async (policy) => {
+					fetchMock.mockResolvedValue(
+						jsonResponse(200, {
+							workflows: [],
+							bindings: {},
+							credentials: { matched: [], stubbed: [] },
+							variables: { matched: [], missing: [], created: [], stubbed: [] },
+						}),
+					);
+
+					await client.importPackage(
+						{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+						{
+							workflowConflictPolicy: 'fail',
+							variableMissingMode: policy,
+						},
+					);
+
+					const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+					expect(form.get('variableMissingMode')).toBe(policy);
+				},
+			);
+		});
+
+		describe('variableConflictPolicy', () => {
+			it.each(['keep-existing', 'overwrite', 'fail'])('sends %s when provided', async (policy) => {
 				fetchMock.mockResolvedValue(
 					jsonResponse(200, {
 						workflows: [],
 						bindings: {},
 						credentials: { matched: [], stubbed: [] },
-						variables: { matched: [], missing: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
 					}),
 				);
 
@@ -253,12 +303,36 @@ describe('N8nClient packages', () => {
 					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
 					{
 						workflowConflictPolicy: 'fail',
-						variableMissingMode: policy,
+						variableConflictPolicy: policy,
 					},
 				);
 
 				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
-				expect(form.get('variableMissingMode')).toBe(policy);
+				expect(form.get('variableConflictPolicy')).toBe(policy);
+			});
+		});
+
+		describe('variableParentPolicy', () => {
+			it.each(['project', 'global'])('sends %s when provided', async (policy) => {
+				fetchMock.mockResolvedValue(
+					jsonResponse(200, {
+						workflows: [],
+						bindings: {},
+						credentials: { matched: [], stubbed: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [] },
+					}),
+				);
+
+				await client.importPackage(
+					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+					{
+						workflowConflictPolicy: 'fail',
+						variableParentPolicy: policy,
+					},
+				);
+
+				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+				expect(form.get('variableParentPolicy')).toBe(policy);
 			});
 		});
 

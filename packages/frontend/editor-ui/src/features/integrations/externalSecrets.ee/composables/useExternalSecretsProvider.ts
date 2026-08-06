@@ -1,3 +1,5 @@
+import type { DisplayCondition, NodeParameterValue } from 'n8n-workflow';
+
 import type { IUpdateInformation } from '@/Interface';
 import type {
 	ExternalSecretsProvider,
@@ -8,7 +10,7 @@ import type {
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 export function useExternalSecretsProvider(
 	provider:
@@ -52,7 +54,9 @@ export function useExternalSecretsProvider(
 			visible =
 				visible &&
 				Object.entries(property.displayOptions.show).every(([key, value]) => {
-					return value?.includes(providerData.value[key] as string);
+					return (value as Array<NodeParameterValue | DisplayCondition>)?.includes(
+						providerData.value[key] as string,
+					);
 				});
 		}
 

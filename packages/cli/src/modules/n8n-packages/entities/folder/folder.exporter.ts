@@ -18,6 +18,7 @@ export interface FolderExportRequest {
 	user: User;
 	folderIds: string[];
 	writer: PackageWriter;
+	includeTags: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
 	 * export (`folders/...`); a project exporter passes `projects/<slug>` so the
@@ -181,6 +182,7 @@ export class FolderExporter {
 			user: request.user,
 			writer: request.writer,
 			workflowIds,
+			includeTags: request.includeTags,
 			basePrefix,
 		});
 	}

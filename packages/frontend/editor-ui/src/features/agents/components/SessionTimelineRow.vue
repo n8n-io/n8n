@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -47,7 +47,7 @@ const infoText = computed((): string => {
 		case 'tool': {
 			if (it.isUserFeedback) return i18n.baseText('agentSessions.timeline.userFeedback');
 			if (isSubAgent.value) return delegateLabel(i18n, it.subAgentName ?? '');
-			return resolveToolNameForDisplay(it.toolName, i18n.baseText);
+			return resolveToolNameForDisplay(it.toolName, i18n);
 		}
 		case 'workflow':
 			return it.workflowName ?? formatToolNameForDisplay(it.toolName);
@@ -58,6 +58,16 @@ const infoText = computed((): string => {
 		default:
 			return '';
 	}
+});
+
+const attachmentChip = computed((): { label: string; tooltip: string } | null => {
+	const attachments = props.item.attachments;
+	if (!attachments?.length) return null;
+	const extra = attachments.length - 1;
+	return {
+		label: extra > 0 ? `${attachments[0].fileName} +${extra}` : attachments[0].fileName,
+		tooltip: attachments.map((attachment) => attachment.fileName).join(', '),
+	};
 });
 
 const label = computed((): string => {
@@ -100,6 +110,12 @@ const label = computed((): string => {
 			<template v-else>
 				<span>{{ infoText }}</span>
 			</template>
+			<N8nTooltip v-if="attachmentChip" :content="attachmentChip.tooltip" placement="top">
+				<span :class="$style.attachmentChip" data-testid="timeline-attachment-chip">
+					<N8nIcon icon="paperclip" size="xsmall" />
+					{{ attachmentChip.label }}
+				</span>
+			</N8nTooltip>
 		</div>
 		<span :class="$style.time">{{ time }}</span>
 	</div>
@@ -147,6 +163,23 @@ const label = computed((): string => {
 .workflowLink {
 	color: var(--color--primary);
 	text-decoration: underline;
+}
+
+.attachmentChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	max-width: 200px;
+	padding: 0 var(--spacing--3xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--subtle);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	flex-shrink: 0;
 }
 
 .time {

@@ -87,7 +87,7 @@ import type {
 	INodeParameters,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { historyBus } from '@/app/models/history';
@@ -96,10 +96,10 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 
@@ -1939,10 +1939,6 @@ onMounted(async () => {
 
 	try {
 		initializeRoute();
-
-		// Once view is initialized, pick up all toast notifications
-		// waiting in the store and display them
-		toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 
 		if (route.query.settings) {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);

@@ -31,7 +31,6 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // credentialsFinderService
 			mock(), // enterpriseCredentialsService
 			mock(), // workflowFinderService
-			mock(), // folderService
 			mock(), // folderRepository
 			workflowPublishHistoryRepository,
 		);

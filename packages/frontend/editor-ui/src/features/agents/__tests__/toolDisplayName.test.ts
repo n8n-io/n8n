@@ -1,3 +1,4 @@
+import type { BaseTextKey } from '@n8n/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -49,6 +50,21 @@ describe('formatToolNameForDisplay', () => {
 	});
 
 	it('falls back to a humanized tool name when a translation key is missing', () => {
-		expect(resolveToolNameForDisplay('search_nodes', (key) => key)).toBe('Search nodes');
+		expect(resolveToolNameForDisplay('search_nodes', { baseText: (key) => key })).toBe(
+			'Search nodes',
+		);
+	});
+
+	it('preserves the translation context when resolving a tool name', () => {
+		const translator = {
+			translations: {
+				[WEB_SEARCH_TOOL_NAME_KEY]: 'Web search',
+			} as Partial<Record<BaseTextKey, string>>,
+			baseText(key: BaseTextKey) {
+				return this.translations[key] ?? key;
+			},
+		};
+
+		expect(resolveToolNameForDisplay('web_search', translator)).toBe('Web search');
 	});
 });

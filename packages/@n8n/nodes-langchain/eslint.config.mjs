@@ -13,6 +13,7 @@ export default defineConfig(
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
 			'id-denylist': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'error',
 			'no-case-declarations': 'warn',
 			'no-extra-boolean-cast': 'warn',
 			'no-empty': 'warn',
@@ -168,6 +169,7 @@ export default defineConfig(
 		rules: {
 			'import-x/no-extraneous-dependencies': 'warn',
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
 );

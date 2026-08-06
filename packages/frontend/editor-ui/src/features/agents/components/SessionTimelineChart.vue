@@ -110,7 +110,7 @@ function popoverName(item: TimelineItem): string {
 		case 'agent':
 			return truncate(item.content ?? '', 80);
 		case 'tool': {
-			return resolveToolNameForDisplay(item.toolName, i18n.baseText);
+			return resolveToolNameForDisplay(item.toolName, i18n);
 		}
 		case 'workflow':
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);

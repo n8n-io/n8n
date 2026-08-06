@@ -12,7 +12,7 @@ import { test, expect } from '../../../fixtures/base';
  * - search_workflows: Search for workflows available in MCP
  * - get_workflow_details: Get detailed information about a workflow
  * - execute_workflow: Execute a workflow and get results
- * - get_execution: Get full execution details by ID
+ * - get_workflow_execution: Get full workflow execution details by ID
  * - publish_workflow: Publish (activate) a workflow
  * - unpublish_workflow: Unpublish (deactivate) a workflow
  *
@@ -352,7 +352,7 @@ test.describe(
 			});
 		});
 
-		test.describe('get_execution', () => {
+		test.describe('get_workflow_execution', () => {
 			test('should return full execution data after workflow execution', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',

@@ -79,6 +79,7 @@ declare global {
 					api_host?: string;
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
+					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
 					bootstrap?: {
 						distinctID?: string;
@@ -653,16 +654,6 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-/**
- * The modal-opening capability. Stores that need to open modals depend on this
- * pair (mirroring `ui.store`'s surface) and receive it via dependency injection,
- * rather than importing `ui.store` directly. A consumer may use only a subset.
- */
-export interface ModalOpeners {
-	openModal: (name: ModalKey) => void;
-	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) => void;
-}
-
 // `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
 // `@/Interface` importers stay unchanged.
 export type { ModalState };
@@ -706,10 +697,6 @@ export type TargetNodeParameterContext = {
 	nodeName: string;
 	parameterPath: string;
 };
-
-// Relocated to `@n8n/stores/notifications.store` alongside the notifications
-// store; re-exported here for existing importers.
-export type { NotificationOptions } from '@n8n/stores/notifications.store';
 
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
@@ -883,80 +870,7 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
-export interface CloudPlanState {
-	initialized: boolean;
-	data: Cloud.PlanData | null;
-	usage: InstanceUsage | null;
-	loadingPlan: boolean;
-}
-
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-export type CloudUpdateLinkSourceType =
-	| 'advanced-permissions'
-	| 'canvas-nav'
-	| 'concurrency'
-	| 'custom-data-filter'
-	| 'workflow_sharing'
-	| 'credential_sharing'
-	| 'settings-n8n-api'
-	| 'audit-logs'
-	| 'ldap'
-	| 'log-streaming'
-	| 'source-control'
-	| 'sso'
-	| 'usage_page'
-	| 'settings-users'
-	| 'variables'
-	| 'community-nodes'
-	| 'workflow-history'
-	| 'worker-view'
-	| 'external-secrets'
-	| 'rbac'
-	| 'debug'
-	| 'insights'
-	| 'evaluations'
-	| 'ai-builder-sidebar'
-	| 'ai-builder-canvas'
-	| 'custom-roles'
-	| 'custom-roles-selector'
-	| 'custom-roles-list'
-	| 'main-sidebar'
-	| 'chat-hub'
-	| 'empty-state-builder-prompt'
-	| 'instance-ai'
-	| 'data-redaction'
-	| 'workflow-settings';
-
-export type UTMCampaign =
-	| 'upgrade-custom-data-filter'
-	| 'upgrade-concurrency'
-	| 'upgrade-workflow-sharing'
-	| 'upgrade-credentials-sharing'
-	| 'upgrade-api'
-	| 'upgrade-audit-logs'
-	| 'upgrade-ldap'
-	| 'upgrade-log-streaming'
-	| 'upgrade-source-control'
-	| 'upgrade-sso'
-	| 'open'
-	| 'upgrade-users'
-	| 'upgrade-variables'
-	| 'upgrade-community-nodes'
-	| 'upgrade-workflow-history'
-	| 'upgrade-advanced-permissions'
-	| 'upgrade-worker-view'
-	| 'upgrade-external-secrets'
-	| 'upgrade-rbac'
-	| 'upgrade-debug'
-	| 'upgrade-insights'
-	| 'upgrade-evaluations'
-	| 'upgrade-builder'
-	| 'upgrade-custom-roles'
-	| 'upgrade-canvas-nav'
-	| 'upgrade-main-sidebar'
-	| 'upgrade-instance-ai'
-	| 'upgrade-data-redaction';
 
 export type AddedNode = {
 	type: string;

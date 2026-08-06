@@ -362,11 +362,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				// terminal status: recovery can race a `running` -> `waiting` transition and flag a
 				// healthy execution as dangling, but only genuinely in-progress rows should be crashed
 				{ id: In(batch), status: In(CRASHABLE_EXECUTION_STATUSES) },
-				{
-					status: 'crashed',
-					stoppedAt: new Date(),
-					waitTill: null,
-				},
+				{ status: 'crashed', stoppedAt: new Date(), waitTill: null },
 			);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
 			processed += batch.length;

@@ -40,6 +40,7 @@ describe('processRunExecutionData', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		hooks: { runHook },
 		restartExecutionId: undefined,
+		encryptedRunnerIdentity: undefined,
 		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});

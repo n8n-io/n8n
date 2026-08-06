@@ -10,7 +10,7 @@ import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -1510,6 +1510,49 @@ describe('ParameterInput.vue', () => {
 			await waitFor(() => {
 				expect(textarea.value).toBe('a\n\n\nb');
 			});
+		});
+	});
+
+	describe('multi-line masked (password) fields', () => {
+		test('renders a masked textarea (not a single-line password input) for a multi-line secret', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'privateKey',
+					parameter: createTestNodeProperties({
+						displayName: 'Private Key',
+						name: 'privateKey',
+						type: 'string',
+						typeOptions: { rows: 4, password: true },
+					}),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			// A single-line <input type="password"> strips newlines and corrupts keys.
+			expect(container.querySelector('input[type="password"]')).not.toBeInTheDocument();
+			expect(container.querySelector('textarea')).toBeInTheDocument();
+			// Kept out of PostHog capture even in a node (non-credential) context.
+			expect(container.querySelector('.ph-no-capture')).toBeInTheDocument();
+		});
+
+		test('still renders a single-line password input for a single-line secret', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'passphrase',
+					parameter: createTestNodeProperties({
+						displayName: 'Passphrase',
+						name: 'passphrase',
+						type: 'string',
+						typeOptions: { password: true },
+					}),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			expect(container.querySelector('input[type="password"]')).toBeInTheDocument();
+			expect(container.querySelector('textarea')).not.toBeInTheDocument();
 		});
 	});
 

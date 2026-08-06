@@ -16,8 +16,10 @@ export type {
 	EvalRunResult,
 	EvalResults,
 	ToolContext,
+	ToolCancellationContext,
 	ToolExecutionContext,
 	InterruptibleToolContext,
+	ToolSuspendOptions,
 	CheckpointStore,
 	StreamChunk,
 	Provider,
@@ -27,6 +29,7 @@ export type {
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
 	XaiThinkingConfig,
+	ReasoningLevel,
 	SerializableAgentState,
 	AgentRunState,
 	MemoryConfig,
@@ -66,6 +69,7 @@ export type {
 	ResumeOptions,
 	McpServerConfig,
 	McpToolCallSettledEvent,
+	McpConnectionFailedEvent,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
@@ -206,9 +210,12 @@ export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';
 export type {
 	ContentCitation,
+	ContentCustom,
 	ContentFile,
+	ContentFileRef,
 	ContentMetadata,
 	ContentReasoning,
+	ContentReasoningFile,
 	ContentText,
 	ContentToolCall,
 	Message,
@@ -218,6 +225,8 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
+export { stripHydratedFileData } from './types/sdk/message';
+export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
@@ -266,13 +275,19 @@ export {
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
+	parseDelegateSubAgentContinuation,
 	renderDelegateSubAgentPrompt,
 } from './runtime/tools/delegate-sub-agent-tool';
 export type {
 	CreateDelegateSubAgentToolOptions,
+	DelegateSubAgentCancelRequest,
+	DelegateSubAgentCancelRunner,
+	DelegateSubAgentContinuation,
 	DelegateSubAgentInput,
 	DelegateSubAgentPolicy,
 	DelegateSubAgentRequest,
+	DelegateSubAgentResumeRequest,
+	DelegateSubAgentResumeRunner,
 	DelegateSubAgentRunner,
 	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,

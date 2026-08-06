@@ -1,5 +1,11 @@
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import { deriveParentFolderId, foldersInScope, workflowsInScope } from '../package-layout';
+import type { SerializedVariable } from '../../spec/serialized/variable.schema';
+import {
+	deriveParentFolderId,
+	foldersInScope,
+	placeByLayout,
+	workflowsInScope,
+} from '../package-layout';
 
 const entry = (id: string, target: string): ManifestEntry => ({ id, name: id, target });
 
@@ -48,6 +54,61 @@ describe('package-layout', () => {
 				'pRoot',
 				'pFolder',
 			]);
+		});
+	});
+
+	describe('variable placement', () => {
+		const named = (name: string, target: string): ManifestEntry => ({ id: name, name, target });
+		const placedIn = (
+			manifestVariables: ManifestEntry[],
+			scopePrefix: string,
+			bundledVariables?: Map<string, SerializedVariable>,
+		) =>
+			placeByLayout({
+				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
+				manifestVariables,
+				scopePrefix,
+				bundledVariables,
+			})![0];
+		const scopeOf = (manifestVariables: ManifestEntry[], scopePrefix: string) =>
+			placedIn(manifestVariables, scopePrefix).globalPlacement ? 'global' : 'project';
+
+		// A requirement names a variable, never a path, so both files answer to it. Hand-made only.
+		it('rejects two files claiming one name in the same directory', () => {
+			const entries = [
+				named('API_URL', 'variables/api_url'),
+				named('API_URL', 'variables/api_url_2'),
+			];
+			expect(() => scopeOf(entries, '')).toThrow(/ambiguous variable entries/);
+		});
+
+		it('gives each project its own file when two projects bundle one name', () => {
+			const entries = [
+				named('API_URL', 'projects/cheddar/variables/api_url'),
+				named('API_URL', 'projects/brie/variables/api_url'),
+			];
+			const bundled = new Map<string, SerializedVariable>([
+				[
+					'projects/cheddar/variables/api_url',
+					{ name: 'API_URL', type: 'string', value: 'cheddar' },
+				],
+				['projects/brie/variables/api_url', { name: 'API_URL', type: 'string', value: 'brie' }],
+			]);
+
+			expect(placedIn(entries, 'projects/cheddar/', bundled)).toMatchObject({
+				globalPlacement: false,
+				packageValue: 'cheddar',
+			});
+			expect(placedIn(entries, 'projects/brie/', bundled)).toMatchObject({
+				globalPlacement: false,
+				packageValue: 'brie',
+			});
+		});
+
+		it('does not let one project prefix match another that shares its start', () => {
+			expect(scopeOf([named('API_URL', 'projects/xy/variables/api_url')], 'projects/x/')).toBe(
+				'project',
+			);
 		});
 	});
 

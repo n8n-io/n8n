@@ -15,7 +15,7 @@ import {
 	formatTimestamp,
 	getVersionLabel,
 } from '@/features/workflows/workflowHistory/utils';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type {
 	WorkflowHistoryAction,
 	WorkflowHistoryVersionStatus,

@@ -14,6 +14,7 @@ import type { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -38,6 +39,7 @@ describe('WorkflowCreationService', () => {
 	let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 	let externalHooksMock: MockProxy<ExternalHooks>;
 	let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+	let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -52,6 +54,7 @@ describe('WorkflowCreationService', () => {
 		workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 		externalHooksMock = mock<ExternalHooks>();
 		workflowFinderServiceMock = mock<WorkflowFinderService>();
+		workflowHookContextServiceMock = mock<WorkflowHookContextService>();
 		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
 			isValid: true,
 		});
@@ -78,6 +81,7 @@ describe('WorkflowCreationService', () => {
 			mock<NodeTypes>(),
 			workflowValidationServiceMock,
 			instanceRedactionEnforcementServiceMock,
+			workflowHookContextServiceMock,
 		);
 	});
 
@@ -259,6 +263,7 @@ describe('WorkflowCreationService', () => {
 
 				expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.create', [
 					newWorkflow,
+					workflowHookContextServiceMock,
 					expectedActor,
 				]);
 			});
@@ -286,6 +291,7 @@ describe('WorkflowCreationService', () => {
 
 				expect(externalHooksMock.run).toHaveBeenCalledWith('workflow.afterCreate', [
 					savedWorkflow,
+					workflowHookContextServiceMock,
 					expectedActor,
 				]);
 			});

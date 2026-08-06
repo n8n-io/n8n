@@ -2,6 +2,7 @@
 import {
 	DropdownMenuCheckboxItem,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubTrigger,
@@ -16,6 +17,7 @@ import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 
 import {
 	DropdownMenuPortalTargetKey,
+	DropdownMenuSubMaxHeightKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
 } from './DropdownMenu.types';
@@ -49,6 +51,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
+const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 
 const internalSubMenuOpen = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
@@ -98,10 +101,10 @@ const handleSelect = (value: T) => {
 };
 
 const handleItemSelect = (event: Event) => {
-	if (!props.disabled && !hasSubMenu.value) {
-		if (!props.closeOnSelect) event.preventDefault();
-		emit('select', props.id);
-	}
+	if (props.disabled || hasSubMenu.value) return;
+	// Keep the menu open for toggle-style rows (keepOpen) or items opting out of close-on-select.
+	if (props.keepOpen || !props.closeOnSelect) event.preventDefault();
+	emit('select', props.id);
 };
 
 const handlePointerMove = (event: PointerEvent) => {
@@ -185,18 +188,22 @@ onBeforeUnmount(() => {
 	<div ref="itemRef" :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
 
+		<DropdownMenuLabel v-if="header" :class="$style['section-header']">
+			<N8nText size="small" color="text-light" bold>{{ label }}</N8nText>
+		</DropdownMenuLabel>
+
 		<DropdownMenuSub
-			v-if="hasSubMenu"
+			v-else-if="hasSubMenu"
 			:open="internalSubMenuOpen"
 			@update:open="handleSubMenuOpenChange"
 		>
 			<DropdownMenuSubTrigger
 				:id="htmlId"
 				:aria-selected="highlighted || undefined"
-				@pointermove.capture="handlePointerMove"
 				:disabled="disabled"
 				:data-test-id="testId"
 				:class="[$style.item, $style['sub-trigger'], props.class, { 'is-disabled': !!disabled }]"
+				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
 					<Icon
@@ -231,7 +238,10 @@ onBeforeUnmount(() => {
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
 					:class="$style['sub-content']"
-					:style="subContentMaxHeight ? { maxHeight: subContentMaxHeight } : undefined"
+					:style="[
+						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
+						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
+					]"
 					:side-offset="1"
 					:prioritize-position="true"
 					sticky="partial"
@@ -337,10 +347,10 @@ onBeforeUnmount(() => {
 			:id="htmlId"
 			:model-value="checked"
 			:aria-selected="highlighted || undefined"
-			@pointermove.capture="handlePointerMove"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -373,10 +383,10 @@ onBeforeUnmount(() => {
 			v-else
 			:id="htmlId"
 			:aria-selected="highlighted || undefined"
-			@pointermove.capture="handlePointerMove"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -435,6 +445,13 @@ onBeforeUnmount(() => {
 	&::-webkit-scrollbar {
 		display: none;
 	}
+}
+
+.section-header {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--3xs);
+	user-select: none;
 }
 
 .item {
@@ -503,7 +520,10 @@ onBeforeUnmount(() => {
 	width: fit-content;
 	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
 	max-width: var(--n8n--dropdown-menu-width);
-	max-height: min(var(--reka-dropdown-menu-content-available-height), var(--spacing--5xl));
+	max-height: min(
+		var(--reka-dropdown-menu-content-available-height),
+		var(--n8n-dropdown-sub-max-height, var(--spacing--5xl))
+	);
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	overflow: hidden;
 	scrollbar-width: none;

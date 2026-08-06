@@ -37,7 +37,7 @@ import { useInstalledCommunityPackage } from '@/features/settings/communityNodes
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
@@ -47,7 +47,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import {
@@ -68,7 +68,7 @@ import { useQuickConnect } from '@/features/credentials/quickConnect/composables
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeIconSource } from '@/app/composables/useNodeIconSource';

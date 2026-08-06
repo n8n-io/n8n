@@ -11,10 +11,41 @@ export interface NewExecutionRecord {
 	triggerPayload: JsonObject | null;
 }
 
-/**
- * The persistence store for executions.
- */
+/** A full execution record. */
+export interface ExecutionRecord {
+	id: string;
+	workflowId: string;
+	status: ExecutionStatus;
+	mode: ExecutionMode;
+	graph: WorkflowGraph;
+	triggerPayload: JsonObject | null;
+}
+
+/** Thrown by `loadExecution` when no execution exists for the given id. */
+export class ExecutionNotFoundError extends Error {
+	constructor(readonly executionId: string) {
+		super(`Execution not found: ${executionId}`);
+		this.name = 'ExecutionNotFoundError';
+	}
+}
+
+/** Persistence interface for executions. */
 export interface ExecutionStore {
 	/** Persist a new execution record; returns its generated id. */
 	createExecution(record: NewExecutionRecord): Promise<{ id: string }>;
+
+	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
+	loadExecution(id: string): Promise<ExecutionRecord>;
+
+	/**
+	 * Compare-and-set status transition. Returns `true` iff this call performed
+	 * the transition, so duplicate/redelivered events are handled idempotently.
+	 */
+	transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean>;
+
+	/**
+	 * Record an execution's outcome: writes the final status and the finish time
+	 * together, as a compare-and-set on `running`, so they can't be observed apart.
+	 */
+	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
 }

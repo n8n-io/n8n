@@ -32,7 +32,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 }));
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mockTelemetryTrack }),
 }));
 
@@ -79,7 +79,7 @@ vi.mock('../components/InstanceAiCredentialSetup.vue', () => ({
 		props: ['requestId', 'credentialRequests', 'message', 'projectId', 'credentialFlow'],
 	},
 }));
-vi.mock('../components/InstanceAiWorkflowSetup.vue', () => ({
+vi.mock('../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 	default: {
 		template: '<div />',
 		props: ['requestId', 'setupRequests', 'workflowId', 'message', 'projectId', 'credentialFlow'],

@@ -13,12 +13,13 @@ const packageRoot = process.cwd();
 
 interface ImportFlags {
 	file: string;
-	project?: string;
-	folder?: string;
+	projectId?: string;
+	folderId?: string;
 	workflowConflictPolicy?: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
@@ -26,6 +27,10 @@ interface ImportFlags {
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
 	bindings?: string;
 }
 
@@ -59,19 +64,24 @@ describe('package import command', () => {
 	it('forwards workflowPublishingPolicy and all sibling options to the import API', async () => {
 		const { command, importPackage } = stubCommand({
 			file: '/tmp/export.n8np',
-			project: 'p-1',
-			folder: 'f-1',
+			projectId: 'p-1',
+			folderId: 'f-1',
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'do-nothing',
+			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
+			variableParentPolicy: 'global',
+			tagMissingMode: 'do-nothing',
+			tagConflictPolicy: 'rename',
 			bindings: '{}',
 		});
 
@@ -89,13 +99,18 @@ describe('package import command', () => {
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
+			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'do-nothing',
+			variableMissingMode: 'create-with-value',
+			variableConflictPolicy: 'overwrite',
+			variableParentPolicy: 'global',
+			tagMissingMode: 'do-nothing',
+			tagConflictPolicy: 'rename',
 			bindings: '{}',
 		});
 	});
@@ -110,6 +125,18 @@ describe('package import command', () => {
 			'unpublish-all',
 		]);
 		expect(flag.default).toBeUndefined();
+	});
+
+	it('defines the tag flags with kebab aliases, server option lists, and no client-side default', () => {
+		const missingMode = PackageImport.flags.tagMissingMode;
+		expect(missingMode.aliases).toEqual(['tag-missing-mode']);
+		expect(missingMode.options).toEqual(['create', 'do-nothing']);
+		expect(missingMode.default).toBeUndefined();
+
+		const conflictPolicy = PackageImport.flags.tagConflictPolicy;
+		expect(conflictPolicy.aliases).toEqual(['tag-conflict-policy']);
+		expect(conflictPolicy.options).toEqual(['skip', 'fail', 'rename']);
+		expect(conflictPolicy.default).toBeUndefined();
 	});
 
 	// Real oclif parsing exercises the flag default and alias resolution, which
@@ -150,6 +177,44 @@ describe('package import command', () => {
 			expect(importPackage).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ workflowConflictPolicy: 'fail' }),
+			);
+		});
+
+		it('resolves the --project-id and --folder-id flags', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-id=p-1',
+				'--folder-id=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('resolves the backward-compatible --project and --folder aliases', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project=p-1',
+				'--folder=f-1',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectId: 'p-1', folderId: 'f-1' }),
+			);
+		});
+
+		it('resolves the --project-conflict-policy alias', async () => {
+			const importPackage = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--project-conflict-policy=merge',
+			]);
+
+			expect(importPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ projectConflictPolicy: 'merge' }),
 			);
 		});
 

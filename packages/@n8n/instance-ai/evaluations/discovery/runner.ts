@@ -125,7 +125,7 @@ export async function runDiscoveryScenario(
 			abortSignal: abortController.signal,
 		});
 
-		const agent = await createInstanceAgent({
+		const { agent } = await createInstanceAgent({
 			modelId: options.modelId,
 			context,
 			orchestrationContext,

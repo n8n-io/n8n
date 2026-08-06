@@ -6,13 +6,18 @@ import { InvalidScheduleError } from '../../errors';
 import type { CronSchedule, RecurringCronSchedule, ScheduledJob } from '../../types';
 import { required } from '../field';
 
-/** A cron expression must have 6 fields (the first is seconds). */
-const CRON_FIELD_COUNT = 6;
+/**
+ * A cron expression may have:
+ * - 5 fields (standard cron, seconds = 0)
+ * - 6 fields (the first is seconds)
+ */
+const MIN_CRON_FIELD_COUNT = 5;
+const MAX_CRON_FIELD_COUNT = 6;
 
 export type CronCursor = ReturnType<typeof CronExpressionParser.parse>;
 
 /**
- * Checks that a cron schedule is usable: a 6-field expression in a real
+ * Checks that a cron schedule is usable: a 5- or 6-field expression in a real
  * timezone. Also used for `recurring_cron`, which reuses the cron expression.
  * @param schedule The cron (or recurring_cron) schedule to check.
  * @throws {InvalidScheduleError} When the expression or timezone is invalid.
@@ -27,9 +32,9 @@ export function validateCron(schedule: CronSchedule | RecurringCronSchedule): vo
 	}
 
 	const fieldCount = expression.trim().split(/\s+/).length;
-	if (fieldCount !== CRON_FIELD_COUNT) {
+	if (fieldCount < MIN_CRON_FIELD_COUNT || fieldCount > MAX_CRON_FIELD_COUNT) {
 		throw new InvalidScheduleError(
-			`Cron expression must have ${CRON_FIELD_COUNT} fields (seconds included), got ${fieldCount}: ${JSON.stringify(expression)}`,
+			`Cron expression must have ${MIN_CRON_FIELD_COUNT} or ${MAX_CRON_FIELD_COUNT} fields (seconds optional), got ${fieldCount}: ${JSON.stringify(expression)}`,
 		);
 	}
 

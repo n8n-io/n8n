@@ -20,7 +20,7 @@ vi.mock('uuid', () => ({ v4: () => 'thread-1' }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {}, pushRef: 'push-ref' }),
 }));
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
 }));
 vi.mock('../instanceAi.store', () => ({

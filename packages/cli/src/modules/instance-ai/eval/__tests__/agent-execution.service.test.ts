@@ -190,13 +190,30 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
 	});
 
+	it('scrubs secret values from the case scenario signal but runs the case input verbatim', async () => {
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		const close = vi.fn().mockResolvedValue(undefined);
+		reconstructFromAgentEntity.mockResolvedValue({ agent: { generate, close }, toolRegistry: {} });
+
+		const secret = 'sk-ABCDEF1234567890ABCDEF1234567890';
+		const caseInput = `Refund order #123 with key ${secret}`;
+		await buildService().executeWithLlmMock('agent-1', user, request, caseInput);
+
+		// The signal fed to the seed/mock LLM calls has the secret scrubbed...
+		const seedArgs = vi.mocked(generateAgentScenarioSeed).mock.calls[0]?.[0];
+		expect(seedArgs?.scenarioHints).not.toContain(secret);
+		expect(seedArgs?.scenarioHints).toContain('Refund order #123');
+		// ...but the agent still receives the verbatim case input.
+		expect(generate).toHaveBeenCalledWith(caseInput, expect.anything());
+	});
+
 	it('runs the happy path: real-model turn, mocked tool HTTP, mapped result', async () => {
 		const innerCredentialsHelper = { getDecrypted: vi.fn() };
 		const close = vi.fn().mockResolvedValue(undefined);
 		const generate = vi.fn().mockImplementation(async () => {
 			// Simulate a node-tool invocation mid-run: the instrumentation must
 			// swap the credentials helper and serve HTTP through the mock.
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
 				modelFetch?: unknown;
 				configureToolAdditionalData: (
 					additionalData: Record<string, unknown>,
@@ -246,9 +263,17 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 
 		// The runtime was built with the eval instrumentation, uncached.
-		const [entityArg, , integrationType, userArg, instrumentation] = reconstructFromAgentEntity.mock
-			.calls[0] as [AgentEntity, unknown, string | undefined, User, { modelFetch?: unknown }];
+		const [entityArg, , runType, integrationType, userArg, instrumentation] =
+			reconstructFromAgentEntity.mock.calls[0] as [
+				AgentEntity,
+				unknown,
+				string,
+				string | undefined,
+				User,
+				{ modelFetch?: unknown },
+			];
 		expect(entityArg.id).toBe('agent-1');
+		expect(runType).toBe('test');
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
 		expect(instrumentation.modelFetch).toBeDefined();
@@ -276,7 +301,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 				result: { text: 'Issue list', isError: false },
 			};
 			mcpMockOptions.onToolCall(call);
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
 				onMcpToolCallSettled?: (event: {
 					serverName: string;
 					toolName: string;
@@ -335,7 +360,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		const secondArgs = { path: 'second.txt' };
 		const generate = vi.fn().mockImplementation(async () => {
 			const mcpMockOptions = vi.mocked(createMcpMockFetch).mock.calls[0][0];
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
 				onMcpToolCallSettled?: (event: {
 					serverName: string;
 					toolName: string;
@@ -444,7 +469,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 
-		const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+		const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
 			webSearch?: unknown;
 			transformDelegatedAgentConfig?: (
 				config: AgentJsonConfig,
@@ -474,7 +499,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		// GenerateResult.toolCalls — the intercepted request (e.g. an injected
 		// channel_not_found) must still reach the judge.
 		const generate = vi.fn().mockImplementation(async () => {
-			const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
 				configureToolAdditionalData: (
 					additionalData: Record<string, unknown>,
 					ctx: { toolName: string; toolKind: string },
@@ -507,6 +532,46 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			error: expect.stringContaining('interceptedRequests'),
 		});
 		expect(result.toolCalls[0].interceptedRequests).toHaveLength(1);
+	});
+
+	it('snapshots the tool ledger body so node-side mutation cannot rewrite the evidence', async () => {
+		// Same aliasing hazard as the workflow ledger: `callEvalMockHandler` returns
+		// this body to the node tool, and nodes like OpenAI's json_schema mode parse
+		// fields in place — the judge must still see what was actually served.
+		const served = { output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }] };
+		vi.mocked(createLlmMockHandler).mockReturnValue(
+			vi.fn().mockResolvedValue({ body: served, statusCode: 200, headers: {} }),
+		);
+		const generate = vi.fn().mockImplementation(async () => {
+			const instrumentation = reconstructFromAgentEntity.mock.calls[0][5] as {
+				configureToolAdditionalData: (
+					additionalData: Record<string, unknown>,
+					ctx: { toolName: string; toolKind: string },
+				) => void;
+			};
+			const additionalData: Record<string, unknown> = { credentialsHelper: {} };
+			instrumentation.configureToolAdditionalData(additionalData, {
+				toolName: 'Slack_Tool',
+				toolKind: 'node',
+			});
+			const handler = additionalData.evalLlmMockHandler as EvalLlmMockHandler;
+			const response = await handler({ url: 'https://slack.com/api/x', method: 'POST' }, {
+				name: 'Slack_Tool',
+				type: 'n8n-nodes-base.slackTool',
+			} as INode);
+			// Node code mutates the body it was handed.
+			(response?.body as typeof served).output[0].content[0].text = { a: 1 } as never;
+			return makeGenerateResult({ toolCalls: [] });
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		const recorded = result.toolCalls[0].interceptedRequests?.[0].mockResponse as typeof served;
+		expect(recorded.output[0].content[0].text).toBe('{"a":1}');
 	});
 
 	it('auto-approves suspended tool calls and flags them', async () => {

@@ -73,15 +73,31 @@ describe('applyProviderShapeNormalizers', () => {
 			expect(body.created).toBe(123);
 		});
 
-		it('preserves an already-correct b64_json envelope', () => {
+		it('substitutes model-authored b64_json with decodable PNG bytes, preserving siblings', () => {
 			const spec: Spec = {
 				type: 'json',
-				body: { created: 1, data: [{ b64_json: 'AAAA', revised_prompt: 'p' }] },
+				body: { created: 1, data: [{ b64_json: 'iVBORw0KGgo', revised_prompt: 'p' }] },
 			};
 			applyProviderShapeNormalizers(openAiImages, spec);
-			expect(spec.body).toMatchObject({
-				data: [{ b64_json: 'AAAA', revised_prompt: 'p' }],
-			});
+			const body = spec.body as { data: Array<{ b64_json: string; revised_prompt: string }> };
+			expect(body.data[0].revised_prompt).toBe('p');
+			const png = Buffer.from(body.data[0].b64_json, 'base64');
+			// Real decodable canvas, not the old 8-byte truncated header.
+			expect(png.subarray(1, 4).toString()).toBe('PNG');
+			expect(png.readUInt32BE(16)).toBe(512);
+			expect(png.readUInt32BE(20)).toBe(512);
+		});
+
+		it('preserves url entries while adding decodable b64_json alongside', () => {
+			const spec: Spec = {
+				type: 'json',
+				body: { created: 1, data: [{ url: 'https://example.invalid/img.png' }] },
+			};
+			applyProviderShapeNormalizers(openAiImages, spec);
+			const body = spec.body as { data: Array<{ url: string; b64_json: string }> };
+			expect(body.data[0].url).toBe('https://example.invalid/img.png');
+			const png = Buffer.from(body.data[0].b64_json, 'base64');
+			expect(png.subarray(1, 4).toString()).toBe('PNG');
 		});
 	});
 
@@ -247,5 +263,121 @@ describe('findProviderShapeViolation', () => {
 
 	it('accepts a Google Docs batchUpdate body with replies', () => {
 		expect(findProviderShapeViolation(googleDocs, { replies: [{}] })).toBeUndefined();
+	});
+});
+
+describe('OpenAI completion text normalizer', () => {
+	const info = (pathname: string) => ({ method: 'POST', pathname, hostname: 'api.openai.com' });
+
+	it('stringifies an object embedded as Responses output text', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				object: 'response',
+				output: [
+					{
+						type: 'message',
+						content: [{ type: 'output_text', text: { quotes: ['a', 'b'] } }],
+					},
+				],
+			},
+		};
+		applyProviderShapeNormalizers(info('/v1/responses'), spec);
+		const body = spec.body as { output: Array<{ content: Array<{ text: unknown }> }> };
+		expect(body.output[0].content[0].text).toBe('{"quotes":["a","b"]}');
+	});
+
+	it('leaves string Responses text and tool-call items untouched', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				output: [
+					{ type: 'message', content: [{ type: 'output_text', text: '{"ok":true}' }] },
+					{ type: 'function_call', name: 'lookup', arguments: '{}' },
+				],
+			},
+		};
+		const before = JSON.stringify(spec.body);
+		applyProviderShapeNormalizers(info('/v1/responses'), spec);
+		expect(JSON.stringify(spec.body)).toBe(before);
+	});
+
+	it('stringifies an object chat-completions message content, preserving null and part arrays', () => {
+		const spec = {
+			type: 'json' as const,
+			body: {
+				choices: [
+					{ message: { role: 'assistant', content: { answer: 42 } } },
+					{ message: { role: 'assistant', content: null, tool_calls: [] } },
+					{ message: { role: 'assistant', content: [{ type: 'text', text: 'hi' }] } },
+				],
+			},
+		};
+		applyProviderShapeNormalizers(info('/v1/chat/completions'), spec);
+		const body = spec.body as { choices: Array<{ message: { content: unknown } }> };
+		expect(body.choices[0].message.content).toBe('{"answer":42}');
+		expect(body.choices[1].message.content).toBeNull();
+		expect(Array.isArray(body.choices[2].message.content)).toBe(true);
+	});
+
+	it('reports a violation for object-typed Responses text and passes string text', () => {
+		expect(
+			findProviderShapeViolation(info('/v1/responses'), {
+				output: [{ content: [{ type: 'output_text', text: { a: 1 } }] }],
+			}),
+		).toContain('must be a STRING');
+		expect(
+			findProviderShapeViolation(info('/v1/responses'), {
+				output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }],
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe('Gmail messages.list', () => {
+	const gmailList = info({
+		hostname: 'www.googleapis.com',
+		pathname: '/gmail/v1/users/me/messages',
+		method: 'GET',
+	});
+
+	it('wraps a bare array into the messages envelope', () => {
+		const spec: Spec = {
+			type: 'json',
+			body: [{ id: 'msg_1', threadId: 'thr_1' }],
+		};
+		applyProviderShapeNormalizers(gmailList, spec);
+		expect(spec.body).toEqual({
+			messages: [{ id: 'msg_1', threadId: 'thr_1' }],
+			resultSizeEstimate: 1,
+		});
+	});
+
+	it('leaves a correct envelope untouched', () => {
+		const spec: Spec = {
+			type: 'json',
+			body: { messages: [{ id: 'msg_1' }], resultSizeEstimate: 1 },
+		};
+		const before = structuredClone(spec.body);
+		applyProviderShapeNormalizers(gmailList, spec);
+		expect(spec.body).toEqual(before);
+	});
+
+	it('does not touch the single-message GET', () => {
+		const single = info({
+			hostname: 'www.googleapis.com',
+			pathname: '/gmail/v1/users/me/messages/msg_1',
+			method: 'GET',
+		});
+		const spec: Spec = { type: 'json', body: [{ anything: true }] };
+		applyProviderShapeNormalizers(single, spec);
+		expect(Array.isArray(spec.body)).toBe(true);
+	});
+
+	it('reports a violation for a bare array and passes the envelope', () => {
+		expect(findProviderShapeViolation(gmailList, [{ id: 'msg_1' }])).toContain('bare array');
+		expect(
+			findProviderShapeViolation(gmailList, { messages: [], resultSizeEstimate: 0 }),
+		).toBeUndefined();
 	});
 });

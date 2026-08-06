@@ -132,16 +132,15 @@ describe('observation-log reflector defaults', () => {
 		await reflect({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
 
 		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
-			experimental_telemetry: {
+			telemetry: {
 				isEnabled: true,
 				functionId: 'my-agent.memory-reflector',
-				metadata: { thread_id: 't1' },
 				recordInputs: true,
 				recordOutputs: false,
 			},
 		});
-		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
-		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[1][0].telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].telemetry).toBeUndefined();
 	});
 
 	it('reports usage with task="reflector" and the configured model through onUsage', async () => {

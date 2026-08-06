@@ -19,11 +19,16 @@ export interface ImportPackageFields {
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
+	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
 	variableMissingMode?: string;
+	variableConflictPolicy?: string;
+	variableParentPolicy?: string;
+	tagMissingMode?: string;
+	tagConflictPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -31,7 +36,25 @@ export interface ExportPackageFields {
 	folderIds?: string[];
 	projectIds?: string[];
 	includeVariableValues?: boolean;
+	includeTags?: boolean;
 	missingWorkflowDependencyPolicy?: string;
+}
+
+/** True per-entity counts of what ended up in an exported package. */
+export interface ExportPackageCounts {
+	workflows: number;
+	folders: number;
+	credentials: number;
+	dataTables: number;
+	variables: number;
+	/** Absent when the server predates tag export. */
+	tags?: number;
+}
+
+export interface ExportPackageResult {
+	archive: Buffer;
+	/** Undefined when talking to an older server that doesn't send the counts header. */
+	counts?: ExportPackageCounts;
 }
 
 export class ApiError extends Error {
@@ -78,6 +101,7 @@ export class N8nClient {
 			query?: Record<string, string>;
 			formData?: FormData;
 			responseType?: 'json' | 'binary';
+			onResponse?: (response: Response) => void;
 		} = {},
 	): Promise<T> {
 		const url = new URL(`${this.baseUrl}${path}`);
@@ -128,6 +152,8 @@ export class N8nClient {
 						: undefined;
 			throw new ApiError(response.status, message, hint, errorBody);
 		}
+
+		options.onResponse?.(response);
 
 		if (response.status === 204) {
 			return undefined as T;
@@ -437,13 +463,14 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
+	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: {
 			workflowIds?: string[];
 			folderIds?: string[];
 			projectIds?: string[];
 			includeVariableValues?: boolean;
+			includeTags?: boolean;
 			missingWorkflowDependencyPolicy?: string;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
@@ -451,13 +478,30 @@ export class N8nClient {
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
+		body.includeTags = fields.includeTags;
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
 
-		return await this.request<Buffer>('POST', '/n8n-packages/export', {
+		let counts: ExportPackageCounts | undefined;
+		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {
 			body,
 			responseType: 'binary',
+			// Older servers omit this header; counts then stays undefined.
+			onResponse: (response) => {
+				const header = response.headers.get('X-N8n-Export-Counts');
+				if (header) counts = this.parseExportCounts(header);
+			},
 		});
+
+		return { archive, counts };
+	}
+
+	private parseExportCounts(header: string): ExportPackageCounts | undefined {
+		try {
+			return JSON.parse(header) as ExportPackageCounts;
+		} catch {
+			return undefined;
+		}
 	}
 
 	async importPackage(
