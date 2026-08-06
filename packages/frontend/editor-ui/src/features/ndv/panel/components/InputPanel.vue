@@ -2,12 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import {
-	CRON_NODE_TYPE,
-	INTERVAL_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '@/app/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
