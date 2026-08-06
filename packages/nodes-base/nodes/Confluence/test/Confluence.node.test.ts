@@ -7,22 +7,16 @@ import { Confluence } from '../Confluence.node';
 describe('Confluence Node', () => {
 	const node = new Confluence();
 
-	it('should be hidden', () => {
+	it('should ship gated: hidden, no properties, not usable as a tool', () => {
 		expect(node.description.hidden).toBe(true);
+		expect(node.description.properties).toEqual([]);
+		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
 		expect(node.description.credentials).toEqual([
 			{ name: 'confluenceCloudOAuth2Api', required: true },
 		]);
-	});
-
-	it('should ship no properties yet', () => {
-		expect(node.description.properties).toEqual([]);
-	});
-
-	it('should not be usable as a tool yet', () => {
-		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
 	it('should register under the confluence name', () => {
@@ -46,6 +40,9 @@ describe('Confluence Node', () => {
 			parameters: {},
 		});
 
-		await expect(node.execute.call(ctx)).rejects.toThrow(NodeOperationError);
+		const promise = node.execute.call(ctx);
+
+		await expect(promise).rejects.toThrow(NodeOperationError);
+		await expect(promise).rejects.toThrow('The operation ":" is not supported');
 	});
 });

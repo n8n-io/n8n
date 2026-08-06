@@ -13,22 +13,21 @@ export const CONFLUENCE_CREDENTIAL_NAME = 'confluenceCloudOAuth2Api';
 
 // Bearer-token origin invariant: every request URL is string-concatenated onto this
 // constant, so no caller input can change the host. Any future verbatim-URL param
-// (paginator next-link, uri override) needs an origin check first, see
-// nodes/Microsoft/SharePoint/v2/transport/index.ts:218-228. User-supplied path
-// segments in future endpoints must be encodeURIComponent-ed.
+// (paginator next-link, uri override) needs an origin check first, see the one in
+// `microsoftApiRequest` (SharePoint v2 transport). User-supplied path segments in
+// future endpoints must be encodeURIComponent-ed.
 const ATLASSIAN_API_BASE = 'https://api.atlassian.com';
 
 export interface AccessibleResource {
 	id: string;
 	url: string;
 	name?: string;
-	scopes?: string[];
 }
 
 /**
  * Pure hostname matcher, exported so ENT-128's credential Test can reuse the exact
- * matching this node routes with (S10: don't build it twice). Case-insensitive,
- * never an exact-string comparison (the nodes/Jira/GenericFunctions.ts:33 trap).
+ * matching this node routes with. Case-insensitive, never an exact-string comparison
+ * (the trap in Jira's `getCloudId`).
  */
 export function matchSiteByHostname(
 	resources: AccessibleResource[],
@@ -45,11 +44,13 @@ export function matchSiteByHostname(
 	});
 }
 
-// Module-level cache: normalized hostname → cloudId (Jira parity, nodes/Jira/GenericFunctions.ts:18).
-// A cloudId is a property of the site, not of the token, so sharing across credentials is safe.
+// Module-level cache: credentialId:hostname → cloudId (`_cloudIdCache` in Jira's
+// GenericFunctions is the precedent, but keyed per credential here: a shared hostname-only
+// key makes cold vs warm failures distinguishable, letting one user infer that another
+// credential on the instance reaches a given site).
 // Lives for the n8n process; a moved/deleted site needs a restart to re-resolve (same ceiling as Jira).
 // One asymmetry: a warm-cache hit skips the accessible-resources check, so a credential that
-// cannot reach the cached site fails at the API call with Atlassian's 403, not the no-match error.
+// lost access to a site it once resolved fails at the API call with Atlassian's 403.
 const cloudIdCache = new Map<string, string>();
 
 /** Test-only escape hatch for the module-level cache. */
@@ -75,7 +76,9 @@ export async function getConfluenceCloudId(
 		throw new NodeOperationError(this.getNode(), `"${siteUrl}" is not a valid Confluence site URL`);
 	}
 
-	const cached = cloudIdCache.get(hostname);
+	const credentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id ?? '';
+	const cacheKey = `${credentialId}:${hostname}`;
+	const cached = cloudIdCache.get(cacheKey);
 	if (cached) return cached;
 
 	let resources: AccessibleResource[];
@@ -99,18 +102,21 @@ export async function getConfluenceCloudId(
 	const site = matchSiteByHostname(resources, hostname);
 
 	if (!site) {
-		// Same guard class as matchSiteByHostname: malformed entries must not break the error message
-		const reachable = resources
+		// Same guard class as matchSiteByHostname: malformed entries must not break the error message.
+		// Capped at 5 so the error stays readable and a bogus siteUrl cannot dump the full site list
+		// into persisted execution data.
+		const urls = resources
 			.filter((resource) => typeof resource?.url === 'string' && resource.url !== '')
-			.map((resource) => resource.url)
-			.join(', ');
+			.map((resource) => resource.url);
+		const reachable =
+			urls.slice(0, 5).join(', ') + (urls.length > 5 ? `, and ${urls.length - 5} more` : '');
 		throw new NodeOperationError(
 			this.getNode(),
 			`No Confluence site matched "${siteUrl}". This connection can access: ${reachable || 'no sites'}`,
 		);
 	}
 
-	cloudIdCache.set(hostname, site.id);
+	cloudIdCache.set(cacheKey, site.id);
 	return site.id;
 }
 
@@ -122,7 +128,7 @@ export async function confluenceApiRequest(
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
 	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
-	// ENT-128 pins the label "Site URL" but not the key; this is the ONE place to touch if it lands under another name (D4)
+	// ENT-128 pins the label "Site URL" but not the key; this is the ONE place to touch if it lands under another name
 	const siteUrl = credentials.siteUrl;
 	if (typeof siteUrl !== 'string' || siteUrl === '') {
 		throw new NodeOperationError(
@@ -134,7 +140,7 @@ export async function confluenceApiRequest(
 
 	const options: IHttpRequestOptions = {
 		method,
-		url: `${ATLASSIAN_API_BASE}/ex/confluence/${cloudId}${endpoint}`,
+		url: `${ATLASSIAN_API_BASE}/ex/confluence/${encodeURIComponent(cloudId)}${endpoint}`,
 		body,
 		qs,
 		json: true,
