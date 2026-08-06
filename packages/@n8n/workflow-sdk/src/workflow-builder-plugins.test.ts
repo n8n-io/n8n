@@ -6,6 +6,7 @@
  * composite handling, and serialization.
  */
 
+import { expr } from './expression';
 import type { NodeInstance, WorkflowJSON, IfElseComposite, GraphNode } from './types/base';
 import { workflow } from './workflow-builder';
 import { splitInBatches } from './workflow-builder/control-flow-builders/split-in-batches';
@@ -51,6 +52,46 @@ describe('WorkflowBuilder plugin integration', () => {
 	});
 
 	describe('validate() with plugins', () => {
+		it('blocks invalid Execute Workflow input mappings through the default registry', () => {
+			registerDefaultPlugins(testRegistry);
+
+			const createWorkflow = (value: null | Record<string, unknown>) => {
+				const executeWorkflow = node({
+					type: 'n8n-nodes-base.executeWorkflow',
+					version: 1.3,
+					config: {
+						name: 'Process Order',
+						parameters: {
+							source: 'database',
+							workflowId: { __rl: true, mode: 'id', value: 'process-order' },
+							mode: 'each',
+							workflowInputs: { mappingMode: 'defineBelow', value },
+						},
+					},
+				});
+
+				return workflow('orders', 'Orders', { registry: testRegistry }).add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1,
+						config: { name: 'Start' },
+					}).to(executeWorkflow),
+				);
+			};
+
+			const invalidResult = createWorkflow(null).validate();
+			expect(invalidResult.valid).toBe(false);
+			expect(invalidResult.errors).toContainEqual(
+				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
+			);
+
+			const validResult = createWorkflow({ order: expr('{{ $json }}') }).validate();
+			expect(validResult.valid).toBe(true);
+			expect(validResult.errors).not.toContainEqual(
+				expect.objectContaining({ code: 'EXECUTE_WORKFLOW_INVALID_INPUT_MAPPING' }),
+			);
+		});
+
 		it('runs registered validators for matching node types', () => {
 			const mockValidateNode = vi.fn().mockReturnValue([]);
 			const mockValidator = createMockValidator(

@@ -29,6 +29,20 @@ describe('ExecuteWorkflow', () => {
 		} as unknown as IWorkflowDataProxyData);
 	});
 
+	test('should document valid workflow input mappings for the builder', () => {
+		const workflowInputs = executeWorkflow.description.properties.find(
+			(property) => property.name === 'workflowInputs',
+		);
+		const propertyHint = workflowInputs?.builderHint?.propertyHint;
+
+		expect(propertyHint).toContain('temporary UI initialization state');
+		expect(propertyHint).toContain('must never be emitted');
+		expect(propertyHint).toContain('keys exactly match');
+		expect(propertyHint).toContain(
+			"{ mappingMode: 'defineBelow', value: { order: expr('{{ $json }}') } }",
+		);
+	});
+
 	test('should execute workflow in "each" mode and wait for sub-workflow completion', async () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source

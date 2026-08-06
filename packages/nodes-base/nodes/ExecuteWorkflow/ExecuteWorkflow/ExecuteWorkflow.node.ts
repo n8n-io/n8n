@@ -218,6 +218,10 @@ export class ExecuteWorkflow implements INodeType {
 					value: null,
 				},
 				required: true,
+				builderHint: {
+					propertyHint:
+						"The default { mappingMode: 'defineBelow', value: null } is only a temporary UI initialization state and must never be emitted in a workflow. When using 'defineBelow', value must be an object whose keys exactly match the selected sub-workflow's declared inputs. Example: { mappingMode: 'defineBelow', value: { order: expr('{{ $json }}') } }",
+				},
 				typeOptions: {
 					loadOptionsDependsOn: ['workflowId.value'],
 					resourceMapper: {
