@@ -54,7 +54,6 @@ import { usePrivateCredentials } from '@/features/resolvers/composables/usePriva
 import { AI_GATEWAY_MANAGED_TAG, SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
 
 import {
 	N8nButton,
@@ -993,13 +992,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				<template v-if="$slots['label-postfix']" #options>
 					<slot name="label-postfix" />
 				</template>
-				<AiGatewaySelector
-					v-if="showAiGatewaySelector(type.name)"
-					:ai-gateway-enabled="isAiGatewayManagedCredentials(type.name)"
-					:readonly="readonly"
-					:credential-type="type.name"
-					@toggle="onAiGatewaySelector(type.name, $event)"
-				/>
 				<div
 					v-if="readonly"
 					:class="[
@@ -1080,7 +1072,23 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						:disabled="!canCreateCredentials"
 						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
 						:popper-class="$style.selectPopper"
+						@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
 					>
+						<N8nOption
+							v-if="showN8nCreditsOption(type.name)"
+							:key="AI_GATEWAY_MANAGED_TAG"
+							data-test-id="node-credentials-select-item-n8n-credits"
+							:label="i18n.baseText('aiGateway.credentialMode.n8nConnect.title')"
+							:value="AI_GATEWAY_MANAGED_TAG"
+						>
+							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+								<div :class="$style.credentialOptionName">
+									<N8nText bold>
+										{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
+									</N8nText>
+								</div>
+							</div>
+						</N8nOption>
 						<template #empty> </template>
 						<template #footer>
 							<button
