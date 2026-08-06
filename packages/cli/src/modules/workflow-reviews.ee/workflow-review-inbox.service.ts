@@ -123,7 +123,10 @@ export class WorkflowReviewInboxService {
 	): Promise<WorkflowReviewRequestDetail> {
 		await this.featureGate.assertAvailable();
 
-		const request = await this.workflowReviewRequestRepository.findById(workflowReviewRequestId);
+		const request = await this.workflowReviewRequestRepository.findById(
+			workflowReviewRequestId,
+			{},
+		);
 		if (!request || !(await this.canAccessRequest(user, request))) {
 			throw new NotFoundError('Could not find review request');
 		}
@@ -261,6 +264,7 @@ export class WorkflowReviewInboxService {
 	private toVersionSnapshot(version: WorkflowHistory): WorkflowReviewVersionSnapshot {
 		return {
 			versionId: version.versionId,
+			name: version.name,
 			nodes: version.nodes,
 			connections: version.connections,
 			nodeGroups: version.nodeGroups,

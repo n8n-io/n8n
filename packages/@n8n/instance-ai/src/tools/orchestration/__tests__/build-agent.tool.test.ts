@@ -577,6 +577,128 @@ describe('build-agent tool', () => {
 		});
 	});
 
+	// An eval case needs the agent BEFORE the turn and again after a pass that
+	// changed it. Nothing else in the trace records either.
+	describe('agent-snapshot', () => {
+		const ARTIFACT = {
+			config: { name: 'Support Triage' },
+			skills: {},
+			configHash: 'hash-1',
+		} as unknown as Awaited<
+			ReturnType<NonNullable<InstanceAiBuilderDelegate['readAgentArtifact']>>
+		>;
+
+		/** The read only runs under a live trace, so every case here needs one. */
+		function makeTracedContext() {
+			const made = makeContext();
+			made.context.tracing = makeTracingStub().tracing;
+			return made;
+		}
+
+		it('snapshots an adopted agent before the builder can change it', async () => {
+			const { context, delegate } = makeTracedContext();
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockImplementation(async () => {
+				// Ordering is the point: read before the builder runs, or the
+				// "baseline" is the state the turn produced.
+				expect(delegate.readAgentArtifact).toHaveBeenCalledWith('agent-existing');
+				return await Promise.resolve(fakeStream([], 'Editing it.'));
+			});
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(delegate.readAgentArtifact).toHaveBeenCalledWith('agent-existing');
+		});
+
+		it('takes no baseline for an agent it just created — there is no prior state', async () => {
+			const { context, delegate } = makeTracedContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Built it.'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(delegate.readAgentArtifact).not.toHaveBeenCalled();
+		});
+
+		it('snapshots again after a pass that changed the config', async () => {
+			const { context, delegate } = makeTracedContext();
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[toolCallChunk('call-1', 'patch_config'), toolResultChunk('call-1')],
+					'Updated the config.',
+				),
+			);
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			// Baseline + outcome.
+			expect(delegate.readAgentArtifact).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not re-read after a pass that changed nothing', async () => {
+			const { context, delegate } = makeTracedContext();
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Nothing to change.'));
+
+			await runTool(context, { message: 'What does it do?', agentId: 'agent-existing' });
+
+			expect(delegate.readAgentArtifact).toHaveBeenCalledTimes(1);
+		});
+
+		it('reads nothing when tracing is off — there is nowhere to emit', async () => {
+			// Tracing is disabled on most instances, and the read costs a scope
+			// check plus two queries on every non-create build-agent turn.
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[toolCallChunk('call-1', 'patch_config'), toolResultChunk('call-1')],
+					'Updated the config.',
+				),
+			);
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(delegate.readAgentArtifact).not.toHaveBeenCalled();
+		});
+
+		it('emits the event with the config, the agent id and the reason', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing } = makeTracingStub();
+			context.tracing = tracing;
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue(ARTIFACT);
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			const snapshotRuns = vi
+				.mocked(tracing.startChildRun)
+				.mock.calls.filter(([, init]) => (init as { name?: string }).name === 'agent-snapshot');
+			expect(snapshotRuns).toHaveLength(1);
+			expect(snapshotRuns[0][1]).toMatchObject({
+				runType: 'chain',
+				metadata: { agent_id: 'agent-existing', snapshot_reason: 'target-resolved' },
+			});
+		});
+
+		it('builds normally on a host whose delegate cannot read agents', async () => {
+			// An older host doesn't implement the read; that must not break building.
+			const delegate = mock<InstanceAiBuilderDelegate>();
+			delegate.readAgentArtifact = undefined;
+			const { context } = makeContext({ delegate });
+			context.tracing = makeTracingStub().tracing;
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(result).toMatchObject({ ok: true, builderReply: 'Editing it.' });
+		});
+	});
+
 	describe('configUpdated', () => {
 		it.each(['write_config', 'patch_config', 'publish_agent', 'unpublish_agent'])(
 			'is true when the work summary has a succeeded %s call',
@@ -1770,6 +1892,44 @@ describe('build-agent tool', () => {
 				});
 			},
 		);
+
+		it('snapshots the config a friendly-mapped resume failure left behind', async () => {
+			// A pass mutated the config, suspended for confirmation, and the resume
+			// failed. The tool still reports configUpdated, so the post-state a
+			// repair-shaped case grades has to exist in the trace.
+			const { context, delegate } = makeContext();
+			const { tracing } = makeTracingStub();
+			context.tracing = tracing;
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.readAgentArtifact!).mockResolvedValue({
+				config: { name: 'Support Triage' },
+				configHash: 'hash-1',
+			} as unknown as Awaited<
+				ReturnType<NonNullable<InstanceAiBuilderDelegate['readAgentArtifact']>>
+			>);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(
+				throwingStream(new FakeBuilderCheckpointUnavailableError('Checkpoint expired.')),
+			);
+
+			const result = await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ configUpdated: true }),
+				},
+			);
+
+			expect(result).toMatchObject({ ok: false, configUpdated: true });
+			const snapshots = vi
+				.mocked(tracing.startChildRun)
+				.mock.calls.filter(([, init]) => (init as { name?: string }).name === 'agent-snapshot');
+			expect(snapshots).toHaveLength(1);
+			expect(snapshots[0][1]).toMatchObject({ metadata: { snapshot_reason: 'config-updated' } });
+		});
 
 		it('still rethrows an unrelated error thrown mid-stream during resume', async () => {
 			const { context, delegate } = makeContext();

@@ -211,6 +211,46 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		});
 	});
 
+	it('preserves the n8n Connect managed sentinel on a node-tool credential', () => {
+		// Relies on the non-string-id recursion branch of the `credentials`
+		// handler — this pin exists so a refactor of that branch can't silently
+		// start clearing managed refs.
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				tools: [
+					{
+						type: 'node',
+						name: 'Slack',
+						node: {
+							nodeType: 'n8n-nodes-base.slackTool',
+							nodeTypeVersion: 1,
+							credentials: {
+								slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							},
+						},
+					},
+				],
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			tools: [
+				{
+					type: 'node',
+					name: 'Slack',
+					node: {
+						nodeType: 'n8n-nodes-base.slackTool',
+						nodeTypeVersion: 1,
+						credentials: {
+							slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+						},
+					},
+				},
+			],
+		});
+	});
+
 	it('clears unknown credentialId fields at arbitrary nesting depth', () => {
 		const result = sanitizeUnknownAgentCredentials(
 			{

@@ -33,7 +33,7 @@ import {
 	waitForOAuthCallback,
 } from '../../composables/oauthCallback';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
@@ -188,7 +188,7 @@ const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.document
 
 const contextNode = computed<INode | null>(() => {
 	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 	if (isCredentialModalState(modalState) && modalState.contextNode) {
 		return modalState.contextNode;
 	}
@@ -197,7 +197,7 @@ const contextNode = computed<INode | null>(() => {
 });
 
 const overrideProjectId = computed(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) ? modalState.projectId : undefined;
 });
 
@@ -208,7 +208,7 @@ const form = useCredentialForm({
 	projectId: () => overrideProjectId.value,
 	showAuthSelector: () => requiredCredentials.value,
 	suggestedName: () => {
-		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+		const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 		return isCredentialModalState(modalState) ? modalState.suggestedName : undefined;
 	},
 	// Scroll the auth-error/success banner into view after a test (parity with the
@@ -255,30 +255,30 @@ const {
 } = form;
 
 const hideAskAssistant = computed<boolean>(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
 // The host's Instance AI credential-help behavior, stashed in the modal state by
 // whoever opened the modal (the editor capability or the credentials list).
 const instanceAiCredentialHelp = computed(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) ? modalState.instanceAiCredentialHelp : undefined;
 });
 
 const closeOnSave = computed<boolean>(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) ? modalState.usageScope : undefined;
 });
 
 const appendToBody = computed<boolean>(() => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
 
@@ -349,7 +349,7 @@ const showSharingContent = computed(() => activeTab.value === 'sharing' && !!cre
 onMounted(async () => {
 	// Inner try isolates optional secrets loading; outer try catches all other initialization failures.
 	try {
-		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+		const modalState = uiStore.modalStateById[CREDENTIAL_EDIT_MODAL_KEY];
 		requiredCredentials.value =
 			isCredentialModalState(modalState) && modalState.showAuthSelector === true;
 
