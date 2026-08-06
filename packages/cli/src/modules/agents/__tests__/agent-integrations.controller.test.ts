@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
@@ -15,11 +16,17 @@ import {
 
 const UNAUTHENTICATED_HANDLERS = new Set(['handleWebhook']);
 
-function makeController() {
-	const managementService = mock<AgentIntegrationManagementService>();
-	const chatIntegrationService = mock<ChatIntegrationService>();
-	const agentRepository = mock<AgentRepository>();
-	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+function makeController({
+	managementService = mock<AgentIntegrationManagementService>(),
+	chatIntegrationService = mock<ChatIntegrationService>(),
+	agentRepository = mock<AgentRepository>(),
+	chatIntegrationRegistry = mock<ChatIntegrationRegistry>(),
+}: {
+	managementService?: Mocked<AgentIntegrationManagementService>;
+	chatIntegrationService?: Mocked<ChatIntegrationService>;
+	agentRepository?: Mocked<AgentRepository>;
+	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
+} = {}) {
 	return {
 		controller: new AgentIntegrationsController(
 			managementService,
@@ -90,7 +97,7 @@ describe('AgentIntegrationsController integration management', () => {
 			type: 'slack',
 			credentialId: 'credential-1',
 		} satisfies AgentIntegrationConfig;
-		const draftAgent = { ...agent, activeVersionId: null };
+		const draftAgent = { ...agent, activeVersionId: null } as Agent;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(draftAgent);
 		managementService.connect.mockResolvedValue({
 			integration,
