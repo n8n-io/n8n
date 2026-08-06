@@ -93,31 +93,30 @@ presses play here"). Those workflows stay runnable and carry an
 
 ### Identity
 
-This is the substance of the feature. The two paths differ only in where the
-identity comes from.
+Every run carries proof of who it is for. There are two ways to get that proof.
 
 ```mermaid
-flowchart TD
-    R["Person clicks Run"] --> RS["Their session"]
-    S["Schedule falls due"] --> C["Still allowed?<br/>enabled · consented · has access"]
-    C --> M["Mint a short-lived signed token"]
-    RS --> X["Identity travels with the execution"]
-    M --> X
-    X --> D["Credentials resolve to<br/>that person's accounts"]
+flowchart LR
+    A["Clicked Run"] --> S["Their session"]
+    B["Schedule fired"] --> K["Checks pass →<br/>signed token"]
+    S --> P["Proof rides<br/>with the run"]
+    K --> P
+    P --> C["Credentials resolve to<br/>that person's accounts"]
 ```
 
-A live request proves who is asking. A run at 3am has nobody to ask, so a token
-is minted instead — signed so it can't be forged, short-lived so a leak doesn't
-outlive the run.
+**Clicked Run** — the person is there, so their session is the proof.
 
-But a token only proves who was named *when it was issued*, so the handler
-re-checks what a live request would have proved. A failed check isn't an error:
-consent gets withdrawn and access gets removed all the time. The run is skipped
-and logged.
+**Schedule fired** — nobody is there, so n8n signs a short-lived token naming
+them and the run carries that instead.
 
-Refreshing an expired OAuth token needs no new code. n8n's existing refresh
-already writes back to the per-user store whenever the execution carries an
-identity.
+A token says who the person was when it was written, and nothing about now. So
+before each scheduled run the handler checks what a request would have checked:
+the account is still active, consent still stands, execute access is still
+there. If one of those changed the run is skipped and logged — expected, not a
+failure. People leave teams and change their minds.
+
+Expired OAuth tokens are not a special case. n8n's normal refresh saves the new
+token to that person's own store whenever the run carries an identity.
 
 ### Storage
 
