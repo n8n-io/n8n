@@ -73,15 +73,17 @@ Examples: ${mcpExamples}search "n8n docs" for \`n8n-docs\`, search "create tasks
 }
 
 function getConnectedServicesSection(connectedMcpServices?: ConnectedMcpService[]): string {
-	if (!connectedMcpServices?.length) return '';
+	if (!connectedMcpServices) return '';
 
-	const lines = connectedMcpServices
-		.map(({ slug, title, toolsLoaded }) =>
-			toolsLoaded
-				? `- ${title} (\`${slug}\`) — working, its tools are available to you.`
-				: `- ${title} (\`${slug}\`) — connected, but its tools did not load and are NOT available to you.`,
-		)
-		.join('\n');
+	const lines = connectedMcpServices.length
+		? connectedMcpServices
+				.map(({ slug, title, toolsLoaded }) =>
+					toolsLoaded
+						? `- ${title} (\`${slug}\`) — working, its tools are available to you.`
+						: `- ${title} (\`${slug}\`) — connected, but its tools did not load and are NOT available to you.`,
+				)
+				.join('\n')
+		: '- Nothing is connected.';
 
 	const brokenGuidance = connectedMcpServices.some((service) => !service.toolsLoaded)
 		? `
@@ -90,7 +92,9 @@ For a service whose tools did not load, the connection itself is broken — expi
 		: '';
 
 	return `
-### Services the user has connected
+### Connected services
+
+This list is complete and current as of this turn. A service that is not on it is not connected, even if you used its tools earlier in this conversation — the user can disconnect a service between turns. Never call a service connected because the history shows it working, and never explain a service's absence as a timeout or an automatic reconnect.
 
 ${lines}
 ${brokenGuidance}`;

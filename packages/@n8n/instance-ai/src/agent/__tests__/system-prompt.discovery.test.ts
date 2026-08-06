@@ -182,7 +182,7 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 				connectedMcpServices: [{ slug: 'linear', title: 'Linear', toolsLoaded: true }],
 			});
 
-			expect(prompt).toContain('### Services the user has connected');
+			expect(prompt).toContain('### Connected services');
 			expect(prompt).toContain('Linear (`linear`) — working');
 		});
 
@@ -224,13 +224,21 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		it('says nothing about connections when the host reported nothing', () => {
 			const prompt = getSystemPrompt(registryEnabled);
 
-			expect(prompt).not.toContain('### Services the user has connected');
+			expect(prompt).not.toContain('### Connected services');
 		});
 
-		it('says nothing about connections when the user has none', () => {
+		it('states outright that nothing is connected when the user has none', () => {
 			const prompt = getSystemPrompt({ ...registryEnabled, connectedMcpServices: [] });
 
-			expect(prompt).not.toContain('### Services the user has connected');
+			expect(prompt).toContain('### Connected services');
+			expect(prompt).toContain('Nothing is connected.');
+		});
+
+		it('overrides a history that shows a since-disconnected service working', () => {
+			const prompt = getSystemPrompt({ ...registryEnabled, connectedMcpServices: [] });
+
+			expect(prompt).toContain('This list is complete and current as of this turn');
+			expect(prompt).toContain('the user can disconnect a service between turns');
 		});
 	});
 
