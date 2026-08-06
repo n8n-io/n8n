@@ -32,6 +32,7 @@ const setupCompletionState = computed(
 	() => appSettingsStore.moduleSettings['instance-ai']?.setupCompleted,
 );
 const setupWasIncomplete = setupCompletionState.value === false;
+let setupWasObservedIncomplete = setupWasIncomplete;
 const onboardingCompletionPending = useSessionStorage(
 	'instanceAi.onboarding.completionPending',
 	setupWasIncomplete,
@@ -46,15 +47,15 @@ const showOnboarding = computed(
 		settingsStore.canManage &&
 		!settingsStore.isProxyEnabled &&
 		!settingsStore.isCloudManaged &&
-		setupCompletionState.value !== true &&
 		onboardingActive.value,
 );
 
 watch(setupCompletionState, (setupCompleted) => {
 	if (setupCompleted === true) {
 		onboardingCompletionPending.value = false;
-		onboardingActive.value = false;
+		if (!setupWasObservedIncomplete) onboardingActive.value = false;
 	} else if (setupCompleted === false) {
+		setupWasObservedIncomplete = true;
 		onboardingCompletionPending.value = true;
 		onboardingActive.value = true;
 	}

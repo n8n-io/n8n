@@ -18,7 +18,6 @@ test.describe(
 	{ annotation: [{ type: 'owner', description: 'instanceAI' }] },
 	() => {
 		test('should verify search and complete onboarding', async ({ n8n }) => {
-			await n8n.start.fromHome();
 			await n8n.instanceAi.gotoOnboarding();
 			await n8n.instanceAi.mockSearchVerification({ ok: true, resultCount: 10 });
 
@@ -33,7 +32,6 @@ test.describe(
 		});
 
 		test('should keep the search step open when verification fails', async ({ n8n }) => {
-			await n8n.start.fromHome();
 			await n8n.instanceAi.gotoOnboarding();
 			await n8n.instanceAi.mockSearchVerification({ ok: false, failure: 'unauthorized' });
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -166,5 +166,32 @@ describe('InstanceAiView', () => {
 		expect(queryByTestId('onboarding-view-stub')).toBeNull();
 		expect(getByTestId('router-view-stub')).toBeVisible();
 		expect(sessionStorage.getItem('instanceAi.onboarding.completionPending')).toBe('false');
+	});
+
+	it('keeps the active wizard open when its final save completes setup', async () => {
+		vi.mocked(hasPermission).mockReturnValue(true);
+		const appSettingsStore = useSettingsStore();
+		appSettingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				setupCompleted: false,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+		const { getByTestId, queryByTestId } = renderView({ pinia });
+
+		appSettingsStore.moduleSettings = {
+			'instance-ai': { ...appSettingsStore.moduleSettings['instance-ai']!, setupCompleted: true },
+		};
+
+		await waitFor(() => expect(getByTestId('onboarding-view-stub')).toBeVisible());
+		expect(queryByTestId('router-view-stub')).toBeNull();
 	});
 });

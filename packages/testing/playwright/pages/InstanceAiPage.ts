@@ -53,7 +53,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getOnboardingWizard(): Locator {
-		return this.page.getByTestId('assistant-setup-wizard');
+		return this.page.getByRole('dialog', { name: 'Set up AI Assistant' });
 	}
 
 	getWizardPrimaryButton(): Locator {
@@ -82,7 +82,7 @@ export class InstanceAiPage extends BasePage {
 		response: { ok: true; resultCount: number } | { ok: false; failure: string },
 	): Promise<void> {
 		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
-			await route.fulfill({ json: response });
+			await route.fulfill({ json: { data: response } });
 		});
 	}
 
