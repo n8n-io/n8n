@@ -5,8 +5,8 @@ import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 
+import { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
 import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
-import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '@/modules/token-exchange/token-exchange.schemas';
 import {
@@ -77,7 +77,7 @@ let config: TokenExchangeConfig;
 let jwtService: JwtService;
 
 beforeAll(async () => {
-	// TrustedKeyService.initialize() only runs on the leader instance.
+	// TrustedKeySyncService.initialize() only runs on the leader instance.
 	const instanceSettings = Container.get(InstanceSettings);
 	Object.defineProperty(instanceSettings, 'isLeader', { value: true, configurable: true });
 
@@ -104,7 +104,7 @@ beforeAll(async () => {
 		},
 	]);
 
-	await Container.get(TrustedKeyService).initialize();
+	await Container.get(TrustedKeySyncService).initialize();
 
 	jwtService = Container.get(JwtService);
 });
@@ -123,11 +123,11 @@ beforeEach(async () => {
 	config.maxTokenTtl = 900;
 
 	// Re-initialize keys after truncation clears the trusted key tables.
-	await Container.get(TrustedKeyService).initialize();
+	await Container.get(TrustedKeySyncService).initialize();
 });
 
 afterEach(() => {
-	Container.get(TrustedKeyService).stopRefresh();
+	Container.get(TrustedKeySyncService).stopRefresh();
 });
 
 const postToken = (body: Record<string, string>) =>

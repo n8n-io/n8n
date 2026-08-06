@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
 import { JtiStoreService } from '@/modules/identity-substrate/services/jti-store.service';
+import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 import type {
 	ExternalTokenVerifier,
 	VerifiedClaimResult,
@@ -31,7 +32,6 @@ import {
 	type IssuedTokenResult,
 } from '../token-exchange.types';
 import { IdentityResolutionService } from './identity-resolution.service';
-import { TrustedKeyService } from './trusted-key.service';
 
 const MAX_TOKEN_LIFETIME_SECONDS = 60;
 const MIN_REMAINING_LIFETIME_SECONDS = 5;

@@ -291,7 +291,7 @@ export default defineConfig(
 			'./src/modules/source-control.ee/source-control-import.service.ee.ts',
 			'./src/modules/source-control.ee/source-control-scoped.service.ts',
 			'./src/modules/source-control.ee/source-control-status.service.ee.ts',
-			'./src/modules/token-exchange/services/trusted-key.service.ts',
+			'./src/modules/identity-substrate/services/trusted-key-sync.service.ts',
 			'./src/modules/workflow-index/workflow-dependency-query.service.ts',
 		],
 		rules: {

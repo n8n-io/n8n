@@ -2,8 +2,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
+import type { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 
-import type { TrustedKeyService } from '../../services/trusted-key.service';
 import { TrustedKeySourceController } from '../trusted-key-source.controller';
 
 const trustedKeyService = mock<TrustedKeyService>();

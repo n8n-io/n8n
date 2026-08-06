@@ -6,15 +6,12 @@ import { jsonParse } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
-import { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
-import { TrustedKeyEntity } from '@/modules/identity-substrate/database/entities/trusted-key.entity';
-import type { TrustedKeySourceRepository } from '@/modules/identity-substrate/database/repositories/trusted-key-source.repository';
-import type { TrustedKeyRepository } from '@/modules/identity-substrate/database/repositories/trusted-key.repository';
-import type { JwksResolverService } from '@/modules/identity-substrate/services/jwks-resolver';
+import type { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 
-import type { TokenExchangeConfig } from '../../token-exchange.config';
-import type { TrustedKeyData } from '../../token-exchange.schemas';
-import { TrustedKeyService } from '../trusted-key.service';
+import { TrustedKeySourceEntity } from '../../database/entities/trusted-key-source.entity';
+import type { TrustedKeySourceRepository } from '../../database/repositories/trusted-key-source.repository';
+import type { JwksResolverService } from '../jwks-resolver';
+import { TrustedKeySyncService } from '../trusted-key-sync.service';
 
 // ──────────────────────────────────────────────────────────────────────
 // Pre-generated PEM public keys (test-only, no secrets)
@@ -30,36 +27,11 @@ o6LNz3KqejtBEOT+/IbnbgIShhWcTuh8Ehw0EUtkOXdqykqoXuEtcoLj3c4efQ/n
 dQIDAQAB
 -----END PUBLIC KEY-----`;
 
-const EC_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpCuPN2BHQ7G0A2qD2Bd27bwwUB9M
-Npzv5WS/ygt55l8y2X+Vfm5TQFRMNkqEx+/GXaPIU/hDmtnBdCxAUIRM9g==
------END PUBLIC KEY-----`;
-
 // ──────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────
 
 const mockLogger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
-
-function makeTrustedKeyData(overrides: Partial<TrustedKeyData> = {}): TrustedKeyData {
-	return {
-		algorithms: ['RS256'],
-		keyMaterial: RSA_PUBLIC_KEY,
-		issuer: 'https://issuer.example.com',
-		...overrides,
-	};
-}
-
-function makeTrustedKeyEntity(
-	overrides: Partial<{ sourceId: string; kid: string; data: TrustedKeyData }> = {},
-): TrustedKeyEntity {
-	const entity = new TrustedKeyEntity();
-	entity.sourceId = overrides.sourceId ?? 'static';
-	entity.kid = overrides.kid ?? 'test-kid';
-	entity.data = JSON.stringify(overrides.data ?? makeTrustedKeyData());
-	entity.createdAt = new Date();
-	return entity;
-}
 
 function createMocks({
 	isLeader = true,
@@ -72,7 +44,6 @@ function createMocks({
 		inboundSubjectClaim,
 	});
 	const sourceRepo = mock<TrustedKeySourceRepository>();
-	const keyRepo = mock<TrustedKeyRepository>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader });
 	const dbLockService = mock<DbLockService>();
 	const jwksResolverService = mock<JwksResolverService>();
@@ -86,11 +57,10 @@ function createMocks({
 
 	sourceRepo.find.mockResolvedValue([]);
 
-	const service = new TrustedKeyService(
+	const service = new TrustedKeySyncService(
 		mockLogger,
 		config,
 		sourceRepo,
-		keyRepo,
 		instanceSettings,
 		dbLockService,
 		jwksResolverService,
@@ -99,7 +69,6 @@ function createMocks({
 	return {
 		service,
 		config,
-		keyRepo,
 		sourceRepo,
 		dbLockService,
 		instanceSettings,
@@ -111,7 +80,7 @@ function createMocks({
 // Tests
 // ──────────────────────────────────────────────────────────────────────
 
-describe('TrustedKeyService', () => {
+describe('TrustedKeySyncService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
@@ -119,68 +88,6 @@ describe('TrustedKeyService', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
-	});
-
-	describe('crypto cache', () => {
-		it('should reuse cached crypto key when keyMaterial is unchanged', async () => {
-			const { service, keyRepo } = createMocks();
-
-			const entity = makeTrustedKeyEntity();
-			keyRepo.findAllByKid.mockResolvedValue([entity]);
-
-			const result1 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
-			const result2 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
-
-			// Same KeyObject instance (from cache)
-			expect(result1!.key).toBe(result2!.key);
-		});
-
-		it('should create new crypto key when keyMaterial changes', async () => {
-			const { service, keyRepo } = createMocks();
-
-			const entity1 = makeTrustedKeyEntity({
-				data: makeTrustedKeyData({ keyMaterial: RSA_PUBLIC_KEY }),
-			});
-			keyRepo.findAllByKid.mockResolvedValueOnce([entity1]);
-
-			const result1 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
-
-			// Change key material to EC key
-			const entity2 = makeTrustedKeyEntity({
-				data: makeTrustedKeyData({
-					keyMaterial: EC_PUBLIC_KEY,
-					algorithms: ['ES256'],
-				}),
-			});
-			keyRepo.findAllByKid.mockResolvedValueOnce([entity2]);
-
-			const result2 = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
-
-			// Different KeyObject (cache miss due to hash mismatch)
-			expect(result1!.key).not.toBe(result2!.key);
-		});
-	});
-
-	describe('subjectClaim resolution', () => {
-		it('defaults subjectClaim to sub when the stored data omits it', async () => {
-			const { service, keyRepo } = createMocks();
-			keyRepo.findAllByKid.mockResolvedValue([makeTrustedKeyEntity()]);
-
-			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
-
-			expect(result!.subjectClaim).toBe('sub');
-		});
-
-		it('returns the configured subjectClaim when present in stored data', async () => {
-			const { service, keyRepo } = createMocks();
-			keyRepo.findAllByKid.mockResolvedValue([
-				makeTrustedKeyEntity({ data: makeTrustedKeyData({ subjectClaim: 'uid' }) }),
-			]);
-
-			const result = await service.getByKidAndIss('test-kid', 'https://issuer.example.com');
-
-			expect(result!.subjectClaim).toBe('uid');
-		});
 	});
 
 	describe('initialize', () => {

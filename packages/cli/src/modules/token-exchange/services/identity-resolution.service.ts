@@ -5,6 +5,7 @@ import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
+import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 import {
 	IdentityBindingService,
 	interpretEmailVerified,
@@ -22,7 +23,6 @@ import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeAuthError } from '../token-exchange.errors';
 import type { ExternalTokenClaims } from '../token-exchange.schemas';
 import { TokenExchangeFailureReason } from '../token-exchange.types';
-import { TrustedKeyService } from './trusted-key.service';
 
 type TokenContext = { kid?: string; issuer: string; requireVerifiedEmail?: boolean };
 
