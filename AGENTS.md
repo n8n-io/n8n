@@ -259,41 +259,6 @@ What we use for testing and writing tests:
   then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
 - **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
-### Testing Public API changes against a live instance
-
-Unit/integration tests exercise the Public API code paths in-process, but sometimes you want to see
-a real HTTP round trip — an actual server, an actual API key, an actual response. This can be done
-entirely via `curl`, with no browser and no pre-existing n8n data required:
-
-```bash
-# 1. Build (skip typecheck if master has unrelated pre-existing type errors blocking a normal build)
-cd packages/cli && pnpm build:unchecked
-
-# 2. Start an isolated instance — its own data dir, its own port, no telemetry.
-#    A fresh N8N_USER_FOLDER has no owner account yet, so step 3 always starts from nothing.
-N8N_USER_FOLDER=/tmp/n8n-test-instance N8N_PORT=5679 \
-  N8N_DIAGNOSTICS_ENABLED=false N8N_SECURE_COOKIE=false pnpm start
-
-# 3. In another terminal: create the owner account. This also logs you in and
-#    returns an auth cookie (-c cookies.txt), so a separate /rest/login call isn't needed.
-curl -c cookies.txt -X POST http://localhost:5679/rest/owner/setup \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"test@example.com","firstName":"Test","lastName":"User","password":"TestPassword123"}'
-
-# 4. Create a Public API key scoped to whatever you're testing.
-curl -b cookies.txt -X POST http://localhost:5679/rest/api-keys \
-  -H 'Content-Type: application/json' \
-  -d '{"label":"local-test","scopes":["workflow:read"],"expiresAt":null}'
-# grab .data.rawApiKey from the JSON response
-
-# 5. Call the endpoint under test with that key.
-curl -i http://localhost:5679/api/v1/<endpoint> -H "X-N8N-API-KEY: <rawApiKey>"
-```
-
-Clean up by stopping the server and removing the `N8N_USER_FOLDER` directory. `scopes` in step 4 is
-required — an owner may request any scope, but there's no implicit "full access" default if you omit
-it; list exactly the scopes the endpoint under test needs (see `packages/cli/src/controllers/api-keys.controller.ts`).
-
 ### Common Development Tasks
 
 When implementing features:
