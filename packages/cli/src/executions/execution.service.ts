@@ -151,6 +151,13 @@ export class ExecutionService {
 		return { scopes: [scope], projectRoles, workflowRoles };
 	}
 
+	/**
+	 * Editor/internal GET: load an execution for display, apply redaction, and
+	 * return flatted `data` (`IExecutionFlattedResponse`).
+	 *
+	 * Prefer this for the private executions API. For a domain entity with
+	 * caller-controlled options, use {@link findOneInWorkflows}.
+	 */
 	async findOne(
 		req: ExecutionRequest.GetOne | ExecutionRequest.Update,
 		sharedWorkflowIds: string[],
@@ -769,6 +776,13 @@ export class ExecutionService {
 		}
 	}
 
+	/**
+	 * Load one execution scoped to `workflowIds` as a domain entity.
+	 * Options control data/annotation inclusion; no redaction or flatting.
+	 *
+	 * Prefer this for public API and service-to-service loads. For the editor
+	 * flatted response, use {@link findOne}.
+	 */
 	async findOneInWorkflows(
 		executionId: string,
 		workflowIds: string[],
