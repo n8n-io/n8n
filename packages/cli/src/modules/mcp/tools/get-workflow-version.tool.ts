@@ -14,6 +14,7 @@ import {
 	connectionsSchema,
 	nodeGroupSchema,
 	nodeSchema,
+	sanitizeNodeCredentials,
 	toNodeGroupSummary,
 	type NodeGroupSummary,
 } from './schemas';
@@ -69,8 +70,8 @@ type GetWorkflowVersionOutput = Omit<
 
 /**
  * Creates the MCP tool definition for retrieving a single workflow version's
- * full content (nodes, connections, node groups). Credentials are stripped from
- * nodes before returning, mirroring get_workflow_details.
+ * full content (nodes, connections, node groups). Node credentials are reduced
+ * to `{ id, name }` per slot, mirroring get_workflow_details.
  */
 export const createGetWorkflowVersionTool = (
 	user: User,
@@ -165,7 +166,7 @@ export async function getWorkflowVersion(
 
 	const version = await getMcpWorkflowVersion(workflowHistoryService, user, workflowId, versionId);
 
-	const nodes = (version.nodes ?? []).map(({ credentials: _credentials, ...node }) => node);
+	const nodes = (version.nodes ?? []).map(sanitizeNodeCredentials);
 
 	return {
 		versionId: version.versionId,

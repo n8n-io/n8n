@@ -50,6 +50,11 @@
 			"reason": "Dropped via FK cascade together with its Agent."
 		},
 		{
+			"name": "AgentChatAttachment",
+			"path": "packages/cli/src/modules/agents/entities/agent-chat-attachment.entity.ts",
+			"reason": "Conversation attachments; dropped via FK cascade together with their Agent/project, like the threads and messages they belong to."
+		},
+		{
 			"name": "InstanceAiThread",
 			"path": "packages/cli/src/modules/instance-ai/entities/instance-ai-thread.entity.ts",
 			"reason": "AI assistant conversation history; personal to the deleted user."

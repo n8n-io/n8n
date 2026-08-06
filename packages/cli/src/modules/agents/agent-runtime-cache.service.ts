@@ -232,6 +232,7 @@ export class AgentRuntimeCacheService {
 			await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 				agentData,
 				credentialProvider,
+				usePublishedVersion ? 'production' : 'test',
 				integrationType,
 				user,
 			);

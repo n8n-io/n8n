@@ -373,9 +373,6 @@ describe('useToast', () => {
 		});
 	});
 
-	// The only path that reads `pendingNotificationsForViews` and calls
-	// `setNotificationsForView`, so it is what proves the injected notification
-	// state is wired end to end. Previously untested.
 	// The notifier is resolved per call rather than once per `useToast()`. Probing
 	// with a *later registration* is what distinguishes the two: a once-bound
 	// composable captures whatever was registered at creation time and never sees

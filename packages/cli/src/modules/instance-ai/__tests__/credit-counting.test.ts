@@ -6,8 +6,7 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 // Skip the real backoff sleeps so retry tests run instantly.
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -336,6 +335,23 @@ describe('claimRunUsage', () => {
 
 		expect(ai.getClient).not.toHaveBeenCalled();
 		expect(push.sendToUsers).not.toHaveBeenCalled();
+	});
+
+	it('does not charge an errored segment with no billable usage', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: vi.fn() };
+		const telemetry = { track: vi.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push, telemetry });
+		await callClaim(service, { usage: [], status: 'errored' });
+
+		expect(ai.getClient).not.toHaveBeenCalled();
+		expect(ai.__getInstanceAiApiProxyToken).not.toHaveBeenCalled();
+		expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
+		expect(threadRepo.save).not.toHaveBeenCalled();
+		expect(push.sendToUsers).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('does nothing when the proxy is disabled', async () => {

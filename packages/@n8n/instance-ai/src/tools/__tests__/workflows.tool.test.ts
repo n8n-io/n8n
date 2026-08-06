@@ -1279,6 +1279,51 @@ describe('workflows tool', () => {
 				['HTTP Request'],
 			);
 		});
+
+		it('reports a just-applied credential whose test failed as a failed node', async () => {
+			// A bound credential is settled (needsAction=false) even when its test
+			// fails, so the apply path must re-analyze with includeSettled to keep
+			// the failure reportable instead of silently marking the node complete.
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: false,
+					credentialTestResult: { success: false, message: 'Invalid token' },
+				},
+			]);
+			(applyNodeChanges as Mock).mockResolvedValue({ applied: ['Slack'], failed: [] });
+			(buildCompletedReport as Mock).mockReturnValue([
+				{ nodeName: 'Slack', credentialType: 'slackApi' },
+			]);
+
+			const context = createMockContext();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					credentials: { Slack: { slackApi: 'cred-1' } },
+				},
+			} as never);
+
+			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+				includeSettled: true,
+			});
+			expect(result).toMatchObject({
+				success: true,
+				completedNodes: [],
+				failedNodes: [
+					{
+						nodeName: 'Slack',
+						error: 'Credential test failed for slackApi: Invalid token',
+					},
+				],
+			});
+			// Settled requests never count as pending, so the apply is not partial.
+			expect(result).not.toHaveProperty('partial');
+		});
 	});
 
 	describe('unpublish action', () => {

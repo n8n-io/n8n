@@ -4,7 +4,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
@@ -625,8 +625,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 }
 
@@ -634,6 +632,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .textInputRow {

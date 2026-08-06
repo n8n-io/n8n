@@ -14,6 +14,72 @@ function execution(overrides: Partial<AgentExecution> = {}): AgentExecution {
 }
 
 describe('execution-to-message-mapper', () => {
+	it('maps reasoning timeline events with timing into assistant message content', () => {
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'reasoning',
+						content: 'Check the inputs.',
+						timestamp: 100,
+						endTime: 150,
+					},
+					{ type: 'text', content: 'Done.', timestamp: 151, endTime: 160 },
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'reasoning',
+				text: 'Check the inputs.',
+				startTime: 100,
+				endTime: 150,
+			},
+			{ type: 'text', text: 'Done.' },
+		]);
+	});
+
+	it('carries childTrace onto the persisted tool-call content part', () => {
+		const childTrace = {
+			text: 'child said this',
+			reasoningSegments: [{ id: 'r-1', content: 'thinking' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'delegate_subagent',
+						toolCallId: 'tc-parent',
+						input: { goal: 'x' },
+						output: { status: 'completed', answer: 'done' },
+						startTime: 100,
+						endTime: 200,
+						success: true,
+						childTrace,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'tool-call',
+				toolName: 'delegate_subagent',
+				toolCallId: 'tc-parent',
+				input: { goal: 'x' },
+				startTime: 100,
+				endTime: 200,
+				state: 'resolved',
+				output: { status: 'completed', answer: 'done' },
+				childTrace,
+			},
+		]);
+	});
+
 	it('maps execution timeline text and tool calls into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -110,6 +176,78 @@ describe('execution-to-message-mapper', () => {
 				executionId: 'execution-1',
 			},
 		]);
+	});
+
+	it('includes attachment file parts on the user message', () => {
+		const result = executionToMessagesDto(
+			execution({
+				attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
+			}),
+		);
+
+		expect(result[0]).toEqual({
+			id: 'execution-1:user',
+			role: 'user',
+			content: [
+				{ type: 'text', text: 'Hello' },
+				{
+					type: 'file',
+					fileId: 'att-1',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+					sizeBytes: 33,
+				},
+			],
+			executionId: 'execution-1',
+		});
+	});
+
+	it('emits a user message for attachment-only turns without text', () => {
+		const result = executionToMessagesDto(
+			execution({
+				userMessage: null,
+				attachments: [
+					{ id: 'att-1', fileName: 'voice.ogg', mimeType: 'audio/ogg', sizeBytes: 100 },
+				],
+			}),
+		);
+
+		expect(result[0].role).toBe('user');
+		expect(result[0].content).toEqual([
+			{
+				type: 'file',
+				fileId: 'att-1',
+				fileName: 'voice.ogg',
+				mimeType: 'audio/ogg',
+				sizeBytes: 100,
+			},
+		]);
+	});
+
+	it('includes the execution outcome on assistant messages', () => {
+		const result = executionToMessagesDto(
+			execution({
+				status: 'error',
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'slow_tool',
+						toolCallId: 'call-1',
+						input: {},
+						output: undefined,
+						startTime: 100,
+						endTime: 0,
+						success: false,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]).toMatchObject({
+			role: 'assistant',
+			executionStatus: 'error',
+		});
 	});
 
 	it('flattens multiple executions into a single message list', () => {

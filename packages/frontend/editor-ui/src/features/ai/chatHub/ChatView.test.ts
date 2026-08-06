@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -18,7 +19,7 @@ import * as chatApi from './chat.api';
 import ChatView from './ChatView.vue';
 
 // Mock external stores and modules
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		currentUserId: 'user-123',
 		currentUser: {
@@ -51,7 +52,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('./chat.api');
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		settings: {},
 		moduleSettings: {
@@ -191,6 +192,12 @@ describe('ChatView', () => {
 	}
 
 	beforeEach(async () => {
+		// The error-toast test below asserts on rendered toast content, which needs
+		// the notifier the app registers at bootstrap. Explicit here because it no
+		// longer arrives as a side effect of importing
+		// `@n8n/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createPinia();
 		setActivePinia(pinia);
 

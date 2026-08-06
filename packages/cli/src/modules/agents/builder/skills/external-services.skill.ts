@@ -15,7 +15,7 @@ export function externalServicesSkill(): RuntimeSkill {
 		id: 'agent-builder-external-services',
 		name: 'Agent Builder External Services',
 		description:
-			'Use when connecting the target agent to any external product: deciding whether Slack, Linear, Telegram, or another platform is a chat integration/trigger versus an MCP, node, or workflow tool; adding, removing, or updating chat integrations or MCP servers; and wiring n8n node-backed tools (search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions).',
+			'Use when connecting the target agent to any external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus an MCP, node, or workflow tool; adding, removing, or updating chat integrations or MCP servers; and wiring n8n node-backed tools (search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, n8n expressions).',
 		recommendedTools: [
 			'resolve_integration',
 			'list_integration_types',
@@ -62,11 +62,21 @@ Use an MCP, node, or workflow tool when the product is only something the agent
 operates on: searching records, creating tickets, updating objects, or sending a
 business-process notification while the conversation happens elsewhere.
 
+When building an agent that should interact with Slack, Discord, or Telegram,
+prefer the matching chat integration over an MCP, node, or workflow tool, even
+when a callable tool could perform the same messaging action. Use a callable
+tool instead only when the user explicitly asks for one or the requested
+operation is not supported by the chat integration.
+
 Examples:
 
 - Slack integration: the agent should be chatted with in Slack, respond in
   Slack threads, DM users, message channels, add reactions, or render rich UI
   to Slack users.
+- Discord integration: the agent should be mentioned or messaged in Discord,
+  respond in Discord threads or DMs, or render approval buttons there.
+- Telegram integration: the agent should receive or send Telegram messages,
+  continue conversations there, or render supported interactive messages.
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.
@@ -82,28 +92,26 @@ below, \`"node"\` -> Node Tools section below.
 
 The \`integrations\` array controls how the target agent is triggered.
 
-- These are connected external chat platforms, not built-in Preview chat.
+- These are configured external chat platforms, not built-in Preview chat.
 - Call \`list_integration_types\` first.
 - Read the returned \`capabilities\`, \`useIntegrationWhen\`, and
   \`useNodeToolWhen\` fields before deciding to add an integration.
 - Pick one returned \`type\` and pass it to \`configure_channel\` as
   \`integrationType\`. ALWAYS use \`configure_channel\` for chat-channel
   credentials — never \`ask_credential\` or a raw config write. The setup UI it
-  shows creates and persists the credential/connection itself; do not follow up
-  with \`patch_config\`/\`write_config\` to write the credential.
+  shows creates and persists the channel configuration without publishing the
+  agent; do not follow up with \`patch_config\`/\`write_config\` to write the
+  credential.
 - ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
   \`list_integration_types\` returns the matching type, \`read_config()\` then
   \`patch_config\` adding \`{ "type": "<integrationType>", "credentialId": "" }\`
   to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
   telegram) so the channel appears in the agent panel as needing setup. Pass
   the same \`integrationType\` in the trailing \`finish_setup\` call's
-  \`channels\` array — its card connects or skips the channel itself; if
+  \`channels\` array — its card configures or skips the channel itself. Do not
+  call \`configure_channel\` again after \`finish_setup\` handles the card. If
   skipped, list it in the closing setup checklist pointing at the channel
-  chip in the agent panel. If \`finish_setup\` instead reports the channel as
-  \`'blocked'\` (the agent could not be published yet), patch in the
-  credentials/model it collected first; if that resolves every reported
-  issue, call \`configure_channel\` directly for that channel as a follow-up.
-  Otherwise leave it for the closing checklist.
+  chip in the agent panel.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`read_config\` and inspect
   \`config.integrations\`.
@@ -351,8 +359,9 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 
 ## Verify
 
-- Connected chat integrations were set up through \`configure_channel\`, not
-  \`ask_credential\` or a manual config write.
+- Configured chat integrations were set up through \`configure_channel\` or the
+  initial-build \`finish_setup\` channel card, not \`ask_credential\` or a manual
+  config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
   callable capability through \`resolve_integration\` and use MCP, node, or
   workflow tools.

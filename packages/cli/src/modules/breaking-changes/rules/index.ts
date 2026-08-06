@@ -26,6 +26,7 @@ import './v3/chat-trigger-embedded-json.rule';
 import './v3/compression-node-limits.rule';
 import './v3/docker-only-deployment.rule';
 import './v3/execute-workflow-each-mode.rule';
+import './v3/execute-workflow-source-modes.rule';
 import './v3/get-paired-item.rule';
 import './v3/gmail-trigger-version.rule';
 import './v3/in-memory-binary-data.rule';

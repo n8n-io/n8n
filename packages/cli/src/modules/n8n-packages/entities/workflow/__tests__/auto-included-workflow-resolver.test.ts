@@ -104,6 +104,7 @@ function resolveInput(options: {
 		folderWorkflowIds: options.folderWorkflowIds ?? [],
 		projectWorkflowIds: options.projectWorkflowIds ?? [],
 		requirements: options.requirements,
+		includeTags: true,
 	};
 }
 
@@ -333,7 +334,7 @@ describe('AutoIncludedWorkflowResolver', () => {
 			['b'],
 			user,
 			['workflow:export'],
-			{ includeParentFolder: true },
+			{ includeParentFolder: true, includeTags: true },
 		);
 	});
 });

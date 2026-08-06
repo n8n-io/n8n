@@ -130,7 +130,7 @@ describe('scheduler execution over the storage bindings', () => {
 
 		const result = await scheduler.reap();
 
-		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
+		expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 0 });
 		const recovered = await taskRepo.findOneByOrFail({ jobId: job.id });
 		expect(recovered.status).toBe('pending');
 		expect(recovered.claimedBy).toBeNull();
@@ -160,7 +160,7 @@ describe('scheduler execution over the storage bindings', () => {
 
 		const result = await scheduler.reap();
 
-		expect(result).toEqual({ reclaimed: 0, deadLettered: 1 });
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 1, missed: 0 });
 		const failed = await taskRepo.findOneByOrFail({ jobId: job.id });
 		expect(failed.status).toBe('failed');
 		expect(failed.claimedBy).toBe('main-dead');

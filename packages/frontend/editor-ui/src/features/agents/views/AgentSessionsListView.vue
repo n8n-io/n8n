@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
@@ -117,6 +117,8 @@ function originIcon(thread: AgentExecutionThread): string {
 			return 'telegram';
 		case 'linear':
 			return 'linear';
+		case 'discord':
+			return 'discord';
 		default:
 			return 'zap';
 	}

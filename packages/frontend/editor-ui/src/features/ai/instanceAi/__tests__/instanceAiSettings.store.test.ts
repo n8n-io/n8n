@@ -8,7 +8,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -56,7 +56,7 @@ vi.mock('../instanceAi.api', () => ({
 }));
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
@@ -372,6 +372,22 @@ describe('useInstanceAiSettingsStore', () => {
 			await store.refreshModuleSettings();
 
 			expect(mockFetchPreferences).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('provider credentials', () => {
+		it('refreshes n8n Sandbox credentials when the assistant proxy is enabled', async () => {
+			setModuleSettings(settingsStore, { proxyEnabled: true, cloudManaged: false });
+			mockFetchServiceCredentials.mockResolvedValue([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
+
+			await store.refreshCredentials();
+
+			expect(mockFetchServiceCredentials).toHaveBeenCalledOnce();
+			expect(store.serviceCredentials).toEqual([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
 		});
 	});
 

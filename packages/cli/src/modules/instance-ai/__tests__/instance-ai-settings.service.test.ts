@@ -766,32 +766,96 @@ describe('InstanceAiSettingsService', () => {
 				).rejects.toThrow('You do not have permission to manage provider connections');
 			});
 
-			it.each(['cloud', 'proxy'] as const)(
-				'should reject connection payloads on %s deployments',
-				async (deployment) => {
-					globalConfig.deployment.type = deployment === 'cloud' ? 'cloud' : 'default';
-					aiService.isProxyEnabled.mockReturnValue(deployment === 'proxy');
+			it('should reject connection payloads on cloud deployments', async () => {
+				globalConfig.deployment.type = 'cloud';
 
-					for (const update of [
-						{
-							modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
-							modelName: 'gpt-5',
+				for (const update of [
+					{
+						modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+						modelName: 'gpt-5',
+					},
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
 						},
+					},
+					{ searchConnection: { type: 'braveSearchApi', data: { apiKey: 'k' } } },
+				] as const) {
+					await expect(service.updateAdminSettings(update, adminUser)).rejects.toThrow(
+						UnprocessableRequestError,
+					);
+				}
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should keep model, Daytona, and search connections proxy-managed', async () => {
+				aiService.isProxyEnabled.mockReturnValue(true);
+
+				for (const update of [
+					{
+						modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+						modelName: 'gpt-5',
+					},
+					{ daytonaCredentialId: 'daytona-cred' },
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+						},
+					},
+					{ searchConnection: { type: 'braveSearchApi', data: { apiKey: 'k' } } },
+				] as const) {
+					await expect(service.updateAdminSettings(update, adminUser)).rejects.toThrow(
+						UnprocessableRequestError,
+					);
+				}
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
+			});
+
+			it('should clear the inactive Daytona slot when selecting n8n Sandbox behind the proxy', async () => {
+				aiService.isProxyEnabled.mockReturnValue(true);
+
+				await expect(
+					service.updateAdminSettings({
+						daytonaCredentialId: null,
+						n8nSandboxCredentialId: 'sandbox-cred',
+						sandboxProvider: 'n8n-sandbox',
+					}),
+				).resolves.toMatchObject({
+					daytonaCredentialId: null,
+					n8nSandboxCredentialId: 'sandbox-cred',
+					sandboxProvider: 'n8n-sandbox',
+				});
+				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:daytona' }),
+					operationContext,
+				);
+				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
+					'sandbox-cred',
+					operationContext,
+				);
+			});
+
+			it('should accept n8n Sandbox connections on proxy deployments', async () => {
+				aiService.isProxyEnabled.mockReturnValue(true);
+				credentialsService.createInstanceCredential.mockResolvedValue({
+					id: 'sandbox-cred',
+				} as never);
+
+				await expect(
+					service.updateAdminSettings(
 						{
 							sandboxConnection: {
-								type: 'daytonaApi',
-								data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+								type: 'httpHeaderAuth',
+								data: { name: 'x-api-key', value: 'k' },
 							},
 						},
-						{ searchConnection: { type: 'braveSearchApi', data: { apiKey: 'k' } } },
-					] as const) {
-						await expect(service.updateAdminSettings(update, adminUser)).rejects.toThrow(
-							UnprocessableRequestError,
-						);
-					}
-					expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
-				},
-			);
+						adminUser,
+					),
+				).resolves.toMatchObject({ sandboxProvider: 'n8n-sandbox' });
+			});
 
 			it('should reject a connection payload combined with a credential id', async () => {
 				await expect(
@@ -916,12 +980,17 @@ describe('InstanceAiSettingsService', () => {
 			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
-			await expect(service.updateAdminSettings({ sandboxProvider: 'daytona' })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
 		});
 
-		it('should ignore persisted sandbox providers when proxy routing is enabled', async () => {
+		it('should allow sandbox provider updates when proxy routing is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+
+			await expect(
+				service.updateAdminSettings({ sandboxProvider: 'daytona' }),
+			).resolves.toMatchObject({ sandboxProvider: 'daytona' });
+		});
+
+		it('should honor persisted sandbox providers when proxy routing is enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			settingsRepository.findByKey.mockResolvedValueOnce({
 				key: 'instanceAi.settings',
@@ -932,16 +1001,16 @@ describe('InstanceAiSettingsService', () => {
 			await service.loadFromDb();
 
 			await expect(service.getAdminSettings()).resolves.toMatchObject({
-				sandboxProvider: 'daytona',
+				sandboxProvider: 'n8n-sandbox',
 			});
 		});
 
-		it('should switch sandbox status to Daytona when proxy routing activates', () => {
+		it('should keep the selected sandbox provider when proxy routing activates', () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			expect(service.getSandboxStatus().provider).toBe('n8n-sandbox');
 
 			aiService.isProxyEnabled.mockReturnValue(true);
-			expect(service.getSandboxStatus().provider).toBe('daytona');
+			expect(service.getSandboxStatus().provider).toBe('n8n-sandbox');
 		});
 
 		it('should persist a sandbox provider override on self-hosted', async () => {
@@ -1619,6 +1688,22 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
+		it('uses the resolved api key when the assistant proxy is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'sandbox-credential',
+				name: 'Sandbox',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Api-Key', value: 'credential-key' },
+			});
+
+			await expect(service.resolveN8nSandboxConfig()).resolves.toEqual({
+				serviceUrl: 'http://sandbox-api:8080',
+				apiKey: 'credential-key',
+			});
+		});
+
 		it('falls back to environment config when the credential header is not x-api-key', async () => {
 			globalConfig.instanceAi.n8nSandboxServiceApiKey = 'env-key';
 			instanceCredentialBroker.resolveForUse.mockResolvedValue({
@@ -1692,13 +1777,13 @@ describe('InstanceAiSettingsService', () => {
 			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
 		});
 
-		it('checks the environment sandbox provider instead of the active override', async () => {
+		it('reports environment configuration for the selected sandbox provider', async () => {
 			globalConfig.instanceAi.sandboxProvider = 'daytona';
 			globalConfig.instanceAi.daytonaApiKey = 'dtn-key';
-			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(false);
-
-			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
 			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(true);
+
+			globalConfig.instanceAi.daytonaApiKey = '';
+			expect((await service.getAdminSettings()).sandboxEnvConfigured).toBe(false);
 
 			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
 			globalConfig.instanceAi.n8nSandboxServiceUrl = 'http://sandbox-api:8080';
@@ -1736,6 +1821,27 @@ describe('InstanceAiSettingsService', () => {
 				n8nSandboxCredentialId: 'sandbox-cred',
 				searchCredentialId: 'search-cred',
 			});
+		});
+
+		it('exposes n8n Sandbox assignments when the assistant proxy is enabled', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('sandbox-cred');
+			instanceCredentialBroker.listForUse.mockResolvedValue([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			] as never);
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				daytonaCredentialId: null,
+				n8nSandboxCredentialId: 'sandbox-cred',
+				searchCredentialId: null,
+			});
+			await expect(service.listInstanceServiceCredentials()).resolves.toEqual([
+				{ id: 'sandbox-cred', name: 'n8n Sandbox', type: 'httpHeaderAuth' },
+			]);
+			expect(instanceCredentialBroker.listForUse).toHaveBeenCalledOnce();
+			expect(instanceCredentialBroker.listForUse).toHaveBeenCalledWith(
+				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+			);
 		});
 	});
 

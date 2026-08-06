@@ -11,6 +11,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { agentHandler } from './artifacts/agent-handler';
+import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
 import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
@@ -68,6 +69,7 @@ export async function executeAgentScenario(
 	timeoutMs?: number,
 	testCaseName?: string,
 	buildTrace?: BuildTrace,
+	outputDir?: string,
 ): Promise<ExecutionScenarioResult> {
 	const execStart = Date.now();
 	const projectId = await client.getPersonalProjectId();
@@ -130,6 +132,7 @@ export async function executeAgentScenario(
 		verifierAttempts: verification.attempts,
 		buildTrace,
 		logger,
+		outputDir,
 	});
 	const incomplete = verificationResults.length === 0;
 	const attemptErrors = verification.attempts
@@ -140,6 +143,7 @@ export async function executeAgentScenario(
 		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
+	const attribution = attributionForScenario({ passed, incomplete, failureCategory });
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
 	const statusLabel = incomplete ? 'INCOMPLETE (excluded from scoring)' : passed ? 'PASS' : 'FAIL';
@@ -158,6 +162,7 @@ export async function executeAgentScenario(
 		score: passed ? 1 : 0,
 		reasoning,
 		failureCategory,
+		attribution,
 		rootCause,
 		...(incomplete ? { incomplete: true } : {}),
 	};

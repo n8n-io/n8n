@@ -387,6 +387,19 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			/**
+			 * Marks the run as a build verification rather than a run the user asked
+			 * for. Verification uses a production execution mode so triggers behave
+			 * realistically, which would otherwise make a failed attempt dispatch the
+			 * workflow's error workflow as if production had broken.
+			 */
+			isVerificationRun?: boolean;
+			/**
+			 * Connections removed from this run's ephemeral workflow copy (the saved
+			 * workflow is untouched). Used to sever a loop edge so scripted wait-gate
+			 * verification passes are acyclic.
+			 */
+			omitConnections?: Array<{ source: string; target: string }>;
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
@@ -471,6 +484,17 @@ export interface CredentialFieldInfo {
 	type: string;
 	required: boolean;
 	description?: string;
+}
+
+export interface McpRegistryServerSummary {
+	slug: string;
+	title: string;
+	description: string;
+	tools: string[];
+}
+
+export interface InstanceAiMcpService {
+	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
 }
 
 export interface ExploreResourcesParams {
@@ -893,6 +917,8 @@ export interface BuilderDelegateSession {
 	 * can outlive the parent trace's root finalization.
 	 */
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
+	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
+	abortSignal: AbortSignal;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
@@ -915,7 +941,9 @@ export interface BuilderOpenSuspension {
  * builder's questions survive a process restart.
  */
 export interface InstanceAiBuilderDelegate {
-	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
+	/** `id` creates the agent under an id the frontend already minted for its
+	 *  unsaved artifact, so the chat and the editor converge on one agent. */
+	createAgent(name: string, id?: string): Promise<{ agentId: string; projectId: string }>;
 	streamBuild(
 		agentId: string,
 		message: string,
@@ -977,8 +1005,11 @@ export interface InstanceAiContext {
 	dataTableService: InstanceAiDataTableService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
+	/** Optional — present when the host allows MCP registry discovery for this
+	 *  user. Presence gates the `mcp-servers` tool. */
+	mcpService?: InstanceAiMcpService;
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
-	agentBuilderTarget?: { agentId: string; projectId: string };
+	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
 	/**

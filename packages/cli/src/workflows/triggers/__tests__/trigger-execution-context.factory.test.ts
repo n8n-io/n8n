@@ -2,8 +2,9 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type { ErrorReporter, IGetExecutePollFunctions, StorageConfig } from 'n8n-core';
-import { sleep, UnexpectedError, Workflow } from 'n8n-workflow';
+import { UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	Cron,
 	CronExpression,

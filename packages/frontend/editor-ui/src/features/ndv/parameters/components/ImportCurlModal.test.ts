@@ -10,14 +10,14 @@ import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import userEvent from '@testing-library/user-event';
 
 const mockTelemetryTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
 const mockShowToast = vi.fn();
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast: mockShowToast }),
 }));
 

@@ -104,6 +104,7 @@ export {
 	CreateVariableRequestDto,
 	NEW_VARIABLE_KEY_REGEX,
 } from './variables/create-variable-request.dto';
+export { variableTypeSchema, variableValueSchema } from './variables/base.dto';
 export { UpdateVariableRequestDto } from './variables/update-variable-request.dto';
 export { CredentialsGetOneRequestQuery } from './credentials/credentials-get-one-request.dto';
 export { CredentialsGetManyRequestQuery } from './credentials/credentials-get-many-request.dto';
@@ -308,9 +309,15 @@ export type { EncryptionKeyResponseDto } from './encryption/encryption-key-respo
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
-export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
+export {
+	ListWorkflowReviewRequestsQueryDto,
+	type WorkflowReviewApprovedPublicationState,
+	type WorkflowReviewRequestForWorkflow,
+	type WorkflowReviewRequestList,
+} from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
 export * from './workflow-reviews/list-workflow-review-inbox.dto';
+export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';

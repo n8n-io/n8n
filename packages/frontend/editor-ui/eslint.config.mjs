@@ -250,9 +250,34 @@ export default defineConfig(
 		},
 	},
 	{
+		files: [
+			'src/**/*.test.ts',
+			'src/**/test/**/*.ts',
+			'src/**/__test__/**/*.ts',
+			'src/**/__tests__/**/*.ts',
+		],
+		rules: {
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
+	},
+	{
 		// Mirrors the `*.stories.ts` exclusion in tsconfig.json — typescript-eslint
 		// can't parse files outside the TS project.
 		ignores: ['src/**/*.stories.ts'],
+	},
+	{
+		// CodeMirror/expression-editor autocomplete builders construct short
+		// prefix-matching regexes from the user's current cursor token. The
+		// patterns are dev-controlled templates wrapped around short keystroke
+		// fragments and run only in the browser against trivially small input.
+		files: [
+			'src/features/shared/editors/components/CodeNodeEditor/**',
+			'src/features/shared/editors/plugins/codemirror/completions/**',
+			'src/features/settings/environments.ee/completions/**',
+		],
+		rules: {
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
 	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

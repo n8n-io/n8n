@@ -2,15 +2,15 @@
 import { computed, ref, useTemplateRef } from 'vue';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';

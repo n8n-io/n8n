@@ -407,6 +407,16 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
 			expect(vi.getTimerCount()).toBe(0);
 		});
+
+		test('on a follower, neither polls nor claims a record', async () => {
+			outboxRepository.claimNextPendingRecord.mockResolvedValue(makeRecord({ id: 1 }));
+			consumer = createConsumer(true, false);
+
+			await consumer.wakeUp();
+
+			expect(outboxRepository.claimNextPendingRecord).not.toHaveBeenCalled();
+			expect(vi.getTimerCount()).toBe(0);
+		});
 	});
 
 	describe('poll cycle', () => {
