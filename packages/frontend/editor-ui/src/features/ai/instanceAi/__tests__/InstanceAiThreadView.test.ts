@@ -466,14 +466,6 @@ describe('InstanceAiThreadView', () => {
 		return { ...rendered, user };
 	}
 
-	async function renderNarrowAgentDock() {
-		const rendered = await renderAgentArtifact({ threadAreaWidth: 1200 });
-		const { user } = rendered;
-		await user.click(rendered.getByTestId('instance-ai-agent-preview-open-dock'));
-
-		return rendered;
-	}
-
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
@@ -1071,8 +1063,10 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
 	});
 
-	it('uses the wide dock layout and disables outer resizing', async () => {
-		const { getByTestId, queryByTestId, user } = await renderAgentArtifact();
+	it('keeps the three-column dock layout at 1200px and disables outer resizing', async () => {
+		const { getByTestId, queryByTestId, user } = await renderAgentArtifact({
+			threadAreaWidth: 1200,
+		});
 
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
@@ -1093,9 +1087,17 @@ describe('InstanceAiThreadView', () => {
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
 		const threadArea = getByTestId('instance-ai-thread-area');
+		const header = getByTestId('instance-ai-builder-chat-header');
+		const content = getByTestId('instance-ai-content-area');
 		expect(threadArea.className).toContain('agentPreviewDockOpen');
 		expect(threadArea).not.toHaveClass('agentPreviewDockNarrow');
 		expect(queryByTestId('instance-ai-builder-chat-rail')).not.toBeInTheDocument();
+		expect(header).not.toHaveAttribute('hidden');
+		expect(header).not.toHaveAttribute('inert');
+		expect(header).not.toHaveAttribute('aria-hidden');
+		expect(content).not.toHaveAttribute('hidden');
+		expect(content).not.toHaveAttribute('inert');
+		expect(content).not.toHaveAttribute('aria-hidden');
 		expect(previewPanel).toBeVisible();
 		expect(queryByTestId('resize-handle')).not.toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
@@ -1151,108 +1153,10 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-thread-area').className).not.toContain('agentPreviewDockOpen');
 	});
 
-	it('collapses Builder chat to an accessible rail in a narrow three-column layout', async () => {
-		mockSidebarCollapsed.value = true;
-		const { getByRole, getByTestId } = await renderNarrowAgentDock();
-		const header = getByTestId('instance-ai-builder-chat-header');
-		const headerControl = getByTestId('instance-ai-sidebar-toggle');
-		const content = getByTestId('instance-ai-content-area');
-		const composerSubmit = getByTestId('instance-ai-input-submit');
-
-		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockNarrow');
-		expect(getByTestId('instance-ai-builder-chat-rail')).toBeVisible();
-		expect(getByTestId('instance-ai-preview-panel')).toBeVisible();
-		expect(getByRole('button', { name: 'Expand Builder chat' })).toHaveAttribute(
-			'aria-expanded',
-			'false',
-		);
-		expect(header).toHaveAttribute('inert');
-		expect(header).toHaveAttribute('hidden');
-		expect(header).toHaveAttribute('aria-hidden', 'true');
-		expect(headerControl.closest('[inert]')).toBe(header);
-		expect(headerControl).not.toBeVisible();
-		expect(content).toHaveAttribute('inert');
-		expect(content).toHaveAttribute('aria-hidden', 'true');
-		expect(composerSubmit.closest('[inert]')).toBe(content);
-		expect(getByTestId('instance-ai-agent-preview-stub')).toBeVisible();
-
-		await fireEvent.click(getByTestId('instance-ai-builder-chat-rail-toggle'));
-
-		expect(header).not.toHaveAttribute('inert');
-		expect(header).not.toHaveAttribute('hidden');
-		expect(header).not.toHaveAttribute('aria-hidden');
-		expect(headerControl.closest('[inert]')).toBeNull();
-		expect(headerControl).toBeVisible();
-		expect(content).not.toHaveAttribute('inert');
-		expect(content).not.toHaveAttribute('aria-hidden');
-		expect(composerSubmit.closest('[inert]')).toBeNull();
-	});
-
-	it('temporarily expands the narrow Builder chat for pointer and keyboard users', async () => {
-		const { getByTestId } = await renderNarrowAgentDock();
-		const builderChat = getByTestId('instance-ai-builder-chat');
-		const toggle = getByTestId('instance-ai-builder-chat-rail-toggle');
-		const composerSubmit = getByTestId('instance-ai-input-submit');
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'false');
-
-		await fireEvent.pointerEnter(builderChat);
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'true');
-
-		await fireEvent.pointerLeave(builderChat);
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'false');
-
-		await fireEvent.focusIn(toggle);
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'true');
-
-		await fireEvent.focusOut(toggle, { relatedTarget: composerSubmit });
-		await fireEvent.focusIn(composerSubmit, { relatedTarget: toggle });
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'true');
-
-		await fireEvent.focusOut(composerSubmit, { relatedTarget: document.body });
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'false');
-	});
-
-	it('toggles persistent narrow Builder chat expansion from the labeled control', async () => {
-		const { getByTestId } = await renderNarrowAgentDock();
-		const builderChat = getByTestId('instance-ai-builder-chat');
-		const toggle = getByTestId('instance-ai-builder-chat-rail-toggle');
-
-		await fireEvent.pointerEnter(builderChat);
-		await fireEvent.focusIn(toggle);
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'true');
-		expect(toggle).toHaveAttribute('aria-expanded', 'false');
-		expect(toggle).toHaveAttribute('aria-label', 'Expand Builder chat');
-
-		await fireEvent.click(toggle);
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'true');
-		expect(toggle).toHaveAttribute('aria-expanded', 'true');
-		expect(toggle).toHaveAttribute('aria-label', 'Collapse Builder chat');
-
-		await fireEvent.pointerLeave(builderChat);
-		await fireEvent.focusOut(toggle, { relatedTarget: document.body });
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'true');
-
-		await fireEvent.pointerEnter(builderChat);
-		await fireEvent.focusIn(toggle);
-		await fireEvent.click(toggle);
-
-		expect(builderChat).toHaveAttribute('data-expanded', 'false');
-		expect(toggle).toHaveAttribute('aria-expanded', 'false');
-		expect(toggle).toHaveAttribute('aria-label', 'Expand Builder chat');
-	});
-
 	it('does not animate the agent dock layout during initial thread hydration', async () => {
 		Reflect.set(thread, 'isHydratingThread', true);
-		const { getByTestId } = await renderNarrowAgentDock();
+		const { getByTestId, user } = await renderAgentArtifact({ threadAreaWidth: 1200 });
+		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 		const builderChat = getByTestId('instance-ai-builder-chat');
 
 		expect(builderChat).toHaveAttribute('data-layout-animated', 'false');

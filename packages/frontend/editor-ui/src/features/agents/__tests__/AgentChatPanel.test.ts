@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
+import type { AgentJsonConfig } from '../types';
 
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
@@ -16,10 +17,17 @@ let onHistoryLoaded: ((count: number) => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
+const defaultAgentConfig: AgentJsonConfig = {
+	name: 'Agent',
+	model: 'anthropic/claude-sonnet-4-5',
+	instructions: 'Help.',
+};
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => {
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
 			const translations: Record<string, string> = {
+				'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
 				'agents.chat.misconfigured.issuesPrefix': 'Check:',
 				'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 				'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -113,7 +121,7 @@ describe('AgentChatPanel', () => {
 	function mountPanel(
 		overrides: Partial<{
 			continueSessionId: string;
-			agentConfig: null;
+			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
 		}> = {},
 	) {
@@ -121,17 +129,39 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
+				agentConfig: defaultAgentConfig,
 				agentStatus: 'draft',
 				connectedTriggers: [],
 				...overrides,
 			},
 		});
 	}
+
+	it('uses the live agent name in the normal chat placeholder', async () => {
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('placeholder')).toBe('Message Agent…');
+
+		await wrapper.setProps({
+			agentConfig: { ...defaultAgentConfig, name: 'Support Agent' },
+		});
+
+		expect(chatInput.props('placeholder')).toBe('Message Support Agent…');
+	});
+
+	it.each([
+		['a missing config', null],
+		['a blank agent name', { ...defaultAgentConfig, name: '   ' }],
+	] satisfies Array<[string, AgentJsonConfig | null]>)(
+		'uses the generic chat placeholder for %s',
+		(_description, agentConfig) => {
+			const wrapper = mountPanel({ agentConfig });
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('placeholder')).toBe('agents.chat.input.placeholder');
+		},
+	);
 
 	it('emits the loaded history count with the session that produced it', () => {
 		const wrapper = mountPanel({
@@ -259,7 +289,7 @@ describe('AgentChatPanel', () => {
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 		expect(chatInput.props('disabled')).toBe(false);
-		expect(chatInput.props('placeholder')).toBe('agents.chat.input.placeholder');
+		expect(chatInput.props('placeholder')).toBe('Message Agent…');
 	});
 
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {

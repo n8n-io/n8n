@@ -206,13 +206,21 @@ const showStopAsPrimaryAction = computed(
 		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
 );
 
-const chatPlaceholder = computed(() =>
-	hasOpenApproval.value
-		? locale.baseText('agents.chat.approval.inputPlaceholder')
-		: hasOpenInteractiveQuestion.value
-			? locale.baseText('agents.chat.answerQuestionPlaceholder')
-			: locale.baseText('agents.chat.input.placeholder'),
-);
+const chatPlaceholder = computed(() => {
+	if (hasOpenApproval.value) {
+		return locale.baseText('agents.chat.approval.inputPlaceholder');
+	}
+	if (hasOpenInteractiveQuestion.value) {
+		return locale.baseText('agents.chat.answerQuestionPlaceholder');
+	}
+
+	const agentName = props.agentConfig?.name?.trim();
+	return agentName
+		? locale.baseText('agents.chat.input.placeholder.withAgent', {
+				interpolate: { agentName },
+			})
+		: locale.baseText('agents.chat.input.placeholder');
+});
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 

@@ -312,78 +312,6 @@ const previewPanelWidth = ref(0);
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentPreviewDockOpen = ref(false);
-const AGENT_PREVIEW_CHAT_COLUMN_WIDTH_REM = 25;
-const AGENT_PREVIEW_CENTER_MIN_WIDTH_REM = 35;
-const DEFAULT_ROOT_FONT_SIZE_PX = 16;
-
-const isAgentPreviewDockNarrow = computed(() => {
-	if (!isAgentPreviewDockOpen.value || threadAreaWidth.value <= 0) return false;
-
-	const configuredRootFontSize = Number.parseFloat(
-		getComputedStyle(document.documentElement).fontSize,
-	);
-	const rootFontSize = Number.isFinite(configuredRootFontSize)
-		? configuredRootFontSize
-		: DEFAULT_ROOT_FONT_SIZE_PX;
-	const minimumThreeColumnWidth =
-		(AGENT_PREVIEW_CHAT_COLUMN_WIDTH_REM * 2 + AGENT_PREVIEW_CENTER_MIN_WIDTH_REM) * rootFontSize;
-
-	return threadAreaWidth.value < minimumThreeColumnWidth;
-});
-const isBuilderChatRailPointerActive = ref(false);
-const isBuilderChatRailFocusActive = ref(false);
-const isBuilderChatRailControlActive = ref(false);
-const isBuilderChatRailExpanded = computed(
-	() =>
-		isAgentPreviewDockNarrow.value &&
-		(isBuilderChatRailPointerActive.value ||
-			isBuilderChatRailFocusActive.value ||
-			isBuilderChatRailControlActive.value),
-);
-const builderChatRailToggleLabel = computed(() =>
-	i18n.baseText(
-		isBuilderChatRailControlActive.value
-			? 'instanceAi.agentPreview.collapseBuilderChat'
-			: 'instanceAi.agentPreview.expandBuilderChat',
-	),
-);
-
-watch(isAgentPreviewDockNarrow, (isNarrow) => {
-	if (!isNarrow) {
-		isBuilderChatRailPointerActive.value = false;
-		isBuilderChatRailFocusActive.value = false;
-		isBuilderChatRailControlActive.value = false;
-	}
-});
-
-function toggleBuilderChatRail() {
-	if (isBuilderChatRailControlActive.value) {
-		isBuilderChatRailControlActive.value = false;
-		isBuilderChatRailPointerActive.value = false;
-		isBuilderChatRailFocusActive.value = false;
-		return;
-	}
-
-	isBuilderChatRailControlActive.value = true;
-}
-
-function handleBuilderChatFocusIn() {
-	isBuilderChatRailFocusActive.value = isAgentPreviewDockNarrow.value;
-}
-
-function handleBuilderChatFocusOut(event: FocusEvent) {
-	const currentTarget = event.currentTarget;
-	const nextTarget = event.relatedTarget;
-	if (
-		currentTarget instanceof HTMLElement &&
-		nextTarget instanceof Node &&
-		currentTarget.contains(nextTarget)
-	) {
-		return;
-	}
-
-	isBuilderChatRailFocusActive.value = false;
-}
 
 watch(preview.activeTabId, (activeTabId, previousActiveTabId) => {
 	if (activeTabId !== previousActiveTabId) {
@@ -398,9 +326,7 @@ const previewPanelStyle = computed(() =>
 const agentPreviewPanelStyle = computed(() =>
 	isAgentPreviewDockOpen.value
 		? {
-				width: isAgentPreviewDockNarrow.value
-					? 'calc(100% - var(--spacing--2xl))'
-					: 'calc(100% - var(--agent-preview-chat-column-width))',
+				width: 'calc(100% - var(--agent-preview-chat-column-width))',
 			}
 		: previewPanelStyle.value,
 );
@@ -828,7 +754,6 @@ async function dismissComposerContextChip() {
 			$style.threadArea,
 			{
 				agentPreviewDockOpen: isAgentPreviewDockOpen,
-				[$style.agentPreviewDockNarrow]: isAgentPreviewDockNarrow,
 			},
 		]"
 		data-test-id="instance-ai-thread-area"
@@ -838,47 +763,13 @@ async function dismissComposerContextChip() {
 			:class="[
 				$style.chatArea,
 				{
-					[$style.builderChatRailExpanded]: isBuilderChatRailExpanded,
 					[$style.agentPreviewLayoutTransition]: isPreviewPanelTransitionEnabled,
 				},
 			]"
-			:data-expanded="isBuilderChatRailExpanded"
 			:data-layout-animated="isPreviewPanelTransitionEnabled"
 			data-test-id="instance-ai-builder-chat"
-			@pointerenter="isBuilderChatRailPointerActive = isAgentPreviewDockNarrow"
-			@pointerleave="isBuilderChatRailPointerActive = false"
-			@focusin="handleBuilderChatFocusIn"
-			@focusout="handleBuilderChatFocusOut"
 		>
-			<div
-				v-if="isAgentPreviewDockNarrow"
-				:class="$style.builderChatRail"
-				data-test-id="instance-ai-builder-chat-rail"
-			>
-				<N8nTooltip
-					:content="builderChatRailToggleLabel"
-					placement="right"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nIconButton
-						:icon="isBuilderChatRailControlActive ? 'panel-left-close' : 'panel-left'"
-						variant="ghost"
-						size="small"
-						icon-size="large"
-						:aria-label="builderChatRailToggleLabel"
-						:aria-expanded="isBuilderChatRailControlActive"
-						data-test-id="instance-ai-builder-chat-rail-toggle"
-						@click.stop="toggleBuilderChatRail"
-					/>
-				</N8nTooltip>
-			</div>
-			<div
-				:class="$style.builderChatHeader"
-				:hidden="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded"
-				:inert="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? true : undefined"
-				:aria-hidden="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? 'true' : undefined"
-				data-test-id="instance-ai-builder-chat-header"
-			>
+			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
 				<InstanceAiViewHeader>
 					<template #title>
 						<N8nHeading
@@ -967,8 +858,6 @@ async function dismissComposerContextChip() {
 					},
 					{ [$style.contentAreaWithoutLayoutTransitions]: shouldSuppressContentLayoutTransitions },
 				]"
-				:inert="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? true : undefined"
-				:aria-hidden="isAgentPreviewDockNarrow && !isBuilderChatRailExpanded ? 'true' : undefined"
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
 				data-test-id="instance-ai-content-area"
 			>
@@ -1232,42 +1121,8 @@ async function dismissComposerContextChip() {
 	@include motion.width-transition;
 }
 
-.agentPreviewDockNarrow {
-	.chatArea {
-		width: var(--spacing--2xl);
-		flex-basis: var(--spacing--2xl);
-		overflow: visible;
-		z-index: 5;
-
-		> :not(.builderChatRail) {
-			width: var(--agent-preview-chat-column-width);
-			visibility: hidden;
-			pointer-events: none;
-		}
-
-		&.builderChatRailExpanded > :not(.builderChatRail) {
-			visibility: visible;
-			pointer-events: auto;
-			background-color: var(--color--background--light-2);
-		}
-	}
-}
-
 .builderChatHeader {
 	flex-shrink: 0;
-}
-
-.builderChatRail {
-	position: absolute;
-	inset: 0 auto 0 0;
-	z-index: 2;
-	width: var(--spacing--2xl);
-	display: flex;
-	justify-content: center;
-	align-items: flex-start;
-	padding-top: var(--spacing--2xs);
-	background: var(--background--surface);
-	border-right: var(--border);
 }
 
 .chatArea {
