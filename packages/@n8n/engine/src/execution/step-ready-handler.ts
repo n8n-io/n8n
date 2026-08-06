@@ -90,13 +90,13 @@ export class StepReadyHandler {
 			},
 		});
 
-		// TODO(CAT-2874): multi-slot outputs become routable with branching.
+		// TODO(CAT-2874): support multi-slot outputs.
 		if (outputs.length > 1) {
 			throw new UnimplementedError(
 				`step ${step.id} runs node ${step.nodeId}, which produced ${outputs.length} output slots; only output slot 0 is supported yet`,
 			);
 		}
-		// TODO(CAT-2874): settlement turns this into a dead (skipped) branch.
+		// TODO(CAT-2874): support stopping on empty outputs.
 		this.assertOutputFiredForSuccessors(step, execution, outputs);
 
 		return outputs;
@@ -112,6 +112,7 @@ export class StepReadyHandler {
 		execution: ExecutionRecord,
 		outputs: StepSlots,
 	): void {
+		// NOTE: we check hasSuccessors because we DO support empty outputs for the last node.
 		const hasSuccessors = execution.graph.edges.some((edge) => edge.from === step.nodeId);
 		if (hasSuccessors && (outputs.length === 0 || outputs[0] === null)) {
 			throw new UnimplementedError(
