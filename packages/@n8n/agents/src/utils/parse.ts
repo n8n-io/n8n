@@ -92,8 +92,8 @@ async function compileJsonSchema(
 					allErrors: true,
 					// Ajv otherwise checks its version against the `$schema`
 					validateSchema: false,
-					...(unicodeRegExp ? {} : { unicodeRegExp: false }),
-					...(stripUnknown ? { removeAdditional: true } : {}),
+					unicodeRegExp,
+					removeAdditional: stripUnknown,
 				});
 				const validate = ajv.compile(schema);
 				cache.set(schema, { ajv, validate });
