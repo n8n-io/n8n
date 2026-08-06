@@ -1499,7 +1499,7 @@ describe('NodeCredentials', () => {
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 
-			it('should show the toggle but hide the credential selector when gateway is managed', () => {
+			it('should show the select with n8n credits selected when gateway is managed', async () => {
 				const nodeWithGateway: INodeUi = {
 					...googleAiNode,
 					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
@@ -1512,7 +1512,9 @@ describe('NodeCredentials', () => {
 				});
 
 				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+				// The select stays visible with n8n credits as the selection.
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+				expect(await screen.findByDisplayValue('n8n credits')).toBeInTheDocument();
 			});
 
 			it('should show the toggle when gateway is managed but config has not loaded yet', () => {
@@ -1547,7 +1549,7 @@ describe('NodeCredentials', () => {
 				});
 
 				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 
 			it('should not show the toggle when gateway feature is disabled', () => {
@@ -1589,8 +1591,9 @@ describe('NodeCredentials', () => {
 				});
 
 				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
-				// The readonly disabled input should not be shown for a managed credential
-				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+				// The readonly disabled input shows the managed selection.
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+				expect(screen.getByDisplayValue('n8n credits')).toBeInTheDocument();
 			});
 
 			it('should show the readonly disabled input and the toggle when readonly and not managed', () => {
@@ -1608,6 +1611,138 @@ describe('NodeCredentials', () => {
 				// Toggle is shown (disabled) so users can see the gateway is supported for this type
 				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
 				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+			});
+		});
+
+		describe('n8n credits dropdown option', () => {
+			const existingCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+
+			const nodeWithCred: INodeUi = {
+				...googleAiNode,
+				credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+			};
+
+			beforeEach(() => {
+				credentialsStore.state.credentials = { 'cred-1': existingCred };
+				credentialsStore.getCredentialById = vi.fn().mockReturnValue(existingCred);
+				ndvStore.activeNode = nodeWithCred;
+			});
+
+			it('lists n8n credits as the first option for a gateway-served type', async () => {
+				renderComponent({ props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' } });
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+				const creditsOption = screen.getByTestId('node-credentials-select-item-n8n-credits');
+				expect(creditsOption).toBeInTheDocument();
+				// First row, above the user's own credentials.
+				const allOptions = screen.getAllByTestId(/node-credentials-select-item-/);
+				expect(allOptions[0]).toBe(creditsOption);
+			});
+
+			it('does not offer n8n credits when the gateway does not serve the type', async () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn(() => false),
+					canServeCredentialType: vi.fn(() => false),
+					isNodeTypeVersionSupported: vi.fn(() => true),
+					isActionSupported: vi.fn(() => true),
+					isActionOptionVisible: vi.fn(() => true),
+					isNodePropertyHidden: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				renderComponent({ props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' } });
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+				expect(screen.queryByText('My Google Key')).toBeInTheDocument();
+				expect(
+					screen.queryByTestId('node-credentials-select-item-n8n-credits'),
+				).not.toBeInTheDocument();
+			});
+
+			it('writes the managed slot when the n8n credits option is chosen', async () => {
+				const { emitted } = renderComponent({
+					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' },
+				});
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-n8n-credits'));
+
+				const payload = ((emitted('credentialSelected')?.at(-1) as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(payload.properties.credentials.googlePalmApi).toEqual({
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				});
+			});
+
+			it('shows a top-up gear instead of the pen while managed', () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
+
+				expect(screen.getByTestId('credential-topup-button')).toBeInTheDocument();
+				expect(screen.queryByTestId('credential-edit-button')).not.toBeInTheDocument();
+			});
+
+			it('opens the top-up modal from the gear', async () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+				vi.spyOn(uiStore, 'openModalWithData');
+
+				renderComponent({ props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' } });
+
+				await userEvent.click(screen.getByTestId('credential-topup-button'));
+
+				expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+					expect.objectContaining({ data: { credentialType: 'googlePalmApi' } }),
+				);
+			});
+
+			it('switches to an own credential from the managed state via the dropdown', async () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				const { emitted } = renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+				});
+
+				await userEvent.click(screen.getByTestId('node-credentials-select'));
+				await userEvent.click(screen.getByTestId('node-credentials-select-item-cred-1'));
+
+				const payload = ((emitted('credentialSelected')?.at(-1) as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(payload.properties.credentials.googlePalmApi).toEqual({
+					id: 'cred-1',
+					name: 'My Google Key',
+				});
 			});
 		});
 

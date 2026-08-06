@@ -29,7 +29,11 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import {
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
+	ChatHubToolContextKey,
+	CREDENTIAL_ONLY_NODE_PREFIX,
+} from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -47,7 +51,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
-import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
@@ -461,6 +465,9 @@ onBeforeUnmount(() => {
 });
 
 function getSelectedId(type: INodeCredentialDescription) {
+	if (isAiGatewayManagedCredentials(type.name)) {
+		return AI_GATEWAY_MANAGED_TAG;
+	}
 	if (isCredentialExisting(type)) {
 		return selected.value[type.name].id;
 	}
@@ -468,6 +475,9 @@ function getSelectedId(type: INodeCredentialDescription) {
 }
 
 function getSelectedName(type: string) {
+	if (isAiGatewayManagedCredentials(type)) {
+		return i18n.baseText('aiGateway.credentialMode.n8nConnect.title');
+	}
 	return selected.value?.[type]?.name;
 }
 
@@ -810,6 +820,18 @@ function getIssues(credentialTypeName: string): string[] {
 	return node.issues.credentials[credentialTypeName];
 }
 
+function onTopUp(credentialType: string): void {
+	if (props.readonly) return;
+	telemetry.track('User clicked ai gateway top up', {
+		source: 'credential_selector',
+		credential_type: credentialType,
+	});
+	uiStore.openModalWithData({
+		name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+		data: { credentialType },
+	});
+}
+
 function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
@@ -854,6 +876,28 @@ function setFilter(newFilter = '') {
 
 function matches(needle: string, haystack: string) {
 	return haystack.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+}
+
+// The n8n credits option's value is UI-only select state: selecting it routes
+// to the managed-slot path, which owns the persisted
+// `{ id: null, name: '', __aiGatewayManaged: true }` shape.
+function showN8nCreditsOption(credentialType: string): boolean {
+	return (
+		showAiGatewaySelector(credentialType) &&
+		matches(filter.value, i18n.baseText('aiGateway.credentialMode.n8nConnect.title'))
+	);
+}
+
+/** @param credentialIdOrTag a credential id, or `AI_GATEWAY_MANAGED_TAG` from the n8n credits option */
+function onCredentialOptionSelected(
+	type: INodeCredentialDescription,
+	credentialIdOrTag: string,
+): void {
+	if (credentialIdOrTag === AI_GATEWAY_MANAGED_TAG) {
+		onAiGatewaySelector(type.name, true);
+		return;
+	}
+	onCredentialSelected(type.name, credentialIdOrTag, showMixedCredentials(type));
 }
 
 async function onClickCreateCredential(type: ICredentialType | INodeCredentialDescription) {
@@ -957,7 +1001,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					@toggle="onAiGatewaySelector(type.name, $event)"
 				/>
 				<div
-					v-if="readonly && !isAiGatewayManagedCredentials(type.name)"
+					v-if="readonly"
 					:class="[
 						$style.selectContainer,
 						{
@@ -1021,7 +1065,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="showStandardEmptyState(type) && options.length === 0"
+					v-else-if="
+						showStandardEmptyState(type) &&
+						options.length === 0 &&
+						!isAiGatewayManagedCredentials(type.name)
+					"
 					:class="$style.standardEmptyContainer"
 					data-test-id="node-credentials-empty-state"
 				>
@@ -1058,7 +1106,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</N8nButton>
 				</div>
 				<div
-					v-else-if="!isAiGatewayManagedCredentials(type.name)"
+					v-else
 					:class="[
 						getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input,
 						{
@@ -1084,12 +1132,24 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:filter-method="setFilter"
 							:popper-class="$style.selectPopper"
 							:class="{ [$style.selectWithDynamic]: isCredentialResolvable(type.name) }"
-							@update:model-value="
-								(value: string) =>
-									onCredentialSelected(type.name, value, showMixedCredentials(type))
-							"
+							@update:model-value="(value: string) => onCredentialOptionSelected(type, value)"
 							@blur="emit('blur', 'credentials')"
 						>
+							<N8nOption
+								v-if="showN8nCreditsOption(type.name)"
+								:key="AI_GATEWAY_MANAGED_TAG"
+								data-test-id="node-credentials-select-item-n8n-credits"
+								:label="i18n.baseText('aiGateway.credentialMode.n8nConnect.title')"
+								:value="AI_GATEWAY_MANAGED_TAG"
+							>
+								<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+									<div :class="$style.credentialOptionName">
+										<N8nText bold>
+											{{ i18n.baseText('aiGateway.credentialMode.n8nConnect.title') }}
+										</N8nText>
+									</div>
+								</div>
+							</N8nOption>
 							<N8nOption
 								v-for="item in options.filter((o) => matches(filter, o.name))"
 								:key="item.id"
@@ -1155,8 +1215,17 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						</N8nTooltip>
 					</div>
 
+					<div v-if="isAiGatewayManagedCredentials(type.name)" :class="$style.edit">
+						<N8nIcon
+							icon="settings"
+							class="clickable"
+							data-test-id="credential-topup-button"
+							:title="i18n.baseText('aiGateway.toggle.topUp')"
+							@click="onTopUp(type.name)"
+						/>
+					</div>
 					<div
-						v-if="
+						v-else-if="
 							selected[type.name] &&
 							isCredentialExisting(type) &&
 							(!getSelectedPrivateCredential(type.name) || canEditPrivateCredential(type.name))
