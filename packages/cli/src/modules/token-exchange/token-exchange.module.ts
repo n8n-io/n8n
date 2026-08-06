@@ -18,9 +18,11 @@ export class TokenExchangeModule implements ModuleInterface {
 			return;
 		}
 
-		const { TrustedKeyService } = await import('./services/trusted-key.service.js');
-		const trustedKeyService = Container.get(TrustedKeyService);
-		await trustedKeyService.initialize();
+		const { TrustedKeySyncService } = await import(
+			'@/modules/identity-substrate/services/trusted-key-sync.service.js'
+		);
+		const trustedKeySyncService = Container.get(TrustedKeySyncService);
+		await trustedKeySyncService.initialize();
 
 		// Let `sso-oidc` register itself as a trusted key source (from its OIDC
 		// discovery document) without this module importing it. Must run before
@@ -33,7 +35,7 @@ export class TokenExchangeModule implements ModuleInterface {
 		);
 		Container.get(TrustedKeySourceRegistrationProxy).registerProvider({
 			registerFromDiscovery: async (issuer, jwksUri) =>
-				await trustedKeyService.registerSsoDerivedSource(issuer, jwksUri),
+				await trustedKeySyncService.registerSsoDerivedSource(issuer, jwksUri),
 		});
 
 		// Register as the ExternalTokenVerifierProxy provider so other modules can verify without importing this one.

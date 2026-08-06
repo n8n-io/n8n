@@ -9,6 +9,7 @@ import {
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
+import type { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 import { IdentityBindingService } from '@/services/identity-binding.service';
 import type { RoleService } from '@/services/role.service';
 import type { UserService } from '@/services/user.service';
@@ -18,7 +19,6 @@ import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import type { ExternalTokenClaims } from '../../token-exchange.schemas';
 import { TokenExchangeFailureReason } from '../../token-exchange.types';
 import { IdentityResolutionService, qualifiedProviderId } from '../identity-resolution.service';
-import type { TrustedKeyService } from '../trusted-key.service';
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const userRepository = mock<UserRepository>();

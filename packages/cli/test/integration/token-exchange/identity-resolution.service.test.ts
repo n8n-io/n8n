@@ -9,11 +9,11 @@ import {
 import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
+import { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 import {
 	IdentityResolutionService,
 	qualifiedProviderId,
 } from '@/modules/token-exchange/services/identity-resolution.service';
-import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
 import { EXTERNAL_IDENTITY_PASSWORD_PLACEHOLDER } from '@/services/identity-binding.service';

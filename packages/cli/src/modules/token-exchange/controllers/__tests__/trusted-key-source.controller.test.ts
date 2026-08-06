@@ -4,13 +4,19 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { TrustedKeySourceEntity } from '@/modules/identity-substrate/database/entities/trusted-key-source.entity';
+import type { TrustedKeySyncService } from '@/modules/identity-substrate/services/trusted-key-sync.service';
+import type { TrustedKeyService } from '@/modules/identity-substrate/services/trusted-key.service';
 
-import type { TrustedKeyService } from '../../services/trusted-key.service';
 import { TrustedKeySourceController } from '../trusted-key-source.controller';
 
 const trustedKeyService = mock<TrustedKeyService>();
+const trustedKeySyncService = mock<TrustedKeySyncService>();
 
-const controller = new TrustedKeySourceController(trustedKeyService, mock<Logger>());
+const controller = new TrustedKeySourceController(
+	trustedKeyService,
+	trustedKeySyncService,
+	mock<Logger>(),
+);
 
 describe('TrustedKeySourceController', () => {
 	beforeEach(() => {
@@ -182,7 +188,7 @@ describe('TrustedKeySourceController', () => {
 
 	describe('updateSource', () => {
 		it('applies the policy and returns the sanitized source', async () => {
-			trustedKeyService.updateSourcePolicy.mockResolvedValue(
+			trustedKeySyncService.updateSourcePolicy.mockResolvedValue(
 				mock<TrustedKeySourceEntity>({
 					id: 'jwks-1',
 					type: 'jwks',
@@ -205,14 +211,14 @@ describe('TrustedKeySourceController', () => {
 				{ policy: { inboundAudiences: ['api://n8n'] } } as UpdateTrustedKeySourceDto,
 			);
 
-			expect(trustedKeyService.updateSourcePolicy).toHaveBeenCalledWith('jwks-1', {
+			expect(trustedKeySyncService.updateSourcePolicy).toHaveBeenCalledWith('jwks-1', {
 				inboundAudiences: ['api://n8n'],
 			});
 			expect(result.policy).toEqual({ inboundAudiences: ['api://n8n'] });
 		});
 
 		it('never leaks key material in the response', async () => {
-			trustedKeyService.updateSourcePolicy.mockResolvedValue(
+			trustedKeySyncService.updateSourcePolicy.mockResolvedValue(
 				mock<TrustedKeySourceEntity>({
 					id: 'static',
 					type: 'static',
