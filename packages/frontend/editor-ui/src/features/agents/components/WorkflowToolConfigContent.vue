@@ -100,9 +100,7 @@ function matchesReference(candidate: { id: string; name: string }) {
 		: candidate.name === workflow.value;
 }
 
-const matchingProjectWorkflows = computed(() =>
-	projectWorkflows.value.filter(matchesReference),
-);
+const matchingProjectWorkflows = computed(() => projectWorkflows.value.filter(matchesReference));
 const matchingAvailableWorkflows = computed(() =>
 	availableWorkflows.value.filter(matchesReference),
 );
