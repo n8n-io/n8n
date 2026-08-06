@@ -34,7 +34,6 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 // eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
@@ -49,11 +48,10 @@ import type { ResumableExecution } from '@/interfaces';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScalingService } from '@/scaling/scaling.service';
-import type { Job, JobData } from '@/scaling/scaling.types';
+import type { Job, JobData, JobFinishedProps } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { EventService } from './events/event.service';
 /** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
 const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 
@@ -87,7 +85,6 @@ export class WorkflowRunner {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly failedRunFactory: FailedRunFactory,
-		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
@@ -553,8 +550,10 @@ export class WorkflowRunner {
 
 		const workflowExecution: PCancelable<IRun> = new PCancelable(
 			async (resolve, reject, onCancel) => {
+				const abortController = new AbortController();
 				onCancel.shouldReject = false;
 				onCancel(async () => {
+					abortController.abort();
 					await this.scalingService.stopJob(job);
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
@@ -562,7 +561,7 @@ export class WorkflowRunner {
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 					const error = new ManualExecutionCancelledError(executionId);
 					await this.processError(
-						error,
+						error as ExecutionError,
 						new Date(),
 						data.executionMode,
 						executionId,
@@ -572,21 +571,28 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
+				let jobResult: JobFinishedProps | undefined;
+
 				try {
-					await job.finished();
-				} catch (error) {
-					if (
-						error instanceof Error &&
-						typeof error.message === 'string' &&
-						error.message.includes('job stalled more than maxStalledCount')
-					) {
-						error = new MaxStalledCountError(error);
-						this.eventService.emit('job-stalled', {
-							executionId: job.data.executionId,
-							workflowId: job.data.workflowId,
-							hostId: this.instanceSettings.hostId,
-							jobId: job.id.toString(),
-						});
+					jobResult = await this.scalingService.waitForJobResult(
+						executionId,
+						undefined,
+						undefined,
+						abortController.signal,
+					);
+				} catch (caught) {
+					this.scalingService.popJobResult(executionId);
+					let error =
+						caught instanceof Error
+							? caught
+							: new Error(`Unknown queue error for execution ${executionId}`);
+
+					if (abortController.signal.aborted) {
+						error = new ManualExecutionCancelledError(executionId);
+					} else {
+						error = new Error(
+							`Job completion lost or timed out for execution ${executionId}: ${caught instanceof Error ? caught.message : 'unknown error'}`,
+						);
 					}
 
 					// We use "getLifecycleHooksForScalingWorker" as "getLifecycleHooksForScalingMain" does not contain the
@@ -594,7 +600,7 @@ export class WorkflowRunner {
 					const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 
 					await this.processError(
-						error,
+						error as ExecutionError,
 						new Date(),
 						data.executionMode,
 						executionId,
@@ -605,8 +611,6 @@ export class WorkflowRunner {
 
 					return reject(error);
 				}
-
-				const jobResult = this.scalingService.popJobResult(executionId);
 
 				let runData: IRun;
 
