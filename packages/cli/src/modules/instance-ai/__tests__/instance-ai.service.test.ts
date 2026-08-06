@@ -3527,25 +3527,16 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		expect(service.taskProjector.syncFromWorkflowLoop).not.toHaveBeenCalled();
 	});
 
-	it('stays silent when checkpoint claiming returns a stale resume error', async () => {
+	it('stays silent when the claim returns a stale resume error instead of throwing it', async () => {
 		const service = createTerminalGuardOrderService();
 		const abortController = new AbortController();
-		const resumeTracing = {
-			actorRun: { id: 'resume-actor' },
-			withActiveSpan: vi.fn(
-				async (_run: unknown, callback: () => Promise<unknown>) => await callback(),
-			),
-		} as unknown as InstanceAiTraceContext;
+		const resumeTracing = { id: 'resume-trace' } as unknown as InstanceAiTraceContext;
 		const opts = {
 			...resumedStreamOpts(abortController),
-			tracing: resumeTracing,
 			resumeTracing,
 			unregisteredResumeTracing: resumeTracing,
 			messageGroupId: 'group-1',
 		};
-		service.runState.hasSuspendedRun = vi.fn(() => false);
-		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
-		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
 		const terminalResponse = vi.spyOn(service.terminalOutcome, 'evaluateTerminalResponse');
 		const staleError = Object.assign(new Error('already claimed'), { name: 'StaleResumeError' });
 		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
@@ -3580,6 +3571,9 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		const resumeError = new Error(
 			'Invalid resume payload: data must NOT have additional properties',
 		);
+		const userFacingMessage =
+			'Something went wrong before I could finish that response. Please try again.';
+		service.temporaryWorkflowService.reapForRun.mockResolvedValue(['wf-temp-1']);
 		vi.mocked(resumeAgentRun).mockRejectedValueOnce(resumeError);
 
 		await service.processResumedStream({}, {}, opts);
@@ -3588,63 +3582,40 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			resumeError,
 			expect.objectContaining({ component: 'instance-ai-resume-claim', runId: 'run-1' }),
 		);
-		expect(service.eventBus.events).toEqual([
-			expect.objectContaining({
-				type: 'error',
-				runId: 'run-1',
-				payload: {
-					content: 'Something went wrong before I could finish that response. Please try again.',
-				},
-			}),
-			expect.objectContaining({
-				type: 'run-finish',
-				runId: 'run-1',
-				payload: {
-					status: 'error',
-					reason: 'Something went wrong before I could finish that response. Please try again.',
-				},
-			}),
-		]);
-		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
-		expect(service.runState.clearActiveRun).toHaveBeenCalledWith(
-			'thread-a',
-			opts.resumeExecutionToken,
-		);
-	});
-
-	it('reaps temporary workflows and reports the raw error and user for a failed resume', async () => {
-		const service = createTerminalGuardOrderService();
-		const abortController = new AbortController();
-		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
-		const resumeError = new Error('Invalid resume payload');
-		service.temporaryWorkflowService.reapForRun.mockResolvedValue(['wf-temp-1']);
-		vi.mocked(resumeAgentRun).mockRejectedValueOnce(resumeError);
-
-		await service.processResumedStream({}, {}, opts);
-
 		expect(service.temporaryWorkflowService.reapForRun).toHaveBeenCalledWith(
 			'thread-a',
 			fakeUser,
 			undefined,
 			0,
 		);
-		expect(service.eventBus.events).toContainEqual(
+		expect(service.eventBus.events).toEqual([
+			expect.objectContaining({
+				type: 'error',
+				runId: 'run-1',
+				payload: { content: userFacingMessage },
+			}),
 			expect.objectContaining({
 				type: 'run-finish',
+				runId: 'run-1',
 				payload: {
 					status: 'error',
-					reason: 'Something went wrong before I could finish that response. Please try again.',
+					reason: userFacingMessage,
 					archivedWorkflowIds: ['wf-temp-1'],
 				},
 			}),
-		);
+		]);
 		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
 			thread_id: 'thread-a',
 			run_id: 'run-1',
-			error_message: 'Invalid resume payload',
+			error_message: 'Invalid resume payload: data must NOT have additional properties',
 			error_source: 'exception',
 			user_id: 'user-1',
 		});
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith(
+			'thread-a',
+			opts.resumeExecutionToken,
+		);
 	});
 
 	it('still finishes a failed resume when reaping temporary workflows throws', async () => {

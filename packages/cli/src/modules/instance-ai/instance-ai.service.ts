@@ -122,6 +122,7 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
@@ -333,6 +334,9 @@ function isStaleResumeError(error: unknown): boolean {
 export const QUOTA_EXHAUSTED_USER_MESSAGE =
 	"You've run out of AI credits. Upgrade your plan to continue using the AI assistant.";
 
+const OPERATIONAL_ERROR_USER_MESSAGE =
+	'I hit an operational error before I could finish that response. Please try again.';
+
 /** Structured error code for the UI when a run failed because credits ran out. */
 function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
 	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
@@ -358,7 +362,7 @@ export function getUserFacingErrorMessage(error: unknown): string {
 	}
 
 	if (error instanceof OperationalError) {
-		return 'I hit an operational error before I could finish that response. Please try again.';
+		return OPERATIONAL_ERROR_USER_MESSAGE;
 	}
 
 	if (error instanceof UnexpectedError) {
@@ -437,7 +441,7 @@ type UnclaimedResumeContext = {
 };
 
 type UnclaimedResumeOutcome =
-	| { kind: 'silent' }
+	| { kind: 'preserve-hitl' }
 	| { kind: 'stale' }
 	| { kind: 'cancelled' }
 	| { kind: 'errored'; reason: string; errorCode?: TerminalErrorCode; errorMessage: string };
@@ -454,7 +458,7 @@ function classifyUnclaimedResume(
 	flags: { aborted: boolean; preserveHitl: boolean },
 ): UnclaimedResumeOutcome {
 	if (isStaleResumeError(error)) return { kind: 'stale' };
-	if (flags.aborted) return flags.preserveHitl ? { kind: 'silent' } : { kind: 'cancelled' };
+	if (flags.aborted) return flags.preserveHitl ? { kind: 'preserve-hitl' } : { kind: 'cancelled' };
 	return {
 		kind: 'errored',
 		reason: getUserFacingErrorMessage(error),
@@ -4879,12 +4883,13 @@ export class InstanceAiService {
 				messageGroupId,
 			);
 			if (!rebuilt) {
+				const rebuildFailure = 'Agent rebuild failed';
 				await this.tracing.finalizeDetachedTraceRun(
 					`resume-rebuild:${runId}`,
 					unregisteredResumeTracing,
 					{
 						status: 'failed',
-						error: 'Agent rebuild failed',
+						error: rebuildFailure,
 						metadata: { completion_source: 'resume_rebuild' },
 					},
 				);
@@ -4897,8 +4902,8 @@ export class InstanceAiService {
 					threadId,
 					runId,
 					status: 'errored',
-					reason: getUserFacingErrorMessage(new OperationalError('Agent rebuild failed')),
-					errorInfo: { errorMessage: 'Agent rebuild failed', errorSource: 'exception' },
+					reason: OPERATIONAL_ERROR_USER_MESSAGE,
+					errorInfo: { errorMessage: rebuildFailure, errorSource: 'exception' },
 					messageGroupId,
 					user: activeUser,
 					snapshotStorage: this.dbSnapshotStorage,
@@ -5491,7 +5496,7 @@ export class InstanceAiService {
 	private async settleUnclaimedResume(
 		opts: UnclaimedResumeContext,
 		error: unknown,
-		errorSource: RunFinishErrorInfo['errorSource'],
+		errorSource: NonNullable<RunFinishErrorInfo['errorSource']>,
 	): Promise<void> {
 		const outcome = classifyUnclaimedResume(error, {
 			aborted: opts.signal.aborted,
@@ -5499,7 +5504,7 @@ export class InstanceAiService {
 		});
 
 		switch (outcome.kind) {
-			case 'silent':
+			case 'preserve-hitl':
 				return;
 
 			case 'stale':
@@ -5572,6 +5577,9 @@ export class InstanceAiService {
 					snapshotStorage: opts.snapshotStorage,
 				});
 				return;
+
+			default:
+				assertNever(outcome);
 		}
 	}
 
