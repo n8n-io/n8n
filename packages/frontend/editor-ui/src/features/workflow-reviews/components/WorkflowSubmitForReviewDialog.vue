@@ -22,6 +22,7 @@ import {
 	createWorkflowReviewRequest,
 	fetchEligibleReviewers,
 } from '@/features/workflow-reviews/workflowReviews.api';
+import { reviewerFullName } from '@/features/workflow-reviews/workflowReviews.utils';
 
 const REVIEW_TITLE_MAX_LENGTH = 128;
 const REVIEW_DESCRIPTION_MAX_LENGTH = 512;
@@ -59,7 +60,7 @@ const isSubmitDisabled = computed(
 const reviewerOptions = computed<IUser[]>(() =>
 	eligibleReviewers.value.map((reviewer) => ({
 		...reviewer,
-		fullName: [reviewer.firstName, reviewer.lastName].filter(Boolean).join(' ') || undefined,
+		fullName: reviewerFullName(reviewer),
 	})),
 );
 

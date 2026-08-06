@@ -9,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 
 const requestId = 'req-1';
 const projectId = 'proj-1';
@@ -17,12 +17,12 @@ const workflowId = 'wf-1';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
 
-describe('WorkflowReviewDecisionEligibilityService', () => {
+describe('WorkflowReviewEligibilityService', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 
-	const service = new WorkflowReviewDecisionEligibilityService(
+	const service = new WorkflowReviewEligibilityService(
 		workflowFinderService,
 		authorRepository,
 		projectRelationRepository,
