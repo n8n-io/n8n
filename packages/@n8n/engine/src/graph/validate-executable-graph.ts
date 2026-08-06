@@ -1,6 +1,5 @@
 import { UnimplementedError } from '../common';
 import type { WorkflowGraph } from './workflow-graph';
-import { findTriggerNode } from './workflow-graph-queries';
 
 /** Thrown when a graph fails a structural rule and can never execute. */
 export class GraphValidationError extends Error {
@@ -19,11 +18,15 @@ export class GraphValidationError extends Error {
  * `UnimplementedError` for shapes the engine doesn't support yet.
  */
 export function validateExecutableGraph(graph: WorkflowGraph): void {
-	if (!findTriggerNode(graph)) {
+	const triggers = graph.nodes.filter((node) => node.type === 'trigger');
+	if (triggers.length === 0) {
 		throw new GraphValidationError('Graph has no trigger node to start from');
 	}
+	if (triggers.length > 1) {
+		throw new GraphValidationError('Graph must have exactly one trigger node');
+	}
 
-	// TODO(CAT-3854): loop iteration needs re-runnable steps; until that lands,
+	// TODO(CAT-2875): loop iteration needs re-runnable steps; until that lands,
 	// graphs with back-edges are rejected outright rather than deadlocking.
 	if (graph.edges.some((edge) => edge.isBackEdge)) {
 		throw new UnimplementedError('Graphs with back-edges (loops) are not supported yet');
