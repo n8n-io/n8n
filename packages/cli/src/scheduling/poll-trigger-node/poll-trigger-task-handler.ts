@@ -146,16 +146,21 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
-				// Read fresh here rather than reusing the tick-start `now`: a slow
-				// failing poll would otherwise have its deadline anchored before
-				// poll() ran and land already in the past.
-				await this.pollBackoffService.recordFailure({
-					workflowId,
-					nodeId,
-					error,
-					state,
-					now: new Date(),
-				});
+				// Re-read active state as the success paths do, so a poll outliving a
+				// deactivation cannot back off a node nobody schedules. A failed read counts
+				// as active: an unbacked-off retry loop is worse than a stale backoff row.
+				const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+				if (isActive) {
+					// Fresh clock, not the tick's: a slow failing poll would otherwise
+					// anchor its deadline before poll() ran, landing already in the past.
+					await this.pollBackoffService.recordFailure({
+						workflowId,
+						nodeId,
+						error,
+						state,
+						now: new Date(),
+					});
+				}
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 					taskId: task.id,
