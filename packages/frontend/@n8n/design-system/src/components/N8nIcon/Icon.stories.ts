@@ -1,8 +1,8 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
 import N8nIcon from './Icon.vue';
 
-export default {
+const meta = {
 	title: 'Core/Icon',
 	component: N8nIcon,
 	argTypes: {
@@ -10,20 +10,14 @@ export default {
 			control: 'text',
 		},
 		size: {
-			control: {
-				type: 'select',
-			},
+			control: 'select',
 			options: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
 		},
 		spin: {
-			control: {
-				type: 'boolean',
-			},
+			control: 'boolean',
 		},
 		color: {
-			control: {
-				type: 'select',
-			},
+			control: 'select',
 			options: [
 				'primary',
 				'secondary',
@@ -39,12 +33,9 @@ export default {
 			],
 		},
 		strokeWidth: {
-			control: {
-				type: 'number',
-			},
+			control: 'number',
 		},
 	},
-
 	parameters: {
 		docs: {
 			description: {
@@ -52,221 +43,244 @@ export default {
 			},
 		},
 	},
-};
+} satisfies Meta<typeof N8nIcon>;
 
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIcon,
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+	render: (args) => ({
+		components: { N8nIcon },
+		setup() {
+			return { args };
+		},
+		template: '<N8nIcon v-bind="args" />',
+	}),
+	args: {
+		icon: 'check',
+		size: 'medium',
+		spin: false,
 	},
-	template: '<n8n-icon v-bind="args" />',
-});
-
-export const Clock = Template.bind({});
-Clock.args = {
-	icon: 'clock',
 };
 
-export const Plus = Template.bind({});
-Plus.args = {
-	icon: 'plus',
-};
-
-export const Stop = Template.bind({});
-Stop.args = {
-	icon: 'stop',
-};
-
-export const WithColor = Template.bind({});
-WithColor.args = {
-	icon: 'check',
-	color: 'success',
-};
-
-export const WithDangerColor = Template.bind({});
-WithDangerColor.args = {
-	icon: 'times',
-	color: 'danger',
-};
-
-export const WithSize = Template.bind({});
-WithSize.args = {
-	icon: 'info',
-	size: 'xlarge',
-};
-
-export const WithCustomSize = Template.bind({});
-WithCustomSize.args = {
-	icon: 'info',
-	size: 32,
-};
-
-export const WithSpin = Template.bind({});
-WithSpin.args = {
-	icon: 'spinner',
-	spin: true,
-};
-
-export const WithStrokeWidth = Template.bind({});
-WithStrokeWidth.args = {
-	icon: 'circle',
-	strokeWidth: 3,
-};
-
-export const AllSizes: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIcon,
+export const Clock: Story = {
+	args: {
+		icon: 'clock',
 	},
-	template: `
-		<div style="display: flex; align-items: center; gap: 16px;">
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="info" size="xsmall" />
-				<span style="font-size: 12px;">xsmall</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="info" size="small" />
-				<span style="font-size: 12px;">small</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="info" size="medium" />
-				<span style="font-size: 12px;">medium</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="info" size="large" />
-				<span style="font-size: 12px;">large</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="info" size="xlarge" />
-				<span style="font-size: 12px;">xlarge</span>
-			</div>
-		</div>
-	`,
-});
-
-export const AllColors: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIcon,
-	},
-	template: `
-		<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="primary" size="large" />
-				<span style="font-size: 12px;">primary</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="secondary" size="large" />
-				<span style="font-size: 12px;">secondary</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="text-dark" size="large" />
-				<span style="font-size: 12px;">text-dark</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="text-base" size="large" />
-				<span style="font-size: 12px;">text-base</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="text-light" size="large" />
-				<span style="font-size: 12px;">text-light</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="text-xlight" size="large" />
-				<span style="font-size: 12px;">text-xlight</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="danger" size="large" />
-				<span style="font-size: 12px;">danger</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="success" size="large" />
-				<span style="font-size: 12px;">success</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="warning" size="large" />
-				<span style="font-size: 12px;">warning</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="foreground-dark" size="large" />
-				<span style="font-size: 12px;">foreground-dark</span>
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<n8n-icon icon="circle" color="foreground-xdark" size="large" />
-				<span style="font-size: 12px;">foreground-xdark</span>
-			</div>
-		</div>
-	`,
-});
-
-export const UserRoundKey = Template.bind({});
-UserRoundKey.args = {
-	icon: 'user-round-key',
+	render: Default.render,
 };
 
-export const CommonIcons: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nIcon,
+export const Plus: Story = {
+	args: {
+		icon: 'plus',
 	},
-	template: `
-		<div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 24px;">
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="check" size="large" />
-				<span style="font-size: 12px;">check</span>
+	render: Default.render,
+};
+
+export const Stop: Story = {
+	args: {
+		icon: 'stop',
+	},
+	render: Default.render,
+};
+
+export const WithColor: Story = {
+	args: {
+		icon: 'check',
+		color: 'success',
+	},
+	render: Default.render,
+};
+
+export const WithDangerColor: Story = {
+	args: {
+		icon: 'times',
+		color: 'danger',
+	},
+	render: Default.render,
+};
+
+export const WithSize: Story = {
+	args: {
+		icon: 'info',
+		size: 'xlarge',
+	},
+	render: Default.render,
+};
+
+export const WithCustomSize: Story = {
+	args: {
+		icon: 'info',
+		size: 32,
+	},
+	render: Default.render,
+};
+
+export const WithSpin: Story = {
+	args: {
+		icon: 'spinner',
+		spin: true,
+	},
+	render: Default.render,
+};
+
+export const WithStrokeWidth: Story = {
+	args: {
+		icon: 'circle',
+		strokeWidth: 3,
+	},
+	render: Default.render,
+};
+
+export const AllSizes: Story = {
+	render: () => ({
+		components: { N8nIcon },
+		template: `
+			<div style="display: flex; align-items: center; gap: 16px;">
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="info" size="xsmall" />
+					<span style="font-size: 12px;">xsmall</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="info" size="small" />
+					<span style="font-size: 12px;">small</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="info" size="medium" />
+					<span style="font-size: 12px;">medium</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="info" size="large" />
+					<span style="font-size: 12px;">large</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="info" size="xlarge" />
+					<span style="font-size: 12px;">xlarge</span>
+				</div>
 			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="times" size="large" />
-				<span style="font-size: 12px;">times</span>
+		`,
+	}),
+};
+
+export const AllColors: Story = {
+	render: () => ({
+		components: { N8nIcon },
+		template: `
+			<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="primary" size="large" />
+					<span style="font-size: 12px;">primary</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="secondary" size="large" />
+					<span style="font-size: 12px;">secondary</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="text-dark" size="large" />
+					<span style="font-size: 12px;">text-dark</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="text-base" size="large" />
+					<span style="font-size: 12px;">text-base</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="text-light" size="large" />
+					<span style="font-size: 12px;">text-light</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="text-xlight" size="large" />
+					<span style="font-size: 12px;">text-xlight</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="danger" size="large" />
+					<span style="font-size: 12px;">danger</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="success" size="large" />
+					<span style="font-size: 12px;">success</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="warning" size="large" />
+					<span style="font-size: 12px;">warning</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="foreground-dark" size="large" />
+					<span style="font-size: 12px;">foreground-dark</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<N8nIcon icon="circle" color="foreground-xdark" size="large" />
+					<span style="font-size: 12px;">foreground-xdark</span>
+				</div>
 			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="plus" size="large" />
-				<span style="font-size: 12px;">plus</span>
+		`,
+	}),
+};
+
+export const UserRoundKey: Story = {
+	args: {
+		icon: 'user-round-key',
+	},
+	render: Default.render,
+};
+
+export const CommonIcons: Story = {
+	render: () => ({
+		components: { N8nIcon },
+		template: `
+			<div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 24px;">
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="check" size="large" />
+					<span style="font-size: 12px;">check</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="times" size="large" />
+					<span style="font-size: 12px;">times</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="plus" size="large" />
+					<span style="font-size: 12px;">plus</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="minus" size="large" />
+					<span style="font-size: 12px;">minus</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="search" size="large" />
+					<span style="font-size: 12px;">search</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="trash" size="large" />
+					<span style="font-size: 12px;">trash</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="edit" size="large" />
+					<span style="font-size: 12px;">edit</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="cog" size="large" />
+					<span style="font-size: 12px;">cog</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="chevron-down" size="large" />
+					<span style="font-size: 12px;">chevron-down</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="chevron-up" size="large" />
+					<span style="font-size: 12px;">chevron-up</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="info-circle" size="large" />
+					<span style="font-size: 12px;">info-circle</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="exclamation-triangle" size="large" />
+					<span style="font-size: 12px;">exclamation-triangle</span>
+				</div>
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<N8nIcon icon="user-round-key" size="large" />
+					<span style="font-size: 12px;">user-round-key</span>
+				</div>
 			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="minus" size="large" />
-				<span style="font-size: 12px;">minus</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="search" size="large" />
-				<span style="font-size: 12px;">search</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="trash" size="large" />
-				<span style="font-size: 12px;">trash</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="edit" size="large" />
-				<span style="font-size: 12px;">edit</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="cog" size="large" />
-				<span style="font-size: 12px;">cog</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="chevron-down" size="large" />
-				<span style="font-size: 12px;">chevron-down</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="chevron-up" size="large" />
-				<span style="font-size: 12px;">chevron-up</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="info-circle" size="large" />
-				<span style="font-size: 12px;">info-circle</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="exclamation-triangle" size="large" />
-				<span style="font-size: 12px;">exclamation-triangle</span>
-			</div>
-			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-				<n8n-icon icon="user-round-key" size="large" />
-				<span style="font-size: 12px;">user-round-key</span>
-			</div>
-		</div>
-	`,
-});
+		`,
+	}),
+};
