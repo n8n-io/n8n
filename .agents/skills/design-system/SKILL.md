@@ -24,6 +24,15 @@ Reference these guidelines when:
 - When reviewing animations, follow the guides in `rules/web-animation-guidelines.md`
 - When reviewing UI changes or adding new components, follow `rules/web-interface-guidelines.md`
 
+## Storybook Stories
+
+- ALWAYS add new stories to `packages/frontend/@n8n/design-system`.
+- Every story must use one of these title categories:
+  - `Style guide`: styles, tokens, and utilities
+  - `Core`: components used across the app
+  - `Areas/<Product area>`: patterns and components for a specific product area, for example `Areas/Settings` or `Areas/Assistant`
+  - `Experimental`: beta components that require caution
+
 ## Examples
 - "Add a modal dialog for confirming workflow deletion" → Use `N8nDialog`
 - "Add a dropdown to select workflow status" → Use `N8nDropdown` or `N8nSelect`

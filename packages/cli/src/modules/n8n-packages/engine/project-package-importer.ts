@@ -8,12 +8,12 @@ import type { CredentialBindingRequest } from '../entities/credential/credential
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
-import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
 import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import type {
+	BlockingIssue,
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
@@ -24,7 +24,8 @@ import type {
 } from '../n8n-packages.types';
 import { mergeBindings } from '../n8n-packages.types';
 import { assertPackageImportApiKeyScopes, assertTagWritesAllowed } from './import-gates';
-import { placeByLayout } from './package-layout';
+import { toImportBlockedError } from './import-blocked.error';
+import { needsBundledVariableValues, placeByLayout } from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportContentResult,
@@ -65,16 +66,33 @@ export class ProjectPackageImporter {
 		this.assertAdequatePermissions(request, manifest);
 
 		const projects = await this.packageParser.getProjects(reader);
-		const projectPlan = await this.projectImporter.plan(request.user, projects);
-		const bundledVariables =
-			(manifest.requirements?.variables?.length ?? 0) > 0 &&
-			variableMissingModeUsesPackageValue(request.variableMissingMode)
-				? await this.packageParser.getVariables(reader)
-				: undefined;
+		const projectPlan = await this.projectImporter.plan(
+			request.user,
+			projects,
+			request.projectConflictPolicy,
+		);
+		// A refused project decides the whole import, so report it before reading any project's
+		// contents — planning work that is certain to be discarded only delays the same failure.
+		if (projectPlan.conflicts.length > 0) {
+			throw toImportBlockedError(
+				projectPlan.conflicts.map(
+					(conflict): BlockingIssue => ({ type: 'project-conflict', ...conflict }),
+				),
+			);
+		}
+
+		const bundledVariables = needsBundledVariableValues(
+			request,
+			(manifest.requirements?.variables?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getVariables(reader)
+			: undefined;
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
-			projectPlan.filter((item) => item.action === 'create').map((item) => item.sourceProjectId),
+			projectPlan.items
+				.filter((item) => item.action === 'create')
+				.map((item) => item.sourceProjectId),
 		);
 
 		// Plan and validate every project's contents before writing anything, so a blocking issue in
@@ -102,7 +120,7 @@ export class ProjectPackageImporter {
 			{ apiKeyScopes: request.apiKeyScopes },
 		);
 
-		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan);
+		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 
 		// Resolve every project's workflow ids up front so a sub-workflow reference
 		// that points into another project resolves when its parent is applied.
@@ -145,6 +163,7 @@ export class ProjectPackageImporter {
 		const variablesCreated: string[] = [];
 		const variablesStubbed: string[] = [];
 		const variablesSkipped: string[] = [];
+		const variablesUpdated: string[] = [];
 		const tagSummaries: ImportTagSummary[] = [];
 		const scopes: PackageImportScope[] = [];
 
@@ -161,6 +180,7 @@ export class ProjectPackageImporter {
 			variablesCreated.push(...content.variableResult.created);
 			variablesStubbed.push(...content.variableResult.stubbed);
 			variablesSkipped.push(...content.variableResult.skippedExisting);
+			variablesUpdated.push(...content.variableResult.updated);
 			tagSummaries.push(toTagSummary(content.tagPlan));
 			scopes.push({
 				context: plan.input.context,
@@ -187,6 +207,7 @@ export class ProjectPackageImporter {
 				created: variablesCreated,
 				stubbed: variablesStubbed,
 				skipped: variablesSkipped,
+				updated: variablesUpdated,
 			}),
 			tags: unionTagSummaries(tagSummaries),
 		});
@@ -233,6 +254,7 @@ export class ProjectPackageImporter {
 				bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
+			conflictPolicy: request.variableConflictPolicy,
 		};
 
 		// Untrimmed on purpose: the tag importer scopes by this project's workflows' own
