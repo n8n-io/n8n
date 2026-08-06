@@ -184,6 +184,9 @@ export const usePostHog = defineStore('posthog', () => {
 			session_recording: {
 				maskAllInputs: false,
 			},
+			...(!config.disableSessionRecording && {
+				tracing_headers: [new URL(rootStore.restUrl, window.location.origin).hostname],
+			}),
 		};
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {

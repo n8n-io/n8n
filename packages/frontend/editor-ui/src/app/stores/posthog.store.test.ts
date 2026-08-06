@@ -188,6 +188,34 @@ describe('Posthog store', () => {
 			);
 		});
 
+		it('does not request tracing headers when session recording is disabled', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.not.objectContaining({
+					tracing_headers: expect.anything(),
+				}),
+			);
+		});
+
+		it('requests tracing headers for the REST host when session recording is enabled', () => {
+			setSettings({
+				posthog: { ...DEFAULT_POSTHOG_SETTINGS, disableSessionRecording: false },
+			});
+
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					tracing_headers: [window.location.hostname],
+				}),
+			);
+		});
+
 		it('should identify user', () => {
 			const posthog = usePostHog();
 			posthog.init();

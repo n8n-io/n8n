@@ -9,6 +9,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { Application } from 'express';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { PostHog, FeatureFlagEvaluations } from 'posthog-node';
@@ -22,6 +23,13 @@ import { N8N_VERSION } from '@/constants';
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+const SESSION_ID_MAX_LENGTH = 1000;
+
+function sanitizeSessionId(value: string | undefined): string | undefined {
+	const sanitized = value?.replace(/[^\x20-\x7E]/g, '').trim();
+	return sanitized ? sanitized.slice(0, SESSION_ID_MAX_LENGTH) : undefined;
+}
 
 interface CachedFlags {
 	flags: FeatureFlags;
@@ -48,6 +56,18 @@ export class PostHogClient {
 		const { PostHog } = await import('posthog-node');
 		this.postHog = new PostHog(posthogConfig.apiKey, {
 			host: posthogConfig.apiHost,
+		});
+	}
+
+	setupExpressSessionContext(app: Application): void {
+		const postHog = this.postHog;
+		if (!postHog || this.globalConfig.deployment.type !== 'cloud') return;
+
+		app.use((req, _res, next) => {
+			const sessionId = sanitizeSessionId(req.get('x-posthog-session-id'));
+			if (!sessionId) return next();
+
+			postHog.withContext({ sessionId }, next);
 		});
 	}
 
