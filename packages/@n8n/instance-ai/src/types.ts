@@ -490,11 +490,35 @@ export interface McpRegistryServerSummary {
 	slug: string;
 	title: string;
 	description: string;
+	credentialType: string;
 	tools: string[];
 }
 
+/** One of the user's MCP registry connections, whether or not it still works. */
+export interface McpRegistryConnectionSummary {
+	slug: string;
+	/** The registry entry's title, falling back to the slug when it no longer resolves. */
+	title: string;
+}
+
+/** A connection reconciled against the tools that actually reached the agent. */
+export interface ConnectedMcpService extends McpRegistryConnectionSummary {
+	/** False when none of this connection's tools are attached to the running agent —
+	 *  expired or revoked OAuth, an under-scoped credential, an unreachable remote and a
+	 *  registry entry that no longer resolves are indistinguishable from here, and share
+	 *  the one fix: the user reconnects it. */
+	toolsLoaded: boolean;
+}
+
 export interface InstanceAiMcpService {
+	/** Registry matches most relevant first, connected or not — connectedness is the
+	 *  caller's to apply, so a broken connection stays discoverable. */
 	search(queries: string[]): Promise<McpRegistryServerSummary[]>;
+	/** Unknown or unconnectable slugs are omitted, so the caller can tell the agent
+	 *  it invented one instead of offering a card for nothing. */
+	getServers(slugs: string[]): Promise<McpRegistryServerSummary[]>;
+	/** The one source of truth for connectedness, live on every read. */
+	listConnections(): Promise<McpRegistryConnectionSummary[]>;
 }
 
 export interface ExploreResourcesParams {
@@ -1008,6 +1032,11 @@ export interface InstanceAiContext {
 	/** Optional — present when the host allows MCP registry discovery for this
 	 *  user. Presence gates the `mcp-servers` tool. */
 	mcpService?: InstanceAiMcpService;
+	/** The user's MCP registry connections reconciled against the tools that reached
+	 *  the running agent. Set by `createInstanceAgent` before the tools are built, so
+	 *  the same view feeds the system prompt and the `mcp-servers` tool. Undefined
+	 *  means "not established" — never treat it as "nothing is connected". */
+	connectedMcpServices?: ConnectedMcpService[];
 	/** The target n8n Agent being built/edited via the build-agent sub-agent tool. */
 	agentBuilderTarget?: { agentId: string; projectId: string; name?: string; ref?: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */

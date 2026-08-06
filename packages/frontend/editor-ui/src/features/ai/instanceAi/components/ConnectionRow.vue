@@ -5,17 +5,26 @@ import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
-type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
-export type ConnectionRowIcon = IconName | { type: 'file'; src: string };
+/** `none` is for rows that were never connected: there is no state to report, so
+ *  the row renders no indicator at all rather than a failure-coloured one. */
+export type ConnectionStatus = 'connected' | 'waiting' | 'disconnected' | 'none';
+export type ConnectionRowIcon =
+	| IconName
+	| { type: 'icon'; name: IconName }
+	| { type: 'file'; src: string };
 
-const props = defineProps<{
-	name: string;
-	subtitle: string;
-	icon: ConnectionRowIcon;
-	status: ConnectionStatus;
-	actions: RowAction[];
-	dropdownPortalTarget?: HTMLElement;
-}>();
+const props = withDefaults(
+	defineProps<{
+		name: string;
+		subtitle: string;
+		icon: ConnectionRowIcon;
+		status?: ConnectionStatus;
+		actions?: RowAction[];
+		dropdownPortalTarget?: HTMLElement;
+		clickable?: boolean;
+	}>(),
+	{ status: 'none', actions: () => [], clickable: true },
+);
 
 const iconSource = computed<{ type: 'icon'; name: IconName } | { type: 'file'; src: string }>(
 	() => {
@@ -49,12 +58,15 @@ const menuItems = computed<Array<DropdownMenuItemProps<RowAction>>>(() =>
 	})),
 );
 
-const statusTooltip = computed(() => {
-	if (props.status === 'connected')
-		return i18n.baseText('instanceAi.connections.row.status.connected');
-	if (props.status === 'waiting') return i18n.baseText('instanceAi.connections.row.status.waiting');
-	return i18n.baseText('instanceAi.connections.row.status.disconnected');
-});
+const STATUS_LABEL_KEYS = {
+	connected: 'instanceAi.connections.row.status.connected',
+	waiting: 'instanceAi.connections.row.status.waiting',
+	disconnected: 'instanceAi.connections.row.status.disconnected',
+} satisfies Record<Exclude<ConnectionStatus, 'none'>, BaseTextKey>;
+
+const statusLabel = computed(() =>
+	props.status === 'none' ? undefined : i18n.baseText(STATUS_LABEL_KEYS[props.status]),
+);
 
 function handleSelect(action: RowAction) {
 	if (action === 'connect') emit('connect');
@@ -64,12 +76,13 @@ function handleSelect(action: RowAction) {
 }
 
 function handleRowClick() {
+	if (!props.clickable) return;
 	emit('openSettings');
 }
 </script>
 
 <template>
-	<div :class="$style.row" @click="handleRowClick">
+	<div :class="[$style.row, !clickable && $style.rowStatic]" @click="handleRowClick">
 		<span :class="$style.iconWrap">
 			<img
 				v-if="iconSource.type === 'file'"
@@ -86,23 +99,28 @@ function handleRowClick() {
 			<N8nText bold size="small" :class="$style.name">{{ name }}</N8nText>
 			<N8nText size="xsmall" color="text-light">{{ subtitle }}</N8nText>
 		</div>
-		<span
-			:class="[
-				$style.dot,
-				status === 'connected' && $style.dotConnected,
-				status === 'waiting' && $style.dotWaiting,
-				status === 'disconnected' && $style.dotDisconnected,
-			]"
-			:title="statusTooltip"
-		/>
-		<div @click.stop>
-			<N8nDropdownMenu
-				v-if="menuItems.length > 0"
-				:items="menuItems"
-				placement="bottom-end"
-				:portal-target="dropdownPortalTarget"
-				@select="handleSelect"
-			/>
+		<div :class="$style.action" @click.stop>
+			<slot name="action">
+				<span
+					v-if="status !== 'none'"
+					:class="[
+						$style.dot,
+						status === 'connected' && $style.dotConnected,
+						status === 'waiting' && $style.dotWaiting,
+						status === 'disconnected' && $style.dotDisconnected,
+					]"
+					:title="statusLabel"
+					data-test-id="instance-ai-connection-row-status"
+				/>
+				<N8nDropdownMenu
+					v-if="menuItems.length > 0"
+					:items="menuItems"
+					placement="bottom-end"
+					:portal-target="dropdownPortalTarget"
+					data-test-id="instance-ai-connection-row-actions"
+					@select="handleSelect"
+				/>
+			</slot>
 		</div>
 	</div>
 </template>
@@ -115,6 +133,10 @@ function handleRowClick() {
 	padding: var(--spacing--2xs) 0;
 	margin-left: var(--spacing--2xs);
 	cursor: pointer;
+}
+
+.rowStatic {
+	cursor: default;
 }
 
 .iconWrap {
@@ -150,6 +172,13 @@ function handleRowClick() {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.action {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	flex-shrink: 0;
 }
 
 .dot {

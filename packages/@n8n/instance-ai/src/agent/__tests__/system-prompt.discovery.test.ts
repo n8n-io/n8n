@@ -159,11 +159,78 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			expect(prompt).toContain('never call `mcp-servers` for a build request');
 		});
 
+		it('leaves the connect flow itself to the tool', () => {
+			const prompt = getSystemPrompt({ mcpRegistrySearchEnabled: true });
+
+			expect(prompt).not.toContain('action: "connect"');
+		});
+
 		it('omits the section when the tool is not registered', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).not.toContain('## Connecting Services');
 			expect(prompt).not.toContain('mcp-servers');
+		});
+	});
+
+	describe('connected services are named upfront with whether they work', () => {
+		const registryEnabled = { mcpRegistrySearchEnabled: true };
+
+		it('lists a working connection as available', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [{ slug: 'linear', title: 'Linear', toolsLoaded: true }],
+			});
+
+			expect(prompt).toContain('### Services the user has connected');
+			expect(prompt).toContain('Linear (`linear`) — working');
+		});
+
+		it('tells the orchestrator not to hunt for the tools of a broken connection', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [{ slug: 'linear', title: 'Linear', toolsLoaded: false }],
+			});
+
+			expect(prompt).toContain('its tools did not load');
+			expect(prompt).toContain('Do not search for its tools with `search_tools`');
+			expect(prompt).toContain('never guess a tool name');
+			expect(prompt).toContain('reconnect');
+		});
+
+		it('keeps the broken-connection instructions out of an all-working list', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [{ slug: 'linear', title: 'Linear', toolsLoaded: true }],
+			});
+
+			expect(prompt).not.toContain('never guess a tool name');
+		});
+
+		it('separates the working connections from the broken ones', () => {
+			const prompt = getSystemPrompt({
+				...registryEnabled,
+				connectedMcpServices: [
+					{ slug: 'linear', title: 'Linear', toolsLoaded: false },
+					{ slug: 'notion', title: 'Notion', toolsLoaded: true },
+				],
+			});
+
+			expect(prompt).toContain('Linear (`linear`) — connected, but its tools did not load');
+			expect(prompt).toContain('Notion (`notion`) — working');
+		});
+
+		// Undefined means the host could not read the connections, not that there are none.
+		it('says nothing about connections when the host reported nothing', () => {
+			const prompt = getSystemPrompt(registryEnabled);
+
+			expect(prompt).not.toContain('### Services the user has connected');
+		});
+
+		it('says nothing about connections when the user has none', () => {
+			const prompt = getSystemPrompt({ ...registryEnabled, connectedMcpServices: [] });
+
+			expect(prompt).not.toContain('### Services the user has connected');
 		});
 	});
 

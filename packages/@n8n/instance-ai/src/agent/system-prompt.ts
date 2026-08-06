@@ -7,7 +7,7 @@ import {
 	getSandboxWorkspaceSection,
 	UNTRUSTED_CONTENT_DOCTRINE,
 } from './shared-prompts';
-import type { LocalGatewayStatus } from '../types';
+import type { ConnectedMcpService, LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
@@ -17,6 +17,9 @@ interface SystemPromptOptions {
 	mcpToolSearchEnabled?: boolean;
 	/** Whether the `mcp-servers` tool is registered for this run. */
 	mcpRegistrySearchEnabled?: boolean;
+	/** Undefined means the host could not establish it, which must not be rendered
+	 *  as "the user has connected nothing". */
+	connectedMcpServices?: ConnectedMcpService[];
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	browserAvailable?: boolean;
@@ -69,15 +72,42 @@ Examples: ${mcpExamples}search "n8n docs" for \`n8n-docs\`, search "create tasks
 `;
 }
 
-function getMcpRegistrySection(mcpRegistrySearchEnabled?: boolean): string {
+function getConnectedServicesSection(connectedMcpServices?: ConnectedMcpService[]): string {
+	if (!connectedMcpServices?.length) return '';
+
+	const lines = connectedMcpServices
+		.map(({ slug, title, toolsLoaded }) =>
+			toolsLoaded
+				? `- ${title} (\`${slug}\`) — working, its tools are available to you.`
+				: `- ${title} (\`${slug}\`) — connected, but its tools did not load and are NOT available to you.`,
+		)
+		.join('\n');
+
+	const brokenGuidance = connectedMcpServices.some((service) => !service.toolsLoaded)
+		? `
+For a service whose tools did not load, the connection itself is broken — expired, revoked, or missing the access it needs. Do not search for its tools with \`search_tools\`, do not \`load_tool\`, and never guess a tool name: they do not exist in this conversation. Tell the user plainly that its connection is not working, then call \`mcp-servers\` with \`connect\` and its slug so they can reconnect it.
+`
+		: '';
+
+	return `
+### Services the user has connected
+
+${lines}
+${brokenGuidance}`;
+}
+
+function getMcpRegistrySection(
+	mcpRegistrySearchEnabled?: boolean,
+	connectedMcpServices?: ConnectedMcpService[],
+): string {
 	if (!mcpRegistrySearchEnabled) return '';
 	return `
 ## Connecting Services through MCP
 
-When the user wants to work with a third-party service here and no tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively.
+When the user wants a third-party service and no connected tool covers it, call \`mcp-servers\` with the service name before concluding it is unavailable. Do this proactively, without being asked.
 
-This is only about tools **you** use in this conversation. It is not part of building: a workflow that talks to a service uses that service's node and credential, so never call \`mcp-servers\` for a build request, and never offer to connect a service instead of adding the node.
-`;
+Not for building: a workflow that talks to a service uses that service's node and credential, so never call \`mcp-servers\` for a build request, and never offer to connect a service instead of adding the node.
+${getConnectedServicesSection(connectedMcpServices)}`;
 }
 
 function getProjectScopeSection(projectId?: string): string {
@@ -136,6 +166,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		toolSearchEnabled,
 		mcpToolSearchEnabled,
 		mcpRegistrySearchEnabled,
+		connectedMcpServices,
 		licenseHints,
 		browserAvailable,
 		branchReadOnly,
@@ -150,7 +181,7 @@ ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${SECRET_ASK_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
-${getMcpRegistrySection(mcpRegistrySearchEnabled)}
+${getMcpRegistrySection(mcpRegistrySearchEnabled, connectedMcpServices)}
 ## Communication Style
 
 - Be concise.

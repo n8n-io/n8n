@@ -1,4 +1,4 @@
-import { zodToJsonSchema, type InterruptibleToolContext } from '@n8n/agents';
+import { toModelJsonSchema, type InterruptibleToolContext } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
@@ -425,8 +425,8 @@ describe('integration tools', () => {
 			actionExecutor: mock<IntegrationActionExecutor>(),
 		}).build();
 
-		expect(zodToJsonSchema(contextTool.inputSchema)).toMatchObject({ type: 'object' });
-		expect(zodToJsonSchema(actionTool.inputSchema)).toMatchObject({ type: 'object' });
+		expect(toModelJsonSchema(contextTool.inputSchema)).toMatchObject({ type: 'object' });
+		expect(toModelJsonSchema(actionTool.inputSchema)).toMatchObject({ type: 'object' });
 	});
 
 	it('respond returns a structured error when no latest message context exists', async () => {

@@ -7,6 +7,7 @@ import {
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
 	channelConfigSchema,
+	mcpConnectRequestSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -344,6 +345,10 @@ function mapSuspendedChunk(
 		gatewayConfirmationRequiredPayloadSchema,
 	);
 	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+	const mcpConnectRequest = parseSchemaRecord(
+		suspendPayload.mcpConnectRequest,
+		mcpConnectRequestSchema,
+	);
 
 	return {
 		type: 'confirmation-request',
@@ -372,6 +377,7 @@ function mapSuspendedChunk(
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
+			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
 		},
 	};
 }

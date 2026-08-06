@@ -37,7 +37,8 @@
 								"description": "User age (18–99)"
 							}
 						},
-						"required": ["age"]
+						"required": ["age"],
+						"additionalProperties": false
 					}
 				}
 			],
@@ -140,7 +141,8 @@
 								"description": "User age (18–99)"
 							}
 						},
-						"required": ["age"]
+						"required": ["age"],
+						"additionalProperties": false
 					}
 				}
 			],

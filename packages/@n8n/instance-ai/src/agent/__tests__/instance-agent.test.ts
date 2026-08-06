@@ -486,11 +486,80 @@ describe('createInstanceAgent', () => {
 
 		await createInstanceAgent({
 			...baseOptions,
-			context: { ...baseContext, mcpService: { search: vi.fn() } },
+			context: {
+				...baseContext,
+				mcpService: { search: vi.fn(), listConnections: vi.fn().mockResolvedValue([]) },
+			},
 		} as never);
 		expect(getSystemPrompt).toHaveBeenLastCalledWith(
 			expect.objectContaining({ mcpRegistrySearchEnabled: true }),
 		);
+	});
+
+	describe('connected MCP services', () => {
+		const mcpServers = [
+			{ name: 'mcp_linear', url: 'https://linear.example', metadata: { serverSlug: 'linear' } },
+			{ name: 'mcp_notion', url: 'https://notion.example', metadata: { serverSlug: 'notion' } },
+		];
+		const connections = [
+			{ slug: 'linear', title: 'Linear' },
+			{ slug: 'notion', title: 'Notion' },
+		];
+
+		const buildWith = async (listConnections: Mock) => {
+			const linearTool = {
+				...mockBuiltTool('mcp_linear_create_issue'),
+				mcpServerName: 'mcp_linear',
+			};
+
+			await createInstanceAgent({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'connected-mcp',
+					logger: mockLogger,
+					mcpService: { search: vi.fn(), listConnections },
+				},
+				orchestrationContext: { runId: 'connected-mcp' },
+				memoryConfig: {},
+				mcpServers,
+				mcpManager: createMcpManagerStub(new Map([['mcp_linear_create_issue', linearTool]])),
+			} as never);
+		};
+
+		it('tells the prompt which connections have tools and which do not', async () => {
+			await buildWith(vi.fn().mockResolvedValue(connections));
+
+			expect(getSystemPrompt).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					connectedMcpServices: [
+						{ slug: 'linear', title: 'Linear', toolsLoaded: true },
+						{ slug: 'notion', title: 'Notion', toolsLoaded: false },
+					],
+				}),
+			);
+		});
+
+		// The tools capture the context by value, so the view has to exist before they
+		// are built rather than be assigned onto the context afterwards.
+		it('hands the same view to the domain tools', async () => {
+			await buildWith(vi.fn().mockResolvedValue(connections));
+
+			const calls = createOrchestratorDomainTools.mock.calls as Array<
+				[{ connectedMcpServices?: unknown }]
+			>;
+			expect(calls.at(-1)?.[0].connectedMcpServices).toEqual([
+				{ slug: 'linear', title: 'Linear', toolsLoaded: true },
+				{ slug: 'notion', title: 'Notion', toolsLoaded: false },
+			]);
+		});
+
+		it('leaves the view unset when the host lookup fails', async () => {
+			await buildWith(vi.fn().mockRejectedValue(new Error('registry unavailable')));
+
+			expect(getSystemPrompt).toHaveBeenLastCalledWith(
+				expect.objectContaining({ connectedMcpServices: undefined }),
+			);
+		});
 	});
 
 	it('does not enable MCP-specific tool search guidance when deferred search is disabled', async () => {

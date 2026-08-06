@@ -125,6 +125,11 @@ describe('instanceAi.liveRunState', () => {
 			expect(shouldRearmRunAfterConfirm({ kind: 'approval', approved: false })).toBe(false);
 		});
 
+		test('re-arms on both legs of the MCP connect card', () => {
+			expect(shouldRearmRunAfterConfirm({ kind: 'mcpConnect', approved: true })).toBe(true);
+			expect(shouldRearmRunAfterConfirm({ kind: 'mcpConnect', approved: false })).toBe(true);
+		});
+
 		test('re-arms on resume-capable confirm kinds', () => {
 			expect(
 				shouldRearmRunAfterConfirm({

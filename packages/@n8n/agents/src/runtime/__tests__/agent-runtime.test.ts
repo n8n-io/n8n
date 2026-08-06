@@ -3973,6 +3973,67 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		await runtime.generate('go');
 		expect(handlerFn).not.toHaveBeenCalled();
 	});
+
+	it('rejects unknown keys against a closed JSON Schema', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: {
+				type: 'object',
+				additionalProperties: false,
+				properties: { query: { type: 'string' } },
+			},
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats', extra: true }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		await runtime.generate('go');
+		expect(handlerFn).not.toHaveBeenCalled();
+	});
+
+	it('names the tool schema as the defect when it cannot be compiled', async () => {
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: { type: 'objct' } as unknown as JSONSchema7,
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state === 'rejected' && call.error).toContain(
+			'input schema that could not be compiled',
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -4146,6 +4207,120 @@ describe('AgentRuntime — runtime resume data schema validation', () => {
 			{ runId, toolCallId },
 		);
 		await expect(resumeResultPromise).rejects.toThrow('Invalid resume payload');
+	});
+
+	it('accepts unknown keys the authored Zod resume schema would strip', async () => {
+		const approvalTool = new ToolBuilder('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.requireApproval()
+			.handler(async ({ id }: { id: string }) => await Promise.resolve({ deleted: id }))
+			.build();
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'delete', { id: 'rec-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [approvalTool],
+			checkpointStorage: 'memory',
+		});
+
+		const firstResult = await runtime.generate('Delete record rec-1');
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true, userInput: 'go ahead', credentials: { apiKey: 'x' } },
+			{ runId, toolCallId },
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ tool: 'delete', output: { deleted: 'rec-1' } }),
+			]),
+		);
+	});
+
+	// Each shape is a real Instance AI `toConfirmationData` output.
+	it.each([
+		['approval', { approved: true, userInput: 'go ahead', scope: 'once' }],
+		['planDeny', { approved: false, denied: true }],
+		[
+			'questions',
+			{ approved: true, answers: [{ questionId: 'q1', selectedOptions: ['a'], skipped: false }] },
+		],
+		['credentialSelection', { approved: true, credentials: { apiKey: 'secret' } }],
+		['credentialAutoSetup', { approved: true, autoSetup: { credentialType: 'slackApi' } }],
+		['resourceDecision', { approved: true, resourceDecision: 'allowForSession' }],
+		[
+			'setupWorkflowApply',
+			{
+				approved: true,
+				action: 'apply',
+				nodeCredentials: { Slack: { slackApi: 'cred-1' } },
+				nodeParameters: { Slack: { channel: '#general' } },
+			},
+		],
+	])('accepts a %s confirmation payload on resume', async (kind, confirmationData) => {
+		const approvalTool = new ToolBuilder('delete')
+			.description('Delete a record')
+			.input(z.object({ id: z.string() }))
+			.requireApproval()
+			.handler(async ({ id }: { id: string }) => await Promise.resolve({ deleted: id }))
+			.build();
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall(`tc-${kind}`, 'delete', { id: 'rec-1' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('Done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [approvalTool],
+			checkpointStorage: 'memory',
+		});
+
+		const firstResult = await runtime.generate('Delete record rec-1');
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+
+		const resumeResult = await runtime.resume('generate', confirmationData, {
+			runId,
+			toolCallId,
+		});
+
+		expect(resumeResult.finishReason).toBe('stop');
+	});
+
+	it('still rejects unknown keys when the resume schema is declared strict', async () => {
+		const tool: BuiltTool = {
+			...makeInterruptibleTool(),
+			resumeSchema: z.object({ approved: z.boolean() }).strict(),
+		};
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'approve', { question: 'ok?' }),
+		);
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+			checkpointStorage: 'memory',
+		});
+
+		const firstResult = await runtime.generate('go');
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+
+		await expect(
+			runtime.resume('generate', { approved: true, userInput: 'extra' }, { runId, toolCallId }),
+		).rejects.toThrow('Invalid resume payload');
 	});
 });
 

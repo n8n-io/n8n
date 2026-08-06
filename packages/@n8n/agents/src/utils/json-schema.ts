@@ -55,18 +55,11 @@ function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
 		(Array.isArray(result.type) && result.type.includes('object')) ||
 		result.properties !== undefined;
 
-	if (isObjectSchema && result.additionalProperties === undefined) {
-		result.additionalProperties = false;
-	}
+	if (isObjectSchema && !hasPropertiesElsewhere(result)) result.additionalProperties ??= false;
 
-	if (result.properties) {
-		result.properties = mapDefinitions(result.properties);
-	}
-	if (result.$defs) {
-		result.$defs = mapDefinitions(result.$defs);
-	}
-	if (result.definitions) {
-		result.definitions = mapDefinitions(result.definitions);
+	for (const key of ['properties', 'patternProperties', '$defs', 'definitions'] as const) {
+		const record = result[key];
+		if (record) result[key] = lockDefinitions(record);
 	}
 	if (result.items !== undefined) {
 		result.items = Array.isArray(result.items)
@@ -82,19 +75,63 @@ function lockDefinition(schema: JSONSchema7Definition): JSONSchema7Definition {
 			result[key] = branch.map(lockDefinition);
 		}
 	}
-	if (result.not !== undefined) {
-		result.not = lockDefinition(result.not);
+	for (const key of ['not', 'if', 'then', 'else', 'contains', 'propertyNames'] as const) {
+		if (result[key] !== undefined) result[key] = lockDefinition(result[key]);
 	}
+
+	lockDialectExtensions(result);
 
 	return result;
 }
 
+const COMPOSITION_KEYWORDS = [
+	'allOf',
+	'anyOf',
+	'oneOf',
+	'$ref',
+	'if',
+	'then',
+	'else',
+	'dependencies',
+	'dependentSchemas',
+] as const;
+
+function hasPropertiesElsewhere(schema: JSONSchema7): boolean {
+	const node = schema as Record<string, unknown>;
+	return COMPOSITION_KEYWORDS.some((keyword) => node[keyword] !== undefined);
+}
+
 /**
- * Re-map a record of sub-schemas, locking each value. Uses
- * `Object.defineProperty` so a user-supplied property name like `__proto__`
- * becomes a normal own property instead of mutating the prototype chain.
+ * 2020-12 keywords `JSONSchema7` predates. They reach us from MCP servers,
+ * which default to that dialect, so skipping them would leave nested objects
+ * untouched.
  */
-function mapDefinitions(
+function lockDialectExtensions(node: JSONSchema7): void {
+	const extensions = node as Record<string, unknown>;
+
+	for (const key of ['unevaluatedProperties', 'unevaluatedItems']) {
+		const value = extensions[key];
+		if (typeof value === 'object' && value !== null)
+			extensions[key] = lockDefinition(value as JSONSchema7);
+	}
+	const prefixItems = extensions.prefixItems;
+	if (Array.isArray(prefixItems)) {
+		extensions.prefixItems = prefixItems.map((item: JSONSchema7Definition) => lockDefinition(item));
+	}
+	const dependentSchemas = extensions.dependentSchemas;
+	if (typeof dependentSchemas === 'object' && dependentSchemas !== null) {
+		extensions.dependentSchemas = lockDefinitions(
+			dependentSchemas as Record<string, JSONSchema7Definition>,
+		);
+	}
+}
+
+/**
+ * Re-map a record of sub-schemas. Uses `Object.defineProperty` so a
+ * user-supplied property name like `__proto__` becomes a normal own property
+ * instead of mutating the prototype chain.
+ */
+function lockDefinitions(
 	record: Record<string, JSONSchema7Definition>,
 ): Record<string, JSONSchema7Definition> {
 	const out: Record<string, JSONSchema7Definition> = {};

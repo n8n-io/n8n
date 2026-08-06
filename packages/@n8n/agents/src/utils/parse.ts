@@ -7,24 +7,104 @@ import { isZodSchema } from './zod';
 
 export type ParseResult<T = unknown> =
 	| { success: true; data: T }
+	| { success: false; error: string; schemaInvalid?: true };
+
+type Dialect = '2020-12' | '2019-09' | 'draft-07';
+
+const DIALECT_MARKERS: Array<[RegExp, Dialect]> = [
+	[/draft\/2020-12/, '2020-12'],
+	[/draft\/2019-09/, '2019-09'],
+	[/draft-0[4-7]/, 'draft-07'],
+];
+
+const ajvInstances = new Map<string, Promise<InstanceType<typeof AjvType>>>();
+
+async function loadAjv(dialect: Dialect): Promise<typeof AjvType> {
+	const bundle =
+		dialect === '2020-12'
+			? await import('ajv/dist/2020.js')
+			: dialect === '2019-09'
+				? await import('ajv/dist/2019.js')
+				: await import('ajv');
+	return bundle.default.default;
+}
+
+async function getAjv(
+	dialect: Dialect,
+	unicodeRegExp: boolean,
+): Promise<InstanceType<typeof AjvType>> {
+	const key = `${dialect}:${unicodeRegExp}`;
+	const cached = ajvInstances.get(key);
+	if (cached) return await cached;
+
+	const instance = loadAjv(dialect).then(
+		(Ajv) =>
+			new Ajv({
+				strict: false,
+				allErrors: true,
+				// Ajv otherwise checks its version against the `$schema`
+				validateSchema: false,
+				// Ajv otherwise registers each schema under its `$id`, so the next
+				// deserialized copy collides with the one already registered
+				addUsedSchema: false,
+				...(unicodeRegExp ? {} : { unicodeRegExp: false }),
+			}),
+	);
+	instance.catch(() => ajvInstances.delete(key));
+	ajvInstances.set(key, instance);
+	return await instance;
+}
+
+/** Ajv bundles to try, in order: starts at 2020-12, MCP's default for JSON schemas */
+function candidateDialects(schema: JSONSchema7): Dialect[] {
+	const declaredMarker = schema.$schema;
+	const declared = declaredMarker
+		? DIALECT_MARKERS.find(([marker]) => marker.test(declaredMarker))?.[1]
+		: undefined;
+	const rest = (['2020-12', '2019-09', 'draft-07'] as const).filter((d) => d !== declared);
+	return declared ? [declared, ...rest] : rest;
+}
+
+type CompileResult =
+	| { success: true; ajv: InstanceType<typeof AjvType>; validate: ValidateFunction }
 	| { success: false; error: string };
 
-let ajvInstance: InstanceType<typeof AjvType> | undefined;
-let nonUnicodeAjvInstance: InstanceType<typeof AjvType> | undefined;
+interface CompileAttempt {
+	dialect: Dialect;
+	unicodeRegExp: boolean;
+}
 
-function getAjv(unicodeRegExp = true): InstanceType<typeof AjvType> {
-	const instance = unicodeRegExp ? ajvInstance : nonUnicodeAjvInstance;
-	if (instance) return instance;
+const resolvedAttempts = new WeakMap<JSONSchema7, CompileAttempt>();
 
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const { default: Ajv } = require('ajv') as { default: typeof AjvType };
-	const newInstance = new Ajv({
-		strict: false,
-		...(unicodeRegExp ? {} : { unicodeRegExp: false }),
-	});
-	if (unicodeRegExp) ajvInstance = newInstance;
-	else nonUnicodeAjvInstance = newInstance;
-	return newInstance;
+async function compileJsonSchema(schema: JSONSchema7): Promise<CompileResult> {
+	const ordered: CompileAttempt[] = candidateDialects(schema).flatMap((dialect) => [
+		{ dialect, unicodeRegExp: true },
+		{ dialect, unicodeRegExp: false },
+	]);
+	const resolved = resolvedAttempts.get(schema);
+	const attempts = resolved
+		? [resolved, ...ordered.filter((a) => !isSameAttempt(a, resolved))]
+		: ordered;
+
+	let firstError: unknown;
+	for (const attempt of attempts) {
+		const ajv = await getAjv(attempt.dialect, attempt.unicodeRegExp);
+		try {
+			const validate = ajv.compile(schema);
+			resolvedAttempts.set(schema, attempt);
+			return { success: true, ajv, validate };
+		} catch (error) {
+			firstError ??= error;
+		}
+	}
+	return {
+		success: false,
+		error: firstError instanceof Error ? firstError.message : String(firstError),
+	};
+}
+
+function isSameAttempt(a: CompileAttempt, b: CompileAttempt): boolean {
+	return a.dialect === b.dialect && a.unicodeRegExp === b.unicodeRegExp;
 }
 
 /**
@@ -41,15 +121,16 @@ export async function parseWithSchema(
 		return { success: false, error: result.error.message };
 	}
 
-	let ajv = getAjv();
-	let validate: ValidateFunction;
-	try {
-		validate = ajv.compile(schema);
-	} catch (error) {
-		if (!(error instanceof SyntaxError)) throw error;
-		ajv = getAjv(false);
-		validate = ajv.compile(schema);
+	const compiled = await compileJsonSchema(schema);
+	if (!compiled.success) {
+		return {
+			success: false,
+			error: `Schema could not be compiled: ${compiled.error}`,
+			schemaInvalid: true,
+		};
 	}
+
+	const { ajv, validate } = compiled;
 	if (validate(data)) return { success: true, data };
 	return { success: false, error: ajv.errorsText(validate.errors) };
 }

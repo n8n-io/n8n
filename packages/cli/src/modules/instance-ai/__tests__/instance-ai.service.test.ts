@@ -1860,13 +1860,16 @@ type SuspendedRunResumeServiceInternals = {
 			}>;
 			action?: 'apply' | 'test-trigger';
 			resourceDecision?: string;
+			connectedSlugs?: string[];
 		},
 	) => Promise<{ ok: true; runId: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
+	finalizeCancelledSuspendedRun: Mock;
 	runState: {
 		findSuspendedByRequestId: Mock;
 		activateSuspendedRun: Mock;
+		clearActiveRun: Mock;
 	};
 	logger: { warn: Mock };
 	dbSnapshotStorage: unknown;
@@ -1874,7 +1877,7 @@ type SuspendedRunResumeServiceInternals = {
 	processResumedStream: Mock;
 	suspendedThreads: { dropPendingConfirmation: Mock };
 	trackInFlightExecution: Mock;
-	rebuildAgentForAutoSetupResume: Mock;
+	rebuildAgentForResume: Mock;
 	threadPushRef: { get: Mock };
 };
 
@@ -1884,6 +1887,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	) as unknown as SuspendedRunResumeServiceInternals;
 	service.revalidateActiveUser = vi.fn();
 	service.cancelRun = vi.fn();
+	service.finalizeCancelledSuspendedRun = vi.fn(async () => {});
 	service.suspendedThreads = { dropPendingConfirmation: vi.fn(async () => {}) };
 	service.trackInFlightExecution = vi.fn();
 	service.runState = {
@@ -1904,6 +1908,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			runHandoff: undefined,
 		})),
 		activateSuspendedRun: vi.fn(() => ({})),
+		clearActiveRun: vi.fn(),
 	};
 	service.logger = { warn: vi.fn() };
 	service.dbSnapshotStorage = {};
@@ -1912,7 +1917,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
 	};
 	service.processResumedStream = vi.fn();
-	service.rebuildAgentForAutoSetupResume = vi.fn();
+	service.rebuildAgentForResume = vi.fn();
 	service.threadPushRef = { get: vi.fn(() => undefined) };
 	return service;
 }
@@ -2484,7 +2489,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const freshUser = { id: 'user-1', disabled: false } as User;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
 		const rebuiltAgent = { id: 'rebuilt-agent' };
-		service.rebuildAgentForAutoSetupResume.mockResolvedValue({
+		service.rebuildAgentForResume.mockResolvedValue({
 			agent: rebuiltAgent,
 			modelId: { provider: 'anthropic', model: 'claude' },
 		});
@@ -2495,7 +2500,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		});
 
 		expect(result).toEqual({ ok: true, runId: 'run-1' });
-		expect(service.rebuildAgentForAutoSetupResume).toHaveBeenCalledWith(
+		expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
 			freshUser,
 			'thread-a',
 			'run-1',
@@ -2519,7 +2524,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const resumeTracing = { id: 'resume-trace' } as unknown as InstanceAiTraceContext;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
 		service.tracing.createOrchestratorResumeTraceContext.mockResolvedValue(resumeTracing);
-		service.rebuildAgentForAutoSetupResume.mockResolvedValue(undefined);
+		service.rebuildAgentForResume.mockResolvedValue(undefined);
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
 			approved: true,
@@ -2540,6 +2545,42 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(service.processResumedStream).not.toHaveBeenCalled();
 	});
 
+	it('releases the reactivated run and terminalises it when the rebuild fails', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue(undefined);
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			autoSetup: { credentialType: 'datadogApi' },
+		});
+
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-a', expect.anything());
+		expect(service.finalizeCancelledSuspendedRun).toHaveBeenCalledWith(
+			expect.objectContaining({ runId: 'run-1', threadId: 'thread-a' }),
+			'agent_rebuild_failed',
+		);
+	});
+
+	it('cancels the run when the rebuild for a newly connected MCP server fails', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue(undefined);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['notion'],
+		});
+
+		expect(result).toBeNull();
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'agent_rebuild_failed');
+		expect(service.finalizeCancelledSuspendedRun).toHaveBeenCalledWith(
+			expect.objectContaining({ runId: 'run-1' }),
+			'agent_rebuild_failed',
+		);
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+	});
+
 	it('does not rebuild the agent for a plain resume without autoSetup', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
@@ -2548,7 +2589,74 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
 		expect(result).toEqual({ ok: true, runId: 'run-1' });
-		expect(service.rebuildAgentForAutoSetupResume).not.toHaveBeenCalled();
+		expect(service.rebuildAgentForResume).not.toHaveBeenCalled();
+	});
+
+	it('threads the connected MCP slugs into the resume data', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+		service.rebuildAgentForResume.mockResolvedValue({ agent: {}, modelId: undefined });
+
+		await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['brave'],
+		});
+
+		const [options] = service.tracing.createOrchestratorResumeTraceContext.mock.calls[0] as [
+			{ input: { resumeFields: string[] } },
+		];
+		expect(options.input.resumeFields).toContain('connectedSlugs');
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ connectedSlugs: ['brave'] }),
+			expect.any(Object),
+		);
+	});
+
+	it('rebuilds the agent when the resume reports a newly connected MCP server', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.rebuildAgentForResume.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			connectedSlugs: ['notion'],
+		});
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'run-1',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+		);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			rebuiltAgent,
+			expect.objectContaining({ connectedSlugs: ['notion'] }),
+			expect.any(Object),
+		);
+	});
+
+	it('does not rebuild the agent when the connect card reports no new connection', async () => {
+		const service = createSuspendedRunResumeService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: false,
+			connectedSlugs: [],
+		});
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForResume).not.toHaveBeenCalled();
+		expect(service.processResumedStream).toHaveBeenCalled();
 	});
 
 	it('includes the substantive user response in the resume trace input', async () => {
@@ -2579,9 +2687,9 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 	});
 });
 
-describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
+describe('InstanceAiService — rebuildAgentForResume', () => {
 	type RebuildAgentServiceInternals = {
-		rebuildAgentForAutoSetupResume: (
+		rebuildAgentForResume: (
 			user: User,
 			threadId: string,
 			runId: string,
@@ -2616,7 +2724,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 		});
 		const runHandoff = { handoffReason: undefined };
 
-		const result = await service.rebuildAgentForAutoSetupResume(
+		const result = await service.rebuildAgentForResume(
 			fakeUser,
 			'thread-a',
 			'run-1',
@@ -2643,7 +2751,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 			orchestrationContext,
 		});
 
-		await service.rebuildAgentForAutoSetupResume(
+		await service.rebuildAgentForResume(
 			fakeUser,
 			'thread-a',
 			'run-1',
@@ -2660,7 +2768,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 		const service = createRebuildAgentService();
 		service.buildFreshInstanceAgent.mockRejectedValue(new Error('boom'));
 
-		const result = await service.rebuildAgentForAutoSetupResume(
+		const result = await service.rebuildAgentForResume(
 			fakeUser,
 			'thread-a',
 			'run-1',
@@ -2672,7 +2780,7 @@ describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
 
 		expect(result).toBeUndefined();
 		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Failed to rebuild agent for credential auto-setup resume',
+			'Failed to rebuild agent for resume',
 			expect.objectContaining({ threadId: 'thread-a', runId: 'run-1' }),
 		);
 	});
@@ -3489,13 +3597,62 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 				metadata: { completion_source: 'resume_claim' },
 			},
 		);
-		expect(terminalResponse).not.toHaveBeenCalled();
-		expect(service.eventBus.events).toEqual([]);
+		expect(terminalResponse).toHaveBeenCalledWith('thread-a', 'run-1', 'errored', {
+			messageGroupId: 'group-1',
+			errorMessage: 'Something went wrong before I could finish that response. Please try again.',
+			errorCode: undefined,
+		});
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 		expect(service.tracing.finalizeRunTracing).not.toHaveBeenCalled();
 		expect(service.tracing.finalizeMessageTraceRoot).not.toHaveBeenCalled();
-		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
 		expect(service.taskProjector.syncFromWorkflowLoop).not.toHaveBeenCalled();
+	});
+
+	it('surfaces an error to the user when a resume throws before claiming its checkpoint', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		const resumeError = new Error(
+			'Invalid resume payload: data must NOT have additional properties',
+		);
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(resumeError);
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(
+			resumeError,
+			expect.objectContaining({ component: 'instance-ai-resume-claim', runId: 'run-1' }),
+		);
+		expect(service.eventBus.events).toEqual([
+			expect.objectContaining({
+				type: 'error',
+				runId: 'run-1',
+				payload: {
+					content: 'Something went wrong before I could finish that response. Please try again.',
+				},
+			}),
+			expect.objectContaining({ type: 'run-finish', payload: { status: 'error' } }),
+		]);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith(
+			'thread-a',
+			opts.resumeExecutionToken,
+		);
+	});
+
+	it('stays silent when a resume fails before claiming because the run was aborted', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const opts = { ...resumedStreamOpts(abortController), messageGroupId: 'group-1' };
+		abortController.abort();
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('aborted mid-claim'));
+
+		await service.processResumedStream({}, {}, opts);
+
+		expect(service.eventBus.events).toEqual([]);
+		expect(service.saveAgentTreeSnapshot).not.toHaveBeenCalled();
 	});
 
 	it('terminalizes a same-name error that occurs after the resume was claimed', async () => {

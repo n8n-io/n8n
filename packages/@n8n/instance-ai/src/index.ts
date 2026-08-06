@@ -594,6 +594,8 @@ export type {
 	InstanceAiEvaluationConfigService,
 	InstanceAiMcpService,
 	McpRegistryServerSummary,
+	McpRegistryConnectionSummary,
+	ConnectedMcpService,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	EvaluationConfigMetricInput,

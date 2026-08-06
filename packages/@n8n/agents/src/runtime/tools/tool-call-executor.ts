@@ -1,5 +1,5 @@
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
-import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
+import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
 	getInlineDelegateSubAgentToolOptions,
@@ -22,7 +22,7 @@ import type { AgentPersistenceOptions, ToolResultEntry } from '../../types/sdk/a
 import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
-import { isZodSchema } from '../../utils/zod';
+import { toJsonSchemaOrNull } from '../../utils/zod';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import type { AgentMessageList } from '../model/message-list';
 import { normalizeToolInputForModel } from '../model/messages';
@@ -160,13 +160,40 @@ function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boo
 	return !isDeniedApprovalResumeData(resumeData);
 }
 
+function getDeclaredResumeSchema(
+	tool: BuiltTool,
+	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
+): ToolSuspendOptions['resumeSchema'] {
+	return resumeSchemaOverride ?? tool.resumeSchema;
+}
+
+function describeCause(error: unknown): string {
+	if (error === undefined) return 'no schema was produced';
+	if (error instanceof Error) return error.message;
+	return typeof error === 'string' ? error : 'unknown error';
+}
+
+function serializeToolResumeSchema(
+	tool: BuiltTool,
+	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
+): { declared: boolean; schema?: JsonSchema7Type; error?: unknown } {
+	const resolvedSchema = getDeclaredResumeSchema(tool, resumeSchemaOverride);
+	if (!resolvedSchema) return { declared: false };
+	let error: unknown;
+	// The checkpointed copy validates the resume payload, so it must stay open to
+	// unknown keys the authored Zod schema would have stripped.
+	const schema =
+		toJsonSchemaOrNull(resolvedSchema, 'validation', (cause) => {
+			error = cause;
+		}) ?? undefined;
+	return { declared: true, schema, error };
+}
+
 function getToolResumeJsonSchema(
 	tool: BuiltTool,
 	resumeSchemaOverride?: ToolSuspendOptions['resumeSchema'],
 ): JsonSchema7Type | undefined {
-	const resolvedSchema = resumeSchemaOverride ?? tool.resumeSchema;
-	if (!resolvedSchema) return undefined;
-	return isZodSchema(resolvedSchema) ? zodToJsonSchema(resolvedSchema) : resolvedSchema;
+	return serializeToolResumeSchema(tool, resumeSchemaOverride).schema;
 }
 
 export interface ToolCallExecutorDeps {
@@ -917,10 +944,10 @@ export class ToolCallExecutor {
 		if (!builtTool.inputSchema) return { ok: true, input: params.input };
 		const result = await parseWithSchema(builtTool.inputSchema, params.input);
 		if (!result.success) {
-			return {
-				ok: false,
-				outcome: this.toolError(params, new Error(`Invalid tool input: ${result.error}`)),
-			};
+			const reason = result.schemaInvalid
+				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
+				: `Invalid tool input: ${result.error}`;
+			return { ok: false, outcome: this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };
 	}
@@ -982,14 +1009,22 @@ export class ToolCallExecutor {
 			}
 			toolResult.payload = parseResult.data as JSONValue;
 		}
-		const resumeSchema = getToolResumeJsonSchema(builtTool, toolResult.resumeSchema);
-		if (!resumeSchema) {
-			return this.toolError(params, new Error(`Tool ${params.toolName} has no resume schema`));
+		const resume = serializeToolResumeSchema(builtTool, toolResult.resumeSchema);
+		if (!resume.schema) {
+			// Only one of these two defects is the tool author's oversight.
+			return this.toolError(
+				params,
+				new Error(
+					resume.declared
+						? `Tool ${params.toolName} has a resume schema that could not be serialized: ${describeCause(resume.error)}`
+						: `Tool ${params.toolName} has no resume schema`,
+				),
+			);
 		}
 		return {
 			outcome: 'suspended',
 			payload: toolResult.payload,
-			resumeSchema,
+			resumeSchema: resume.schema,
 			...(toolResult.continuation !== undefined ? { continuation: toolResult.continuation } : {}),
 		};
 	}

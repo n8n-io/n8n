@@ -751,11 +751,30 @@ conversation. Creation and editing stay on `build-agent`.
 ### `mcp-servers` *(domain tool — conditional)*
 
 Search the MCP registry so the orchestrator can discover a hosted MCP server for
-a service the user asked about but has not connected. One action, `search`, over
-`{ queries: string[] }`; returns
-`{ results: [{ slug, title, description, tools }], hint? }`.
+a service the user asked about, and offer an inline card to connect or reconnect
+one.
 
-Only servers that the user has *not* connected come back. Results are capped at 5, most relevant first.
+- `search` over `{ queries: string[] }` returns
+  `{ results: [{ slug, title, description, credentialType, tools, state }], hint? }`,
+  capped at 5, most relevant first. `state` is `not-connected`, `connected`, or
+  `connected-not-working` — a connected server stays in the results so a broken one
+  can be found and reconnected.
+- `connect` over `{ serverSlugs: string[] (max 3), reason: string }` suspends with
+  an `mcpConnectRequest` payload, which the frontend renders as the inline
+  "Available tools" card, and returns `{ connectedSlugs, message }`. An
+  already-connected server is offered too, so its credential can be switched or its
+  connection repaired. On resume the tool re-reads the user's connections and reports
+  only verified slugs — the client's `connectedSlugs` is a hint, never the source of
+  truth. A resume that *claims* a connection rebuilds the agent before the tool runs,
+  so the new server's tools are reachable through `search_tools` in the same turn
+  rather than the next one; a failed rebuild cancels the run, and the user's next
+  message starts a fresh one.
+
+Each agent build reconciles the user's connections against the MCP tools that
+actually reached the agent (`connectedMcpServices` on the context). That one view
+feeds both the system prompt's "Services the user has connected" list and this
+tool's `state`, so a connection that exists but whose tools did not load is
+reported as broken instead of being mistaken for a working one.
 
 ## Other Domain Tools
 
