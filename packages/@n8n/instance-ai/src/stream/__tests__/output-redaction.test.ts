@@ -219,6 +219,11 @@ describe('OutputRedactor', () => {
 				args: {},
 				severity: 'warning',
 				message: 'What to do with jane@example.com?',
+				targetApproval: {
+					toolName: 'send_jane@example.com',
+					displayName: 'Email jane@example.com',
+					args: { recipient: 'jane@example.com' },
+				},
 				introMessage: 'I noticed jane@example.com in your request.',
 				questions: [
 					{
@@ -246,7 +251,18 @@ describe('OutputRedactor', () => {
 		expect(serialized).not.toContain('jane@example.com');
 		expect(serialized).toContain('[REDACTED]');
 		// Control/identifier fields are preserved so suspend/resume keeps working.
-		expect(out).toMatchObject({ payload: { requestId: 'req-1', toolCallId: 'tc-1' } });
+		expect(out).toMatchObject({
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tc-1',
+				targetApproval: {
+					toolName: '[REDACTED]',
+					displayName: 'Email [REDACTED]',
+					args: { recipient: '[REDACTED]' },
+				},
+			},
+		});
+		expect(event.payload.targetApproval?.args).toEqual({ recipient: 'jane@example.com' });
 	});
 
 	it('logs a filtering summary with category counts and no values', () => {

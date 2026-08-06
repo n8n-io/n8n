@@ -175,8 +175,8 @@ export class OutputRedactor {
 	}
 
 	/**
-	 * Redact the human-readable text of a HITL confirmation card (message, intro,
-	 * question/option labels, and task/plan-item descriptions). Control and
+	 * Redact the human-readable content of a HITL confirmation card (message, intro,
+	 * question/option labels, task/plan-item descriptions, and target-tool labels/args). Control and
 	 * identifier fields — `requestId`, `toolCallId`, `inputType`,
 	 * `credentialRequests`, task `id`/`status`, plan `kind`/`deps`, etc. — are
 	 * left untouched so suspend/resume routing keeps working.
@@ -207,6 +207,19 @@ export class OutputRedactor {
 			title: this.redactString(item.title),
 			spec: this.redactString(item.spec),
 		}));
+		let targetApproval = payload.targetApproval;
+		if (targetApproval) {
+			const { value, matches } = redactDeep(targetApproval.args, this.options);
+			this.recordMatches(matches);
+			targetApproval = {
+				...targetApproval,
+				toolName: this.redactString(targetApproval.toolName),
+				...(targetApproval.displayName
+					? { displayName: this.redactString(targetApproval.displayName) }
+					: {}),
+				args: value,
+			};
+		}
 
 		return {
 			...event,
@@ -217,6 +230,7 @@ export class OutputRedactor {
 				...(questions ? { questions } : {}),
 				...(tasks ? { tasks } : {}),
 				...(planItems ? { planItems } : {}),
+				...(targetApproval ? { targetApproval } : {}),
 			},
 		};
 	}
