@@ -13,6 +13,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			disconnect = vi.fn();
 		},
 		createDomainAccessTracker: vi.fn(),
+		emitAgentSnapshotTraceEvent: vi.fn(async () => await Promise.resolve('emitted')),
 		createSandbox: vi.fn(),
 		createWorkspace: vi.fn(),
 		createLazyRuntimeWorkspace: vi.fn(
@@ -196,6 +197,7 @@ import {
 	resumeAgentRun,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
+	emitAgentSnapshotTraceEvent,
 	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
@@ -3923,6 +3925,117 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		// Assignment-form tolerant: the wiring is what matters, not whether the
 		// field is spread into the literal or set on it afterwards.
 		expect(source).toMatch(/resourceAttachments\s*[:=]\s*contextAttachments\.map/);
+	});
+});
+
+describe('InstanceAiService — agent snapshots for attached agents', () => {
+	type SnapshotService = {
+		logger: { debug: Mock };
+		snapshotAttachedAgents: (
+			attachments: Array<Record<string, unknown>>,
+			orchestrationContext: Record<string, unknown>,
+			tracing: unknown,
+		) => Promise<void>;
+	};
+
+	const emitSnapshot = emitAgentSnapshotTraceEvent as unknown as Mock;
+	const TRACING = { actorRun: { id: 'actor-1' } };
+	const ARTIFACT = { config: { name: 'Support Triage' }, skills: {}, configHash: 'hash-1' };
+
+	function createService(): SnapshotService {
+		const service = Object.create(InstanceAiService.prototype) as unknown as SnapshotService;
+		service.logger = { debug: vi.fn() };
+		return service;
+	}
+
+	function makeContext(readAgentArtifact?: Mock) {
+		return {
+			domainContext: readAgentArtifact ? { builderDelegate: { readAgentArtifact } } : {},
+		};
+	}
+
+	beforeEach(() => emitSnapshot.mockClear());
+
+	it('snapshots an attached agent as it stood when the turn opened', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn(async () => await Promise.resolve(ARTIFACT));
+
+		await service.snapshotAttachedAgents(
+			[{ type: 'agent', id: 'agent-1', projectId: 'proj-1' }],
+			makeContext(readAgentArtifact),
+			TRACING,
+		);
+
+		expect(readAgentArtifact).toHaveBeenCalledWith('agent-1');
+		expect(emitSnapshot).toHaveBeenCalledTimes(1);
+		expect(emitSnapshot.mock.calls[0][1]).toMatchObject({
+			agentId: 'agent-1',
+			projectId: 'proj-1',
+			reason: 'attached',
+			artifact: ARTIFACT,
+		});
+	});
+
+	it('ignores a workflow attachment — the workflow side has its own event', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn();
+
+		await service.snapshotAttachedAgents(
+			[{ type: 'workflow', id: 'wf-1' }],
+			makeContext(readAgentArtifact),
+			TRACING,
+		);
+
+		expect(readAgentArtifact).not.toHaveBeenCalled();
+		expect(emitSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('does nothing when the agents module is off, rather than failing the turn', async () => {
+		const service = createService();
+
+		await expect(
+			service.snapshotAttachedAgents(
+				[{ type: 'agent', id: 'agent-1', projectId: 'proj-1' }],
+				makeContext(undefined),
+				TRACING,
+			),
+		).resolves.toBeUndefined();
+		expect(emitSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('does nothing without a trace to attach the event to', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn();
+
+		await service.snapshotAttachedAgents(
+			[{ type: 'agent', id: 'agent-1', projectId: 'proj-1' }],
+			makeContext(readAgentArtifact),
+			undefined,
+		);
+
+		expect(readAgentArtifact).not.toHaveBeenCalled();
+		expect(emitSnapshot).not.toHaveBeenCalled();
+	});
+
+	it('skips an agent it cannot read and keeps going', async () => {
+		const service = createService();
+		const readAgentArtifact = vi.fn(async (agentId: string) =>
+			agentId === 'agent-broken'
+				? await Promise.reject(new Error('gone'))
+				: await Promise.resolve(ARTIFACT),
+		);
+
+		await service.snapshotAttachedAgents(
+			[
+				{ type: 'agent', id: 'agent-broken', projectId: 'proj-1' },
+				{ type: 'agent', id: 'agent-ok', projectId: 'proj-1' },
+			],
+			makeContext(readAgentArtifact),
+			TRACING,
+		);
+
+		expect(emitSnapshot).toHaveBeenCalledTimes(1);
+		expect(emitSnapshot.mock.calls[0][1]).toMatchObject({ agentId: 'agent-ok' });
 	});
 });
 

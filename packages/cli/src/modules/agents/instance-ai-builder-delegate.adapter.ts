@@ -9,15 +9,19 @@ import type {
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { AgentConfigService } from './agent-config.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
+import { getAgentConfigHash } from './utils/agent-config-hash';
 
 /** Prompt addendum for sub-agent runs; exported for tests. */
 export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
@@ -78,6 +82,8 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentThreadRepository: AgentThreadRepository,
+		private readonly agentConfig: AgentConfigService,
+		private readonly agentSkills: AgentSkillsService,
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
@@ -180,6 +186,23 @@ export class InstanceAiBuilderDelegateAdapterService {
 			resolveAgentName: async (agentId) => {
 				await assertProjectScope('agent:read');
 				return (await this.agentsService.findById(agentId, projectId))?.name;
+			},
+			readAgentArtifact: async (agentId) => {
+				await assertProjectScope('agent:read');
+				// No JSON config yet (freshly created) is an empty snapshot, not an error.
+				// Anything else propagates: the callers already treat a throw as "no
+				// snapshot", and it gets logged there instead of vanishing here.
+				const config = await this.agentConfig.getConfig(agentId, projectId).catch((error) => {
+					if (error instanceof UserError) return null;
+					throw error;
+				});
+				if (!config) return null;
+				return {
+					config,
+					skills: await this.agentSkills.listSkills(agentId, projectId),
+					// The same hash `read_config` hands the model, so consumers can dedupe.
+					configHash: getAgentConfigHash(config),
+				};
 			},
 		};
 	}
