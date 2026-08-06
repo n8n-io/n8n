@@ -1,6 +1,8 @@
 import type { KafkaJS } from '@confluentinc/kafka-javascript';
+import type { Logger } from 'n8n-workflow';
 
 import { createKafkaClient } from './client';
+import { createLibraryLogger, type FatalErrorHandler } from './LibraryLogger';
 import type { KafkaCredentials } from '../../utils';
 
 /**
@@ -38,6 +40,18 @@ export interface KafkaConsumerOptions {
 	fromBeginning?: boolean;
 }
 
+/** Wiring for the library's own log output, kept apart from its config keys. */
+export interface KafkaConsumerLogging {
+	/** Receives everything the library logs. Without it the library writes to stdout. */
+	logger: Logger;
+	/**
+	 * Called when the library reports something it will not recover from, so the
+	 * node can fail the trigger instead of waiting forever. There is no error
+	 * event to attach to, hence the logger.
+	 */
+	onFatalError?: FatalErrorHandler;
+}
+
 /**
  * Drops keys whose value is `undefined`. librdkafka does not treat a key that is
  * present but undefined as absent: it skips the library's own default and then
@@ -60,6 +74,7 @@ function definedOnly<T extends object>(values: T): Partial<T> {
 export async function createKafkaConsumer(
 	credentials: KafkaCredentials,
 	options: KafkaConsumerOptions,
+	logging?: KafkaConsumerLogging,
 ): Promise<KafkaJS.Consumer> {
 	const kafka = await createKafkaClient(credentials);
 
@@ -70,6 +85,7 @@ export async function createKafkaConsumer(
 			groupId,
 			...CONSUMER_DEFAULTS,
 			...definedOnly(rest),
+			...(logging ? { logger: createLibraryLogger(logging.logger, logging.onFatalError) } : {}),
 		},
 	});
 }

@@ -1,3 +1,6 @@
+import type { Logger } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
 import type { KafkaCredentials } from '../../../utils';
 import { createKafkaConsumer } from '../../../v2/transport/consumer';
 import {
@@ -90,6 +93,25 @@ describe('createKafkaConsumer', () => {
 				fromBeginning: true,
 			},
 		});
+	});
+
+	it('gives the library a logger only when one is supplied', async () => {
+		await createKafkaConsumer(credentials, { groupId: 'my-group' });
+		expect(getFakeConsumers().at(-1)?.config.kafkaJS).not.toHaveProperty('logger');
+
+		const onFatalError = vi.fn();
+		await createKafkaConsumer(
+			credentials,
+			{ groupId: 'my-group' },
+			{ logger: mock<Logger>(), onFatalError },
+		);
+
+		const libraryLogger = getFakeConsumers().at(-1)?.config.kafkaJS?.logger;
+		expect(libraryLogger).toBeDefined();
+
+		// Wired through to the handler, so the node can fail the trigger.
+		libraryLogger?.error('Broker: Group authorization failed');
+		expect(onFatalError).toHaveBeenCalledTimes(1);
 	});
 
 	it('omits options the user never set, rather than passing them as undefined', async () => {
