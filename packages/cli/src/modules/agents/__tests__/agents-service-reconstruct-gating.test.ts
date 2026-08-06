@@ -50,7 +50,6 @@ import type { AgentFileRepository } from '../repositories/agent-file.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
-import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -126,7 +125,6 @@ function makeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
-		mock<WorkflowToolWorkflowLoader>(),
 	);
 }
 

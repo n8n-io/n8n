@@ -2,19 +2,16 @@ import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
-	ExecutionError,
 	IExecuteResponsePromiseData,
 	INode,
-	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { createRunExecutionData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
-import type { WorkflowRunner, WorkflowRunnerCallbacks } from '@/workflow-runner';
+import type { WorkflowRunner } from '@/workflow-runner';
 
 import { executeWorkflow, type WorkflowToolContext } from '../workflow-tool-factory';
 
@@ -36,176 +33,13 @@ const workflow = {
 
 function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToolContext> = {}) {
 	return {
-		workflowLoader: {} as never,
+		workflowRepository: {} as never,
 		workflowRunner: { run } as unknown as WorkflowRunner,
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,
 		projectId: 'p1',
-		runType: 'test',
 		...extras,
 	} satisfies WorkflowToolContext;
 }
-
-describe('executeWorkflow → execution mode', () => {
-	beforeEach(() => {
-		Container.set(ExecutionPersistence, {
-			findSingleExecution: vi
-				.fn()
-				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
-		} as unknown as ExecutionPersistence);
-	});
-
-	afterEach(() => {
-		Container.reset();
-	});
-
-	it.each([
-		['test', 'chat', 'manual'],
-		['test', 'executeWorkflow', 'manual'],
-		['production', 'chat', 'agent'],
-		['production', 'executeWorkflow', 'agent'],
-	] as const)(
-		'uses caller run type %s instead of the %s trigger type',
-		async (runType, triggerType, expectedExecutionMode) => {
-			const run = vi.fn().mockResolvedValue('exec-1');
-
-			await executeWorkflow(workflow, triggerNode, triggerType, {}, buildContext(run, { runType }));
-
-			expect(run).toHaveBeenCalledWith(
-				expect.objectContaining({
-					executionMode: expectedExecutionMode,
-					forceFullExecutionData: true,
-				}),
-				undefined,
-				undefined,
-				undefined,
-				expect.anything(),
-				expect.anything(),
-			);
-		},
-	);
-
-	it('returns the completed run when production retention removes persisted data', async () => {
-		const completedRun = {
-			mode: 'agent',
-			status: 'success',
-			finished: true,
-			startedAt: new Date(),
-			stoppedAt: new Date(),
-			storedAt: 'db',
-			data: createRunExecutionData({
-				resultData: {
-					runData: {
-						Result: [
-							{
-								data: { main: [[{ json: { answer: 42 } }]] },
-								executionIndex: 0,
-								startTime: 0,
-								executionTime: 1,
-								source: [],
-							},
-						],
-					},
-				},
-			}),
-		} satisfies IRun;
-		const findSingleExecution = vi.fn().mockResolvedValue(undefined);
-		Container.set(ExecutionPersistence, { findSingleExecution } as unknown as ExecutionPersistence);
-		const run = vi.fn(
-			async (
-				_runData: IWorkflowExecutionDataProcess,
-				_loadStaticData?: boolean,
-				_realtime?: boolean,
-				_existingExecution?: unknown,
-				_responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-				callbacks?: WorkflowRunnerCallbacks,
-			) => {
-				await callbacks?.onExecutionRegistered?.('exec-1', Promise.resolve(completedRun));
-				return 'exec-1';
-			},
-		);
-
-		const result = await executeWorkflow(
-			workflow,
-			triggerNode,
-			'executeWorkflow',
-			{},
-			buildContext(run, { runType: 'production' }),
-		);
-
-		expect(result).toEqual({
-			executionId: 'exec-1',
-			status: 'success',
-			data: { Result: [{ answer: 42 }] },
-		});
-		expect(findSingleExecution).not.toHaveBeenCalled();
-	});
-
-	it('returns a preflight error from the completed run when error data is not retained', async () => {
-		const completedRun = mock<IRun>({
-			status: 'error',
-			data: createRunExecutionData({
-				resultData: {
-					runData: {},
-					error: mock<ExecutionError>({ message: 'Credential access denied' }),
-				},
-			}),
-		});
-		const findSingleExecution = vi.fn().mockResolvedValue(undefined);
-		Container.set(ExecutionPersistence, { findSingleExecution } as unknown as ExecutionPersistence);
-		const run = vi.fn(
-			async (
-				_runData: IWorkflowExecutionDataProcess,
-				_loadStaticData?: boolean,
-				_realtime?: boolean,
-				_existingExecution?: unknown,
-				_responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-				callbacks?: WorkflowRunnerCallbacks,
-			) => {
-				await callbacks?.onExecutionRegistered?.('exec-1', Promise.resolve(completedRun));
-				return 'exec-1';
-			},
-		);
-
-		const result = await executeWorkflow(
-			workflow,
-			triggerNode,
-			'executeWorkflow',
-			{},
-			buildContext(run, { runType: 'production' }),
-		);
-
-		expect(result).toMatchObject({
-			executionId: 'exec-1',
-			status: 'error',
-			error: 'Credential access denied',
-		});
-		expect(findSingleExecution).not.toHaveBeenCalled();
-	});
-
-	it.each(['test', 'production'] as const)(
-		'excludes stored pin data from %s runs',
-		async (runType) => {
-			const run = vi.fn().mockResolvedValue('exec-1');
-			const workflowWithPinData = {
-				...workflow,
-				pinData: { 'Pinned Node': [{ json: { value: 'editor-only' } }] },
-			} as WorkflowEntity;
-
-			await executeWorkflow(
-				workflowWithPinData,
-				triggerNode,
-				'executeWorkflow',
-				{ input: runType },
-				buildContext(run, { runType }),
-			);
-
-			const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
-			expect(runData.pinData).not.toHaveProperty('Pinned Node');
-			expect(runData.pinData).toHaveProperty(triggerNode.name);
-			expect(runData.workflowData.pinData).toBeUndefined();
-		},
-	);
-});
 
 describe('executeWorkflow → eval instrumentation', () => {
 	beforeEach(() => {

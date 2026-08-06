@@ -549,42 +549,6 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
-	describe('agent workflow tool publication reads', () => {
-		it('returns project-scoped active-version fingerprints as domain rows', async () => {
-			const findSpy = vi.spyOn(workflowRepository, 'find').mockResolvedValue([
-				Object.assign(new WorkflowEntity(), {
-					id: 'workflow-1',
-					activeVersionId: 'version-1',
-				}),
-			]);
-
-			const result = await workflowRepository.findPublishedVersionFingerprintsForAgentTools(
-				'project-1',
-				['workflow-1', 'workflow-2'],
-			);
-
-			expect(findSpy).toHaveBeenCalledWith({
-				select: { id: true, activeVersionId: true },
-				where: {
-					id: In(['workflow-1', 'workflow-2']),
-					isArchived: false,
-					activeVersionId: Not(IsNull()),
-					shared: { projectId: 'project-1' },
-				},
-			});
-			expect(result).toEqual([{ workflowId: 'workflow-1', versionId: 'version-1' }]);
-		});
-
-		it('short-circuits an empty fingerprint query', async () => {
-			const findSpy = vi.spyOn(workflowRepository, 'find');
-
-			await expect(
-				workflowRepository.findPublishedVersionFingerprintsForAgentTools('project-1', []),
-			).resolves.toEqual([]);
-			expect(findSpy).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('getPublishedPersonalWorkflowsCount', () => {
 		it('should return count from query builder with correct joins and filters', async () => {
 			queryBuilder.getCount.mockResolvedValue(5);

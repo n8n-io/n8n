@@ -78,7 +78,6 @@ import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runn
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
-import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -102,11 +101,12 @@ export interface ReconstructAgentRuntimeParams {
 	skills: Record<string, AgentSkill>;
 	runtimeProfile: AgentRuntimeProfile;
 	/**
-	 * Test/production classification of the run this runtime serves. Baked in at
-	 * build time because it is a property of the runtime itself — a draft runtime
-	 * is always a test run, a published one always production — and the runtime
-	 * cache keys on exactly that split. Workflow tools and delegated children
-	 * inherit it from the parent run.
+	 * Telemetry classification of the run this runtime serves. Baked in at build
+	 * time because it is a property of the runtime itself — a draft runtime is
+	 * always a test run, a published one always production — and the runtime
+	 * cache keys on exactly that split. Delegated children inherit it, so a
+	 * sub-agent invoked from a preview chat reports `test` even though it runs
+	 * its own published snapshot.
 	 */
 	runType: AgentRunTelemetryType;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
@@ -173,7 +173,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
-		private readonly workflowToolWorkflowLoader: WorkflowToolWorkflowLoader,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -361,7 +360,7 @@ export class AgentRuntimeReconstructionService {
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
-		const toolResolver = this.makeToolResolver(projectId, runType, instrumentation);
+		const toolResolver = this.makeToolResolver(projectId, instrumentation);
 		const resolvedTools: BuiltTool[] = [];
 
 		// Transport for LLM calls
@@ -513,7 +512,6 @@ export class AgentRuntimeReconstructionService {
 	}
 	private makeToolResolver(
 		projectId: string,
-		runType: AgentRunTelemetryType,
 		instrumentation?: AgentRuntimeInstrumentation,
 	): ToolResolver {
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
@@ -521,11 +519,10 @@ export class AgentRuntimeReconstructionService {
 			if (ref.type === 'workflow') {
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory.js');
 				return await resolveWorkflowTool(ref, {
-					workflowLoader: this.workflowToolWorkflowLoader,
+					workflowRepository: this.workflowRepository,
 					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
 					projectId,
-					runType,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 					instrumentToolAdditionalData,
 				});

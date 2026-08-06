@@ -20,7 +20,6 @@ import type { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
-import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -35,21 +34,9 @@ import type { AgentFileRepository } from '../repositories/agent-file.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
-import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
-}));
-
-const { resolveWorkflowToolMock } = vi.hoisted(() => ({
-	resolveWorkflowToolMock: vi.fn().mockResolvedValue({
-		name: 'Lookup_customer',
-		description: 'Lookup a customer',
-	}),
-}));
-
-vi.mock('../tools/workflow-tool-factory', () => ({
-	resolveWorkflowTool: (...args: unknown[]) => resolveWorkflowToolMock(...args),
 }));
 
 const projectId = 'project-1';
@@ -120,7 +107,6 @@ function makeService(overrides: {
 	credentialsFinderService?: ReturnType<typeof mock<CredentialsFinderService>>;
 	workflowFinderService?: ReturnType<typeof mock<WorkflowFinderService>>;
 	workflowRepository?: ReturnType<typeof mock<WorkflowRepository>>;
-	workflowLoader?: ReturnType<typeof mock<WorkflowToolWorkflowLoader>>;
 }) {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
@@ -133,7 +119,6 @@ function makeService(overrides: {
 		overrides.credentialsFinderService ?? mock<CredentialsFinderService>();
 	const workflowFinderService = overrides.workflowFinderService ?? mock<WorkflowFinderService>();
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
-	const workflowLoader = overrides.workflowLoader ?? mock<WorkflowToolWorkflowLoader>();
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
@@ -156,16 +141,9 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
-		workflowLoader,
 	);
 
-	return {
-		service,
-		credentialsFinderService,
-		workflowFinderService,
-		workflowRepository,
-		workflowLoader,
-	};
+	return { service, credentialsFinderService, workflowFinderService, workflowRepository };
 }
 
 function toolNamesPassedToBuildFromJson(): string[] {
@@ -175,19 +153,11 @@ function toolNamesPassedToBuildFromJson(): string[] {
 	);
 }
 
-function toolResolverPassedToBuildFromJson() {
-	const [, , options] = buildFromJsonMock.mock.calls.at(-1) as Parameters<
-		typeof FromJsonConfig.buildFromJson
-	>;
-	return options.resolveTool;
-}
-
 describe('AgentRuntimeReconstructionService — per-user tool filtering', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
 		Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
-		Container.set(WorkflowRunner, mock<WorkflowRunner>());
 	});
 
 	afterEach(() => {
@@ -206,22 +176,6 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
 	});
-
-	it.each(['test', 'production'] as const)(
-		'passes the %s run type to workflow tool resolution',
-		async (runType) => {
-			const { service, workflowLoader } = makeService({});
-			const entity = makeAgentEntity([workflowTool]);
-
-			await service.reconstructFromAgentEntity(entity, mock<CredentialProvider>(), runType);
-			await toolResolverPassedToBuildFromJson()?.(workflowTool);
-
-			expect(resolveWorkflowToolMock).toHaveBeenCalledWith(
-				workflowTool,
-				expect.objectContaining({ projectId, runType, workflowLoader }),
-			);
-		},
-	);
 
 	it('drops node and workflow tools for a user without workflow:execute, keeps custom tools', async () => {
 		vi.mocked(userHasScopes).mockResolvedValue(false);

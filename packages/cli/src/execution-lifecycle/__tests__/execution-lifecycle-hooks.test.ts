@@ -1720,17 +1720,6 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(payload.workflowData).toBeDefined();
 			});
 
-			it('should write run data for agent executions so the caller can read it', async () => {
-				workflowData.settings = { saveDataSuccessExecution: 'none' };
-				const lifecycleHooks = createHooks('agent');
-
-				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
-
-				const payload = getUpdatePayload();
-				expect(payload.data).toBeDefined();
-				expect(payload.workflowData).toBeDefined();
-			});
-
 			it('should write run data for manual executions so the editor can read it back', async () => {
 				workflowData.settings = { saveDataSuccessExecution: 'none' };
 				const lifecycleHooks = createHooks('manual');

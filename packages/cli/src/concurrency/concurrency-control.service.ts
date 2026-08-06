@@ -243,7 +243,6 @@ export class ConcurrencyControlService {
 	 */
 	private getQueue(mode: WorkflowExecuteMode) {
 		if (
-			mode === 'agent' ||
 			mode === 'error' ||
 			mode === 'integrated' ||
 			mode === 'cli' ||

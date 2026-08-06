@@ -13,7 +13,7 @@ import {
 } from '../../types';
 import type { JSONValue } from '../../types/utils/json';
 import { fixSchema } from '../../utils/json-schema';
-import { isZodSchema, zodToJsonSchema } from '../../utils/zod';
+import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
 import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
 
@@ -80,8 +80,7 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
 			// Responses otherwise normalizes omitted strict schemas and makes optional MCP fields required.
 			const strict = t.mcpTool ? false : undefined;
-			const isZodInputSchema = isZodSchema(t.inputSchema);
-			if (isZodInputSchema && !t.handlerValidatesInput) {
+			if (isZodSchema(t.inputSchema)) {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: t.inputSchema,
@@ -89,11 +88,9 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 					strict,
 				});
 			} else {
-				const inputSchema = isZodInputSchema ? zodToJsonSchema(t.inputSchema) : t.inputSchema;
-				if (!inputSchema) throw new Error(`Could not convert input schema for tool "${t.name}"`);
 				result[t.name] = ai.tool({
 					description: t.description,
-					inputSchema: ai.jsonSchema(fixSchema(inputSchema)),
+					inputSchema: ai.jsonSchema(fixSchema(t.inputSchema)),
 					providerOptions,
 					strict,
 				});

@@ -3,7 +3,6 @@ import type { BuiltTool } from '@n8n/agents';
 export interface ToolRegistryEntry {
 	kind: 'tool' | 'workflow' | 'node';
 	workflowId?: string;
-	workflowVersionId?: string;
 	workflowName?: string;
 	triggerType?: string;
 	nodeType?: string;
@@ -41,9 +40,6 @@ export function buildToolRegistry(tools: BuiltTool[]): ToolRegistry {
 			};
 			if (typeof m.triggerType === 'string') {
 				entry.triggerType = m.triggerType;
-			}
-			if (typeof m.workflowVersionId === 'string') {
-				entry.workflowVersionId = m.workflowVersionId;
 			}
 			registry.set(tool.name, entry);
 		} else if (m !== undefined && m.kind === 'node' && typeof m.nodeType === 'string') {

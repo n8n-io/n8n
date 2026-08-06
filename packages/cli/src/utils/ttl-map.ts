@@ -19,12 +19,10 @@ export class TtlMap<K, V> {
 	 * @param ttlMs          Time-to-live for each entry in milliseconds.
 	 * @param sweepIntervalMs How often to run the background sweep (defaults to `ttlMs`).
 	 *                        Set to `0` to disable the background sweep entirely.
-	 * @param onExpire       Called after an expired entry is removed.
 	 */
 	constructor(
 		private readonly ttlMs: number,
 		sweepIntervalMs: number = ttlMs,
-		private readonly onExpire?: (key: K, value: V) => void,
 	) {
 		if (sweepIntervalMs > 0) {
 			this.sweepTimer = setInterval(() => this.sweep(), sweepIntervalMs).unref();
@@ -40,17 +38,18 @@ export class TtlMap<K, V> {
 		const entry = this.store.get(key);
 		if (!entry) return undefined;
 		if (Date.now() > entry.expiresAt) {
-			this.expire(key, entry);
+			this.store.delete(key);
 			return undefined;
 		}
 		return entry.value;
 	}
 
 	has(key: K): boolean {
-		const entry = this.store.get(key);
-		if (!entry) return false;
-		if (Date.now() > entry.expiresAt) {
-			this.expire(key, entry);
+		if (!this.store.has(key)) return false;
+		const expiresAt = this.store.get(key)?.expiresAt;
+		if (!expiresAt) return false;
+		if (Date.now() > expiresAt) {
+			this.store.delete(key);
 			return false;
 		}
 		return true;
@@ -96,14 +95,8 @@ export class TtlMap<K, V> {
 		const now = Date.now();
 		for (const [key, entry] of this.store) {
 			if (now > entry.expiresAt) {
-				this.expire(key, entry);
+				this.store.delete(key);
 			}
-		}
-	}
-
-	private expire(key: K, entry: { value: V; expiresAt: number }): void {
-		if (this.store.delete(key)) {
-			this.onExpire?.(key, entry.value);
 		}
 	}
 
