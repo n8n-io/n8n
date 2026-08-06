@@ -408,30 +408,6 @@ export class SlackManagedSetupService {
 			throw this.methods.slackError('update the Slack app', updateResponse);
 		}
 
-		const installResponse = await this.callManagerSlackApi(manager, 'apps.managedInstall', {
-			app_id: bot.managedAppId,
-			team_id: bot.teamId,
-			bot_scopes: SLACK_BOT_SCOPES.join(','),
-		});
-		if (installResponse.ok !== true) {
-			throw this.methods.slackError('reinstall the Slack app', installResponse);
-		}
-
-		const botAccessToken = stringProperty(
-			childRecord(installResponse, 'api_access_tokens'),
-			'bot_access_token',
-		);
-		if (botAccessToken?.startsWith('xoxb-')) {
-			const updatedData = { ...bot.rawData, accessToken: botAccessToken };
-			const encrypted = await this.credentialsService.createEncryptedData({
-				id: bot.credential.id,
-				name: bot.credential.name,
-				type: bot.credential.type,
-				data: updatedData,
-			});
-			await this.credentialsService.update(bot.credential.id, encrypted, updatedData);
-		}
-
 		return this.managedAppSettingsFromManifest(
 			options.credentialId,
 			bot.managedAppId,

@@ -1142,7 +1142,7 @@ describe('Slack setup services', () => {
 		expect(fetchParams(requestMock, 0).get('app_id')).toBe('A123');
 	});
 
-	it('updates the live manifest, reinstalls the app, and refreshes the bot token', async () => {
+	it('updates the live manifest', async () => {
 		credentialsOverwrites.getOverwrites.mockReturnValue({
 			clientId: 'client',
 			clientSecret: 'secret',
@@ -1199,14 +1199,7 @@ describe('Slack setup services', () => {
 		};
 		requestMock
 			.mockResolvedValueOnce(slackResponse({ ok: true, manifest }))
-			.mockResolvedValueOnce(slackResponse({ ok: true }))
-			.mockResolvedValueOnce(
-				slackResponse({
-					ok: true,
-					api_access_tokens: { bot_access_token: 'xoxb-refreshed' },
-				}),
-			);
-		credentialsService.createEncryptedData.mockResolvedValue({ data: 'encrypted' } as never);
+			.mockResolvedValueOnce(slackResponse({ ok: true }));
 
 		await expect(
 			service.updateManagedAppSettings({
@@ -1242,15 +1235,8 @@ describe('Slack setup services', () => {
 			always_online: false,
 		});
 		expect(updatedManifest.settings).toEqual({ socket_mode_enabled: false });
-		expect(fetchParams(requestMock, 2).get('team_id')).toBe('T123');
-		expect(credentialsService.update).toHaveBeenCalledWith(
-			'bot-credential',
-			{ data: 'encrypted' },
-			expect.objectContaining({
-				accessToken: 'xoxb-refreshed',
-				signatureSecret: 'signing-secret',
-			}),
-		);
+		expect(credentialsService.createEncryptedData).not.toHaveBeenCalled();
+		expect(credentialsService.update).not.toHaveBeenCalled();
 	});
 
 	it('rejects settings access for an unmanaged Slack credential', async () => {

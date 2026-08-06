@@ -70,6 +70,7 @@ const {
 	isConfigured: isIntegrationConfigured,
 	connect,
 	disconnect,
+	clearError: clearIntegrationError,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
 const currentView = ref<ChannelView>(props.view);
@@ -128,6 +129,25 @@ const {
 	connectedCredentials,
 	fetchStatus,
 });
+
+watch(
+	() => {
+		const type = selectedChannelType.value;
+		return {
+			type,
+			credentialId: type ? selectedCredentials.value[type] : undefined,
+		};
+	},
+	(current, previous) => {
+		if (
+			current.type &&
+			current.type === previous.type &&
+			current.credentialId !== previous.credentialId
+		) {
+			clearIntegrationError(current.type);
+		}
+	},
+);
 
 const projectIdRef = computed(() => props.projectId);
 const agentIdRef = computed(() => props.agentId);
@@ -210,7 +230,9 @@ function clearFailedCredentialReplacement() {
 function prepareChannelEdit(channelType: string | null) {
 	credentialReplacementError.value = false;
 	captureConnectedCredential(channelType);
-	if (channelType && credentialIdAtEditOpen.value) {
+	if (!channelType) return;
+	clearIntegrationError(channelType);
+	if (credentialIdAtEditOpen.value) {
 		selectedCredentials.value[channelType] = credentialIdAtEditOpen.value;
 	}
 }
@@ -285,6 +307,7 @@ function connectAction(channelType: string) {
 }
 
 function goToSetup(channelType: string) {
+	clearIntegrationError(channelType);
 	currentView.value = `${channelType}_setup`;
 }
 

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 	fetchStatus: vi.fn(),
 	beforeSave: vi.fn(),
 	ensureAgentPersisted: vi.fn(),
+	clearError: vi.fn(),
 	showMessage: vi.fn(),
 	showError: vi.fn(),
 }));
@@ -140,6 +141,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 			['configured', 'connected'].includes(statuses.value[type] ?? 'disconnected'),
 		connect: mocks.connect,
 		disconnect: mocks.disconnect,
+		clearError: mocks.clearError,
 	}),
 }));
 
@@ -293,6 +295,30 @@ describe('AgentChannelModal', () => {
 			mocks.connect.mock.invocationCallOrder[0],
 		);
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('clears a stale integration error when the edit modal reopens', async () => {
+		connectedCredentials.value.example = 'credential-old';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+		mocks.clearError.mockClear();
+
+		await wrapper.setProps({ open: false });
+		await wrapper.setProps({ open: true });
+		await flushPromises();
+
+		expect(mocks.clearError).toHaveBeenCalledWith('example');
+	});
+
+	it('clears a stale integration error when the selected credential changes', async () => {
+		connectedCredentials.value.example = 'credential-old';
+		const wrapper = mountModal('example_edit');
+		await flushPromises();
+		mocks.clearError.mockClear();
+
+		await wrapper.get('[data-testid="select-credential"]').trigger('click');
+
+		expect(mocks.clearError).toHaveBeenCalledWith('example');
 	});
 
 	it('connects a replacement before disconnecting the original credential', async () => {

@@ -184,6 +184,11 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		return ['configured', 'connected'].includes(state.statuses.value[type]);
 	}
 
+	function clearError(type: string): void {
+		state.errorMessages.value[type] = '';
+		state.errorIsConflict.value[type] = false;
+	}
+
 	return {
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
@@ -194,6 +199,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		fetchStatus,
 		connect,
 		disconnect,
+		clearError,
 		isConnected,
 		isConfigured,
 	};
