@@ -147,9 +147,9 @@ again.
    when the latest verification evidence used mocks or simulations. If this
    follow-up is due, ask only that question now; do not also ask about the error
    workflow in the same response.
-7. Ask the user if they want to test the workflow (skip this if
-   `verify-built-workflow` already proved it works end-to-end with full
-   coverage).
+7. If testing has not already been offered or completed, ask whether the user
+   wants to test the workflow. Skip this if `verify-built-workflow` already
+   proved it works end-to-end with full coverage.
 8. Only call `workflows(action="publish")` when the user explicitly asks to
    publish. Never publish automatically.
 9. After a direct new primary workflow is successfully published, follow
