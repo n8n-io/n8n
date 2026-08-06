@@ -4,9 +4,10 @@ import { ValidCodexCategoriesRule } from './valid-codex-categories.js';
 
 const ruleTester = new RuleTester();
 
-function createNodeCode(codex: string): string {
+function createNodeCode(codex: string, outputs: string = '[]'): string {
 	return `
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 export class TestNode implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,7 +18,7 @@ export class TestNode implements INodeType {
 		description: 'A test node',
 		defaults: { name: 'Test Node' },
 		inputs: [],
-		outputs: [],
+		outputs: ${outputs},
 		${codex}
 		properties: [],
 	};
@@ -74,6 +75,42 @@ ruleTester.run('valid-codex-categories', ValidCodexCategoriesRule, {
 				AI: ['Agents', 'Tools'],
 			},
 		},`),
+		},
+		{
+			name: 'AI node usable as a standalone step correctly marked as a Root Node',
+			code: createNodeCode(
+				`codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Agents', 'Root Nodes'],
+			},
+		},`,
+				"['main']",
+			),
+		},
+		{
+			name: 'AI sub-node with an AI-specific output does not need Root Nodes',
+			code: createNodeCode(
+				`codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Output Parsers'],
+			},
+		},`,
+				'[NodeConnectionTypes.AiOutputParser]',
+			),
+		},
+		{
+			name: 'AI node with a dynamic/computed outputs expression is not checked',
+			code: createNodeCode(
+				`codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Output Parsers'],
+			},
+		},`,
+				"someExpression() ? ['main'] : [NodeConnectionTypes.AiTool]",
+			),
 		},
 		{
 			name: 'non-node file ignored',
@@ -183,6 +220,52 @@ ruleTester.run('valid-codex-categories', ValidCodexCategoriesRule, {
 			categories: ['Core Nodes'],
 			subcategories: ['Helpers'],
 		},`),
+			errors: [
+				{
+					messageId: 'invalidSubcategoriesShape',
+				},
+			],
+		},
+		{
+			name: 'AI node usable as a standalone step with no subcategories declared at all',
+			code: createNodeCode(
+				`codex: {
+			categories: ['AI'],
+		},`,
+				"['main']",
+			),
+			errors: [
+				{
+					messageId: 'aiCategoryWithoutRootNodes',
+				},
+			],
+		},
+		{
+			name: 'AI node usable as a standalone step whose AI subcategories omit Root Nodes',
+			code: createNodeCode(
+				`codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Tools'],
+			},
+		},`,
+				"['main']",
+			),
+			errors: [
+				{
+					messageId: 'aiCategoryWithoutRootNodes',
+				},
+			],
+		},
+		{
+			name: 'invalid subcategories shape is reported without a spurious Root Nodes error',
+			code: createNodeCode(
+				`codex: {
+			categories: ['AI'],
+			subcategories: ['Helpers'],
+		},`,
+				"['main']",
+			),
 			errors: [
 				{
 					messageId: 'invalidSubcategoriesShape',

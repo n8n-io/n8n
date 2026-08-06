@@ -24,14 +24,24 @@ This rule flags:
   subcategory value.
 - `codex.subcategories` declared as a plain array instead of a map of
   category name to subcategory array.
+- A node categorized `'AI'` that also outputs `main` data (i.e. it's usable
+  as a standalone step, not just as an AI sub-node) without `'Root Nodes'` in
+  `subcategories.AI`. n8n's node panel only shows `'AI'`-categorized nodes in
+  the main "Add node" search when they're marked `'Root Nodes'` — every other
+  `'AI'`-categorized node is filtered out of that search, regardless of
+  whether its subcategory values are otherwise valid. This is the exact
+  failure mode a strings-only taxonomy check can't catch: a node can use
+  100% recognized subcategory values and still be silently hidden from
+  search if it's missing this specific pairing.
 
 When a flagged value is a close match to a known one, the rule offers a "did
 you mean" suggestion fix.
 
-This rule does not check that a subcategory is nested under its "correct"
-category (e.g. it won't flag `subcategories: { 'Core Nodes': ['Agents'] }`
-even though `'Agents'` is an AI subcategory) — only that every value used is
-part of the known taxonomy somewhere.
+Other than the `'AI'` + `main` output + `'Root Nodes'` pairing above, this
+rule does not check that a subcategory is nested under its "correct" category
+(e.g. it won't flag `subcategories: { 'Core Nodes': ['Agents'] }` even though
+`'Agents'` is an AI subcategory) — only that every value used is part of the
+known taxonomy somewhere.
 
 ## Examples
 
@@ -63,6 +73,21 @@ export class MyNode implements INodeType {
 }
 ```
 
+```typescript
+export class MyNode implements INodeType {
+  description: INodeTypeDescription = {
+    /* ... */
+    outputs: ['main'], // usable as a standalone step
+    codex: {
+      categories: ['AI'],
+      subcategories: {
+        AI: ['Tools'], // missing 'Root Nodes' -> hidden from the main search
+      },
+    },
+  };
+}
+```
+
 ### ✅ Correct
 
 ```typescript
@@ -73,6 +98,21 @@ export class MyNode implements INodeType {
       categories: ['AI'],
       subcategories: {
         AI: ['Agents', 'Tools'],
+      },
+    },
+  };
+}
+```
+
+```typescript
+export class MyNode implements INodeType {
+  description: INodeTypeDescription = {
+    /* ... */
+    outputs: ['main'], // usable as a standalone step
+    codex: {
+      categories: ['AI'],
+      subcategories: {
+        AI: ['Tools', 'Root Nodes'], // marked as a Root Node -> visible in main search
       },
     },
   };
