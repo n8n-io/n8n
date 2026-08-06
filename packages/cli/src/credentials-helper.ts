@@ -531,17 +531,22 @@ export class CredentialsHelper extends ICredentialsHelper {
 		let decryptedDataOriginal = await credentials.getData();
 
 		// In manual or internal mode (or when the root execution is manual, e.g. a subworkflow
-		// called from a manual parent), skip dynamic resolution unless a credentials context is
-		// present (set by webhook triggers with an identity extractor). Canvas node tests
-		// have no incoming request, so we fall back to static data for easier developer
-		// testing. Internal mode is used by OAuth authorize/revoke flows which are not
-		// actual workflow executions and should not trigger dynamic resolution.
+		// called from a manual parent), skip dynamic resolution unless a credentials context or
+		// a verified claim is present (set by webhook triggers with an identity extractor, or by
+		// inbound claim verification respectively — a claim-only execution never populates
+		// `credentials`). Canvas node tests have no incoming request, so we fall back to static
+		// data for easier developer testing. Internal mode is used by OAuth authorize/revoke
+		// flows which are not actual workflow executions and should not trigger dynamic resolution.
 		// For all other modes (especially production), always attempt resolution —
 		// missing credentials will surface an error rather than silently falling back to
 		// static data.
 		const effectiveMode = additionalData.rootExecutionMode ?? mode;
 		const skipDynamicResolution = effectiveMode === 'manual' || effectiveMode === 'internal';
-		if (additionalData.executionContext?.credentials !== undefined || !skipDynamicResolution) {
+		if (
+			additionalData.executionContext?.credentials !== undefined ||
+			additionalData.executionContext?.claims !== undefined ||
+			!skipDynamicResolution
+		) {
 			// Mark that this execution attempted to run with a private credential before
 			// resolution is attempted, so the flag survives even when resolution throws
 			// (e.g. the running user has not connected the credential). Telemetry-only;

@@ -131,7 +131,7 @@ describe('toVerifiedClaim', () => {
 		expect(parsed).toEqual(baseClaim);
 	});
 
-	it.each(['sourceId', 'subject', 'audience', 'expiresAt', 'boundWorkflowId'])(
+	it.each(['sourceId', 'issuer', 'subject', 'audience', 'expiresAt', 'boundWorkflowId'])(
 		'rejects a claim missing %s',
 		(field) => {
 			const invalid: Record<string, unknown> = { ...baseClaim };
