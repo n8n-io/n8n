@@ -1,7 +1,12 @@
 import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { UserError, type N8nOAuth2FlowResult } from 'n8n-workflow';
+import {
+	N8N_OAUTH2_INTENT_KEY,
+	UserError,
+	type N8nOAuth2FlowResult,
+	type N8nOAuth2NavigationIntent,
+} from 'n8n-workflow';
 import { createHash, randomBytes } from 'node:crypto';
 import pkceChallenge from 'pkce-challenge';
 
@@ -60,6 +65,19 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		url.searchParams.set('code_challenge_method', 'S256');
 		url.searchParams.set('state', state);
 		return url.toString();
+	}
+
+	/**
+	 * How the request that started this flow was initiated, as recorded server-side
+	 * when it began. Read without consuming the state — `complete` still needs it.
+	 *
+	 * Returns `undefined` for a `state` that isn't one of ours (a third-party client's
+	 * own `state`, or an expired flow), which callers must treat as "unknown".
+	 */
+	async getNavigationIntent(state: string): Promise<N8nOAuth2NavigationIntent | undefined> {
+		const flow = await this.cacheService.get<FlowState>(FLOW_STATE_PREFIX + state);
+		const intent = flow?.metadata?.[N8N_OAUTH2_INTENT_KEY];
+		return intent === 'user-navigation' || intent === 'unknown' ? intent : undefined;
 	}
 
 	/**

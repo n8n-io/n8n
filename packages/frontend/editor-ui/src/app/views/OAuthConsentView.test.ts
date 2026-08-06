@@ -155,6 +155,67 @@ describe('OAuthConsentView', () => {
 		expect(window.location.href).toBe(redirectUrl);
 	});
 
+	// The server only sets this for n8n's own triggers, when the user already granted
+	// this exact consent and a human navigated there — so re-asking is noise.
+	describe('when the server marks the grant as silently approvable', () => {
+		const redirectUrl = 'https://legitimate-client.com/callback?code=silent';
+
+		const withSilentApproval = (extra: Record<string, unknown> = {}) => {
+			const details = {
+				clientName: 'My Workflow',
+				clientId: 'https://n8n.example.com/webhook/abc?method=GET',
+				resourceName: 'My Workflow',
+				scopes: [],
+				silentApproval: true,
+				...extra,
+			};
+			consentStore.consentDetails = details;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = details;
+				return details;
+			});
+			consentStore.approveConsent.mockResolvedValue({ status: 'approved', redirectUrl });
+		};
+
+		it('should complete the flow without rendering the consent prompt', async () => {
+			withSilentApproval();
+
+			const { queryByTestId, getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(consentStore.approveConsent).toHaveBeenCalledWith(true, undefined);
+			expect(window.location.href).toBe(redirectUrl);
+			// Never shows Allow/Deny — the user sees only the "connecting" screen.
+			expect(queryByTestId('consent-allow-button')).toBeNull();
+			expect(queryByTestId('consent-deny-button')).toBeNull();
+			expect(getByTestId('consent-success-screen')).toBeVisible();
+		});
+
+		// Scopes come from the server's record of the earlier grant, not from the picker,
+		// whose watcher may not have flushed by the time we auto-approve.
+		it('should re-grant the previously granted scopes', async () => {
+			withSilentApproval({
+				scopes: ['workflow:read', 'workflow:write'],
+				previousScopes: ['workflow:read'],
+			});
+
+			renderComponent();
+			await waitAllPromises();
+
+			expect(consentStore.approveConsent).toHaveBeenCalledWith(true, ['workflow:read']);
+		});
+
+		it('should render the prompt as usual when the server does not mark it', async () => {
+			withSilentApproval({ silentApproval: undefined });
+
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(consentStore.approveConsent).not.toHaveBeenCalled();
+			expect(getByTestId('consent-allow-button')).toBeVisible();
+		});
+	});
+
 	it('should disable the allow button until the redirect URL is acknowledged', async () => {
 		const { getByTestId, getByLabelText } = renderComponent();
 		await waitAllPromises();

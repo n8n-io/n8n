@@ -1110,12 +1110,33 @@ describe('FormTrigger, formWebhook', () => {
 
 			const result = await formWebhook(ctx);
 
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { intent: 'unknown' });
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=abc',
 			});
 			expect(end).toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		// Lets the consent step skip re-prompting a returning user; a mock with no fetch
+		// metadata stays 'unknown', which keeps the prompt.
+		it('records a clicked link as a user navigation for the consent step', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			setupContext(ctx, {
+				method: 'GET',
+				headers: {
+					'sec-fetch-mode': 'navigate',
+					'sec-fetch-site': 'cross-site',
+					'sec-fetch-user': '?1',
+				},
+			});
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=abc');
+
+			await formWebhook(ctx);
+
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, {
+				intent: 'user-navigation',
+			});
 		});
 
 		it('responds 403 without restarting the flow when consent is denied', async () => {
@@ -1145,7 +1166,7 @@ describe('FormTrigger, formWebhook', () => {
 			const result = await formWebhook(ctx);
 
 			expect(ctx.completeN8nOAuth2Flow).toHaveBeenCalledWith('the-code', 'the-state');
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { intent: 'unknown' });
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=fresh',
 			});
@@ -1190,7 +1211,10 @@ describe('FormTrigger, formWebhook', () => {
 
 			const result = await formWebhook(ctx);
 
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar' });
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, {
+				query: 'foo=bar',
+				intent: 'unknown',
+			});
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=abc',
 			});
@@ -1211,7 +1235,10 @@ describe('FormTrigger, formWebhook', () => {
 			await formWebhook(ctx);
 
 			expect(ctx.completeN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { query: 'foo=bar&code=x' });
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, {
+				query: 'foo=bar&code=x',
+				intent: 'unknown',
+			});
 		});
 
 		it('re-appends the query stashed as flow metadata on a valid callback', async () => {
@@ -1245,7 +1272,7 @@ describe('FormTrigger, formWebhook', () => {
 
 			await formWebhook(ctx);
 
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { intent: 'unknown' });
 		});
 
 		it('renders the form on the clean GET carrying the oauth cookie', async () => {
@@ -1280,7 +1307,7 @@ describe('FormTrigger, formWebhook', () => {
 			const result = await formWebhook(ctx);
 
 			expect(ctx.validateN8nOAuth2Token).toHaveBeenCalledWith('stale-token', resourceUrl);
-			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, undefined);
+			expect(ctx.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl, { intent: 'unknown' });
 			expect(writeHead).toHaveBeenCalledWith(302, {
 				Location: 'http://localhost:5678/oauth/authorize?state=fresh',
 			});
