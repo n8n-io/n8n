@@ -31,6 +31,12 @@ if (NODE_ENV === 'development') {
 	process.env.VUE_APP_URL_BASE_API ??= `http://localhost:${devBackendPort}/`;
 }
 
+// Fail fast on a malformed port rather than silently starting on 8080.
+const editorPort = Number(process.env.N8N_EDITOR_PORT ?? 8080);
+if (!Number.isInteger(editorPort) || editorPort < 1 || editorPort > 65535) {
+	throw new Error(`N8N_EDITOR_PORT must be a port number, got: ${process.env.N8N_EDITOR_PORT}`);
+}
+
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
@@ -168,7 +174,7 @@ export default defineConfig({
 	server: {
 		host: '0.0.0.0',
 		// The editor's own dev port; N8N_PORT above is where the backend lives.
-		port: Number(process.env.N8N_EDITOR_PORT ?? 8080),
+		port: editorPort,
 		strictPort: true,
 	},
 	define: {
