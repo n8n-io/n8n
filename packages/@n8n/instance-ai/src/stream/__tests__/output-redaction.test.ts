@@ -265,6 +265,37 @@ describe('OutputRedactor', () => {
 		expect(event.payload.targetApproval?.args).toEqual({ recipient: 'jane@example.com' });
 	});
 
+	it('withholds target approval args nested beyond the redaction depth limit', () => {
+		const redactor = createRedactor();
+		const secret = 'Bearer abcdef1234567890';
+		let nested: unknown = { secret };
+		for (let depth = 0; depth < 9; depth++) nested = { nested };
+		const event: InstanceAiEvent = {
+			type: 'confirmation-request',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				requestId: 'req-1',
+				toolCallId: 'tc-1',
+				toolName: 'call_agent',
+				args: {},
+				severity: 'warning',
+				message: 'Confirm action',
+				targetApproval: {
+					toolName: 'deep_action',
+					args: { visible: 'ordinary value', nested },
+				},
+			},
+		};
+
+		const [out] = redactor.processEvent(event);
+		if (out.type !== 'confirmation-request') throw new Error('Expected confirmation request');
+		const serializedArgs = JSON.stringify(out.payload.targetApproval?.args);
+		expect(serializedArgs).not.toContain(secret);
+		expect(serializedArgs).toContain('[REDACTED]');
+		expect(out.payload.targetApproval?.args).toMatchObject({ visible: 'ordinary value' });
+	});
+
 	it('logs a filtering summary with category counts and no values', () => {
 		const logger = createLogger();
 		const redactor = createRedactor(logger, { secrets: true, detect: ['email'] });

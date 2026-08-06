@@ -35,6 +35,23 @@ interface OutputRedactorContext {
 	options?: RedactionOptions | false;
 }
 
+const MAX_TARGET_APPROVAL_ARG_DEPTH = 8;
+const WITHHELD_TARGET_APPROVAL_ARG = '[REDACTED]';
+
+function withholdDeepTargetApprovalArgs(value: unknown, depth = 0): unknown {
+	if (value === null || typeof value !== 'object') return value;
+	if (depth >= MAX_TARGET_APPROVAL_ARG_DEPTH) return WITHHELD_TARGET_APPROVAL_ARG;
+	if (Array.isArray(value)) {
+		return value.map((item) => withholdDeepTargetApprovalArgs(item, depth + 1));
+	}
+	return Object.fromEntries(
+		Object.entries(value).map(([key, item]) => [
+			key,
+			withholdDeepTargetApprovalArgs(item, depth + 1),
+		]),
+	);
+}
+
 type DeltaType = 'text-delta' | 'reasoning-delta';
 
 interface Channel {
@@ -209,7 +226,8 @@ export class OutputRedactor {
 		}));
 		let targetApproval = payload.targetApproval;
 		if (targetApproval) {
-			const { value, matches } = redactDeep(targetApproval.args, this.options);
+			const boundedArgs = withholdDeepTargetApprovalArgs(targetApproval.args);
+			const { value, matches } = redactDeep(boundedArgs, this.options);
 			this.recordMatches(matches);
 			targetApproval = {
 				...targetApproval,
