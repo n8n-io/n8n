@@ -1,4 +1,5 @@
 import type { AgentJsonConfig, AgentSkill, EvaluationConfigDto } from '@n8n/api-types';
+import { jsonParse } from 'n8n-workflow';
 
 import {
 	N8nClient,
@@ -19,9 +20,17 @@ function jsonResponse(body: unknown): Response {
 	} as unknown as Response;
 }
 
+/** Reads back what the client sent — its request bodies are always JSON strings. */
+function sentBody(init: RequestInit | undefined): { timeoutMs?: number } {
+	const body = init?.body;
+	return typeof body === 'string' ? jsonParse<{ timeoutMs?: number }>(body) : {};
+}
+
 /** Stubs `global.fetch` to return `body` for any request, and returns the mock for assertions. */
 function stubFetch(body: unknown) {
-	const fetchMock = vi.fn(async () => await Promise.resolve(jsonResponse(body)));
+	const fetchMock = vi.fn(
+		async (_url: string | URL, _init?: RequestInit) => await Promise.resolve(jsonResponse(body)),
+	);
 	vi.stubGlobal('fetch', fetchMock);
 	return fetchMock;
 }
@@ -69,6 +78,59 @@ describe('N8nClient — TRUST-229 artifact fetch methods', () => {
 				expect.objectContaining({ method: 'GET' }),
 			);
 			expect(result).toEqual(skills);
+		});
+	});
+
+	// undici's own timeouts are disabled process-wide, so an unsignalled request
+	// hangs forever against a lane that stops answering.
+	describe('request bound', () => {
+		it('applies the default floor to a call that passes no budget', async () => {
+			const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+			const fetchMock = stubFetch({ data: { id: 'proj-1' } });
+			const client = new N8nClient(BASE_URL);
+
+			await client.getPersonalProjectId();
+
+			expect(timeoutSpy).toHaveBeenCalledWith(120_000);
+			expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
+		});
+
+		it("honours a caller's own budget instead of capping it at the floor", async () => {
+			const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+			const fetchMock = stubFetch({ data: { success: true, nodeResults: {}, errors: [] } });
+			const client = new N8nClient(BASE_URL);
+
+			await client.executeWithLlmMock('wf-1', undefined, 900_000);
+
+			expect(timeoutSpy).toHaveBeenCalledWith(900_000);
+			expect(timeoutSpy).not.toHaveBeenCalledWith(120_000);
+			// Server gives up first, so the caller gets an in-band error.
+			expect(sentBody(fetchMock.mock.calls[0][1]).timeoutMs).toBe(895_000);
+		});
+
+		it('does not truncate a complex case budget when forwarding it', async () => {
+			const fetchMock = stubFetch({ data: {} });
+			const client = new N8nClient(BASE_URL);
+
+			// 1350s = the 1.5x budget a `complex` case carries.
+			await client.executeWithLlmMock('wf-1', undefined, 1_350_000);
+			await client.executeAgentWithLlmMock('agent-1', 'proj-1', undefined, 1_350_000);
+
+			for (const call of fetchMock.mock.calls) {
+				expect(sentBody(call[1]).timeoutMs).toBe(1_345_000);
+			}
+		});
+
+		it('gives bulk thread restore its own larger budget', async () => {
+			const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+			stubFetch({
+				data: { ok: true, threadId: 't-1', restored: 0, workflowIds: [], dataTableIds: [] },
+			});
+			const client = new N8nClient(BASE_URL);
+
+			await client.restoreThread('t-1', [], []);
+
+			expect(timeoutSpy).toHaveBeenCalledWith(300_000);
 		});
 	});
 
