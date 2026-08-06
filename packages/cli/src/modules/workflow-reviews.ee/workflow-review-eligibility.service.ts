@@ -69,8 +69,8 @@ export class WorkflowReviewEligibilityService {
 	 */
 	async resolveViewerEligibility(
 		user: User,
-		// One object from the read gate, so `canReadPinnedWorkflow` cannot be passed for a
-		// different workflow, request or user than the one it was resolved against.
+		// Taken whole from the read gate: passing these separately would allow
+		// `canReadPinnedWorkflow` to describe a different workflow, request or user.
 		access: Pick<
 			ReadableWorkflowReviewRequest,
 			'request' | 'pinnedWorkflowId' | 'canReadPinnedWorkflow'

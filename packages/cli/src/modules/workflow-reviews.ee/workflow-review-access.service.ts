@@ -22,9 +22,9 @@ export interface ReadableWorkflowReviewRequest {
 }
 
 /**
- * The read gate for a single review, shared by every feature that hangs off one.
- * Kept out of the inbox service so a caller only needs the ACL, not the inbox's
- * workflow-history and published-version dependencies.
+ * The read gate for a single review: whether the caller may see it at all, and which of its
+ * covered workflows they may currently read. Every feature hanging off a review passes
+ * through here before doing anything else.
  */
 @Service()
 export class WorkflowReviewAccessService {
@@ -32,8 +32,8 @@ export class WorkflowReviewAccessService {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly projectService: ProjectService,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
-		// The gate owns the linked-workflow query. If a caller supplied the rows instead,
-		// the readable-rows narrowing would become per-caller optional.
+		// Read the linked rows here, never from a parameter: rows passed in would make the
+		// readable-rows narrowing optional per caller.
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 	) {}
 
