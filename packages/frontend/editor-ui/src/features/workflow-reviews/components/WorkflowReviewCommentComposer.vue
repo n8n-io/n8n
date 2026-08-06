@@ -20,7 +20,11 @@ const draft = ref('');
 // The full condition, not just `posting`: N8nChatInput uses `submitDisabled ?? …`,
 // so a bare `false` would replace its own empty/over-limit/disabled gate.
 const submitDisabled = computed(
-	() => posting.value || draft.value.trim().length === 0 || !props.canComment,
+	() =>
+		posting.value ||
+		draft.value.trim().length === 0 ||
+		draft.value.length > WORKFLOW_REVIEW_COMMENT_MAX_LENGTH ||
+		!props.canComment,
 );
 
 async function onSubmit() {
