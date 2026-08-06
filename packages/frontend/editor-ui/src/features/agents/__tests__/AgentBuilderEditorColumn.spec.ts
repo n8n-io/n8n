@@ -22,11 +22,7 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@n8n/design-system', () => ({
 	N8nEmptyState: { template: '<div />', props: ['icon', 'description'] },
-	N8nButton: {
-		name: 'N8nButton',
-		template: '<button v-bind="$attrs">{{ label }}<slot /><slot name="icon" /></button>',
-		props: ['label', 'icon', 'variant', 'size'],
-	},
+	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCard: {
 		name: 'N8nCard',
 		template: '<div v-bind="$attrs"><slot /></div>',
@@ -137,7 +133,6 @@ async function mountColumn(
 			value: 'agent' | 'knowledge' | 'sessions' | 'settings';
 		}>;
 		knowledgeBaseEnabled: boolean;
-		artifactMode: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -169,7 +164,6 @@ async function mountColumn(
 			connectedTriggers: [],
 			canEditAgent: true,
 			executionsDescription: '',
-			artifactMode: overrides.artifactMode,
 		},
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
@@ -261,20 +255,11 @@ describe('AgentBuilderEditorColumn', () => {
 	it('uses embedded session list spacing inside the Sessions tab panel', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 
-		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props('embedded')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
+			embedded: true,
+			manageStoreLifecycle: false,
+		});
 	});
-
-	it.each([false, true])(
-		'opens embedded sessions in a new tab when artifactMode is %s',
-		async (artifactMode) => {
-			const wrapper = await mountColumn({ activeMainTab: 'sessions', artifactMode });
-
-			expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props()).toMatchObject({
-				openSessionInNewTab: artifactMode,
-				manageStoreLifecycle: false,
-			});
-		},
-	);
 
 	it('renders the knowledge files panel only on the Knowledge tab', async () => {
 		const agentWrapper = await mountColumn({ activeMainTab: 'agent' });

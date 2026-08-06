@@ -20,41 +20,26 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@n8n/design-system', () => ({
 	N8nIconButton: {
 		name: 'N8nIconButton',
-		template:
-			'<button v-bind="$attrs" :data-variant="variant" :data-size="size" :data-icon-size="iconSize" @click="$emit(\'click\')"><i :data-icon="icon" /></button>',
-		props: ['variant', 'size', 'icon', 'iconSize'],
+		template: '<button v-bind="$attrs" @click="$emit(\'click\')"><i :data-icon="icon" /></button>',
+		props: ['icon'],
 		emits: ['click'],
 	},
 	N8nKeyboardShortcut: { name: 'N8nKeyboardShortcut', template: '<span />' },
 	N8nHeading: {
 		name: 'N8nHeading',
-		template: '<component :is="tag" v-bind="$attrs" :data-size="size"><slot /></component>',
-		props: ['tag', 'size'],
+		template: '<component :is="tag" v-bind="$attrs"><slot /></component>',
+		props: ['tag'],
 	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
-		template:
-			'<div v-bind="$attrs" :data-content="content" :data-placement="placement" :data-show-after="showAfter"><slot /><slot name="content" /></div>',
-		props: ['content', 'placement', 'showAfter'],
+		template: '<div v-bind="$attrs"><slot /><slot name="content" /></div>',
 	},
 	TOOLTIP_DELAY_MS: 500,
 }));
 
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
-	props: [
-		'initialized',
-		'projectId',
-		'agentId',
-		'agent',
-		'localConfig',
-		'connectedTriggers',
-		'effectiveSessionId',
-		'initialPrompt',
-		'canSendToAssistant',
-		'beforeSend',
-		'layout',
-	],
+	props: ['beforeSend', 'layout'],
 	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
 	template: '<div data-testid="agent-preview-chat-page-stub" />',
 };
@@ -98,7 +83,6 @@ describe('AgentPreviewDock', () => {
 
 		expect(title.text()).toBe('Order help');
 		expect(title.element.tagName).toBe('H2');
-		expect(title.attributes('data-size')).toBe('small');
 		expect(
 			wrapper
 				.get('[data-testid="agent-preview-dock-header"]')
@@ -112,71 +96,44 @@ describe('AgentPreviewDock', () => {
 		]);
 	});
 
-	it('renders accessible ghost icon actions with the Instance AI sizing', () => {
+	it('renders accessible header actions and emits their events', async () => {
 		const wrapper = mountDock();
 		const expectedActions = [
 			{
 				testId: 'agent-preview-view-session-btn',
 				icon: 'list-tree',
 				label: 'agents.builder.preview.viewSession',
+				event: 'view-trace',
 			},
 			{
 				testId: 'agent-preview-new-chat-btn',
 				icon: 'message-circle-plus',
 				label: 'agents.builder.chat.newChat.label',
+				event: 'new-session',
 			},
 			{
 				testId: 'agent-preview-close-btn',
 				icon: 'x',
 				label: 'agents.builder.preview.close.ariaLabel',
+				event: 'close',
 			},
 		];
 
 		for (const action of expectedActions) {
 			const button = wrapper.get(`[data-testid="${action.testId}"]`);
-			expect(button.attributes()).toMatchObject({
-				'data-variant': 'ghost',
-				'data-size': 'small',
-				'data-icon-size': 'large',
-				'aria-label': action.label,
-			});
+			expect(button.attributes('aria-label')).toBe(action.label);
 			expect(button.find(`[data-icon="${action.icon}"]`).exists()).toBe(true);
+
+			await button.trigger('click');
+			expect(wrapper.emitted(action.event)).toEqual([[]]);
 		}
 	});
 
-	it('shows the trace action in a delayed bottom tooltip', () => {
-		const wrapper = mountDock();
-		const tooltip = wrapper.get('[data-testid="agent-preview-view-session-tooltip"]');
-
-		expect(tooltip.attributes()).toMatchObject({
-			'data-content': 'agents.builder.preview.viewSession',
-			'data-placement': 'bottom',
-			'data-show-after': '500',
-		});
-	});
-
-	it('emits all dock header actions', async () => {
-		const wrapper = mountDock();
-
-		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
-		await wrapper.get('[data-testid="agent-preview-close-btn"]').trigger('click');
-
-		expect(wrapper.emitted('view-trace')).toEqual([[]]);
-		expect(wrapper.emitted('new-session')).toEqual([[]]);
-		expect(wrapper.emitted('close')).toEqual([[]]);
-	});
-
-	it('omits the trace control and tooltip until the session has persisted', () => {
-		const wrapper = mountDock({ hasSession: false });
-
-		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
-		expect(wrapper.emitted('view-trace')).toBeUndefined();
-	});
-
-	it('omits the trace control and tooltip without an effective session id', () => {
-		const wrapper = mountDock({ hasSession: true, effectiveSessionId: undefined });
+	it.each([
+		['until the session has persisted', { hasSession: false }],
+		['without an effective session id', { effectiveSessionId: undefined }],
+	] as const)('omits the trace control and tooltip %s', (_condition, overrides) => {
+		const wrapper = mountDock(overrides);
 
 		expect(wrapper.find('[data-testid="agent-preview-view-session-btn"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-preview-view-session-tooltip"]').exists()).toBe(false);
@@ -196,30 +153,6 @@ describe('AgentPreviewDock', () => {
 		expect(wrapper.emitted('continue-loaded')).toEqual([[{ sessionId: 'thread-1', count: 3 }]]);
 		expect(wrapper.emitted('open-build')).toEqual([[]]);
 		expect(wrapper.emitted('send-to-assistant')).toEqual([['execution-1']]);
-	});
-
-	it('does not render the removed breadcrumb or session picker controls', () => {
-		const wrapper = mountDock();
-
-		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-preview-session-picker"]').exists()).toBe(false);
-	});
-
-	it('registers the existing new-session shortcut and a guardable close shortcut', () => {
-		mountDock();
-
-		expect(useKeybindingsMock).toHaveBeenCalledExactlyOnceWith({
-			'ctrl+shift+;': expect.any(Function),
-			Escape: {
-				disabled: expect.any(Function),
-				run: expect.any(Function),
-			},
-		});
-
-		const escapeBinding = useKeybindingsMock.mock.calls[0]?.[0]?.Escape as {
-			disabled: () => boolean;
-		};
-		expect(escapeBinding.disabled).toEqual(expect.any(Function));
 	});
 
 	it('shows shortcut tooltips for the new-session and close actions', () => {

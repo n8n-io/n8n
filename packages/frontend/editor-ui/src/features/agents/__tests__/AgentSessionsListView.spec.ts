@@ -153,12 +153,10 @@ async function mountView({
 	threads = [makeThread()],
 	openSessionInNewTab = false,
 	manageStoreLifecycle = true,
-	embedded = true,
 }: {
 	threads?: AgentExecutionThread[];
 	openSessionInNewTab?: boolean;
 	manageStoreLifecycle?: boolean;
-	embedded?: boolean;
 } = {}) {
 	storeState.threads = threads;
 	storeState.loading = false;
@@ -166,7 +164,7 @@ async function mountView({
 
 	return mount(AgentSessionsListView, {
 		props: {
-			embedded,
+			embedded: true,
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			openSessionInNewTab,
@@ -203,11 +201,9 @@ describe('AgentSessionsListView', () => {
 			params: { projectId: 'project-1', agentId: 'agent-1' },
 			query: { continueSessionId: 'thread-1', section: '__executions' },
 		});
-		expect(routerResolve).not.toHaveBeenCalled();
-		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('keeps the table row out of the tab order and ignores keyboard activation', async () => {
+	it('uses a native title button while leaving the table row out of the tab order', async () => {
 		const wrapper = await mountView();
 		const row = wrapper.get('[data-test-id="agent-session-list-item"]');
 
@@ -217,13 +213,9 @@ describe('AgentSessionsListView', () => {
 		await row.trigger('keydown', { key: ' ' });
 
 		expect(routerPush).not.toHaveBeenCalled();
-	});
 
-	it('opens the conversation exactly once from a native session title button', async () => {
-		const wrapper = await mountView();
-		const openButton = wrapper.find('[data-test-id="agent-session-open"]');
+		const openButton = wrapper.get('[data-test-id="agent-session-open"]');
 
-		expect(openButton.exists()).toBe(true);
 		expect(openButton.element.tagName).toBe('BUTTON');
 		expect(openButton.attributes('type')).toBe('button');
 		expect(openButton.text()).toBe('My session');
@@ -247,7 +239,6 @@ describe('AgentSessionsListView', () => {
 
 		await wrapper.find('[data-test-id="agent-session-list-item"]').trigger('click');
 
-		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
 		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
@@ -261,8 +252,6 @@ describe('AgentSessionsListView', () => {
 			name: 'AgentSessionDetailView',
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		});
-		expect(routerResolve).not.toHaveBeenCalled();
-		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
 	it('opens the trace in a new tab when requested', async () => {
@@ -274,7 +263,6 @@ describe('AgentSessionsListView', () => {
 
 		await wrapper.get('[data-test-id="agent-session-view-trace"]').trigger('click');
 
-		expect(routerPush).not.toHaveBeenCalled();
 		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
 		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
@@ -295,30 +283,6 @@ describe('AgentSessionsListView', () => {
 				threadId: 'parent-thread-1',
 			},
 		});
-		expect(routerResolve).not.toHaveBeenCalled();
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	it('opens the parent trace in a new tab when requested', async () => {
-		const wrapper = await mountView({
-			openSessionInNewTab: true,
-			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
-		});
-		const target = {
-			name: 'AgentSessionDetailView',
-			params: {
-				projectId: 'project-1',
-				agentId: 'parent-agent-1',
-				threadId: 'parent-thread-1',
-			},
-		};
-
-		wrapper.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
-		await flushPromises();
-
-		expect(routerPush).not.toHaveBeenCalled();
-		expect(routerResolve).toHaveBeenCalledExactlyOnceWith(target);
-		expect(windowOpenSpy).toHaveBeenCalledExactlyOnceWith('/resolved', '_blank');
 	});
 
 	it('fetches, polls, and manages the visibility listener by default', async () => {

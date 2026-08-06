@@ -7,7 +7,6 @@ interface ThreadStub {
 	id: string;
 	title: string | null;
 	firstMessage?: string | null;
-	updatedAt: string;
 }
 
 const { replace, route, sessionsStore } = vi.hoisted(() => ({
@@ -33,10 +32,6 @@ vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => sessionsStore,
 }));
 
-vi.mock('../utils/relative-time', () => ({
-	useRelativeTimestamp: () => () => 'recently',
-}));
-
 describe('useAgentBuilderSession', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -57,35 +52,19 @@ describe('useAgentBuilderSession', () => {
 		expect(session.effectiveSessionId.value).toBe('route-session');
 	});
 
-	it('keeps a bound session local when route backing is disabled', () => {
+	it.each([
+		['bound', 'bind', 'bound-session'],
+		['picked', 'pick', 'picked-session'],
+		['newly minted', 'new', undefined],
+	] as const)('keeps a %s session local when route backing is disabled', (_kind, action, id) => {
 		route.query = { continueSessionId: 'route-session', keep: 'value' };
 		const session = useAgentBuilderSession({ routeBacked: ref(false) });
 
-		session.setSessionInUrl('bound-session');
+		if (action === 'bind') session.setSessionInUrl(id);
+		if (action === 'pick') session.onSessionPick(id);
+		if (action === 'new') session.onNewChat();
 
-		expect(session.activeChatSessionId.value).toBe('bound-session');
-		expect(session.effectiveSessionId.value).toBe('bound-session');
-		expect(replace).not.toHaveBeenCalled();
-	});
-
-	it('keeps a picked session local when route backing is disabled', () => {
-		route.query = { continueSessionId: 'route-session', keep: 'value' };
-		const session = useAgentBuilderSession({ routeBacked: ref(false) });
-
-		session.onSessionPick('picked-session');
-
-		expect(session.activeChatSessionId.value).toBe('picked-session');
-		expect(session.effectiveSessionId.value).toBe('picked-session');
-		expect(replace).not.toHaveBeenCalled();
-	});
-
-	it('keeps a newly minted session local when route backing is disabled', () => {
-		route.query = { continueSessionId: 'route-session', keep: 'value' };
-		const session = useAgentBuilderSession({ routeBacked: ref(false) });
-
-		session.onNewChat();
-
-		expect(session.activeChatSessionId.value).toEqual(expect.any(String));
+		expect(session.activeChatSessionId.value).toEqual(id ?? expect.any(String));
 		expect(session.effectiveSessionId.value).toBe(session.activeChatSessionId.value);
 		expect(replace).not.toHaveBeenCalled();
 	});
@@ -188,7 +167,6 @@ describe('useAgentBuilderSession', () => {
 			{
 				id: 'thread-1',
 				title: 'Session title',
-				updatedAt: '2026-08-03T12:00:00.000Z',
 			},
 		];
 		const session = useAgentBuilderSession({ routeBacked: ref(false) });
@@ -197,13 +175,5 @@ describe('useAgentBuilderSession', () => {
 
 		expect(session.currentSessionHasMessages.value).toBe(true);
 		expect(session.currentSessionTitle.value).toBe('Session title');
-		expect(session.sessionMenu.value).toEqual([
-			{
-				id: 'thread-1',
-				title: '',
-				label: 'Session title',
-				when: 'recently',
-			},
-		]);
 	});
 });

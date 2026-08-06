@@ -110,7 +110,13 @@ describe('AgentChatPanel', () => {
 		onHistoryLoaded = undefined;
 	});
 
-	function mountPanel() {
+	function mountPanel(
+		overrides: Partial<{
+			continueSessionId: string;
+			agentConfig: null;
+			beforeSend: () => Promise<void> | void;
+		}> = {},
+	) {
 		return mount(AgentChatPanel, {
 			props: {
 				projectId: 'p1',
@@ -122,20 +128,15 @@ describe('AgentChatPanel', () => {
 				},
 				agentStatus: 'draft',
 				connectedTriggers: [],
+				...overrides,
 			},
 		});
 	}
 
 	it('emits the loaded history count with the session that produced it', () => {
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				continueSessionId: 'session-1',
-				agentConfig: null,
-				agentStatus: 'draft',
-				connectedTriggers: [],
-			},
+		const wrapper = mountPanel({
+			continueSessionId: 'session-1',
+			agentConfig: null,
 		});
 
 		expect(onHistoryLoaded).toBeDefined();
@@ -182,20 +183,7 @@ describe('AgentChatPanel', () => {
 			events.push('sendMessage');
 		});
 
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-				beforeSend,
-			},
-		});
+		const wrapper = mountPanel({ beforeSend });
 
 		(
 			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }

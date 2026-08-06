@@ -186,26 +186,17 @@ describe('SessionTimelineTable', () => {
 		expect(idleRow.element.querySelector('[role="gridcell"]')).not.toBeNull();
 	});
 
-	it('renders a workflow hyperlink with target="_blank"', () => {
+	it('renders a workflow hyperlink that does not select its row when activated', async () => {
 		const w = mountTable({
 			items: makeItems(),
 			selectedIndex: null,
 			visibleKinds: new Set<string>(),
 		});
-		const links = w.findAll('a[target="_blank"]');
-		expect(links.length).toBeGreaterThan(0);
-		expect(links[0].attributes('href')).toContain('/workflow/wf-1');
-	});
-
-	it('does not select the row when the workflow hyperlink is activated', async () => {
-		const w = mountTable({
-			items: makeItems(),
-			selectedIndex: null,
-			visibleKinds: new Set<string>(),
-		});
-		const workflowLink = w.find('a[target="_blank"]');
+		const workflowLink = w.get('a');
 		const workflowRow = workflowLink.element.closest('[role="row"]');
 
+		expect(workflowLink.attributes('href')).toContain('/workflow/wf-1');
+		expect(workflowLink.attributes('target')).toBe('_blank');
 		expect(workflowLink.element.closest('[role="gridcell"]')).not.toBeNull();
 		expect(workflowRow?.getAttribute('aria-selected')).toBe('false');
 		await workflowLink.trigger('click');
