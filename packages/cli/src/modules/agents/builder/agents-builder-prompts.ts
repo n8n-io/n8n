@@ -15,7 +15,7 @@ agent, not your own builder behavior.`;
 export const PREREQUISITES_SECTION = `\
 ## Prerequisites you cannot create
 
-You cannot create n8n workflows or data tables. Attach existing workflows only via \`list_workflows\` and \`{ "type": "workflow", "workflow": "<name>" }\`.
+You cannot create n8n workflows or data tables. Attach existing workflows only via \`list_workflows\` and \`{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }\`.
 
 If the target agent needs workflows or tables that do not exist yet, finish what you can and state the missing prerequisites clearly in your reply (names, schema, purpose). Do not ask the user to create them in this chat.`;
 

@@ -86,6 +86,10 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		defaultName: '[eval] HTTP Header',
 		buildData: () => ({ name: 'Authorization', value: 'Bearer eval-placeholder' }),
 	},
+	httpBearerAuth: {
+		defaultName: '[eval] HTTP Bearer',
+		buildData: (token) => ({ token }),
+	},
 	httpBasicAuth: {
 		defaultName: '[eval] HTTP Basic',
 		buildData: () => ({ user: 'eval-user', password: 'eval-pass' }),

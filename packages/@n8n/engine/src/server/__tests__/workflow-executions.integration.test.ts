@@ -78,4 +78,39 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
+
+	it('rejects a graph without a trigger with 400, creating nothing', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.send({
+				workflowId: 'wf-1',
+				graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] },
+			});
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_graph');
+		expect(workQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('rejects a graph with back-edges with 501, creating nothing', async () => {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.send({
+				workflowId: 'wf-1',
+				graph: {
+					nodes: [
+						{ id: 'trigger', name: 'T', type: 'trigger' },
+						{ id: 'a', name: 'A', type: 'v1-node' },
+					],
+					edges: [
+						{ from: 'trigger', to: 'a' },
+						{ from: 'a', to: 'trigger', isBackEdge: true },
+					],
+				},
+			});
+
+		expect(response.status).toBe(501);
+		expect((response.body as { error: string }).error).toBe('unimplemented');
+		expect(workQueue.publish).not.toHaveBeenCalled();
+	});
 });
