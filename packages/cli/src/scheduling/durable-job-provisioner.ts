@@ -21,6 +21,10 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { createSchedulerTracer } from './scheduler-tracer';
 
+/**
+ * Ceiling for a resolved misfire grace: the cap the config value carries, and well
+ * inside the column's `int` range.
+ */
 const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
 
 /** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
@@ -155,6 +159,9 @@ export class DurableJobProvisioner {
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
 	}: ProvisionScope): RunInProvisionTransaction {
+		// Resolved before `findExisting`, because it is what a stored row's grace is
+		// compared against; resolving later would make every provision see a changed
+		// grace and rewrite queued deadlines.
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
 			workflowId,
@@ -240,6 +247,18 @@ export class DurableJobProvisioner {
 			});
 	}
 
+	/**
+	 * Resolve the grace stamped on a node's job rows. A non-positive or non-finite
+	 * request resolves to the instance value: `0` is the sentinel a node property uses
+	 * to inherit it, and a parameter equal to its schema default is stripped on save,
+	 * so an absent value and `0` must mean the same thing. The instance value itself
+	 * passes through unclamped, as an out-of-range one is warned about at startup.
+	 *
+	 * A node value out of range is clamped rather than rejected: the bounds are
+	 * scheduling internals invisible in the editor, so activation must never fail on a
+	 * grace, and lowering the executor interval must not break workflows that ran fine
+	 * before.
+	 */
 	private resolveMisfireGraceSeconds(
 		requested: unknown,
 		workflowId: string,
@@ -254,10 +273,15 @@ export class DurableJobProvisioner {
 		const truncated = Math.trunc(numeric);
 		if (truncated < 1) return misfireGraceSeconds;
 
+		// A second above the executor interval, so a late run still has a tick left to be
+		// claimed in, and at or above the materialization window, so runs missed during a
+		// short outage are caught up rather than dropped. Neither input is bounded above,
+		// so the floor takes the ceiling too.
 		const floor = Math.min(
 			Math.max(executorIntervalSeconds + 1, materializationWindowSeconds),
 			MAX_MISFIRE_GRACE_SECONDS,
 		);
+		// A missing interval or window leaves no floor to clamp against.
 		if (!Number.isFinite(floor)) return misfireGraceSeconds;
 
 		const effective = Math.min(Math.max(truncated, floor), MAX_MISFIRE_GRACE_SECONDS);
