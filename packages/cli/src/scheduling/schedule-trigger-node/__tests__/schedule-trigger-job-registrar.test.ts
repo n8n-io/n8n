@@ -649,12 +649,10 @@ describe('ScheduleTriggerJobRegistrar', () => {
 
 		it.each<[string, INodeParameters]>([
 			['a negative number', { misfireGraceSeconds: -30 }],
-			['a fractional number', { misfireGraceSeconds: 1.5 }],
 			['NaN', { misfireGraceSeconds: Number.NaN }],
 			['Infinity', { misfireGraceSeconds: Number.POSITIVE_INFINITY }],
-			['a numeric string', { misfireGraceSeconds: '30' }],
 			['a non-numeric string', { misfireGraceSeconds: 'nonsense' }],
-			['a boolean', { misfireGraceSeconds: true }],
+			['an empty string', { misfireGraceSeconds: '' }],
 			['null', { misfireGraceSeconds: null } as unknown as INodeParameters],
 		])(
 			'provisions no misfire grace for %s, rather than failing the activation',
@@ -669,6 +667,72 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			},
 		);
 
+		it.each<[string, INodeParameters, number]>([
+			['a numeric string', { misfireGraceSeconds: '90' }, 90],
+			['a fractional number', { misfireGraceSeconds: 90.5 }, 90.5],
+			['a boolean true', { misfireGraceSeconds: true }, 1],
+		])(
+			'provisions %s as a stated grace of %s, leaving truncation and clamping to the provisioner',
+			async (_label, parameters, expected) => {
+				const node = makeNode({ parameters });
+				const session = makeRegistrar().createSession();
+				session.createCollector(workflow, node).registerCron(dailyAtNine, vi.fn());
+
+				await session.commit(WORKFLOW_ID, NODE_ID);
+
+				expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBe(expected);
+			},
+		);
+
+		describe('unusable misfire grace warning', () => {
+			const makeRegistrarWatchingWarnings = () => {
+				const scopedLogger = mockLogger();
+				const registrar = new ScheduleTriggerJobRegistrar(
+					mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) }),
+					mock<GlobalConfig>({
+						scheduler: { enabled: true, allowSkipDurableScheduler: false },
+						generic: { timezone: 'UTC' },
+					}),
+					mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
+					jobProvisioner,
+				);
+				return { registrar, scopedLogger };
+			};
+
+			const plainNode = (parameters: INodeParameters): INode => ({
+				id: NODE_ID,
+				name: 'Schedule Trigger',
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				typeVersion: 1.4,
+				position: [0, 0],
+				parameters,
+			});
+
+			it('warns naming the workflow and node when a stated misfire grace is unusable', async () => {
+				const { registrar, scopedLogger } = makeRegistrarWatchingWarnings();
+				const node = plainNode({ misfireGraceSeconds: 'nonsense' });
+
+				registrar.createSession().createCollector(workflow, node);
+
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Schedule trigger node has an unusable misfire grace period; the instance setting applies',
+					{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
+				);
+			});
+
+			it.each<[string, INodeParameters]>([
+				['no misfire grace parameter', {}],
+				['a stored 0, which stands for the instance value', { misfireGraceSeconds: 0 }],
+				['a usable misfire grace', { misfireGraceSeconds: 90 }],
+			])('does not warn for a node with %s', async (_label, parameters) => {
+				const { registrar, scopedLogger } = makeRegistrarWatchingWarnings();
+
+				registrar.createSession().createCollector(workflow, plainNode(parameters));
+
+				expect(scopedLogger.warn).not.toHaveBeenCalled();
+			});
+		});
+
 		it('provisions no misfire grace for a typeVersion 1.3 node whose raw JSON carries one, because Workflow normalisation strips a parameter gated to 1.4+', async () => {
 			const { workflow: realWorkflow, node: normalizedNode } = buildRealNormalizedNode(1.3, {
 				misfireGraceSeconds: 90,
@@ -681,6 +745,20 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			await session.commit(WORKFLOW_ID, NODE_ID);
 
 			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBeUndefined();
+		});
+
+		it("keeps a typeVersion 1.4 node's misfire grace parameter through Workflow normalisation, since the version gate is satisfied", async () => {
+			const { workflow: realWorkflow, node: normalizedNode } = buildRealNormalizedNode(1.4, {
+				misfireGraceSeconds: 90,
+			});
+			expect(normalizedNode.parameters.misfireGraceSeconds).toBe(90);
+
+			const session = makeRegistrar().createSession();
+			session.createCollector(realWorkflow, normalizedNode).registerCron(dailyAtNine, vi.fn());
+
+			await session.commit(WORKFLOW_ID, NODE_ID);
+
+			expect(jobProvisioner.provision.mock.calls.at(-1)![6]).toBe(90);
 		});
 
 		it('consumes the collected rules: a second commit is a no-op', async () => {

@@ -171,7 +171,7 @@ export class ScheduleTriggerJobRegistrar {
 				const collected: CollectedSchedule[] = [];
 				pending.set(pendingKey(workflow.id, node.id), {
 					misfirePolicy: resolveMisfirePolicy(node),
-					misfireGraceSeconds: resolveMisfireGraceSeconds(node),
+					misfireGraceSeconds: resolveMisfireGraceSeconds(node, workflow.id, this.logger),
 					rules: collected,
 				});
 
@@ -436,9 +436,21 @@ function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
 		: ScheduledJobMisfirePolicy.Skip;
 }
 
-function resolveMisfireGraceSeconds(node: INode): number | undefined {
-	const graceSeconds = node.parameters?.misfireGraceSeconds;
-	return typeof graceSeconds === 'number' && Number.isInteger(graceSeconds) && graceSeconds > 0
-		? graceSeconds
-		: undefined;
+function resolveMisfireGraceSeconds(
+	node: INode,
+	workflowId: string,
+	logger: Logger,
+): number | undefined {
+	const requested = node.parameters?.misfireGraceSeconds;
+	const numeric = Number(requested);
+	const stated = Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+
+	if (stated === undefined && requested !== undefined && requested !== 0) {
+		logger.warn(
+			'Schedule trigger node has an unusable misfire grace period; the instance setting applies',
+			{ workflowId, nodeId: node.id },
+		);
+	}
+
+	return stated;
 }
