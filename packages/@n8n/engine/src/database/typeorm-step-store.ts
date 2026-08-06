@@ -47,12 +47,38 @@ export class TypeOrmStepStore implements StepStore {
 		return row;
 	}
 
-	async claimStep(id: string): Promise<boolean> {
-		return await this.transition(id, 'queued', 'running');
+	async claimStep(id: string): Promise<StepRecord | null> {
+		// The one transition that hands the row back, so the claimant doesn't
+		// need a second query to learn which node it now runs. RETURNING covers
+		// only the identity columns: a step claimed out of `queued` can't have
+		// an outcome yet, so `outputs`/`error` are `null` by the lifecycle.
+		const result = await this.repo
+			.createQueryBuilder()
+			.update()
+			.set({ status: 'running' })
+			.where({ id, status: 'queued' })
+			.returning(['id', 'executionId', 'nodeId'])
+			.execute();
+
+		const [row] = result.raw as Array<{ id: string; execution_id: string; node_id: string }>;
+		if (!row) return null;
+
+		return {
+			id: row.id,
+			executionId: row.execution_id,
+			nodeId: row.node_id,
+			status: 'running',
+			outputs: null,
+			error: null,
+		};
 	}
 
 	async completeStep(id: string, outputs: JsonValue): Promise<boolean> {
 		return await this.transition(id, 'running', 'completed', { outputs });
+	}
+
+	async cancelQueuedSteps(executionId: string): Promise<void> {
+		await this.repo.update({ executionId, status: 'queued' }, { status: 'cancelled' });
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
