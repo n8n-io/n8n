@@ -172,4 +172,23 @@ describe('AgentTestRunService', () => {
 		});
 		expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 	});
+
+	it('propagates a streamed execution error instead of completing the draft run', async () => {
+		const { service, agentExecutionOrchestratorService } = makeService();
+		const executionError = new Error('streamed execution failed');
+		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* () {
+			yield { type: 'error', error: executionError };
+			yield { type: 'finish', finishReason: 'error' };
+		});
+
+		await expect(
+			service.executeDraftRun({
+				agentId,
+				projectId,
+				message: 'Hi',
+				user,
+				credentialProvider,
+			}),
+		).rejects.toBe(executionError);
+	});
 });

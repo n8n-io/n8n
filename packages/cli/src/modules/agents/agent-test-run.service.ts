@@ -135,6 +135,9 @@ export class AgentTestRunService {
 		});
 
 		for await (const chunk of stream) {
+			if (chunk.type === 'error') {
+				throw chunk.error;
+			}
 			if (chunk.type === 'text-delta') {
 				response += chunk.delta;
 			} else if (chunk.type === 'tool-call-suspended') {
