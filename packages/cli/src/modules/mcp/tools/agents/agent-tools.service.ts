@@ -1186,6 +1186,7 @@ export class McpAgentToolsService {
 
 			const approvals = collectStandardApprovals(result);
 			if (approvals) {
+				// TODO: Return MCP input_required once MRTR is supported: https://linear.app/n8n/issue/ADO-5689
 				return {
 					ok: true,
 					status: 'suspended',
