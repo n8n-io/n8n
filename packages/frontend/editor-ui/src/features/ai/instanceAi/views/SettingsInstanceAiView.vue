@@ -260,13 +260,11 @@ function permissionOptionsFor(key: keyof InstanceAiPermissions) {
 const activeDialog = ref<InstanceAiConnectionKind | null>(null);
 const setupChain = ref(false);
 const enableAfterSetup = ref(false);
-const searchBackTarget = ref<'model' | 'sandbox' | null>(null);
 
 watch(activeDialog, (dialog) => {
 	if (dialog !== null) return;
 	setupChain.value = false;
 	enableAfterSetup.value = false;
-	searchBackTarget.value = null;
 });
 
 function setDialogOpen(kind: InstanceAiConnectionKind, isOpen: boolean) {
@@ -295,26 +293,25 @@ function openSandboxDialog() {
 function openSearchDialog() {
 	if (isSearchEnvManaged.value) return;
 	setupChain.value = false;
-	searchBackTarget.value = null;
 	activeDialog.value = 'search';
 }
 
-function openSearchSetup(backTarget: 'model' | 'sandbox' | null): void {
-	searchBackTarget.value = backTarget;
+function openSearchSetup(): void {
 	activeDialog.value = 'search';
-}
-
-function handleSearchBack(): void {
-	activeDialog.value = searchBackTarget.value;
 }
 
 /** Returns whether the chain may continue (false only when enabling failed). */
 async function finishSetup(): Promise<boolean> {
 	setupChain.value = false;
-	if (!enableAfterSetup.value) return true;
+	if (!enableAfterSetup.value) {
+		activeDialog.value = null;
+		return true;
+	}
 
 	enableAfterSetup.value = false;
-	return await store.persistEnabled(true);
+	const enabled = await store.persistEnabled(true);
+	if (enabled) activeDialog.value = null;
+	return enabled;
 }
 
 async function handleModelSaved() {
@@ -322,7 +319,7 @@ async function handleModelSaved() {
 		return;
 	if (setupChain.value) {
 		if (isSandboxConfigured.value || isSandboxEnvManaged.value) {
-			openSearchSetup('model');
+			openSearchSetup();
 		} else {
 			activeDialog.value = 'sandbox';
 		}
@@ -334,7 +331,7 @@ async function handleModelSaved() {
 async function handleSandboxSaved() {
 	const chainSearch = setupChain.value && searchState.value === 'notset';
 	if (chainSearch) {
-		openSearchSetup('sandbox');
+		openSearchSetup();
 		return;
 	}
 	await finishSetup();
@@ -411,7 +408,7 @@ async function handleEnable() {
 
 	if (showCredentialsRows.value && searchState.value === 'notset') {
 		setupChain.value = true;
-		openSearchSetup(null);
+		openSearchSetup();
 		return;
 	}
 
@@ -838,7 +835,6 @@ function openAiUsageSettings() {
 			:setup="showCredentialsRows && setupChain"
 			@update:open="setDialogOpen('sandbox', $event)"
 			@saved="handleSandboxSaved"
-			@back="activeDialog = 'model'"
 		/>
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isSearchEnvManaged"
@@ -846,7 +842,6 @@ function openAiUsageSettings() {
 			:open="activeDialog === 'search'"
 			:setup="setupChain"
 			@update:open="setDialogOpen('search', $event)"
-			@back="handleSearchBack"
 			@saved="handleSearchSaved"
 		/>
 	</N8nSettingsLayout>

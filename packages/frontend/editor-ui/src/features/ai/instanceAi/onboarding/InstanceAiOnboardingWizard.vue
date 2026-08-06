@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import type {
 	InstanceAiConnectionUpdate,
+	InstanceAiProviderConnection,
 	InstanceAiVerificationFailure,
 	InstanceAiVerificationResponse,
 } from '@n8n/api-types';
@@ -23,7 +24,10 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { TIME } from '@/app/constants/durations';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { SANDBOX_PROVIDER_LABELS } from '../constants';
+import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import {
 	INSTANCE_AI_MODEL_PROVIDERS,
 	INSTANCE_AI_SANDBOX_PROVIDERS,
@@ -39,9 +43,11 @@ const N8N_SANDBOX_HEADER = 'x-api-key';
 const STATIC_SECRET_MASK = '••••••••••••';
 const SANDBOX_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant#configure-a-sandbox-provider';
-const SEARXNG_DOCS_URL = 'https://docs.searxng.org/admin/installation.html';
+const SEARCH_DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant';
+const BRAVE_SEARCH_KEYS_URL = 'https://api-dashboard.search.brave.com/app/keys';
 const ENV_DOCS_URL =
 	'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant-preview';
+const SUCCESS_PAUSE_MS = TIME.SECOND * 1.5;
 const DEFAULT_MODEL_PROVIDER = INSTANCE_AI_MODEL_PROVIDERS[0]!;
 type VerificationSuccess = Extract<InstanceAiVerificationResponse, { ok: true }>;
 const VERIFICATION_FAILURE_COPY: Record<InstanceAiVerificationFailure, BaseTextKey> = {
@@ -55,16 +61,21 @@ const VERIFICATION_FAILURE_COPY: Record<InstanceAiVerificationFailure, BaseTextK
 	provider_error: 'instanceAi.onboarding.verification.provider_error',
 };
 
-const props = defineProps<{
-	open: boolean;
-	step: InstanceAiOnboardingStep;
-	editMode: boolean;
-	sequence: InstanceAiOnboardingStep[];
-	modelValue: string;
-	sandboxValue: string;
-	searchValue: string;
-	composeFastPath: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		step: InstanceAiOnboardingStep;
+		editMode: boolean;
+		sequence: InstanceAiOnboardingStep[];
+		modelValue: string;
+		sandboxValue: string;
+		searchValue: string;
+		composeFastPath: boolean;
+		surface?: 'onboarding' | 'settings';
+		allowUnchanged?: boolean;
+	}>(),
+	{ surface: 'onboarding', allowUnchanged: false },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -77,6 +88,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
+const { credentialTestError, testSavedCredential } = useInstanceCredentialTest();
 
 const busy = ref(false);
 const failure = ref<InstanceAiVerificationFailure | null>(null);
@@ -91,17 +103,95 @@ const sandboxApiKey = ref('');
 const daytonaApiKey = ref('');
 const searchProvider = ref<InstanceAiSearchProvider | null>(null);
 const searchInput = ref('');
+const selectedExistingCredentialId = ref('');
+const hydratedModelProvider = ref<InstanceAiModelProvider | null>(null);
 const baseline = ref('');
+let hydrationGeneration = 0;
 
 const modelConfig = computed(
 	() =>
 		INSTANCE_AI_MODEL_PROVIDERS.find(({ id }) => id === modelProvider.value) ??
 		DEFAULT_MODEL_PROVIDER,
 );
-const modelConnectionLocked = computed(() => store.settings?.envManaged.model.provider === true);
-const modelNameLocked = computed(() => store.settings?.envManaged.model.model === true);
+const modelConnectionLocked = computed(() => store.settings?.envManaged?.model?.provider === true);
+const modelNameLocked = computed(() => store.settings?.envManaged?.model?.model === true);
+const modelOptions = computed(() => {
+	const options: string[] = modelConnectionLocked.value
+		? INSTANCE_AI_MODEL_PROVIDERS.flatMap(({ models }) => models)
+		: [...modelConfig.value.models];
+	if (modelName.value && !options.includes(modelName.value)) options.unshift(modelName.value);
+	return [...new Set(options)];
+});
 const sandboxEnvManaged = computed(() => store.settings?.sandboxEnvConfigured === true);
 const searchEnvManaged = computed(() => store.settings?.searchEnvConfigured === true);
+const readOnly = computed(() => !store.canManageInstanceCredentials);
+const isProxyDaytonaSelection = computed(
+	() =>
+		props.step === 'sandbox' &&
+		store.isProxyEnabled &&
+		sandboxProvider.value === 'daytona' &&
+		!selectedExistingCredentialId.value,
+);
+
+function assignedCredentialId(): string | null {
+	if (props.step === 'model') return store.settings?.modelCredentialId ?? null;
+	if (props.step === 'sandbox') {
+		return store.settings?.sandboxProvider === 'daytona'
+			? (store.settings?.daytonaCredentialId ?? null)
+			: (store.settings?.n8nSandboxCredentialId ?? null);
+	}
+	if (props.step === 'search') return store.settings?.searchCredentialId ?? null;
+	return null;
+}
+
+function credentialProviderLabel(credential: InstanceAiProviderConnection): string {
+	if (credential.type === 'daytonaApi') return SANDBOX_PROVIDER_LABELS.daytona;
+	if (credential.type === 'httpHeaderAuth') return SANDBOX_PROVIDER_LABELS['n8n-sandbox'];
+	return credentialsStore.getCredentialTypeByName(credential.type)?.displayName ?? credential.type;
+}
+
+const allCompatibleCredentials = computed(() => {
+	if (props.step === 'done') return [];
+	const credentials =
+		props.step === 'model' ? store.instanceModelCredentials : store.serviceCredentials;
+	const allowedTypes = new Set<string>(
+		props.step === 'model'
+			? INSTANCE_AI_MODEL_PROVIDERS.map(({ credentialType }) => credentialType)
+			: props.step === 'sandbox'
+				? ['daytonaApi', 'httpHeaderAuth']
+				: INSTANCE_AI_SEARCH_PROVIDERS.map(({ credentialType }) => credentialType),
+	);
+	return credentials.filter((credential) => allowedTypes.has(credential.type));
+});
+
+const compatibleCredentials = computed(() => {
+	const assignedId = assignedCredentialId();
+	return allCompatibleCredentials.value.filter(
+		(credential) => readOnly.value || credential.id !== assignedId,
+	);
+});
+
+const selectedExistingCredential = computed(() =>
+	compatibleCredentials.value.find(({ id }) => id === selectedExistingCredentialId.value),
+);
+const editableConnectionLabel = computed(() =>
+	assignedCredentialId()
+		? i18n.baseText('instanceAi.onboarding.existingConnection.current')
+		: i18n.baseText('instanceAi.onboarding.existingConnection.new'),
+);
+const environmentManaged = computed(() => {
+	if (props.step === 'model') return modelConnectionLocked.value;
+	if (props.step === 'sandbox') return sandboxEnvManaged.value;
+	if (props.step === 'search') return searchEnvManaged.value;
+	return false;
+});
+const showExistingCredentialSelect = computed(
+	() =>
+		props.surface === 'settings' &&
+		!modelConnectionLocked.value &&
+		!environmentManaged.value &&
+		allCompatibleCredentials.value.length > 1,
+);
 
 function formSnapshot(): string {
 	return JSON.stringify({
@@ -115,6 +205,7 @@ function formSnapshot(): string {
 		daytonaApiKey: daytonaApiKey.value,
 		searchProvider: searchProvider.value,
 		searchValue: searchInput.value,
+		selectedExistingCredentialId: selectedExistingCredentialId.value,
 	});
 }
 
@@ -124,6 +215,7 @@ const stepReady = computed(() => {
 	if (props.step === 'model') {
 		if (modelConnectionLocked.value)
 			return modelNameLocked.value || modelName.value.trim().length > 0;
+		if (selectedExistingCredentialId.value) return modelName.value.trim().length > 0;
 		return Boolean(
 			modelName.value.trim() &&
 				(modelProvider.value === 'custom' ? modelBaseUrl.value.trim() : modelApiKey.value.trim()),
@@ -131,6 +223,12 @@ const stepReady = computed(() => {
 	}
 	if (props.step === 'sandbox') {
 		if (sandboxEnvManaged.value) return true;
+		if (selectedExistingCredentialId.value) {
+			return sandboxProvider.value === 'n8n-sandbox'
+				? Boolean(sandboxServiceUrl.value.trim())
+				: true;
+		}
+		if (isProxyDaytonaSelection.value) return true;
 		if (sandboxProvider.value === 'daytona') return Boolean(daytonaApiKey.value.trim());
 		if (sandboxProvider.value === 'n8n-sandbox') {
 			return Boolean(sandboxServiceUrl.value.trim() && sandboxApiKey.value.trim());
@@ -138,11 +236,18 @@ const stepReady = computed(() => {
 		return false;
 	}
 	if (searchEnvManaged.value) return true;
+	if (selectedExistingCredentialId.value) return true;
 	if (searchProvider.value === 'disabled') return true;
 	return Boolean(searchProvider.value && searchInput.value.trim());
 });
 const primaryDisabled = computed(
-	() => busy.value || !stepReady.value || (props.editMode && !changed.value),
+	() =>
+		busy.value ||
+		!stepReady.value ||
+		(props.editMode &&
+			environmentManaged.value &&
+			(props.step !== 'model' || modelNameLocked.value)) ||
+		(props.editMode && !props.allowUnchanged && !changed.value),
 );
 const canGoBack = computed(() => {
 	if (props.editMode) return false;
@@ -155,6 +260,29 @@ const primaryLabel = computed(() => {
 	if (props.editMode) return i18n.baseText('generic.save');
 	return i18n.baseText('instanceAi.onboarding.wizard.continue');
 });
+const settingsTestPrefix = computed(() =>
+	props.step === 'done' ? 'n8n-agent' : `n8n-agent-${props.step}`,
+);
+const dialogTestId = computed(() =>
+	props.surface === 'settings' ? `${settingsTestPrefix.value}-dialog` : 'assistant-setup-wizard',
+);
+const primaryTestId = computed(() =>
+	props.surface === 'settings' ? `${settingsTestPrefix.value}-dialog-save` : 'wizard-primary',
+);
+const cancelTestId = computed(() =>
+	props.surface === 'settings' ? `${settingsTestPrefix.value}-dialog-cancel` : 'wizard-cancel',
+);
+const backTestId = computed(() =>
+	props.surface === 'settings' ? `${settingsTestPrefix.value}-dialog-back` : 'wizard-back',
+);
+const progressTestId = computed(() =>
+	props.surface === 'settings' ? `${settingsTestPrefix.value}-dialog-step` : 'wizard-progress',
+);
+const existingCredentialTestId = computed(() =>
+	props.surface === 'settings'
+		? `${settingsTestPrefix.value}-existing-credential-select`
+		: 'assistant-existing-credential',
+);
 
 function readString(data: unknown, field: string): string {
 	if (typeof data !== 'object' || data === null) return '';
@@ -173,7 +301,43 @@ async function credentialData(id: string | null | undefined): Promise<unknown> {
 	}
 }
 
-async function hydrateModel(): Promise<void> {
+function modelProviderForCredentialType(type: string): InstanceAiModelProvider {
+	if (type === 'anthropicApi') return 'anthropic';
+	if (type === 'openRouterApi') return 'openrouter';
+	return 'openai';
+}
+
+function applyExistingCredential(credential: InstanceAiProviderConnection): void {
+	selectedExistingCredentialId.value = credential.id;
+	if (props.step === 'model') {
+		modelProvider.value = modelProviderForCredentialType(credential.type);
+		modelName.value =
+			(credential.id === assignedCredentialId() ? store.settings?.modelName : null) ||
+			INSTANCE_AI_MODEL_PROVIDERS.find(({ id }) => id === modelProvider.value)?.models[0] ||
+			'';
+	} else if (props.step === 'sandbox') {
+		sandboxProvider.value = credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox';
+	} else if (props.step === 'search') {
+		searchProvider.value = credential.type === 'braveSearchApi' ? 'brave' : 'searxng';
+	}
+}
+
+async function selectExistingCredential(value: unknown): Promise<void> {
+	const credential = compatibleCredentials.value.find(({ id }) => id === value);
+	if (credential) {
+		applyExistingCredential(credential);
+		return;
+	}
+	selectedExistingCredentialId.value = '';
+	const generation = ++hydrationGeneration;
+	if (props.step === 'model') await hydrateModel(generation);
+	if (props.step === 'sandbox') await hydrateSandbox(generation);
+	if (props.step === 'search') await hydrateSearch(generation);
+}
+
+async function hydrateModel(generation: number, rememberProvider = true): Promise<void> {
+	if (rememberProvider) hydratedModelProvider.value = null;
+	selectedExistingCredentialId.value = '';
 	modelProvider.value = 'anthropic';
 	modelApiKey.value = '';
 	modelBaseUrl.value = '';
@@ -186,15 +350,24 @@ async function hydrateModel(): Promise<void> {
 		({ id }) => id === store.settings?.modelCredentialId,
 	);
 	if (!assigned) return;
+	if (readOnly.value) {
+		applyExistingCredential(assigned);
+		if (rememberProvider) hydratedModelProvider.value = modelProvider.value;
+		return;
+	}
 	const data = await credentialData(assigned.id);
+	if (generation !== hydrationGeneration) return;
 	modelApiKey.value = readString(data, 'apiKey');
 	modelBaseUrl.value = readString(data, 'url');
-	if (assigned.type === 'anthropicApi') modelProvider.value = 'anthropic';
-	else if (assigned.type === 'openRouterApi') modelProvider.value = 'openrouter';
-	else modelProvider.value = modelBaseUrl.value ? 'custom' : 'openai';
+	modelProvider.value =
+		assigned.type === 'openAiApi' && modelBaseUrl.value
+			? 'custom'
+			: modelProviderForCredentialType(assigned.type);
+	if (rememberProvider) hydratedModelProvider.value = modelProvider.value;
 }
 
-async function hydrateSandbox(): Promise<void> {
+async function hydrateSandbox(generation: number): Promise<void> {
+	selectedExistingCredentialId.value = '';
 	sandboxProvider.value = null;
 	sandboxServiceUrl.value = store.settings?.n8nSandboxServiceUrl ?? '';
 	sandboxApiKey.value = '';
@@ -206,12 +379,19 @@ async function hydrateSandbox(): Promise<void> {
 		: store.settings?.n8nSandboxCredentialId;
 	if (!credentialId) return;
 	sandboxProvider.value = isDaytona ? 'daytona' : 'n8n-sandbox';
+	const assigned = store.serviceCredentials.find(({ id }) => id === credentialId);
+	if (readOnly.value && assigned) {
+		applyExistingCredential(assigned);
+		return;
+	}
 	const data = await credentialData(credentialId);
+	if (generation !== hydrationGeneration) return;
 	if (isDaytona) daytonaApiKey.value = readString(data, 'apiKey');
 	else sandboxApiKey.value = readString(data, 'value');
 }
 
-async function hydrateSearch(): Promise<void> {
+async function hydrateSearch(generation: number): Promise<void> {
+	selectedExistingCredentialId.value = '';
 	searchProvider.value = store.settings?.searchDisabled ? 'disabled' : null;
 	searchInput.value = '';
 	if (searchEnvManaged.value) return;
@@ -219,17 +399,24 @@ async function hydrateSearch(): Promise<void> {
 		({ id }) => id === store.settings?.searchCredentialId,
 	);
 	if (!assigned) return;
+	if (readOnly.value) {
+		applyExistingCredential(assigned);
+		return;
+	}
 	const data = await credentialData(assigned.id);
+	if (generation !== hydrationGeneration) return;
 	searchProvider.value = assigned.type === 'braveSearchApi' ? 'brave' : 'searxng';
 	searchInput.value = readString(data, assigned.type === 'braveSearchApi' ? 'apiKey' : 'apiUrl');
 }
 
 async function hydrate(): Promise<void> {
+	const generation = ++hydrationGeneration;
 	failure.value = null;
 	success.value = null;
-	if (props.step === 'model') await hydrateModel();
-	if (props.step === 'sandbox') await hydrateSandbox();
-	if (props.step === 'search') await hydrateSearch();
+	if (props.step === 'model') await hydrateModel(generation);
+	if (props.step === 'sandbox') await hydrateSandbox(generation);
+	if (props.step === 'search') await hydrateSearch(generation);
+	if (generation !== hydrationGeneration) return;
 	await nextTick();
 	baseline.value = formSnapshot();
 }
@@ -254,16 +441,26 @@ watch(
 		daytonaApiKey,
 		searchProvider,
 		searchInput,
+		selectedExistingCredentialId,
 	],
 	() => {
 		failure.value = null;
 		success.value = null;
+		credentialTestError.value = '';
 	},
 );
 
-function selectModelProvider(provider: unknown): void {
+async function selectModelProvider(provider: unknown): Promise<void> {
 	const next = INSTANCE_AI_MODEL_PROVIDERS.find(({ id }) => id === provider);
 	if (!next) return;
+	const assigned = store.instanceModelCredentials.find(
+		({ id }) => id === store.settings?.modelCredentialId,
+	);
+	if (assigned && hydratedModelProvider.value === next.id) {
+		await hydrateModel(++hydrationGeneration, false);
+		return;
+	}
+	selectedExistingCredentialId.value = '';
 	modelProvider.value = next.id;
 	modelApiKey.value = '';
 	modelBaseUrl.value = '';
@@ -272,10 +469,14 @@ function selectModelProvider(provider: unknown): void {
 
 function selectSandboxProvider(provider: unknown): void {
 	const next = INSTANCE_AI_SANDBOX_PROVIDERS.find(({ id }) => id === provider);
-	if (next) sandboxProvider.value = next.id;
+	if (next) {
+		selectedExistingCredentialId.value = '';
+		sandboxProvider.value = next.id;
+	}
 }
 
 function selectSearchProvider(provider: unknown): void {
+	selectedExistingCredentialId.value = '';
 	if (provider === 'disabled') {
 		searchProvider.value = provider;
 		return;
@@ -357,7 +558,42 @@ async function saveSearchDecision(connection?: InstanceAiConnectionUpdate): Prom
 	return saved;
 }
 
+async function saveExistingCredential(): Promise<boolean> {
+	const credential = selectedExistingCredential.value;
+	if (!credential) return false;
+	if (props.step === 'model') {
+		store.setField('modelCredentialId', credential.id);
+		store.setField('modelName', modelName.value.trim());
+	} else if (props.step === 'sandbox') {
+		const provider = credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox';
+		store.setField('daytonaCredentialId', provider === 'daytona' ? credential.id : null);
+		store.setField('n8nSandboxCredentialId', provider === 'n8n-sandbox' ? credential.id : null);
+		store.setField('sandboxProvider', provider);
+		store.setField('sandboxEnabled', true);
+		if (provider === 'n8n-sandbox') {
+			store.setField('n8nSandboxServiceUrl', sandboxServiceUrl.value.trim());
+		}
+	} else if (props.step === 'search') {
+		store.setField('searchCredentialId', credential.id);
+		store.setField('searchDisabled', false);
+	}
+	const saved = await store.save(false);
+	if (!saved) return false;
+	if (props.step === 'model') await store.refreshInstanceModelCredentials();
+	else await store.refreshCredentials();
+	return true;
+}
+
+async function verifyExistingCredential(): Promise<InstanceAiVerificationResponse> {
+	const credential = selectedExistingCredential.value;
+	if (!credential) return { ok: false, failure: 'provider_error' };
+	return (await testSavedCredential(credential.id, credential.name, credential.type))
+		? { ok: true }
+		: { ok: false, failure: 'provider_error' };
+}
+
 async function runVerification(): Promise<InstanceAiVerificationResponse | null> {
+	if (selectedExistingCredentialId.value) return await verifyExistingCredential();
 	if (props.step === 'model') {
 		return await store.verifyModel({
 			...(modelConnectionLocked.value ? {} : { connection: modelConnection() }),
@@ -368,6 +604,7 @@ async function runVerification(): Promise<InstanceAiVerificationResponse | null>
 		if (sandboxEnvManaged.value) {
 			return await store.verifySandbox({ provider: store.settings?.sandboxProvider });
 		}
+		if (isProxyDaytonaSelection.value) return { ok: true };
 		const connection = sandboxConnection();
 		if (!connection || !sandboxProvider.value) return null;
 		return await store.verifySandbox({
@@ -400,22 +637,33 @@ async function handlePrimary(): Promise<void> {
 			failure.value = result?.failure ?? 'provider_error';
 			return;
 		}
-		success.value = result;
 		let saved = true;
-		if (props.step === 'model') saved = await saveVerifiedModel();
-		if (props.step === 'sandbox') {
+		if (selectedExistingCredentialId.value) {
+			saved = await saveExistingCredential();
+		} else if (props.step === 'model') {
+			saved = await saveVerifiedModel();
+		} else if (props.step === 'sandbox') {
 			if (sandboxEnvManaged.value) {
 				store.setField('sandboxEnabled', true);
+				saved = await store.save(false);
+			} else if (isProxyDaytonaSelection.value) {
+				store.setField('sandboxProvider', 'daytona');
 				saved = await store.save(false);
 			} else {
 				const connection = sandboxConnection();
 				saved = connection ? await saveVerifiedSandbox(connection) : false;
 			}
-		}
-		if (props.step === 'search' && !searchEnvManaged.value) {
+		} else if (props.step === 'search' && !searchEnvManaged.value) {
 			saved = await saveSearchDecision(searchConnection());
 		}
-		if (saved) emit('advance');
+		if (saved) {
+			success.value = result;
+			if (props.surface === 'onboarding') {
+				await nextTick();
+				await new Promise((resolve) => window.setTimeout(resolve, SUCCESS_PAUSE_MS));
+			}
+			emit('advance');
+		}
 	} catch {
 		failure.value = 'provider_error';
 	} finally {
@@ -451,6 +699,8 @@ const successMessage = computed(() => {
 });
 const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[number]) =>
 	provider.label ?? i18n.baseText('instanceAi.onboarding.model.customProvider');
+const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
+	`${credential.name} · ${credentialProviderLabel(credential)}`;
 </script>
 
 <template>
@@ -459,7 +709,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 		:size="step === 'done' && composeFastPath ? 'small' : 'large'"
 		:show-close-button="!busy && step !== 'done'"
 		:aria-label="i18n.baseText('instanceAi.onboarding.wizard.ariaLabel')"
-		data-test-id="assistant-setup-wizard"
+		:data-test-id="dialogTestId"
 		@update:open="handleOpenChange"
 		@interact-outside="preventOutsideClose"
 	>
@@ -482,6 +732,29 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					</N8nLink>
 				</N8nCallout>
 
+				<N8nInputLabel
+					v-if="showExistingCredentialSelect"
+					:class="$style.compactLabel"
+					:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
+					input-name="assistant-existing-model-credential"
+				>
+					<N8nSelect
+						id="assistant-existing-model-credential"
+						:model-value="selectedExistingCredentialId"
+						:teleported="true"
+						:data-test-id="existingCredentialTestId"
+						@update:model-value="selectExistingCredential"
+					>
+						<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
+						<N8nOption
+							v-for="credential in compatibleCredentials"
+							:key="credential.id"
+							:value="credential.id"
+							:label="existingCredentialLabel(credential)"
+						/>
+					</N8nSelect>
+				</N8nInputLabel>
+
 				<div :class="$style.fields">
 					<N8nInputLabel
 						:class="$style.compactLabel"
@@ -489,17 +762,26 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 						input-name="assistant-model-provider"
 					>
 						<N8nInput
-							v-if="modelConnectionLocked"
+							v-if="modelConnectionLocked || readOnly || selectedExistingCredentialId"
 							id="assistant-model-provider"
-							:model-value="STATIC_SECRET_MASK"
+							:model-value="
+								selectedExistingCredential
+									? credentialProviderLabel(selectedExistingCredential)
+									: STATIC_SECRET_MASK
+							"
 							disabled
+							:data-test-id="surface === 'settings' ? 'n8n-agent-model-provider-input' : undefined"
 						/>
 						<N8nSelect
 							v-else
 							id="assistant-model-provider"
 							:model-value="modelProvider"
 							:teleported="true"
-							data-test-id="assistant-model-provider"
+							:data-test-id="
+								surface === 'settings'
+									? 'n8n-agent-model-provider-select'
+									: 'assistant-model-provider'
+							"
 							@update:model-value="selectModelProvider"
 						>
 							<N8nOption
@@ -512,7 +794,9 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					</N8nInputLabel>
 
 					<N8nInputLabel
-						v-if="modelProvider === 'custom' && !modelConnectionLocked"
+						v-if="
+							modelProvider === 'custom' && !modelConnectionLocked && !selectedExistingCredentialId
+						"
 						:class="$style.compactLabel"
 						:label="i18n.baseText('instanceAi.onboarding.model.baseUrl')"
 						input-name="assistant-model-base-url"
@@ -539,11 +823,17 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							v-model="modelApiKey"
 							class="ph-no-capture"
 							type="password"
-							autocomplete="new-password"
+							autocomplete="off"
 							:spellcheck="false"
-							:disabled="modelConnectionLocked"
-							:placeholder="modelConnectionLocked ? STATIC_SECRET_MASK : modelConfig.placeholder"
-							data-test-id="assistant-model-api-key"
+							:disabled="modelConnectionLocked || readOnly || Boolean(selectedExistingCredentialId)"
+							:placeholder="
+								modelConnectionLocked || readOnly || selectedExistingCredentialId
+									? STATIC_SECRET_MASK
+									: modelConfig.placeholder
+							"
+							:data-test-id="
+								surface === 'settings' ? 'n8n-agent-model-api-key-input' : 'assistant-model-api-key'
+							"
 						/>
 					</N8nInputLabel>
 
@@ -553,19 +843,21 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 						input-name="assistant-model-name"
 					>
 						<N8nSelect
-							v-if="modelConfig.models.length && !modelNameLocked"
+							v-if="modelOptions.length && !modelNameLocked"
 							id="assistant-model-name"
 							:model-value="modelName"
 							:teleported="true"
-							data-test-id="assistant-model-name"
+							:data-test-id="
+								surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
+							"
 							@update:model-value="modelName = String($event ?? '')"
 						>
 							<N8nOption
-								v-for="(model, index) in modelConfig.models"
+								v-for="model in modelOptions"
 								:key="model"
 								:value="model"
 								:label="
-									index === 0
+									model === modelConfig.models[0]
 										? `${model} · ${i18n.baseText('instanceAi.onboarding.recommended')}`
 										: model
 								"
@@ -579,7 +871,9 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							:disabled="modelNameLocked"
 							:placeholder="modelNameLocked ? STATIC_SECRET_MASK : 'qwen3-coder'"
 							:spellcheck="false"
-							data-test-id="assistant-model-name"
+							:data-test-id="
+								surface === 'settings' ? 'n8n-agent-model-name-input' : 'assistant-model-name'
+							"
 						/>
 					</N8nInputLabel>
 					<N8nText
@@ -593,7 +887,9 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 				</div>
 
 				<N8nCallout
-					v-if="modelProvider === 'custom' && !modelConnectionLocked"
+					v-if="
+						modelProvider === 'custom' && !modelConnectionLocked && !selectedExistingCredentialId
+					"
 					theme="warning"
 					icon="triangle-alert"
 				>
@@ -614,11 +910,34 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
 				</N8nCallout>
+				<N8nInputLabel
+					v-if="showExistingCredentialSelect"
+					:class="$style.compactLabel"
+					:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
+					input-name="assistant-existing-sandbox-credential"
+				>
+					<N8nSelect
+						id="assistant-existing-sandbox-credential"
+						:model-value="selectedExistingCredentialId"
+						:teleported="true"
+						:data-test-id="existingCredentialTestId"
+						@update:model-value="selectExistingCredential"
+					>
+						<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
+						<N8nOption
+							v-for="credential in compatibleCredentials"
+							:key="credential.id"
+							:value="credential.id"
+							:label="existingCredentialLabel(credential)"
+						/>
+					</N8nSelect>
+				</N8nInputLabel>
 				<N8nRadioGroup
-					v-else
+					v-if="!sandboxEnvManaged && !readOnly && !selectedExistingCredentialId"
 					:model-value="sandboxProvider ?? undefined"
 					orientation="vertical"
 					:class="$style.joinedCards"
+					:data-test-id="surface === 'settings' ? 'n8n-agent-sandbox-provider-select' : undefined"
 					@update:model-value="selectSandboxProvider"
 				>
 					<div
@@ -662,7 +981,11 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					</div>
 				</N8nRadioGroup>
 
-				<div v-if="!sandboxEnvManaged && sandboxProvider === 'n8n-sandbox'" :class="$style.fields">
+				<div
+					v-if="!sandboxEnvManaged && sandboxProvider === 'n8n-sandbox'"
+					:class="$style.fields"
+					:data-test-id="surface === 'settings' ? 'n8n-agent-sandbox-connection-fields' : undefined"
+				>
 					<N8nText step="xs">
 						{{ i18n.baseText('instanceAi.onboarding.sandbox.installDescription') }}
 						<N8nLink :to="SANDBOX_DOCS_URL" new-window>
@@ -686,6 +1009,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 						/>
 					</N8nInputLabel>
 					<N8nInputLabel
+						v-if="!selectedExistingCredentialId"
 						:class="$style.compactLabel"
 						:label="i18n.baseText('instanceAi.onboarding.sandbox.apiKey')"
 						input-name="assistant-sandbox-api-key"
@@ -695,14 +1019,27 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							v-model="sandboxApiKey"
 							class="ph-no-capture"
 							type="password"
-							autocomplete="new-password"
+							autocomplete="off"
 							:spellcheck="false"
 							:placeholder="i18n.baseText('instanceAi.onboarding.sandbox.apiKeyPlaceholder')"
-							data-test-id="assistant-sandbox-api-key"
+							:data-test-id="
+								surface === 'settings'
+									? 'n8n-agent-sandbox-api-key-input'
+									: 'assistant-sandbox-api-key'
+							"
 						/>
 					</N8nInputLabel>
 				</div>
-				<div v-else-if="!sandboxEnvManaged && sandboxProvider === 'daytona'" :class="$style.fields">
+				<div
+					v-else-if="
+						!sandboxEnvManaged &&
+						sandboxProvider === 'daytona' &&
+						!selectedExistingCredentialId &&
+						!isProxyDaytonaSelection
+					"
+					:class="$style.fields"
+					:data-test-id="surface === 'settings' ? 'n8n-agent-sandbox-connection-fields' : undefined"
+				>
 					<N8nInputLabel
 						:class="$style.compactLabel"
 						:label="i18n.baseText('instanceAi.onboarding.sandbox.apiKey')"
@@ -713,7 +1050,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 							v-model="daytonaApiKey"
 							class="ph-no-capture"
 							type="password"
-							autocomplete="new-password"
+							autocomplete="off"
 							:spellcheck="false"
 							placeholder="dtn_…"
 							data-test-id="assistant-daytona-api-key"
@@ -721,7 +1058,9 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					</N8nInputLabel>
 					<N8nText step="xs" color="text-light">
 						{{ i18n.baseText('instanceAi.onboarding.sandbox.daytonaKey') }}
-						<N8nLink to="https://app.daytona.io" new-window>Daytona</N8nLink>
+						<N8nLink to="https://app.daytona.io" new-window>
+							{{ i18n.baseText('instanceAi.onboarding.sandbox.daytonaDashboard') }} </N8nLink
+						>.
 					</N8nText>
 				</div>
 			</template>
@@ -739,11 +1078,34 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					<span>{{ i18n.baseText('instanceAi.onboarding.env.title') }}</span>
 					{{ i18n.baseText('instanceAi.onboarding.env.description') }}
 				</N8nCallout>
+				<N8nInputLabel
+					v-if="showExistingCredentialSelect"
+					:class="$style.compactLabel"
+					:label="i18n.baseText('instanceAi.onboarding.existingConnection.label')"
+					input-name="assistant-existing-search-credential"
+				>
+					<N8nSelect
+						id="assistant-existing-search-credential"
+						:model-value="selectedExistingCredentialId"
+						:teleported="true"
+						:data-test-id="existingCredentialTestId"
+						@update:model-value="selectExistingCredential"
+					>
+						<N8nOption v-if="!readOnly" value="" :label="editableConnectionLabel" />
+						<N8nOption
+							v-for="credential in compatibleCredentials"
+							:key="credential.id"
+							:value="credential.id"
+							:label="existingCredentialLabel(credential)"
+						/>
+					</N8nSelect>
+				</N8nInputLabel>
 				<N8nRadioGroup
-					v-else
+					v-if="!searchEnvManaged && !readOnly && !selectedExistingCredentialId"
 					:model-value="searchProvider ?? undefined"
 					orientation="vertical"
 					:class="$style.joinedCards"
+					:data-test-id="surface === 'settings' ? 'n8n-agent-search-provider-select' : undefined"
 					@update:model-value="selectSearchProvider"
 				>
 					<div
@@ -792,15 +1154,28 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					</div>
 				</N8nRadioGroup>
 				<div
-					v-if="!searchEnvManaged && searchProvider && searchProvider !== 'disabled'"
+					v-if="
+						!searchEnvManaged &&
+						!selectedExistingCredentialId &&
+						searchProvider &&
+						searchProvider !== 'disabled'
+					"
 					:class="$style.fields"
+					:data-test-id="surface === 'settings' ? 'n8n-agent-search-connection-fields' : undefined"
 				>
 					<N8nText v-if="searchProvider === 'searxng'" step="xs">
 						{{ i18n.baseText('instanceAi.onboarding.search.installDescription') }}
-						<N8nLink :to="SEARXNG_DOCS_URL" new-window>
-							{{ i18n.baseText('instanceAi.onboarding.search.installLink') }}
-						</N8nLink>
-						{{ i18n.baseText('instanceAi.onboarding.search.installSuffix') }}
+						<N8nLink :to="SEARCH_DOCS_URL" new-window>
+							{{ i18n.baseText('instanceAi.onboarding.search.installLink') }} </N8nLink
+						>,
+						{{ i18n.baseText('instanceAi.onboarding.search.searxngInstallSuffix') }}
+					</N8nText>
+					<N8nText v-else step="xs">
+						{{ i18n.baseText('instanceAi.onboarding.search.braveKeyDescription') }}
+						<N8nLink :to="BRAVE_SEARCH_KEYS_URL" new-window>
+							{{ i18n.baseText('instanceAi.onboarding.search.braveKeyLink') }} </N8nLink
+						>,
+						{{ i18n.baseText('instanceAi.onboarding.search.braveKeySuffix') }}
 					</N8nText>
 					<N8nInputLabel
 						:class="$style.compactLabel"
@@ -898,7 +1273,11 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 					v-if="failure"
 					theme="danger"
 					icon="circle-x"
-					data-test-id="assistant-verification-error"
+					:data-test-id="
+						surface === 'settings'
+							? `${settingsTestPrefix}-credential-test-error`
+							: 'assistant-verification-error'
+					"
 				>
 					{{ i18n.baseText(failureKey) }}
 				</N8nCallout>
@@ -915,7 +1294,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 				size="medium"
 				:label="i18n.baseText('generic.cancel')"
 				:disabled="busy"
-				data-test-id="wizard-cancel"
+				:data-test-id="cancelTestId"
 				@click="handleOpenChange(false)"
 			/>
 			<N8nButton
@@ -924,13 +1303,13 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 				size="medium"
 				:label="i18n.baseText('generic.back')"
 				:disabled="busy"
-				data-test-id="wizard-back"
+				:data-test-id="backTestId"
 				@click="emit('back')"
 			/>
 			<div
 				v-if="step !== 'done' && !editMode"
 				:class="$style.dots"
-				data-test-id="wizard-progress"
+				:data-test-id="progressTestId"
 				aria-hidden="true"
 			>
 				<span
@@ -945,7 +1324,7 @@ const modelProviderLabel = (provider: (typeof INSTANCE_AI_MODEL_PROVIDERS)[numbe
 				:label="primaryLabel"
 				:loading="busy"
 				:disabled="primaryDisabled"
-				data-test-id="wizard-primary"
+				:data-test-id="primaryTestId"
 				@click="handlePrimary"
 			/>
 		</N8nDialogFooter>
