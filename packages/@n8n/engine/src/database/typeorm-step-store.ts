@@ -55,6 +55,10 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.transition(id, 'running', 'completed', { outputs });
 	}
 
+	async cancelQueuedSteps(executionId: string): Promise<void> {
+		await this.repo.update({ executionId, status: 'queued' }, { status: 'cancelled' });
+	}
+
 	async failStep(id: string, error: StepError): Promise<boolean> {
 		return await this.transition(id, 'running', 'failed', { error });
 	}

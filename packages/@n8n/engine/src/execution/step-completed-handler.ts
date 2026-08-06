@@ -26,8 +26,18 @@ export class StepCompletedHandler {
 	async handle(event: StepCompletedEvent): Promise<void> {
 		const { step, execution } = await loadStepContext(this.executionStore, this.stepStore, event);
 
-		// A step that didn't complete ends its branch: no successor of it can have
-		// all of its inputs.
+		// v1 parity: an error that escapes a node ends the whole execution, not
+		// just its branch.
+		if (step.status === 'failed') {
+			await this.executionStore.finishExecution(execution.id, 'failed');
+			// Not gated on the finish CAS: a crash between the two writes is
+			// repaired by the redelivered event re-running the sweep.
+			await this.stepStore.cancelQueuedSteps(execution.id);
+			return;
+		}
+
+		if (execution.status !== 'running') return;
+
 		const planned =
 			step.status === 'completed' ? await this.planSuccessors(execution, step.nodeId) : 0;
 
