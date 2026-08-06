@@ -43,6 +43,25 @@ export const isDataTableDataset = (
 ): dataset is AgentEvalDataTableDataset =>
 	dataset.datasetSource === 'data_table' && 'dataTableId' in dataset.datasetRef;
 
+/** Everything needed to address a dataset's case rows, resolved once per dataset. */
+export type AgentEvalCaseSource = {
+	datasetId: string;
+	dataTableId: string;
+	columns: AgentEvalCaseColumns;
+};
+
+/**
+ * Bundles a dataset's id, its table and its resolved columns. Null when the mapping
+ * names no input column, which is the signal to fall back to a read-only view rather
+ * than write cases into columns the runner would ignore.
+ */
+export const toCaseSource = (dataset: AgentEvalDataTableDataset): AgentEvalCaseSource | null => {
+	const columns = resolveCaseColumns(dataset.columnMapping);
+	if (!columns) return null;
+
+	return { datasetId: dataset.id, dataTableId: dataset.datasetRef.dataTableId, columns };
+};
+
 /**
  * Renders any cell as the plain text the view shows. Takes `undefined` on top of the
  * value union because a mapping can name a column the table no longer has — indexing

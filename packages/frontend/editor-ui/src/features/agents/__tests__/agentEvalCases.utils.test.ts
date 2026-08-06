@@ -5,10 +5,11 @@ import {
 	resolveCaseColumns,
 	toAgentEvalCase,
 	toAgentEvalCases,
+	toCaseSource,
 	toDataTableRow,
 	type AgentEvalCaseColumns,
 } from '../utils/agentEvalCases.utils';
-import type { AgentEvalDatasetRecord } from '../agentEvals.types';
+import type { AgentEvalDatasetRecord, AgentEvalDataTableDataset } from '../agentEvals.types';
 
 const columns: AgentEvalCaseColumns = { input: 'input', whatToCheck: 'criteria' };
 
@@ -70,6 +71,21 @@ describe('agentEvalCases.utils', () => {
 
 		it('rejects a google sheets dataset', () => {
 			expect(isDataTableDataset(googleSheetsDataset)).toBe(false);
+		});
+	});
+
+	describe('toCaseSource', () => {
+		it('bundles the dataset id, its table and its resolved columns', () => {
+			expect(toCaseSource(dataTableDataset as AgentEvalDataTableDataset)).toEqual({
+				datasetId: 'dataset-1',
+				dataTableId: 'table-1',
+				columns: { input: 'input', whatToCheck: 'criteria' },
+			});
+		});
+
+		it('returns null when the mapping names no input column, so callers fall back to read-only', () => {
+			const unmapped = { ...datasetBase, columnMapping: null } as AgentEvalDataTableDataset;
+			expect(toCaseSource(unmapped)).toBeNull();
 		});
 	});
 
