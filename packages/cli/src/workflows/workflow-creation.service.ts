@@ -344,11 +344,6 @@ export class WorkflowCreationService {
 		newWorkflow.settings = { ...(newWorkflow.settings ?? {}), redactionPolicy: seed };
 	}
 
-	/**
-	 * Default-only: the instance setting seeds MCP exposure for callers that didn't
-	 * express an intent. An explicit `availableInMCP` — from the public API, an
-	 * import, or the MCP builder — always wins.
-	 */
 	private async resolveMcpExposureOnCreate(newWorkflow: WorkflowEntity): Promise<void> {
 		if (newWorkflow.settings?.availableInMCP !== undefined) return;
 

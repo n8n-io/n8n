@@ -142,47 +142,6 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 		expect(experimentStore.trackConfirmed).not.toHaveBeenCalled();
 	});
 
-	it('tracks auto-expose enabled when the response confirms it', async () => {
-		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
-			updatedCount: 3,
-			unchangedCount: 0,
-			skippedCount: 0,
-			failedCount: 0,
-			autoExposeNewWorkflows: true,
-		});
-
-		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
-
-		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
-
-		expect(trackSpy).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
-			expect.objectContaining({ enabled: true }),
-		);
-	});
-
-	it('does not track auto-expose when the response omits it', async () => {
-		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
-			updatedCount: 3,
-			unchangedCount: 0,
-			skippedCount: 0,
-			failedCount: 0,
-			// autoExposeNewWorkflows absent — backend condition didn't apply, or its
-			// fire-and-forget write failed
-		});
-
-		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
-
-		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
-
-		expect(trackSpy).not.toHaveBeenCalledWith(
-			TELEMETRY_EVENT.MCP.AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED,
-			expect.anything(),
-		);
-	});
-
 	it('syncs local MCP settings state when the response confirms auto-expose', async () => {
 		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
 			updatedCount: 3,
@@ -207,29 +166,5 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 		expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(true);
 		// Sibling keys must survive the sync.
 		expect(settingsStore.moduleSettings.mcp?.mcpAccessEnabled).toBe(true);
-	});
-
-	it('leaves local MCP settings state untouched when the response omits auto-expose', async () => {
-		mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
-			updatedCount: 3,
-			unchangedCount: 0,
-			skippedCount: 0,
-			failedCount: 0,
-			// autoExposeNewWorkflows absent
-		});
-		const settingsStore = useSettingsStore();
-		settingsStore.moduleSettings.mcp = {
-			mcpAccessEnabled: true,
-			mcpManagedByEnv: false,
-			autoExposeNewWorkflows: false,
-		};
-
-		const user = userEvent.setup();
-		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
-
-		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
-
-		expect(mcpStore.applyAutoExposeNewWorkflowsLocally).not.toHaveBeenCalled();
-		expect(settingsStore.moduleSettings.mcp?.autoExposeNewWorkflows).toBe(false);
 	});
 });

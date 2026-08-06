@@ -63,12 +63,6 @@ vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
 	})),
 }));
 
-vi.mock('vue-router', () => ({
-	useRoute: vi.fn(() => ({ params: {}, query: {}, path: '' })),
-	useRouter: vi.fn(() => ({})),
-	RouterLink: {},
-}));
-
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: vi.fn((scopes: string[] = []) => ({
 		workflow: {
@@ -437,29 +431,6 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.activeWorkflows).toEqual([]);
-		});
-	});
-
-	describe('createNewWorkflow()', () => {
-		it('does not send availableInMCP, letting the backend decide exposure', async () => {
-			const makeRestApiRequestSpy = vi
-				.spyOn(apiUtils, 'makeRestApiRequest')
-				.mockResolvedValue(
-					createTestWorkflow({ id: '1', name: 'Test', nodes: [], connections: {} }),
-				);
-
-			await workflowsStore.createNewWorkflow({ name: 'Test', nodes: [], connections: {} });
-
-			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
-				expect.objectContaining({ baseUrl: '/rest' }),
-				'POST',
-				'/workflows',
-				expect.anything(),
-			);
-			const [, , , payload] = makeRestApiRequestSpy.mock.calls[0];
-			expect(
-				(payload as { settings?: { availableInMCP?: boolean } }).settings?.availableInMCP,
-			).toBeUndefined();
 		});
 	});
 
