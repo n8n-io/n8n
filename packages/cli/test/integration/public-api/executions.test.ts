@@ -274,6 +274,8 @@ describe('DELETE /executions/:id', () => {
 		} = response.body;
 
 		expect(id).toBeDefined();
+		expect(typeof id).toBe('number');
+		expect(id).toBe(Number(execution.id));
 		expect(finished).toBe(true);
 		expect(mode).toEqual(execution.mode);
 		expect(retrySuccessId).toBeNull();

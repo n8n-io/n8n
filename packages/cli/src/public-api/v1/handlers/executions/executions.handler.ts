@@ -60,12 +60,11 @@ const executionHandlers: ExecutionHandlers = {
 				throw new NotFoundError('Not Found');
 			}
 
-			const execution = await Container.get(ExecutionService).deleteOne(
-				req.params.id,
-				sharedWorkflowsIds,
-			);
+			const { id } = req.params;
 
-			return res.json(replaceCircularReferences(execution));
+			const execution = await Container.get(ExecutionService).deleteOne(id, sharedWorkflowsIds);
+
+			return res.json(replaceCircularReferences({ ...execution, id }));
 		},
 	],
 	getExecution: [
