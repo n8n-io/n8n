@@ -288,11 +288,12 @@ describe('AgentBuilderHeader', () => {
 	});
 
 	it.each([
-		{ label: 'opens', isPreviewOpen: false, event: 'open-preview', opposite: 'close-preview' },
-		{ label: 'closes', isPreviewOpen: true, event: 'close-preview', opposite: 'open-preview' },
-	])('$label Preview from the preview action', async ({ isPreviewOpen, event, opposite }) => {
+		{ label: 'opens', isPreviewOpen: false, event: 'open-preview', icon: 'play' },
+		{ label: 'closes', isPreviewOpen: true, event: 'close-preview', icon: 'x' },
+	])('$label Preview from the preview action', async ({ isPreviewOpen, event, icon }) => {
 		const wrapper = mountHeader({ isPreviewOpen });
 		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+		expect(previewButton.attributes('data-icon')).toBe(icon);
 
 		if (isPreviewOpen) {
 			expect(previewButton.text()).toBe('agents.builder.preview.close.ariaLabel');
@@ -301,7 +302,7 @@ describe('AgentBuilderHeader', () => {
 
 		await previewButton.trigger('click');
 		expect(wrapper.emitted(event)).toEqual([[]]);
-		expect(wrapper.emitted(opposite)).toBeUndefined();
+		expect(wrapper.emitted(isPreviewOpen ? 'open-preview' : 'close-preview')).toBeUndefined();
 	});
 
 	it('exposes the preview route href for browser new-tab actions', () => {
