@@ -1,6 +1,11 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
+import {
+	AuthIdentityRepository,
+	ProjectRelationRepository,
+	type User,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { createAdmin, createChatUser, createMember, createOwner } from './shared/db/users';
@@ -80,6 +85,56 @@ describe('UserRepository', () => {
 			});
 
 			expect(projectRelation.project.id).toBe(project.id);
+		});
+	});
+
+	describe('createUserWithExternalIdentity()', () => {
+		// Identity rows reference users, so leaving them behind breaks the
+		// `User` truncate the next describe block does.
+		afterAll(async () => {
+			await testDb.truncate(['AuthIdentity']);
+		});
+
+		test('should create the user, their personal project and the identity binding', async () => {
+			const email = randomEmail();
+
+			const user = await userRepository.createUserWithExternalIdentity(
+				{ email, role: { slug: 'global:member' } },
+				{ providerId: 'external-subject-1', providerType: 'oidc' },
+			);
+
+			const projectRelation = await Container.get(ProjectRelationRepository).findOneOrFail({
+				where: { userId: user.id, project: { type: 'personal' } },
+				relations: ['project'],
+			});
+			expect(projectRelation.project.type).toBe('personal');
+
+			const identity = await Container.get(AuthIdentityRepository).findOneOrFail({
+				where: { providerId: 'external-subject-1', providerType: 'oidc' },
+			});
+			expect(identity.userId).toBe(user.id);
+			expect(identity.status).toBe('active');
+		});
+
+		test('should not leave a user behind when the identity insert fails', async () => {
+			const email = randomEmail();
+			const takenProviderId = 'external-subject-conflict';
+
+			await userRepository.createUserWithExternalIdentity(
+				{ email: randomEmail(), role: { slug: 'global:member' } },
+				{ providerId: takenProviderId, providerType: 'oidc' },
+			);
+
+			// The (providerId, providerType) pair is the primary key, so a second
+			// user claiming the same one must roll the whole thing back.
+			await expect(
+				userRepository.createUserWithExternalIdentity(
+					{ email, role: { slug: 'global:member' } },
+					{ providerId: takenProviderId, providerType: 'oidc' },
+				),
+			).rejects.toThrow();
+
+			await expect(userRepository.findOneBy({ email })).resolves.toBeNull();
 		});
 	});
 

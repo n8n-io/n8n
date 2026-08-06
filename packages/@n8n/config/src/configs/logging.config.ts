@@ -37,6 +37,7 @@ export const LOG_SCOPES = [
 	'data-table-csv-import',
 	'ssrf-protection',
 	'token-exchange',
+	'identity-binding',
 	'instance-ai',
 	'agents',
 	'sub-agent-eval',

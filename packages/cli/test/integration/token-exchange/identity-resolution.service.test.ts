@@ -16,6 +16,7 @@ import {
 import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
+import { EXTERNAL_IDENTITY_PASSWORD_PLACEHOLDER } from '@/services/identity-binding.service';
 
 import { createOwner, createUser } from '../shared/db/users';
 
@@ -219,7 +220,7 @@ describe('IdentityResolutionService (integration)', () => {
 				where: { id: result.id },
 				select: ['id', 'password'],
 			});
-			expect(dbUser!.password).toBe('!token-exchange-no-password');
+			expect(dbUser!.password).toBe(EXTERNAL_IDENTITY_PASSWORD_PLACEHOLDER);
 
 			const identity = await authIdentityRepository.findOne({
 				where: { providerId: providerIdFor('ext-jit'), providerType: 'token-exchange' },

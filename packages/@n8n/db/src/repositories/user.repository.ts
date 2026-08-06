@@ -9,7 +9,8 @@ import type {
 } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
-import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, AuthIdentity, Project, ProjectRelation, User } from '../entities';
+import type { AuthProviderType } from '../entities/types-db';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -153,6 +154,33 @@ export class UserRepository extends Repository<User> {
 		// TODO: use a transactions
 		// This is blocked by TypeORM having concurrency issues with transactions
 		return await createInner(this.manager);
+	}
+
+	/**
+	 * Create a user, their personal project and the external `AuthIdentity`
+	 * binding them to an identity provider, in a single transaction — so a
+	 * failure can never leave a user without the binding that is the only way
+	 * they can authenticate.
+	 */
+	async createUserWithExternalIdentity(
+		user: DeepPartial<User>,
+		identity: { providerId: string; providerType: AuthProviderType },
+	): Promise<User> {
+		return await this.manager.transaction(async (trx) => {
+			const { user: newUser } = await this.createUserWithProject(user, trx);
+
+			// `insert`, not `save`: `(providerId, providerType)` is the primary key,
+			// so `save` would silently re-point an existing binding at this brand-new
+			// user. Losing the race must fail, not quietly take over an identity.
+			await trx.insert(AuthIdentity, {
+				providerId: identity.providerId,
+				providerType: identity.providerType,
+				userId: newUser.id,
+				status: 'active',
+			});
+
+			return newUser;
+		});
 	}
 
 	/**

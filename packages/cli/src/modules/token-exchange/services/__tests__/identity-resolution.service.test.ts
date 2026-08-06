@@ -3,13 +3,13 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	type AuthIdentity,
 	type AuthIdentityRepository,
-	type EntityManager,
 	type User,
 	type UserRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
+import { IdentityBindingService } from '@/services/identity-binding.service';
 import type { RoleService } from '@/services/role.service';
 import type { UserService } from '@/services/user.service';
 
@@ -17,18 +17,22 @@ import type { TokenExchangeConfig } from '../../token-exchange.config';
 import { TokenExchangeAuthError } from '../../token-exchange.errors';
 import type { ExternalTokenClaims } from '../../token-exchange.schemas';
 import { TokenExchangeFailureReason } from '../../token-exchange.types';
-import { IdentityResolutionService } from '../identity-resolution.service';
+import { IdentityResolutionService, qualifiedProviderId } from '../identity-resolution.service';
 import type { TrustedKeyService } from '../trusted-key.service';
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
-const entityManager = mock<EntityManager>();
-const userRepository = mock<UserRepository>({ manager: entityManager });
+const userRepository = mock<UserRepository>();
 const authIdentityRepository = mock<AuthIdentityRepository>();
 const eventService = mock<EventService>();
 const userService = mock<UserService>();
 const trustedKeyService = mock<TrustedKeyService>();
 const roleService = mock<RoleService>();
 const config = mock<TokenExchangeConfig>();
+
+// The shared core is wired for real, against mocked repositories, so these
+// stay end-to-end regression tests of the resolution behaviour rather than
+// tests of the delegation.
+const identityBinding = new IdentityBindingService(logger, userRepository, authIdentityRepository);
 
 const service = new IdentityResolutionService(
 	logger,
@@ -39,6 +43,7 @@ const service = new IdentityResolutionService(
 	trustedKeyService,
 	roleService,
 	config,
+	identityBinding,
 );
 
 const CUSTOM_ROLE = 'global:custom-abc123';
@@ -83,30 +88,24 @@ describe('IdentityResolutionService', () => {
 	});
 
 	describe('JIT provisioning (new user)', () => {
-		const trx = entityManager;
+		const identity = { providerId: expect.any(String), providerType: 'token-exchange' };
 
 		beforeEach(() => {
 			// No existing identity, no existing user by email → JIT path.
 			authIdentityRepository.findOne.mockResolvedValue(null);
 			userRepository.findOne.mockResolvedValue(null);
-			entityManager.transaction.mockImplementation(
-				// @ts-expect-error overloaded signature
-				async (runInTransaction: (em: EntityManager) => Promise<unknown>) =>
-					await runInTransaction(trx),
+			userRepository.createUserWithExternalIdentity.mockResolvedValue(
+				mock<User>({ id: 'new-user-1' }),
 			);
-			userRepository.createUserWithProject.mockResolvedValue({
-				user: mock<User>({ id: 'new-user-1' }),
-				project: mock(),
-			});
 		});
 
 		it('provisions a licensed custom global role', async () => {
 			const user = await service.resolve(makeClaims({ role: CUSTOM_ROLE }), undefined, ctx(), true);
 
 			expect(user.id).toBe('new-user-1');
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(userRepository.createUserWithExternalIdentity).toHaveBeenCalledWith(
 				expect.objectContaining({ role: { slug: CUSTOM_ROLE } }),
-				trx,
+				identity,
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'token-exchange-user-provisioned',
@@ -118,22 +117,34 @@ describe('IdentityResolutionService', () => {
 			await service.resolve(makeClaims({ role: 'global:member' }), undefined, ctx(), true);
 
 			expect(roleService.isRoleLicensed).not.toHaveBeenCalled();
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(userRepository.createUserWithExternalIdentity).toHaveBeenCalledWith(
 				expect.objectContaining({ role: { slug: 'global:member' } }),
-				trx,
+				identity,
 			);
 		});
 
 		it('defaults to global:member when no role claim is present', async () => {
 			await service.resolve(makeClaims(), undefined, ctx(), true);
 
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(userRepository.createUserWithExternalIdentity).toHaveBeenCalledWith(
 				expect.objectContaining({ role: GLOBAL_MEMBER_ROLE }),
-				trx,
+				identity,
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'token-exchange-user-provisioned',
 				expect.objectContaining({ role: GLOBAL_MEMBER_ROLE.slug }),
+			);
+		});
+
+		it('keys the binding on the qualified sub, not the raw one', async () => {
+			await service.resolve(makeClaims(), undefined, ctx(), true);
+
+			expect(userRepository.createUserWithExternalIdentity).toHaveBeenCalledWith(
+				expect.anything(),
+				{
+					providerId: qualifiedProviderId('https://issuer.example.com', 'external-user-1'),
+					providerType: 'token-exchange',
+				},
 			);
 		});
 
@@ -143,7 +154,7 @@ describe('IdentityResolutionService', () => {
 			await expect(
 				service.resolve(makeClaims({ role: 'global:nonexistent' }), undefined, ctx(), true),
 			).rejects.toThrow(TokenExchangeAuthError);
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(userRepository.createUserWithExternalIdentity).not.toHaveBeenCalled();
 		});
 
 		it('throws when a custom role is unlicensed', async () => {
@@ -152,7 +163,7 @@ describe('IdentityResolutionService', () => {
 			await expect(
 				service.resolve(makeClaims({ role: CUSTOM_ROLE }), undefined, ctx(), true),
 			).rejects.toThrow(TokenExchangeAuthError);
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(userRepository.createUserWithExternalIdentity).not.toHaveBeenCalled();
 		});
 
 		it('throws on a global:owner role claim', async () => {
@@ -170,9 +181,9 @@ describe('IdentityResolutionService', () => {
 		it('provisions when the role is in the key allowedRoles', async () => {
 			await service.resolve(makeClaims({ role: CUSTOM_ROLE }), [CUSTOM_ROLE], ctx(), true);
 
-			expect(userRepository.createUserWithProject).toHaveBeenCalledWith(
+			expect(userRepository.createUserWithExternalIdentity).toHaveBeenCalledWith(
 				expect.objectContaining({ role: { slug: CUSTOM_ROLE } }),
-				trx,
+				identity,
 			);
 		});
 	});
@@ -180,7 +191,9 @@ describe('IdentityResolutionService', () => {
 	describe('role sync (existing user resolved by identity)', () => {
 		function mockLinkedUser(currentRoleSlug: string) {
 			const user = mock<User>({ id: 'existing-1', role: { slug: currentRoleSlug } });
-			authIdentityRepository.findOne.mockResolvedValueOnce(mock<AuthIdentity>({ user }));
+			authIdentityRepository.findOne.mockResolvedValueOnce(
+				mock<AuthIdentity>({ user, status: 'active' }),
+			);
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			return user;
 		}
@@ -257,7 +270,7 @@ describe('IdentityResolutionService', () => {
 
 		it('rejects when an already-linked identity resolves to a user whose role exceeds allowedRoles', async () => {
 			authIdentityRepository.findOne.mockResolvedValueOnce(
-				mock<AuthIdentity>({ user: makeUser('global:owner') }),
+				mock<AuthIdentity>({ user: makeUser('global:owner'), status: 'active' }),
 			);
 
 			await expect(
@@ -352,7 +365,7 @@ describe('IdentityResolutionService', () => {
 			expect(authIdentityRepository.findOne).toHaveBeenCalledWith(
 				expect.objectContaining({ where: { providerId: 'external-user-1', providerType: 'oidc' } }),
 			);
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(userRepository.createUserWithExternalIdentity).not.toHaveBeenCalled();
 		});
 
 		it('resolves via the bridge with allowProvisioning: false, performing no writes', async () => {
@@ -361,7 +374,7 @@ describe('IdentityResolutionService', () => {
 
 			await expect(service.resolve(makeClaims(), undefined, ctx(), false)).resolves.toEqual(user);
 
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(userRepository.createUserWithExternalIdentity).not.toHaveBeenCalled();
 			expect(authIdentityRepository.save).not.toHaveBeenCalled();
 			expect(authIdentityRepository.update).not.toHaveBeenCalled();
 			expect(userService.changeUserRole).not.toHaveBeenCalled();
@@ -383,7 +396,9 @@ describe('IdentityResolutionService', () => {
 
 		it('does not consult the bridge when a token-exchange binding already matches', async () => {
 			const user = mock<User>({ id: 'existing-1' });
-			authIdentityRepository.findOne.mockResolvedValueOnce(mock<AuthIdentity>({ user }));
+			authIdentityRepository.findOne.mockResolvedValueOnce(
+				mock<AuthIdentity>({ user, status: 'active' }),
+			);
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			trustedKeyService.isSsoIssuer.mockResolvedValue(true);
 
@@ -397,7 +412,7 @@ describe('IdentityResolutionService', () => {
 		it('returns null for an unknown (iss, sub) without creating a user', async () => {
 			await expect(service.resolve(makeClaims(), undefined, ctx(), false)).resolves.toBeNull();
 
-			expect(userRepository.createUserWithProject).not.toHaveBeenCalled();
+			expect(userRepository.createUserWithExternalIdentity).not.toHaveBeenCalled();
 			expect(authIdentityRepository.save).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});

@@ -1,16 +1,19 @@
 import { Logger } from '@n8n/backend-common';
-import {
-	AuthIdentity,
-	AuthIdentityRepository,
-	GLOBAL_MEMBER_ROLE,
-	UserRepository,
-	type User,
-} from '@n8n/db';
+import { AuthIdentityRepository, GLOBAL_MEMBER_ROLE, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG, isBuiltInRole } from '@n8n/permissions';
 import { createHash } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
+import {
+	IdentityBindingService,
+	interpretEmailVerified,
+} from '@/services/identity-binding.service';
+import {
+	IdentityResolutionError,
+	type IdentityPolicy,
+	type IdentitySource,
+} from '@/services/identity-binding.types';
 import type { IdentityResolver } from '@/services/identity-resolution-proxy.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
@@ -21,24 +24,19 @@ import type { ExternalTokenClaims } from '../token-exchange.schemas';
 import { TokenExchangeFailureReason } from '../token-exchange.types';
 import { TrustedKeyService } from './trusted-key.service';
 
-/**
- * Password placeholder for JIT-provisioned users. This is not a valid bcrypt
- * hash, so it can never match any input — the user can only authenticate
- * through token exchange.
- */
-const INVALID_PASSWORD_PLACEHOLDER = '!token-exchange-no-password';
-
-/** Maximum length for first/last name columns in the database. */
-const MAX_NAME_LENGTH = 32;
-
-function trimName(value: string | undefined, fallback = ''): string {
-	return (value ?? fallback).slice(0, MAX_NAME_LENGTH);
-}
+type TokenContext = { kid?: string; issuer: string; requireVerifiedEmail?: boolean };
 
 export function qualifiedProviderId(issuer: string, sub: string): string {
 	return `${createHash('sha256').update(issuer).digest('hex')}::${sub}`;
 }
 
+/**
+ * Adapter binding token-exchange's policy — per-key `allowedRoles`,
+ * `excludeOwner`, the `role` claim and `requireVerifiedEmail` — to the shared
+ * resolution algorithm in `IdentityBindingService`. The three-path lookup,
+ * linking and provisioning all live there; this class owns only the decisions
+ * that are specific to a token-exchange key.
+ */
 @Service()
 export class IdentityResolutionService implements IdentityResolver {
 	private readonly logger: Logger;
@@ -52,8 +50,172 @@ export class IdentityResolutionService implements IdentityResolver {
 		private readonly trustedKeyService: TrustedKeyService,
 		private readonly roleService: RoleService,
 		private readonly config: TokenExchangeConfig,
+		private readonly identityBinding: IdentityBindingService,
 	) {
 		this.logger = logger.scoped('token-exchange');
+	}
+
+	/**
+	 * Map external identity claims to a local n8n user.
+	 *
+	 * `allowProvisioning: true` (login/exchange flows) — creates a user if
+	 * necessary. `allowProvisioning: false` (per-access resolution) — a cheap,
+	 * read-only, indexed lookup only, returning `null` when there is no active
+	 * binding: a trigger must never create a user, and an unbound identity must
+	 * not block execution.
+	 *
+	 * Role handling: the role claim is only applied when it is both valid and
+	 * permitted by the key's allowedRoles. A disallowed role claim throws —
+	 * OAuth flows are strict to avoid silent misconfiguration.
+	 */
+	async resolve(
+		claims: ExternalTokenClaims,
+		allowedRoles: string[] | undefined,
+		tokenContext: TokenContext,
+		allowProvisioning: true,
+	): Promise<User>;
+	async resolve(
+		claims: ExternalTokenClaims,
+		allowedRoles: string[] | undefined,
+		tokenContext: TokenContext,
+		allowProvisioning: boolean,
+	): Promise<User | null>;
+	async resolve(
+		claims: ExternalTokenClaims,
+		allowedRoles: string[] | undefined,
+		tokenContext: TokenContext,
+		allowProvisioning: boolean,
+	): Promise<User | null> {
+		try {
+			return await this.identityBinding.resolve(
+				this.buildSource(claims, tokenContext),
+				claims,
+				this.buildPolicy(allowedRoles, tokenContext),
+				{ allowProvisioning },
+			);
+		} catch (error) {
+			// Re-map the shared core's errors onto this module's error type.
+			if (error instanceof IdentityResolutionError) {
+				throw error.failure === 'missing-email'
+					? new TokenExchangeAuthError(
+							TokenExchangeFailureReason.InvalidClaims,
+							'Email claim is required for user provisioning',
+						)
+					: new TokenExchangeAuthError(
+							TokenExchangeFailureReason.Other,
+							'This identity binding is no longer active',
+						);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Bindings are keyed by `sha256(iss)::sub`, so the same `sub` from two
+	 * issuers can never collide. Two fallbacks cover rows written before that:
+	 * the unqualified sub, and — for the instance's own SSO provider — the
+	 * `oidc` row that already exists for anyone who has logged in through SSO.
+	 * The bridge is last so it can never shadow a token-exchange binding.
+	 */
+	private buildSource(claims: ExternalTokenClaims, tokenContext: TokenContext): IdentitySource {
+		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
+
+		return {
+			providerType: 'token-exchange',
+			keyFor: () => qualifiedSub,
+			fallbacks: [
+				{
+					providerId: claims.sub,
+					providerType: 'token-exchange',
+					// An unqualified sub is only unambiguous when there is a single
+					// trusted issuer; with more than one, treat it as not found.
+					accepts: async () => await this.trustedKeyService.hasSingleTrustedIssuer(),
+					rebind: async (identity) => {
+						await this.authIdentityRepository.update(
+							{ providerId: claims.sub, providerType: 'token-exchange' },
+							{ providerId: qualifiedSub },
+						);
+						this.eventService.emit('token-exchange-identity-rebound', {
+							userId: identity.user.id,
+							sub: claims.sub,
+							kid: tokenContext.kid ?? '',
+							issuer: tokenContext.issuer,
+						});
+					},
+				},
+				{
+					providerId: claims.sub,
+					providerType: 'oidc',
+					// Cheap indexed check, so it gates the lookup rather than
+					// filtering its result — a non-SSO issuer never touches an
+					// `oidc` row at all.
+					applies: async () => await this.trustedKeyService.isSsoIssuer(claims.iss),
+				},
+			],
+		};
+	}
+
+	private buildPolicy(
+		allowedRoles: string[] | undefined,
+		tokenContext: TokenContext,
+	): IdentityPolicy {
+		// Resolved by the pre-write gate and reused by `onResolved`, so a
+		// disallowed role claim throws before a binding is written rather than
+		// after. A fresh policy is built per resolution, so this cannot leak
+		// between callers.
+		let pendingRole: string | undefined;
+
+		return {
+			assertEmailVerified: (claims) =>
+				this.assertEmailVerified(claims.email_verified, tokenContext),
+
+			assertMayActAs: (user) => this.assertKeyMayActAsUser(user, allowedRoles),
+
+			assertClaimAcceptable: async (user, claims) => {
+				pendingRole = await this.resolveRoleForExistingUser(
+					claims.role,
+					allowedRoles,
+					user.role?.slug,
+				);
+			},
+
+			roleForNewUser: async (claims) => {
+				const jitRole = await this.resolveRoleForNewUser(claims.role, allowedRoles);
+				return jitRole ? { slug: jitRole } : GLOBAL_MEMBER_ROLE;
+			},
+
+			profileSync: 'every-resolution',
+
+			onLinked: (user, claims) => {
+				this.logger.debug('Linked external identity to existing user by email', {
+					sub: claims.sub,
+				});
+				this.eventService.emit('token-exchange-identity-linked', {
+					userId: user.id,
+					sub: claims.sub,
+					email: user.email,
+					kid: tokenContext.kid ?? '',
+					issuer: tokenContext.issuer,
+				});
+			},
+
+			onProvisioned: (user, claims, roleSlug) => {
+				this.eventService.emit('token-exchange-user-provisioned', {
+					userId: user.id,
+					sub: claims.sub,
+					email: user.email,
+					role: roleSlug,
+					kid: tokenContext.kid ?? '',
+					issuer: tokenContext.issuer,
+				});
+			},
+
+			onResolved: async (user, _claims, path) => {
+				// A user provisioned moments ago already has the claimed role.
+				if (path === 'provisioned') return user;
+				return await this.applyRole(user, pendingRole, tokenContext);
+			},
+		};
 	}
 
 	private assertKeyMayActAsUser(user: User, allowedRoles?: string[]) {
@@ -71,11 +233,17 @@ export class IdentityResolutionService implements IdentityResolver {
 		}
 	}
 
-	private assertEmailVerified(
-		claims: ExternalTokenClaims,
-		tokenContext: { requireVerifiedEmail: boolean },
-	) {
-		if (tokenContext?.requireVerifiedEmail && !claims.email_verified) {
+	/**
+	 * A key may waive the requirement that the IdP vouch for the email, but not
+	 * override the IdP actively saying it is unverified.
+	 */
+	private assertEmailVerified(emailVerified: unknown, tokenContext: TokenContext) {
+		const verification = interpretEmailVerified(emailVerified);
+
+		if (
+			verification === 'explicitly-unverified' ||
+			(tokenContext.requireVerifiedEmail && verification !== 'verified')
+		) {
 			throw new TokenExchangeAuthError(
 				TokenExchangeFailureReason.EmailNotVerified,
 				'Email is not verified',
@@ -84,242 +252,34 @@ export class IdentityResolutionService implements IdentityResolver {
 	}
 
 	/**
-	 * Map external identity claims to a local n8n user.
-	 *
-	 * `allowProvisioning: true` (login/exchange flows) — creates a user if
-	 * necessary. Resolution order:
-	 * 1. AuthIdentity lookup by sub + token-exchange provider (incl. the SSO bridge)
-	 * 2. Email fallback — link existing user to this sub
-	 * 3. JIT provision — create user + personal project + identity in a transaction
-	 *
-	 * `allowProvisioning: false` (per-access resolution) — a cheap, read-only,
-	 * indexed lookup only: no email fallback, no provisioning, no profile/role
-	 * sync, no writes. Returns `null` (never throws in a way that stops the
-	 * caller) when there is no active binding — a trigger must never create a
-	 * user, and an unbound identity must not block execution.
-	 *
-	 * Role handling: the role claim is only applied when it is both valid and
-	 * permitted by the key's allowedRoles. A disallowed role claim throws —
-	 * OAuth flows are strict to avoid silent misconfiguration.
+	 * Apply a role resolved by the pre-write gate. Goes through
+	 * `UserService.changeUserRole` so the side effects (API key revocation,
+	 * project relation cleanup, cache invalidation) are applied.
 	 */
-	async resolve(
-		claims: ExternalTokenClaims,
-		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-		allowProvisioning: true,
-	): Promise<User>;
-	async resolve(
-		claims: ExternalTokenClaims,
-		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-		allowProvisioning: boolean,
-	): Promise<User | null>;
-	async resolve(
-		claims: ExternalTokenClaims,
-		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-		allowProvisioning: boolean,
-	): Promise<User | null> {
-		const identity = await this.findBoundIdentity(claims, allowProvisioning, tokenContext);
+	private async applyRole(
+		user: User,
+		resolvedRole: string | undefined,
+		tokenContext: TokenContext,
+	): Promise<User> {
+		const previousRole = user.role?.slug;
+		if (!resolvedRole || resolvedRole === previousRole) return user;
 
-		if (identity) {
-			if (!allowProvisioning) {
-				return this.isBindingActive(identity) ? identity.user : null;
-			}
-			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
-		}
+		await this.userService.changeUserRole(user, { newRoleName: resolvedRole });
 
-		if (!allowProvisioning) {
-			return null;
-		}
-
-		// Path 2: email fallback
-		const email = claims.email?.toLowerCase();
-		if (email) {
-			const existingUser = await this.userRepository.findOne({
-				where: { email },
-				relations: ['authIdentities', 'role'],
+		if (previousRole) {
+			this.eventService.emit('token-exchange-role-updated', {
+				userId: user.id,
+				previousRole,
+				newRole: resolvedRole,
+				kid: tokenContext.kid ?? '',
+				issuer: tokenContext.issuer,
 			});
-
-			if (existingUser) {
-				return await this.resolveByEmail(claims, email, existingUser, allowedRoles, tokenContext);
-			}
 		}
 
-		// Path 3: JIT provisioning
-		if (!email) {
-			throw new TokenExchangeAuthError(
-				TokenExchangeFailureReason.InvalidClaims,
-				'Email claim is required for user provisioning',
-			);
-		}
-
-		return await this.provisionUser(claims, email, allowedRoles, tokenContext);
-	}
-
-	/**
-	 * Read-only lookup of an existing binding. Tries, in order: the qualified
-	 * token-exchange sub, the legacy unqualified token-exchange sub, then the
-	 * OIDC SSO bridge (Change 1) — same human, different login surface, whose
-	 * AuthIdentity row already exists for anyone who has logged in via SSO.
-	 * The bridge is tried last so it never shadows an existing token-exchange
-	 * binding for the same claim.
-	 */
-	private async findBoundIdentity(
-		claims: ExternalTokenClaims,
-		allowProvisioning: boolean,
-		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-	): Promise<AuthIdentity | null> {
-		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
-
-		let identity = await this.authIdentityRepository.findOne({
-			where: { providerId: qualifiedSub, providerType: 'token-exchange' },
-			relations: { user: { role: true } },
+		return await this.userRepository.findOneOrFail({
+			where: { id: user.id },
+			relations: ['role'],
 		});
-		if (identity) return identity;
-
-		identity = await this.authIdentityRepository.findOne({
-			where: { providerId: claims.sub, providerType: 'token-exchange' },
-			relations: { user: { role: true } },
-		});
-		// An unqualified sub is only unambiguous when there's a single trusted
-		// issuer; with more than one, treat it as not found, same as before.
-		if (identity && (await this.trustedKeyService.hasSingleTrustedIssuer())) {
-			// Rebind is a write; keep the per-access (read-only) path free of it.
-			if (allowProvisioning) {
-				await this.authIdentityRepository.update(
-					{ providerId: claims.sub, providerType: 'token-exchange' },
-					{ providerId: qualifiedSub },
-				);
-				this.eventService.emit('token-exchange-identity-rebound', {
-					userId: identity.user.id,
-					sub: claims.sub,
-					kid: tokenContext.kid,
-					issuer: tokenContext.issuer,
-				});
-			}
-			return identity;
-		}
-
-		if (await this.trustedKeyService.isSsoIssuer(claims.iss)) {
-			identity = await this.authIdentityRepository.findOne({
-				where: { providerId: claims.sub, providerType: 'oidc' },
-				relations: { user: { role: true } },
-			});
-			if (identity) return identity;
-		}
-
-		return null;
-	}
-
-	/**
-	 * Deliberately does not consult the claim's `expiresAt` — binding status is
-	 * the access gate, not token freshness; an execution outliving the token's
-	 * `exp` must still resolve.
-	 */
-	private isBindingActive(identity: AuthIdentity): boolean {
-		return identity.status === 'active';
-	}
-
-	/** Path 1: resolve an already-linked identity and sync profile/role. */
-	private async resolveByIdentity(
-		claims: ExternalTokenClaims,
-		identity: AuthIdentity,
-		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean } | undefined,
-	): Promise<User> {
-		this.assertKeyMayActAsUser(identity.user, allowedRoles);
-
-		this.logger.debug('Resolved user by auth identity', { sub: claims.sub });
-		const resolvedRole = await this.resolveRoleForExistingUser(
-			claims.role,
-			allowedRoles,
-			identity.user.role?.slug,
-		);
-		return await this.syncProfile(identity.user, claims, resolvedRole, tokenContext);
-	}
-
-	/** Path 2: link an external identity to an existing user found by email. */
-	private async resolveByEmail(
-		claims: ExternalTokenClaims,
-		email: string,
-		existingUser: User,
-		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-	): Promise<User> {
-		this.logger.debug('Linking external identity to existing user by email', {
-			sub: claims.sub,
-			email,
-		});
-		this.assertKeyMayActAsUser(existingUser, allowedRoles);
-		this.assertEmailVerified(claims, tokenContext);
-		const resolvedRole = await this.resolveRoleForExistingUser(
-			claims.role,
-			allowedRoles,
-			existingUser.role?.slug,
-		);
-		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
-		await this.authIdentityRepository.save(
-			AuthIdentity.create(existingUser, qualifiedSub, 'token-exchange'),
-		);
-		this.eventService.emit('token-exchange-identity-linked', {
-			userId: existingUser.id,
-			sub: claims.sub,
-			email,
-			kid: tokenContext?.kid ?? '',
-			issuer: tokenContext?.issuer ?? claims.iss,
-		});
-		return await this.syncProfile(existingUser, claims, resolvedRole, tokenContext);
-	}
-
-	/** Path 3: JIT-provision a new user with a personal project and identity link. */
-	private async provisionUser(
-		claims: ExternalTokenClaims,
-		email: string,
-		allowedRoles: string[] | undefined,
-		tokenContext: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-	): Promise<User> {
-		this.assertEmailVerified(claims, tokenContext);
-		this.logger.debug('JIT provisioning new user', { sub: claims.sub, email });
-
-		const jitRole = await this.resolveRoleForNewUser(claims.role, allowedRoles);
-		const targetRole = jitRole ? { slug: jitRole } : GLOBAL_MEMBER_ROLE;
-
-		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
-
-		const user = await this.userRepository.manager.transaction(async (trx) => {
-			const { user: newUser } = await this.userRepository.createUserWithProject(
-				{
-					email,
-					firstName: trimName(claims.given_name),
-					lastName: trimName(claims.family_name),
-					role: targetRole,
-					password: INVALID_PASSWORD_PLACEHOLDER,
-				},
-				trx,
-			);
-
-			await trx.save(
-				trx.create(AuthIdentity, {
-					providerId: qualifiedSub,
-					providerType: 'token-exchange',
-					userId: newUser.id,
-				}),
-			);
-
-			return newUser;
-		});
-
-		this.eventService.emit('token-exchange-user-provisioned', {
-			userId: user.id,
-			sub: claims.sub,
-			email,
-			role: targetRole.slug,
-			kid: tokenContext?.kid ?? '',
-			issuer: tokenContext?.issuer ?? claims.iss,
-		});
-
-		return user;
 	}
 
 	/**
@@ -423,67 +383,5 @@ export class IdentityResolutionService implements IdentityResolver {
 		}
 
 		return role;
-	}
-
-	/**
-	 * Sync profile fields and role from claims to user when present and changed.
-	 * Uses `UserService.changeUserRole` for role changes to ensure side effects
-	 * (API key revocation, project relation cleanup, cache invalidation) are applied.
-	 */
-	private async syncProfile(
-		user: User,
-		claims: ExternalTokenClaims,
-		resolvedRole?: string,
-		tokenContext?: { kid: string; issuer: string; requireVerifiedEmail: boolean },
-	): Promise<User> {
-		let needsReload = false;
-
-		// Sync profile fields (firstName, lastName)
-		const profileUpdates: Pick<Partial<User>, 'firstName' | 'lastName'> = {};
-
-		if (claims.given_name !== undefined) {
-			const trimmed = trimName(claims.given_name);
-			if (trimmed !== user.firstName) {
-				profileUpdates.firstName = trimmed;
-			}
-		}
-
-		if (claims.family_name !== undefined) {
-			const trimmed = trimName(claims.family_name);
-			if (trimmed !== user.lastName) {
-				profileUpdates.lastName = trimmed;
-			}
-		}
-
-		if (Object.keys(profileUpdates).length > 0) {
-			await this.userRepository.update(user.id, profileUpdates);
-			needsReload = true;
-		}
-
-		// Sync role via UserService.changeUserRole for proper side effects
-		const previousRole = user.role?.slug;
-		if (resolvedRole && resolvedRole !== previousRole) {
-			await this.userService.changeUserRole(user, { newRoleName: resolvedRole });
-			needsReload = true;
-
-			if (previousRole) {
-				this.eventService.emit('token-exchange-role-updated', {
-					userId: user.id,
-					previousRole,
-					newRole: resolvedRole,
-					kid: tokenContext?.kid ?? '',
-					issuer: tokenContext?.issuer ?? claims.iss,
-				});
-			}
-		}
-
-		if (needsReload) {
-			return await this.userRepository.findOneOrFail({
-				where: { id: user.id },
-				relations: ['role'],
-			});
-		}
-
-		return user;
 	}
 }

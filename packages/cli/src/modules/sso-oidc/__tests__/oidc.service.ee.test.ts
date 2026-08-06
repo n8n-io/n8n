@@ -29,6 +29,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { JwtService } from '@/services/jwt.service';
 import { TrustedKeySourceRegistrationProxy } from '@/services/trusted-key-source-registration-proxy.service';
 import type { UrlService } from '@/services/url.service';
+import { IdentityBindingService } from '@/services/identity-binding.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
@@ -45,6 +46,7 @@ describe('OidcService', () => {
 	let provisioningService: ProvisioningService;
 	let userRepository: UserRepository;
 	let authIdentityRepository: AuthIdentityRepository;
+	let identityBinding: IdentityBindingService;
 	let outboundHttp: Mocked<OutboundHttp>;
 	let customFetch: Mock;
 
@@ -86,6 +88,10 @@ describe('OidcService', () => {
 		});
 		userRepository = mock<UserRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
+		// The shared resolution core is wired for real against the mocked
+		// repositories, so these stay regression tests of the login behaviour
+		// rather than tests of the delegation.
+		identityBinding = new IdentityBindingService(logger, userRepository, authIdentityRepository);
 		customFetch = vi.fn();
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.transport.mockReturnValue(
@@ -97,10 +103,9 @@ describe('OidcService', () => {
 
 		oidcService = new OidcService(
 			settingsRepository,
-			authIdentityRepository,
+			identityBinding,
 			mock<UrlService>(),
 			globalConfig,
-			userRepository,
 			cipher,
 			logger,
 			jwtService,
@@ -657,7 +662,7 @@ describe('OidcService', () => {
 			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
 			authIdentityRepository.findOne = vi
 				.fn()
-				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any, status: 'active' });
 
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
@@ -733,7 +738,7 @@ describe('OidcService', () => {
 			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
-			userRepository.manager.transaction = vi
+			userRepository.createUserWithExternalIdentity = vi
 				.fn()
 				.mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
@@ -807,7 +812,7 @@ describe('OidcService', () => {
 				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
 			authIdentityRepository.findOne = vi
 				.fn()
-				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any, status: 'active' });
 
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
@@ -858,7 +863,7 @@ describe('OidcService', () => {
 			provisioningService.provisionExpressionMappedRolesForUser = vi
 				.fn()
 				.mockResolvedValue(undefined);
-			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user });
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user, status: 'active' });
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -880,7 +885,7 @@ describe('OidcService', () => {
 				scopesProjectsRolesClaimName: 'n8n_projects',
 			});
 			provisioningService.provisionInstanceRoleForUser = vi.fn().mockResolvedValue(undefined);
-			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user });
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user, status: 'active' });
 
 			const callbackUrl = new URL('https://example.com/callback');
 			const storedState = oidcService.generateState().signed;
@@ -967,10 +972,9 @@ describe('OidcService', () => {
 			const realOutboundHttp = new OutboundHttp(mock<SsrfProtectionService>(), logger);
 			realOidcService = new OidcService(
 				settingsRepository,
-				authIdentityRepository,
+				identityBinding,
 				mock<UrlService>(),
 				globalConfig,
-				userRepository,
 				cipher,
 				logger,
 				jwtService,
@@ -1156,7 +1160,7 @@ describe('OidcService', () => {
 		mockAuthCallbackWith({ email_verified: false, email: 'john.doe@test.com' });
 		authIdentityRepository.findOne = vi
 			.fn()
-			.mockResolvedValue({ user: { email: 'john.doe@test.com' } } as any);
+			.mockResolvedValue({ user: { email: 'john.doe@test.com' }, status: 'active' } as any);
 
 		const user = await login();
 
