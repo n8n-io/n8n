@@ -713,7 +713,7 @@ describe('WorkflowCreationService', () => {
 		});
 	});
 
-	describe('auto-expose new workflows', () => {
+	describe('auto-expose new workflows in MCP', () => {
 		const user = mock<User>();
 
 		beforeEach(() => {

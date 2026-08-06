@@ -53,11 +53,8 @@ export class McpSettingsController {
 			response.mcpAccessEnabled = dto.mcpAccessEnabled;
 		}
 
-		// Disabling access implicitly turns auto-expose off too, unless the caller
-		// explicitly set autoExposeNewWorkflows in this same request (explicit wins).
-		// The `!== undefined` below always fires in that explicit case, so these two
-		// branches can never both run for the same request.
-		if (dto.mcpAccessEnabled === false && dto.autoExposeNewWorkflows === undefined) {
+		// Disabling access implicitly turns auto-expose off too
+		if (dto.mcpAccessEnabled === false) {
 			await this.mcpSettingsService.setAutoExposeNewWorkflows(false);
 			response.autoExposeNewWorkflows = false;
 		}
