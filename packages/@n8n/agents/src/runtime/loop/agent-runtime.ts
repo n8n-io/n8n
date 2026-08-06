@@ -259,19 +259,25 @@ export class AgentRuntime {
 		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
 		let list: AgentMessageList | undefined = undefined;
 		try {
-			const initializedList = await this.initRun(input, options);
-			list = initializedList;
 			const sink = new GenerateSink(this.createRunServices());
-			const rawResult = await this.telemetry.withRootSpan(
+			// initRun runs inside the root span (not before it) so the history-load
+			// and eager-input-persist memory spans it creates nest under
+			// `<agent>.generate` instead of starting as detached root spans.
+			const { result: rawResult, list: builtList } = await this.telemetry.withRootSpan(
 				'generate',
 				options,
 				this.runId,
-				async () =>
-					await this.runAgentLoop<GenerateResult>(
+				async () => {
+					const initializedList = await this.initRun(input, options);
+					list = initializedList;
+					const result = await this.runAgentLoop<GenerateResult>(
 						{ list: initializedList, options, abortScope },
 						sink,
-					),
+					);
+					return { result, list: initializedList };
+				},
 			);
+			list = builtList;
 			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
 			await this.telemetry.flush(options);
@@ -302,24 +308,18 @@ export class AgentRuntime {
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
 		const abortScope = this.eventBus.createAbortScope(options?.abortSignal);
-		let list: AgentMessageList;
-		try {
-			list = await this.initRun(input, options);
-		} catch (error) {
-			const isAbort = abortScope.isAborted;
-			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
-			if (!isAbort) {
-				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
-			}
-			abortScope.dispose();
-			return { runId: this.runId, stream: makeErrorStream(error), getState: () => this.getState() };
-		}
-
-		return {
+		// initRun runs inside startStream's root span (not before it) so the
+		// history-load and eager-input-persist memory spans it creates nest
+		// under `<agent>.stream` instead of starting as detached root spans.
+		// A failure there now surfaces through the same async error path as a
+		// loop failure (startStreamSession's catch), rather than a synchronous
+		// makeErrorStream — which also means cleanupRun/flushTelemetry now run
+		// on an init failure too, where they previously didn't.
+		return await Promise.resolve({
 			runId: this.runId,
-			stream: this.startStream({ list, options, abortScope }),
+			stream: this.startStream({ input, options, abortScope }),
 			getState: () => this.getState(),
-		};
+		});
 	}
 
 	/**
@@ -938,9 +938,24 @@ export class AgentRuntime {
 	/**
 	 * Wire up a ReadableStream and start the stream loop in the background via the
 	 * StreamSession, which owns the single shutdown / cleanup path.
+	 *
+	 * Accepts either an already-built `list` (resume/crashResume, which restore
+	 * it from persisted state) or raw `input` (a fresh `stream()` call) — in the
+	 * latter case `initRun` builds the list from inside `runLoop`, i.e. inside
+	 * the telemetry root span, so its memory spans nest correctly.
 	 */
-	private startStream(ctx: LoopContext): ReadableStream<StreamChunk> {
+	private startStream(
+		ctx: (
+			| { list: AgentMessageList; input?: never }
+			| { list?: never; input: AgentMessage[] | string }
+		) & {
+			options?: RuntimeExecutionOptions;
+			abortScope: AgentAbortScope;
+			pendingResume?: PendingResume;
+		},
+	): ReadableStream<StreamChunk> {
 		let sink: StreamSink | undefined;
+		let list: AgentMessageList | undefined = ctx.list;
 		return startStreamSession({
 			eventBus: this.eventBus,
 			abortScope: ctx.abortScope,
@@ -961,18 +976,30 @@ export class AgentRuntime {
 						server: failure.server,
 					});
 				}
+				const resolvedList = ctx.list ?? (await this.initRun(ctx.input, ctx.options));
+				list = resolvedList;
 				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
-				await this.runAgentLoop(ctx, sink);
+				await this.runAgentLoop(
+					{
+						list: resolvedList,
+						options: ctx.options,
+						abortScope: ctx.abortScope,
+						pendingResume: ctx.pendingResume,
+					},
+					sink,
+				);
 			},
 			getAbortFinish: () => sink?.getAbortFinish() ?? {},
 			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
 			// run still leaves its assistant work in memory. Fold in the text streamed for
 			// the in-flight turn first — its `newMessages` are only built once the stream
-			// completes, which the abort skipped, so it isn't in the list yet.
+			// completes, which the abort skipped, so it isn't in the list yet. No-op if
+			// the run aborted before initRun finished building the list.
 			persistTurnOnAbort: async () => {
+				if (!list) return;
 				const partial = sink?.getAbortSnapshot();
-				if (partial) ctx.list.addResponse([partial]);
-				await this.memory.persistTurnDelta(ctx.list, ctx.options);
+				if (partial) list.addResponse([partial]);
+				await this.memory.persistTurnDelta(list, ctx.options);
 			},
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),

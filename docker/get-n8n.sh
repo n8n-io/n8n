@@ -187,6 +187,13 @@ N8N_VERSION=${INSTALL_VERSION}
 
 N8N_ENABLED_MODULES=instance-ai
 
+# Code-node user code (JavaScript and Python) runs in the separate 'runners'
+# container. The broker binds 0.0.0.0 so that container can reach it — its
+# port (5679) stays private to the compose network.
+N8N_RUNNERS_MODE=external
+N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+N8N_RUNNERS_AUTH_TOKEN=$(gen_secret)
+
 # Instance AI (optional): fill this in to enable the AI assistant in n8n.
 # n8n works fine without it. Setup guide:
 # https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant
@@ -303,6 +310,17 @@ services:
     env_file: .env
     volumes:
       - n8n-data:/home/node/.n8n
+
+  runners:
+    image: ghcr.io/n8n-io/runners:${N8N_VERSION}
+    depends_on:
+      - n8n
+    environment:
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN}
+      N8N_RUNNERS_TASK_BROKER_URI: http://n8n:5679
+      # Idle runners exit and are relaunched on demand (per the task-runners docs)
+      N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '15'
+    # Runs user code from Code nodes. Never publish this container's ports.
 
   searxng:
     image: ghcr.io/searxng/searxng:latest

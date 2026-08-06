@@ -294,8 +294,12 @@ function firstPromptText(result: WorkflowTestCaseResult): string {
 
 function promptReview(result: WorkflowTestCaseResult, sr: ExecutionScenarioResult): StageReview {
 	const evidence = `${sr.reasoning} ${sr.rootCause ?? ''}`.toLowerCase();
+	// Gated on the failure being the builder's: a mock or infra failure says
+	// nothing about the prompt. Used to read `failureCategory ===
+	// 'legitimate_failure'` — a lang-tracer bucket the harness never emits, so
+	// this stage could never fail (TRUST-375).
 	const promptLooksUnderspecified =
-		sr.failureCategory === 'legitimate_failure' &&
+		sr.attribution === 'builder_issue' &&
 		['ambiguous', 'unclear', 'not specified', 'not define', 'does not specify'].some((needle) =>
 			evidence.includes(needle),
 		);
@@ -461,8 +465,11 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 	};
 }
 
+/** Keyed on the attribution buckets, not the raw verifier category: the old
+ *  switch mixed our categories with lang-tracer's bucket names, so two of its
+ *  arms were unreachable (TRUST-375). */
 function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
-	switch (sr.failureCategory) {
+	switch (sr.attribution) {
 		case 'builder_issue':
 			return 'For workflows with multiple required effects, branches, or error paths, state each required action explicitly and add observable acceptance conditions for every branch. This reduces silent omission during planning or build.';
 		case 'mock_issue':
@@ -471,8 +478,6 @@ function promptImprovementSuggestion(sr: ExecutionScenarioResult): string {
 			return 'Make trigger preconditions and scenario setup requirements explicit in the test prompt or fixture description so empty-input framework failures are easier to separate from workflow defects.';
 		case 'verification_gap':
 			return 'Add concrete, inspectable success evidence to the prompt, such as the exact side effect, branch behavior, or output field that should be observed, so the verifier has less room to infer.';
-		case 'legitimate_failure':
-			return 'If this behavior is required, move it from an implied expectation into an explicit prompt requirement with a clear fallback path and observable success criterion.';
 		default:
 			return 'Turn the failed behavior into a more explicit, testable requirement in future prompts: name the required step, the expected branch, and the observable evidence that proves it happened.';
 	}

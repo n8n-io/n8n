@@ -35,6 +35,7 @@ import {
 } from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -65,6 +66,7 @@ const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const workflowId = useWorkflowId();
+const settingsStore = useSettingsStore();
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -183,6 +185,7 @@ function openCommandBar(event: MouseEvent) {
 			</KeyboardShortcutTooltip>
 		</NodeCreatorShortcutCoachmark>
 		<KeyboardShortcutTooltip
+			v-if="!settingsStore.isCanvasOnly"
 			:label="i18n.baseText('nodeView.openCommandBar')"
 			:shortcut="{ keys: ['k'], metaKey: true }"
 			placement="left"

@@ -8,12 +8,13 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type { Telemetry } from '@/telemetry';
 
-import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
@@ -75,8 +76,12 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 	return {
 		agent: {
 			name: 'Runtime Agent',
-			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			stream: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
+			resume: vi
+				.fn()
+				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
 			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
@@ -105,9 +110,12 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
+	const executionLevelTracer = mock<ExecutionLevelTracer>();
 
-	executionService.recordMessage.mockResolvedValue('execution-1');
+	executionService.startExecutionRecording.mockResolvedValue('execution-1');
+	executionService.finalizeExecution.mockResolvedValue('execution-1');
 	agentRunTracingService.build.mockResolvedValue(undefined);
+	executionLevelTracer.getActiveContext.mockReturnValue(undefined);
 
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
@@ -117,6 +125,7 @@ function makeService() {
 		credentialsService,
 		reconstructionService,
 		agentRunTracingService,
+		executionLevelTracer,
 	);
 
 	return {
@@ -126,6 +135,7 @@ function makeService() {
 		telemetry,
 		reconstructionService,
 		agentRunTracingService,
+		executionLevelTracer,
 	};
 }
 
@@ -151,6 +161,8 @@ describe('AgentWorkflowExecutionService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockResolvedValue('agent-execution-1');
+		executionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 
 		const result = await service.executeForWorkflow(
 			agentId,
@@ -188,7 +200,16 @@ describe('AgentWorkflowExecutionService', () => {
 			run_type: 'production',
 			message_count: 1,
 		});
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				projectId,
+				agentId,
+				threadId: 'thread-1',
+				executionId: 'agent-execution-1',
+			}),
+		);
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
 			expect.objectContaining({
 				telemetry: expect.objectContaining({
 					runType: 'production',
@@ -198,6 +219,9 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
+		const startedAt = executionService.startExecutionRecording.mock.calls[0][1];
+		const finalizedRecord = executionService.finalizeExecution.mock.calls[0][1].record;
+		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 		expect(agentRunTracingService.build).toHaveBeenCalledWith(
 			expect.objectContaining({
 				agentId,
@@ -208,6 +232,47 @@ describe('AgentWorkflowExecutionService', () => {
 				executionId: 'execution-1',
 			}),
 		);
+	});
+
+	it('records workflow stream setup failures', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockRejectedValue(new Error('stream setup failed'));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		executionService.startExecutionRecording.mockResolvedValue('fallback-execution-1');
+
+		await expect(
+			service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId),
+		).rejects.toThrow('stream setup failed');
+
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'fallback-execution-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ error: 'stream setup failed', finishReason: 'error' }),
+			}),
+		);
+	});
+
+	it('records a null input for a tool-result with no matching tool-call', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime([
+			{ type: 'tool-result', toolCallId: 'tc-orphan', toolName: 'lookup', output: { ok: true } },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		const result = await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			projectId,
+		);
+
+		expect(result.toolCalls).toEqual([{ toolName: 'lookup', input: null, result: { ok: true } }]);
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
@@ -246,6 +311,109 @@ describe('AgentWorkflowExecutionService', () => {
 			'hello',
 			expect.objectContaining({ telemetry: fakeTelemetry }),
 		);
+	});
+
+	describe('OTel context nesting', () => {
+		it('looks up the active context for the calling node so the agent run nests under it', async () => {
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'wf-1',
+				workflowName: 'My workflow',
+				callingNodeName: 'Message an Agent',
+				callingNodeId: 'node-1',
+				inputData: [],
+				inputDataScope: 'item',
+				nodes: [],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				workflowContext,
+			);
+
+			expect(executionLevelTracer.getActiveContext).toHaveBeenCalledWith(
+				'execution-1',
+				'Message an Agent',
+			);
+		});
+
+		it('runs the agent stream inside the node span context when one is active', async () => {
+			const otelApi = await import('@opentelemetry/api');
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+			const fakeContext = {} as ReturnType<(typeof otelApi.context)['active']>;
+			executionLevelTracer.getActiveContext.mockReturnValue(fakeContext);
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			const withSpy = vi.spyOn(otelApi.context, 'with');
+			try {
+				await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+				expect(withSpy).toHaveBeenCalledWith(fakeContext, expect.any(Function));
+				expect(runtime.agent.stream).toHaveBeenCalled();
+			} finally {
+				withSpy.mockRestore();
+			}
+		});
+
+		it('runs the agent stream unwrapped when no node span context is active', async () => {
+			const otelApi = await import('@opentelemetry/api');
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+			executionLevelTracer.getActiveContext.mockReturnValue(undefined);
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			const withSpy = vi.spyOn(otelApi.context, 'with');
+			try {
+				await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+				expect(withSpy).not.toHaveBeenCalled();
+				expect(runtime.agent.stream).toHaveBeenCalled();
+			} finally {
+				withSpy.mockRestore();
+			}
+		});
+
+		it('skips the context lookup entirely when no executionId is available', async () => {
+			const otelApi = await import('@opentelemetry/api');
+			const { service, agentRepository, reconstructionService, executionLevelTracer } =
+				makeService();
+			const runtime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+			const withSpy = vi.spyOn(otelApi.context, 'with');
+			try {
+				await service.executeForWorkflow(agentId, 'hello', '', 'thread-1', projectId);
+
+				expect(executionLevelTracer.getActiveContext).not.toHaveBeenCalled();
+				expect(withSpy).not.toHaveBeenCalled();
+				expect(runtime.agent.stream).toHaveBeenCalled();
+			} finally {
+				withSpy.mockRestore();
+			}
+		});
 	});
 
 	it('applies per-call structured output schema and improves empty-output errors', async () => {
@@ -467,7 +635,7 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(result.response).toBe('answer');
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
-			expect(executionService.recordMessage).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
 
 			// Thread-scoped persistence: stable across executions, so a reused
 			// session id continues the same conversation.
@@ -841,7 +1009,8 @@ describe('AgentWorkflowExecutionService', () => {
 		await expect(execution).rejects.toThrow(OperationalError);
 		await expect(execution).rejects.toThrow("Couldn't get structured output matching the schema");
 		await expect(execution).rejects.not.toThrow('Check the stream');
-		expect(executionService.recordMessage).toHaveBeenCalledWith(
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'execution-1',
 			expect.objectContaining({
 				record: expect.objectContaining({
 					error: expect.stringContaining("Couldn't get structured output matching the schema"),

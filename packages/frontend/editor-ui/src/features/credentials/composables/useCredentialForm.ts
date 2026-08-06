@@ -22,7 +22,7 @@ import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
 
 import type { IUpdateInformation } from '@/Interface';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
 import {
