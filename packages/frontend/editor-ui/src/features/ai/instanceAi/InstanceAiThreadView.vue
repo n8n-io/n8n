@@ -60,6 +60,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
@@ -70,9 +71,14 @@ import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
 import { buildFixWithAiPrompt } from './fixWithAi';
+import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import { TabsRoot } from 'reka-ui';
+import { getAgentBuilderTargetFromThreadMetadata } from './instanceAi.threadRuntime';
+import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
+import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
+import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 
 const props = defineProps<{
 	threadId: string;
@@ -143,6 +149,54 @@ const activeFixWithAiOffer = computed(() => {
 		...run,
 		workflowName: thread.producedArtifacts.get(run.workflowId)?.name,
 	};
+});
+
+// --- "Test your agent" offer (post-setup suggestion) ---
+const isAgentEvalsEnabled = useAgentEvalsFlag();
+const agentEvalsStore = useAgentEvalsStore();
+
+// Mirrors `useIsAgentWorking()`, recomputed from the local runtime because that
+// composable injects the thread and this component provides it rather than
+// inheriting it. Kept field-for-field identical — in particular
+// `isAwaitingConfirmation` is excluded, since it can linger on a confirmation
+// left unresolved by a finished run and would suppress the suggestion for good.
+const isAgentWorking = computed(
+	() =>
+		thread.isHydratingThread ||
+		thread.isStreaming ||
+		thread.isSendingMessage ||
+		builderAgents.value.length > 0,
+);
+
+// The agent the builder actually persisted in this thread. Absent until then,
+// which is what keeps the suggestion from firing mid-build.
+const agentBuilderTarget = computed(() =>
+	getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(thread.id)),
+);
+
+// Blank while the flag is off so the capability summary is never fetched for a
+// surface the user can't reach.
+const offerAgentId = computed(() =>
+	isAgentEvalsEnabled.value ? (agentBuilderTarget.value?.agentId ?? '') : '',
+);
+const offerProjectId = computed(() =>
+	isAgentEvalsEnabled.value ? (agentBuilderTarget.value?.projectId ?? '') : '',
+);
+
+const { summary: offerAgentSummary } = useAgentCapabilitySummary(offerProjectId, offerAgentId);
+
+const activeTestAgentOffer = computed(() => {
+	const target = agentBuilderTarget.value;
+	if (!isAgentEvalsEnabled.value || !target) return null;
+	// Waiting for the run to settle keeps the card from appearing while the
+	// assistant is still adding tools the generated cases would need to cover.
+	if (isAgentWorking.value) return null;
+	if (!isAgentWorthTesting(offerAgentSummary.value)) return null;
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	if (dismissedKeys.has(testAgentOfferKey(target.agentId))) return null;
+
+	return target;
 });
 
 // --- Header title ---
@@ -604,6 +658,9 @@ onUnmounted(() => {
 	// must not tear down the runtime the live instance is rendering.
 	if (router.currentRoute.value.params.threadId !== props.threadId) {
 		store.disposeRuntime(props.threadId);
+		// Guarded by the same route check: a discarded duplicate instance must not
+		// drop a request the live instance's builder is still about to claim.
+		agentEvalsStore.clearEvalsFocus();
 	}
 	contentResizeObserver?.disconnect();
 });
@@ -702,6 +759,39 @@ function dismissFixWithAiOffer() {
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
+}
+
+/**
+ * Reveal the agent artifact, then hand off to the builder to select its Evals
+ * tab and generate. Generation deliberately stays in the builder: it already
+ * owns the call, its loading flag and its error toast, so driving it from here
+ * would be a second call site for the same operation.
+ */
+async function handleGenerateTestCasesFromOffer() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+
+	// Raise the request before revealing the artifact: the builder consumes it on
+	// mount, so ordering doesn't matter, and the panel may not be open yet.
+	agentEvalsStore.requestEvalsFocus(target.agentId, true);
+	preview.openAgentPreview(target.agentId, target.projectId);
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+async function dismissTestAgentOffer() {
+	const target = activeTestAgentOffer.value;
+	if (!target) return;
+	await persistTestAgentOfferDismissal(target.agentId);
+}
+
+// Persisted for the CTA as well as "Maybe later": once the user has acted on the
+// suggestion, re-offering it on the next visit is noise.
+async function persistTestAgentOfferDismissal(agentId: string) {
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(testAgentOfferKey(agentId));
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
 }
 
 async function dismissComposerContextChip() {
@@ -849,6 +939,14 @@ async function dismissComposerContextChip() {
 										:failed-count="activeFixWithAiOffer.errors.length"
 										@fix-with-ai="handleFixWithAiFromOffer"
 										@dismiss="dismissFixWithAiOffer"
+									/>
+								</Transition>
+
+								<Transition name="confirmation-slide">
+									<InstanceAiTestAgentPanel
+										v-if="activeTestAgentOffer"
+										@generate="handleGenerateTestCasesFromOffer"
+										@dismiss="dismissTestAgentOffer"
 									/>
 								</Transition>
 								<!-- Live activity indicator. Sits at the very end of the
