@@ -431,13 +431,12 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it('raises a node-supplied grace below the materialisation window up to the window, and warns', async () => {
-			const summary = await provisionWithGrace(30);
+			await provisionWithGrace(30);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				expect.objectContaining({ misfireGraceSeconds: 60 }),
 			]);
 			expect(logger.warn).toHaveBeenCalledTimes(1);
-			expect(summary).toBeDefined();
 		});
 
 		it('raises a node-supplied grace at or below the executor interval to one second above the interval', async () => {
@@ -456,7 +455,6 @@ describe('DurableJobProvisioner', () => {
 		it.each([
 			{ name: 'zero', grace: 0 },
 			{ name: 'null', grace: null },
-			{ name: 'undefined', grace: undefined },
 			{ name: 'a negative value', grace: -5 },
 			{ name: 'a fraction below one', grace: 0.5 },
 		])(
@@ -472,6 +470,7 @@ describe('DurableJobProvisioner', () => {
 
 		it.each([
 			{ name: 'NaN', grace: Number.NaN },
+			{ name: 'undefined', grace: undefined },
 			{ name: 'Infinity', grace: Number.POSITIVE_INFINITY },
 			{ name: 'a non-numeric string', grace: 'not-a-number' },
 		])('resolves $name to the instance-configured grace', async ({ grace }) => {
@@ -491,12 +490,11 @@ describe('DurableJobProvisioner', () => {
 		});
 
 		it('lowers a node-supplied grace above the thirty-day cap down to the cap', async () => {
-			const summary = await provisionWithGrace(THIRTY_DAYS_IN_SECONDS + 1);
+			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS + 1);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
 			]);
-			expect(summary).toBeDefined();
 		});
 
 		it('leaves an instance-configured grace below the floors unclamped', async () => {
@@ -565,25 +563,60 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('warns that it raised the grace, reporting the truncated request and the value written', async () => {
+		it('warns that it raised the grace, reporting the truncated request, the value written and the owning node', async () => {
 			await provisionWithGrace(30.7);
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Raised a node's misfire grace to the scheduler's minimum",
-				{ requestedMisfireGraceSeconds: 30, misfireGraceSeconds: 60 },
+				{
+					workflowId: 'wf',
+					nodeId: 'node',
+					requestedMisfireGraceSeconds: 30,
+					misfireGraceSeconds: 60,
+				},
 			);
 		});
 
-		it('warns that it lowered the grace, reporting the request and the cap written', async () => {
+		it('warns that it lowered the grace, reporting the request, the cap written and the owning node', async () => {
 			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS + 500);
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Lowered a node's misfire grace to the scheduler's maximum",
 				{
+					workflowId: 'wf',
+					nodeId: 'node',
 					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 500,
 					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
 				},
 			);
+		});
+
+		it('lowers a node-supplied grace to the thirty-day cap when the configured floors exceed the cap, without claiming it raised it to a minimum', async () => {
+			provisioner = makeProvisioner({
+				materializationWindowSeconds: THIRTY_DAYS_IN_SECONDS + 1000,
+			});
+
+			await provisionWithGrace(300);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
+			]);
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				"Raised a node's misfire grace to the scheduler's minimum",
+				expect.anything(),
+			);
+		});
+
+		it('falls back to the instance-configured grace when a floor is not configured, never writing a non-finite grace', async () => {
+			provisioner = makeProvisioner({
+				materializationWindowSeconds: undefined as unknown as number,
+			});
+
+			await provisionWithGrace(300);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ misfireGraceSeconds: 90 }),
+			]);
 		});
 
 		it('reconciles a row stored at the raw node-supplied grace up to the clamped grace', async () => {
