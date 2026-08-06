@@ -130,6 +130,44 @@ describe('createDataEmitter', () => {
 			}
 		});
 
+		it.each([-1, 0])(
+			'never times out when the workflow timeout is %s, meaning unbounded',
+			async (executionTimeoutSeconds) => {
+				vi.useFakeTimers();
+				try {
+					const emitter = build({ resolveOffsetMode: 'onCompletion', executionTimeoutSeconds });
+					const pending = emitter(ITEMS);
+					await vi.waitFor(() => expect(emitSpy).toHaveBeenCalled());
+
+					// A negative delay handed to setTimeout would fire on the next tick.
+					await vi.advanceTimersByTimeAsync(60_000);
+					let settled = false;
+					void pending.then(() => (settled = true));
+					await vi.advanceTimersByTimeAsync(0);
+					expect(settled).toBe(false);
+
+					const deferred = emitSpy.mock.calls[0][2] as { resolve: (value: IRun) => void };
+					deferred.resolve(run('success'));
+					expect(await pending).toStrictEqual({ success: true });
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
+
+		it('logs a close-cancelled execution as debug, not error', async () => {
+			const controller = new AbortController();
+			const emitter = build({ resolveOffsetMode: 'onCompletion' }, controller.signal);
+
+			const pending = emitter(ITEMS);
+			await vi.waitFor(() => expect(emitSpy).toHaveBeenCalled());
+			controller.abort();
+			await pending;
+
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalled();
+		});
+
 		it('stops waiting when the trigger closes', async () => {
 			const controller = new AbortController();
 			const emitter = build({ resolveOffsetMode: 'onCompletion' }, controller.signal);

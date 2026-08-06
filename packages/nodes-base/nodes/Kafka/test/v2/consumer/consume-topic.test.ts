@@ -219,6 +219,39 @@ describe('consumeTopic', () => {
 			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
 		});
 
+		it('does not hold teardown behind the retry delay', async () => {
+			const { consumer, handle } = await start({ errorRetryDelay: 60_000 });
+			parseMessage.mockRejectedValueOnce(new Error('parse failed'));
+
+			const delivery = consumer.deliverBatch({ messages: messages('a') });
+			// Real timers: if close did not cut the wait short this would take a minute.
+			await handle.close();
+
+			await expect(delivery).resolves.toBeUndefined();
+			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
+		});
+
+		it('lets an emit rejection propagate, leaving the chunk unresolved', async () => {
+			const { consumer } = await start();
+			emit.mockRejectedValueOnce(new Error('emit exploded'));
+
+			await expect(consumer.deliverBatch({ messages: messages('a') })).rejects.toThrow(
+				'emit exploded',
+			);
+			expect(consumer.payloadSpies.resolveOffset).not.toHaveBeenCalled();
+		});
+
+		it.each([0, -3])(
+			'treats a batch size of %s as one, rather than looping forever',
+			async (batchSize) => {
+				const { consumer } = await start({ batchSize });
+
+				await consumer.deliverBatch({ messages: messages('a', 'b') });
+
+				expect(emit).toHaveBeenCalledTimes(2);
+			},
+		);
+
 		it('waits the retry delay before a failed chunk is re-delivered', async () => {
 			vi.useFakeTimers();
 			try {

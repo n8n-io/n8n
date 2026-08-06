@@ -78,6 +78,11 @@ export function createDataEmitter(
 
 	const executionTimeoutSeconds =
 		options.executionTimeoutSeconds ?? DEFAULT_EXECUTION_TIMEOUT_SECONDS;
+	// n8n treats a workflow timeout of <= 0 as explicitly unbounded
+	// (workflow-execute-additional-data.ts:255). Handing that to setTimeout would
+	// fire on the next tick and fail every hand-off, so there is simply no local
+	// deadline in that case; close still ends the wait.
+	const isTimeoutBounded = executionTimeoutSeconds > 0;
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	// Rejects on close; kept handled so it can never become an unhandled rejection.
@@ -103,18 +108,23 @@ export function createDataEmitter(
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
 			ctx.emit([items], undefined, responsePromise);
 
-			const timeoutPromise = new Promise<IRun>((_, reject) => {
-				timeoutId = setTimeout(() => {
-					reject(
-						new NodeOperationError(
-							ctx.getNode(),
-							`Execution took longer than the configured workflow timeout of ${executionTimeoutSeconds} seconds to complete, offsets not resolved.`,
-						),
-					);
-				}, executionTimeoutSeconds * 1000);
-			});
+			const waits: Array<Promise<IRun>> = [responsePromise.promise, abortPromise];
+			if (isTimeoutBounded) {
+				waits.push(
+					new Promise<IRun>((_, reject) => {
+						timeoutId = setTimeout(() => {
+							reject(
+								new NodeOperationError(
+									ctx.getNode(),
+									`Execution took longer than the configured workflow timeout of ${executionTimeoutSeconds} seconds to complete, offsets not resolved.`,
+								),
+							);
+						}, executionTimeoutSeconds * 1000);
+					}),
+				);
+			}
 
-			const run = await Promise.race([responsePromise.promise, timeoutPromise, abortPromise]);
+			const run = await Promise.race(waits);
 
 			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
@@ -130,7 +140,13 @@ export function createDataEmitter(
 				await Promise.race([sleep(errorRetryDelay), abortPromise.catch(() => undefined)]);
 			}
 			const error = ensureError(e);
-			ctx.logger.error(error.message, { error });
+			// Teardown cancelling an in-flight execution is expected, not a failure,
+			// so it must not surface as an error in the log.
+			if (closeSignal.aborted) {
+				ctx.logger.debug(error.message, { error });
+			} else {
+				ctx.logger.error(error.message, { error });
+			}
 			return { success: false };
 		} finally {
 			if (timeoutId) clearTimeout(timeoutId);

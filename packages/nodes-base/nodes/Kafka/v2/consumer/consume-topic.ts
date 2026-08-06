@@ -63,7 +63,9 @@ export async function consumeTopic(
 	options: ConsumeTopicOptions,
 ): Promise<KafkaConsumerHandle> {
 	const { topic, parseMessage, emit, logger } = options;
-	const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+	// Clamped: the loop steps by this, so a zero or negative value would never
+	// advance and would re-emit the same chunk forever.
+	const batchSize = Math.max(DEFAULT_BATCH_SIZE, Math.trunc(options.batchSize ?? 0));
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	const closeController = new AbortController();
