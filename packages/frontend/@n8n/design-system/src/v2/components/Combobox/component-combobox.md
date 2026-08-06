@@ -35,8 +35,8 @@ Items with `type: 'label'` start a new `ComboboxGroup`. That keeps each heading�
 
 - `id?: string` — Applied to the combobox input
 - `name?: string` — Form field name passed to reka-ui root
-- `placeholder?: string` — Shown in the input when no value is selected | `default: 'Select an option'`
-- `emptyText?: string` — Shown when filtering returns no matches | `default: 'No results found.'`
+- `placeholder?: string` — Shown in the input when no value is selected | `default: t('combobox.placeholder')`
+- `emptyText?: string` — Shown when filtering returns no matches | `default: t('combobox.emptyText')`
 - `autoFocus?: boolean` — Focus the input on mount
 - `items?: ComboboxItem[]` — Array of options to render (see [Item shapes](#item-shapes) below)
 - `valueKey?: string` — When `items` is an array of objects, field to use as the value | `default: 'value'`

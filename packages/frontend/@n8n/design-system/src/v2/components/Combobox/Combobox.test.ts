@@ -20,6 +20,8 @@ vi.mock('@n8n/design-system/composables/useI18n', () => ({
 			const translations: Record<string, string> = {
 				'combobox.clearSelection': 'Clear selection',
 				'combobox.showPopup': 'Show popup',
+				'combobox.placeholder': 'Select an option',
+				'combobox.emptyText': 'No results found.',
 				'tagsInput.removeTag': 'Remove {tag}',
 			};
 			const template = translations[key] ?? key;

@@ -191,6 +191,8 @@ export default {
 	'collapsiblePanel.delete': 'Delete',
 	'combobox.clearSelection': 'Clear selection',
 	'combobox.showPopup': 'Show popup',
+	'combobox.placeholder': 'Select an option',
+	'combobox.emptyText': 'No results found.',
 	'tagsInput.removeTag': 'Remove {tag}',
 	'markdownEditor.bold': 'Bold',
 	'markdownEditor.italic': 'Italic',

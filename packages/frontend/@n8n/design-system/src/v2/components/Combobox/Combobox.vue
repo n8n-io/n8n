@@ -37,8 +37,6 @@ defineOptions({ inheritAttrs: false });
 const $style = useCssModule();
 
 const props = withDefaults(defineProps<ComboboxProps>(), {
-	placeholder: 'Select an option',
-	emptyText: 'No results found.',
 	size: 'large',
 	side: 'bottom',
 	sideOffset: 4,
@@ -51,6 +49,9 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 const emit = defineEmits<ComboboxEmits>();
 defineSlots<ComboboxSlots>();
 const { t } = useI18n();
+
+const placeholder = computed(() => props.placeholder ?? t('combobox.placeholder'));
+const emptyText = computed(() => props.emptyText ?? t('combobox.emptyText'));
 
 const rootProps = useForwardPropsEmits(
 	reactivePick(
@@ -310,7 +311,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:size="props.size"
 				:disabled="props.disabled"
 				:display-value="getTagLabel"
-				:placeholder="props.placeholder"
+				:placeholder="placeholder"
 				:auto-focus="props.autoFocus"
 				@update:model-value="onTagsUpdate"
 			>
@@ -319,7 +320,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 						:id="props.id"
 						as-child
 						:display-value="getDisplayValue"
-						:aria-label="$attrs['aria-label'] ?? props.placeholder"
+						:aria-label="$attrs['aria-label'] ?? placeholder"
 					>
 						<TagsInputInput
 							:id="inputProps.id"
@@ -339,10 +340,10 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:id="props.id"
 				ref="input"
 				:class="$style.comboboxInput"
-				:placeholder="props.placeholder"
+				:placeholder="placeholder"
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
-				:aria-label="$attrs['aria-label'] ?? props.placeholder"
+				:aria-label="$attrs['aria-label'] ?? placeholder"
 			/>
 
 			<button
@@ -383,7 +384,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 
 				<ComboboxViewport :class="$style.comboboxViewport">
 					<ComboboxEmpty :class="$style.comboboxEmpty" role="status">
-						{{ props.emptyText }}
+						{{ emptyText }}
 					</ComboboxEmpty>
 
 					<ComboboxGroup
