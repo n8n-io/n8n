@@ -20,6 +20,13 @@ const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 const FLAGS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+const SESSION_ID_MAX_LENGTH = 1000;
+
+function sanitizeSessionId(value: string | undefined): string | undefined {
+	const sanitized = value?.replace(/[^\x20-\x7E]/g, '').trim();
+	return sanitized ? sanitized.slice(0, SESSION_ID_MAX_LENGTH) : undefined;
+}
+
 interface CachedFlags {
 	flags: FeatureFlags;
 	expiresAt: number;
@@ -53,7 +60,7 @@ export class PostHogClient {
 		if (!postHog || this.globalConfig.deployment.type !== 'cloud') return;
 
 		app.use((req, _res, next) => {
-			const sessionId = req.get('x-posthog-session-id');
+			const sessionId = sanitizeSessionId(req.get('x-posthog-session-id'));
 			if (!sessionId) return next();
 
 			postHog.withContext({ sessionId }, next);
