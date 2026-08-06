@@ -254,6 +254,7 @@ describe('compileWorkflowSource', () => {
 		);
 
 		expect(lintWorkflowSource).toHaveBeenCalledWith('workflow source');
+		if (!result.success) throw new Error('expected a successful compile');
 		expect(result.warnings).toContainEqual({
 			code: 'SDK_UNSOLICITED_STICKY',
 			message: 'line 7: Do not add sticky() nodes.',

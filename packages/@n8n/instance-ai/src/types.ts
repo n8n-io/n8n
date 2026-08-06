@@ -998,6 +998,10 @@ export interface InstanceAiContext {
 	 * from environment API keys that proxy-managed deployments don't have.
 	 */
 	modelId?: ModelConfig;
+	/** Webhook base URL (e.g. https://host/webhook) — used to compute trigger endpoints on build results. */
+	webhookBaseUrl?: string;
+	/** Form base URL — Form Triggers serve at /form/, not /webhook/. */
+	formBaseUrl?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;

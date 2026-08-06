@@ -9,8 +9,6 @@ import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
-import { computeTriggerEndpoints, TRIGGER_ENDPOINTS_NOTE } from './trigger-endpoints';
-import { validateErrorWorkflowReference } from './validate-error-workflow';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
@@ -18,6 +16,8 @@ import {
 } from './resolve-credentials';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { computeTriggerEndpoints, TRIGGER_ENDPOINTS_NOTE } from './trigger-endpoints';
+import { validateErrorWorkflowReference } from './validate-error-workflow';
 import {
 	combineWarnings,
 	formatWarning,
