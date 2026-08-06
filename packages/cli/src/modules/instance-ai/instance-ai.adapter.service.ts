@@ -41,6 +41,8 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
+	InstanceAiMcpService,
+	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
@@ -55,7 +57,9 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
+	INSTANCE_AI_MCP_CONNECTIONS_FLAG,
 	upsertEvaluationConfigSchema,
+	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -64,6 +68,7 @@ import { nanoid } from 'nanoid';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiMcpRegistryService } from './mcp';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import {
 	buildInstanceAiRunPinDataPlan,
@@ -138,6 +143,7 @@ import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
@@ -300,6 +306,9 @@ export class InstanceAiAdapterService {
 			/** Per-user config-evals gate (via `isConfigEvalsEnabled`). Falsy →
 			 *  eval-config service/tool not wired. */
 			configEvalsEnabled?: boolean;
+			/** Per-user MCP registry gate (via `isMcpConnectionsEnabled`). Falsy →
+			 *  mcp service/tool not wired. */
+			mcpConnectionsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
@@ -314,6 +323,7 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
+			mcpConnectionsEnabled,
 			modelId,
 		} = options ?? {};
 
@@ -345,6 +355,7 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
+			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -413,6 +424,57 @@ export class InstanceAiAdapterService {
 	async isConfigEvalsEnabled(user: User): Promise<boolean> {
 		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
 		return flags?.[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT;
+	}
+
+	/** Gate for MCP registry discovery tool. All three must hold:
+	 * 1. the `mcp-registry` module is active
+	 * 2. the admin allows MCP access instance-wide
+	 * 3. the user is part of the MCP connections experiment */
+	async isMcpConnectionsEnabled(user: User): Promise<boolean> {
+		if (!Container.get(ModuleRegistry).isActive('mcp-registry')) return false;
+		if (!this.settingsService.isMcpAccessEnabled()) return false;
+		const flags = await Container.get(PostHogClient).getFeatureFlags(user);
+		return (
+			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
+		);
+	}
+
+	private createMcpAdapter(user: User): InstanceAiMcpService {
+		return {
+			search: async (queries: string[]): Promise<McpRegistryServerSummary[]> => {
+				const [servers, connectedSlugs] = await Promise.all([
+					Container.get(McpRegistryService).search(queries),
+					this.listConnectedMcpRegistrySlugs(user),
+				]);
+				return servers
+					.filter((server) => !connectedSlugs.has(server.slug))
+					.map((server) => ({
+						slug: server.slug,
+						title: server.title,
+						description: server.description,
+						tools: server.tools.map((tool) => tool.name),
+					}));
+			},
+		};
+	}
+
+	/** Slugs the user already has a connection row for. Reads the rows rather than
+	 *  resolving them into loadable servers: resolving decrypts credentials per
+	 *  connection, and a row that fails to resolve still blocks connecting again
+	 *  (one connection per user+slug), so re-offering it would dead-end. */
+	private async listConnectedMcpRegistrySlugs(user: User): Promise<Set<string>> {
+		try {
+			const connections = await Container.get(InstanceAiMcpRegistryService).listConnectionsForUser(
+				user,
+			);
+			return new Set(connections.map((connection) => connection.serverSlug));
+		} catch (error) {
+			this.logger.warn('Failed to list connected MCP registry servers for registry search', {
+				userId: user.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return new Set();
+		}
 	}
 
 	private buildAiGatewayNodeMeta(
