@@ -172,6 +172,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 					},
 				],
 				ScheduledJobMisfirePolicy.Skip,
+				undefined,
 			);
 		});
 
@@ -373,6 +374,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
 				ScheduledJobMisfirePolicy.Skip,
+				undefined,
 			);
 		});
 
@@ -404,6 +406,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 					{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 					expect.anything(),
 					expected,
+					undefined,
 				);
 			},
 		);
@@ -449,6 +452,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Skip,
+				undefined,
 			);
 		});
 
@@ -470,6 +474,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Coalesce,
+				undefined,
 			);
 		});
 
@@ -492,6 +497,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Skip,
+				undefined,
 			);
 		});
 
@@ -509,6 +515,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				[],
 				ScheduledJobMisfirePolicy.Coalesce,
+				undefined,
 			);
 		});
 
@@ -534,6 +541,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Skip,
+				undefined,
 			);
 		});
 
@@ -559,6 +567,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Coalesce,
+				undefined,
 			);
 			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
 				2,
@@ -568,6 +577,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: NODE_ID },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Skip,
+				undefined,
 			);
 		});
 
@@ -593,6 +603,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: 'node-coalesce' },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Coalesce,
+				undefined,
 			);
 			expect(jobProvisioner.provision).toHaveBeenNthCalledWith(
 				2,
@@ -602,6 +613,7 @@ describe('ScheduleTriggerJobRegistrar', () => {
 				{ workflowId: WORKFLOW_ID, nodeId: 'node-skip' },
 				expect.anything(),
 				ScheduledJobMisfirePolicy.Skip,
+				undefined,
 			);
 		});
 
