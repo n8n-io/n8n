@@ -72,9 +72,15 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 	});
 }
 
-if (FRONTEND_URL) {
+// Only spawn a Vite dev server when N8N_EDITOR_URL explicitly asks for one.
+// Without this gate, FRONTEND_URL falls back to N8N_BASE_URL in `test:local`
+// and spawns a Vite server on 8080 that nothing uses (the health check on the
+// backend port passes anyway) and that outlives the run.
+// Invoke vite via pnpm, not `turbo run dev`: turbo detaches tasks into their
+// own process group, which puts them out of reach of Playwright's tree-kill.
+if (IS_DEV && FRONTEND_URL) {
 	webServer.push({
-		command: 'cd .. && pnpm dev:fe:editor',
+		command: 'pnpm --filter=n8n-editor-ui dev',
 		url: `${FRONTEND_URL}/favicon.ico`,
 		timeout: 30000,
 		reuseExistingServer: IS_DEV ? false : true,
