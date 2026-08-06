@@ -4,6 +4,7 @@ import type {
 	WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import { within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useToast } from '@n8n/composables/useToast';
@@ -266,6 +267,11 @@ describe('WorkflowReviewRequestsView', () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 		await waitAllPromises();
 		expect(getByTestId('workflow-review-request-title')).toHaveTextContent('List review');
+		expect(
+			within(getByTestId('workflow-review-request-title-row')).getByTestId(
+				'workflow-review-request-status-dot',
+			),
+		).toBeInTheDocument();
 		// The list item carries no eligibility data, so no decision actions yet
 		expect(queryByTestId('workflow-review-approve-button')).not.toBeInTheDocument();
 
@@ -362,16 +368,16 @@ describe('WorkflowReviewRequestsView', () => {
 		it('writes the tab to the query preserving selection and state', async () => {
 			await router.replace('/workflow-review-requests/req-1?state=closed');
 
-			const { getByText } = renderComponent();
+			const { getByRole } = renderComponent();
 			await waitAllPromises();
 
-			getByText('Changes').click();
+			getByRole('tab', { name: 'Changes' }).click();
 			await waitAllPromises();
 
 			expect(router.currentRoute.value.query).toEqual({ state: 'closed', tab: 'changes' });
 			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
 
-			getByText('Activity').click();
+			getByRole('tab', { name: 'Activity' }).click();
 			await waitAllPromises();
 
 			expect(router.currentRoute.value.query).toEqual({ state: 'closed' });
